@@ -27,6 +27,10 @@ function cleanAndParseJSON(text: string): any {
   }
 }
 
+/**
+ * Executa uma pesquisa profunda na B3 para retornar tudo o que o app precisa.
+ * Atualizado para usar o modelo Gemini 2.5 Flash conforme solicitado.
+ */
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { prices: {}, dividends: [], metadata: {} };
 
@@ -57,10 +61,12 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
+        // O responseSchema guia o modelo para a estrutura correta.
+        // O parser robusto cleanAndParseJSON cuida da extração do texto final.
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -132,7 +138,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
     return result;
   } catch (error: any) {
-    console.error("Erro Crítico Gemini:", error);
+    console.error("Erro Crítico Gemini Sync:", error);
     throw error;
   }
 };
