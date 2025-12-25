@@ -1,9 +1,8 @@
 import { BrapiResponse, BrapiQuote } from '../types';
 
 const BASE_URL = 'https://brapi.dev/api';
-// Reduzimos o cache para 1 minuto para garantir cotações mais "real-time" já que o foco é apenas preço
 const CACHE_KEY = 'investfiis_quotes_simple_cache';
-const CACHE_DURATION = 60 * 1000; 
+const CACHE_DURATION = 60 * 1000; // 1 minuto
 
 interface CacheItem {
   data: BrapiQuote;
@@ -29,24 +28,35 @@ const saveCache = (cache: QuoteCache) => {
   } catch (e) {}
 };
 
-const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuote | null> => {
+// Função auxiliar para dividir array em pedaços (chunks)
+// A Brapi aceita múltiplos tickers separados por vírgula, mas é bom limitar para não fazer URLs gigantes
+const chunkArray = (array: string[], size: number): string[][] => {
+  const result = [];
+  for (let i = 0; i < array.length; i += size) {
+    result.push(array.slice(i, i + size));
+  }
+  return result;
+};
+
+const fetchBatchQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
     try {
-        // REFATORADO: Busca APENAS cotação simples.
-        // Removemos 'modules=dividends' e 'range' para aliviar a API e focar em preço atual.
-        const url = `${BASE_URL}/quote/${ticker}?token=${token}`;
+        // Concatena tickers com vírgula (ex: PETR4,VALE3,MXRF11)
+        const tickersParam = tickers.join(',');
+        // Removemos explicitamente modules e range para garantir apenas dados fundamentais de preço
+        const url = `${BASE_URL}/quote/${tickersParam}?token=${token}`;
         
         const response = await fetch(url);
 
         if (response.ok) {
             const data: BrapiResponse = await response.json();
-            return data.results?.[0] || null;
+            return data.results || [];
         }
         
-        console.warn(`Brapi: Falha ao buscar ${ticker} - Status: ${response.status}`);
-        return null;
+        console.warn(`Brapi: Falha no lote ${tickersParam} - Status: ${response.status}`);
+        return [];
     } catch (error) {
-        console.error(`Brapi: Erro de rede ao buscar ${ticker}:`, error);
-        return null;
+        console.error(`Brapi: Erro de rede no lote:`, error);
+        return [];
     }
 };
 
@@ -58,13 +68,13 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
   const validQuotes: BrapiQuote[] = [];
   const tickersToFetch: string[] = [];
 
+  // 1. Verifica Cache
   tickers.forEach(ticker => {
     const cleanTicker = ticker.trim().toUpperCase();
     if (!cleanTicker) return;
 
     const cachedItem = cache[cleanTicker];
     
-    // Verifica cache
     if (cachedItem && (now - cachedItem.timestamp < CACHE_DURATION)) {
       validQuotes.push(cachedItem.data);
     } else {
@@ -74,12 +84,19 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
 
   if (tickersToFetch.length === 0) return validQuotes;
 
-  // Busca em paralelo
-  // Adiciona um pequeno delay entre requisições se houver muitos tickers para evitar Rate Limit da Brapi
-  const results = await Promise.all(tickersToFetch.map(t => fetchSingleQuote(t, token)));
+  // 2. Busca dados novos em Lotes (Chunks de 20 ativos por vez)
+  // Isso evita fazer dezenas de requisições simultâneas que causam erro 417/429
+  const chunks = chunkArray(tickersToFetch, 20);
+  
+  const promises = chunks.map(chunk => fetchBatchQuotes(chunk, token));
+  const resultsArrays = await Promise.all(promises);
+  
+  // Flatten results
+  const newQuotes = resultsArrays.flat();
 
-  results.forEach(quote => {
-    if (quote) {
+  // 3. Atualiza Cache
+  newQuotes.forEach(quote => {
+    if (quote && quote.symbol) {
       cache[quote.symbol] = {
         data: quote,
         timestamp: now
