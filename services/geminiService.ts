@@ -1,23 +1,18 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { DividendReceipt } from "../types";
+import { DividendReceipt, AssetType } from "../types";
 
 export interface UnifiedMarketData {
   prices: Record<string, number>;
   dividends: DividendReceipt[];
+  metadata: Record<string, { segment: string; type: AssetType }>;
 }
 
-/**
- * Helper to extract and parse JSON from a model response that might contain markdown blocks.
- */
 function cleanAndParseJSON(text: string): any {
   try {
-    // Remove markdown code blocks if present
     const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleaned);
   } catch (e) {
-    console.error("Failed to parse JSON from Gemini:", e);
-    // Attempt to find the first '{' and last '}' as a last resort
     const firstBrace = text.indexOf("{");
     const lastBrace = text.lastIndexOf("}");
     if (firstBrace !== -1 && lastBrace !== -1) {
@@ -32,27 +27,22 @@ function cleanAndParseJSON(text: string): any {
 }
 
 /**
- * Busca Preços e Dividendos em uma ÚNICA requisição ao Gemini.
- * Utiliza Google Search para garantir dados em tempo real.
+ * Executa uma pesquisa profunda na B3 para retornar tudo o que o app precisa.
  */
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
-  if (!tickers || tickers.length === 0) return { prices: {}, dividends: [] };
+  if (!tickers || tickers.length === 0) return { prices: {}, dividends: [], metadata: {} };
 
-  // Initialize inside the call to ensure process.env.API_KEY is latest and used as a string
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-    Atue como um terminal financeiro de alta precisão para a B3 (Brasil).
-    PESQUISA NECESSÁRIA PARA OS ATIVOS: ${tickers.join(', ')}.
+    Aja como um analista de dados da B3. Para os ativos: ${tickers.join(', ')}.
     
-    TAREFAS:
-    1. Obtenha a COTAÇÃO ATUAL em Reais (BRL).
-    2. Liste os PROVENTOS (Dividendos e JCP) anunciados ou pagos nos últimos 12 meses.
+    REQUISITOS:
+    1. COTAÇÃO ATUAL (Price) em R$.
+    2. TODOS os dividendos/JCP com 'Data Com' nos últimos 12 meses.
+    3. SEGMENTO do ativo (ex: Papel, Logística, Bancos) e TIPO (FII ou ACAO).
     
-    REGRAS:
-    - Campo 'rate' é o valor por cota.
-    - Use Google Search para validar os preços e datas.
-    - Formato de data: YYYY-MM-DD.
+    Use o Google Search para garantir que os preços refletem o mercado hoje.
   `;
 
   try {
@@ -70,23 +60,25 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  ticker: { type: Type.STRING },
-                  currentPrice: { type: Type.NUMBER },
-                  dividends: {
+                  t: { type: Type.STRING, description: "Ticker" },
+                  p: { type: Type.NUMBER, description: "Preço atual" },
+                  s: { type: Type.STRING, description: "Segmento" },
+                  type: { type: Type.STRING, description: "FII ou ACAO" },
+                  d: {
                     type: Type.ARRAY,
                     items: {
                       type: Type.OBJECT,
                       properties: {
-                        type: { type: Type.STRING },
-                        dateCom: { type: Type.STRING },
-                        paymentDate: { type: Type.STRING },
-                        rate: { type: Type.NUMBER }
+                        ty: { type: Type.STRING, description: "DIVIDENDO ou JCP" },
+                        dc: { type: Type.STRING, description: "Data Com YYYY-MM-DD" },
+                        dp: { type: Type.STRING, description: "Data Pagto YYYY-MM-DD" },
+                        v: { type: Type.NUMBER, description: "Valor por cota" }
                       },
-                      required: ["dateCom", "rate"]
+                      required: ["dc", "v"]
                     }
                   }
                 },
-                required: ["ticker", "currentPrice"]
+                required: ["t", "p", "type"]
               }
             }
           }
@@ -95,25 +87,26 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     });
 
     const parsed = cleanAndParseJSON(response.text || "{}");
-    
-    const prices: Record<string, number> = {};
-    const allDividends: DividendReceipt[] = [];
+    const result: UnifiedMarketData = { prices: {}, dividends: [], metadata: {} };
 
-    if (parsed && parsed.assets && Array.isArray(parsed.assets)) {
+    if (parsed?.assets) {
       parsed.assets.forEach((asset: any) => {
-        if (!asset.ticker) return;
-        const ticker = asset.ticker.toUpperCase();
-        prices[ticker] = asset.currentPrice;
+        const ticker = asset.t.toUpperCase();
+        result.prices[ticker] = asset.p;
+        result.metadata[ticker] = { 
+          segment: asset.s || "Outros", 
+          type: asset.type === 'FII' ? AssetType.FII : AssetType.STOCK 
+        };
 
-        if (asset.dividends && Array.isArray(asset.dividends)) {
-          asset.dividends.forEach((div: any) => {
-            allDividends.push({
-              id: `${ticker}-${div.dateCom}-${div.rate}-${Math.random().toString(36).substring(2, 7)}`,
-              ticker: ticker,
-              type: (div.type || 'PROVENTO').toUpperCase(),
-              dateCom: div.dateCom,
-              paymentDate: div.paymentDate || div.dateCom,
-              rate: Number(div.rate),
+        if (asset.d) {
+          asset.d.forEach((div: any) => {
+            result.dividends.push({
+              id: `${ticker}-${div.dc}-${div.v}-${Math.random().toString(36).substring(2, 7)}`,
+              ticker,
+              type: div.ty || "PROVENTO",
+              dateCom: div.dc,
+              paymentDate: div.dp || div.dc,
+              rate: div.v,
               quantityOwned: 0,
               totalReceived: 0
             });
@@ -122,16 +115,9 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       });
     }
 
-    return { prices, dividends: allDividends };
-
+    return result;
   } catch (error: any) {
-    console.error("Gemini Unified Sync Error:", error);
-    if (error?.status === 429) throw new Error("COTA_EXCEDIDA");
-    return { prices: {}, dividends: [] };
+    console.error("Gemini Critical Sync Error:", error);
+    throw error;
   }
-};
-
-export const fetchDividendsViaGemini = async (tickers: string[]): Promise<DividendReceipt[]> => {
-  const data = await fetchUnifiedMarketData(tickers);
-  return data.dividends;
 };
