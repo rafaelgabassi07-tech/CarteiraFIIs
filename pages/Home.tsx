@@ -1,41 +1,13 @@
 import React, { useMemo } from 'react';
 import { AssetPosition, AssetType } from '../types';
-import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ArrowUpRight, Sparkles, Loader2 } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ArrowUpRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
-  aiAnalysis?: string | null;
-  isAnalyzing?: boolean;
-  onAnalyze?: () => void;
 }
 
-// Simple Markdown Formatter Component
-const MarkdownText: React.FC<{ text: string }> = ({ text }) => {
-  if (!text) return null;
-  
-  const paragraphs = text.split('\n\n');
-
-  return (
-    <div className="space-y-3 text-sm text-slate-300 leading-relaxed animate-fade-in">
-      {paragraphs.map((p, i) => {
-        const parts = p.split(/(\*\*.*?\*\*)/g);
-        return (
-          <p key={i}>
-            {parts.map((part, j) => {
-              if (part.startsWith('**') && part.endsWith('**')) {
-                return <strong key={j} className="text-white font-semibold">{part.slice(2, -2)}</strong>;
-              }
-              return part;
-            })}
-          </p>
-        );
-      })}
-    </div>
-  );
-};
-
-export const Home: React.FC<HomeProps> = ({ portfolio, aiAnalysis, isAnalyzing, onAnalyze }) => {
+export const Home: React.FC<HomeProps> = ({ portfolio }) => {
   // Calculate totals
   const totalInvested = portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0);
   const currentBalance = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
@@ -70,6 +42,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, aiAnalysis, isAnalyzing, 
       name: p.ticker,
       value: (p.currentPrice || p.averagePrice) * p.quantity
     }))
+    .filter(p => p.value > 0) // Filtra ativos que possam estar com valor 0 (ex: vendidos mas com histórico de dividendos)
     .sort((a, b) => b.value - a.value);
   
   const COLORS = ['#38bdf8', '#22c55e', '#f472b6', '#a78bfa', '#fbbf24', '#f87171', '#94a3b8', '#64748b'];
@@ -199,69 +172,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, aiAnalysis, isAnalyzing, 
         </div>
       </div>
 
-      {/* AI Analysis Card */}
-      {portfolio.length > 0 && onAnalyze && (
-        <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-            <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950/40 to-slate-900 p-6 rounded-3xl border border-indigo-500/20 shadow-xl shadow-indigo-900/5 group hover:shadow-indigo-900/10 transition-all duration-500">
-            {/* Decoration */}
-            <div className="absolute top-0 left-0 w-48 h-48 bg-indigo-500/10 blur-[60px] rounded-full pointer-events-none -ml-10 -mt-10 group-hover:bg-indigo-500/15 transition-all"></div>
-            
-            <div className="relative z-10">
-                <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 rounded-2xl text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/20">
-                            <Sparkles className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h3 className="text-white font-bold text-lg leading-none tracking-tight">Consultor IA</h3>
-                            <p className="text-[10px] text-indigo-300/80 font-medium mt-1 uppercase tracking-wide">Gemini 2.5 Flash</p>
-                        </div>
-                    </div>
-                </div>
-
-                {!aiAnalysis && !isAnalyzing && (
-                    <div className="text-center py-6">
-                        <p className="text-slate-400 text-sm mb-6 max-w-xs mx-auto leading-relaxed">Obtenha uma análise profissional da saúde da sua carteira e insights de proventos.</p>
-                        <button 
-                            onClick={onAnalyze}
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-8 rounded-2xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2 w-full sm:w-auto mx-auto border-t border-white/10"
-                        >
-                            <Sparkles className="w-4 h-4" /> Gerar Análise
-                        </button>
-                    </div>
-                )}
-
-                {isAnalyzing && (
-                    <div className="flex flex-col items-center justify-center py-12 gap-4">
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-indigo-500 blur-xl opacity-20 rounded-full animate-pulse"></div>
-                            <Loader2 className="w-10 h-10 text-indigo-400 animate-spin relative z-10" />
-                        </div>
-                        <p className="text-xs text-indigo-300 font-medium animate-pulse tracking-wide">ANALISANDO DADOS...</p>
-                    </div>
-                )}
-
-                {aiAnalysis && !isAnalyzing && (
-                    <div className="bg-slate-950/50 p-5 rounded-2xl border border-indigo-500/10 animate-fade-in backdrop-blur-sm">
-                        <MarkdownText text={aiAnalysis} />
-                        <div className="mt-5 pt-4 border-t border-white/5 flex justify-end">
-                            <button 
-                                onClick={onAnalyze}
-                                className="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1.5 transition-colors uppercase tracking-wide bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/10 hover:bg-indigo-500/20"
-                            >
-                                <Sparkles className="w-3 h-3" /> Atualizar
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-            </div>
-        </div>
-      )}
-
       {/* Allocation Chart */}
       {portfolio.length > 0 ? (
-        <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+        <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
             <div className="bg-secondary/30 rounded-3xl shadow-xl border border-white/5 p-6 backdrop-blur-md">
                 <h3 className="text-white font-semibold mb-6 flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">

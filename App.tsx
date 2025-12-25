@@ -6,7 +6,6 @@ import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, PortfolioSummary } from './types';
 import { getQuotes } from './services/brapiService';
-import { analyzePortfolio } from './services/geminiService';
 import { DownloadCloud } from 'lucide-react';
 
 // Initial dummy data to show functionality if empty
@@ -36,10 +35,6 @@ const App: React.FC = () => {
 
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // AI State
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // --- Service Worker & Update Logic ---
   useEffect(() => {
@@ -84,11 +79,11 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(INITIAL_TRANSACTIONS_KEY, JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem(BRAPI_TOKEN_KEY, brapiToken); }, [brapiToken]);
 
-  // Helper: Calculate quantity
-  // CORREÇÃO: Garante que a comparação de data seja segura (string YYYY-MM-DD)
+  // Helper: Calculate quantity available on a specific historic date
   const getQuantityOnDate = (ticker: string, targetDateStr: string, transactionList: Transaction[]) => {
-    // Normaliza a data alvo para YYYY-MM-DD (remove hora se houver)
-    const targetDate = targetDateStr.split('T')[0]; 
+    // Normaliza datas para YYYY-MM-DD para comparação string segura
+    // Assume targetDateStr vindo da API pode ter time (ex: 2023-01-01T00:00:00)
+    const targetDate = targetDateStr.split('T')[0];
     
     return transactionList
       .filter(t => t.ticker === ticker && t.date <= targetDate)
@@ -103,7 +98,7 @@ const App: React.FC = () => {
   const portfolio = useMemo(() => {
     const pos: Record<string, AssetPosition> = {};
     
-    // 1. Agrupa posições baseadas em transações
+    // 1. Agrupa posições atuais baseadas em todas as transações
     transactions.forEach(t => {
       if (!pos[t.ticker]) {
         pos[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: 0 };
@@ -118,21 +113,26 @@ const App: React.FC = () => {
       }
     });
 
-    // 2. Calcula dividendos baseado nas cotações carregadas
+    // 2. Calcula dividendos baseado nas cotações carregadas (API Brapi)
+    // A lógica cruza a "Data Com" do dividendo com o histórico de transações
     Object.keys(pos).forEach(ticker => {
         const quote = quotes[ticker];
         const cashDividends = quote?.dividendsData?.cashDividends;
         
         if (cashDividends && Array.isArray(cashDividends)) {
             let dividendSum = 0;
+            
             cashDividends.forEach(div => {
-                // A data de referência é a Data COM (lastDatePrior) ou Data de Pagamento
-                const rawDate = div.lastDatePrior || div.paymentDate;
-                if (rawDate) {
-                    // Normaliza para garantir formato compatível com as transações
-                    const quantityOwned = getQuantityOnDate(ticker, rawDate, transactions);
-                    if (quantityOwned > 0) {
-                        dividendSum += quantityOwned * div.rate;
+                // A regra oficial: Quem tem a ação no final do dia da "Data Com" (lastDatePrior) recebe.
+                // Se lastDatePrior não existir, usamos paymentDate como fallback aproximado.
+                const refDate = div.lastDatePrior || div.paymentDate;
+                
+                if (refDate) {
+                    // Calcula quantas cotas o usuário tinha naquela data específica
+                    const quantityOwnedAtRecordDate = getQuantityOnDate(ticker, refDate, transactions);
+                    
+                    if (quantityOwnedAtRecordDate > 0) {
+                        dividendSum += quantityOwnedAtRecordDate * div.rate;
                     }
                 }
             });
@@ -141,8 +141,7 @@ const App: React.FC = () => {
     });
 
     return Object.values(pos)
-      .filter(p => p.quantity > 0 || (p.totalDividends && p.totalDividends > 0)) // Mostra se tem qtd ou se já pagou dividendos
-      .filter(p => p.quantity > 0) // Por enquanto filtra apenas ativos em carteira para simplificar visualização
+      .filter(p => p.quantity > 0 || (p.totalDividends && p.totalDividends > 0)) // Mostra se tem posição ou se já recebeu proventos
       .map(p => ({
         ...p,
         currentPrice: quotes[p.ticker]?.regularMarketPrice,
@@ -187,41 +186,6 @@ const App: React.FC = () => {
 
   const handleManualRefresh = () => fetchMarketData(true);
 
-  // AI Analysis Handler
-  const handleAnalyzePortfolio = async () => {
-    console.log("🤖 [App] Botão de Análise clicado.");
-
-    if (isAnalyzing) {
-        console.warn("⚠️ [App] Análise já em andamento.");
-        return;
-    }
-    if (portfolio.length === 0) {
-        console.warn("⚠️ [App] Carteira vazia, nada para analisar.");
-        alert("Adicione ativos na carteira antes de gerar uma análise.");
-        return;
-    }
-    
-    setIsAnalyzing(true);
-    setAiAnalysis(null);
-
-    // Calculate Summary for AI
-    const totalInvested = portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0);
-    const currentBalance = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
-    const totalDividends = portfolio.reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
-    const profitability = totalInvested > 0 ? ((currentBalance - totalInvested) / totalInvested) * 100 : 0;
-
-    const summary: PortfolioSummary = {
-        totalInvested,
-        currentBalance,
-        totalDividends,
-        profitability
-    };
-
-    const result = await analyzePortfolio(portfolio, summary);
-    setAiAnalysis(result);
-    setIsAnalyzing(false);
-  };
-
   // Transaction Actions
   const handleAddTransaction = (t: Omit<Transaction, 'id'>) => {
     setTransactions(prev => [...prev, { ...t, id: crypto.randomUUID() }]);
@@ -251,12 +215,7 @@ const App: React.FC = () => {
 
     switch (currentTab) {
       case 'home':
-        return <Home 
-            portfolio={portfolio} 
-            aiAnalysis={aiAnalysis}
-            isAnalyzing={isAnalyzing}
-            onAnalyze={handleAnalyzePortfolio}
-        />;
+        return <Home portfolio={portfolio} />;
       case 'portfolio':
         return <Portfolio portfolio={portfolio} />;
       case 'transactions':
