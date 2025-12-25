@@ -67,6 +67,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
     return result;
   }, [dataByAsset]);
 
+  // Helper para dados corretos no modal de alocação
+  const currentAllocationData = allocationTab === 'asset' ? dataByAsset : dataByType;
+
   const dividendsChartData = useMemo(() => {
     const agg: Record<string, number> = {};
     dividendReceipts.forEach(d => {
@@ -193,7 +196,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         className="animate-fade-in-up tap-highlight cursor-pointer"
         style={{ animationDelay: '100ms' }}
       >
-        <div className="relative overflow-hidden bg-gradient-to-tr from-emerald-950/40 to-slate-900 border border-emerald-500/10 rounded-[2.5rem] p-6 shadow-xl group hover:border-emerald-500/30 transition-all">
+        <div className="relative overflow-hidden bg-gradient-to-tr from-emerald-950/40 to-slate-900 border border-emerald-500/10 rounded-[2.5rem] p-6 shadow-xl group hover:border-emerald-500/30 transition-all active:scale-[0.99]">
             <div className="absolute right-0 top-0 w-40 h-40 bg-emerald-500/10 blur-[60px] rounded-full"></div>
             
             <div className="relative z-10 flex items-center justify-between mb-5">
@@ -238,11 +241,11 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
           {portfolio.length > 0 ? (
             <div 
               onClick={() => setShowAllocationModal(true)}
-              className="relative overflow-hidden bg-gradient-to-br from-indigo-900/20 to-slate-900 border border-indigo-500/10 rounded-[2.5rem] p-6 hover:border-indigo-500/30 transition-all group tap-highlight cursor-pointer min-h-[16rem] flex flex-col justify-between"
+              className="relative overflow-hidden bg-gradient-to-br from-indigo-900/20 to-slate-900 border border-indigo-500/10 rounded-[2.5rem] p-6 hover:border-indigo-500/30 transition-all group tap-highlight cursor-pointer min-h-[16rem] flex flex-col justify-between active:scale-[0.99] z-10"
             >
-                <div className="absolute left-0 top-0 w-32 h-32 bg-indigo-500/10 blur-[50px] rounded-full"></div>
+                <div className="absolute left-0 top-0 w-32 h-32 bg-indigo-500/10 blur-[50px] rounded-full pointer-events-none"></div>
 
-                <div className="relative z-10 flex items-center justify-between mb-2">
+                <div className="relative z-10 flex items-center justify-between mb-2 pointer-events-none">
                     <h3 className="text-white font-bold flex items-center gap-2 text-xs uppercase tracking-wider">
                         <div className="w-8 h-8 flex items-center justify-center bg-indigo-500/20 rounded-xl text-indigo-400">
                             <PieIcon className="w-4 h-4" />
@@ -255,6 +258,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                 </div>
                 
                 <div className="relative z-10 flex flex-row items-center gap-6 flex-1">
+                    {/* IMPORTANTE: pointer-events-none aqui garante que o clique passe para o card */}
                     <div className="h-32 w-32 relative pointer-events-none shrink-0 drop-shadow-xl">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -273,7 +277,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                         </ResponsiveContainer>
                     </div>
                     
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 pointer-events-none">
                        <div className="flex flex-col gap-3">
                            {dataByAsset.slice(0, 3).map((entry, index) => (
                                <div key={entry.name} className="flex items-center justify-between gap-2 border-b border-white/5 pb-2">
@@ -301,11 +305,11 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
           {/* Ganho Real - Aprimorado */}
           <div 
              onClick={() => setShowInflationModal(true)}
-             className={`relative overflow-hidden rounded-[2.5rem] p-6 transition-all group tap-highlight cursor-pointer min-h-[16rem] flex flex-col justify-between shadow-lg ${isPositiveReal ? 'bg-gradient-to-tr from-emerald-950/50 to-slate-900 border border-emerald-500/20 hover:border-emerald-500/40' : 'bg-gradient-to-tr from-rose-950/50 to-slate-900 border border-rose-500/20 hover:border-rose-500/40'}`}
+             className={`relative overflow-hidden rounded-[2.5rem] p-6 transition-all group tap-highlight cursor-pointer min-h-[16rem] flex flex-col justify-between shadow-lg active:scale-[0.99] z-10 ${isPositiveReal ? 'bg-gradient-to-tr from-emerald-950/50 to-slate-900 border border-emerald-500/20 hover:border-emerald-500/40' : 'bg-gradient-to-tr from-rose-950/50 to-slate-900 border border-rose-500/20 hover:border-rose-500/40'}`}
           >
-             <div className={`absolute right-0 top-0 w-48 h-48 blur-[80px] rounded-full opacity-20 ${isPositiveReal ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+             <div className={`absolute right-0 top-0 w-48 h-48 blur-[80px] rounded-full opacity-20 pointer-events-none ${isPositiveReal ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
 
-             <div className="relative z-10 flex justify-between items-start mb-6">
+             <div className="relative z-10 flex justify-between items-start mb-6 pointer-events-none">
                  <div>
                     <h3 className="text-white font-bold flex items-center gap-2 text-sm uppercase tracking-wider mb-1">
                         <Scale className={`w-4 h-4 ${isPositiveReal ? 'text-emerald-400' : 'text-rose-400'}`} />
@@ -318,7 +322,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                  </div>
              </div>
 
-             <div className="relative z-10 flex flex-col flex-1 justify-end">
+             <div className="relative z-10 flex flex-col flex-1 justify-end pointer-events-none">
                 <div className="flex items-center gap-3 mb-4">
                    <div className={`text-5xl font-black tabular-nums tracking-tighter drop-shadow-lg ${isPositiveReal ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {isPositiveReal ? '+' : ''}{realYield.toFixed(2)}%
@@ -542,7 +546,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie 
-                                data={allocationTab === 'asset' ? dataByAsset : dataByType} 
+                                data={currentAllocationData} 
                                 innerRadius={60} 
                                 outerRadius={80} 
                                 paddingAngle={5} 
@@ -550,7 +554,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                                 stroke="none" 
                                 cornerRadius={8}
                             >
-                                {dataByAsset.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                {currentAllocationData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                             </Pie>
                             <Tooltip 
                                 contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #ffffff10', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}
@@ -577,7 +581,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
             </div>
 
             <div className="space-y-3 pb-safe">
-                {(allocationTab === 'asset' ? dataByAsset : dataByType).map((entry, index) => (
+                {currentAllocationData.map((entry, index) => (
                     <div key={entry.name} className="glass p-4 rounded-[1.5rem] flex items-center justify-between border border-white/[0.03] animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
                          <div className="flex items-center gap-3">
                              <div className="w-3 h-10 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
