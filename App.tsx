@@ -240,8 +240,9 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-primary text-slate-100 selection:bg-accent/30 overflow-x-hidden pb-10">
       
-      {/* Sistema de Notificações Superior Centralizado (Fix: z-200, top-6) */}
-      <div className="fixed inset-x-0 top-6 z-[200] flex flex-col items-center gap-4 px-6 pointer-events-none">
+      {/* Sistema de Notificações Superior Centralizado e Seguro para Mobile */}
+      {/* ALTERAÇÃO: 'top-0 pt-safe mt-4' para respeitar o notch e área segura */}
+      <div className="fixed inset-x-0 top-0 pt-safe mt-4 z-[200] flex flex-col items-center gap-4 px-4 pointer-events-none">
         
         {/* Banner de Nova Versão */}
         {updateRegistration && (
@@ -259,7 +260,7 @@ const App: React.FC = () => {
                 </div>
                 <button 
                   onClick={handleApplyUpdate} 
-                  className="relative z-10 bg-accent text-primary px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-accent/20"
+                  className="relative z-10 bg-accent text-primary px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-accent/20 tap-highlight"
                 >
                   Atualizar
                 </button>

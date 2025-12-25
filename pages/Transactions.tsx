@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction, AssetType } from '../types';
 import { Plus, Trash2, Calendar, X, Search, TrendingUp, TrendingDown, Pencil, Filter, ArrowRight } from 'lucide-react';
+import { SwipeableModal } from '../components/Layout';
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -222,14 +223,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
         )}
       </div>
 
-      {showForm && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center p-0">
-          <div className="absolute inset-0 bg-primary/80 backdrop-blur-md animate-fade-in" onClick={() => setShowForm(false)} />
-          <div className="bg-primary w-full rounded-t-[3rem] border-t border-white/10 shadow-2xl relative animate-slide-up flex flex-col overflow-hidden max-h-[95vh]">
-            
-            <div className="p-7 pb-4 space-y-6">
-              <div className="w-12 h-1 bg-white/10 rounded-full mx-auto"></div>
-              <div className="flex items-center justify-between">
+      <SwipeableModal isOpen={showForm} onClose={() => { setShowForm(false); resetForm(); }}>
+        <div className="px-7 pt-2 pb-10">
+              <div className="flex items-center justify-between mb-6">
                    <div className="flex items-center gap-3">
                       <div className={`p-3 rounded-2xl ${editingId ? 'bg-accent/10 text-accent' : 'bg-white/5 text-white'}`}>
                         {editingId ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
@@ -245,9 +241,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                        <X className="w-5 h-5" />
                    </button>
               </div>
-            </div>
             
-            <form onSubmit={handleSubmit} className="p-7 pt-2 space-y-6 pb-12 overflow-y-auto no-scrollbar">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-2 bg-white/[0.03] p-1.5 rounded-2xl border border-white/[0.05]">
                 <button type="button" onClick={() => setType('BUY')} className={`py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${type === 'BUY' ? 'bg-emerald-500 text-primary shadow-lg shadow-emerald-500/20' : 'text-slate-500'}`}>Compra</button>
                 <button type="button" onClick={() => setType('SELL')} className={`py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${type === 'SELL' ? 'bg-rose-500 text-primary shadow-lg shadow-rose-500/20' : 'text-slate-500'}`}>Venda</button>
@@ -315,9 +310,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 <ArrowRight className="w-4 h-4" strokeWidth={3} />
               </button>
             </form>
-          </div>
         </div>
-      )}
+      </SwipeableModal>
     </div>
   );
 };

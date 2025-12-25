@@ -4,6 +4,8 @@ const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json'
+  // URLs externos removidos para evitar erros de CORS (Failed to fetch)
+  // O navegador gerenciará o cache HTTP desses recursos automaticamente
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,6 +33,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Estratégia para APIs (Brapi e Gemini via Proxy se houver)
+  // Usamos Stale-While-Revalidate: mostra o cache e atualiza no fundo
   if (url.hostname.includes('brapi.dev') || url.hostname.includes('googleapis.com')) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
@@ -49,14 +53,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Estratégia para Assets Estáticos (Cache-First)
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
       
       return fetch(request).then((networkResponse) => {
+        // Verifica se a resposta é válida
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
           return networkResponse;
         }
+        // Cacheia apenas assets locais para evitar problemas com opaque responses de terceiros
         if (url.origin === self.location.origin) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -69,6 +76,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Escuta a mensagem enviada pelo App.tsx quando o usuário clica em "Atualizar"
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

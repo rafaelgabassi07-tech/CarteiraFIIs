@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, TrendingUp } from 'lucide-react';
 
 interface HeaderProps {
@@ -117,6 +117,107 @@ export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string
           );
         })}
       </nav>
+    </div>
+  );
+};
+
+interface SwipeableModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
+  const [offsetY, setOffsetY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startY = useRef(0);
+  const currentY = useRef(0);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Reset state on open
+  useEffect(() => {
+    if (isOpen) {
+      setOffsetY(0);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Only allow drag if we are at the top of the scroll or touching the handle
+    if (contentRef.current && contentRef.current.scrollTop > 0) return;
+    
+    setIsDragging(true);
+    startY.current = e.touches[0].clientY;
+    currentY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    
+    const touchY = e.touches[0].clientY;
+    const diff = touchY - startY.current;
+
+    // Only allow dragging down
+    if (diff > 0) {
+      // Prevent default pull-to-refresh on Android/iOS
+      if (e.cancelable) e.preventDefault();
+      setOffsetY(diff);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    // Threshold to close: 120px
+    if (offsetY > 120) {
+      onClose();
+    } else {
+      setOffsetY(0); // Snap back
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end justify-center p-0">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-primary/80 backdrop-blur-md animate-fade-in" 
+        onClick={onClose} 
+      />
+      
+      {/* Modal Container */}
+      <div 
+        ref={modalRef}
+        className="bg-primary w-full h-[95vh] rounded-t-[2.5rem] border-t border-white/10 shadow-2xl relative flex flex-col overflow-hidden transition-transform duration-200 ease-out will-change-transform"
+        style={{ 
+          transform: `translateY(${offsetY}px)`,
+          transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.33, 1, 0.68, 1)' 
+        }}
+      >
+        {/* Drag Handle Area */}
+        <div 
+          className="w-full pt-4 pb-2 flex justify-center cursor-grab active:cursor-grabbing touch-none shrink-0"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+           <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+        </div>
+
+        {/* Content Area */}
+        <div 
+          ref={contentRef}
+          className="flex-1 overflow-y-auto no-scrollbar"
+        >
+          {children}
+        </div>
+      </div>
     </div>
   );
 };

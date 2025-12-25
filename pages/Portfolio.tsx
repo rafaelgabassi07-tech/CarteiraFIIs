@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
 import { Building2, TrendingUp, TrendingDown, Layers, ChevronDown, DollarSign, BarChart3, Target, X, ArrowUpRight, ChevronRight, ArrowDownToLine, Timer, Briefcase, Info } from 'lucide-react';
+import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
   portfolio: AssetPosition[];
@@ -133,14 +134,9 @@ const AssetCard: React.FC<{
         </div>
       </div>
 
-      {showHistoryModal && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center p-0">
-          <div className="absolute inset-0 bg-primary/90 backdrop-blur-xl animate-fade-in" onClick={() => setShowHistoryModal(false)} />
-          <div className="bg-primary w-full max-h-[90vh] rounded-t-[3rem] border-t border-white/10 shadow-2xl relative animate-slide-up flex flex-col pt-4 overflow-hidden">
-            <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-6 shrink-0"></div>
-            
-            <div className="px-8 pb-6 border-b border-white/5 shrink-0">
-              <div className="flex items-center justify-between mb-6">
+      <SwipeableModal isOpen={showHistoryModal} onClose={() => setShowHistoryModal(false)}>
+        <div className="px-8 pt-2 pb-10">
+            <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-accent/20 to-accent/5 rounded-[1.5rem] flex items-center justify-center text-accent font-black text-2xl shadow-xl ring-1 ring-accent/20">
                     {asset.ticker.slice(0, 4)}
@@ -153,9 +149,9 @@ const AssetCard: React.FC<{
                 <button onClick={() => setShowHistoryModal(false)} className="p-4 rounded-2xl bg-white/5 text-slate-400 active:scale-90 transition-all">
                   <X className="w-6 h-6" />
                 </button>
-              </div>
+            </div>
               
-              <div className="p-6 glass rounded-[2.5rem] flex justify-between items-center bg-accent/5 border border-accent/10">
+            <div className="p-6 glass rounded-[2.5rem] flex justify-between items-center bg-accent/5 border border-accent/10 mb-6">
                 <div>
                   <div className="text-[9px] font-black text-accent uppercase tracking-[0.3em] mb-1.5 opacity-70">Total Recebido</div>
                   <div className="text-3xl font-black text-white tabular-nums">R$ {formatCurrency(asset.totalDividends || 0)}</div>
@@ -163,10 +159,9 @@ const AssetCard: React.FC<{
                 <div className="p-4 bg-accent/10 rounded-[1.5rem] text-accent border border-accent/20 shadow-inner">
                    <DollarSign className="w-8 h-8" />
                 </div>
-              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-4 no-scrollbar">
+            <div className="space-y-4 mb-6">
               {history.length === 0 ? (
                 <div className="py-24 text-center opacity-40">
                   <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -214,7 +209,7 @@ const AssetCard: React.FC<{
               )}
             </div>
             
-            <div className="p-8 pb-12 border-t border-white/5 bg-secondary/30 shrink-0">
+            <div className="p-8 border-t border-white/5 bg-secondary/30 rounded-[2rem]">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                    <Target className="w-4 h-4 text-slate-500" />
@@ -223,9 +218,8 @@ const AssetCard: React.FC<{
                 <span className="text-emerald-400 font-black text-xl tabular-nums">{totalCost > 0 ? (((asset.totalDividends || 0) / totalCost) * 100).toFixed(2) : '0.00'}%</span>
               </div>
             </div>
-          </div>
         </div>
-      )}
+      </SwipeableModal>
     </>
   );
 });
