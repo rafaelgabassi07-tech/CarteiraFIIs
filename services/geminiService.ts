@@ -19,7 +19,7 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
     3. **Precisão**: Eu preciso da "Data Com" (data limite para ter o ativo), "Data Pagamento" e "Valor Líquido/Bruto".
     
     FORMATO DE RESPOSTA (JSON):
-    Retorne APENAS um Array JSON puro. Não use Markdown.
+    Retorne APENAS um Array JSON puro. Não use Markdown. Não inclua texto explicativo antes ou depois.
     
     Schema do Objeto:
     {
@@ -57,7 +57,18 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
       }
     });
 
-    const rawData = response.text;
+    let rawData = response.text || "";
+    
+    // LIMPEZA ROBUSTA: Remove markdown de código se existir (```json ... ```)
+    rawData = rawData.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    // Garante que pegamos apenas o array JSON se houver texto em volta
+    const firstBracket = rawData.indexOf('[');
+    const lastBracket = rawData.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket !== -1) {
+        rawData = rawData.substring(firstBracket, lastBracket + 1);
+    }
+
     if (!rawData) return [];
 
     const parsedData = JSON.parse(rawData);

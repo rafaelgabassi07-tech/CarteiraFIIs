@@ -11,7 +11,8 @@ import { DownloadCloud, Sparkles } from 'lucide-react';
 
 const INITIAL_TRANSACTIONS_KEY = 'investfiis_transactions';
 const BRAPI_TOKEN_KEY = 'investfiis_brapitoken';
-const GEMINI_DIVIDENDS_KEY = 'investfiis_gemini_dividends_cache'; // Novo cache local
+const GEMINI_DIVIDENDS_KEY = 'investfiis_gemini_dividends_cache';
+const LAST_GEMINI_SYNC_KEY = 'investfiis_last_gemini_sync';
 
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
@@ -65,12 +66,9 @@ const App: React.FC = () => {
             }
           };
         } catch (error) {
-          // Loga o erro mas não quebra a aplicação.
-          // O erro "origin mismatch" ocorre em previews quando o sw.js redireciona para uma página de login/404.
           console.warn('Service Worker registration skipped (Environment limitation):', error);
         }
 
-        // Listener para recarregar a página quando o novo SW assumir
         let refreshing = false;
         const handleControllerChange = () => {
           if (!refreshing) {
@@ -90,7 +88,6 @@ const App: React.FC = () => {
   // Persistência
   useEffect(() => { localStorage.setItem(INITIAL_TRANSACTIONS_KEY, JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem(BRAPI_TOKEN_KEY, brapiToken); }, [brapiToken]);
-  // Salva resultado da IA
   useEffect(() => { localStorage.setItem(GEMINI_DIVIDENDS_KEY, JSON.stringify(geminiDividends)); }, [geminiDividends]);
 
   // Função crítica: Calcula a quantidade exata de cotas em uma data passada
@@ -126,7 +123,6 @@ const App: React.FC = () => {
     });
 
     // 2. Calcula Proventos (EXCLUSIVO VIA GEMINI)
-    // A Brapi não é mais consultada para dividendos. Apenas a IA preenche isso.
     if (geminiDividends.length > 0) {
       geminiDividends.forEach(div => {
          const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, transactions);
@@ -167,14 +163,11 @@ const App: React.FC = () => {
     return { portfolio: finalPortfolio, dividendReceipts: receipts };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
+  // Função para buscar cotações da Brapi
   const fetchMarketData = useCallback(async (isManual = false) => {
     const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
-    if (!brapiToken || uniqueTickers.length === 0) {
-      if (isManual) setIsRefreshing(false);
-      return;
-    }
+    if (!brapiToken || uniqueTickers.length === 0) return;
 
-    if (isManual) setIsRefreshing(true);
     try {
       const results = await getQuotes(uniqueTickers, brapiToken);
       if (results.length > 0) {
@@ -184,35 +177,73 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error("Erro ao atualizar cotações", error);
-    } finally {
-      if (isManual) setIsRefreshing(false);
     }
   }, [transactions, brapiToken]);
 
-  const handleSyncDividendsWithAI = async () => {
+  // Função para buscar proventos do Gemini
+  // Agora aceita 'force' para ignorar o tempo de cache de 24h
+  const handleSyncDividendsWithAI = useCallback(async (force = false) => {
     const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
     if (uniqueTickers.length === 0) return;
 
+    // Verificação de tempo (1 dia)
+    if (!force) {
+      const lastSync = localStorage.getItem(LAST_GEMINI_SYNC_KEY);
+      if (lastSync) {
+        const diff = Date.now() - parseInt(lastSync, 10);
+        const oneDay = 24 * 60 * 60 * 1000;
+        if (diff < oneDay) {
+          console.log("Gemini sync pulado: atualizado há menos de 24h");
+          return;
+        }
+      }
+    }
+
     setIsAiLoading(true);
     try {
-      // Chama o serviço do Gemini focado em Proventos
       const aiResults = await fetchDividendsViaGemini(uniqueTickers);
       if (aiResults.length > 0) {
-        setGeminiDividends(aiResults); // Atualiza estado e dispara useEffect de persistência
+        setGeminiDividends(aiResults);
+        localStorage.setItem(LAST_GEMINI_SYNC_KEY, Date.now().toString());
       }
     } catch (e) {
       console.error("Erro na sincronização IA:", e);
     } finally {
       setIsAiLoading(false);
     }
+  }, [transactions]);
+
+  // Função UNIFICADA de Refresh (Botão do Header)
+  const handleFullRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Executa Brapi (Cotações) e Gemini (Dividendos FORÇADO) em paralelo
+      await Promise.all([
+        fetchMarketData(true),
+        handleSyncDividendsWithAI(true) // True força a atualização manual
+      ]);
+    } catch (error) {
+      console.error("Erro no refresh manual:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
-  // Auto-fetch market data on load
+  // Auto-fetch market data on load (Cotações Brapi)
   useEffect(() => {
-    fetchMarketData();
+    fetchMarketData(false);
     const interval = setInterval(() => fetchMarketData(false), 2 * 60 * 1000); // 2 minutos
     return () => clearInterval(interval);
   }, [fetchMarketData]);
+
+  // Auto-fetch Gemini Dividends on load (Verifica se já passou 24h)
+  useEffect(() => {
+    // Pequeno delay para garantir que transactions foram carregadas do localStorage
+    const timeout = setTimeout(() => {
+      handleSyncDividendsWithAI(false); // False = respeita o timer de 24h
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [handleSyncDividendsWithAI]);
 
   const handleUpdateApp = () => {
     if (waitingWorker) {
@@ -234,13 +265,14 @@ const App: React.FC = () => {
           setBrapiToken('');
           setGeminiDividends([]); // Limpa cache de dividendos
           localStorage.removeItem(GEMINI_DIVIDENDS_KEY);
+          localStorage.removeItem(LAST_GEMINI_SYNC_KEY);
           setShowSettings(false);
         }}
       />
     );
 
     switch (currentTab) {
-      case 'home': return <Home portfolio={portfolio} dividendReceipts={dividendReceipts} onAiSync={handleSyncDividendsWithAI} isAiLoading={isAiLoading} />;
+      case 'home': return <Home portfolio={portfolio} dividendReceipts={dividendReceipts} onAiSync={() => handleSyncDividendsWithAI(true)} isAiLoading={isAiLoading} />;
       case 'portfolio': return <Portfolio portfolio={portfolio} />;
       case 'transactions': return (
         <Transactions 
@@ -249,7 +281,7 @@ const App: React.FC = () => {
           onDeleteTransaction={(id) => setTransactions(prev => prev.filter(x => x.id !== id))}
         />
       );
-      default: return <Home portfolio={portfolio} dividendReceipts={dividendReceipts} onAiSync={handleSyncDividendsWithAI} isAiLoading={isAiLoading} />;
+      default: return <Home portfolio={portfolio} dividendReceipts={dividendReceipts} onAiSync={() => handleSyncDividendsWithAI(true)} isAiLoading={isAiLoading} />;
     }
   };
 
@@ -272,8 +304,8 @@ const App: React.FC = () => {
         onSettingsClick={() => setShowSettings(true)} 
         showBack={showSettings}
         onBack={() => setShowSettings(false)}
-        onRefresh={() => fetchMarketData(true)}
-        isRefreshing={isRefreshing}
+        onRefresh={handleFullRefresh} // Botão agora chama a função unificada
+        isRefreshing={isRefreshing || isAiLoading} // Mostra loading se qualquer um estiver rodando
       />
       
       <main className="fade-in">{renderPage()}</main>
