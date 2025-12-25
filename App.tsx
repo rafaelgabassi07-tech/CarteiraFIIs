@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
@@ -7,7 +7,7 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchDividendsViaGemini } from './services/geminiService';
-import { DownloadCloud, Sparkles } from 'lucide-react';
+import { DownloadCloud, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 const INITIAL_TRANSACTIONS_KEY = 'investfiis_transactions';
 const BRAPI_TOKEN_KEY = 'investfiis_brapitoken';
@@ -19,6 +19,9 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+
+  // Global Toast State
+  const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', text: string} | null>(null);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem(INITIAL_TRANSACTIONS_KEY);
@@ -40,13 +43,21 @@ const App: React.FC = () => {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  
+  // Refs para controle de execução
+  const hasRunAutoSync = useRef(false);
+  const isAiLoadingRef = useRef(false); // Ref para acesso síncrono imediato
+
+  const showToast = (type: 'success' | 'error' | 'warning', text: string) => {
+    setToast({ type, text });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   // --- SERVICE WORKER REGISTRATION ---
   useEffect(() => {
     const registerSW = async () => {
       if ('serviceWorker' in navigator) {
         try {
-          // Tenta registrar com escopo explícito relativo
           const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
           
           if (registration.waiting) {
@@ -66,7 +77,7 @@ const App: React.FC = () => {
             }
           };
         } catch (error) {
-          console.warn('Service Worker registration skipped (Environment limitation):', error);
+          console.warn('Service Worker registration skipped:', error);
         }
 
         let refreshing = false;
@@ -181,8 +192,10 @@ const App: React.FC = () => {
   }, [transactions, brapiToken]);
 
   // Função para buscar proventos do Gemini
-  // Agora aceita 'force' para ignorar o tempo de cache de 24h
   const handleSyncDividendsWithAI = useCallback(async (force = false) => {
+    // Evita chamadas simultâneas
+    if (isAiLoadingRef.current) return;
+
     const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
     if (uniqueTickers.length === 0) return;
 
@@ -200,21 +213,35 @@ const App: React.FC = () => {
     }
 
     setIsAiLoading(true);
+    isAiLoadingRef.current = true; // Seta o ref imediatamente
+
     try {
       const aiResults = await fetchDividendsViaGemini(uniqueTickers);
       if (aiResults.length > 0) {
         setGeminiDividends(aiResults);
         localStorage.setItem(LAST_GEMINI_SYNC_KEY, Date.now().toString());
+        if (force) showToast('success', 'Dividendos atualizados com IA!');
+      } else if (force) {
+        // Se foi manual e não retornou nada, talvez não tenha achado dados novos
+        showToast('warning', 'Nenhum dado novo encontrado pela IA.');
       }
-    } catch (e) {
-      console.error("Erro na sincronização IA:", e);
+    } catch (e: any) {
+      if (e.message === 'COTA_EXCEDIDA') {
+        showToast('error', 'Limite da IA atingido. Tente novamente em 1 min.');
+      } else {
+        console.error("Erro na sincronização IA:", e);
+        if (force) showToast('error', 'Falha ao buscar dividendos.');
+      }
     } finally {
       setIsAiLoading(false);
+      isAiLoadingRef.current = false;
     }
   }, [transactions]);
 
   // Função UNIFICADA de Refresh (Botão do Header)
   const handleFullRefresh = async () => {
+    if (isRefreshing || isAiLoading) return; // Bloqueia spam de cliques
+
     setIsRefreshing(true);
     try {
       // Executa Brapi (Cotações) e Gemini (Dividendos FORÇADO) em paralelo
@@ -222,6 +249,7 @@ const App: React.FC = () => {
         fetchMarketData(true),
         handleSyncDividendsWithAI(true) // True força a atualização manual
       ]);
+      // Toast de sucesso se não tiver erro
     } catch (error) {
       console.error("Erro no refresh manual:", error);
     } finally {
@@ -238,10 +266,14 @@ const App: React.FC = () => {
 
   // Auto-fetch Gemini Dividends on load (Verifica se já passou 24h)
   useEffect(() => {
-    // Pequeno delay para garantir que transactions foram carregadas do localStorage
+    // Garante que só roda uma vez na montagem
+    if (hasRunAutoSync.current) return;
+    
+    // Pequeno delay para garantir que transactions foram carregadas e evitar race condition na inicialização
     const timeout = setTimeout(() => {
+      hasRunAutoSync.current = true;
       handleSyncDividendsWithAI(false); // False = respeita o timer de 24h
-    }, 1000);
+    }, 1500);
     return () => clearTimeout(timeout);
   }, [handleSyncDividendsWithAI]);
 
@@ -287,6 +319,13 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-primary text-gray-100 font-sans">
+      
+      {/* GLOBAL TOAST */}
+      <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[80] transition-all duration-300 transform backdrop-blur-md ring-1 ring-white/10 ${toast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} ${toast?.type === 'success' ? 'bg-emerald-500/90 text-white shadow-emerald-500/20' : toast?.type === 'error' ? 'bg-rose-500/90 text-white shadow-rose-500/20' : 'bg-amber-500/90 text-white shadow-amber-500/20'}`}>
+        {toast?.type === 'success' ? <CheckCircle2 className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
+        <span className="text-sm font-bold">{toast?.text}</span>
+      </div>
+
       {updateAvailable && (
         <div className="fixed bottom-20 left-4 right-4 z-[60] animate-slide-up">
           <div className="bg-slate-800/95 backdrop-blur-xl border border-accent/20 p-4 rounded-2xl shadow-2xl flex items-center justify-between">
@@ -304,8 +343,8 @@ const App: React.FC = () => {
         onSettingsClick={() => setShowSettings(true)} 
         showBack={showSettings}
         onBack={() => setShowSettings(false)}
-        onRefresh={handleFullRefresh} // Botão agora chama a função unificada
-        isRefreshing={isRefreshing || isAiLoading} // Mostra loading se qualquer um estiver rodando
+        onRefresh={handleFullRefresh} 
+        isRefreshing={isRefreshing || isAiLoading} 
       />
       
       <main className="fade-in">{renderPage()}</main>

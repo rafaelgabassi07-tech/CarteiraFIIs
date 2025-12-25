@@ -85,7 +85,13 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
       totalReceived: 0  // Será calculado no App.tsx
     }));
 
-  } catch (error) {
+  } catch (error: any) {
+    // Tratamento específico para Erro 429 (Cota Excedida)
+    if (error?.message?.includes('429') || error?.status === 429 || error?.code === 429) {
+        console.warn("Gemini: Cota excedida (429).");
+        throw new Error("COTA_EXCEDIDA");
+    }
+
     console.error("Erro crítico ao buscar dividendos via Gemini:", error);
     return [];
   }
