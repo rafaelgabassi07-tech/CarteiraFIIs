@@ -36,7 +36,6 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   // Prompt otimizado para Batch Processing APENAS de Proventos e Metadados
-  // Removemos explicitamente qualquer pedido de Cotação/Preço para não conflitar com a Brapi.
   const prompt = `
     Atue como um Especialista em Dados de Mercado da B3 (Brasil).
     
@@ -75,12 +74,14 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   `;
 
   try {
+    // Atualizado para usar gemini-2.0-flash-exp que é mais estável para tools/search neste momento
+    // Se preferir o 3.0 preview, altere para 'gemini-3-flash-preview'
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash-exp", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        thinkingConfig: { thinkingBudget: 2048 }, 
+        // thinkingConfig removido temporariamente pois nem todos os modelos flash suportam
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -91,7 +92,6 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
                 type: Type.OBJECT,
                 properties: {
                   t: { type: Type.STRING },
-                  // "p" (preço) removido intencionalmente
                   s: { type: Type.STRING },
                   type: { type: Type.STRING },
                   d: {
@@ -135,16 +135,15 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         };
 
         asset.d?.forEach((div: any) => {
-          // ID único baseado em Ticker + DataCom + Valor para evitar duplicidade
           const divId = `${ticker}-${div.dc}-${div.v}`.replace(/[^a-zA-Z0-9]/g, '');
           result.dividends.push({
             id: divId,
             ticker,
             type: div.ty || "PROVENTO",
             dateCom: div.dc,
-            paymentDate: div.dp || div.dc, // Fallback para data com se data pagamento não existir
+            paymentDate: div.dp || div.dc,
             rate: div.v,
-            quantityOwned: 0, // Será calculado no App.tsx
+            quantityOwned: 0,
             totalReceived: 0
           });
         });
