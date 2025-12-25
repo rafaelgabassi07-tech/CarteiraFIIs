@@ -8,29 +8,19 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
   if (!tickers.length) return [];
 
   const prompt = `
-    Você é um analista de dados financeiros especializado em FIIs e Ações da B3 (Brasil).
+    Atue como um analista de dados financeiros da B3 (Brasil).
     
-    TAREFA:
-    Pesquise na internet (Google Search) os dados de proventos (Dividendos, JCP, Rendimentos) para os seguintes ativos: ${tickers.join(', ')}.
+    OBJETIVO:
+    Pesquise e liste os proventos (Dividendos, JCP, Rendimentos) PAGOS ou ANUNCIADOS (Data Com definida) nos últimos 24 meses para os ativos: ${tickers.join(', ')}.
     
-    REQUISITOS OBRIGATÓRIOS:
-    1. **Passado**: Busque o histórico de pagamentos realizados nos últimos 24 meses (2 anos).
-    2. **Futuro**: Busque OBRIGATORIAMENTE por quaisquer anúncios de dividendos futuros ("Data Com" já ocorreu ou vai ocorrer, mas pagamento ainda não realizado).
-    3. **Precisão**: Eu preciso da "Data Com" (data limite para ter o ativo), "Data Pagamento" e "Valor Líquido/Bruto".
+    REGRAS RÍGIDAS:
+    1. **Valor Unitário**: O campo 'rate' DEVE ser o valor pago por UMA ÚNICA COTA/AÇÃO (ex: 0.12). NUNCA retorne o montante total recebido pelo usuário.
+    2. **Datas**: Use formato ISO estrito (YYYY-MM-DD). Se não houver dia exato, use o último dia do mês provável.
+    3. **Precisão**: Use o Google Search para validar os dados em fontes como RI das empresas, ClubeFII ou StatusInvest.
+    4. **Omissão**: Se não encontrar dados confiáveis para um ativo, NÃO invente. Apenas omita do array.
     
-    FORMATO DE RESPOSTA (JSON):
-    Retorne APENAS um Array JSON puro. Não use Markdown. Não inclua texto explicativo antes ou depois.
-    
-    Schema do Objeto:
-    {
-      "ticker": "string (ex: MXRF11)",
-      "type": "string (DIVIDENDO, JCP, RENDIMENTO)",
-      "dateCom": "string (formato YYYY-MM-DD)",
-      "paymentDate": "string (formato YYYY-MM-DD, se não houver previsão exata, estime com base no histórico ou deixe null)",
-      "rate": number (valor em Reais, ex: 0.12)
-    }
-
-    Se não encontrar dados para um ativo específico, simplesmente não o inclua na lista.
+    SAÍDA:
+    Apenas um JSON Array.
   `;
 
   try {
@@ -46,10 +36,10 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
             type: Type.OBJECT,
             properties: {
               ticker: { type: Type.STRING },
-              type: { type: Type.STRING, description: "Tipo do provento" },
-              dateCom: { type: Type.STRING, description: "Data de corte YYYY-MM-DD" },
-              paymentDate: { type: Type.STRING, description: "Data de pagamento YYYY-MM-DD" },
-              rate: { type: Type.NUMBER, description: "Valor unitário" }
+              type: { type: Type.STRING, description: "Tipo: DIVIDENDO, JCP ou RENDIMENTO" },
+              dateCom: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
+              paymentDate: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
+              rate: { type: Type.NUMBER, description: "Valor unitário por cota (R$)" }
             },
             required: ["ticker", "dateCom", "rate"]
           }
@@ -59,10 +49,9 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
 
     let rawData = response.text || "";
     
-    // LIMPEZA ROBUSTA: Remove markdown de código se existir (```json ... ```)
+    // LIMPEZA ROBUSTA: Remove markdown de código se existir
     rawData = rawData.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    // Garante que pegamos apenas o array JSON se houver texto em volta
     const firstBracket = rawData.indexOf('[');
     const lastBracket = rawData.lastIndexOf(']');
     if (firstBracket !== -1 && lastBracket !== -1) {
@@ -73,20 +62,18 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
 
     const parsedData = JSON.parse(rawData);
     
-    // Pós-processamento para garantir integridade
     return parsedData.map((item: any) => ({
       id: `${item.ticker}-${item.dateCom}-${item.rate}-${Math.random().toString(36).substr(2, 5)}`,
       ticker: item.ticker.toUpperCase(),
-      type: item.type || 'PROVENTO',
+      type: item.type ? item.type.toUpperCase() : 'PROVENTO',
       dateCom: item.dateCom,
-      paymentDate: item.paymentDate || item.dateCom, // Fallback se data pagamento for nula
+      paymentDate: item.paymentDate || item.dateCom,
       rate: Number(item.rate),
-      quantityOwned: 0, // Será calculado no App.tsx
-      totalReceived: 0  // Será calculado no App.tsx
+      quantityOwned: 0, 
+      totalReceived: 0
     }));
 
   } catch (error: any) {
-    // Tratamento específico para Erro 429 (Cota Excedida)
     if (error?.message?.includes('429') || error?.status === 429 || error?.code === 429) {
         console.warn("Gemini: Cota excedida (429).");
         throw new Error("COTA_EXCEDIDA");

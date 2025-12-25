@@ -108,6 +108,20 @@
         -webkit-appearance: none; 
         margin: 0; 
       }
+
+      /* RECHARTS & FOCUS FIXES */
+      /* Remove o contorno padrão (outline) ao clicar em gráficos SVG */
+      .recharts-wrapper,
+      .recharts-surface,
+      .recharts-sector,
+      .recharts-layer path {
+        outline: none !important;
+      }
+      
+      /* Opcional: Remove contorno de foco globalmente para simular app nativo (já que usamos ring no Tailwind para inputs) */
+      *:focus {
+        outline: none !important;
+      }
     </style>
 <script type="importmap">
 {

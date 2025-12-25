@@ -2,7 +2,7 @@ import { BrapiResponse, BrapiQuote } from '../types';
 
 const BASE_URL = 'https://brapi.dev/api';
 const CACHE_KEY = 'investfiis_quotes_simple_cache';
-const CACHE_DURATION = 60 * 1000; // 1 minuto
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos de cache para economizar requisições
 
 interface CacheItem {
   data: BrapiQuote;
@@ -28,26 +28,6 @@ const saveCache = (cache: QuoteCache) => {
   } catch (e) {}
 };
 
-// Função para buscar UM único ativo
-const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuote | null> => {
-    try {
-        const url = `${BASE_URL}/quote/${ticker}?token=${token}`;
-        const response = await fetch(url);
-
-        if (response.ok) {
-            const data: BrapiResponse = await response.json();
-            // Brapi retorna array results mesmo para single quote
-            return data.results?.[0] || null;
-        }
-        
-        console.warn(`Brapi: Falha ao buscar ${ticker} - Status: ${response.status}`);
-        return null;
-    } catch (error) {
-        console.error(`Brapi: Erro de rede em ${ticker}:`, error);
-        return null;
-    }
-};
-
 export const getQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
   if (!tickers.length || !token) return [];
 
@@ -57,61 +37,76 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
   const tickersToFetch: string[] = [];
 
   // 1. Verifica Cache
-  tickers.forEach(ticker => {
-    const cleanTicker = ticker.trim().toUpperCase();
-    if (!cleanTicker) return;
+  const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
+  
+  uniqueTickers.forEach(ticker => {
+    if (!ticker) return;
 
-    const cachedItem = cache[cleanTicker];
-    
+    const cachedItem = cache[ticker];
     if (cachedItem && (now - cachedItem.timestamp < CACHE_DURATION)) {
       validQuotes.push(cachedItem.data);
     } else {
-      tickersToFetch.push(cleanTicker);
+      tickersToFetch.push(ticker);
     }
   });
 
+  // Se tudo estiver em cache, retorna
   if (tickersToFetch.length === 0) return validQuotes;
 
-  // 2. Busca dados novos SEQUENCIALMENTE ou em PEQUENOS LOTES PARALELOS
-  // Para respeitar a exigência de "uma requisição por ativo" sem causar erro 417,
-  // processamos em blocos de 2 requisições simultâneas com um pequeno delay.
-  
-  const BATCH_SIZE = 2; // Máximo de requisições paralelas
-  const DELAY_MS = 300; // Delay entre lotes para não sobrecarregar
-  
+  // 2. Busca em Lotes (Batch Fetching)
+  // A API da Brapi aceita múltiplos tickers separados por vírgula (ex: /quote/PETR4,VALE3)
+  // Isso reduz drasticamente o número de conexões HTTP e evita erros 429/417
+  const BATCH_SIZE = 15; 
   const newQuotes: BrapiQuote[] = [];
 
   for (let i = 0; i < tickersToFetch.length; i += BATCH_SIZE) {
-      const chunk = tickersToFetch.slice(i, i + BATCH_SIZE);
-      
-      // Executa o lote atual
-      const promises = chunk.map(t => fetchSingleQuote(t, token));
-      const results = await Promise.all(promises);
-      
-      results.forEach(r => {
-          if (r) newQuotes.push(r);
-      });
+    const chunk = tickersToFetch.slice(i, i + BATCH_SIZE);
+    const tickersParam = chunk.join(',');
 
-      // Se ainda houver mais itens, espera um pouco antes do próximo lote
-      if (i + BATCH_SIZE < tickersToFetch.length) {
-          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+    try {
+      const url = `${BASE_URL}/quote/${tickersParam}?token=${token}`;
+      const response = await fetch(url);
+
+      if (response.ok) {
+        const data: BrapiResponse = await response.json();
+        if (data.results && Array.isArray(data.results)) {
+          newQuotes.push(...data.results);
+        }
+      } else {
+        if (response.status === 401) {
+            console.error("Brapi: Token de acesso inválido ou expirado. Verifique nas configurações.");
+        }
+        console.warn(`Brapi: Erro ${response.status} ao buscar lote: ${tickersParam}`);
       }
+    } catch (error) {
+      console.error(`Brapi: Erro de rede`, error);
+    }
+    
+    // Pequeno delay defensivo entre lotes
+    if (i + BATCH_SIZE < tickersToFetch.length) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
   }
 
-  // 3. Atualiza Cache
+  // 3. Atualiza Cache e Mescla Resultados
   newQuotes.forEach(quote => {
     if (quote && quote.symbol) {
       cache[quote.symbol] = {
         data: quote,
         timestamp: now
       };
-      validQuotes.push(quote);
+      // Atualiza a lista de válidos caso tenhamos buscado algo que já estava (raro) ou novo
+      // Aqui apenas adicionamos à lista de retorno
     }
   });
 
   saveCache(cache);
   
-  // Retorna os dados do cache (que agora incluem os novos) para garantir ordem correta se necessário
-  // Mas aqui apenas juntamos as listas
-  return [...validQuotes, ...newQuotes];
+  // Retorna combinando o que estava em cache com o que foi buscado agora
+  // Filtrando duplicatas por garantia
+  const allQuotes = [...validQuotes, ...newQuotes];
+  const uniqueMap = new Map<string, BrapiQuote>();
+  allQuotes.forEach(q => uniqueMap.set(q.symbol, q));
+  
+  return Array.from(uniqueMap.values());
 };
