@@ -13,7 +13,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
   const currentBalance = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
   const profitability = totalInvested > 0 ? ((currentBalance - totalInvested) / totalInvested) * 100 : 0;
   
-  // Calculate Dividends (Placeholder logic based on types, assuming data might be populated later)
+  // Calculate Dividends
   const totalDividends = portfolio.reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
   
   // Data for chart

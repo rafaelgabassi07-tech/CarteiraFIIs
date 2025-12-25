@@ -1,0 +1,71 @@
+const CACHE_NAME = 'investfiis-v1';
+const urlsToCache = [
+  '/',
+  '/index.html',
+];
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Estratégia para API Brapi: Network First (tenta rede, falha para cache)
+  if (url.hostname.includes('brapi.dev')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // Estratégia para Assets (JS, CSS, Imagens): Stale While Revalidate
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Cache apenas respostas válidas
+        if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseClone);
+            });
+        }
+        return networkResponse;
+      }).catch(() => {
+        // Se falhar a rede e não tiver cache, retorna null
+        return null;
+      });
+      return cachedResponse || fetchPromise;
+    })
+  );
+});

@@ -26,7 +26,6 @@ const App: React.FC = () => {
     // Priority: LocalStorage > Environment Variable > Empty
     let envToken = '';
     try {
-      // Safe access to process.env for environments where it might not be defined (like Vite without polyfills)
       if (typeof process !== 'undefined' && process.env && process.env.BRAPI_TOKEN) {
         envToken = process.env.BRAPI_TOKEN;
       }
@@ -50,10 +49,6 @@ const App: React.FC = () => {
 
   // Helper: Calculate quantity of an asset on a specific date (Data Com)
   const getQuantityOnDate = (ticker: string, targetDateStr: string, transactionList: Transaction[]) => {
-    // Format comparison: ISO string "YYYY-MM-DD" works for lexical comparison
-    // We assume transactions are stored as YYYY-MM-DD
-    
-    // Normalize target date to just YYYY-MM-DD to be safe
     const targetDate = targetDateStr.split('T')[0];
 
     return transactionList
@@ -69,7 +64,6 @@ const App: React.FC = () => {
   const portfolio = useMemo(() => {
     const pos: Record<string, AssetPosition> = {};
 
-    // 1. Build base positions from transactions
     transactions.forEach(t => {
       if (!pos[t.ticker]) {
         pos[t.ticker] = {
@@ -88,12 +82,10 @@ const App: React.FC = () => {
         p.quantity += t.quantity;
         p.averagePrice = p.quantity > 0 ? totalCost / p.quantity : 0;
       } else {
-        // Sell affects quantity but not average price (PM rule)
         p.quantity -= t.quantity;
       }
     });
 
-    // 2. Calculate Dividends based on "Data Com" (lastDatePrior) logic
     Object.keys(pos).forEach(ticker => {
         const quote = quotes[ticker];
         const cashDividends = quote?.dividendsData?.cashDividends;
@@ -101,8 +93,6 @@ const App: React.FC = () => {
         if (cashDividends && Array.isArray(cashDividends)) {
             let dividendSum = 0;
             cashDividends.forEach(div => {
-                // If the API provides a "Data Com" (lastDatePrior), use it.
-                // Otherwise fallback to paymentDate (less accurate but safer than nothing).
                 const referenceDate = div.lastDatePrior || div.paymentDate;
                 
                 if (referenceDate) {
@@ -116,9 +106,8 @@ const App: React.FC = () => {
         }
     });
 
-    // 3. Convert to array, filter zero positions, and add current quotes
     return Object.values(pos)
-      .filter(p => p.quantity > 0 || p.totalDividends! > 0) // Keep if has dividends even if sold out (optional, strictly keeping > 0 qty for now usually better for UI)
+      .filter(p => p.quantity > 0 || p.totalDividends! > 0)
       .filter(p => p.quantity > 0) 
       .map(p => ({
         ...p,
@@ -127,15 +116,27 @@ const App: React.FC = () => {
       }));
   }, [transactions, quotes]);
 
-  // Fetch Quotes
+  // Fetch Quotes - Automaticamente busca ao alterar transações
   useEffect(() => {
     const fetchMarketData = async () => {
         const uniqueTickers = Array.from(new Set(transactions.map(t => t.ticker))) as string[];
-        if (uniqueTickers.length > 0 && brapiToken) {
-            const results = await getQuotes(uniqueTickers, brapiToken);
-            const quoteMap: Record<string, BrapiQuote> = {};
-            results.forEach(q => quoteMap[q.symbol] = q);
-            setQuotes(quoteMap);
+        
+        // Se não tiver token, não tenta buscar
+        if (!brapiToken) return;
+
+        if (uniqueTickers.length > 0) {
+            try {
+                const results = await getQuotes(uniqueTickers, brapiToken);
+                // IMPORTANTE: Só atualiza se vier dados válidos. 
+                // Isso protege contra limpar o estado em caso de erro de rede (offline)
+                if (results && results.length > 0) {
+                    const quoteMap: Record<string, BrapiQuote> = {};
+                    results.forEach(q => quoteMap[q.symbol] = q);
+                    setQuotes(quoteMap);
+                }
+            } catch (error) {
+                console.error("Falha ao atualizar cotações:", error);
+            }
         }
     };
 
@@ -143,7 +144,7 @@ const App: React.FC = () => {
     // Poll every 60s
     const interval = setInterval(fetchMarketData, 60000);
     return () => clearInterval(interval);
-  }, [transactions, brapiToken]);
+  }, [transactions, brapiToken]); // Dependência 'transactions' garante atualização automática ao lançar ativo
 
 
   // Transaction Handlers
