@@ -34,7 +34,7 @@ const App: React.FC = () => {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const hasRunAutoSync = useRef(false);
+  const autoSyncRef = useRef<boolean>(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsSplashActive(false), 2200);
@@ -72,11 +72,11 @@ const App: React.FC = () => {
       .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
   }, []);
 
-  // Memória robusta da carteira: processada apenas quando necessário
+  // Processamento unificado da carteira
   const { portfolio, dividendReceipts } = useMemo(() => {
     const positions: Record<string, AssetPosition> = {};
     
-    // 1. Calcular Posições e Preço Médio
+    // 1. Posições e Preço Médio
     transactions.forEach(t => {
       const ticker = t.ticker.toUpperCase();
       if (!positions[ticker]) {
@@ -92,12 +92,11 @@ const App: React.FC = () => {
       }
     });
 
-    // 2. Processar Proventos do Gemini com Cache de App
-    const uniqueGeminiDivs: DividendReceipt[] = Array.from(
-      new Map<string, DividendReceipt>(geminiDividends.map(d => [d.id, d])).values()
-    );
-
-    const receipts: DividendReceipt[] = uniqueGeminiDivs.map(div => {
+    // 2. Proventos
+    const uniqueDivsMap = new Map<string, DividendReceipt>();
+    geminiDividends.forEach(d => uniqueDivsMap.set(d.id, d));
+    
+    const receipts: DividendReceipt[] = Array.from(uniqueDivsMap.values()).map(div => {
       const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, transactions);
       const total = qtyAtDate * div.rate;
       const assetType = positions[div.ticker]?.assetType;
@@ -111,14 +110,18 @@ const App: React.FC = () => {
 
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
-    // 3. Enriquecer com Cotações em Cache
+    // 3. Enriquecimento com Fallback Seguro
     const finalPortfolio = Object.values(positions)
       .filter(p => p.quantity > 0 || (p.totalDividends || 0) > 0)
-      .map(p => ({
-        ...p,
-        currentPrice: quotes[p.ticker]?.regularMarketPrice,
-        logoUrl: quotes[p.ticker]?.logourl
-      }));
+      .map(p => {
+        const quote = quotes[p.ticker];
+        return {
+          ...p,
+          // Se não houver cotação em tempo real, usa o preço médio para evitar erro de saldo zerado
+          currentPrice: quote?.regularMarketPrice || p.averagePrice,
+          logoUrl: quote?.logourl
+        };
+      });
 
     return { portfolio: finalPortfolio, dividendReceipts: receipts };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
@@ -127,7 +130,6 @@ const App: React.FC = () => {
     const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
     if (tickers.length === 0) return;
     
-    // Bloqueia sync automático se o último foi há menos de 1 hora
     if (!force) {
       const last = localStorage.getItem(STORAGE_KEYS.SYNC);
       if (last && Date.now() - parseInt(last) < 1000 * 60 * 60) return;
@@ -144,13 +146,16 @@ const App: React.FC = () => {
       setQuotes(prev => ({ ...prev, ...aiQuotes }));
       setGeminiDividends(prev => {
         const merged = [...prev, ...data.dividends];
-        return Array.from(new Map(merged.map(d => [d.id, d])).values());
+        const unique = new Map();
+        merged.forEach(d => unique.set(d.id, d));
+        return Array.from(unique.values());
       });
       
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
-      if (force) showToast('success', 'Dados atualizados via IA');
+      if (force) showToast('success', 'Sincronizado com IA');
     } catch (e: any) {
-      showToast('error', 'Falha na IA: Usando dados locais');
+      console.error("AI Sync Error:", e);
+      if (force) showToast('error', 'Falha na IA: Tente novamente');
     } finally {
       setIsAiLoading(false);
     }
@@ -167,18 +172,17 @@ const App: React.FC = () => {
         brQuotes.forEach(q => map[q.symbol] = q);
         setQuotes(prev => ({ ...prev, ...map }));
       }
-      // O handleAiSync já tem cache interno, então não pesará se estiver atualizado
       await handleAiSync(true);
     } catch (error) {
-      showToast('error', 'Erro na atualização geral');
+      showToast('error', 'Erro na atualização de mercado');
     } finally {
       setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    if (!hasRunAutoSync.current && transactions.length > 0) {
-      hasRunAutoSync.current = true;
+    if (!autoSyncRef.current && transactions.length > 0) {
+      autoSyncRef.current = true;
       const timeout = setTimeout(() => handleAiSync(false), 2000);
       return () => clearTimeout(timeout);
     }
@@ -202,7 +206,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-primary text-gray-100 font-sans selection:bg-accent/30 overflow-x-hidden">
-      {/* Notificação de Atualização do App */}
       {updateRegistration && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 bg-accent text-primary rounded-2xl flex items-center justify-between gap-3 shadow-[0_0_40px_rgba(56,189,248,0.4)] z-[100] animate-fade-in-up border border-white/20">
           <div className="flex items-center gap-3">
@@ -219,7 +222,7 @@ const App: React.FC = () => {
       )}
 
       {toast && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[80] transition-all duration-300 transform animate-fade-in-up backdrop-blur-xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90' : 'bg-rose-500/90'}`}>
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[80] transition-all duration-300 transform animate-fade-in-up backdrop-blur-xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
           {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
           <span className="text-sm font-bold">{toast.text}</span>
         </div>

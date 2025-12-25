@@ -1,8 +1,8 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, Calendar, X, ArrowUpRight, ReceiptText, Trophy, Building2, Briefcase, FilterX } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, Calendar, X, ArrowUpRight, ReceiptText, Trophy, Building2, Briefcase, FilterX, Info } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -18,10 +18,11 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [allocationTab, setAllocationTab] = useState<'asset' | 'type'>('asset');
 
-  const totalInvested = portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0);
-  const currentBalance = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
+  // Cálculos base com fallbacks seguros para evitar NaN ou Infinity
+  const totalInvested = useMemo(() => portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0), [portfolio]);
+  const currentBalance = useMemo(() => portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0), [portfolio]);
   const profitability = totalInvested > 0 ? ((currentBalance - totalInvested) / totalInvested) * 100 : 0;
-  const totalDividends = portfolio.reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
+  const totalDividends = useMemo(() => portfolio.reduce((acc, curr) => acc + (curr.totalDividends || 0), 0), [portfolio]);
   const yieldOnCost = totalInvested > 0 ? (totalDividends / totalInvested) * 100 : 0;
 
   const dataByAsset = useMemo(() => {
@@ -29,7 +30,8 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
       .map(p => ({
         name: p.ticker,
         value: (p.currentPrice || p.averagePrice) * p.quantity,
-        type: p.assetType
+        type: p.assetType,
+        quantity: p.quantity
       }))
       .filter(p => p.value > 0)
       .sort((a, b) => b.value - a.value);
@@ -180,7 +182,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                         {dataByAsset.slice(0, 3).map((entry, index) => (
                             <div key={entry.name} className="flex items-center justify-between text-xs">
                                 <span className="text-slate-400 font-medium">{entry.name}</span>
-                                <span className="text-white font-black">{((entry.value / currentBalance) * 100).toFixed(0)}%</span>
+                                <span className="text-white font-black">{((entry.value / (currentBalance || 1)) * 100).toFixed(0)}%</span>
                             </div>
                         ))}
                     </div>
@@ -189,7 +191,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
         </div>
       )}
 
-      {/* Modal de Proventos Aprimorado */}
+      {/* Modal de Proventos */}
       {showProventosModal && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center p-0">
           <div className="absolute inset-0 bg-primary/80 backdrop-blur-md animate-fade-in" onClick={() => setShowProventosModal(false)} />
@@ -207,7 +209,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
               </button>
             </div>
 
-            {/* Resumo por Classe dentro do Modal - Filtros Interativos */}
             <div className="px-7 py-4 grid grid-cols-2 gap-4 shrink-0">
               <button 
                 onClick={() => setFilterClass(filterClass === AssetType.FII ? null : AssetType.FII)}
@@ -251,7 +252,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
 
             <div className="flex-1 overflow-y-auto px-7 pb-12 space-y-8 no-scrollbar">
                 {filteredReceipts.length === 0 ? (
-                    <div className="py-20 text-center text-slate-500 italic text-sm">Nenhum registro encontrado nesta classe</div>
+                    <div className="py-20 text-center text-slate-500 italic text-sm">Nenhum registro encontrado</div>
                 ) : (
                     proventosTab === 'statement' ? (
                         (Object.entries(groupedReceipts) as [string, DividendReceipt[]][]).map(([month, receipts]) => (
@@ -265,9 +266,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                                 const isFii = receipt.assetType === AssetType.FII;
                                 return (
                                   <div key={receipt.id} className="relative flex items-center justify-between p-4 glass rounded-[2rem] group animate-fade-in-up overflow-hidden" style={{ animationDelay: `${idx * 40}ms` }}>
-                                      {/* Indicador lateral discreto */}
                                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${isFii ? 'bg-accent' : 'bg-purple-500'}`} />
-                                      
                                       <div className="flex items-center gap-4 pl-1">
                                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${isFii ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-purple-500/10 border-purple-500/20 text-purple-400'}`}>
                                             {isFii ? <Building2 className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
@@ -306,18 +305,15 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                                             <span className="text-[10px] font-black text-slate-600">{idx + 1}</span>
                                             <div className="flex items-center gap-2">
                                               <span className={`text-sm font-black ${isFii ? 'text-accent' : 'text-purple-400'}`}>{item.ticker}</span>
-                                              <span className={`text-[7px] font-bold px-1 rounded-sm ${isFii ? 'bg-accent/10 text-accent' : 'bg-purple-500/10 text-purple-400'}`}>
-                                                {isFii ? 'FII' : 'AÇÃO'}
-                                              </span>
                                             </div>
                                           </div>
                                           <div className="text-right">
                                             <div className="text-sm font-black text-white">R$ {formatCurrency(item.total)}</div>
-                                            <div className={`text-[9px] font-bold uppercase tracking-wider ${isFii ? 'text-accent' : 'text-purple-400'}`}>{percent.toFixed(1)}% do total</div>
+                                            <div className={`text-[9px] font-bold uppercase tracking-wider ${isFii ? 'text-accent' : 'text-purple-400'}`}>{percent.toFixed(1)}%</div>
                                           </div>
                                       </div>
                                       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                          <div className={`h-full rounded-full transition-all duration-700 ${isFii ? 'bg-accent shadow-[0_0_8px_rgba(56,189,248,0.3)]' : 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.3)]'}`} style={{ width: `${percent}%` }} />
+                                          <div className={`h-full rounded-full ${isFii ? 'bg-accent' : 'bg-purple-500'}`} style={{ width: `${percent}%` }} />
                                       </div>
                                   </div>
                               )
@@ -330,61 +326,125 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
         </div>
       )}
 
-      {/* Modal de Alocação Reestilizado */}
+      {/* Modal de Alocação Aprimorado */}
       {showAllocationModal && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center p-0">
           <div className="absolute inset-0 bg-primary/80 backdrop-blur-md animate-fade-in" onClick={() => setShowAllocationModal(false)} />
-          <div className="bg-primary w-full max-h-[90vh] rounded-t-[3rem] border-t border-white/10 shadow-2xl relative animate-slide-up flex flex-col pt-4">
-            <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-6"></div>
-            <div className="px-7 flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-black text-white">Alocação</h3>
-                <button onClick={() => setShowAllocationModal(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400">
+          <div className="bg-primary w-full max-h-[95vh] rounded-t-[3rem] border-t border-white/10 shadow-2xl relative animate-slide-up flex flex-col pt-4 overflow-hidden">
+            
+            <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-6 shrink-0"></div>
+            
+            <div className="px-7 flex items-center justify-between mb-4 shrink-0">
+                <div>
+                  <h3 className="text-2xl font-black text-white">Minha Alocação</h3>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Visão Geral da Carteira</p>
+                </div>
+                <button onClick={() => setShowAllocationModal(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400 active:scale-95 transition-all">
                   <X className="w-5 h-5" />
                 </button>
             </div>
             
-            <div className="px-7 grid grid-cols-2 gap-3 mb-8">
-                <button onClick={() => setAllocationTab('asset')} className={`py-3 rounded-2xl text-xs font-bold transition-all ${allocationTab === 'asset' ? 'bg-accent text-primary' : 'bg-white/5 text-slate-400'}`}>Ativos</button>
-                <button onClick={() => setAllocationTab('type')} className={`py-3 rounded-2xl text-xs font-bold transition-all ${allocationTab === 'type' ? 'bg-accent text-primary' : 'bg-white/5 text-slate-400'}`}>Classe</button>
+            <div className="px-7 grid grid-cols-2 gap-3 mb-6 shrink-0">
+                <button onClick={() => setAllocationTab('asset')} className={`py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${allocationTab === 'asset' ? 'bg-accent border-accent text-primary' : 'bg-white/5 border-white/5 text-slate-400'}`}>Por Ativos</button>
+                <button onClick={() => setAllocationTab('type')} className={`py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${allocationTab === 'type' ? 'bg-accent border-accent text-primary' : 'bg-white/5 border-white/5 text-slate-400'}`}>Por Classe</button>
             </div>
 
-            <div className="h-64 mb-8">
+            {/* Gráfico Donut com Legend Central */}
+            <div className="h-64 relative mb-4 shrink-0">
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Total</span>
+                    <span className="text-xl font-black text-white tabular-nums">R$ {formatCurrency(currentBalance)}</span>
+                </div>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie 
                           data={allocationTab === 'asset' ? dataByAsset : dataByType} 
-                          innerRadius={70} 
-                          outerRadius={100} 
-                          paddingAngle={4} 
+                          innerRadius={75} 
+                          outerRadius={95} 
+                          paddingAngle={3} 
                           dataKey="value" 
                           stroke="none" 
-                          cornerRadius={8}
+                          cornerRadius={10}
                           activeShape={false}
                         >
                             {(allocationTab === 'asset' ? dataByAsset : dataByType).map((entry, index) => (
-                                <Cell key={index} fill={allocationTab === 'type' ? (entry as any).color : COLORS[index % COLORS.length]} />
+                                <Cell 
+                                  key={index} 
+                                  fill={allocationTab === 'type' ? (entry as any).color : COLORS[index % COLORS.length]} 
+                                  className="outline-none"
+                                />
                             ))}
                         </Pie>
+                        <Tooltip 
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-slate-900/90 backdrop-blur-md p-3 rounded-2xl border border-white/10 shadow-2xl">
+                                  <p className="text-[10px] font-black text-accent uppercase mb-1">{payload[0].name}</p>
+                                  <p className="text-sm font-black text-white">R$ {formatCurrency(payload[0].value as number)}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
                     </PieChart>
                 </ResponsiveContainer>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-7 pb-12 space-y-4 no-scrollbar">
+            {/* Lista de Ativos com Indicadores de Concentração */}
+            <div className="flex-1 overflow-y-auto px-7 pb-12 space-y-3 no-scrollbar">
                 {(allocationTab === 'asset' ? dataByAsset : dataByType).map((entry, index) => {
                     const percentage = (entry.value / (currentBalance || 1)) * 100;
+                    const color = allocationTab === 'type' ? (entry as any).color : COLORS[index % COLORS.length];
+                    
                     return (
-                        <div key={index} className="flex items-center justify-between p-4 glass rounded-3xl animate-fade-in-up" style={{ animationDelay: `${index * 40}ms` }}>
-                            <div className="flex items-center gap-4">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: allocationTab === 'type' ? (entry as any).color : COLORS[index % COLORS.length] }} />
-                                <span className="text-sm font-bold text-white uppercase">{entry.name}</span>
+                        <div key={index} className="group flex flex-col p-4 glass rounded-3xl animate-fade-in-up border border-white/5 hover:border-white/10 transition-all" style={{ animationDelay: `${index * 40}ms` }}>
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs border" style={{ backgroundColor: `${color}10`, borderColor: `${color}20`, color: color }}>
+                                        {entry.name.slice(0, 4)}
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-black text-white uppercase tracking-tight">{entry.name}</div>
+                                        {allocationTab === 'asset' && (
+                                          <div className="text-[10px] text-slate-500 font-bold uppercase">{(entry as any).quantity} UNIDADES</div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-sm font-black text-white tabular-nums">{percentage.toFixed(1)}%</div>
+                                    <div className="text-[10px] text-slate-500 font-bold uppercase tabular-nums">R$ {formatCurrency(entry.value)}</div>
+                                </div>
                             </div>
-                            <div className="text-right">
-                                <div className="text-sm font-black text-white">{percentage.toFixed(1)}%</div>
-                                <div className="text-[10px] text-slate-500 font-bold uppercase">R$ {formatCurrency(entry.value)}</div>
+                            
+                            {/* Barra de progresso discreta para visualização de peso */}
+                            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full rounded-full transition-all duration-1000 ease-out" 
+                                  style={{ width: `${percentage}%`, backgroundColor: color }}
+                                />
                             </div>
                         </div>
                     );
                 })}
+                
+                {dataByAsset.length === 0 && (
+                  <div className="py-20 text-center flex flex-col items-center gap-4">
+                    <div className="p-4 bg-white/5 rounded-full">
+                      <Info className="w-8 h-8 text-slate-600" />
+                    </div>
+                    <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Aguardando dados de mercado...</p>
+                  </div>
+                )}
+            </div>
+            
+            {/* Resumo do Rodapé do Modal */}
+            <div className="px-7 py-6 border-t border-white/5 bg-secondary/20 shrink-0">
+               <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Ativos Listados</span>
+                  <span className="text-xs font-black text-white">{allocationTab === 'asset' ? dataByAsset.length : dataByType.length}</span>
+               </div>
             </div>
           </div>
         </div>
