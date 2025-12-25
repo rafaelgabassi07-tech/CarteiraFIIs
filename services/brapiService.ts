@@ -2,7 +2,7 @@ import { BrapiResponse, BrapiQuote } from '../types';
 
 const BASE_URL = 'https://brapi.dev/api';
 const CACHE_KEY = 'investfiis_quotes_cache';
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutos
 
 interface CacheItem {
   data: BrapiQuote;
@@ -13,68 +13,60 @@ interface QuoteCache {
   [ticker: string]: CacheItem;
 }
 
-// Helper para ler o cache
 const loadCache = (): QuoteCache => {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     return cached ? JSON.parse(cached) : {};
   } catch (e) {
-    console.warn("Erro ao ler cache de cotações", e);
     return {};
   }
 };
 
-// Helper para salvar o cache
 const saveCache = (cache: QuoteCache) => {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-  } catch (e) {
-    console.warn("Erro ao salvar cache de cotações", e);
-  }
+  } catch (e) {}
 };
 
-// Busca um único ticker com todos os módulos necessários
 const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuote | null> => {
     try {
-        // Tentativa 1: Solicita explicitamente summary e dividends (mais rico)
-        let response = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}&modules=summary,dividends`);
-        
-        // Fallback: Se der erro 417 (Expectation Failed) ou 400, tenta buscar sem módulos (dados básicos)
-        // O erro 417 acontece quando a Brapi não tem os dados estendidos (summary/dividends) para aquele ativo específico.
-        if (response.status === 417 || response.status === 400) {
-             console.warn(`Falha na busca detalhada para ${ticker} (${response.status}). Tentando busca simples...`);
-             response = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}`);
-        }
+        // Solicitamos explicitamente o módulo de dividendos
+        const url = `${BASE_URL}/quote/${ticker}?token=${token}&modules=dividends`;
+        const response = await fetch(url);
 
         if (response.ok) {
             const data: BrapiResponse = await response.json();
             return data.results?.[0] || null;
-        } else {
-            console.warn(`Erro final ao buscar ${ticker}: ${response.status}`);
-            return null;
         }
+        
+        // Se falhar com módulos, tenta a busca básica
+        const fallbackResponse = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}`);
+        if (fallbackResponse.ok) {
+            const data: BrapiResponse = await fallbackResponse.json();
+            return data.results?.[0] || null;
+        }
+
+        return null;
     } catch (error) {
-        console.error(`Erro de rede ao buscar ${ticker}:`, error);
+        console.error(`Erro ao buscar ${ticker}:`, error);
         return null;
     }
 };
 
 export const getQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
-  if (!tickers.length) return [];
-  if (!token) return [];
+  if (!tickers.length || !token) return [];
 
   const cache = loadCache();
   const now = Date.now();
-  
   const validQuotes: BrapiQuote[] = [];
   const tickersToFetch: string[] = [];
 
-  // 1. Verifica Cache
   tickers.forEach(ticker => {
     const cleanTicker = ticker.trim().toUpperCase();
     if (!cleanTicker) return;
 
     const cachedItem = cache[cleanTicker];
+    // Se tiver cache válido e tiver dados de dividendos, usa o cache
     if (cachedItem && (now - cachedItem.timestamp < CACHE_DURATION)) {
       validQuotes.push(cachedItem.data);
     } else {
@@ -82,16 +74,11 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
     }
   });
 
-  // 2. Se tudo estiver em cache, retorna
-  if (tickersToFetch.length === 0) {
-    return validQuotes;
-  }
+  if (tickersToFetch.length === 0) return validQuotes;
 
-  // 3. Busca Individual em Paralelo (Promise.all)
-  const promises = tickersToFetch.map(t => fetchSingleQuote(t, token));
-  const results = await Promise.all(promises);
+  // Busca em paralelo para agilizar
+  const results = await Promise.all(tickersToFetch.map(t => fetchSingleQuote(t, token)));
 
-  // 4. Processa resultados e atualiza cache
   results.forEach(quote => {
     if (quote) {
       cache[quote.symbol] = {
@@ -102,14 +89,6 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
     }
   });
 
-  // 5. Persiste cache se houver novidades
-  if (validQuotes.length > 0) {
-    saveCache(cache);
-  }
-
+  saveCache(cache);
   return validQuotes;
-};
-
-export const getDividends = async (ticker: string, token: string) => {
-    return [];
 };
