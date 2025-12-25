@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Header, BottomNav } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
@@ -36,6 +36,7 @@ const App: React.FC = () => {
   });
 
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Persist Transactions
   useEffect(() => {
@@ -116,35 +117,45 @@ const App: React.FC = () => {
       }));
   }, [transactions, quotes]);
 
-  // Fetch Quotes - Automaticamente busca ao alterar transações
-  useEffect(() => {
-    const fetchMarketData = async () => {
-        const uniqueTickers = Array.from(new Set(transactions.map(t => t.ticker))) as string[];
-        
-        // Se não tiver token, não tenta buscar
-        if (!brapiToken) return;
+  // Função centralizada para buscar dados
+  const fetchMarketData = useCallback(async (isManual = false) => {
+    const uniqueTickers = Array.from(new Set(transactions.map(t => t.ticker))) as string[];
+    
+    // Se não tiver token ou tickers, não tenta buscar
+    if (!brapiToken || uniqueTickers.length === 0) {
+      if (isManual) setIsRefreshing(false);
+      return;
+    }
 
-        if (uniqueTickers.length > 0) {
-            try {
-                const results = await getQuotes(uniqueTickers, brapiToken);
-                // IMPORTANTE: Só atualiza se vier dados válidos. 
-                // Isso protege contra limpar o estado em caso de erro de rede (offline)
-                if (results && results.length > 0) {
-                    const quoteMap: Record<string, BrapiQuote> = {};
-                    results.forEach(q => quoteMap[q.symbol] = q);
-                    setQuotes(quoteMap);
-                }
-            } catch (error) {
-                console.error("Falha ao atualizar cotações:", error);
-            }
+    if (isManual) setIsRefreshing(true);
+
+    try {
+        const results = await getQuotes(uniqueTickers, brapiToken);
+        // IMPORTANTE: Só atualiza se vier dados válidos. 
+        if (results && results.length > 0) {
+            const quoteMap: Record<string, BrapiQuote> = {};
+            results.forEach(q => quoteMap[q.symbol] = q);
+            setQuotes(quoteMap);
         }
-    };
+    } catch (error) {
+        console.error("Falha ao atualizar cotações:", error);
+    } finally {
+      if (isManual) setIsRefreshing(false);
+    }
+  }, [transactions, brapiToken]);
 
+  // Effect para busca automática e polling
+  useEffect(() => {
     fetchMarketData();
     // Poll every 60s
-    const interval = setInterval(fetchMarketData, 60000);
+    const interval = setInterval(() => fetchMarketData(false), 60000);
     return () => clearInterval(interval);
-  }, [transactions, brapiToken]); 
+  }, [fetchMarketData]); 
+
+  // Handler para refresh manual
+  const handleManualRefresh = () => {
+    fetchMarketData(true);
+  };
 
   // Transaction Handlers
   const handleAddTransaction = (t: Omit<Transaction, 'id'>) => {
@@ -213,6 +224,8 @@ const App: React.FC = () => {
         onSettingsClick={() => setShowSettings(true)} 
         showBack={showSettings}
         onBack={() => setShowSettings(false)}
+        onRefresh={handleManualRefresh}
+        isRefreshing={isRefreshing}
       />
       
       <main className="fade-in">

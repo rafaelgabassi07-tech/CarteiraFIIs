@@ -1,14 +1,23 @@
 import React from 'react';
-import { Home, PieChart, ArrowRightLeft, Settings, TrendingUp, ChevronLeft } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, TrendingUp, ChevronLeft, RefreshCw } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
   onSettingsClick?: () => void;
   showBack?: boolean;
   onBack?: () => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title, onSettingsClick, showBack, onBack }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  title, 
+  onSettingsClick, 
+  showBack, 
+  onBack,
+  onRefresh,
+  isRefreshing 
+}) => {
   return (
     <header className="sticky top-0 z-50 bg-secondary/90 backdrop-blur-md border-b border-white/10 px-4 h-16 flex items-center justify-between shadow-lg transition-all duration-300">
       <div className="flex items-center gap-2">
@@ -26,15 +35,28 @@ export const Header: React.FC<HeaderProps> = ({ title, onSettingsClick, showBack
         <h1 className="text-lg font-bold text-white tracking-wide">{title}</h1>
       </div>
       
-      {!showBack && onSettingsClick && (
-        <button 
-          onClick={onSettingsClick}
-          className="p-2 rounded-full hover:bg-white/10 transition-colors"
-          aria-label="Configurações"
-        >
-          <Settings className="w-6 h-6 text-gray-300" />
-        </button>
-      )}
+      <div className="flex items-center gap-1">
+        {onRefresh && !showBack && (
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-300 disabled:opacity-50"
+            aria-label="Atualizar dados"
+          >
+            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
+        )}
+
+        {!showBack && onSettingsClick && (
+          <button 
+            onClick={onSettingsClick}
+            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+            aria-label="Configurações"
+          >
+            <Settings className="w-6 h-6 text-gray-300" />
+          </button>
+        )}
+      </div>
     </header>
   );
 };
