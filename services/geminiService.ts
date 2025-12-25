@@ -10,7 +10,7 @@ export interface UnifiedMarketData {
 }
 
 const GEMINI_CACHE_KEY = 'investfiis_gemini_internal_cache';
-const CACHE_EXPIRATION = 12 * 60 * 60 * 1000; // 12 horas
+const CACHE_EXPIRATION = 12 * 60 * 60 * 1000; // Cache de 12 horas para dados históricos
 
 function cleanAndParseJSON(text: string): any {
   try {
@@ -30,9 +30,6 @@ function cleanAndParseJSON(text: string): any {
   }
 }
 
-/**
- * Sistema de Cache Inteligente
- */
 const getCachedData = (tickers: string[]): UnifiedMarketData | null => {
   try {
     const cached = localStorage.getItem(GEMINI_CACHE_KEY);
@@ -40,12 +37,9 @@ const getCachedData = (tickers: string[]): UnifiedMarketData | null => {
     
     const { data, timestamp, tickers: cachedTickers } = JSON.parse(cached);
     const isExpired = Date.now() - timestamp > CACHE_EXPIRATION;
-    
-    // Verifica se todos os tickers solicitados estão no cache
     const hasAllTickers = tickers.every(t => cachedTickers.includes(t.toUpperCase()));
     
     if (!isExpired && hasAllTickers) {
-      console.log("Gemini: Usando cache interno para", tickers);
       return data;
     }
     return null;
@@ -65,28 +59,26 @@ const saveToCache = (tickers: string[], data: UnifiedMarketData) => {
 };
 
 /**
- * Executa uma pesquisa profunda na B3 via Gemini 3 Pro com cache integrado.
- * Usando gemini-3-pro-preview para tarefas complexas de análise financeira.
+ * Gemini: Faz a pesquisa PESADA de dividendos e metadados em UMA ÚNICA requisição para todos os ativos.
  */
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { prices: {}, dividends: [], metadata: {} };
 
-  // 1. Tentar Cache primeiro
   const cached = getCachedData(tickers);
   if (cached) return cached;
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+  // Prompt otimizado para extração em lote único
   const prompt = `
-    Como analista financeiro especialista em B3, pesquise os ativos: ${tickers.join(', ')}.
+    Aja como um terminal Bloomberg. Pesquise via Google Search os dados consolidados para ESTA LISTA de ativos da B3: ${tickers.join(', ')}.
     
-    REQUISITOS DE PRECISÃO:
-    1. COTAÇÃO ATUAL: Preço de fechamento mais recente.
-    2. PROVENTOS (DIVIDENDOS/JCP): Liste TODOS os pagamentos dos últimos 12 meses.
-       IMPORTANTE: Se um provento foi anunciado mas será pago em múltiplas parcelas, retorne cada parcela separadamente.
-    3. SEGMENTO e TIPO: Identifique se é FII ou ACAO.
-    
-    ESTRUTURA JSON OBRIGATÓRIA:
+    REQUISITOS OBRIGATÓRIOS:
+    1. PROVENTOS: Extraia TODOS os dividendos e JCP pagos nos últimos 12 meses para cada ticker.
+    2. SEGMENTAÇÃO: Defina o setor de atuação e se é FII ou ACAO.
+    3. COTAÇÃO: Forneça o preço de fechamento mais recente como referência.
+
+    Retorne EXCLUSIVAMENTE um JSON neste formato:
     {
       "assets": [
         {
@@ -95,12 +87,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
           "s": "Segmento",
           "type": "FII|ACAO",
           "d": [
-            {
-              "ty": "DIVIDENDO|JCP", 
-              "dc": "YYYY-MM-DD",
-              "dp": "YYYY-MM-DD",
-              "v": 0.000000
-            }
+            {"ty": "DIVIDENDO|JCP", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": 0.0000}
           ]
         }
       ]
@@ -148,11 +135,9 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       }
     });
 
-    const textOutput = response.text || "";
-    const parsed = cleanAndParseJSON(textOutput);
-    
-    // Improved grounding chunks extraction for Search Grounding compliance
+    const parsed = cleanAndParseJSON(response.text || "{}");
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[];
+    
     const result: UnifiedMarketData = { 
         prices: {}, 
         dividends: [], 
@@ -169,29 +154,25 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
           type: asset.type?.toUpperCase() === 'FII' ? AssetType.FII : AssetType.STOCK 
         };
 
-        if (asset.d) {
-          asset.d.forEach((div: any) => {
-            const uniqueId = `${ticker}-${div.dc}-${div.dp}-${div.v}`;
-            result.dividends.push({
-              id: uniqueId,
-              ticker,
-              type: div.ty || "PROVENTO",
-              dateCom: div.dc,
-              paymentDate: div.dp || div.dc,
-              rate: div.v,
-              quantityOwned: 0,
-              totalReceived: 0
-            });
+        asset.d?.forEach((div: any) => {
+          result.dividends.push({
+            id: `${ticker}-${div.dc}-${div.dp}-${div.v}`,
+            ticker,
+            type: div.ty || "PROVENTO",
+            dateCom: div.dc,
+            paymentDate: div.dp || div.dc,
+            rate: div.v,
+            quantityOwned: 0,
+            totalReceived: 0
           });
-        }
+        });
       });
     }
 
-    // Salva no cache antes de retornar
     saveToCache(tickers, result);
     return result;
-  } catch (error: any) {
-    console.error("Erro Gemini Proventos:", error);
+  } catch (error) {
+    console.error("Erro Gemini Batch Sync:", error);
     throw error;
   }
 };

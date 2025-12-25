@@ -1,33 +1,32 @@
+
 import { BrapiResponse, BrapiQuote } from '../types';
 
 const BASE_URL = 'https://brapi.dev/api';
 const CACHE_KEY = 'investfiis_quotes_simple_cache';
-const CACHE_DURATION = 10 * 60 * 1000; // Aumentado para 10 minutos para evitar rate limit e economizar dados
+const CACHE_DURATION = 5 * 60 * 1000; // Cotações expiram em 5 minutos
 
 interface CacheItem {
   data: BrapiQuote;
   timestamp: number;
 }
 
-interface QuoteCache {
-  [ticker: string]: CacheItem;
-}
-
-const loadCache = (): QuoteCache => {
+const loadCache = (): Record<string, CacheItem> => {
   try {
-    const cached = localStorage.getItem(CACHE_KEY);
-    return cached ? JSON.parse(cached) : {};
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
   } catch (e) {
     return {};
   }
 };
 
-const saveCache = (cache: QuoteCache) => {
+const saveCache = (cache: Record<string, CacheItem>) => {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
   } catch (e) {}
 };
 
+/**
+ * Brapi: Focada EXCLUSIVAMENTE em preços atuais e logotipos.
+ */
 export const getQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
   if (!tickers.length || !token) return [];
 
@@ -36,12 +35,9 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
   const validQuotes: BrapiQuote[] = [];
   const tickersToFetch: string[] = [];
 
-  // 1. Verifica Cache
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
   
   uniqueTickers.forEach(ticker => {
-    if (!ticker) return;
-
     const cachedItem = cache[ticker];
     if (cachedItem && (now - cachedItem.timestamp < CACHE_DURATION)) {
       validQuotes.push(cachedItem.data);
@@ -50,12 +46,9 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
     }
   });
 
-  // Se tudo estiver em cache, retorna
   if (tickersToFetch.length === 0) return validQuotes;
 
-  // 2. Busca em Lotes (Batch Fetching)
-  // A API da Brapi aceita múltiplos tickers separados por vírgula (ex: /quote/PETR4,VALE3)
-  // Isso reduz drasticamente o número de conexões HTTP e evita erros 429/417
+  // Busca em lotes para otimizar, mas focado apenas no campo de cotação
   const BATCH_SIZE = 15; 
   const newQuotes: BrapiQuote[] = [];
 
@@ -64,46 +57,29 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
     const tickersParam = chunk.join(',');
 
     try {
+      // Pedimos apenas os campos necessários para economizar banda
       const url = `${BASE_URL}/quote/${tickersParam}?token=${token}`;
       const response = await fetch(url);
 
       if (response.ok) {
         const data: BrapiResponse = await response.json();
-        if (data.results && Array.isArray(data.results)) {
+        if (data.results) {
           newQuotes.push(...data.results);
         }
-      } else {
-        if (response.status === 401) {
-            console.error("Brapi: Token de acesso inválido ou expirado. Verifique nas configurações.");
-        }
-        console.warn(`Brapi: Erro ${response.status} ao buscar lote: ${tickersParam}`);
       }
     } catch (error) {
-      console.error(`Brapi: Erro de rede`, error);
-    }
-    
-    // Pequeno delay defensivo entre lotes
-    if (i + BATCH_SIZE < tickersToFetch.length) {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.error(`Brapi: Erro na cotação de ${tickersParam}`, error);
     }
   }
 
-  // 3. Atualiza Cache e Mescla Resultados
   newQuotes.forEach(quote => {
-    if (quote && quote.symbol) {
-      cache[quote.symbol] = {
-        data: quote,
-        timestamp: now
-      };
-      // Atualiza a lista de válidos caso tenhamos buscado algo que já estava (raro) ou novo
-      // Aqui apenas adicionamos à lista de retorno
+    if (quote?.symbol) {
+      cache[quote.symbol] = { data: quote, timestamp: now };
     }
   });
 
   saveCache(cache);
   
-  // Retorna combinando o que estava em cache com o que foi buscado agora
-  // Filtrando duplicatas por garantia
   const allQuotes = [...validQuotes, ...newQuotes];
   const uniqueMap = new Map<string, BrapiQuote>();
   allQuotes.forEach(q => uniqueMap.set(q.symbol, q));
