@@ -32,11 +32,13 @@
               danger: '#f43f5e',
             },
             animation: {
-              'fade-in': 'fadeIn 0.4s ease-out forwards',
+              'fade-in': 'fadeIn 0.3s ease-out forwards',
               'fade-in-up': 'fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
               'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
               'scale-in': 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
               'pulse-neon': 'pulseNeon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'float': 'float 3s ease-in-out infinite',
+              'shimmer': 'shimmer 2s linear infinite',
             },
             keyframes: {
               fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
@@ -46,7 +48,14 @@
               },
               slideUp: { '0%': { transform: 'translateY(100%)' }, '100%': { transform: 'translateY(0)' } },
               scaleIn: { '0%': { transform: 'scale(0.9)', opacity: '0' }, '100%': { transform: 'scale(1)', opacity: '1' } },
-              pulseNeon: { '0%, 100%': { opacity: '1', filter: 'brightness(1)' }, '50%': { opacity: '0.7', filter: 'brightness(1.5) drop-shadow(0 0 8px #38bdf8)' } }
+              pulseNeon: { '0%, 100%': { opacity: '1', filter: 'brightness(1)' }, '50%': { opacity: '0.7', filter: 'brightness(1.5) drop-shadow(0 0 8px #38bdf8)' } },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-6px)' }
+              },
+              shimmer: {
+                '100%': { transform: 'translateX(100%)' }
+              }
             }
           }
         }
@@ -61,9 +70,16 @@
         color: #f8fafc; 
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: contain;
+        overflow-x: hidden;
       }
       .glass {
-        background: rgba(30, 41, 59, 0.5);
+        background: rgba(30, 41, 59, 0.45);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .glass-card {
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.05);
@@ -78,6 +94,19 @@
       }
       svg:focus, path:focus, g:focus {
         outline: none !important;
+      }
+
+      /* Tap Feedback */
+      .tap-highlight {
+        transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .tap-highlight:active {
+        transform: scale(0.94);
+      }
+
+      /* Bottom Nav Floating Shadow */
+      .nav-shadow {
+        box-shadow: 0 -10px 40px -10px rgba(0,0,0,0.5);
       }
     </style>
   <script type="importmap">
