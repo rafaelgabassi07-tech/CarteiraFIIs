@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav } from './components/Layout';
+import { Header, BottomNav, SwipeableModal } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
@@ -8,7 +8,7 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw, Bell, Calendar, DollarSign, X, ArrowRight } from 'lucide-react';
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_transactions',
@@ -17,9 +17,23 @@ const STORAGE_KEYS = {
   SYNC: 'investfiis_last_gemini_sync',
 };
 
+// Interface para eventos de notificação
+interface MarketEvent {
+  id: string;
+  ticker: string;
+  type: 'PAYMENT' | 'DATA_COM';
+  date: string;
+  formattedDate: string;
+  daysRemaining: number;
+  amount?: number;
+  description: string;
+}
+
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', text: string} | null>(null);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [isSplashActive, setIsSplashActive] = useState(true);
@@ -36,6 +50,7 @@ const App: React.FC = () => {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState<MarketEvent[]>([]);
   
   const lastSyncTickersRef = useRef<string>("");
 
@@ -84,6 +99,13 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken);
     localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends));
   }, [transactions, brapiToken, geminiDividends]);
+
+  // Request Notification Permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+    }
+  }, []);
 
   const showToast = useCallback((type: 'success' | 'error' | 'warning', text: string) => {
     setToast({ type, text });
@@ -153,6 +175,85 @@ const App: React.FC = () => {
       realizedGain: totalRealizedGain
     };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
+
+  // Lógica de Detecção de Eventos Próximos (Alertas)
+  useEffect(() => {
+    if (geminiDividends.length === 0) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const alerts: MarketEvent[] = [];
+    const processedKeys = new Set<string>();
+
+    geminiDividends.forEach(div => {
+        // Verifica Pagamento
+        if (div.paymentDate) {
+            const payDate = new Date(div.paymentDate + 'T12:00:00');
+            const diffTime = payDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            // Eventos entre hoje (0) e daqui a 7 dias
+            if (diffDays >= 0 && diffDays <= 7) {
+                const key = `PAY-${div.ticker}-${div.paymentDate}`;
+                if (!processedKeys.has(key)) {
+                    alerts.push({
+                        id: key,
+                        ticker: div.ticker,
+                        type: 'PAYMENT',
+                        date: div.paymentDate,
+                        formattedDate: div.paymentDate.split('-').reverse().join('/'),
+                        daysRemaining: diffDays,
+                        amount: div.rate,
+                        description: `Pagamento de ${div.type === 'DIVIDENDO' ? 'Dividendo' : 'JCP'}`
+                    });
+                    processedKeys.add(key);
+
+                    // Notificação do Sistema se for HOJE
+                    if (diffDays === 0 && "Notification" in window && Notification.permission === "granted") {
+                        new Notification("InvestFIIs: Pagamento Hoje!", {
+                            body: `${div.ticker} paga R$ ${div.rate.toFixed(2)} por cota hoje.`,
+                            icon: "/manifest-icon-192.maskable.png" // Assumindo icone padrão
+                        });
+                    }
+                }
+            }
+        }
+
+        // Verifica Data Com
+        if (div.dateCom) {
+            const comDate = new Date(div.dateCom + 'T12:00:00');
+            const diffTime = comDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays >= 0 && diffDays <= 3) {
+                const key = `COM-${div.ticker}-${div.dateCom}`;
+                if (!processedKeys.has(key)) {
+                    alerts.push({
+                        id: key,
+                        ticker: div.ticker,
+                        type: 'DATA_COM',
+                        date: div.dateCom,
+                        formattedDate: div.dateCom.split('-').reverse().join('/'),
+                        daysRemaining: diffDays,
+                        description: `Data Com (Corte)`
+                    });
+                    processedKeys.add(key);
+
+                    if (diffDays === 0 && "Notification" in window && Notification.permission === "granted") {
+                        new Notification("InvestFIIs: Data Com Hoje!", {
+                            body: `Hoje é a data limite para garantir proventos de ${div.ticker}.`
+                        });
+                    }
+                }
+            }
+        }
+    });
+
+    alerts.sort((a, b) => a.daysRemaining - b.daysRemaining);
+    setUpcomingEvents(alerts);
+
+  }, [geminiDividends]);
 
   const syncBrapiData = useCallback(async (force = false) => {
     if (!brapiToken || transactions.length === 0) return;
@@ -225,6 +326,8 @@ const App: React.FC = () => {
     }
   }, [transactions.length, handleAiSync]);
 
+  const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   if (isSplashActive) {
     return (
       <div className={`fixed inset-0 bg-[#020617] z-[300] flex flex-col items-center justify-center transition-opacity duration-500 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
@@ -287,7 +390,9 @@ const App: React.FC = () => {
         showBack={showSettings}
         onBack={() => setShowSettings(false)}
         onRefresh={handleFullRefresh} 
-        isRefreshing={isRefreshing || isAiLoading} 
+        isRefreshing={isRefreshing || isAiLoading}
+        onNotificationClick={() => setShowNotifications(true)}
+        notificationCount={upcomingEvents.length}
       />
       
       <main className="max-w-screen-md mx-auto min-h-[calc(100vh-160px)]">
@@ -320,6 +425,56 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
+      
+      {/* Notifications Modal */}
+      <SwipeableModal isOpen={showNotifications} onClose={() => setShowNotifications(false)}>
+        <div className="px-6 pt-2 pb-10">
+           <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-2xl font-black text-white tracking-tighter">Alertas</h3>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Eventos Próximos (7 Dias)</p>
+              </div>
+              <button onClick={() => setShowNotifications(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:scale-90 transition-all hover:bg-white/10">
+                <X className="w-5 h-5" />
+              </button>
+           </div>
+
+           <div className="space-y-3">
+             {upcomingEvents.length === 0 ? (
+               <div className="text-center py-24 opacity-50">
+                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Bell className="w-8 h-8 text-slate-600" />
+                  </div>
+                  <p className="text-slate-500 font-black text-[10px] uppercase tracking-widest">Sem alertas para esta semana</p>
+               </div>
+             ) : (
+               upcomingEvents.map((event) => (
+                 <div key={event.id} className="glass p-5 rounded-[2rem] flex items-center gap-4 border border-white/[0.04]">
+                   <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-xs font-black ring-1 ${event.type === 'PAYMENT' ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20' : 'bg-yellow-500/10 text-yellow-400 ring-yellow-500/20'}`}>
+                      {event.type === 'PAYMENT' ? <DollarSign className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
+                   </div>
+                   <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-black text-white text-base">{event.ticker}</h4>
+                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${event.daysRemaining === 0 ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/5 text-slate-400'}`}>
+                           {event.daysRemaining === 0 ? 'HOJE' : event.daysRemaining === 1 ? 'AMANHÃ' : `${event.daysRemaining} DIAS`}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-400 mt-0.5">{event.description}</p>
+                      {event.amount && (
+                         <div className="text-emerald-400 font-black text-sm tabular-nums mt-1">R$ {formatCurrency(event.amount)} / cota</div>
+                      )}
+                      <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">
+                         {event.formattedDate}
+                      </div>
+                   </div>
+                 </div>
+               ))
+             )}
+           </div>
+        </div>
+      </SwipeableModal>
+
       {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
     </div>
   );

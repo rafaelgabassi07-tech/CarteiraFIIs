@@ -172,7 +172,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                         <Building2 className="w-3 h-3" /> Ativos
                      </div>
                      <div className="text-xs font-bold text-white flex items-center gap-1">
-                        {assetCount} <span className="text-[8px] text-slate-500 font-normal">Papéis</span>
+                        {assetCount} <span className="text-[8px] text-slate-500 font-normal">Posições</span>
                      </div>
                 </div>
                  <div className="bg-white/[0.03] p-3 rounded-2xl border border-white/[0.05] flex flex-col justify-center backdrop-blur-sm">

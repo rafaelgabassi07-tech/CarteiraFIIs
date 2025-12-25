@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, TrendingUp } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, TrendingUp, Bell } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
@@ -10,6 +10,8 @@ interface HeaderProps {
   onBack?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  onNotificationClick?: () => void;
+  notificationCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -18,7 +20,9 @@ export const Header: React.FC<HeaderProps> = ({
   showBack, 
   onBack,
   onRefresh,
-  isRefreshing 
+  isRefreshing,
+  onNotificationClick,
+  notificationCount = 0
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -63,6 +67,18 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
       
       <div className="flex items-center gap-2">
+        {onNotificationClick && !showBack && (
+           <button
+             onClick={onNotificationClick}
+             className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white/[0.03] border border-white/[0.05] active:scale-90 transition-all text-slate-400 hover:text-white backdrop-blur-md relative"
+           >
+             <Bell className="w-5 h-5" />
+             {notificationCount > 0 && (
+               <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full animate-pulse shadow-[0_0_8px_#f43f5e]"></span>
+             )}
+           </button>
+        )}
+
         {onRefresh && !showBack && (
           <button
             onClick={onRefresh}
