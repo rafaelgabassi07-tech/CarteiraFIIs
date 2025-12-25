@@ -92,7 +92,13 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
       
       {/* Header Action */}
       <div className="flex justify-between items-center mb-6 sticky top-16 z-30 py-3 bg-primary/95 backdrop-blur-xl -mx-4 px-4 border-b border-white/5 shadow-sm transition-all animate-fade-in-up">
-        <h2 className="text-white font-bold text-lg tracking-tight">Histórico</h2>
+        <h2 className="text-white font-bold text-lg tracking-tight flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+            </span>
+            Histórico
+        </h2>
         <button 
           onClick={() => setShowForm(true)}
           className="bg-accent hover:bg-sky-400 text-slate-950 font-bold py-2.5 px-5 rounded-full flex items-center gap-2 text-xs transition-all shadow-lg shadow-accent/20 active:scale-95 hover:-translate-y-0.5"

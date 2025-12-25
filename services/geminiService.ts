@@ -1,26 +1,34 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { DividendReceipt } from "../types";
 
 // Inicializa o cliente Gemini
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export const fetchDividendsViaGemini = async (tickers: string[]): Promise<DividendReceipt[]> => {
-  if (!tickers.length) return [];
+export interface UnifiedMarketData {
+  prices: Record<string, number>;
+  dividends: DividendReceipt[];
+}
+
+/**
+ * Busca Preços e Dividendos em uma ÚNICA requisição ao Gemini.
+ * Utiliza Google Search para garantir dados em tempo real.
+ */
+export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
+  if (!tickers || tickers.length === 0) return { prices: {}, dividends: [] };
 
   const prompt = `
-    Atue como um analista de dados financeiros da B3 (Brasil).
+    Atue como um terminal financeiro de alta precisão para a B3 (Brasil).
+    PESQUISA NECESSÁRIA PARA OS ATIVOS: ${tickers.join(', ')}.
     
-    OBJETIVO:
-    Pesquise e liste os proventos (Dividendos, JCP, Rendimentos) PAGOS ou ANUNCIADOS (Data Com definida) nos últimos 24 meses para os ativos: ${tickers.join(', ')}.
+    TAREFAS EM UMA ÚNICA RESPOSTA:
+    1. Obtenha a COTAÇÃO ATUAL (último preço de fechamento ou tempo real) em Reais (BRL).
+    2. Liste os PROVENTOS (Dividendos/JCP) anunciados ou pagos nos últimos 12 meses.
     
-    REGRAS RÍGIDAS:
-    1. **Valor Unitário**: O campo 'rate' DEVE ser o valor pago por UMA ÚNICA COTA/AÇÃO (ex: 0.12). NUNCA retorne o montante total recebido pelo usuário.
-    2. **Datas**: Use formato ISO estrito (YYYY-MM-DD). Se não houver dia exato, use o último dia do mês provável.
-    3. **Precisão**: Use o Google Search para validar os dados em fontes como RI das empresas, ClubeFII ou StatusInvest.
-    4. **Omissão**: Se não encontrar dados confiáveis para um ativo, NÃO invente. Apenas omita do array.
-    
-    SAÍDA:
-    Apenas um JSON Array.
+    REGRAS:
+    - O campo 'rate' nos dividendos é o valor por CADA UMA ação/cota.
+    - Use Google Search para validar os preços e datas (RI das empresas, StatusInvest, B3).
+    - Formato de data: YYYY-MM-DD.
   `;
 
   try {
@@ -31,55 +39,76 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              ticker: { type: Type.STRING },
-              type: { type: Type.STRING, description: "Tipo: DIVIDENDO, JCP ou RENDIMENTO" },
-              dateCom: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
-              paymentDate: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
-              rate: { type: Type.NUMBER, description: "Valor unitário por cota (R$)" }
-            },
-            required: ["ticker", "dateCom", "rate"]
+          type: Type.OBJECT,
+          properties: {
+            assets: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  ticker: { type: Type.STRING },
+                  currentPrice: { type: Type.NUMBER, description: "Preço atual do ativo em R$" },
+                  dividends: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        type: { type: Type.STRING, description: "DIVIDENDO, JCP ou RENDIMENTO" },
+                        dateCom: { type: Type.STRING },
+                        paymentDate: { type: Type.STRING },
+                        rate: { type: Type.NUMBER }
+                      },
+                      required: ["dateCom", "rate"]
+                    }
+                  }
+                },
+                required: ["ticker", "currentPrice"]
+              }
+            }
           }
         }
       }
     });
 
-    let rawData = response.text || "";
+    const rawData = response.text || "{}";
+    const parsed = JSON.parse(rawData);
     
-    // LIMPEZA ROBUSTA: Remove markdown de código se existir
-    rawData = rawData.replace(/```json/g, '').replace(/```/g, '').trim();
+    const prices: Record<string, number> = {};
+    const allDividends: DividendReceipt[] = [];
 
-    const firstBracket = rawData.indexOf('[');
-    const lastBracket = rawData.lastIndexOf(']');
-    if (firstBracket !== -1 && lastBracket !== -1) {
-        rawData = rawData.substring(firstBracket, lastBracket + 1);
+    if (parsed.assets && Array.isArray(parsed.assets)) {
+      parsed.assets.forEach((asset: any) => {
+        const ticker = asset.ticker.toUpperCase();
+        prices[ticker] = asset.currentPrice;
+
+        if (asset.dividends && Array.isArray(asset.dividends)) {
+          asset.dividends.forEach((div: any) => {
+            allDividends.push({
+              id: `${ticker}-${div.dateCom}-${div.rate}-${Math.random().toString(36).substr(2, 5)}`,
+              ticker: ticker,
+              type: (div.type || 'PROVENTO').toUpperCase(),
+              dateCom: div.dateCom,
+              paymentDate: div.paymentDate || div.dateCom,
+              rate: Number(div.rate),
+              quantityOwned: 0,
+              totalReceived: 0
+            });
+          });
+        }
+      });
     }
 
-    if (!rawData) return [];
-
-    const parsedData = JSON.parse(rawData);
-    
-    return parsedData.map((item: any) => ({
-      id: `${item.ticker}-${item.dateCom}-${item.rate}-${Math.random().toString(36).substr(2, 5)}`,
-      ticker: item.ticker.toUpperCase(),
-      type: item.type ? item.type.toUpperCase() : 'PROVENTO',
-      dateCom: item.dateCom,
-      paymentDate: item.paymentDate || item.dateCom,
-      rate: Number(item.rate),
-      quantityOwned: 0, 
-      totalReceived: 0
-    }));
+    return { prices, dividends: allDividends };
 
   } catch (error: any) {
-    if (error?.message?.includes('429') || error?.status === 429 || error?.code === 429) {
-        console.warn("Gemini: Cota excedida (429).");
-        throw new Error("COTA_EXCEDIDA");
-    }
-
-    console.error("Erro crítico ao buscar dividendos via Gemini:", error);
-    return [];
+    console.error("Erro na requisição unificada Gemini:", error);
+    if (error?.status === 429) throw new Error("COTA_EXCEDIDA");
+    return { prices: {}, dividends: [] };
   }
+};
+
+// Mantemos a função antiga para compatibilidade se necessário, mas o App agora usará a Unified
+export const fetchDividendsViaGemini = async (tickers: string[]): Promise<DividendReceipt[]> => {
+  const data = await fetchUnifiedMarketData(tickers);
+  return data.dividends;
 };

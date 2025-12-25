@@ -34,7 +34,13 @@ export const Header: React.FC<HeaderProps> = ({
              <TrendingUp className="w-5 h-5 text-accent" />
           </div>
         )}
-        <h1 className="text-lg font-bold text-white tracking-tight">{title}</h1>
+        <h1 className="text-lg font-bold text-white tracking-tight flex items-center gap-2.5">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+          </span>
+          {title}
+        </h1>
       </div>
       
       <div className="flex items-center gap-1 animate-fade-in-up" style={{ animationDuration: '0.4s', animationDelay: '0.1s' }}>

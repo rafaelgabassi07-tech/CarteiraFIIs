@@ -2,7 +2,7 @@ import { BrapiResponse, BrapiQuote } from '../types';
 
 const BASE_URL = 'https://brapi.dev/api';
 const CACHE_KEY = 'investfiis_quotes_simple_cache';
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos de cache para economizar requisições
+const CACHE_DURATION = 10 * 60 * 1000; // Aumentado para 10 minutos para evitar rate limit e economizar dados
 
 interface CacheItem {
   data: BrapiQuote;

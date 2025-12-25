@@ -82,8 +82,11 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
       {/* Patrimônio */}
       <div className="animate-fade-in-up">
         <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-black p-6 rounded-3xl border border-white/10 shadow-2xl">
-            <h2 className="text-slate-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+            <h2 className="text-slate-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 mb-2">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-accent"></span>
+                </span>
                 Patrimônio Total
             </h2>
             <div className="text-4xl font-bold text-white mb-8 tabular-nums tracking-tight">
