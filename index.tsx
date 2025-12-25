@@ -10,29 +10,20 @@ if (!rootElement) {
 
 /**
  * Registro do Service Worker com detecção de atualização.
- * Otimizado para funcionar em ambientes de preview e produção sem erros de origem.
+ * Simplificado para usar caminhos relativos, garantindo compatibilidade com proxies e previews.
  */
 const initServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
     try {
-      // Determinamos o caminho base dinamicamente para suportar subpastas e proxies
-      const currentPath = window.location.pathname;
-      const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
-      
-      // Construímos a URL absoluta para o sw.js garantindo que a origem seja identica
-      // à da página atual, evitando o erro "The origin of the provided scriptURL does not match".
-      const swUrl = new URL('sw.js', window.location.origin + basePath).href;
-
-      const registration = await navigator.serviceWorker.register(swUrl, {
-        scope: basePath
-      });
+      // Usar './sw.js' resolve o arquivo em relação ao local do index.html atual
+      // O navegador cuida automaticamente de validar a origem.
+      const registration = await navigator.serviceWorker.register('./sw.js');
 
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // Dispara evento customizado para o App.tsx mostrar o banner de atualização
               console.log('Nova versão do InvestFIIs disponível.');
               window.dispatchEvent(new CustomEvent('sw-update-available', { detail: registration }));
             }
@@ -40,8 +31,8 @@ const initServiceWorker = async () => {
         }
       });
     } catch (error) {
-      // Falha silenciosa: útil em ambientes de dev local ou sandboxes que bloqueiam SWs
-      console.warn('Aviso: Service Worker não registrado (esperado em alguns ambientes de preview):', error);
+      // Falha silenciosa em ambientes que não suportam SW (como iframes de preview restritos)
+      console.debug('Service Worker não suportado ou bloqueado pelo ambiente:', error);
     }
   }
 };

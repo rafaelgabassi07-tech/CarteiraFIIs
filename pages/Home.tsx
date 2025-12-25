@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, Calendar, X, ArrowUpRight, ReceiptText, Trophy, Building2, Briefcase, FilterX, Info } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, Calendar, X, ArrowUpRight, ReceiptText, Trophy, Building2, Briefcase, FilterX, Info, ExternalLink } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface HomeProps {
@@ -9,9 +9,10 @@ interface HomeProps {
   dividendReceipts: DividendReceipt[];
   onAiSync?: () => void;
   isAiLoading?: boolean;
+  sources?: { web: { uri: string; title: string } }[];
 }
 
-export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSync, isAiLoading }) => {
+export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSync, isAiLoading, sources = [] }) => {
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [proventosTab, setProventosTab] = useState<'statement' | 'ranking'>('statement');
   const [filterClass, setFilterClass] = useState<AssetType | null>(null);
@@ -188,6 +189,29 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                     </div>
                 </div>
             </div>
+        </div>
+      )}
+
+      {/* Search Grounding Sources Compliance */}
+      {sources.length > 0 && (
+        <div className="animate-fade-in-up space-y-3" style={{ animationDelay: '300ms' }}>
+          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
+             <Info className="w-3.5 h-3.5" /> Fontes Web de Mercado
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {sources.map((source, idx) => (
+              <a 
+                key={idx} 
+                href={source.web.uri} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="glass py-2 px-4 rounded-xl text-[10px] font-bold text-slate-400 hover:text-accent border border-white/5 hover:border-accent/30 transition-all flex items-center gap-2 bg-white/[0.02]"
+              >
+                <ExternalLink className="w-3 h-3" />
+                {source.web.title || 'Referência'}
+              </a>
+            ))}
+          </div>
         </div>
       )}
 

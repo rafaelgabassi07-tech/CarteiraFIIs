@@ -65,7 +65,8 @@ const saveToCache = (tickers: string[], data: UnifiedMarketData) => {
 };
 
 /**
- * Executa uma pesquisa profunda na B3 via Gemini 3 Flash com cache integrado.
+ * Executa uma pesquisa profunda na B3 via Gemini 3 Pro com cache integrado.
+ * Usando gemini-3-pro-preview para tarefas complexas de análise financeira.
  */
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { prices: {}, dividends: [], metadata: {} };
@@ -108,7 +109,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -149,11 +150,14 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
     const textOutput = response.text || "";
     const parsed = cleanAndParseJSON(textOutput);
+    
+    // Improved grounding chunks extraction for Search Grounding compliance
+    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[];
     const result: UnifiedMarketData = { 
         prices: {}, 
         dividends: [], 
         metadata: {},
-        sources: (response.candidates?.[0]?.groundingMetadata?.groundingChunks as any) || []
+        sources: groundingChunks?.filter(chunk => chunk.web) || []
     };
 
     if (parsed?.assets) {

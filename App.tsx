@@ -31,6 +31,7 @@ const App: React.FC = () => {
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
   const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => 
     JSON.parse(localStorage.getItem(STORAGE_KEYS.DIVS) || '[]'));
+  const [sources, setSources] = useState<{ web: { uri: string; title: string } }[]>([]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -128,8 +129,8 @@ const App: React.FC = () => {
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
   const handleAiSync = useCallback(async (force = false) => {
-    // Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' inference issues
-    const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))).sort();
+    // FIX line 132: Added <string> generic to Set to resolve 'unknown[]' to 'string[]' assignment error.
+    const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
     
     const tickersStr = uniqueTickers.join(',');
@@ -137,7 +138,6 @@ const App: React.FC = () => {
     // Evita sync desnecessário se nada mudou e não for forçado
     if (!force) {
       const lastSync = localStorage.getItem(STORAGE_KEYS.SYNC);
-      // Ensure lastSync is not null and is parsed with radix before arithmetic operations to satisfy TS
       const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 30; // 30 min
       if (isRecent && lastSyncTickersRef.current === tickersStr) return;
     }
@@ -157,6 +157,10 @@ const App: React.FC = () => {
         merged.forEach(d => unique.set(d.id, d));
         return Array.from(unique.values());
       });
+      // Added search grounding sources update for compliance
+      if (data.sources) {
+        setSources(data.sources);
+      }
       
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       lastSyncTickersRef.current = tickersStr;
@@ -259,7 +263,14 @@ const App: React.FC = () => {
           />
         ) : (
           <div key={currentTab} className="animate-fade-in">
-            {currentTab === 'home' && <Home portfolio={portfolio} dividendReceipts={dividendReceipts} />}
+            {currentTab === 'home' && (
+              <Home 
+                portfolio={portfolio} 
+                dividendReceipts={dividendReceipts} 
+                isAiLoading={isAiLoading} 
+                sources={sources}
+              />
+            )}
             {currentTab === 'portfolio' && <Portfolio portfolio={portfolio} dividendReceipts={dividendReceipts} />}
             {currentTab === 'transactions' && (
               <Transactions 
