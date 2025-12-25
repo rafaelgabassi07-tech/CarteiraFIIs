@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Copy } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight } from 'lucide-react';
 import { Transaction } from '../types';
 
 interface SettingsProps {
@@ -67,8 +67,7 @@ export const Settings: React.FC<SettingsProps> = ({
       }
     };
     reader.readAsText(file);
-    // Reset value
-    event.target.value = '';
+    event.target.value = ''; // Reset input
   };
 
   const handleReset = () => {
@@ -78,7 +77,7 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   return (
-    <div className="pb-28 pt-6 px-4 max-w-lg mx-auto animate-slide-in-right space-y-6">
+    <div className="pb-28 pt-6 px-4 max-w-2xl mx-auto space-y-8 animate-fade-in">
       
       {/* Toast Notification */}
       <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[70] transition-all duration-300 transform backdrop-blur-md ring-1 ring-white/10 ${message ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} ${message?.type === 'success' ? 'bg-emerald-500/90 text-white shadow-emerald-500/20' : 'bg-rose-500/90 text-white shadow-rose-500/20'}`}>
@@ -86,111 +85,137 @@ export const Settings: React.FC<SettingsProps> = ({
         <span className="text-sm font-bold">{message?.text}</span>
       </div>
 
-      {/* API Config */}
-      <div className="bg-secondary/40 backdrop-blur-md rounded-3xl p-6 border border-white/5 shadow-xl animate-fade-in-up" style={{ animationDelay: '0ms' }}>
-        <h3 className="text-lg font-bold text-white mb-5 flex items-center gap-3">
-          <div className="p-2.5 bg-accent/10 rounded-xl">
-             <ExternalLink className="w-5 h-5 text-accent" />
-          </div>
-          Conexão Brapi
-        </h3>
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Token de Acesso</label>
-            <div className="relative">
-                <input 
-                type="text" 
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Cole seu token aqui"
-                className="w-full bg-slate-950 text-white rounded-xl p-4 border border-white/5 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-mono text-sm shadow-inner"
-                />
-            </div>
+      {/* --- SEÇÃO 1: INTEGRAÇÕES --- */}
+      <section className="space-y-4 animate-fade-in-up" style={{ animationDelay: '0ms' }}>
+        <div className="flex items-center gap-2 px-1">
+          <Globe className="w-4 h-4 text-accent" />
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Fonte de Dados</h2>
+        </div>
+        
+        <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/5 overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-white/5">
+            <h3 className="text-lg font-bold text-white mb-1">API Brapi</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">Conecte-se para obter cotações e dividendos em tempo real.</p>
           </div>
           
-          <div className="flex justify-between items-center pt-2">
-              <a 
-              href="https://brapi.dev/dashboard" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-xs text-accent hover:text-white underline underline-offset-4 transition-colors font-medium"
-              >
-              Obter token gratuito
-              </a>
-              <button 
-              onClick={handleSaveToken}
-              className="bg-accent text-slate-950 hover:bg-sky-400 px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-accent/20 hover:-translate-y-0.5"
-              >
-              <Save className="w-4 h-4" /> Salvar
-              </button>
+          <div className="p-6 bg-slate-950/30 space-y-4">
+             <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Token de Acesso</label>
+                <div className="relative group">
+                    <input 
+                    type="text" 
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder="Cole seu token aqui"
+                    className="w-full bg-slate-900 text-white rounded-xl py-3 px-4 border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-mono text-sm shadow-inner group-hover:border-white/20"
+                    />
+                    {token && <div className="absolute right-3 top-3 text-emerald-500"><CheckCircle2 className="w-4 h-4" /></div>}
+                </div>
+             </div>
+             
+             <div className="flex justify-between items-center pt-2">
+                <a 
+                href="https://brapi.dev/dashboard" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-accent hover:text-white transition-colors font-medium group"
+                >
+                Obter token gratuito <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                </a>
+                <button 
+                onClick={handleSaveToken}
+                className="bg-white/10 hover:bg-white/20 text-white px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all active:scale-95 border border-white/5"
+                >
+                <Save className="w-4 h-4" /> Salvar
+                </button>
+             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Data Management */}
-      <div className="bg-secondary/40 backdrop-blur-md rounded-3xl p-6 border border-white/5 shadow-xl animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-        <h3 className="text-lg font-bold text-white mb-5 flex items-center gap-3">
-          <div className="p-2.5 bg-purple-500/10 rounded-xl">
-             <Save className="w-5 h-5 text-purple-400" />
-          </div>
-          Backup & Dados
-        </h3>
+      {/* --- SEÇÃO 2: DADOS --- */}
+      <section className="space-y-4 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+        <div className="flex items-center gap-2 px-1">
+          <Database className="w-4 h-4 text-purple-400" />
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Gerenciamento</h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Exportar */}
+            <button 
+                onClick={handleExport}
+                className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/5 hover:bg-secondary/60 transition-all text-left group relative overflow-hidden active:scale-[0.98]"
+            >
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Download className="w-16 h-16 text-blue-400" />
+                </div>
+                <div className="p-2 bg-blue-500/10 w-fit rounded-xl text-blue-400 mb-3 group-hover:bg-blue-500/20 transition-colors">
+                    <Download className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-bold text-white mb-1">Backup</h3>
+                <p className="text-xs text-slate-400 font-medium">Exportar dados JSON</p>
+                <div className="mt-4 flex items-center text-[10px] text-blue-400 font-bold uppercase tracking-wide gap-1">
+                   Fazer Download <ChevronRight className="w-3 h-3" />
+                </div>
+            </button>
+
+            {/* Importar */}
+            <button 
+                onClick={handleImportClick}
+                className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/5 hover:bg-secondary/60 transition-all text-left group relative overflow-hidden active:scale-[0.98]"
+            >
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Upload className="w-16 h-16 text-emerald-400" />
+                </div>
+                <div className="p-2 bg-emerald-500/10 w-fit rounded-xl text-emerald-400 mb-3 group-hover:bg-emerald-500/20 transition-colors">
+                    <Upload className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-bold text-white mb-1">Restaurar</h3>
+                <p className="text-xs text-slate-400 font-medium">Importar dados JSON</p>
+                 <div className="mt-4 flex items-center text-[10px] text-emerald-400 font-bold uppercase tracking-wide gap-1">
+                   Selecionar Arquivo <ChevronRight className="w-3 h-3" />
+                </div>
+                <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept=".json"
+                    className="hidden" 
+                />
+            </button>
+        </div>
+      </section>
+
+      {/* --- SEÇÃO 3: ZONA DE PERIGO --- */}
+      <section className="space-y-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+        <div className="flex items-center gap-2 px-1">
+          <ShieldAlert className="w-4 h-4 text-rose-500" />
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sistema</h2>
+        </div>
         
-        <div className="grid grid-cols-2 gap-4">
-          <button 
-            onClick={handleExport}
-            className="flex flex-col items-center justify-center gap-3 bg-slate-950 hover:bg-slate-900 border border-white/5 p-5 rounded-2xl transition-all group active:scale-[0.98] hover:border-blue-500/30 shadow-sm hover:shadow-lg"
-          >
-            <div className="p-3 bg-blue-500/10 rounded-full text-blue-400 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all shadow-[0_0_10px_rgba(59,130,246,0.2)]">
-              <Download className="w-6 h-6" />
+        <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500/50"></div>
+            <div>
+                <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+                    Resetar Aplicativo
+                </h3>
+                <p className="text-xs text-slate-400 max-w-xs">
+                    Remove todos os dados, transações e configurações locais permanentemente.
+                </p>
             </div>
-            <div className="text-center">
-              <div className="font-bold text-sm text-slate-200">Exportar</div>
-              <div className="text-[10px] text-slate-500 font-medium">Salvar Backup</div>
-            </div>
-          </button>
-
-          <button 
-            onClick={handleImportClick}
-            className="flex flex-col items-center justify-center gap-3 bg-slate-950 hover:bg-slate-900 border border-white/5 p-5 rounded-2xl transition-all group active:scale-[0.98] hover:border-emerald-500/30 shadow-sm hover:shadow-lg"
-          >
-            <div className="p-3 bg-emerald-500/10 rounded-full text-emerald-400 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-              <Upload className="w-6 h-6" />
-            </div>
-            <div className="text-center">
-              <div className="font-bold text-sm text-slate-200">Importar</div>
-              <div className="text-[10px] text-slate-500 font-medium">Restaurar JSON</div>
-            </div>
-            <input 
-              type="file" 
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".json"
-              className="hidden" 
-            />
-          </button>
+            <button 
+                onClick={handleReset}
+                className="whitespace-nowrap bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 font-bold py-2.5 px-5 rounded-xl transition-all active:scale-[0.98] flex items-center gap-2 hover:shadow-lg hover:shadow-rose-500/5 text-xs"
+            >
+                <Trash2 className="w-4 h-4" /> Apagar Tudo
+            </button>
         </div>
-      </div>
+      </section>
 
-      {/* Danger Zone */}
-      <div className="rounded-3xl p-6 border border-rose-500/10 bg-rose-500/5 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-        <h3 className="text-lg font-bold text-rose-400 mb-2 flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5" /> Zona de Perigo
-        </h3>
-        <p className="text-xs text-rose-300/60 mb-5 leading-relaxed">
-            Esta ação removerá permanentemente todos os dados armazenados no navegador. Certifique-se de ter um backup.
-        </p>
-        <button 
-          onClick={handleReset}
-          className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold py-3.5 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-rose-500/5"
-        >
-          <Trash2 className="w-4 h-4" /> Resetar Aplicativo
-        </button>
-      </div>
-
-      <div className="text-center pb-4 animate-fade-in" style={{ animationDelay: '300ms' }}>
-         <span className="text-[10px] font-medium text-slate-600 bg-slate-900/50 px-3 py-1 rounded-full border border-white/5">
-            InvestFIIs v1.2.0 • Premium
+      {/* Rodapé */}
+      <div className="text-center pt-8 pb-4 animate-fade-in opacity-50 hover:opacity-100 transition-opacity">
+         <span className="text-[10px] font-mono text-slate-600">
+            InvestFIIs v1.3.0
          </span>
       </div>
     </div>
