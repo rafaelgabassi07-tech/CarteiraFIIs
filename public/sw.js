@@ -1,11 +1,11 @@
 
-const CACHE_NAME = 'investfiis-v7';
+const CACHE_NAME = 'investfiis-v8';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
+  './manifest.json'
+  // URLs externos removidos para evitar erros de CORS (Failed to fetch)
+  // O navegador gerenciará o cache HTTP desses recursos automaticamente
 ];
 
 self.addEventListener('install', (event) => {
@@ -15,8 +15,6 @@ self.addEventListener('install', (event) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  // REMOVIDO: self.skipWaiting() automático. 
-  // Isso permite que a atualização fique "pendente" para o usuário aprovar no banner.
 });
 
 self.addEventListener('activate', (event) => {
@@ -61,13 +59,17 @@ self.addEventListener('fetch', (event) => {
       if (cachedResponse) return cachedResponse;
       
       return fetch(request).then((networkResponse) => {
+        // Verifica se a resposta é válida
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
           return networkResponse;
         }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, responseToCache);
-        });
+        // Cacheia apenas assets locais para evitar problemas com opaque responses de terceiros
+        if (url.origin === self.location.origin) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, responseToCache);
+            });
+        }
         return networkResponse;
       });
     })

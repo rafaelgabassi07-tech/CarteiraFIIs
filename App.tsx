@@ -43,6 +43,27 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Monitora controllerchange para recarregar a página suavemente após update do SW
+  useEffect(() => {
+    let refreshing = false;
+    const handleControllerChange = () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    };
+    
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+    }
+    
+    return () => {
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const handleUpdate = (e: any) => setUpdateRegistration(e.detail);
     window.addEventListener('sw-update-available', handleUpdate);
@@ -51,8 +72,8 @@ const App: React.FC = () => {
 
   const handleApplyUpdate = () => {
     if (updateRegistration?.waiting) {
+      // Envia mensagem para pular espera. O reload acontecerá via evento 'controllerchange'
       updateRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      window.location.reload();
     }
   };
 
