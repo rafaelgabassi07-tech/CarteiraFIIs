@@ -8,7 +8,7 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, TrendingUp, Sparkles, RefreshCw } from 'lucide-react';
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_transactions',
@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', text: string} | null>(null);
+  const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [isSplashActive, setIsSplashActive] = useState(true);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => 
@@ -40,6 +41,20 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Listener para atualizações do Service Worker
+  useEffect(() => {
+    const handleUpdate = (e: any) => setUpdateRegistration(e.detail);
+    window.addEventListener('sw-update-available', handleUpdate);
+    return () => window.removeEventListener('sw-update-available', handleUpdate);
+  }, []);
+
+  const handleApplyUpdate = () => {
+    if (updateRegistration?.waiting) {
+      updateRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      window.location.reload();
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions));
     localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken);
@@ -58,11 +73,9 @@ const App: React.FC = () => {
       .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
   }, []);
 
-  // MOTOR DE CÁLCULO: Transforma transações e dados externos em patrimônio e histórico de rendimentos
   const { portfolio, dividendReceipts } = useMemo(() => {
     const positions: Record<string, AssetPosition> = {};
     
-    // 1. Calcula posições atuais e Preço Médio
     transactions.forEach(t => {
       const ticker = t.ticker.toUpperCase();
       if (!positions[ticker]) {
@@ -78,7 +91,6 @@ const App: React.FC = () => {
       }
     });
 
-    // 2. Processa dividendos vindos do Gemini contra o histórico de transações
     const uniqueGeminiDivs: DividendReceipt[] = Array.from(
       new Map<string, DividendReceipt>(geminiDividends.map(d => [d.id, d])).values()
     );
@@ -95,7 +107,6 @@ const App: React.FC = () => {
       return { ...div, quantityOwned: qtyAtDate, totalReceived: total, assetType };
     }).filter(r => r.totalReceived > 0);
 
-    // Ordenação cronológica inversa (mais recentes primeiro)
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
     const finalPortfolio = Object.values(positions)
@@ -115,20 +126,18 @@ const App: React.FC = () => {
     
     if (!force) {
       const last = localStorage.getItem(STORAGE_KEYS.SYNC);
-      if (last && Date.now() - parseInt(last) < 1000 * 60 * 60 * 2) return; // Sync auto a cada 2h
+      if (last && Date.now() - parseInt(last) < 1000 * 60 * 60 * 2) return;
     }
 
     setIsAiLoading(true);
     try {
       const data = await fetchUnifiedMarketData(tickers);
-      
       const aiQuotes: Record<string, BrapiQuote> = {};
       Object.entries(data.prices).forEach(([symbol, price]) => {
         aiQuotes[symbol] = { symbol, regularMarketPrice: price } as BrapiQuote;
       });
       setQuotes(prev => ({ ...prev, ...aiQuotes }));
       setGeminiDividends(data.dividends);
-      
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       if (force) showToast('success', 'Sincronizado com Gemini 3 Flash');
     } catch (e: any) {
@@ -142,7 +151,6 @@ const App: React.FC = () => {
     if (isRefreshing || isAiLoading) return;
     setIsRefreshing(true);
     const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
-    
     try {
       if (brapiToken) {
         const brQuotes = await getQuotes(tickers, brapiToken);
@@ -183,6 +191,22 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-primary text-gray-100 font-sans selection:bg-accent/30 overflow-x-hidden">
+      {/* Notificação de Atualização do App */}
+      {updateRegistration && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 bg-accent text-primary rounded-2xl flex items-center justify-between gap-3 shadow-[0_0_40px_rgba(56,189,248,0.4)] z-[100] animate-fade-in-up border border-white/20">
+          <div className="flex items-center gap-3">
+            <RefreshCw className="w-5 h-5 animate-spin-slow" />
+            <span className="text-xs font-black uppercase tracking-tight">Nova versão disponível!</span>
+          </div>
+          <button 
+            onClick={handleApplyUpdate}
+            className="bg-primary text-accent px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
+          >
+            Atualizar
+          </button>
+        </div>
+      )}
+
       {toast && (
         <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[80] transition-all duration-300 transform animate-fade-in-up backdrop-blur-xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90' : 'bg-rose-500/90'}`}>
           {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}

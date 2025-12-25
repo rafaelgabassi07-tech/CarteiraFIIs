@@ -1,8 +1,8 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, ChevronDown, ChevronUp, Calendar, Sparkles, Loader2, X, Layers, LayoutGrid, ArrowUpRight, List, BarChart3, ReceiptText, Trophy, Building2, Briefcase } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, Calendar, X, ArrowUpRight, ReceiptText, Trophy, Building2, Briefcase, FilterX } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -14,6 +14,7 @@ interface HomeProps {
 export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSync, isAiLoading }) => {
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [proventosTab, setProventosTab] = useState<'statement' | 'ranking'>('statement');
+  const [filterClass, setFilterClass] = useState<AssetType | null>(null);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [allocationTab, setAllocationTab] = useState<'asset' | 'type'>('asset');
 
@@ -62,16 +63,20 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
       .sort((a, b) => b.total - a.total);
   }, [dividendReceipts]);
 
+  const filteredReceipts = useMemo(() => {
+    return filterClass ? dividendReceipts.filter(r => r.assetType === filterClass) : dividendReceipts;
+  }, [dividendReceipts, filterClass]);
+
   const groupedReceipts = useMemo(() => {
     const groups: Record<string, DividendReceipt[]> = {};
-    dividendReceipts.forEach(r => {
+    filteredReceipts.forEach(r => {
       const d = new Date(r.paymentDate + 'T12:00:00');
       const month = d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
       if (!groups[month]) groups[month] = [];
       groups[month].push(r);
     });
     return groups;
-  }, [dividendReceipts]);
+  }, [filteredReceipts]);
 
   const COLORS = ['#38bdf8', '#10b981', '#f472b6', '#a78bfa', '#fbbf24', '#f87171'];
   const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -184,29 +189,40 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
             <div className="px-7 pb-4 flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-2xl font-black text-white">Extrato Detalhado</h3>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Fluxo de Caixa Acumulado</p>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                  {filterClass ? `Exibindo apenas ${filterClass === AssetType.FII ? 'FIIs' : 'Ações'}` : 'Fluxo de Caixa Acumulado'}
+                </p>
               </div>
               <button onClick={() => setShowProventosModal(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400 active:scale-95 transition-all">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Resumo por Classe dentro do Modal */}
+            {/* Resumo por Classe dentro do Modal - Filtros Interativos */}
             <div className="px-7 py-4 grid grid-cols-2 gap-4 shrink-0">
-              <div className="bg-accent/5 border border-accent/20 rounded-3xl p-4">
-                <div className="flex items-center gap-2 text-accent mb-1">
+              <button 
+                onClick={() => setFilterClass(filterClass === AssetType.FII ? null : AssetType.FII)}
+                className={`text-left rounded-3xl p-4 border transition-all relative overflow-hidden ${filterClass === AssetType.FII ? 'bg-accent border-accent' : 'bg-accent/5 border-accent/20'}`}
+              >
+                <div className={`flex items-center gap-2 mb-1 ${filterClass === AssetType.FII ? 'text-primary' : 'text-accent'}`}>
                   <Building2 className="w-4 h-4" />
-                  <span className="text-[10px] font-black uppercase tracking-wider">Total FIIs</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider">FIIs</span>
                 </div>
-                <div className="text-lg font-black text-white tabular-nums">R$ {formatCurrency(totalFiisDiv)}</div>
-              </div>
-              <div className="bg-purple-500/5 border border-purple-500/20 rounded-3xl p-4">
-                <div className="flex items-center gap-2 text-purple-400 mb-1">
+                <div className={`text-lg font-black tabular-nums ${filterClass === AssetType.FII ? 'text-primary' : 'text-white'}`}>R$ {formatCurrency(totalFiisDiv)}</div>
+                {filterClass === AssetType.FII && <FilterX className="absolute bottom-2 right-2 w-3 h-3 text-primary opacity-50" />}
+              </button>
+
+              <button 
+                onClick={() => setFilterClass(filterClass === AssetType.STOCK ? null : AssetType.STOCK)}
+                className={`text-left rounded-3xl p-4 border transition-all relative overflow-hidden ${filterClass === AssetType.STOCK ? 'bg-purple-500 border-purple-500' : 'bg-purple-500/5 border-purple-500/20'}`}
+              >
+                <div className={`flex items-center gap-2 mb-1 ${filterClass === AssetType.STOCK ? 'text-primary' : 'text-purple-400'}`}>
                   <Briefcase className="w-4 h-4" />
-                  <span className="text-[10px] font-black uppercase tracking-wider">Total Ações</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider">Ações</span>
                 </div>
-                <div className="text-lg font-black text-white tabular-nums">R$ {formatCurrency(totalStocksDiv)}</div>
-              </div>
+                <div className={`text-lg font-black tabular-nums ${filterClass === AssetType.STOCK ? 'text-primary' : 'text-white'}`}>R$ {formatCurrency(totalStocksDiv)}</div>
+                {filterClass === AssetType.STOCK && <FilterX className="absolute bottom-2 right-2 w-3 h-3 text-primary opacity-50" />}
+              </button>
             </div>
             
             <div className="px-7 py-4 grid grid-cols-2 gap-3 shrink-0">
@@ -225,11 +241,11 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
             </div>
 
             <div className="flex-1 overflow-y-auto px-7 pb-12 space-y-8 no-scrollbar">
-                {dividendReceipts.length === 0 ? (
-                    <div className="py-20 text-center text-slate-500 italic text-sm">Nenhum registro encontrado</div>
+                {filteredReceipts.length === 0 ? (
+                    <div className="py-20 text-center text-slate-500 italic text-sm">Nenhum registro encontrado nesta classe</div>
                 ) : (
                     proventosTab === 'statement' ? (
-                        (Object.entries(groupedReceipts) as [string, DividendReceipt[]][]).map(([month, receipts], gIdx) => (
+                        (Object.entries(groupedReceipts) as [string, DividendReceipt[]][]).map(([month, receipts]) => (
                           <div key={month} className="space-y-4">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
                               <Calendar className="w-3.5 h-3.5" /> {month}
@@ -239,8 +255,11 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                                 const isJcp = receipt.type.toUpperCase().includes('JCP');
                                 const isFii = receipt.assetType === AssetType.FII;
                                 return (
-                                  <div key={receipt.id} className="flex items-center justify-between p-4 glass rounded-[2rem] group animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
-                                      <div className="flex items-center gap-4">
+                                  <div key={receipt.id} className="relative flex items-center justify-between p-4 glass rounded-[2rem] group animate-fade-in-up overflow-hidden" style={{ animationDelay: `${idx * 40}ms` }}>
+                                      {/* Indicador lateral discreto */}
+                                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${isFii ? 'bg-accent' : 'bg-purple-500'}`} />
+                                      
+                                      <div className="flex items-center gap-4 pl-1">
                                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${isFii ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-purple-500/10 border-purple-500/20 text-purple-400'}`}>
                                             {isFii ? <Building2 className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
                                           </div>
@@ -269,14 +288,19 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                     ) : (
                         <div className="space-y-6 pt-2">
                           {dividendRanking.map((item, idx) => {
-                              const percent = (item.total / totalDividends) * 100;
+                              const percent = (item.total / (totalDividends || 1)) * 100;
                               const isFii = item.type === AssetType.FII;
                               return (
                                   <div key={idx} className="space-y-2 animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
                                       <div className="flex justify-between items-baseline px-1">
                                           <div className="flex items-center gap-3">
                                             <span className="text-[10px] font-black text-slate-600">{idx + 1}</span>
-                                            <span className={`text-sm font-black ${isFii ? 'text-accent' : 'text-purple-400'}`}>{item.ticker}</span>
+                                            <div className="flex items-center gap-2">
+                                              <span className={`text-sm font-black ${isFii ? 'text-accent' : 'text-purple-400'}`}>{item.ticker}</span>
+                                              <span className={`text-[7px] font-bold px-1 rounded-sm ${isFii ? 'bg-accent/10 text-accent' : 'bg-purple-500/10 text-purple-400'}`}>
+                                                {isFii ? 'FII' : 'AÇÃO'}
+                                              </span>
+                                            </div>
                                           </div>
                                           <div className="text-right">
                                             <div className="text-sm font-black text-white">R$ {formatCurrency(item.total)}</div>
@@ -329,7 +353,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
 
             <div className="flex-1 overflow-y-auto px-7 pb-12 space-y-4 no-scrollbar">
                 {(allocationTab === 'asset' ? dataByAsset : dataByType).map((entry, index) => {
-                    const percentage = (entry.value / currentBalance) * 100;
+                    const percentage = (entry.value / (currentBalance || 1)) * 100;
                     return (
                         <div key={index} className="flex items-center justify-between p-4 glass rounded-3xl animate-fade-in-up" style={{ animationDelay: `${index * 40}ms` }}>
                             <div className="flex items-center gap-4">
