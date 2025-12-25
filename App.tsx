@@ -180,6 +180,11 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateTransaction = useCallback((id: string, updatedT: Omit<Transaction, 'id'>) => {
+    setTransactions(prev => prev.map(t => t.id === id ? { ...updatedT, id } : t));
+    showToast('success', 'Transação atualizada!');
+  }, [showToast]);
+
   useEffect(() => {
     if (!autoSyncRef.current && transactions.length > 0) {
       autoSyncRef.current = true;
@@ -252,6 +257,7 @@ const App: React.FC = () => {
               <Transactions 
                 transactions={transactions} 
                 onAddTransaction={(t) => setTransactions(p => [...p, { ...t, id: crypto.randomUUID() }])} 
+                onUpdateTransaction={handleUpdateTransaction}
                 onDeleteTransaction={(id) => setTransactions(p => p.filter(x => x.id !== id))}
               />
             )}
