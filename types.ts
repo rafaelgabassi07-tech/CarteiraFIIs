@@ -24,6 +24,17 @@ export interface AssetPosition {
 }
 
 // Brapi API Types
+export interface Dividend {
+  assetIssued: string;
+  paymentDate: string;
+  rate: number;
+  relatedTo: string;
+  approvedOn: string;
+  lastDatePrior: string; // Data Com
+  label: string;
+  type: string; // "DIVIDEND" or "JCP"
+}
+
 export interface BrapiQuote {
   symbol: string;
   shortName: string;
@@ -47,6 +58,9 @@ export interface BrapiQuote {
   priceEarnings: number;
   earningsPerShare: number;
   logourl: string;
+  dividendsData?: {
+    cashDividends: Dividend[];
+  };
 }
 
 export interface BrapiResponse {

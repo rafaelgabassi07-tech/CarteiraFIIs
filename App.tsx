@@ -23,7 +23,8 @@ const App: React.FC = () => {
   });
   
   const [brapiToken, setBrapiToken] = useState(() => {
-    return localStorage.getItem(BRAPI_TOKEN_KEY) || '';
+    // Priority: LocalStorage > Environment Variable > Empty
+    return localStorage.getItem(BRAPI_TOKEN_KEY) || process.env.BRAPI_TOKEN || '';
   });
 
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
@@ -38,10 +39,28 @@ const App: React.FC = () => {
     localStorage.setItem(BRAPI_TOKEN_KEY, brapiToken);
   }, [brapiToken]);
 
-  // Calculate Portfolio Position
+  // Helper: Calculate quantity of an asset on a specific date (Data Com)
+  const getQuantityOnDate = (ticker: string, targetDateStr: string, transactionList: Transaction[]) => {
+    // Format comparison: ISO string "YYYY-MM-DD" works for lexical comparison
+    // We assume transactions are stored as YYYY-MM-DD
+    
+    // Normalize target date to just YYYY-MM-DD to be safe
+    const targetDate = targetDateStr.split('T')[0];
+
+    return transactionList
+      .filter(t => t.ticker === ticker && t.date <= targetDate)
+      .reduce((acc, t) => {
+        if (t.type === 'BUY') return acc + t.quantity;
+        if (t.type === 'SELL') return acc - t.quantity;
+        return acc;
+      }, 0);
+  };
+
+  // Calculate Portfolio Position & Dividends
   const portfolio = useMemo(() => {
     const pos: Record<string, AssetPosition> = {};
 
+    // 1. Build base positions from transactions
     transactions.forEach(t => {
       if (!pos[t.ticker]) {
         pos[t.ticker] = {
@@ -65,9 +84,33 @@ const App: React.FC = () => {
       }
     });
 
-    // Convert to array, filter zero positions, and add current quotes
+    // 2. Calculate Dividends based on "Data Com" (lastDatePrior) logic
+    Object.keys(pos).forEach(ticker => {
+        const quote = quotes[ticker];
+        const cashDividends = quote?.dividendsData?.cashDividends;
+
+        if (cashDividends && Array.isArray(cashDividends)) {
+            let dividendSum = 0;
+            cashDividends.forEach(div => {
+                // If the API provides a "Data Com" (lastDatePrior), use it.
+                // Otherwise fallback to paymentDate (less accurate but safer than nothing).
+                const referenceDate = div.lastDatePrior || div.paymentDate;
+                
+                if (referenceDate) {
+                    const quantityOwned = getQuantityOnDate(ticker, referenceDate, transactions);
+                    if (quantityOwned > 0) {
+                        dividendSum += quantityOwned * div.rate;
+                    }
+                }
+            });
+            pos[ticker].totalDividends = dividendSum;
+        }
+    });
+
+    // 3. Convert to array, filter zero positions, and add current quotes
     return Object.values(pos)
-      .filter(p => p.quantity > 0)
+      .filter(p => p.quantity > 0 || p.totalDividends! > 0) // Keep if has dividends even if sold out (optional, strictly keeping > 0 qty for now usually better for UI)
+      .filter(p => p.quantity > 0) 
       .map(p => ({
         ...p,
         currentPrice: quotes[p.ticker]?.regularMarketPrice,

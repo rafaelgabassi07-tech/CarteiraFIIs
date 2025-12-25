@@ -11,7 +11,8 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
 
   const tickerString = tickers.join(',');
   try {
-    const response = await fetch(`${BASE_URL}/quote/${tickerString}?token=${token}`);
+    // Added 'modules=dividends' to fetch dividend history
+    const response = await fetch(`${BASE_URL}/quote/${tickerString}?token=${token}&modules=summary,dividends`);
     if (!response.ok) {
       throw new Error('Failed to fetch quotes');
     }
@@ -23,10 +24,8 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
   }
 };
 
-// Mock function for dividends since Brapi free tier has limitations, 
-// but structure is ready for expansion if token supports it.
 export const getDividends = async (ticker: string, token: string) => {
-    // In a real implementation with a paid/full token:
-    // fetch(`${BASE_URL}/quote/${ticker}?token=${token}&modules=dividends`)
+    // This is now handled by getQuotes via modules param, 
+    // but keeping function signature for compatibility if needed elsewhere.
     return [];
 };
