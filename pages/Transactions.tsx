@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Transaction, AssetType } from '../types';
-import { Plus, Trash2, Calendar, X, Check } from 'lucide-react';
+import { Plus, Trash2, Calendar, X, Check, Search } from 'lucide-react';
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -10,6 +10,7 @@ interface TransactionsProps {
 
 export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onDeleteTransaction }) => {
   const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Form State
   const [ticker, setTicker] = useState('');
@@ -38,30 +39,67 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
     setShowForm(false);
   };
 
+  // 1. Sort by date desc
   const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // 2. Filter by Search Term
+  const filteredTransactions = sortedTransactions.filter(t => 
+    t.ticker.toUpperCase().includes(searchTerm.toUpperCase())
+  );
 
   return (
     <div className="pb-28 pt-6 px-4 max-w-lg mx-auto relative min-h-screen">
       
       {/* Header Action */}
-      <div className="flex justify-between items-center mb-6 sticky top-20 z-30 py-2">
+      <div className="flex justify-between items-center mb-4 sticky top-16 z-30 py-3 bg-primary/95 backdrop-blur-xl -mx-4 px-4 border-b border-white/5">
         <h2 className="text-white font-bold text-lg tracking-tight">Histórico</h2>
         <button 
           onClick={() => setShowForm(true)}
-          className="bg-accent hover:bg-sky-400 text-slate-950 font-bold py-2.5 px-5 rounded-full flex items-center gap-2 text-sm transition-all shadow-lg shadow-accent/20 active:scale-95"
+          className="bg-accent hover:bg-sky-400 text-slate-950 font-bold py-2 px-4 rounded-full flex items-center gap-2 text-xs transition-all shadow-lg shadow-accent/20 active:scale-95"
         >
-          <Plus className="w-4 h-4" /> Nova Transação
+          <Plus className="w-4 h-4" /> Nova
         </button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative mb-6 group">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+          <Search className="h-4 w-4 text-slate-500 group-focus-within:text-accent transition-colors" />
+        </div>
+        <input
+          type="text"
+          className="block w-full pl-10 pr-3 py-3 border border-white/5 rounded-xl leading-5 bg-secondary/40 text-slate-200 placeholder-slate-500 focus:outline-none focus:bg-secondary/60 focus:border-accent focus:ring-1 focus:ring-accent transition-all text-sm font-medium"
+          placeholder="Buscar ativo (ex: MXRF11)..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        {searchTerm && (
+          <button 
+            onClick={() => setSearchTerm('')}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-white"
+          >
+            <div className="bg-white/10 rounded-full p-0.5">
+              <X className="h-3 w-3" />
+            </div>
+          </button>
+        )}
       </div>
 
       {/* List */}
       <div className="space-y-3 animate-slide-up">
-        {sortedTransactions.length === 0 ? (
-           <div className="text-center py-20 border border-dashed border-white/10 rounded-2xl bg-white/5">
-              <p className="text-slate-500 font-medium">Nenhuma transação registrada.</p>
+        {filteredTransactions.length === 0 ? (
+           <div className="text-center py-16 border border-dashed border-white/10 rounded-2xl bg-white/5">
+              {searchTerm ? (
+                <>
+                  <p className="text-slate-400 font-medium mb-1">Nenhum resultado encontrado</p>
+                  <p className="text-slate-600 text-xs">Busca: "{searchTerm}"</p>
+                </>
+              ) : (
+                <p className="text-slate-500 font-medium">Nenhuma transação registrada.</p>
+              )}
            </div>
         ) : (
-          sortedTransactions.map((t) => (
+          filteredTransactions.map((t) => (
             <div key={t.id} className="bg-secondary/40 backdrop-blur-sm p-4 rounded-xl border border-white/5 flex items-center justify-between hover:border-white/10 transition-colors group">
               <div className="flex items-center gap-4">
                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-sm ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' : 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20'}`}>
