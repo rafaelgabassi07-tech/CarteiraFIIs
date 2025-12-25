@@ -23,6 +23,13 @@ export interface AssetPosition {
   totalDividends?: number; // Sum of dividends received
 }
 
+export interface PortfolioSummary {
+  totalInvested: number;
+  currentBalance: number;
+  totalDividends: number;
+  profitability: number;
+}
+
 // Brapi API Types
 export interface Dividend {
   assetIssued: string;

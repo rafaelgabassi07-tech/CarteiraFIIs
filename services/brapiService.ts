@@ -2,7 +2,7 @@ import { BrapiResponse, BrapiQuote } from '../types';
 
 const BASE_URL = 'https://brapi.dev/api';
 const CACHE_KEY = 'investfiis_quotes_cache';
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos em milissegundos
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
 
 interface CacheItem {
   data: BrapiQuote;
@@ -33,69 +33,28 @@ const saveCache = (cache: QuoteCache) => {
   }
 };
 
-// Busca um único ticker (usado no fallback)
+// Busca um único ticker com todos os módulos necessários
 const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuote | null> => {
     try {
+        // Solicita explicitamente summary e dividends para cada ativo
         const response = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}&modules=summary,dividends`);
+        
         if (response.ok) {
             const data: BrapiResponse = await response.json();
             return data.results?.[0] || null;
+        } else {
+            console.warn(`Erro ao buscar ${ticker}: ${response.status}`);
+            return null;
         }
-        return null;
     } catch (error) {
+        console.error(`Erro de rede ao buscar ${ticker}:`, error);
         return null;
     }
-};
-
-// Busca múltiplos tickers de uma vez
-const fetchBatchQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
-  // Limpeza dos tickers: remove espaços, converte para uppercase e remove vazios
-  const sanitizedTickers = tickers
-    .map(t => t.trim().toUpperCase())
-    .filter(t => t.length > 0);
-
-  if (sanitizedTickers.length === 0) return [];
-  
-  try {
-    const tickersString = sanitizedTickers.join(',');
-    const response = await fetch(`${BASE_URL}/quote/${tickersString}?token=${token}&modules=summary,dividends`);
-    
-    if (!response.ok) {
-      // Estratégia de Fallback: Se der erro 417 (Expectation Failed) ou 404 no lote, tenta buscar um por um
-      // Brapi costuma retornar 417 se um dos tickers for inválido.
-      if ((response.status === 417 || response.status === 404) && sanitizedTickers.length > 0) {
-         console.warn(`Brapi retornou ${response.status} para o lote. Tentando buscar individualmente...`);
-         
-         const results: BrapiQuote[] = [];
-         // Executa em paralelo para ser mais rápido
-         const promises = sanitizedTickers.map(t => fetchSingleQuote(t, token));
-         const individualResults = await Promise.all(promises);
-         
-         individualResults.forEach(res => {
-             if (res) results.push(res);
-         });
-         
-         return results;
-      }
-
-      console.warn(`Falha ao buscar cotações: ${response.status} - ${response.statusText}`);
-      return [];
-    }
-    
-    const data: BrapiResponse = await response.json();
-    return data.results || [];
-  } catch (error) {
-    console.error(`Erro na requisição Brapi em lote:`, error);
-    return [];
-  }
 };
 
 export const getQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
   if (!tickers.length) return [];
-  if (!token) {
-    // console.warn("Brapi Token não configurado");
-    return [];
-  }
+  if (!token) return [];
 
   const cache = loadCache();
   const now = Date.now();
@@ -103,7 +62,7 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
   const validQuotes: BrapiQuote[] = [];
   const tickersToFetch: string[] = [];
 
-  // 1. Separa o que está em cache (e válido) do que precisa ser buscado
+  // 1. Verifica Cache
   tickers.forEach(ticker => {
     const cleanTicker = ticker.trim().toUpperCase();
     if (!cleanTicker) return;
@@ -116,25 +75,30 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
     }
   });
 
-  // 2. Se tudo estiver em cache, retorna imediatamente
+  // 2. Se tudo estiver em cache, retorna
   if (tickersToFetch.length === 0) {
     return validQuotes;
   }
 
-  // 3. Busca os tickers faltantes EM LOTE (com fallback interno)
-  const fetchedQuotes = await fetchBatchQuotes(tickersToFetch, token);
+  // 3. Busca Individual em Paralelo (Promise.all)
+  // Isso garante que cada ativo seja tratado isoladamente. Se um falhar, os outros funcionam.
+  // Resolve o problema de "Expectation Failed" em lotes mistos.
+  const promises = tickersToFetch.map(t => fetchSingleQuote(t, token));
+  const results = await Promise.all(promises);
 
-  // 4. Atualiza o cache e a lista de retornos
-  fetchedQuotes.forEach(quote => {
-    cache[quote.symbol] = {
-      data: quote,
-      timestamp: now
-    };
-    validQuotes.push(quote);
+  // 4. Processa resultados e atualiza cache
+  results.forEach(quote => {
+    if (quote) {
+      cache[quote.symbol] = {
+        data: quote,
+        timestamp: now
+      };
+      validQuotes.push(quote);
+    }
   });
 
-  // 5. Persiste o cache atualizado se houver novos dados
-  if (fetchedQuotes.length > 0) {
+  // 5. Persiste cache se houver novidades
+  if (validQuotes.length > 0) {
     saveCache(cache);
   }
 

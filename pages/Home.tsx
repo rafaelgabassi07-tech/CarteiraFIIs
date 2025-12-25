@@ -8,15 +8,13 @@ interface HomeProps {
 }
 
 export const Home: React.FC<HomeProps> = ({ portfolio }) => {
-  // Calculate totals
+  // Calculate totals (Note: Logic duplicated from App.tsx visually, but used here for display)
   const totalInvested = portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0);
   const currentBalance = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
   const profitability = totalInvested > 0 ? ((currentBalance - totalInvested) / totalInvested) * 100 : 0;
-  
-  // Calculate Dividends
   const totalDividends = portfolio.reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
   
-  // Data for chart - Sort by value desc
+  // Data for chart
   const data = portfolio
     .map(p => ({
       name: p.ticker,
@@ -33,7 +31,10 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-2xl shadow-black/20 border border-white/5 group">
         <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -mr-10 -mt-10 blur-3xl group-hover:bg-accent/10 transition-colors duration-700"></div>
         
-        <h2 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Patrimônio Total</h2>
+        <div className="flex justify-between items-start mb-2">
+            <h2 className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Patrimônio Total</h2>
+        </div>
+        
         <div className="text-4xl font-bold text-white mb-6 tabular-nums tracking-tight">
           R$ {currentBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </div>
