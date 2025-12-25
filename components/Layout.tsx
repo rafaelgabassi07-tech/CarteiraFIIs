@@ -1,25 +1,40 @@
 import React from 'react';
-import { Home, PieChart, ArrowRightLeft, Settings, TrendingUp } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, TrendingUp, ChevronLeft } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
-  onSettingsClick: () => void;
+  onSettingsClick?: () => void;
+  showBack?: boolean;
+  onBack?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title, onSettingsClick }) => {
+export const Header: React.FC<HeaderProps> = ({ title, onSettingsClick, showBack, onBack }) => {
   return (
-    <header className="sticky top-0 z-50 bg-secondary/90 backdrop-blur-md border-b border-white/10 px-4 h-16 flex items-center justify-between shadow-lg">
+    <header className="sticky top-0 z-50 bg-secondary/90 backdrop-blur-md border-b border-white/10 px-4 h-16 flex items-center justify-between shadow-lg transition-all duration-300">
       <div className="flex items-center gap-2">
-        <TrendingUp className="w-6 h-6 text-accent" />
+        {showBack && onBack ? (
+          <button 
+            onClick={onBack}
+            className="p-1 -ml-2 rounded-full hover:bg-white/10 transition-colors text-white"
+            aria-label="Voltar"
+          >
+            <ChevronLeft className="w-7 h-7" />
+          </button>
+        ) : (
+          <TrendingUp className="w-6 h-6 text-accent" />
+        )}
         <h1 className="text-lg font-bold text-white tracking-wide">{title}</h1>
       </div>
-      <button 
-        onClick={onSettingsClick}
-        className="p-2 rounded-full hover:bg-white/10 transition-colors"
-        aria-label="Configurações"
-      >
-        <Settings className="w-6 h-6 text-gray-300" />
-      </button>
+      
+      {!showBack && onSettingsClick && (
+        <button 
+          onClick={onSettingsClick}
+          className="p-2 rounded-full hover:bg-white/10 transition-colors"
+          aria-label="Configurações"
+        >
+          <Settings className="w-6 h-6 text-gray-300" />
+        </button>
+      )}
     </header>
   );
 };

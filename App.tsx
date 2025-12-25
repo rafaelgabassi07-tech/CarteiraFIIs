@@ -157,13 +157,28 @@ const App: React.FC = () => {
     setTransactions(prev => prev.filter(t => t.id !== id));
   };
 
+  const handleImportTransactions = (data: Transaction[]) => {
+    // Basic validation could be improved, but sufficient for JSON restore
+    setTransactions(data);
+  };
+
+  const handleResetApp = () => {
+    setTransactions([]);
+    setBrapiToken('');
+    localStorage.removeItem(INITIAL_TRANSACTIONS_KEY);
+    localStorage.removeItem(BRAPI_TOKEN_KEY);
+    setShowSettings(false);
+  };
+
   // Rendering Pages
   const renderPage = () => {
     if (showSettings) {
         return <Settings 
             brapiToken={brapiToken} 
-            onSaveToken={(t) => { setBrapiToken(t); setShowSettings(false); }} 
-            onClose={() => setShowSettings(false)}
+            onSaveToken={(t) => setBrapiToken(t)} 
+            transactions={transactions}
+            onImportTransactions={handleImportTransactions}
+            onResetApp={handleResetApp}
         />;
     }
 
@@ -198,6 +213,8 @@ const App: React.FC = () => {
       <Header 
         title={getTitle()} 
         onSettingsClick={() => setShowSettings(true)} 
+        showBack={showSettings}
+        onBack={() => setShowSettings(false)}
       />
       
       <main className="fade-in">

@@ -16,13 +16,15 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
   // Calculate Dividends
   const totalDividends = portfolio.reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
   
-  // Data for chart
-  const data = portfolio.map(p => ({
-    name: p.ticker,
-    value: (p.currentPrice || p.averagePrice) * p.quantity
-  }));
+  // Data for chart - Sort by value desc
+  const data = portfolio
+    .map(p => ({
+      name: p.ticker,
+      value: (p.currentPrice || p.averagePrice) * p.quantity
+    }))
+    .sort((a, b) => b.value - a.value);
   
-  const COLORS = ['#38bdf8', '#22c55e', '#f472b6', '#a78bfa', '#fbbf24', '#f87171'];
+  const COLORS = ['#38bdf8', '#22c55e', '#f472b6', '#a78bfa', '#fbbf24', '#f87171', '#94a3b8', '#64748b'];
 
   return (
     <div className="pb-24 pt-4 px-4 space-y-4 max-w-md mx-auto">
@@ -70,29 +72,76 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
 
       {/* Allocation Chart */}
       {portfolio.length > 0 ? (
-        <div className="bg-secondary p-5 rounded-2xl shadow-lg border border-white/5">
-            <h3 className="text-white font-semibold mb-4">Alocação por Ativo</h3>
-            <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={data}
-                            innerRadius={50}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                        >
-                            {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip 
-                            formatter={(value: number) => `R$ ${value.toFixed(2)}`}
-                            contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
-                            itemStyle={{ color: '#fff' }}
+        <div className="bg-secondary p-6 rounded-2xl shadow-lg border border-white/5">
+            <h3 className="text-white font-semibold mb-6 flex items-center justify-between">
+              <span>Alocação</span>
+              <span className="text-xs font-normal text-gray-400 bg-white/5 px-2 py-1 rounded-md">Por Ativo</span>
+            </h3>
+            
+            <div className="flex flex-col items-center">
+              <div className="h-56 w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                          <Pie
+                              data={data}
+                              innerRadius={60}
+                              outerRadius={85}
+                              paddingAngle={4}
+                              dataKey="value"
+                              stroke="none"
+                          >
+                              {data.map((entry, index) => (
+                                  <Cell 
+                                    key={`cell-${index}`} 
+                                    fill={COLORS[index % COLORS.length]} 
+                                    stroke="none"
+                                    style={{ outline: 'none' }}
+                                  />
+                              ))}
+                          </Pie>
+                          <Tooltip 
+                              formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Valor']}
+                              contentStyle={{ 
+                                backgroundColor: '#1e293b', 
+                                borderColor: 'rgba(255,255,255,0.1)', 
+                                borderRadius: '0.75rem',
+                                color: '#fff',
+                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                              }}
+                              itemStyle={{ color: '#fff' }}
+                              separator=": "
+                              cursor={false}
+                          />
+                      </PieChart>
+                  </ResponsiveContainer>
+                  
+                  {/* Center Text (Optional decorative or total) */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                     <span className="text-gray-500 text-xs font-medium">Total</span>
+                  </div>
+              </div>
+
+              {/* Custom Legend */}
+              <div className="w-full mt-6 space-y-3">
+                {data.map((entry, index) => {
+                  const percentage = (entry.value / currentBalance) * 100;
+                  return (
+                    <div key={entry.name} className="flex items-center justify-between text-sm group">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-3 h-3 rounded-full shadow-sm ring-2 ring-transparent group-hover:ring-white/10 transition-all" 
+                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
                         />
-                    </PieChart>
-                </ResponsiveContainer>
+                        <span className="text-gray-300 font-medium">{entry.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-gray-400 text-xs">R$ {entry.value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                        <span className="text-white font-bold w-12 text-right">{percentage.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
         </div>
       ) : (
