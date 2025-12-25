@@ -3,20 +3,20 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { DividendReceipt, AssetType } from "../types";
 
 export interface UnifiedMarketData {
-  prices: Record<string, number>;
   dividends: DividendReceipt[];
   metadata: Record<string, { segment: string; type: AssetType }>;
   sources?: { web: { uri: string; title: string } }[];
 }
 
 const GEMINI_CACHE_KEY = 'investfiis_gemini_internal_cache';
-const CACHE_EXPIRATION = 4 * 60 * 60 * 1000; // Cache de 4 horas
 
 function cleanAndParseJSON(text: string): any {
   try {
+    // Remove marcadores de código markdown se existirem
     const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleaned);
   } catch (e) {
+    // Tentativa de recuperação de JSON quebrado
     const firstBrace = text.indexOf("{");
     const lastBrace = text.lastIndexOf("}");
     if (firstBrace !== -1 && lastBrace !== -1) {
@@ -31,36 +31,45 @@ function cleanAndParseJSON(text: string): any {
 }
 
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
-  if (!tickers || tickers.length === 0) return { prices: {}, dividends: [], metadata: {} };
+  if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  // Otimizamos o prompt para ser extremamente específico sobre as regras da B3
+  // Prompt otimizado para Batch Processing APENAS de Proventos e Metadados
+  // Removemos explicitamente qualquer pedido de Cotação/Preço para não conflitar com a Brapi.
   const prompt = `
-    Analise rigorosamente os ativos da B3: ${tickers.join(', ')}.
-    Utilize o Google Search para encontrar fatos relevantes, avisos aos acionistas e sites de RI.
+    Atue como um Especialista em Dados de Mercado da B3 (Brasil).
     
-    OBJETIVOS:
-    1. Preço de fechamento mais recente (p).
-    2. Setor específico e tipo (FII ou ACAO).
-    3. Lista COMPLETA de proventos (Dividendos e JCP) com Data-Com nos últimos 12 meses.
-       - É CRÍTICO identificar a Data-Com (dc) correta (data de corte).
-       - Identificar a Data de Pagamento (dp).
-       - Valor bruto (v).
-       - Tipo (ty): "DIVIDENDO" ou "JCP".
-
-    FORMATO DE RESPOSTA (JSON APENAS):
+    Sua missão é consultar fontes oficiais recentes (últimos 12 meses) para a lista de ativos abaixo e retornar um ÚNICO JSON consolidado com foco em PROVENTOS e SEGMENTOS.
+    
+    LISTA DE ATIVOS: ${tickers.join(', ')} (${tickers.length} ativos no total).
+    
+    PARA CADA ATIVO DA LISTA, VOCÊ DEVE:
+    1. Classificar o Tipo (FII ou ACAO) e o Setor/Segmento de atuação.
+    2. Listar TODOS os proventos (Dividendos/JCP) com "Data Com" (Data de corte) nos últimos 12 meses.
+    
+    IMPORTANTE:
+    - NÃO inclua preços ou cotações atuais.
+    - O foco é a precisão das datas e valores de proventos.
+    
+    REGRAS DE DADOS:
+    - Data Com (dc): A data limite para ter o ativo na carteira e receber o provento. Formato YYYY-MM-DD.
+    - Data Pagamento (dp): Quando o dinheiro cai na conta. Formato YYYY-MM-DD.
+    - Valor (v): Valor bruto por cota/ação.
+    - Tipo (ty): "DIVIDENDO" ou "JCP".
+    
+    SAÍDA ESPERADA (JSON):
     {
       "assets": [
         {
           "t": "TICKER",
-          "p": 0.00,
-          "s": "Setor/Segmento",
-          "type": "FII|ACAO",
+          "s": "Logística",
+          "type": "FII",
           "d": [
-            {"ty": "DIVIDENDO", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": 0.00}
+            {"ty": "DIVIDENDO", "dc": "2024-01-30", "dp": "2024-02-14", "v": 0.10}
           ]
-        }
+        },
+        ... (repita para todos os ativos)
       ]
     }
   `;
@@ -71,7 +80,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        thinkingConfig: { thinkingBudget: 1000 },
+        thinkingConfig: { thinkingBudget: 2048 }, 
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -82,7 +91,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
                 type: Type.OBJECT,
                 properties: {
                   t: { type: Type.STRING },
-                  p: { type: Type.NUMBER },
+                  // "p" (preço) removido intencionalmente
                   s: { type: Type.STRING },
                   type: { type: Type.STRING },
                   d: {
@@ -99,7 +108,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
                     }
                   }
                 },
-                required: ["t", "p", "type"]
+                required: ["t", "type"]
               }
             }
           }
@@ -111,7 +120,6 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[];
     
     const result: UnifiedMarketData = { 
-        prices: {}, 
         dividends: [], 
         metadata: {},
         sources: groundingChunks?.filter(chunk => chunk?.web?.uri) || []
@@ -120,23 +128,23 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     if (parsed?.assets) {
       parsed.assets.forEach((asset: any) => {
         const ticker = asset.t.toUpperCase();
-        result.prices[ticker] = asset.p;
+        
         result.metadata[ticker] = { 
-          segment: asset.s || "Diversificado", 
+          segment: asset.s || "Geral", 
           type: asset.type?.toUpperCase() === 'FII' ? AssetType.FII : AssetType.STOCK 
         };
 
         asset.d?.forEach((div: any) => {
-          // Criamos um ID robusto para evitar duplicatas em merges futuros
+          // ID único baseado em Ticker + DataCom + Valor para evitar duplicidade
           const divId = `${ticker}-${div.dc}-${div.v}`.replace(/[^a-zA-Z0-9]/g, '');
           result.dividends.push({
             id: divId,
             ticker,
             type: div.ty || "PROVENTO",
             dateCom: div.dc,
-            paymentDate: div.dp || div.dc,
+            paymentDate: div.dp || div.dc, // Fallback para data com se data pagamento não existir
             rate: div.v,
-            quantityOwned: 0,
+            quantityOwned: 0, // Será calculado no App.tsx
             totalReceived: 0
           });
         });

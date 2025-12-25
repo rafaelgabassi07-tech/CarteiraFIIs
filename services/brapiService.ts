@@ -26,8 +26,9 @@ const saveCache = (cache: Record<string, CacheItem>) => {
 
 /**
  * Brapi: Focada EXCLUSIVAMENTE em preços atuais e logotipos.
+ * Adicionado parâmetro forceRefresh para ignorar o cache.
  */
-export const getQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
+export const getQuotes = async (tickers: string[], token: string, forceRefresh = false): Promise<BrapiQuote[]> => {
   if (!tickers.length || !token) return [];
 
   const cache = loadCache();
@@ -39,7 +40,10 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
   
   uniqueTickers.forEach(ticker => {
     const cachedItem = cache[ticker];
-    if (cachedItem && (now - cachedItem.timestamp < CACHE_DURATION)) {
+    const isCacheValid = cachedItem && (now - cachedItem.timestamp < CACHE_DURATION);
+    
+    // Se NÃO for forçado E o cache for válido, usa o cache
+    if (!forceRefresh && isCacheValid) {
       validQuotes.push(cachedItem.data);
     } else {
       tickersToFetch.push(ticker);
@@ -48,7 +52,7 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
 
   if (tickersToFetch.length === 0) return validQuotes;
 
-  // Busca em lotes para otimizar, mas focado apenas no campo de cotação
+  // Busca em lotes para otimizar
   const BATCH_SIZE = 15; 
   const newQuotes: BrapiQuote[] = [];
 
@@ -57,7 +61,6 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
     const tickersParam = chunk.join(',');
 
     try {
-      // Pedimos apenas os campos necessários para economizar banda
       const url = `${BASE_URL}/quote/${tickersParam}?token=${token}`;
       const response = await fetch(url);
 
@@ -66,12 +69,15 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
         if (data.results) {
           newQuotes.push(...data.results);
         }
+      } else {
+        console.warn(`Brapi: Falha na requisição (${response.status})`);
       }
     } catch (error) {
       console.error(`Brapi: Erro na cotação de ${tickersParam}`, error);
     }
   }
 
+  // Atualiza o cache com os novos dados
   newQuotes.forEach(quote => {
     if (quote?.symbol) {
       cache[quote.symbol] = { data: quote, timestamp: now };
@@ -80,6 +86,7 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
 
   saveCache(cache);
   
+  // Mescla o que estava válido no cache (se não forçado) com o que acabamos de buscar
   const allQuotes = [...validQuotes, ...newQuotes];
   const uniqueMap = new Map<string, BrapiQuote>();
   allQuotes.forEach(q => uniqueMap.set(q.symbol, q));

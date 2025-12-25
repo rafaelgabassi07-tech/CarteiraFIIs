@@ -141,7 +141,7 @@ const App: React.FC = () => {
     
     const tickersStr = uniqueTickers.join(',');
     const lastSync = localStorage.getItem(STORAGE_KEYS.SYNC);
-    const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 60; // Cache de 1h para preços base
+    const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 60; // Cache de 1h
 
     if (!force && isRecent && lastSyncTickersRef.current === tickersStr) return;
 
@@ -149,13 +149,8 @@ const App: React.FC = () => {
     try {
       const data = await fetchUnifiedMarketData(uniqueTickers);
       
-      // Merge de preços
-      const aiQuotes: Record<string, BrapiQuote> = {};
-      Object.entries(data.prices).forEach(([symbol, price]) => {
-        aiQuotes[symbol] = { symbol, regularMarketPrice: price } as BrapiQuote;
-      });
-      
-      setQuotes(prev => ({ ...prev, ...aiQuotes }));
+      // NOTA: Removemos qualquer lógica de atualização de preços via Gemini.
+      // O estado `quotes` agora é gerido exclusivamente pela Brapi.
       
       // Merge inteligente de proventos
       setGeminiDividends(prev => {
@@ -169,7 +164,7 @@ const App: React.FC = () => {
       
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       lastSyncTickersRef.current = tickersStr;
-      if (force) showToast('success', 'Inteligência de Mercado Sincronizada');
+      if (force) showToast('success', 'Inteligência de Dividendos Sincronizada');
     } catch (e) {
       if (force) showToast('error', 'Erro ao consultar IA de Mercado');
     } finally {
@@ -184,7 +179,8 @@ const App: React.FC = () => {
     const tickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase())));
     try {
       if (brapiToken) {
-        const brQuotes = await getQuotes(tickers, brapiToken);
+        // Envia TRUE no último parâmetro para FORÇAR a atualização, ignorando o cache de 5min
+        const brQuotes = await getQuotes(tickers, brapiToken, true);
         const map: Record<string, BrapiQuote> = {};
         brQuotes.forEach(q => map[q.symbol] = q);
         setQuotes(prev => ({ ...prev, ...map }));
