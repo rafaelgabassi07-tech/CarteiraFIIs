@@ -8,7 +8,7 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { DownloadCloud, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 const INITIAL_TRANSACTIONS_KEY = 'investfiis_transactions';
 const BRAPI_TOKEN_KEY = 'investfiis_brapitoken';
@@ -18,9 +18,6 @@ const LAST_GEMINI_SYNC_KEY = 'investfiis_last_gemini_sync';
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
-
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', text: string} | null>(null);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -45,37 +42,15 @@ const App: React.FC = () => {
   const hasRunAutoSync = useRef(false);
   const isAiLoadingRef = useRef(false);
 
-  const showToast = (type: 'success' | 'error' | 'warning', text: string) => {
+  const showToast = useCallback((type: 'success' | 'error' | 'warning', text: string) => {
     setToast({ type, text });
     setTimeout(() => setToast(null), 4000);
-  };
+  }, []);
 
   useEffect(() => {
-    const registerSW = async () => {
-      if ('serviceWorker' in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
-          if (registration.waiting) {
-            setWaitingWorker(registration.waiting);
-            setUpdateAvailable(true);
-          }
-          registration.onupdatefound = () => {
-            const newWorker = registration.installing;
-            if (newWorker) {
-              newWorker.onstatechange = () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  setWaitingWorker(newWorker);
-                  setUpdateAvailable(true);
-                }
-              };
-            }
-          };
-        } catch (error) {
-          console.warn('SW registration skipped:', error);
-        }
-      }
-    };
-    registerSW();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(console.warn);
+    }
   }, []);
 
   useEffect(() => { localStorage.setItem(INITIAL_TRANSACTIONS_KEY, JSON.stringify(transactions)); }, [transactions]);
@@ -158,18 +133,16 @@ const App: React.FC = () => {
     const lastSync = localStorage.getItem(LAST_GEMINI_SYNC_KEY);
     if (!force && lastSync) {
       const diff = Date.now() - parseInt(lastSync, 10);
-      if (diff < 24 * 60 * 60 * 1000) return;
+      if (diff < 12 * 60 * 60 * 1000) return; // Reduce sync interval check
     }
 
     setIsAiLoading(true);
     isAiLoadingRef.current = true;
 
     try {
-      // REQUISIÇÃO ÚNICA: Preços + Dividendos
       const unifiedData = await fetchUnifiedMarketData(uniqueTickers);
       localStorage.setItem(LAST_GEMINI_SYNC_KEY, Date.now().toString());
 
-      // 1. Atualiza Preços (Quotes) usando dados do Gemini
       const newQuotesFromAI: Record<string, BrapiQuote> = {};
       Object.entries(unifiedData.prices).forEach(([ticker, price]) => {
         newQuotesFromAI[ticker] = {
@@ -179,33 +152,30 @@ const App: React.FC = () => {
           regularMarketChangePercent: 0,
         } as BrapiQuote;
       });
+      
       setQuotes(prev => ({ ...prev, ...newQuotesFromAI }));
 
-      // 2. Atualiza Dividendos
       if (unifiedData.dividends.length > 0) {
         setGeminiDividends(unifiedData.dividends);
-        if (force) showToast('success', 'Dados atualizados via IA (Preços + Proventos)');
+        if (force) showToast('success', 'Carteira atualizada via IA');
       }
     } catch (e: any) {
-      localStorage.setItem(LAST_GEMINI_SYNC_KEY, Date.now().toString());
       if (e.message === 'COTA_EXCEDIDA') showToast('error', 'Cota da IA atingida.');
-      else showToast('error', 'Falha na sincronização inteligente.');
+      else showToast('error', 'Falha na sincronização.');
     } finally {
       setIsAiLoading(false);
       isAiLoadingRef.current = false;
     }
-  }, [transactions]);
+  }, [transactions, showToast]);
 
   const handleFullRefresh = async () => {
     if (isRefreshing || isAiLoading) return;
     setIsRefreshing(true);
     try {
-      // Tenta Brapi primeiro para cotações rápidas
       await fetchMarketData();
-      // Em seguida, chama a unificada do Gemini para garantir preços frescos (se Brapi falhar) e dividendos
       await handleUnifiedSync(true);
     } catch (error) {
-      console.error("Refresh manual error:", error);
+      console.error("Refresh error:", error);
     } finally {
       setIsRefreshing(false);
     }
@@ -213,7 +183,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     fetchMarketData();
-    const interval = setInterval(fetchMarketData, 10 * 60 * 1000); 
+    const interval = setInterval(fetchMarketData, 15 * 60 * 1000); 
     return () => clearInterval(interval);
   }, [fetchMarketData]);
 
@@ -222,7 +192,7 @@ const App: React.FC = () => {
     const timeout = setTimeout(() => {
       hasRunAutoSync.current = true;
       handleUnifiedSync(false);
-    }, 1500);
+    }, 2000);
     return () => clearTimeout(timeout);
   }, [handleUnifiedSync]);
 
@@ -260,10 +230,12 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-primary text-gray-100 font-sans">
-      <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[80] transition-all duration-300 transform backdrop-blur-md ring-1 ring-white/10 ${toast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} ${toast?.type === 'success' ? 'bg-emerald-500/90 text-white shadow-emerald-500/20' : toast?.type === 'error' ? 'bg-rose-500/90 text-white shadow-rose-500/20' : 'bg-amber-500/90 text-white shadow-amber-500/20'}`}>
-        {toast?.type === 'success' ? <CheckCircle2 className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
-        <span className="text-sm font-bold">{toast?.text}</span>
-      </div>
+      {toast && (
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[80] transition-all duration-300 transform backdrop-blur-md ring-1 ring-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90 text-white shadow-emerald-500/20' : toast.type === 'error' ? 'bg-rose-500/90 text-white shadow-rose-500/20' : 'bg-amber-500/90 text-white shadow-amber-500/20'}`}>
+          {toast.type === 'success' ? <CheckCircle2 className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
+          <span className="text-sm font-bold">{toast.text}</span>
+        </div>
+      )}
 
       <Header 
         title={showSettings ? 'Configurações' : (currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Minha Carteira' : 'Transações')} 
