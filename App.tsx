@@ -68,6 +68,7 @@ const App: React.FC = () => {
   }, []);
 
   const getQuantityOnDate = useCallback((ticker: string, date: string, txs: Transaction[]) => {
+    // Para proventos, a quantidade considerada é a fechada no dia da data-com
     const target = date.split('T')[0];
     return txs
       .filter(t => t.ticker === ticker && t.date <= target)
@@ -131,7 +132,7 @@ const App: React.FC = () => {
     
     if (!force) {
       const lastSync = localStorage.getItem(STORAGE_KEYS.SYNC);
-      const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 30;
+      const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 60; // 1 hora de cache AI
       if (isRecent && lastSyncTickersRef.current === tickersStr) return;
     }
 
@@ -150,9 +151,7 @@ const App: React.FC = () => {
         merged.forEach(d => unique.set(d.id, d));
         return Array.from(unique.values());
       });
-      if (data.sources) {
-        setSources(data.sources);
-      }
+      if (data.sources) setSources(data.sources);
       
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       lastSyncTickersRef.current = tickersStr;
@@ -203,7 +202,6 @@ const App: React.FC = () => {
           <div className="w-20 h-20 bg-gradient-to-br from-accent to-blue-600 rounded-[1.5rem] rotate-12 flex items-center justify-center shadow-[0_12px_40px_rgba(56,189,248,0.4)] ring-1 ring-white/10">
             <TrendingUp className="w-10 h-10 text-primary -rotate-12" strokeWidth={3} />
           </div>
-          {/* Subtle backglow */}
           <div className="absolute inset-0 bg-accent/20 blur-3xl -z-10 animate-pulse-neon rounded-full" />
         </div>
         <h1 className="text-2xl font-black text-white tracking-[0.25em] mb-4 uppercase">InvestFIIs</h1>
@@ -222,24 +220,19 @@ const App: React.FC = () => {
             <RefreshCw className="w-5 h-5 animate-spin" />
             <span className="text-[10px] font-black uppercase tracking-widest">Nova versão pronta</span>
           </div>
-          <button 
-            onClick={handleApplyUpdate}
-            className="bg-accent text-primary px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-accent/20"
-          >
-            Atualizar
-          </button>
+          <button onClick={handleApplyUpdate} className="bg-accent text-primary px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-accent/20">Atualizar</button>
         </div>
       )}
 
       {toast && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[150] transition-all duration-300 transform animate-fade-in-up backdrop-blur-2xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[150] transition-all duration-300 transform animate-fade-in-up backdrop-blur-2xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90 text-white' : toast.type === 'warning' ? 'bg-amber-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
           {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
           <span className="text-[11px] font-black uppercase tracking-wider">{toast.text}</span>
         </div>
       )}
 
       <Header 
-        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'InvestFIIs' : currentTab === 'portfolio' ? 'Patrimônio' : 'Histórico'} 
+        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'InvestFIIs' : currentTab === 'portfolio' ? 'Patrimônio' : 'Movimentações'} 
         onSettingsClick={() => setShowSettings(true)} 
         showBack={showSettings}
         onBack={() => setShowSettings(false)}
@@ -257,12 +250,7 @@ const App: React.FC = () => {
         ) : (
           <div key={currentTab} className="animate-fade-in duration-500">
             {currentTab === 'home' && (
-              <Home 
-                portfolio={portfolio} 
-                dividendReceipts={dividendReceipts} 
-                isAiLoading={isAiLoading} 
-                sources={sources}
-              />
+              <Home portfolio={portfolio} dividendReceipts={dividendReceipts} isAiLoading={isAiLoading} sources={sources} />
             )}
             {currentTab === 'portfolio' && <Portfolio portfolio={portfolio} dividendReceipts={dividendReceipts} />}
             {currentTab === 'transactions' && (

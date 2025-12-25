@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { AssetPosition, DividendReceipt } from '../types';
-import { Building2, TrendingUp, TrendingDown, Layers, ChevronDown, DollarSign, BarChart3, Target, X, ArrowUpRight, ChevronRight, ArrowDownToLine, Timer } from 'lucide-react';
+import { AssetPosition, DividendReceipt, AssetType } from '../types';
+import { Building2, TrendingUp, TrendingDown, Layers, ChevronDown, DollarSign, BarChart3, Target, X, ArrowUpRight, ChevronRight, ArrowDownToLine, Timer, Briefcase } from 'lucide-react';
 
 interface PortfolioProps {
   portfolio: AssetPosition[];
@@ -40,12 +40,12 @@ const AssetCard: React.FC<{
               {asset.logoUrl ? (
                 <img src={asset.logoUrl} alt={asset.ticker} className="w-12 h-12 rounded-2xl bg-white object-contain p-1 shadow-md ring-1 ring-white/10" />
               ) : (
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-xs font-bold text-white shadow-inner ring-1 ring-white/10">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-xs font-bold text-white shadow-inner ring-1 ring-white/10 uppercase">
                   {asset.ticker.substring(0, 2)}
                 </div>
               )}
-              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-lg flex items-center justify-center border border-primary text-[8px] font-bold ${asset.assetType === 'FII' ? 'bg-accent text-primary' : 'bg-purple-500 text-white'}`}>
-                {asset.assetType === 'FII' ? 'F' : 'A'}
+              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-lg flex items-center justify-center border border-primary text-[8px] font-black ${asset.assetType === AssetType.FII ? 'bg-accent text-primary' : 'bg-purple-500 text-white'}`}>
+                {asset.assetType === AssetType.FII ? 'F' : 'A'}
               </div>
             </div>
             <div>
@@ -133,7 +133,6 @@ const AssetCard: React.FC<{
         </div>
       </div>
 
-      {/* Modal de Histórico Individual */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center p-0">
           <div className="absolute inset-0 bg-primary/80 backdrop-blur-md animate-fade-in" onClick={() => setShowHistoryModal(false)} />
@@ -215,7 +214,7 @@ const AssetCard: React.FC<{
             
             <div className="p-8 pb-10 border-t border-white/5 bg-secondary/30 shrink-0">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-bold uppercase tracking-widest">Rendimento sobre Custo (YoC)</span>
+                <span className="text-slate-500 font-bold uppercase tracking-widest">Yield sobre Custo (YoC)</span>
                 <span className="text-white font-black text-base">{totalCost > 0 ? (((asset.totalDividends || 0) / totalCost) * 100).toFixed(2) : '0.00'}%</span>
               </div>
             </div>
@@ -227,9 +226,7 @@ const AssetCard: React.FC<{
 });
 
 export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipts }) => {
-  const getAssetHistory = (ticker: string) => {
-    return dividendReceipts.filter(r => r.ticker === ticker);
-  };
+  const getAssetHistory = (ticker: string) => dividendReceipts.filter(r => r.ticker === ticker);
 
   if (portfolio.length === 0) {
     return (
@@ -243,8 +240,8 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
     );
   }
 
-  const fiis = portfolio.filter(p => p.assetType === 'FII');
-  const stocks = portfolio.filter(p => p.assetType === 'ACAO');
+  const fiis = portfolio.filter(p => p.assetType === AssetType.FII);
+  const stocks = portfolio.filter(p => p.assetType === AssetType.STOCK);
 
   return (
     <div className="pb-28 pt-6 px-4 max-w-lg mx-auto">
@@ -252,20 +249,13 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4 px-1 animate-fade-in">
             <div className="p-1.5 bg-accent/10 rounded-lg">
-                <Layers className="w-4 h-4 text-accent" />
+                <Building2 className="w-4 h-4 text-accent" />
             </div>
             <h3 className="text-slate-400 text-xs font-black uppercase tracking-widest">Fundos Imobiliários</h3>
             <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded-full text-slate-500 font-bold ml-auto border border-white/5">{fiis.length} ATIVOS</span>
           </div>
           <div className="space-y-1">
-            {fiis.map((asset, i) => (
-              <AssetCard 
-                key={asset.ticker} 
-                asset={asset} 
-                index={i} 
-                history={getAssetHistory(asset.ticker)} 
-              />
-            ))}
+            {fiis.map((asset, i) => <AssetCard key={asset.ticker} asset={asset} index={i} history={getAssetHistory(asset.ticker)} />)}
           </div>
         </div>
       )}
@@ -274,20 +264,13 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4 px-1 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="p-1.5 bg-purple-500/10 rounded-lg">
-                <Layers className="w-4 h-4 text-purple-400" />
+                <Briefcase className="w-4 h-4 text-purple-400" />
             </div>
             <h3 className="text-slate-400 text-xs font-black uppercase tracking-widest">Ações</h3>
              <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded-full text-slate-500 font-bold ml-auto border border-white/5">{stocks.length} ATIVOS</span>
           </div>
           <div className="space-y-1">
-             {stocks.map((asset, i) => (
-               <AssetCard 
-                 key={asset.ticker} 
-                 asset={asset} 
-                 index={i + fiis.length} 
-                 history={getAssetHistory(asset.ticker)} 
-               />
-             ))}
+             {stocks.map((asset, i) => <AssetCard key={asset.ticker} asset={asset} index={i + fiis.length} history={getAssetHistory(asset.ticker)} />)}
           </div>
         </div>
       )}
