@@ -46,28 +46,32 @@ const App: React.FC = () => {
   // --- Service Worker & Update Logic ---
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then((registration) => {
-        
-        // Se já tiver um worker esperando (atualização baixada mas não ativa)
-        if (registration.waiting) {
-          setWaitingWorker(registration.waiting);
-          setUpdateAvailable(true);
-        }
-
-        // Monitora novas atualizações chegando
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // Nova atualização instalada e pronta para ativar
-                setWaitingWorker(newWorker);
-                setUpdateAvailable(true);
-              }
-            });
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          
+          // Se já tiver um worker esperando (atualização baixada mas não ativa)
+          if (registration.waiting) {
+            setWaitingWorker(registration.waiting);
+            setUpdateAvailable(true);
           }
+
+          // Monitora novas atualizações chegando
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // Nova atualização instalada e pronta para ativar
+                  setWaitingWorker(newWorker);
+                  setUpdateAvailable(true);
+                }
+              });
+            }
+          });
+        })
+        .catch((error) => {
+          console.warn('Service Worker registration failed (likely due to preview environment restrictions):', error);
         });
-      });
 
       // Quando o novo worker assumir o controle, recarrega a página
       let refreshing = false;
