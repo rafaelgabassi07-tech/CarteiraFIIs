@@ -28,23 +28,25 @@ function cleanAndParseJSON(text: string): any {
 }
 
 /**
- * Executa uma pesquisa profunda na B3 para retornar tudo o que o app precisa.
- * Atualizado para usar o modelo Gemini 2.5 Flash conforme solicitado.
+ * Executa uma pesquisa profunda na B3 via Gemini 3 Flash.
+ * Focado em capturar todas as parcelas de proventos individualmente.
  */
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { prices: {}, dividends: [], metadata: {} };
 
+  // Always use { apiKey: process.env.API_KEY }
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-    Como analista B3, pesquise os ativos: ${tickers.join(', ')}.
+    Como analista financeiro especialista em B3, pesquise os ativos: ${tickers.join(', ')}.
     
-    REQUISITOS OBRIGATÓRIOS:
-    1. COTAÇÃO ATUAL (Price) em R$.
-    2. HISTÓRICO COMPLETO de dividendos/JCP com 'Data Com' nos últimos 12 meses (inclua datas passadas para cálculo de rendimento acumulado).
-    3. SEGMENTO e TIPO (FII ou ACAO).
+    REQUISITOS DE PRECISÃO:
+    1. COTAÇÃO ATUAL: Preço de fechamento mais recente.
+    2. PROVENTOS (DIVIDENDOS/JCP): Liste TODOS os pagamentos dos últimos 12 meses.
+       IMPORTANTE: Se um provento foi anunciado mas será pago em múltiplas parcelas (ex: CMIG4 pagando JCP em duas datas), você DEVE retornar cada parcela como um item separado no array 'd'. Não agrupe valores que possuem datas de pagamento diferentes.
+    3. SEGMENTO e TIPO: Identifique se é FII ou ACAO.
     
-    Retorne APENAS um objeto JSON no formato:
+    ESTRUTURA JSON OBRIGATÓRIA:
     {
       "assets": [
         {
@@ -52,21 +54,28 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
           "p": 0.00,
           "s": "Segmento",
           "type": "FII|ACAO",
-          "d": [{"ty": "DIVIDENDO|JCP", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": 0.00}]
+          "d": [
+            {
+              "ty": "DIVIDENDO|JCP", 
+              "dc": "YYYY-MM-DD", (Data Com / Corte)
+              "dp": "YYYY-MM-DD", (Data de Pagamento Efetivo)
+              "v": 0.000000 (Valor unitário por ação/cota)
+            }
+          ]
         }
       ]
     }
-    Use o Google Search para precisão máxima nos proventos do último ano.
+    Use o Google Search para verificar os últimos avisos aos acionistas e cronogramas de pagamento.
   `;
 
   try {
+    // Using gemini-3-flash-preview for general text tasks and search grounding
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        // O responseSchema guia o modelo para a estrutura correta.
-        // O parser robusto cleanAndParseJSON cuida da extração do texto final.
+        responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -89,7 +98,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
                         dp: { type: Type.STRING },
                         v: { type: Type.NUMBER }
                       },
-                      required: ["dc", "v"]
+                      required: ["dc", "dp", "v"]
                     }
                   }
                 },
@@ -101,12 +110,14 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       }
     });
 
+    // Directly access response.text property
     const textOutput = response.text || "";
     const parsed = cleanAndParseJSON(textOutput);
     const result: UnifiedMarketData = { 
         prices: {}, 
         dividends: [], 
         metadata: {},
+        // Extract grounding sources as required by guidelines
         sources: (response.candidates?.[0]?.groundingMetadata?.groundingChunks as any) || []
     };
 
@@ -121,8 +132,10 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
         if (asset.d) {
           asset.d.forEach((div: any) => {
+            // Chave única robusta incluindo data de pagamento para evitar colisões em parcelas
+            const uniqueId = `${ticker}-${div.dc}-${div.dp}-${div.v}`;
             result.dividends.push({
-              id: `${ticker}-${div.dc}-${div.v}`,
+              id: uniqueId,
               ticker,
               type: div.ty || "PROVENTO",
               dateCom: div.dc,
@@ -138,7 +151,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
     return result;
   } catch (error: any) {
-    console.error("Erro Crítico Gemini Sync:", error);
+    console.error("Erro Gemini Proventos:", error);
     throw error;
   }
 };

@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ChevronDown, ChevronUp, Calendar, Sparkles, Loader2, X, Layers, LayoutGrid, ArrowUpRight, List, BarChart3 } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, ChevronDown, ChevronUp, Calendar, Sparkles, Loader2, X, Layers, LayoutGrid, ArrowUpRight, List, BarChart3, ReceiptText, Trophy } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 interface HomeProps {
@@ -46,7 +46,19 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
   const dividendRanking = useMemo(() => {
     const map: Record<string, number> = {};
     dividendReceipts.forEach(d => { map[d.ticker] = (map[d.ticker] || 0) + d.totalReceived; });
-    return Object.entries(map).map(([ticker, total]) => ({ ticker, total })).sort((a, b) => b.total - a.total);
+    // Fix: Cast Object.entries to resolve potential 'unknown' type inference issues
+    return (Object.entries(map) as [string, number][]).map(([ticker, total]) => ({ ticker, total })).sort((a, b) => b.total - a.total);
+  }, [dividendReceipts]);
+
+  const groupedReceipts = useMemo(() => {
+    const groups: Record<string, DividendReceipt[]> = {};
+    dividendReceipts.forEach(r => {
+      const d = new Date(r.paymentDate + 'T12:00:00');
+      const month = d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+      if (!groups[month]) groups[month] = [];
+      groups[month].push(r);
+    });
+    return groups;
   }, [dividendReceipts]);
 
   const COLORS = ['#38bdf8', '#10b981', '#f472b6', '#a78bfa', '#fbbf24', '#f87171'];
@@ -151,69 +163,102 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
         </div>
       )}
 
-      {/* Modal de Proventos Reestilizado */}
+      {/* Modal de Proventos Aprimorado */}
       {showProventosModal && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center p-0">
           <div className="absolute inset-0 bg-primary/80 backdrop-blur-md animate-fade-in" onClick={() => setShowProventosModal(false)} />
           <div className="bg-primary w-full max-h-[90vh] rounded-t-[3rem] border-t border-white/10 shadow-2xl relative animate-slide-up flex flex-col pt-4">
-            <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-6"></div>
-            <div className="px-7 pb-4 flex items-center justify-between">
+            <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-6 shrink-0"></div>
+            <div className="px-7 pb-4 flex items-center justify-between shrink-0">
               <div>
-                <h3 className="text-2xl font-black text-white">Extrato de Proventos</h3>
-                <p className="text-xs text-slate-500 font-medium">Total: R$ {formatCurrency(totalDividends)}</p>
+                <h3 className="text-2xl font-black text-white">Extrato Detalhado</h3>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Acumulado: R$ {formatCurrency(totalDividends)}</p>
               </div>
-              <div className="flex items-center gap-3">
-                {onAiSync && (
-                  <button onClick={onAiSync} disabled={isAiLoading} className="p-3 rounded-2xl bg-accent/10 text-accent border border-accent/20 active:scale-95 transition-all disabled:opacity-50">
-                    {isAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                  </button>
-                )}
-                <button onClick={() => setShowProventosModal(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400 active:scale-95 transition-all">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+              <button onClick={() => setShowProventosModal(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400 active:scale-95 transition-all">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             
-            <div className="px-7 py-4 grid grid-cols-2 gap-3">
-                <button onClick={() => setProventosTab('statement')} className={`py-3 rounded-2xl text-xs font-bold transition-all ${proventosTab === 'statement' ? 'bg-accent text-primary' : 'bg-white/5 text-slate-400'}`}>Extrato</button>
-                <button onClick={() => setProventosTab('ranking')} className={`py-3 rounded-2xl text-xs font-bold transition-all ${proventosTab === 'ranking' ? 'bg-accent text-primary' : 'bg-white/5 text-slate-400'}`}>Ranking</button>
+            <div className="px-7 py-4 grid grid-cols-2 gap-3 shrink-0">
+                <button 
+                  onClick={() => setProventosTab('statement')} 
+                  className={`flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'statement' ? 'bg-accent text-primary' : 'bg-white/5 text-slate-500'}`}
+                >
+                  <ReceiptText className="w-4 h-4" /> Extrato
+                </button>
+                <button 
+                  onClick={() => setProventosTab('ranking')} 
+                  className={`flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'ranking' ? 'bg-accent text-primary' : 'bg-white/5 text-slate-500'}`}
+                >
+                  <Trophy className="w-4 h-4" /> Ranking
+                </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-7 pb-12 space-y-4 no-scrollbar">
+            <div className="flex-1 overflow-y-auto px-7 pb-12 space-y-8 no-scrollbar">
                 {dividendReceipts.length === 0 ? (
                     <div className="py-20 text-center text-slate-500 italic text-sm">Nenhum registro encontrado</div>
                 ) : (
                     proventosTab === 'statement' ? (
-                        dividendReceipts.map((receipt, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-4 glass rounded-3xl group animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-xs text-accent">{receipt.ticker.slice(0,4)}</div>
-                                    <div>
-                                        <div className="text-sm font-bold text-white uppercase">{receipt.ticker}</div>
-                                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{receipt.type} • {receipt.paymentDate}</div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-sm font-black text-emerald-400">R$ {formatCurrency(receipt.totalReceived)}</div>
-                                    <div className="text-[10px] text-slate-500 tabular-nums">{receipt.quantityOwned} un × {receipt.rate.toFixed(2)}</div>
-                                </div>
+                        // Fix: Explicitly cast Object.entries result to resolve 'unknown' map error on line 205
+                        (Object.entries(groupedReceipts) as [string, DividendReceipt[]][]).map(([month, receipts], gIdx) => (
+                          <div key={month} className="space-y-4">
+                            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
+                              <Calendar className="w-3.5 h-3.5" /> {month}
+                            </h4>
+                            <div className="space-y-3">
+                              {receipts.map((receipt, idx) => {
+                                const isJcp = receipt.type.toUpperCase().includes('JCP');
+                                return (
+                                  <div key={receipt.id} className="flex items-center justify-between p-4 glass rounded-[2rem] group animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
+                                      <div className="flex items-center gap-4">
+                                          <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-[10px] text-accent border border-white/5">
+                                            {receipt.ticker.slice(0,4)}
+                                          </div>
+                                          <div>
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-sm font-black text-white">{receipt.ticker}</span>
+                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${isJcp ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                                                  {isJcp ? 'JCP' : 'DIV'}
+                                                </span>
+                                              </div>
+                                              <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                                                Pago em {receipt.paymentDate.split('-').reverse().join('/')}
+                                              </div>
+                                          </div>
+                                      </div>
+                                      <div className="text-right">
+                                          <div className="text-sm font-black text-emerald-400 tabular-nums">R$ {formatCurrency(receipt.totalReceived)}</div>
+                                          <div className="text-[9px] text-slate-500 font-bold uppercase tabular-nums">Base: {receipt.dateCom.split('-').reverse().join('/')}</div>
+                                      </div>
+                                  </div>
+                                );
+                              })}
                             </div>
+                          </div>
                         ))
                     ) : (
-                        dividendRanking.map((item, idx) => {
-                            const percent = (item.total / totalDividends) * 100;
-                            return (
-                                <div key={idx} className="space-y-2 animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
-                                    <div className="flex justify-between text-xs font-bold px-1">
-                                        <span className="text-slate-300">{idx + 1}. {item.ticker}</span>
-                                        <span className="text-white">R$ {formatCurrency(item.total)}</span>
-                                    </div>
-                                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-accent rounded-full transition-all duration-700" style={{ width: `${percent}%` }} />
-                                    </div>
-                                </div>
-                            )
-                        })
+                        <div className="space-y-6 pt-2">
+                          {dividendRanking.map((item, idx) => {
+                              const percent = (item.total / totalDividends) * 100;
+                              return (
+                                  <div key={idx} className="space-y-2 animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
+                                      <div className="flex justify-between items-baseline px-1">
+                                          <div className="flex items-center gap-3">
+                                            <span className="text-[10px] font-black text-slate-600">{idx + 1}</span>
+                                            <span className="text-sm font-black text-white">{item.ticker}</span>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="text-sm font-black text-white">R$ {formatCurrency(item.total)}</div>
+                                            <div className="text-[9px] font-bold text-accent uppercase tracking-wider">{percent.toFixed(1)}% do total</div>
+                                          </div>
+                                      </div>
+                                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                          <div className="h-full bg-accent rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(56,189,248,0.3)]" style={{ width: `${percent}%` }} />
+                                      </div>
+                                  </div>
+                              )
+                          })}
+                        </div>
                     )
                 )}
             </div>

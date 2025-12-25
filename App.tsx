@@ -79,13 +79,13 @@ const App: React.FC = () => {
     });
 
     // 2. Processa dividendos vindos do Gemini contra o histórico de transações
-    // Filtramos duplicatas do Gemini baseadas no ID único (ticker + dataCom + valor)
-    // FIX: Added explicit typing to uniqueGeminiDivs to resolve unknown type inference errors on lines 86, 87, 90, 91, 94
+    // Filtramos duplicatas baseadas no ID único. O ID agora inclui Payment Date para suportar parcelas.
     const uniqueGeminiDivs: DividendReceipt[] = Array.from(
       new Map<string, DividendReceipt>(geminiDividends.map(d => [d.id, d])).values()
     );
 
     const receipts: DividendReceipt[] = uniqueGeminiDivs.map(div => {
+      // Importante: A quantidade de ações considerada é SEMPRE a da "Data Com" (data de corte)
       const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, transactions);
       const total = qtyAtDate * div.rate;
       
@@ -97,7 +97,7 @@ const App: React.FC = () => {
       return { ...div, quantityOwned: qtyAtDate, totalReceived: total };
     }).filter(r => r.totalReceived > 0);
 
-    // Ordenação cronológica inversa para o histórico
+    // Ordenação cronológica inversa (mais recentes primeiro)
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
     const finalPortfolio = Object.values(positions)
@@ -117,7 +117,7 @@ const App: React.FC = () => {
     
     if (!force) {
       const last = localStorage.getItem(STORAGE_KEYS.SYNC);
-      if (last && Date.now() - parseInt(last) < 1000 * 60 * 60 * 4) return; // Sync auto a cada 4h
+      if (last && Date.now() - parseInt(last) < 1000 * 60 * 60 * 2) return; // Sync auto a cada 2h
     }
 
     setIsAiLoading(true);
@@ -131,13 +131,13 @@ const App: React.FC = () => {
       });
       setQuotes(prev => ({ ...prev, ...aiQuotes }));
       
-      // Atualiza base de dividendos (Gemini é a fonte primária de histórico)
+      // Atualiza base de dividendos
       setGeminiDividends(data.dividends);
       
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
-      if (force) showToast('success', 'Sincronizado com Gemini AI');
+      if (force) showToast('success', 'Sincronizado com Gemini 2.5 Flash');
     } catch (e: any) {
-      showToast('error', 'Falha ao conectar com IA');
+      showToast('error', 'Erro na sincronização inteligente');
     } finally {
       setIsAiLoading(false);
     }
@@ -149,17 +149,13 @@ const App: React.FC = () => {
     const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
     
     try {
-      // 1. Tenta Brapi para cotações ultra-rápidas e logos
       if (brapiToken) {
         const brQuotes = await getQuotes(tickers, brapiToken);
         const map: Record<string, BrapiQuote> = {};
         brQuotes.forEach(q => map[q.symbol] = q);
         setQuotes(prev => ({ ...prev, ...map }));
       }
-      
-      // 2. Chama Gemini para garantir que o histórico de proventos está em dia
       await handleAiSync(true);
-      
     } catch (error) {
       showToast('error', 'Erro na atualização geral');
     } finally {
