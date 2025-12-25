@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Transaction, AssetType } from '../types';
-import { Plus, Trash2, Calendar, X, Check, Search } from 'lucide-react';
+import { Plus, Trash2, Calendar, X, Check, Search, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -12,12 +12,21 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Helper para obter data local no formato YYYY-MM-DD
+  const getTodayLocal = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Form State
   const [ticker, setTicker] = useState('');
   const [type, setType] = useState<'BUY' | 'SELL'>('BUY');
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getTodayLocal());
   const [assetType, setAssetType] = useState<AssetType>(AssetType.FII);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -29,29 +38,60 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
       type,
       quantity: Number(quantity),
       price: Number(price),
-      date,
+      date, // Salva como string YYYY-MM-DD
       assetType
     });
     // Reset
     setTicker('');
     setQuantity('');
     setPrice('');
+    // Mantém a data atual ou reseta, conforme preferência. Mantendo atual para agilidade.
     setShowForm(false);
   };
 
-  // 1. Sort by date desc
-  const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Helper para formatar data visualmente sem conversão de timezone
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
 
-  // 2. Filter by Search Term
-  const filteredTransactions = sortedTransactions.filter(t => 
-    t.ticker.toUpperCase().includes(searchTerm.toUpperCase())
-  );
+  // Helper para obter nome do mês/ano
+  const getMonthYear = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    // Cria data definindo hora para meio-dia para evitar virada de dia em qualquer fuso
+    const date = new Date(year, month - 1, day, 12, 0, 0); 
+    const monthName = date.toLocaleString('pt-BR', { month: 'long' });
+    return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${year}`;
+  };
+
+  // 1. Filtrar e Ordenar
+  const filteredTransactions = useMemo(() => {
+    return [...transactions]
+      .sort((a, b) => {
+          // Ordenação por data (decrescente) e depois por ID para estabilidade
+          if (b.date !== a.date) return b.date.localeCompare(a.date);
+          return b.id.localeCompare(a.id);
+      })
+      .filter(t => t.ticker.toUpperCase().includes(searchTerm.toUpperCase()));
+  }, [transactions, searchTerm]);
+
+  // 2. Agrupar por Mês
+  const groupedTransactions = useMemo(() => {
+    const groups: Record<string, Transaction[]> = {};
+    filteredTransactions.forEach(t => {
+        const key = getMonthYear(t.date);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(t);
+    });
+    return groups;
+  }, [filteredTransactions]);
 
   return (
     <div className="pb-28 pt-6 px-4 max-w-lg mx-auto relative min-h-screen">
       
       {/* Header Action */}
-      <div className="flex justify-between items-center mb-4 sticky top-16 z-30 py-3 bg-primary/95 backdrop-blur-xl -mx-4 px-4 border-b border-white/5">
+      <div className="flex justify-between items-center mb-4 sticky top-16 z-30 py-3 bg-primary/95 backdrop-blur-xl -mx-4 px-4 border-b border-white/5 shadow-sm">
         <h2 className="text-white font-bold text-lg tracking-tight">Histórico</h2>
         <button 
           onClick={() => setShowForm(true)}
@@ -86,8 +126,8 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
       </div>
 
       {/* List */}
-      <div className="space-y-3 animate-slide-up">
-        {filteredTransactions.length === 0 ? (
+      <div className="space-y-6 animate-slide-up">
+        {Object.keys(groupedTransactions).length === 0 ? (
            <div className="text-center py-16 border border-dashed border-white/10 rounded-2xl bg-white/5">
               {searchTerm ? (
                 <>
@@ -99,37 +139,51 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
               )}
            </div>
         ) : (
-          filteredTransactions.map((t) => (
-            <div key={t.id} className="bg-secondary/40 backdrop-blur-sm p-4 rounded-xl border border-white/5 flex items-center justify-between hover:border-white/10 transition-colors group">
-              <div className="flex items-center gap-4">
-                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-sm ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' : 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20'}`}>
-                    {t.type === 'BUY' ? 'C' : 'V'}
-                 </div>
-                 <div>
-                    <div className="font-bold text-white text-base tracking-tight">{t.ticker}</div>
-                    <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                       <Calendar className="w-3 h-3 text-slate-500" /> 
-                       {new Date(t.date).toLocaleDateString('pt-BR')}
+          Object.entries(groupedTransactions).map(([month, trans]: [string, Transaction[]]) => (
+            <div key={month} className="space-y-3">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 sticky top-32 bg-primary/95 py-1 z-20 backdrop-blur-md w-fit pr-4 rounded-r-lg">
+                    {month}
+                </h3>
+                {trans.map((t) => (
+                    <div key={t.id} className="bg-secondary/40 backdrop-blur-sm p-4 rounded-2xl border border-white/5 flex items-center justify-between hover:border-white/10 transition-colors group relative overflow-hidden">
+                    <div className="flex items-center gap-4 relative z-10">
+                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold shadow-inner ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' : 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20'}`}>
+                            {t.type === 'BUY' ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                        </div>
+                        <div>
+                            <div className="font-bold text-white text-base tracking-tight flex items-center gap-2">
+                                {t.ticker}
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${t.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                    {t.type === 'BUY' ? 'COMPRA' : 'VENDA'}
+                                </span>
+                            </div>
+                            <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-1 font-medium">
+                                <Calendar className="w-3 h-3 text-slate-500" /> 
+                                {formatDate(t.date)}
+                            </div>
+                        </div>
                     </div>
-                 </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-white text-sm font-medium tabular-nums">
-                    {t.quantity} x R$ {t.price.toFixed(2)}
-                  </div>
-                  <div className="text-xs text-slate-500 tabular-nums font-medium">
-                    Total: R$ {(t.quantity * t.price).toFixed(2)}
-                  </div>
-                </div>
-                <button 
-                    onClick={() => onDeleteTransaction(t.id)} 
-                    className="p-2 text-slate-600 hover:text-white hover:bg-rose-500 rounded-lg transition-all"
-                    aria-label="Deletar"
-                >
-                   <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+                    <div className="flex items-center gap-4 relative z-10">
+                        <div className="text-right">
+                        <div className="text-white text-sm font-bold tabular-nums">
+                            R$ {(t.quantity * t.price).toFixed(2)}
+                        </div>
+                        <div className="text-[11px] text-slate-500 tabular-nums font-medium">
+                            {t.quantity} x R$ {t.price.toFixed(2)}
+                        </div>
+                        </div>
+                        <button 
+                            onClick={() => onDeleteTransaction(t.id)} 
+                            className="p-2 text-slate-600 hover:text-white hover:bg-rose-500/20 rounded-xl transition-all active:scale-95"
+                            aria-label="Deletar"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    </div>
+                    {/* Background gradient hint */}
+                    <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-3xl opacity-10 pointer-events-none ${t.type === 'BUY' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                    </div>
+                ))}
             </div>
           ))
         )}
@@ -155,22 +209,22 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
                 <button
                     type="button"
                     onClick={() => setType('BUY')}
-                    className={`py-2 rounded-lg text-sm font-bold transition-all ${type === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                    className={`py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${type === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                    Compra
+                    <TrendingUp className="w-4 h-4" /> Compra
                 </button>
                 <button
                     type="button"
                     onClick={() => setType('SELL')}
-                    className={`py-2 rounded-lg text-sm font-bold transition-all ${type === 'SELL' ? 'bg-rose-500/20 text-rose-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                    className={`py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${type === 'SELL' ? 'bg-rose-500/20 text-rose-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                    Venda
+                    <TrendingDown className="w-4 h-4" /> Venda
                 </button>
               </div>
 
               {/* Asset Type */}
                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Tipo de Ativo</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Tipo de Ativo</label>
                   <div className="grid grid-cols-2 gap-3">
                      <label className={`cursor-pointer border border-white/5 rounded-xl p-3 flex items-center justify-center gap-2 transition-all ${assetType === AssetType.FII ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-slate-950 text-slate-400'}`}>
                         <input type="radio" name="assetType" className="hidden" checked={assetType === AssetType.FII} onChange={() => setAssetType(AssetType.FII)} />
@@ -184,7 +238,7 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
                </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Ticker</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Ticker</label>
                 <input 
                   type="text" 
                   value={ticker} 
@@ -197,17 +251,17 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Qtd</label>
+                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Qtd</label>
                    <input type="number" inputMode="numeric" min="0" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-full bg-slate-950 text-white rounded-xl p-3.5 border border-white/5 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all font-medium tabular-nums" required placeholder="0" />
                 </div>
                 <div className="space-y-1.5">
-                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Preço (R$)</label>
+                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Preço (R$)</label>
                    <input type="number" inputMode="decimal" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full bg-slate-950 text-white rounded-xl p-3.5 border border-white/5 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all font-medium tabular-nums" required placeholder="0,00" />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Data</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Data</label>
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-950 text-white rounded-xl p-3.5 border border-white/5 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all text-sm font-medium" required />
               </div>
 
