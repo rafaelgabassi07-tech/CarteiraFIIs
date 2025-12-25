@@ -80,8 +80,11 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(BRAPI_TOKEN_KEY, brapiToken); }, [brapiToken]);
 
   // Helper: Calculate quantity
+  // CORREÇÃO: Garante que a comparação de data seja segura (string YYYY-MM-DD)
   const getQuantityOnDate = (ticker: string, targetDateStr: string, transactionList: Transaction[]) => {
-    const targetDate = targetDateStr.split('T')[0];
+    // Normaliza a data alvo para YYYY-MM-DD (remove hora se houver)
+    const targetDate = targetDateStr.split('T')[0]; 
+    
     return transactionList
       .filter(t => t.ticker === ticker && t.date <= targetDate)
       .reduce((acc, t) => {
@@ -94,6 +97,8 @@ const App: React.FC = () => {
   // Calculate Portfolio Position & Dividends
   const portfolio = useMemo(() => {
     const pos: Record<string, AssetPosition> = {};
+    
+    // 1. Agrupa posições baseadas em transações
     transactions.forEach(t => {
       if (!pos[t.ticker]) {
         pos[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: 0 };
@@ -108,16 +113,22 @@ const App: React.FC = () => {
       }
     });
 
+    // 2. Calcula dividendos baseado nas cotações carregadas
     Object.keys(pos).forEach(ticker => {
         const quote = quotes[ticker];
         const cashDividends = quote?.dividendsData?.cashDividends;
+        
         if (cashDividends && Array.isArray(cashDividends)) {
             let dividendSum = 0;
             cashDividends.forEach(div => {
-                const referenceDate = div.lastDatePrior || div.paymentDate;
-                if (referenceDate) {
-                    const quantityOwned = getQuantityOnDate(ticker, referenceDate, transactions);
-                    if (quantityOwned > 0) dividendSum += quantityOwned * div.rate;
+                // A data de referência é a Data COM (lastDatePrior) ou Data de Pagamento
+                const rawDate = div.lastDatePrior || div.paymentDate;
+                if (rawDate) {
+                    // Normaliza para garantir formato compatível com as transações
+                    const quantityOwned = getQuantityOnDate(ticker, rawDate, transactions);
+                    if (quantityOwned > 0) {
+                        dividendSum += quantityOwned * div.rate;
+                    }
                 }
             });
             pos[ticker].totalDividends = dividendSum;
@@ -125,8 +136,8 @@ const App: React.FC = () => {
     });
 
     return Object.values(pos)
-      .filter(p => p.quantity > 0 || p.totalDividends! > 0)
-      .filter(p => p.quantity > 0) 
+      .filter(p => p.quantity > 0 || (p.totalDividends && p.totalDividends > 0)) // Mostra se tem qtd ou se já pagou dividendos
+      .filter(p => p.quantity > 0) // Por enquanto filtra apenas ativos em carteira para simplificar visualização
       .map(p => ({
         ...p,
         currentPrice: quotes[p.ticker]?.regularMarketPrice,

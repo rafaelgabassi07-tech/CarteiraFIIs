@@ -1,6 +1,6 @@
-import React from 'react';
-import { AssetPosition } from '../types';
-import { Wallet, TrendingUp, DollarSign } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { AssetPosition, AssetType } from '../types';
+import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ArrowUpRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface HomeProps {
@@ -8,12 +8,34 @@ interface HomeProps {
 }
 
 export const Home: React.FC<HomeProps> = ({ portfolio }) => {
-  // Calculate totals (Note: Logic duplicated from App.tsx visually, but used here for display)
+  // Calculate totals
   const totalInvested = portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0);
   const currentBalance = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
   const profitability = totalInvested > 0 ? ((currentBalance - totalInvested) / totalInvested) * 100 : 0;
-  const totalDividends = portfolio.reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
   
+  // Dividends Logic
+  const totalDividends = portfolio.reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
+  const yieldOnCost = totalInvested > 0 ? (totalDividends / totalInvested) * 100 : 0;
+
+  // Dividends Breakdown
+  const dividendsByFII = portfolio
+    .filter(p => p.assetType === AssetType.FII)
+    .reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
+  
+  const dividendsByStock = portfolio
+    .filter(p => p.assetType === AssetType.STOCK)
+    .reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
+
+  const topPayer = useMemo(() => {
+    if (portfolio.length === 0) return null;
+    return portfolio.reduce((prev, current) => 
+        (prev.totalDividends || 0) > (current.totalDividends || 0) ? prev : current
+    );
+  }, [portfolio]);
+
+  const topPayerValue = topPayer?.totalDividends || 0;
+  const isDividendsEmpty = totalDividends === 0;
+
   // Data for chart
   const data = portfolio
     .map(p => ({
@@ -59,26 +81,97 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
         </div>
       </div>
 
-      {/* Dividends Card */}
-      <div className="bg-secondary/50 backdrop-blur-md p-5 rounded-2xl border border-white/5 flex items-center justify-between shadow-lg hover:bg-secondary/70 transition-colors duration-300">
-        <div className="flex items-center gap-4">
-          <div className="bg-emerald-500/10 p-3.5 rounded-2xl flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-            <DollarSign className="w-6 h-6 text-emerald-500" />
-          </div>
-          <div>
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Proventos</p>
-            <h3 className="text-xl font-bold text-white mt-0.5 tabular-nums tracking-tight">
+      {/* Advanced Dividends Card */}
+      <div className="bg-gradient-to-br from-emerald-950/30 to-slate-900 border border-emerald-500/10 rounded-2xl overflow-hidden relative shadow-lg">
+         {/* Decoration */}
+         <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-3xl rounded-full pointer-events-none"></div>
+
+         <div className="p-5">
+            <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                        <DollarSign className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="text-white font-bold text-lg leading-none">Proventos</h3>
+                        <p className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">Total Acumulado</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <div className="flex items-center gap-1 justify-end text-emerald-400 text-xs font-bold bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/10">
+                        <ArrowUpRight className="w-3 h-3" />
+                        {yieldOnCost.toFixed(2)}% <span className="text-[8px] opacity-70">YoC</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="text-3xl font-bold text-white mb-6 tabular-nums tracking-tight">
               R$ {totalDividends.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </h3>
-          </div>
-        </div>
+            </div>
+
+            {/* Breakdown Bars */}
+            {!isDividendsEmpty && (
+                <div className="space-y-4">
+                    {/* FIIs Bar */}
+                    <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs font-medium">
+                            <span className="text-slate-300">Fundos Imobiliários</span>
+                            <span className="text-slate-200">R$ {dividendsByFII.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-accent transition-all duration-1000 ease-out" 
+                                style={{ width: `${totalDividends > 0 ? (dividendsByFII / totalDividends) * 100 : 0}%` }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Stocks Bar */}
+                    <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs font-medium">
+                            <span className="text-slate-300">Ações</span>
+                            <span className="text-slate-200">R$ {dividendsByStock.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-purple-400 transition-all duration-1000 ease-out" 
+                                style={{ width: `${totalDividends > 0 ? (dividendsByStock / totalDividends) * 100 : 0}%` }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Top Payer */}
+            {!isDividendsEmpty && topPayer && topPayerValue > 0 && (
+                <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-amber-400" />
+                        <span className="text-xs text-slate-400 font-medium">Maior Pagador</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-white bg-white/5 px-2 py-0.5 rounded-md">{topPayer.ticker}</span>
+                        <span className="text-xs font-bold text-emerald-400">R$ {topPayerValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                </div>
+            )}
+            
+            {isDividendsEmpty && (
+                <div className="text-center py-2 text-xs text-slate-500 italic">
+                    Nenhum provento registrado ainda.
+                </div>
+            )}
+         </div>
       </div>
 
       {/* Allocation Chart */}
       {portfolio.length > 0 ? (
         <div className="bg-secondary/30 rounded-2xl shadow-lg border border-white/5 p-6 backdrop-blur-sm">
             <h3 className="text-white font-semibold mb-6 flex items-center justify-between text-sm">
-              <span>Alocação</span>
+              <div className="flex items-center gap-2">
+                 <PieIcon className="w-4 h-4 text-slate-400" />
+                 <span>Alocação</span>
+              </div>
               <span className="text-[10px] font-medium text-slate-400 bg-white/5 px-2.5 py-1 rounded-full border border-white/5">Por Ativo</span>
             </h3>
             
