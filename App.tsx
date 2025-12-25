@@ -72,7 +72,6 @@ const App: React.FC = () => {
 
   const handleApplyUpdate = () => {
     if (updateRegistration?.waiting) {
-      // Envia mensagem para pular espera. O reload acontecerá via evento 'controllerchange'
       updateRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
     }
   };
@@ -152,19 +151,13 @@ const App: React.FC = () => {
     };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
-  // --- BRAPI SYNC (PREÇOS) ---
   const syncBrapiData = useCallback(async (force = false) => {
     if (!brapiToken || transactions.length === 0) return;
-    
-    // Explicitly typing Set to <string>
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase())));
-
     try {
-        // force=false: usa cache se disponível (rápido). force=true: ignora cache (botão refresh).
         const brQuotes = await getQuotes(uniqueTickers, brapiToken, force);
         const map: Record<string, BrapiQuote> = {};
         brQuotes.forEach(q => map[q.symbol] = q);
-        
         if (Object.keys(map).length > 0) {
             setQuotes(prev => ({ ...prev, ...map }));
         }
@@ -173,36 +166,27 @@ const App: React.FC = () => {
     }
   }, [brapiToken, transactions]);
 
-  // Effect para carregar cotações AUTOMATICAMENTE ao iniciar ou mudar transações/token
   useEffect(() => {
     syncBrapiData(false);
   }, [syncBrapiData]);
 
-
-  // --- GEMINI SYNC (PROVENTOS) ---
   const handleAiSync = useCallback(async (force = false) => {
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
-    
     const tickersStr = uniqueTickers.join(',');
     const lastSync = localStorage.getItem(STORAGE_KEYS.SYNC);
-    const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 60; // Cache de 1h
-
+    const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 60;
     if (!force && isRecent && lastSyncTickersRef.current === tickersStr) return;
-
     setIsAiLoading(true);
     try {
       const data = await fetchUnifiedMarketData(uniqueTickers);
-      
       setGeminiDividends(prev => {
         const merged = [...prev, ...data.dividends];
         const uniqueMap = new Map();
         merged.forEach(d => uniqueMap.set(d.id, d));
         return Array.from(uniqueMap.values());
       });
-
       if (data.sources) setSources(data.sources);
-      
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       lastSyncTickersRef.current = tickersStr;
       if (force) showToast('success', 'Dividendos Atualizados');
@@ -217,11 +201,7 @@ const App: React.FC = () => {
     if (isRefreshing || isAiLoading) return;
     setIsRefreshing(true);
     try {
-      // Executa ambas as atualizações em paralelo e FORÇA o refresh (ignora cache)
-      await Promise.all([
-        syncBrapiData(true),
-        handleAiSync(true)
-      ]);
+      await Promise.all([syncBrapiData(true), handleAiSync(true)]);
       showToast('success', 'Dados atualizados com sucesso');
     } catch (error) {
       showToast('error', 'Falha na atualização');
@@ -244,7 +224,7 @@ const App: React.FC = () => {
 
   if (isSplashActive) {
     return (
-      <div className="fixed inset-0 bg-primary z-[200] flex flex-col items-center justify-center animate-fade-in">
+      <div className="fixed inset-0 bg-primary z-[300] flex flex-col items-center justify-center animate-fade-in">
         <div className="relative mb-8 animate-float">
           <div className="w-24 h-24 bg-gradient-to-br from-accent to-blue-600 rounded-[2rem] flex items-center justify-center shadow-2xl">
             <TrendingUp className="w-12 h-12 text-primary" strokeWidth={3} />
@@ -259,22 +239,44 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-primary text-slate-100 selection:bg-accent/30 overflow-x-hidden pb-10">
-      {updateRegistration && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 glass text-white rounded-2xl flex items-center justify-between gap-3 shadow-2xl z-[150] animate-slide-up border border-accent/20">
-          <div className="flex items-center gap-3">
-            <RefreshCw className="w-5 h-5 animate-spin" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Nova versão disponível</span>
+      
+      {/* Sistema de Notificações Superior Centralizado (Fix: z-200, top-6) */}
+      <div className="fixed inset-x-0 top-6 z-[200] flex flex-col items-center gap-4 px-6 pointer-events-none">
+        
+        {/* Banner de Nova Versão */}
+        {updateRegistration && (
+          <div className="w-full max-w-sm pointer-events-auto animate-slide-up">
+            <div className="relative overflow-hidden bg-slate-900 border border-accent/40 p-4 rounded-3xl flex items-center justify-between gap-4 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] ring-1 ring-white/10 group">
+                <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="p-2 bg-accent/20 rounded-xl text-accent animate-pulse">
+                    <RefreshCw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">Atualização</h4>
+                    <p className="text-xs font-bold text-white whitespace-nowrap">Nova versão disponível</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleApplyUpdate} 
+                  className="relative z-10 bg-accent text-primary px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-accent/20"
+                >
+                  Atualizar
+                </button>
+            </div>
           </div>
-          <button onClick={handleApplyUpdate} className="bg-accent text-primary px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Atualizar</button>
-        </div>
-      )}
+        )}
 
-      {toast && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[150] transition-all duration-300 animate-fade-in-up backdrop-blur-2xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
-          {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
-          <span className="text-[11px] font-black uppercase tracking-wider">{toast.text}</span>
-        </div>
-      )}
+        {/* Toasts (Sucesso/Erro) */}
+        {toast && (
+          <div className="w-full max-w-sm pointer-events-auto animate-fade-in-up">
+            <div className={`p-4 rounded-[2rem] flex items-center gap-4 shadow-2xl backdrop-blur-2xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90' : 'bg-rose-500/90'} text-white`}>
+              {toast.type === 'success' ? <CheckCircle2 className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
+              <span className="text-xs font-black uppercase tracking-wider">{toast.text}</span>
+            </div>
+          </div>
+        )}
+      </div>
 
       <Header 
         title={showSettings ? 'Configurações' : currentTab === 'home' ? 'Resumo' : currentTab === 'portfolio' ? 'Minha Carteira' : 'Histórico'} 
