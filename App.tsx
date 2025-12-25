@@ -6,6 +6,7 @@ import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote } from './types';
 import { getQuotes } from './services/brapiService';
+import { DownloadCloud, Sparkles } from 'lucide-react';
 
 // Initial dummy data to show functionality if empty
 const INITIAL_TRANSACTIONS_KEY = 'investfiis_transactions';
@@ -15,6 +16,10 @@ const App: React.FC = () => {
   // Navigation State
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
+
+  // Update State
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
 
   // Data State
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -37,6 +42,53 @@ const App: React.FC = () => {
 
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // --- Service Worker & Update Logic ---
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then((registration) => {
+        
+        // Se já tiver um worker esperando (atualização baixada mas não ativa)
+        if (registration.waiting) {
+          setWaitingWorker(registration.waiting);
+          setUpdateAvailable(true);
+        }
+
+        // Monitora novas atualizações chegando
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // Nova atualização instalada e pronta para ativar
+                setWaitingWorker(newWorker);
+                setUpdateAvailable(true);
+              }
+            });
+          }
+        });
+      });
+
+      // Quando o novo worker assumir o controle, recarrega a página
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+    }
+  }, []);
+
+  const handleUpdateApp = () => {
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    } else {
+        // Fallback
+        window.location.reload();
+    }
+  };
+  // -------------------------------------
 
   // Persist Transactions
   useEffect(() => {
@@ -218,7 +270,38 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-primary text-gray-100 font-sans selection:bg-accent selection:text-slate-900">
+    <div className="min-h-screen bg-primary text-gray-100 font-sans selection:bg-accent selection:text-slate-900 relative">
+      
+      {/* UPDATE MODAL (FORCE UPDATE) */}
+      {updateAvailable && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-6 animate-fade-in">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-3xl border border-accent/20 shadow-2xl text-center max-w-sm w-full relative overflow-hidden">
+            {/* Efeito de fundo */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-accent/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+            
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-accent/20 shadow-[0_0_20px_rgba(56,189,248,0.2)]">
+                <DownloadCloud className="w-8 h-8 text-accent animate-bounce" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                Atualização Disponível <Sparkles className="w-5 h-5 text-yellow-400" />
+              </h2>
+              <p className="text-slate-400 text-sm mb-8 leading-relaxed">
+                Uma nova versão do InvestFIIs foi detectada. Atualize agora para garantir as últimas funcionalidades e correções.
+              </p>
+              
+              <button 
+                onClick={handleUpdateApp}
+                className="w-full bg-accent hover:bg-sky-400 text-slate-950 font-bold py-4 rounded-xl shadow-lg shadow-accent/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                Atualizar Agora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Header 
         title={getTitle()} 
         onSettingsClick={() => setShowSettings(true)} 

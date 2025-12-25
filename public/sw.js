@@ -1,15 +1,22 @@
-const CACHE_NAME = 'investfiis-v1';
+const CACHE_NAME = 'investfiis-v2'; // Incrementado para v2 para forçar atualização
 const urlsToCache = [
   '/',
   '/index.html',
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  // O skipWaiting aqui faz com que o SW assuma o controle imediatamente na instalação
+  // Mas para o fluxo de "pedir para atualizar", controlamos isso via mensagem
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(urlsToCache))
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {
