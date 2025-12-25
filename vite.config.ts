@@ -5,6 +5,7 @@ export default defineConfig(({ mode }) => {
   // Carrega variáveis de ambiente
   const env = loadEnv(mode, '.', '');
   return {
+    base: './', // Importante para previews que não rodam na raiz do domínio
     plugins: [react()],
     server: {
       host: '0.0.0.0', // Permite acesso de IPs externos (essencial para ambientes Cloud/Docker)

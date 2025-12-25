@@ -8,16 +8,29 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
   if (!tickers.length) return [];
 
   const prompt = `
-    Você é um assistente financeiro especializado em FIIs e Ações Brasileiras.
+    Você é um analista de dados financeiros especializado em FIIs e Ações da B3 (Brasil).
     
-    Ação necessária:
-    Pesquise na internet (Google Search) pelos últimos dividendos pagos e anúncios de proventos futuros (Data Com, Data Pagamento, Valor) para os seguintes ativos: ${tickers.join(', ')}.
+    TAREFA:
+    Pesquise na internet (Google Search) os dados de proventos (Dividendos, JCP, Rendimentos) para os seguintes ativos: ${tickers.join(', ')}.
     
-    Regras:
-    1. Considere os últimos 3 pagamentos realizados e quaisquer pagamentos futuros anunciados.
-    2. Data Com: A data limite para ter o ativo.
-    3. Retorne APENAS um JSON seguindo estritamente o schema fornecido.
-    4. Se não encontrar dados recentes (últimos 3 meses) para algum ativo, ignore-o.
+    REQUISITOS OBRIGATÓRIOS:
+    1. **Passado**: Busque o histórico de pagamentos realizados nos últimos 24 meses (2 anos).
+    2. **Futuro**: Busque OBRIGATORIAMENTE por quaisquer anúncios de dividendos futuros ("Data Com" já ocorreu ou vai ocorrer, mas pagamento ainda não realizado).
+    3. **Precisão**: Eu preciso da "Data Com" (data limite para ter o ativo), "Data Pagamento" e "Valor Líquido/Bruto".
+    
+    FORMATO DE RESPOSTA (JSON):
+    Retorne APENAS um Array JSON puro. Não use Markdown.
+    
+    Schema do Objeto:
+    {
+      "ticker": "string (ex: MXRF11)",
+      "type": "string (DIVIDENDO, JCP, RENDIMENTO)",
+      "dateCom": "string (formato YYYY-MM-DD)",
+      "paymentDate": "string (formato YYYY-MM-DD, se não houver previsão exata, estime com base no histórico ou deixe null)",
+      "rate": number (valor em Reais, ex: 0.12)
+    }
+
+    Se não encontrar dados para um ativo específico, simplesmente não o inclua na lista.
   `;
 
   try {
@@ -33,12 +46,12 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
             type: Type.OBJECT,
             properties: {
               ticker: { type: Type.STRING },
-              type: { type: Type.STRING, description: "DIVIDENDO, JCP ou RENDIMENTO" },
-              dateCom: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
-              paymentDate: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
-              rate: { type: Type.NUMBER, description: "Valor por cota/ação em reais" }
+              type: { type: Type.STRING, description: "Tipo do provento" },
+              dateCom: { type: Type.STRING, description: "Data de corte YYYY-MM-DD" },
+              paymentDate: { type: Type.STRING, description: "Data de pagamento YYYY-MM-DD" },
+              rate: { type: Type.NUMBER, description: "Valor unitário" }
             },
-            required: ["ticker", "dateCom", "paymentDate", "rate"]
+            required: ["ticker", "dateCom", "rate"]
           }
         }
       }
@@ -49,21 +62,20 @@ export const fetchDividendsViaGemini = async (tickers: string[]): Promise<Divide
 
     const parsedData = JSON.parse(rawData);
     
-    // Mapeia para o formato interno, adicionando campos que faltam para o DividendReceipt
-    // Nota: quantityOwned e totalReceived serão calculados no App.tsx cruzando com a carteira
+    // Pós-processamento para garantir integridade
     return parsedData.map((item: any) => ({
-      id: `${item.ticker}-${item.dateCom}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${item.ticker}-${item.dateCom}-${item.rate}-${Math.random().toString(36).substr(2, 5)}`,
       ticker: item.ticker.toUpperCase(),
       type: item.type || 'PROVENTO',
       dateCom: item.dateCom,
-      paymentDate: item.paymentDate,
+      paymentDate: item.paymentDate || item.dateCom, // Fallback se data pagamento for nula
       rate: Number(item.rate),
-      quantityOwned: 0, // Será preenchido pelo App
-      totalReceived: 0  // Será preenchido pelo App
+      quantityOwned: 0, // Será calculado no App.tsx
+      totalReceived: 0  // Será calculado no App.tsx
     }));
 
   } catch (error) {
-    console.error("Erro ao buscar dividendos via Gemini:", error);
+    console.error("Erro crítico ao buscar dividendos via Gemini:", error);
     return [];
   }
 };

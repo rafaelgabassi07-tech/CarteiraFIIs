@@ -1,8 +1,9 @@
 import { BrapiResponse, BrapiQuote } from '../types';
 
 const BASE_URL = 'https://brapi.dev/api';
-const CACHE_KEY = 'investfiis_quotes_cache';
-const CACHE_DURATION = 15 * 60 * 1000; // 15 minutos
+// Reduzimos o cache para 1 minuto para garantir cotações mais "real-time" já que o foco é apenas preço
+const CACHE_KEY = 'investfiis_quotes_simple_cache';
+const CACHE_DURATION = 60 * 1000; 
 
 interface CacheItem {
   data: BrapiQuote;
@@ -30,9 +31,10 @@ const saveCache = (cache: QuoteCache) => {
 
 const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuote | null> => {
     try {
-        // CRITICAL FIX: Adicionado parameter range=5y para buscar histórico longo de dividendos
-        // Sem isso, a API retorna apenas dados recentes, quebrando o cálculo para transações antigas.
-        const url = `${BASE_URL}/quote/${ticker}?token=${token}&modules=dividends&range=5y`;
+        // REFATORADO: Busca APENAS cotação simples.
+        // Removemos 'modules=dividends' e 'range' para aliviar a API e focar em preço atual.
+        const url = `${BASE_URL}/quote/${ticker}?token=${token}`;
+        
         const response = await fetch(url);
 
         if (response.ok) {
@@ -40,16 +42,10 @@ const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuo
             return data.results?.[0] || null;
         }
         
-        // Fallback: Tenta sem modules, mas ainda pedindo range longo caso a API suporte
-        const fallbackResponse = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}&range=5y`);
-        if (fallbackResponse.ok) {
-            const data: BrapiResponse = await fallbackResponse.json();
-            return data.results?.[0] || null;
-        }
-
+        console.warn(`Brapi: Falha ao buscar ${ticker} - Status: ${response.status}`);
         return null;
     } catch (error) {
-        console.error(`Erro ao buscar ${ticker}:`, error);
+        console.error(`Brapi: Erro de rede ao buscar ${ticker}:`, error);
         return null;
     }
 };
@@ -67,8 +63,8 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
     if (!cleanTicker) return;
 
     const cachedItem = cache[cleanTicker];
-    // Se tiver cache válido e tiver dados de dividendos, usa o cache
-    // Reduzido tempo de validação do cache para garantir dados frescos na depuração
+    
+    // Verifica cache
     if (cachedItem && (now - cachedItem.timestamp < CACHE_DURATION)) {
       validQuotes.push(cachedItem.data);
     } else {
@@ -78,7 +74,8 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
 
   if (tickersToFetch.length === 0) return validQuotes;
 
-  // Busca em paralelo para agilizar
+  // Busca em paralelo
+  // Adiciona um pequeno delay entre requisições se houver muitos tickers para evitar Rate Limit da Brapi
   const results = await Promise.all(tickersToFetch.map(t => fetchSingleQuote(t, token)));
 
   results.forEach(quote => {

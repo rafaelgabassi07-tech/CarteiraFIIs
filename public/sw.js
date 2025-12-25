@@ -1,7 +1,9 @@
 const CACHE_NAME = 'investfiis-v2'; // Incrementado para v2 para forçar atualização
+// Use caminhos relativos para suportar deploy em subpastas ou previews
 const urlsToCache = [
-  '/',
-  '/index.html',
+  './',
+  './index.html',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
