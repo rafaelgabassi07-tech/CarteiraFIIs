@@ -42,35 +42,49 @@ const App: React.FC = () => {
 
   // --- SERVICE WORKER REGISTRATION ---
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').then((registration) => {
-        if (registration.waiting) {
-          setWaitingWorker(registration.waiting);
-          setUpdateAvailable(true);
+    const registerSW = async () => {
+      if ('serviceWorker' in navigator) {
+        try {
+          // Tenta registrar com escopo explícito relativo
+          const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+          
+          if (registration.waiting) {
+            setWaitingWorker(registration.waiting);
+            setUpdateAvailable(true);
+          }
+
+          registration.onupdatefound = () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.onstatechange = () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  setWaitingWorker(newWorker);
+                  setUpdateAvailable(true);
+                }
+              };
+            }
+          };
+        } catch (error) {
+          // Loga o erro mas não quebra a aplicação.
+          // O erro "origin mismatch" ocorre em previews quando o sw.js redireciona para uma página de login/404.
+          console.warn('Service Worker registration skipped (Environment limitation):', error);
         }
-        registration.onupdatefound = () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.onstatechange = () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                setWaitingWorker(newWorker);
-                setUpdateAvailable(true);
-              }
-            };
+
+        // Listener para recarregar a página quando o novo SW assumir
+        let refreshing = false;
+        const handleControllerChange = () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
           }
         };
-      }).catch((error) => console.error('Erro ao registrar SW:', error));
 
-      let refreshing = false;
-      const handleControllerChange = () => {
-        if (!refreshing) {
-          refreshing = true;
-          window.location.reload();
-        }
-      };
-      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-      return () => navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-    }
+        navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+        return () => navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      }
+    };
+
+    registerSW();
   }, []);
 
   // Persistência
