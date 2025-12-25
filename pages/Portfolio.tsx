@@ -74,7 +74,7 @@ const AssetCard: React.FC<{
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                  <Target className="w-3 h-3" /> Resultado
+                  <Target className="w-3 h-3" /> Resultado Realizado
                 </span>
                 <div className={`text-sm font-bold tabular-nums ${gainValue >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                   R$ {gainValue >= 0 ? '+' : ''}{formatCurrency(gainValue)}
@@ -82,7 +82,7 @@ const AssetCard: React.FC<{
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                  <DollarSign className="w-3 h-3" /> Proventos Acum.
+                  <DollarSign className="w-3 h-3" /> Proventos Totais
                 </span>
                 <div className="text-sm font-bold text-white tabular-nums">
                   R$ {formatCurrency(asset.totalDividends || 0)}
@@ -93,18 +93,18 @@ const AssetCard: React.FC<{
             <div className="pt-2 border-t border-white/5 space-y-4">
               <div className="flex items-center gap-2 mb-3">
                  <BarChart3 className="w-3.5 h-3.5 text-accent" />
-                 <span className="text-[10px] font-bold text-white uppercase tracking-widest">Resumo Financeiro</span>
+                 <span className="text-[10px] font-bold text-white uppercase tracking-widest">Resumo do Ativo</span>
               </div>
               
               <div className="grid grid-cols-2 gap-y-4">
                  <div>
-                    <span className="block text-[9px] text-slate-500 uppercase font-bold">Custo Total</span>
+                    <span className="block text-[9px] text-slate-500 uppercase font-bold">Custo da Posição</span>
                     <span className="text-xs text-slate-200 font-medium tabular-nums">
                       R$ {formatCurrency(totalCost)}
                     </span>
                  </div>
                  <div>
-                    <span className="block text-[9px] text-slate-500 uppercase font-bold">YoC (Yield On Cost)</span>
+                    <span className="block text-[9px] text-slate-500 uppercase font-bold">Yield s/ Custo (YoC)</span>
                     <span className="text-xs text-slate-200 font-medium">
                       {totalCost > 0 ? (((asset.totalDividends || 0) / totalCost) * 100).toFixed(2) : '0.00'}%
                     </span>
@@ -120,7 +120,7 @@ const AssetCard: React.FC<{
                       <TrendingUp className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-[10px] font-black text-accent uppercase leading-none mb-1">Rendimento Total</div>
+                      <div className="text-[10px] font-black text-accent uppercase leading-none mb-1">Histórico de Rendimentos</div>
                       <div className="text-xs font-black text-white">
                         R$ {formatCurrency(asset.totalDividends || 0)} recebidos
                       </div>
@@ -171,7 +171,7 @@ const AssetCard: React.FC<{
               {history.length === 0 ? (
                 <div className="py-20 text-center opacity-40">
                   <DollarSign className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                  <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Sem registros</p>
+                  <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Sem registros no momento</p>
                 </div>
               ) : (
                 history.map((receipt, idx) => {
@@ -187,13 +187,13 @@ const AssetCard: React.FC<{
                               {isJcp ? 'JCP' : 'DIV'}
                             </div>
                             <span className="text-xs font-black text-white uppercase tracking-tight">
-                              Pago em {receipt.paymentDate.split('-').reverse().join('/')}
+                              Recebido em {receipt.paymentDate.split('-').reverse().join('/')}
                             </span>
                           </div>
                           <div className="flex items-center gap-3 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                             <span className="flex items-center gap-1">
                                <Timer className="w-2.5 h-2.5" />
-                               Base: {receipt.dateCom.split('-').reverse().join('/')}
+                               Data-Com: {receipt.dateCom.split('-').reverse().join('/')}
                             </span>
                           </div>
                         </div>
@@ -215,7 +215,7 @@ const AssetCard: React.FC<{
             
             <div className="p-8 pb-10 border-t border-white/5 bg-secondary/30 shrink-0">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-bold uppercase tracking-widest">Yield sobre Custo</span>
+                <span className="text-slate-500 font-bold uppercase tracking-widest">Rendimento sobre Custo (YoC)</span>
                 <span className="text-white font-black text-base">{totalCost > 0 ? (((asset.totalDividends || 0) / totalCost) * 100).toFixed(2) : '0.00'}%</span>
               </div>
             </div>
@@ -238,7 +238,7 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
             <Building2 className="w-12 h-12 text-slate-500" />
         </div>
         <h3 className="text-xl font-bold text-white mb-2">Carteira Vazia</h3>
-        <p className="text-slate-400 text-sm max-w-[250px] leading-relaxed">Adicione suas primeiras ordens de compra para ver seu patrimônio aqui.</p>
+        <p className="text-slate-400 text-sm max-w-[250px] leading-relaxed">Adicione suas primeiras movimentações para acompanhar seu patrimônio aqui.</p>
       </div>
     );
   }

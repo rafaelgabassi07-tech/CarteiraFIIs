@@ -291,7 +291,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                                       <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isFii ? 'bg-accent' : 'bg-purple-500'}`} />
                                       
                                       <div className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1">
-                                          {/* Lado Esquerdo: Ativo e Tags */}
                                           <div className="flex items-center gap-3">
                                               <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border shrink-0 ${isFii ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-purple-500/10 border-purple-500/20 text-purple-400'}`}>
                                                 {isFii ? <Building2 className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
@@ -316,7 +315,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                                               </div>
                                           </div>
 
-                                          {/* Lado Direito: Valor Final */}
                                           <div className="text-right flex flex-col justify-center">
                                               <div className="text-base font-black text-emerald-400 tabular-nums">
                                                 R$ {formatCurrency(receipt.totalReceived)}
@@ -389,8 +387,8 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
             </div>
 
             <div className="h-60 relative mb-4 shrink-0">
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Total</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                    <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Patrimônio</span>
                     <span className="text-xl font-black text-white tabular-nums">R$ {formatCurrency(currentBalance)}</span>
                 </div>
                 <ResponsiveContainer width="100%" height="100%">
@@ -444,7 +442,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                                     <div>
                                         <div className="text-sm font-black text-white uppercase tracking-tight">{entry.name}</div>
                                         {allocationTab === 'asset' && (
-                                          <div className="text-[10px] text-slate-500 font-bold uppercase">{(entry as any).quantity} UN</div>
+                                          <div className="text-[10px] text-slate-500 font-bold uppercase">{(entry as any).quantity} UNIDADES</div>
                                         )}
                                     </div>
                                 </div>

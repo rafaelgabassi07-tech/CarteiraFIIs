@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           {!showBack && (
             <span className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1 opacity-50">
-              Sync Real-Time
+              Sincronização em Tempo Real
             </span>
           )}
         </div>
@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
 export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string) => void }> = ({ currentTab, onTabChange }) => {
   const tabs = [
     { id: 'home', icon: Home, label: 'Início' },
-    { id: 'portfolio', icon: PieChart, label: 'Carteira' },
+    { id: 'portfolio', icon: PieChart, label: 'Patrimônio' },
     { id: 'transactions', icon: ArrowRightLeft, label: 'Histórico' },
   ];
 

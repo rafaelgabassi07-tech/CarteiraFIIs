@@ -102,7 +102,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
   return (
     <div className="pb-32 pt-6 px-5 space-y-6">
       
-      {/* Search and Quick Stats */}
+      {/* Busca e Estatísticas Rápidas */}
       <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
           <div className="relative flex-1 group">
@@ -110,7 +110,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
             <input
               type="text"
               className="w-full bg-secondary/30 backdrop-blur-md border border-white/[0.05] pl-11 pr-4 py-4 rounded-3xl outline-none focus:border-accent/30 text-sm font-bold placeholder:text-slate-600 transition-all shadow-sm"
-              placeholder="Buscar por ticker..."
+              placeholder="Buscar ativo (Ex: MXRF11)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -131,10 +131,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
         {searchTerm && filteredTransactions.length > 0 && (
           <div className="flex items-center gap-3 px-2 overflow-x-auto no-scrollbar py-1">
             <div className="flex-shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full flex items-center gap-2">
-              <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">Compras: R$ {formatCurrency(stats.bought)}</span>
+              <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">Total Comprado: R$ {formatCurrency(stats.bought)}</span>
             </div>
             <div className="flex-shrink-0 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-full flex items-center gap-2">
-              <span className="text-[9px] font-black text-rose-400 uppercase tracking-wider">Vendas: R$ {formatCurrency(stats.sold)}</span>
+              <span className="text-[9px] font-black text-rose-400 uppercase tracking-wider">Total Vendido: R$ {formatCurrency(stats.sold)}</span>
             </div>
           </div>
         )}
@@ -146,7 +146,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
               <div className="p-8 bg-white/[0.02] rounded-[2.5rem] border border-white/[0.05]">
                 <Search className="w-10 h-10 text-slate-700 mb-2" />
               </div>
-              <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px]">Nenhum registro encontrado</p>
+              <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px]">Nenhuma movimentação encontrada</p>
            </div>
         ) : (
           (Object.entries(groupedTransactions) as [string, Transaction[]][]).map(([month, trans], gIdx) => (
@@ -182,7 +182,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         <div className="flex items-center gap-4">
                             <div className="text-right">
                                 <div className="text-white text-sm font-black tabular-nums tracking-tight">R$ {formatCurrency(t.quantity * t.price)}</div>
-                                <div className="text-[10px] text-slate-500 font-bold tabular-nums opacity-60">{t.quantity} UN • {formatCurrency(t.price)}</div>
+                                <div className="text-[10px] text-slate-500 font-bold tabular-nums opacity-60">{t.quantity} un • {formatCurrency(t.price)}</div>
                             </div>
                             
                             <div className="flex items-center gap-1.5">
@@ -193,7 +193,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     <Pencil className="w-4 h-4" />
                                 </button>
                                 <button 
-                                  onClick={() => { if(confirm('Excluir transação?')) onDeleteTransaction(t.id); }} 
+                                  onClick={() => { if(confirm('Deseja realmente excluir esta movimentação?')) onDeleteTransaction(t.id); }} 
                                   className="p-3 rounded-xl bg-white/[0.03] text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-90"
                                 >
                                     <Trash2 className="w-4 h-4" />
@@ -269,13 +269,13 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     />
                   </div>
                   <div className="relative group">
-                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-500 uppercase tracking-widest">R$</span>
+                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Preço R$</span>
                     <input 
                       type="number" 
                       step="0.01" 
                       value={price} 
                       onChange={(e) => setPrice(e.target.value)} 
-                      className="w-full glass pl-12 pr-4 py-5 rounded-3xl outline-none focus:border-accent text-sm font-black tabular-nums transition-all" 
+                      className="w-full glass pl-16 pr-4 py-5 rounded-3xl outline-none focus:border-accent text-sm font-black tabular-nums transition-all" 
                       required 
                     />
                   </div>
@@ -297,7 +297,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 type="submit" 
                 className="w-full py-5 rounded-[2.5rem] bg-accent text-primary font-black text-sm uppercase tracking-[0.25em] shadow-xl shadow-accent/20 active:scale-[0.98] transition-all hover:brightness-110 flex items-center justify-center gap-3"
               >
-                {editingId ? 'Salvar Alterações' : 'Registrar Ordem'}
+                {editingId ? 'Salvar Alterações' : 'Confirmar Ordem'}
                 <ArrowRight className="w-4 h-4" strokeWidth={3} />
               </button>
             </form>
