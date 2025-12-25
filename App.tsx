@@ -5,7 +5,7 @@ import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt } from './types';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
@@ -79,22 +79,20 @@ const App: React.FC = () => {
     });
 
     // 2. Processa dividendos vindos do Gemini contra o histórico de transações
-    // Filtramos duplicatas baseadas no ID único. O ID agora inclui Payment Date para suportar parcelas.
     const uniqueGeminiDivs: DividendReceipt[] = Array.from(
       new Map<string, DividendReceipt>(geminiDividends.map(d => [d.id, d])).values()
     );
 
     const receipts: DividendReceipt[] = uniqueGeminiDivs.map(div => {
-      // Importante: A quantidade de ações considerada é SEMPRE a da "Data Com" (data de corte)
       const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, transactions);
       const total = qtyAtDate * div.rate;
+      const assetType = positions[div.ticker]?.assetType;
       
-      // Acumula o rendimento no ativo correspondente para exibição no Portfolio
       if (total > 0 && positions[div.ticker]) {
         positions[div.ticker].totalDividends = (positions[div.ticker].totalDividends || 0) + total;
       }
       
-      return { ...div, quantityOwned: qtyAtDate, totalReceived: total };
+      return { ...div, quantityOwned: qtyAtDate, totalReceived: total, assetType };
     }).filter(r => r.totalReceived > 0);
 
     // Ordenação cronológica inversa (mais recentes primeiro)
@@ -124,18 +122,15 @@ const App: React.FC = () => {
     try {
       const data = await fetchUnifiedMarketData(tickers);
       
-      // Atualiza preços (fallback do Gemini)
       const aiQuotes: Record<string, BrapiQuote> = {};
       Object.entries(data.prices).forEach(([symbol, price]) => {
         aiQuotes[symbol] = { symbol, regularMarketPrice: price } as BrapiQuote;
       });
       setQuotes(prev => ({ ...prev, ...aiQuotes }));
-      
-      // Atualiza base de dividendos
       setGeminiDividends(data.dividends);
       
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
-      if (force) showToast('success', 'Sincronizado com Gemini 2.5 Flash');
+      if (force) showToast('success', 'Sincronizado com Gemini 3 Flash');
     } catch (e: any) {
       showToast('error', 'Erro na sincronização inteligente');
     } finally {
@@ -213,7 +208,7 @@ const App: React.FC = () => {
           />
         ) : (
           <div key={currentTab} className="animate-fade-in">
-            {currentTab === 'home' && <Home portfolio={portfolio} dividendReceipts={dividendReceipts} onAiSync={() => handleAiSync(true)} isAiLoading={isAiLoading} />}
+            {currentTab === 'home' && <Home portfolio={portfolio} dividendReceipts={dividendReceipts} />}
             {currentTab === 'portfolio' && <Portfolio portfolio={portfolio} dividendReceipts={dividendReceipts} />}
             {currentTab === 'transactions' && (
               <Transactions 

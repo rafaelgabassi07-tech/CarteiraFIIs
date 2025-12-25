@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, ChevronDown, ChevronUp, Calendar, Sparkles, Loader2, X, Layers, LayoutGrid, ArrowUpRight, List, BarChart3, ReceiptText, Trophy } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, ChevronDown, ChevronUp, Calendar, Sparkles, Loader2, X, Layers, LayoutGrid, ArrowUpRight, List, BarChart3, ReceiptText, Trophy, Building2, Briefcase } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 interface HomeProps {
@@ -43,11 +43,23 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
     ].filter(d => d.value > 0);
   }, [dataByAsset]);
 
+  const { totalFiisDiv, totalStocksDiv } = useMemo(() => {
+    return dividendReceipts.reduce((acc, r) => {
+      if (r.assetType === AssetType.FII) acc.totalFiisDiv += r.totalReceived;
+      else acc.totalStocksDiv += r.totalReceived;
+      return acc;
+    }, { totalFiisDiv: 0, totalStocksDiv: 0 });
+  }, [dividendReceipts]);
+
   const dividendRanking = useMemo(() => {
-    const map: Record<string, number> = {};
-    dividendReceipts.forEach(d => { map[d.ticker] = (map[d.ticker] || 0) + d.totalReceived; });
-    // Fix: Cast Object.entries to resolve potential 'unknown' type inference issues
-    return (Object.entries(map) as [string, number][]).map(([ticker, total]) => ({ ticker, total })).sort((a, b) => b.total - a.total);
+    const map: Record<string, { total: number, type?: AssetType }> = {};
+    dividendReceipts.forEach(d => { 
+      if (!map[d.ticker]) map[d.ticker] = { total: 0, type: d.assetType };
+      map[d.ticker].total += d.totalReceived;
+    });
+    return (Object.entries(map) as [string, { total: number, type?: AssetType }][])
+      .map(([ticker, data]) => ({ ticker, total: data.total, type: data.type }))
+      .sort((a, b) => b.total - a.total);
   }, [dividendReceipts]);
 
   const groupedReceipts = useMemo(() => {
@@ -172,11 +184,29 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
             <div className="px-7 pb-4 flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-2xl font-black text-white">Extrato Detalhado</h3>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Acumulado: R$ {formatCurrency(totalDividends)}</p>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Fluxo de Caixa Acumulado</p>
               </div>
               <button onClick={() => setShowProventosModal(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400 active:scale-95 transition-all">
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Resumo por Classe dentro do Modal */}
+            <div className="px-7 py-4 grid grid-cols-2 gap-4 shrink-0">
+              <div className="bg-accent/5 border border-accent/20 rounded-3xl p-4">
+                <div className="flex items-center gap-2 text-accent mb-1">
+                  <Building2 className="w-4 h-4" />
+                  <span className="text-[10px] font-black uppercase tracking-wider">Total FIIs</span>
+                </div>
+                <div className="text-lg font-black text-white tabular-nums">R$ {formatCurrency(totalFiisDiv)}</div>
+              </div>
+              <div className="bg-purple-500/5 border border-purple-500/20 rounded-3xl p-4">
+                <div className="flex items-center gap-2 text-purple-400 mb-1">
+                  <Briefcase className="w-4 h-4" />
+                  <span className="text-[10px] font-black uppercase tracking-wider">Total Ações</span>
+                </div>
+                <div className="text-lg font-black text-white tabular-nums">R$ {formatCurrency(totalStocksDiv)}</div>
+              </div>
             </div>
             
             <div className="px-7 py-4 grid grid-cols-2 gap-3 shrink-0">
@@ -199,7 +229,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                     <div className="py-20 text-center text-slate-500 italic text-sm">Nenhum registro encontrado</div>
                 ) : (
                     proventosTab === 'statement' ? (
-                        // Fix: Explicitly cast Object.entries result to resolve 'unknown' map error on line 205
                         (Object.entries(groupedReceipts) as [string, DividendReceipt[]][]).map(([month, receipts], gIdx) => (
                           <div key={month} className="space-y-4">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
@@ -208,11 +237,12 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                             <div className="space-y-3">
                               {receipts.map((receipt, idx) => {
                                 const isJcp = receipt.type.toUpperCase().includes('JCP');
+                                const isFii = receipt.assetType === AssetType.FII;
                                 return (
                                   <div key={receipt.id} className="flex items-center justify-between p-4 glass rounded-[2rem] group animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
                                       <div className="flex items-center gap-4">
-                                          <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-[10px] text-accent border border-white/5">
-                                            {receipt.ticker.slice(0,4)}
+                                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${isFii ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-purple-500/10 border-purple-500/20 text-purple-400'}`}>
+                                            {isFii ? <Building2 className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
                                           </div>
                                           <div>
                                               <div className="flex items-center gap-2">
@@ -240,20 +270,21 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                         <div className="space-y-6 pt-2">
                           {dividendRanking.map((item, idx) => {
                               const percent = (item.total / totalDividends) * 100;
+                              const isFii = item.type === AssetType.FII;
                               return (
                                   <div key={idx} className="space-y-2 animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
                                       <div className="flex justify-between items-baseline px-1">
                                           <div className="flex items-center gap-3">
                                             <span className="text-[10px] font-black text-slate-600">{idx + 1}</span>
-                                            <span className="text-sm font-black text-white">{item.ticker}</span>
+                                            <span className={`text-sm font-black ${isFii ? 'text-accent' : 'text-purple-400'}`}>{item.ticker}</span>
                                           </div>
                                           <div className="text-right">
                                             <div className="text-sm font-black text-white">R$ {formatCurrency(item.total)}</div>
-                                            <div className="text-[9px] font-bold text-accent uppercase tracking-wider">{percent.toFixed(1)}% do total</div>
+                                            <div className={`text-[9px] font-bold uppercase tracking-wider ${isFii ? 'text-accent' : 'text-purple-400'}`}>{percent.toFixed(1)}% do total</div>
                                           </div>
                                       </div>
                                       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                          <div className="h-full bg-accent rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(56,189,248,0.3)]" style={{ width: `${percent}%` }} />
+                                          <div className={`h-full rounded-full transition-all duration-700 ${isFii ? 'bg-accent shadow-[0_0_8px_rgba(56,189,248,0.3)]' : 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.3)]'}`} style={{ width: `${percent}%` }} />
                                       </div>
                                   </div>
                               )

@@ -1,3 +1,4 @@
+
 export enum AssetType {
   STOCK = 'ACAO',
   FII = 'FII'
@@ -51,6 +52,7 @@ export interface DividendReceipt {
   rate: number;
   quantityOwned: number;
   totalReceived: number;
+  assetType?: AssetType; // Nova propriedade
 }
 
 export interface BrapiQuote {
