@@ -27,6 +27,7 @@ const saveCache = (cache: Record<string, CacheItem>) => {
 /**
  * Brapi: Focada EXCLUSIVAMENTE em preços atuais e logotipos.
  * Adicionado parâmetro forceRefresh para ignorar o cache.
+ * ALTERADO: Requisições individuais por ativo (sem lotes) conforme solicitado.
  */
 export const getQuotes = async (tickers: string[], token: string, forceRefresh = false): Promise<BrapiQuote[]> => {
   if (!tickers.length || !token) return [];
@@ -52,41 +53,48 @@ export const getQuotes = async (tickers: string[], token: string, forceRefresh =
 
   if (tickersToFetch.length === 0) return validQuotes;
 
-  // Busca em lotes para otimizar
-  const BATCH_SIZE = 15; 
   const newQuotes: BrapiQuote[] = [];
 
-  for (let i = 0; i < tickersToFetch.length; i += BATCH_SIZE) {
-    const chunk = tickersToFetch.slice(i, i + BATCH_SIZE);
-    const tickersParam = chunk.join(',');
-
+  // Mapeia cada ticker para uma Promise de requisição individual
+  const promises = tickersToFetch.map(async (ticker) => {
+    console.log(`[Brapi] Buscando ativo individual: ${ticker}`);
+    
     try {
-      const url = `${BASE_URL}/quote/${tickersParam}?token=${token}`;
+      // Endpoint padrão para 1 ativo
+      const url = `${BASE_URL}/quote/${ticker}?token=${token}`;
       const response = await fetch(url);
 
       if (response.ok) {
         const data: BrapiResponse = await response.json();
-        if (data.results) {
-          newQuotes.push(...data.results);
-        }
+        // A API retorna um array 'results' mesmo para requisição única
+        return data.results?.[0]; 
       } else {
-        console.warn(`Brapi: Falha na requisição (${response.status})`);
+        console.warn(`[Brapi] Falha na requisição para ${ticker}: Status ${response.status}`);
+        return null;
       }
     } catch (error) {
-      console.error(`Brapi: Erro na cotação de ${tickersParam}`, error);
+      console.error(`[Brapi] Erro de conexão para ${ticker}`, error);
+      return null;
     }
-  }
+  });
 
-  // Atualiza o cache com os novos dados
-  newQuotes.forEach(quote => {
-    if (quote?.symbol) {
-      cache[quote.symbol] = { data: quote, timestamp: now };
+  // Aguarda todas as requisições individuais terminarem (Promise.all permite paralelismo)
+  const results = await Promise.all(promises);
+
+  // Filtra os sucessos e adiciona ao array final
+  results.forEach(quote => {
+    if (quote) {
+      newQuotes.push(quote);
+      // Atualiza o cache individualmente
+      if (quote.symbol) {
+        cache[quote.symbol] = { data: quote, timestamp: now };
+      }
     }
   });
 
   saveCache(cache);
   
-  // Mescla o que estava válido no cache (se não forçado) com o que acabamos de buscar
+  // Mescla o que estava válido no cache com os novos dados obtidos
   const allQuotes = [...validQuotes, ...newQuotes];
   const uniqueMap = new Map<string, BrapiQuote>();
   allQuotes.forEach(q => uniqueMap.set(q.symbol, q));
