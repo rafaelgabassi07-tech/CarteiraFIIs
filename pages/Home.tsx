@@ -1,13 +1,44 @@
 import React, { useMemo } from 'react';
 import { AssetPosition, AssetType } from '../types';
-import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ArrowUpRight } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ArrowUpRight, Sparkles, Loader2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
+  aiAnalysis?: string | null;
+  isAnalyzing?: boolean;
+  onAnalyze?: () => void;
 }
 
-export const Home: React.FC<HomeProps> = ({ portfolio }) => {
+// Simple Markdown Formatter Component to avoid heavy dependencies if possible
+const MarkdownText: React.FC<{ text: string }> = ({ text }) => {
+  if (!text) return null;
+  
+  // Split by double newlines for paragraphs
+  const paragraphs = text.split('\n\n');
+
+  return (
+    <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+      {paragraphs.map((p, i) => {
+        // Simple bold parser: **text**
+        const parts = p.split(/(\*\*.*?\*\*)/g);
+        
+        return (
+          <p key={i}>
+            {parts.map((part, j) => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={j} className="text-white font-semibold">{part.slice(2, -2)}</strong>;
+              }
+              return part;
+            })}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
+export const Home: React.FC<HomeProps> = ({ portfolio, aiAnalysis, isAnalyzing, onAnalyze }) => {
   // Calculate totals
   const totalInvested = portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0);
   const currentBalance = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
@@ -163,6 +194,61 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
             )}
          </div>
       </div>
+
+      {/* AI Analysis Card */}
+      {portfolio.length > 0 && onAnalyze && (
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950/30 to-slate-900 p-6 rounded-2xl border border-indigo-500/20 shadow-lg">
+           {/* Decoration */}
+           <div className="absolute top-0 left-0 w-40 h-40 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none -ml-10 -mt-10"></div>
+           
+           <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                      <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+                          <Sparkles className="w-5 h-5" />
+                      </div>
+                      <div>
+                          <h3 className="text-white font-bold text-lg leading-none">Consultor IA</h3>
+                          <p className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">Gemini 2.5 Flash</p>
+                      </div>
+                  </div>
+              </div>
+
+              {!aiAnalysis && !isAnalyzing && (
+                 <div className="text-center py-4">
+                    <p className="text-slate-400 text-sm mb-4">Obtenha uma análise detalhada da saúde da sua carteira, diversificação e sugestões.</p>
+                    <button 
+                        onClick={onAnalyze}
+                        className="bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 w-full sm:w-auto mx-auto"
+                    >
+                        <Sparkles className="w-4 h-4" /> Gerar Análise
+                    </button>
+                 </div>
+              )}
+
+              {isAnalyzing && (
+                  <div className="flex flex-col items-center justify-center py-8 gap-3">
+                      <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                      <p className="text-xs text-indigo-300 font-medium animate-pulse">Analisando seus investimentos...</p>
+                  </div>
+              )}
+
+              {aiAnalysis && !isAnalyzing && (
+                  <div className="bg-slate-950/40 p-4 rounded-xl border border-white/5 animate-fade-in">
+                      <MarkdownText text={aiAnalysis} />
+                      <div className="mt-4 pt-3 border-t border-white/5 flex justify-end">
+                         <button 
+                            onClick={onAnalyze}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1.5 transition-colors"
+                         >
+                            <Sparkles className="w-3 h-3" /> Atualizar Análise
+                         </button>
+                      </div>
+                  </div>
+              )}
+           </div>
+        </div>
+      )}
 
       {/* Allocation Chart */}
       {portfolio.length > 0 ? (
