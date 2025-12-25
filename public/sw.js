@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-v6';
+const CACHE_NAME = 'investfiis-v7';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -15,7 +15,8 @@ self.addEventListener('install', (event) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  self.skipWaiting();
+  // REMOVIDO: self.skipWaiting() automático. 
+  // Isso permite que a atualização fique "pendente" para o usuário aprovar no banner.
 });
 
 self.addEventListener('activate', (event) => {
@@ -73,6 +74,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Escuta a mensagem enviada pelo App.tsx quando o usuário clica em "Atualizar"
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

@@ -9,29 +9,33 @@ if (!rootElement) {
 }
 
 /**
- * Registro do Service Worker com detecção de atualização.
- * Simplificado para usar caminhos relativos, garantindo compatibilidade com proxies e previews.
+ * Registro do Service Worker com detecção robusta de atualização.
  */
 const initServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
     try {
-      // Usar './sw.js' resolve o arquivo em relação ao local do index.html atual
-      // O navegador cuida automaticamente de validar a origem.
       const registration = await navigator.serviceWorker.register('./sw.js');
 
+      // 1. Verifica se já existe um SW esperando (atualização baixada em sessão anterior)
+      if (registration.waiting) {
+        console.log('SW: Atualização já estava aguardando.');
+        window.dispatchEvent(new CustomEvent('sw-update-available', { detail: registration }));
+      }
+
+      // 2. Monitora novas atualizações encontradas durante o uso
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
+            // Se o estado mudou para 'installed' E já existe um controlador (não é a primeira visita)
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('Nova versão do InvestFIIs disponível.');
+              console.log('SW: Nova versão baixada e pronta para instalar.');
               window.dispatchEvent(new CustomEvent('sw-update-available', { detail: registration }));
             }
           });
         }
       });
     } catch (error) {
-      // Falha silenciosa em ambientes que não suportam SW (como iframes de preview restritos)
       console.debug('Service Worker não suportado ou bloqueado pelo ambiente:', error);
     }
   }
