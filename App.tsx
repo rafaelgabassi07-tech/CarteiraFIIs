@@ -29,15 +29,16 @@ const App: React.FC = () => {
   
   const [brapiToken, setBrapiToken] = useState(() => {
     // Priority: LocalStorage > Environment Variable > Empty
-    let envToken = '';
+    const local = localStorage.getItem(BRAPI_TOKEN_KEY);
+    if (local) return local;
+
+    // Tenta ler do env (Vite faz a substituição do process.env.BRAPI_TOKEN por string em tempo de build)
+    // Acessamos diretamente para garantir que a substituição ocorra.
     try {
-      if (typeof process !== 'undefined' && process.env && process.env.BRAPI_TOKEN) {
-        envToken = process.env.BRAPI_TOKEN;
-      }
-    } catch (e) {
-      // ignore
+       return process.env.BRAPI_TOKEN || '';
+    } catch {
+       return '';
     }
-    return localStorage.getItem(BRAPI_TOKEN_KEY) || envToken;
   });
 
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
@@ -187,11 +188,13 @@ const App: React.FC = () => {
 
     try {
         const results = await getQuotes(uniqueTickers, brapiToken);
-        // IMPORTANTE: Só atualiza se vier dados válidos. 
+        // Atualiza as cotações com os novos resultados, mantendo as antigas se a busca falhar parcialmente (getQuotes já lida com cache)
         if (results && results.length > 0) {
-            const quoteMap: Record<string, BrapiQuote> = {};
-            results.forEach(q => quoteMap[q.symbol] = q);
-            setQuotes(quoteMap);
+            setQuotes(prevQuotes => {
+                const newQuoteMap = { ...prevQuotes };
+                results.forEach(q => newQuoteMap[q.symbol] = q);
+                return newQuoteMap;
+            });
         }
     } catch (error) {
         console.error("Falha ao atualizar cotações:", error);

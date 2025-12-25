@@ -33,6 +33,20 @@ const saveCache = (cache: QuoteCache) => {
   }
 };
 
+// Busca um único ticker (usado no fallback)
+const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuote | null> => {
+    try {
+        const response = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}&modules=summary,dividends`);
+        if (response.ok) {
+            const data: BrapiResponse = await response.json();
+            return data.results?.[0] || null;
+        }
+        return null;
+    } catch (error) {
+        return null;
+    }
+};
+
 // Busca múltiplos tickers de uma vez
 const fetchBatchQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
   // Limpeza dos tickers: remove espaços, converte para uppercase e remove vazios
@@ -47,12 +61,24 @@ const fetchBatchQuotes = async (tickers: string[], token: string): Promise<Brapi
     const response = await fetch(`${BASE_URL}/quote/${tickersString}?token=${token}&modules=summary,dividends`);
     
     if (!response.ok) {
-      // 417 Expectation Failed geralmente ocorre com tickers inválidos na query
-      if (response.status === 417) {
-         console.warn(`Brapi retornou 417 (Expectation Failed). Verifique se os tickers estão corretos: ${tickersString}`);
-      } else {
-         console.warn(`Falha ao buscar cotações: ${response.status} - ${response.statusText}`);
+      // Estratégia de Fallback: Se der erro 417 (Expectation Failed) ou 404 no lote, tenta buscar um por um
+      // Brapi costuma retornar 417 se um dos tickers for inválido.
+      if ((response.status === 417 || response.status === 404) && sanitizedTickers.length > 0) {
+         console.warn(`Brapi retornou ${response.status} para o lote. Tentando buscar individualmente...`);
+         
+         const results: BrapiQuote[] = [];
+         // Executa em paralelo para ser mais rápido
+         const promises = sanitizedTickers.map(t => fetchSingleQuote(t, token));
+         const individualResults = await Promise.all(promises);
+         
+         individualResults.forEach(res => {
+             if (res) results.push(res);
+         });
+         
+         return results;
       }
+
+      console.warn(`Falha ao buscar cotações: ${response.status} - ${response.statusText}`);
       return [];
     }
     
@@ -67,7 +93,7 @@ const fetchBatchQuotes = async (tickers: string[], token: string): Promise<Brapi
 export const getQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
   if (!tickers.length) return [];
   if (!token) {
-    // console.warn("Brapi Token não configurado"); // Silenciado para reduzir ruído se não configurado
+    // console.warn("Brapi Token não configurado");
     return [];
   }
 
@@ -95,7 +121,7 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
     return validQuotes;
   }
 
-  // 3. Busca os tickers faltantes EM LOTE
+  // 3. Busca os tickers faltantes EM LOTE (com fallback interno)
   const fetchedQuotes = await fetchBatchQuotes(tickersToFetch, token);
 
   // 4. Atualiza o cache e a lista de retornos

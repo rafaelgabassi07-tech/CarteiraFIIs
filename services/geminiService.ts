@@ -3,9 +3,11 @@ import { GoogleGenAI } from "@google/genai";
 
 export const analyzePortfolio = async (portfolio: AssetPosition[]): Promise<string> => {
   try {
-    // 1. Verificar API Key
-    if (!process.env.API_KEY) {
-      return "Erro: API Key do Google não configurada.";
+    // 1. Verificar API Key (Vite substitui process.env.API_KEY pela string definida)
+    const apiKey = process.env.API_KEY;
+    
+    if (!apiKey) {
+      return "Erro: API Key do Google não configurada no ambiente.";
     }
 
     // 2. Preparar os dados para a IA (simplificados para economizar tokens e focar no essencial)
@@ -36,7 +38,7 @@ export const analyzePortfolio = async (portfolio: AssetPosition[]): Promise<stri
     `;
 
     // 3. Inicializar Cliente
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
 
     // 4. Gerar Conteúdo
     const response = await ai.models.generateContent({
