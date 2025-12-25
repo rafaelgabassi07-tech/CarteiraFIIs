@@ -19,30 +19,30 @@ export const Header: React.FC<HeaderProps> = ({
   isRefreshing 
 }) => {
   return (
-    <header className="sticky top-0 z-50 bg-primary/80 backdrop-blur-xl border-b border-white/5 px-4 h-16 flex items-center justify-between transition-all duration-300 pt-safe">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-50 bg-primary/80 backdrop-blur-xl border-b border-white/5 px-4 h-16 flex items-center justify-between transition-all duration-300 pt-safe shadow-lg shadow-black/5">
+      <div className="flex items-center gap-3 animate-fade-in-up" style={{ animationDuration: '0.4s' }}>
         {showBack && onBack ? (
           <button 
             onClick={onBack}
-            className="p-2 -ml-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-all text-white group"
+            className="p-2 -ml-2 rounded-full hover:bg-white/5 active:bg-white/10 transition-all text-white group"
             aria-label="Voltar"
           >
             <ChevronLeft className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" />
           </button>
         ) : (
-          <div className="bg-accent/10 p-2 rounded-lg">
+          <div className="bg-gradient-to-br from-accent/20 to-accent/5 p-2 rounded-xl ring-1 ring-white/10 shadow-[0_0_15px_rgba(56,189,248,0.15)]">
              <TrendingUp className="w-5 h-5 text-accent" />
           </div>
         )}
         <h1 className="text-lg font-bold text-white tracking-tight">{title}</h1>
       </div>
       
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 animate-fade-in-up" style={{ animationDuration: '0.4s', animationDelay: '0.1s' }}>
         {onRefresh && !showBack && (
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="p-2.5 rounded-full hover:bg-white/10 active:scale-95 transition-all text-gray-400 hover:text-white disabled:opacity-50"
+            className={`p-2.5 rounded-full hover:bg-white/5 active:scale-95 transition-all text-gray-400 hover:text-white disabled:opacity-50 ${isRefreshing ? 'bg-white/5 text-accent' : ''}`}
             aria-label="Atualizar dados"
           >
             <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -52,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
         {!showBack && onSettingsClick && (
           <button 
             onClick={onSettingsClick}
-            className="p-2.5 rounded-full hover:bg-white/10 active:rotate-45 transition-all duration-300 text-gray-400 hover:text-white"
+            className="p-2.5 rounded-full hover:bg-white/5 active:rotate-45 transition-all duration-300 text-gray-400 hover:text-white"
             aria-label="Configurações"
           >
             <Settings className="w-5 h-5" />
@@ -76,8 +76,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-primary/90 backdrop-blur-lg border-t border-white/5 pb-safe pt-1 px-6 shadow-[0_-5px_20px_rgba(0,0,0,0.3)] z-50">
-      <div className="flex justify-between items-center h-16 max-w-sm mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 bg-primary/85 backdrop-blur-2xl border-t border-white/5 pb-safe pt-2 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50">
+      <div className="flex justify-between items-center h-14 max-w-sm mx-auto relative">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -85,25 +85,30 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`relative flex flex-col items-center justify-center w-16 h-full transition-all duration-300 group`}
+              className={`relative flex flex-col items-center justify-center w-20 h-full transition-all duration-500 group`}
             >
-              {isActive && (
-                <div className="absolute -top-1 w-8 h-1 bg-accent rounded-full shadow-[0_0_10px_rgba(56,189,248,0.7)] animate-in fade-in zoom-in duration-300" />
-              )}
+              {/* Active Indicator Background */}
+              <div className={`absolute inset-0 rounded-2xl bg-white/5 transition-all duration-300 ${isActive ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} />
               
               <Icon 
-                className={`w-6 h-6 transition-all duration-300 ${
+                className={`w-6 h-6 transition-all duration-500 relative z-10 ${
                   isActive 
-                    ? 'text-accent -translate-y-0.5' 
-                    : 'text-gray-500 group-hover:text-gray-300'
+                    ? 'text-accent -translate-y-1' 
+                    : 'text-slate-500 group-hover:text-slate-300'
                 }`} 
                 strokeWidth={isActive ? 2.5 : 2}
               />
-              <span className={`text-[10px] mt-1 font-medium transition-colors duration-300 ${
-                isActive ? 'text-accent' : 'text-gray-500'
+              
+              <span className={`text-[10px] font-semibold transition-all duration-500 absolute bottom-1.5 ${
+                isActive ? 'text-accent opacity-100 translate-y-0' : 'text-slate-500 opacity-0 translate-y-2'
               }`}>
                 {tab.label}
               </span>
+              
+              {/* Dot indicator for active state */}
+               {isActive && (
+                <div className="absolute top-2 w-1 h-1 bg-accent rounded-full shadow-[0_0_8px_rgba(56,189,248,0.8)] animate-scale-in" />
+              )}
             </button>
           );
         })}
