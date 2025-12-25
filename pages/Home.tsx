@@ -1,8 +1,8 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, TrendingDown, DollarSign, PieChart as PieIcon, Calendar, X, ArrowUpRight, ReceiptText, Trophy, Building2, Briefcase, FilterX, Info, ExternalLink, ArrowDownToLine, Timer, ArrowUpCircle, ChevronRight, RefreshCw, Clock, Coins, CircleDollarSign, BarChart3 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Wallet, TrendingUp, TrendingDown, DollarSign, PieChart as PieIcon, Calendar, X, ArrowUpRight, ReceiptText, Trophy, Building2, Briefcase, FilterX, Info, ExternalLink, ArrowDownToLine, Timer, ArrowUpCircle, ChevronRight, RefreshCw, Clock, Coins, CircleDollarSign, BarChart3, ShieldCheck, Scale, AlertCircle } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, Legend } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -18,6 +18,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   const [proventosTab, setProventosTab] = useState<'statement' | 'ranking'>('statement');
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [allocationTab, setAllocationTab] = useState<'asset' | 'type'>('asset');
+  
+  // Novo estado para o modal de inflação
+  const [showInflationModal, setShowInflationModal] = useState(false);
 
   const totalInvested = useMemo(() => portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0), [portfolio]);
   const currentBalance = useMemo(() => portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0), [portfolio]);
@@ -32,6 +35,19 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
   const yieldOnCost = totalInvested > 0 ? (totalDividends / totalInvested) * 100 : 0;
   const assetCount = portfolio.length;
+
+  // --- LÓGICA INFLAÇÃO ---
+  // IPCA acumulado 12 meses (Referência Fixa/Estimada)
+  const IPCA_12M = 4.62; 
+  const realYield = yieldOnCost - IPCA_12M;
+  const isPositiveReal = realYield > 0;
+  const efficiencyPercent = IPCA_12M > 0 ? (yieldOnCost / IPCA_12M) * 100 : 0;
+
+  // Dados para o Gráfico Comparativo Simples
+  const comparisonData = [
+    { name: 'IPCA', value: IPCA_12M, fill: '#f43f5e', label: 'Inflação' },
+    { name: 'Você', value: yieldOnCost, fill: isPositiveReal ? '#10b981' : '#fbbf24', label: 'Sua Carteira' }
+  ];
 
   // --- DADOS GRÁFICOS ---
   const dataByAsset = useMemo(() => {
@@ -178,7 +194,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </div>
 
-      {/* Renda Passiva Card - APRIMORADO */}
+      {/* Renda Passiva Card */}
       <div 
         onClick={() => setShowProventosModal(true)}
         className="animate-fade-in-up tap-highlight cursor-pointer"
@@ -222,38 +238,41 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </div>
 
-      {/* Composição da Carteira Card */}
-      <div className="grid grid-cols-1 gap-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+      {/* Grid: Composição e Renda x Inflação */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+          
+          {/* Card: Composição da Carteira (Padronizado: Violeta) */}
           {portfolio.length > 0 ? (
             <div 
               onClick={() => setShowAllocationModal(true)}
-              className="glass rounded-[2.5rem] p-6 hover:bg-white/5 transition-all group tap-highlight cursor-pointer"
+              className="relative overflow-hidden bg-gradient-to-br from-violet-900/20 to-slate-900 border border-violet-500/20 rounded-[2.5rem] p-6 hover:border-violet-500/40 transition-all group tap-highlight cursor-pointer h-full flex flex-col justify-between"
             >
-                <div className="flex items-center justify-between mb-5">
+                <div className="absolute left-0 top-0 w-32 h-32 bg-violet-500/10 blur-[40px] rounded-full"></div>
+
+                <div className="relative z-10 flex items-center justify-between mb-4">
                     <h3 className="text-white font-bold flex items-center gap-3 text-sm">
-                        <div className="p-2 bg-accent/10 rounded-xl">
-                            <PieIcon className="w-4 h-4 text-accent" />
+                        <div className="p-2 bg-violet-500/20 rounded-xl">
+                            <PieIcon className="w-4 h-4 text-violet-400" />
                         </div>
-                        Composição da Carteira
+                        Carteira
                     </h3>
-                    <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1 group-hover:text-accent transition-colors">
-                        Ver detalhes <ChevronRight className="w-3 h-3" />
+                    <div className="p-1.5 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors">
+                        <ChevronRight className="w-3 h-3 text-slate-400" />
                     </div>
                 </div>
                 
-                <div className="flex items-center gap-6">
-                    {/* Gráfico Pequeno */}
-                    <div className="h-24 w-24 shrink-0 relative pointer-events-none">
+                <div className="relative z-10 flex items-center gap-4">
+                    <div className="h-16 w-16 shrink-0 relative pointer-events-none">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie 
                                   data={dataByAsset} 
-                                  innerRadius={28} 
-                                  outerRadius={42} 
+                                  innerRadius={20} 
+                                  outerRadius={32} 
                                   paddingAngle={5} 
                                   dataKey="value" 
                                   stroke="none" 
-                                  cornerRadius={6}
+                                  cornerRadius={4}
                                 >
                                     {dataByAsset.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
@@ -261,42 +280,71 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                         </ResponsiveContainer>
                     </div>
                     
-                    {/* Top 3 Assets List */}
-                    <div className="flex-1 space-y-3 min-w-0">
-                        {dataByAsset.slice(0, 3).map((entry, index) => {
-                            const percent = currentBalance > 0 ? (entry.value / currentBalance) * 100 : 0;
-                            return (
-                                <div key={entry.name} className="flex flex-col gap-1">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                                            <span className="text-xs text-slate-200 font-bold uppercase tracking-tight truncate">{entry.name}</span>
-                                        </div>
-                                        <span className="text-xs text-white font-black tabular-nums">{percent.toFixed(1)}%</span>
-                                    </div>
-                                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                                        <div 
-                                            className="h-full rounded-full opacity-80" 
-                                            style={{ width: `${percent}%`, backgroundColor: COLORS[index % COLORS.length] }} 
-                                        />
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        {dataByAsset.length > 3 && (
-                            <div className="text-[9px] text-slate-500 text-center font-bold uppercase tracking-widest pt-1">
-                                + {dataByAsset.length - 3} outros ativos
-                            </div>
-                        )}
+                    <div className="flex-1 min-w-0">
+                       <div className="flex flex-col gap-1.5">
+                           {dataByAsset.slice(0, 2).map((entry, index) => (
+                               <div key={entry.name} className="flex items-center justify-between gap-2">
+                                   <div className="flex items-center gap-1.5 overflow-hidden">
+                                       <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                                       <span className="text-[10px] font-bold text-slate-300 truncate">{entry.name}</span>
+                                   </div>
+                                   <span className="text-[10px] font-black text-white">
+                                     {currentBalance > 0 ? ((entry.value / currentBalance) * 100).toFixed(0) : 0}%
+                                   </span>
+                               </div>
+                           ))}
+                           {dataByAsset.length > 2 && <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">+ {dataByAsset.length - 2} outros</div>}
+                       </div>
                     </div>
                 </div>
             </div>
           ) : (
              <div className="glass p-8 rounded-[2.5rem] text-center opacity-60">
                 <PieIcon className="w-8 h-8 mx-auto mb-2 text-slate-500" />
-                <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">Adicione ativos para ver o gráfico</p>
+                <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">Sem ativos</p>
              </div>
           )}
+
+          {/* Card: Renda x Inflação (Padronizado: Dinâmico) */}
+          <div 
+             onClick={() => setShowInflationModal(true)}
+             className={`relative overflow-hidden rounded-[2.5rem] p-6 transition-all group tap-highlight cursor-pointer h-full flex flex-col justify-between ${isPositiveReal ? 'bg-gradient-to-br from-emerald-900/40 to-slate-900 border border-emerald-500/20 hover:border-emerald-500/40' : 'bg-gradient-to-br from-rose-900/40 to-slate-900 border border-rose-500/20 hover:border-rose-500/40'}`}
+          >
+             <div className="absolute right-0 top-0 w-32 h-32 bg-white/5 blur-[40px] rounded-full"></div>
+
+             <div className="relative z-10 flex justify-between items-start mb-4">
+                 <h3 className="text-white font-bold flex items-center gap-3 text-sm">
+                    <div className={`p-2 rounded-xl ${isPositiveReal ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
+                        <Scale className={`w-4 h-4 ${isPositiveReal ? 'text-emerald-400' : 'text-rose-400'}`} />
+                    </div>
+                    Ganho Real
+                 </h3>
+                 <div className="p-1.5 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors">
+                     <ChevronRight className="w-3 h-3 text-slate-400" />
+                 </div>
+             </div>
+
+             <div className="relative z-10">
+                <div className="flex items-baseline gap-2 mb-2">
+                    <span className={`text-2xl font-black tabular-nums tracking-tighter ${isPositiveReal ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {isPositiveReal ? '+' : ''}{realYield.toFixed(2)}%
+                    </span>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider py-0.5 px-2 rounded-lg border ${isPositiveReal ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+                        {isPositiveReal ? 'Real' : 'Perda'}
+                    </span>
+                </div>
+
+                <div className="w-full bg-slate-800 rounded-full h-1.5 mb-2 overflow-hidden flex">
+                    <div className="h-full bg-rose-500 opacity-60" style={{ width: '40%' }}></div>
+                    <div className={`h-full ${isPositiveReal ? 'bg-emerald-400' : 'bg-yellow-400'} shadow-[0_0_10px_currentColor]`} style={{ width: '60%' }}></div>
+                </div>
+                
+                <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                    <span>IPCA {IPCA_12M}%</span>
+                    <span>Eficiência: {efficiencyPercent.toFixed(0)}%</span>
+                </div>
+             </div>
+          </div>
       </div>
 
       {/* Fontes Gemini */}
@@ -456,6 +504,80 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                  </div>
                )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL INFLAÇÃO (SIMPLIFICADO E INTUITIVO) --- */}
+      {showInflationModal && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center p-0">
+          <div className="absolute inset-0 bg-primary/80 backdrop-blur-md animate-fade-in" onClick={() => setShowInflationModal(false)} />
+          <div className="bg-primary w-full h-[55vh] rounded-t-[3rem] border-t border-white/10 shadow-2xl relative animate-slide-up flex flex-col overflow-hidden">
+             
+             <div className="p-7 pb-4 shrink-0">
+                <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-6"></div>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                         <div className={`p-3 rounded-2xl ${isPositiveReal ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'} border`}>
+                            {isPositiveReal ? <ShieldCheck className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
+                         </div>
+                         <div>
+                             <h3 className="text-xl font-black text-white tracking-tighter">Poder de Compra</h3>
+                             <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-0.5">Análise de Ganho Real</p>
+                         </div>
+                    </div>
+                    <button onClick={() => setShowInflationModal(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400 active:scale-90 transition-all">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+             </div>
+
+             <div className="flex-1 overflow-y-auto px-7 pb-10 no-scrollbar">
+                
+                {/* Comparativo Visual Simples */}
+                <div className="h-32 w-full mb-6 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={comparisonData} layout="vertical" margin={{ top: 0, right: 30, bottom: 0, left: 30 }} barCategoryGap={10}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#ffffff05" />
+                            <XAxis type="number" hide />
+                            <YAxis 
+                                dataKey="label" 
+                                type="category" 
+                                width={80} 
+                                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} 
+                                axisLine={false}
+                                tickLine={false}
+                            />
+                            <Bar 
+                                dataKey="value" 
+                                radius={[0, 6, 6, 0]} 
+                                barSize={24} 
+                                label={{ position: 'right', fill: '#fff', fontSize: 11, fontWeight: 800, formatter: (v: any) => `${v.toFixed(2)}%` }}
+                            >
+                                {comparisonData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                <div className="bg-white/[0.03] p-6 rounded-[2rem] border border-white/5 relative overflow-hidden">
+                    <div className={`absolute top-0 bottom-0 left-0 w-1 ${isPositiveReal ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                    
+                    <h4 className={`text-sm font-black mb-2 ${isPositiveReal ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {isPositiveReal ? 'Patrimônio Protegido' : 'Alerta: Erosão de Valor'}
+                    </h4>
+                    
+                    <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                        {isPositiveReal 
+                            ? `Excelente! Seus rendimentos (Yield) estão ${realYield.toFixed(2)}% acima da inflação. Isso significa que você está aumentando seu poder de compra real.`
+                            : `Atenção. Seus rendimentos estão abaixo da inflação. Na prática, seu dinheiro está perdendo ${Math.abs(realYield).toFixed(2)}% de poder de compra ao ano.`
+                        }
+                    </p>
+                </div>
+
+             </div>
           </div>
         </div>
       )}
