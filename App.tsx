@@ -144,8 +144,7 @@ const App: React.FC = () => {
     // Poll every 60s
     const interval = setInterval(fetchMarketData, 60000);
     return () => clearInterval(interval);
-  }, [transactions, brapiToken]); // Dependência 'transactions' garante atualização automática ao lançar ativo
-
+  }, [transactions, brapiToken]); 
 
   // Transaction Handlers
   const handleAddTransaction = (t: Omit<Transaction, 'id'>) => {
@@ -158,7 +157,6 @@ const App: React.FC = () => {
   };
 
   const handleImportTransactions = (data: Transaction[]) => {
-    // Basic validation could be improved, but sufficient for JSON restore
     setTransactions(data);
   };
 

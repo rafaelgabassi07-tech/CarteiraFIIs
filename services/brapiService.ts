@@ -33,34 +33,31 @@ const saveCache = (cache: QuoteCache) => {
   }
 };
 
-// Função interna para buscar UM único ativo
-const fetchSingleTicker = async (ticker: string, token: string): Promise<BrapiQuote | null> => {
+// Busca múltiplos tickers de uma vez
+const fetchBatchQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
+  if (tickers.length === 0) return [];
+  
   try {
-    const response = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}&modules=summary,dividends`);
+    const tickersString = tickers.join(',');
+    const response = await fetch(`${BASE_URL}/quote/${tickersString}?token=${token}&modules=summary,dividends`);
     
     if (!response.ok) {
-      console.warn(`Falha ao buscar cotação para ${ticker}: ${response.status}`);
-      return null;
+      console.warn(`Falha ao buscar cotações: ${response.status}`);
+      return [];
     }
     
     const data: BrapiResponse = await response.json();
-    
-    // A API da Brapi retorna um array em 'results' mesmo para busca individual
-    if (data.results && data.results.length > 0) {
-      return data.results[0];
-    }
-    
-    return null;
+    return data.results || [];
   } catch (error) {
-    console.error(`Erro na requisição Brapi para ${ticker}:`, error);
-    return null;
+    console.error(`Erro na requisição Brapi em lote:`, error);
+    return [];
   }
 };
 
 export const getQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
   if (!tickers.length) return [];
   if (!token) {
-    console.warn("Brapi Token not set");
+    console.warn("Brapi Token não configurado");
     return [];
   }
 
@@ -73,7 +70,6 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
   // 1. Separa o que está em cache (e válido) do que precisa ser buscado
   tickers.forEach(ticker => {
     const cachedItem = cache[ticker];
-    // Verifica se existe e se é mais recente que 10 minutos
     if (cachedItem && (now - cachedItem.timestamp < CACHE_DURATION)) {
       validQuotes.push(cachedItem.data);
     } else {
@@ -86,29 +82,20 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
     return validQuotes;
   }
 
-  // 3. Busca os tickers faltantes INDIVIDUALMENTE (em paralelo)
-  // console.log(`Buscando dados individualmente para: ${tickersToFetch.join(', ')}`);
-  
-  const promises = tickersToFetch.map(ticker => fetchSingleTicker(ticker, token));
-  const results = await Promise.all(promises);
+  // 3. Busca os tickers faltantes EM LOTE
+  const fetchedQuotes = await fetchBatchQuotes(tickersToFetch, token);
 
-  // 4. Filtra resultados nulos e atualiza o cache
-  const newQuotes: BrapiQuote[] = [];
-  
-  results.forEach(quote => {
-    if (quote) {
-      newQuotes.push(quote);
-      // Atualiza Cache
-      cache[quote.symbol] = {
-        data: quote,
-        timestamp: now
-      };
-      validQuotes.push(quote);
-    }
+  // 4. Atualiza o cache e a lista de retornos
+  fetchedQuotes.forEach(quote => {
+    cache[quote.symbol] = {
+      data: quote,
+      timestamp: now
+    };
+    validQuotes.push(quote);
   });
 
   // 5. Persiste o cache atualizado se houver novos dados
-  if (newQuotes.length > 0) {
+  if (fetchedQuotes.length > 0) {
     saveCache(cache);
   }
 
