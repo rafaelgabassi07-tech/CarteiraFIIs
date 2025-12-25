@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight } from 'lucide-react';
 import { Transaction } from '../types';
@@ -93,12 +94,12 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
         
         <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/5 overflow-hidden shadow-sm">
-          <div className="p-6 border-b border-white/5">
+          <div className="p-5 border-b border-white/5">
             <h3 className="text-lg font-bold text-white mb-1">API Brapi</h3>
             <p className="text-sm text-slate-400 leading-relaxed">Conecte-se para obter cotações e dividendos em tempo real.</p>
           </div>
           
-          <div className="p-6 bg-slate-950/30 space-y-4">
+          <div className="p-5 bg-slate-950/30 space-y-4">
              <div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Token de Acesso</label>
                 <div className="relative group">
@@ -193,7 +194,7 @@ export const Settings: React.FC<SettingsProps> = ({
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sistema</h2>
         </div>
         
-        <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
+        <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-5 flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500/50"></div>
             <div>
                 <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
@@ -215,7 +216,7 @@ export const Settings: React.FC<SettingsProps> = ({
       {/* Rodapé */}
       <div className="text-center pt-8 pb-4 animate-fade-in opacity-50 hover:opacity-100 transition-opacity">
          <span className="text-[10px] font-mono text-slate-600">
-            InvestFIIs v1.3.0
+            InvestFIIs v1.3.1
          </span>
       </div>
     </div>

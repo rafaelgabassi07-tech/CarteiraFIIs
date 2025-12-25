@@ -243,6 +243,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
               </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Formulário inalterado mantendo a lógica existente */}
               <div className="grid grid-cols-2 bg-white/[0.03] p-1.5 rounded-2xl border border-white/[0.05]">
                 <button type="button" onClick={() => setType('BUY')} className={`py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${type === 'BUY' ? 'bg-emerald-500 text-primary shadow-lg shadow-emerald-500/20' : 'text-slate-500'}`}>Compra</button>
                 <button type="button" onClick={() => setType('SELL')} className={`py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${type === 'SELL' ? 'bg-rose-500 text-primary shadow-lg shadow-rose-500/20' : 'text-slate-500'}`}>Venda</button>

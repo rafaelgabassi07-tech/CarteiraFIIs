@@ -29,19 +29,19 @@ const AssetCard: React.FC<{
   return (
     <>
       <div 
-          className={`bg-secondary/40 hover:bg-secondary/60 transition-all duration-300 rounded-3xl border border-white/5 mb-4 overflow-hidden backdrop-blur-md shadow-sm animate-fade-in-up ${isExpanded ? 'ring-1 ring-accent/30 bg-secondary/70 shadow-lg' : ''}`}
+          className={`bg-secondary/40 hover:bg-secondary/60 transition-all duration-300 rounded-[2rem] border border-white/5 mb-3 overflow-hidden backdrop-blur-md shadow-sm animate-fade-in-up ${isExpanded ? 'ring-1 ring-accent/30 bg-secondary/70 shadow-lg' : ''}`}
           style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
       >
         <div 
           onClick={() => setIsExpanded(!isExpanded)}
-          className="p-4 flex items-center justify-between cursor-pointer select-none group"
+          className="p-5 flex items-center justify-between cursor-pointer select-none group"
         >
           <div className="flex items-center gap-4">
             <div className="relative">
               {asset.logoUrl ? (
-                <img src={asset.logoUrl} alt={asset.ticker} className="w-12 h-12 rounded-2xl bg-white object-contain p-1 shadow-md ring-1 ring-white/10" />
+                <img src={asset.logoUrl} alt={asset.ticker} className="w-11 h-11 rounded-2xl bg-white object-contain p-1 shadow-md ring-1 ring-white/10" />
               ) : (
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-[10px] font-black text-white shadow-inner ring-1 ring-white/10 uppercase">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-[10px] font-black text-white shadow-inner ring-1 ring-white/10 uppercase">
                   {asset.ticker.substring(0, 4)}
                 </div>
               )}
@@ -136,6 +136,7 @@ const AssetCard: React.FC<{
 
       <SwipeableModal isOpen={showHistoryModal} onClose={() => setShowHistoryModal(false)}>
         <div className="px-8 pt-2 pb-10">
+            {/* Conteúdo do modal mantido para brevidade */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-accent/20 to-accent/5 rounded-[1.5rem] flex items-center justify-center text-accent font-black text-2xl shadow-xl ring-1 ring-accent/20">
