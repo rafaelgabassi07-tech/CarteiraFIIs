@@ -6,7 +6,8 @@ import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt } from './types';
 import { getQuotes } from './services/brapiService';
-import { DownloadCloud } from 'lucide-react';
+import { fetchDividendsViaGemini } from './services/geminiService';
+import { DownloadCloud, Sparkles } from 'lucide-react';
 
 const INITIAL_TRANSACTIONS_KEY = 'investfiis_transactions';
 const BRAPI_TOKEN_KEY = 'investfiis_brapitoken';
@@ -28,7 +29,9 @@ const App: React.FC = () => {
   });
 
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
+  const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   // Persistência
   useEffect(() => { localStorage.setItem(INITIAL_TRANSACTIONS_KEY, JSON.stringify(transactions)); }, [transactions]);
@@ -36,7 +39,6 @@ const App: React.FC = () => {
 
   // Função crítica: Calcula a quantidade exata de cotas em uma data passada
   const getQuantityOnDate = useCallback((ticker: string, targetDateStr: string, transactionList: Transaction[]) => {
-    // Normaliza para YYYY-MM-DD
     if (!targetDateStr) return 0;
     const targetDate = targetDateStr.split('T')[0];
     
@@ -67,44 +69,65 @@ const App: React.FC = () => {
       }
     });
 
-    // 2. Calcula Proventos e Gera Extrato
-    Object.keys(positions).forEach(ticker => {
-      const quote = quotes[ticker];
-      const dividends = quote?.dividendsData?.cashDividends;
-      
-      if (dividends && Array.isArray(dividends)) {
-        let sum = 0;
-        dividends.forEach(div => {
-          // A regra: Se você tinha o ativo na data base (lastDatePrior), você recebe.
-          // Se não tiver lastDatePrior, usa paymentDate (fallback)
-          const refDate = div.lastDatePrior || div.paymentDate;
-          
-          if (refDate) {
-            const qtyAtDate = getQuantityOnDate(ticker, refDate, transactions);
+    // 2. Calcula Proventos (Prioridade: Gemini > Brapi)
+    // Se tivermos dados do Gemini, usamos eles. Caso contrário, tentamos Brapi.
+    
+    const useGemini = geminiDividends.length > 0;
+    
+    if (useGemini) {
+      // Processa dados do Gemini
+      geminiDividends.forEach(div => {
+         const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, transactions);
+         if (qtyAtDate > 0) {
+            const totalReceived = qtyAtDate * div.rate;
             
-            if (qtyAtDate > 0) {
-              const totalReceived = qtyAtDate * div.rate;
-              sum += totalReceived;
+            // Atualiza receipt
+            receipts.push({
+              ...div,
+              quantityOwned: qtyAtDate,
+              totalReceived: totalReceived
+            });
 
-              // Adiciona ao extrato
-              receipts.push({
-                id: `${ticker}-${refDate}-${div.type}`,
-                ticker,
-                type: div.label || div.type || 'DIVIDENDO',
-                dateCom: refDate.split('T')[0],
-                paymentDate: div.paymentDate ? div.paymentDate.split('T')[0] : 'N/A',
-                rate: div.rate,
-                quantityOwned: qtyAtDate,
-                totalReceived: totalReceived
-              });
+            // Atualiza total na posição
+            if (positions[div.ticker]) {
+              positions[div.ticker].totalDividends = (positions[div.ticker].totalDividends || 0) + totalReceived;
             }
-          }
-        });
-        positions[ticker].totalDividends = sum;
-      }
-    });
+         }
+      });
+    } else {
+      // Processa dados da Brapi (Fallback/Padrão)
+      Object.keys(positions).forEach(ticker => {
+        const quote = quotes[ticker];
+        const dividends = quote?.dividendsData?.cashDividends;
+        
+        if (dividends && Array.isArray(dividends)) {
+          let sum = 0;
+          dividends.forEach(div => {
+            const refDate = div.lastDatePrior || div.paymentDate;
+            if (refDate) {
+              const qtyAtDate = getQuantityOnDate(ticker, refDate, transactions);
+              if (qtyAtDate > 0) {
+                const totalReceived = qtyAtDate * div.rate;
+                sum += totalReceived;
+                receipts.push({
+                  id: `${ticker}-${refDate}-${div.type}`,
+                  ticker,
+                  type: div.label || div.type || 'DIVIDENDO',
+                  dateCom: refDate.split('T')[0],
+                  paymentDate: div.paymentDate ? div.paymentDate.split('T')[0] : 'N/A',
+                  rate: div.rate,
+                  quantityOwned: qtyAtDate,
+                  totalReceived: totalReceived
+                });
+              }
+            }
+          });
+          positions[ticker].totalDividends = sum;
+        }
+      });
+    }
 
-    // Ordena extrato do mais recente para o mais antigo
+    // Ordena extrato
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
     const finalPortfolio = Object.values(positions)
@@ -116,7 +139,7 @@ const App: React.FC = () => {
       }));
       
     return { portfolio: finalPortfolio, dividendReceipts: receipts };
-  }, [transactions, quotes, getQuantityOnDate]);
+  }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
   const fetchMarketData = useCallback(async (isManual = false) => {
     const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
@@ -139,6 +162,24 @@ const App: React.FC = () => {
       if (isManual) setIsRefreshing(false);
     }
   }, [transactions, brapiToken]);
+
+  const handleSyncDividendsWithAI = async () => {
+    // FIX: Typed explicitly to avoid 'unknown[]' inference
+    const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
+    if (uniqueTickers.length === 0) return;
+
+    setIsAiLoading(true);
+    try {
+      const aiResults = await fetchDividendsViaGemini(uniqueTickers);
+      if (aiResults.length > 0) {
+        setGeminiDividends(aiResults);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchMarketData();
@@ -167,7 +208,7 @@ const App: React.FC = () => {
     );
 
     switch (currentTab) {
-      case 'home': return <Home portfolio={portfolio} dividendReceipts={dividendReceipts} />;
+      case 'home': return <Home portfolio={portfolio} dividendReceipts={dividendReceipts} onAiSync={handleSyncDividendsWithAI} isAiLoading={isAiLoading} />;
       case 'portfolio': return <Portfolio portfolio={portfolio} />;
       case 'transactions': return (
         <Transactions 
@@ -176,7 +217,7 @@ const App: React.FC = () => {
           onDeleteTransaction={(id) => setTransactions(prev => prev.filter(x => x.id !== id))}
         />
       );
-      default: return <Home portfolio={portfolio} dividendReceipts={dividendReceipts} />;
+      default: return <Home portfolio={portfolio} dividendReceipts={dividendReceipts} onAiSync={handleSyncDividendsWithAI} isAiLoading={isAiLoading} />;
     }
   };
 

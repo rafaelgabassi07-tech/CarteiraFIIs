@@ -1,14 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ChevronDown, ChevronUp, Calendar, Sparkles, Loader2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
   dividendReceipts: DividendReceipt[];
+  onAiSync?: () => void;
+  isAiLoading?: boolean;
 }
 
-export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts }) => {
+export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSync, isAiLoading }) => {
   const [showDividendDetails, setShowDividendDetails] = useState(false);
 
   const totalInvested = portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0);
@@ -177,16 +179,26 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts }) => {
                   )}
               </div>
             ) : (
-               <div className="text-center py-2">
-                  {hasMarketData ? (
-                    <p className="text-xs text-slate-500 italic">
-                      Nenhum provento registrado para o período.
+               <div className="text-center py-2 flex flex-col items-center gap-3">
+                  {isAiLoading ? (
+                    <p className="text-xs text-emerald-400 italic flex items-center justify-center gap-2 animate-pulse">
+                       <Loader2 className="w-4 h-4 animate-spin" />
+                       IA analisando dividendos...
                     </p>
                   ) : (
-                    <p className="text-xs text-slate-500 italic flex items-center justify-center gap-2">
-                       <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
-                       Sincronizando dados Brapi...
-                    </p>
+                    <>
+                      <p className="text-xs text-slate-500 italic">
+                        Nenhum provento identificado automaticamente.
+                      </p>
+                      {onAiSync && (
+                        <button 
+                          onClick={onAiSync}
+                          className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/20 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95"
+                        >
+                          <Sparkles className="w-3 h-3" /> Buscar com IA
+                        </button>
+                      )}
+                    </>
                   )}
                </div>
             )}
