@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Header, BottomNav } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
-import { Transaction, AssetPosition, BrapiQuote } from './types';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt } from './types';
 import { getQuotes } from './services/brapiService';
 import { DownloadCloud } from 'lucide-react';
 
@@ -37,7 +36,8 @@ const App: React.FC = () => {
 
   // Função crítica: Calcula a quantidade exata de cotas em uma data passada
   const getQuantityOnDate = useCallback((ticker: string, targetDateStr: string, transactionList: Transaction[]) => {
-    // Normaliza para YYYY-MM-DD ignorando horas da API
+    // Normaliza para YYYY-MM-DD
+    if (!targetDateStr) return 0;
     const targetDate = targetDateStr.split('T')[0];
     
     return transactionList
@@ -47,9 +47,10 @@ const App: React.FC = () => {
       }, 0);
   }, []);
 
-  // Cálculo do Portfólio e Proventos
-  const portfolio = useMemo(() => {
+  // UseMemo para calcular Portfólio E Lista de Extrato de Dividendos
+  const { portfolio, dividendReceipts } = useMemo(() => {
     const positions: Record<string, AssetPosition> = {};
+    const receipts: DividendReceipt[] = [];
     
     // 1. Calcula Posição Atual e Preço Médio
     transactions.forEach(t => {
@@ -66,7 +67,7 @@ const App: React.FC = () => {
       }
     });
 
-    // 2. Calcula Proventos baseado na "Data Com" (lastDatePrior)
+    // 2. Calcula Proventos e Gera Extrato
     Object.keys(positions).forEach(ticker => {
       const quote = quotes[ticker];
       const dividends = quote?.dividendsData?.cashDividends;
@@ -75,11 +76,27 @@ const App: React.FC = () => {
         let sum = 0;
         dividends.forEach(div => {
           // A regra: Se você tinha o ativo na data base (lastDatePrior), você recebe.
+          // Se não tiver lastDatePrior, usa paymentDate (fallback)
           const refDate = div.lastDatePrior || div.paymentDate;
+          
           if (refDate) {
             const qtyAtDate = getQuantityOnDate(ticker, refDate, transactions);
+            
             if (qtyAtDate > 0) {
-              sum += qtyAtDate * div.rate;
+              const totalReceived = qtyAtDate * div.rate;
+              sum += totalReceived;
+
+              // Adiciona ao extrato
+              receipts.push({
+                id: `${ticker}-${refDate}-${div.type}`,
+                ticker,
+                type: div.label || div.type || 'DIVIDENDO',
+                dateCom: refDate.split('T')[0],
+                paymentDate: div.paymentDate ? div.paymentDate.split('T')[0] : 'N/A',
+                rate: div.rate,
+                quantityOwned: qtyAtDate,
+                totalReceived: totalReceived
+              });
             }
           }
         });
@@ -87,17 +104,21 @@ const App: React.FC = () => {
       }
     });
 
-    return Object.values(positions)
+    // Ordena extrato do mais recente para o mais antigo
+    receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+
+    const finalPortfolio = Object.values(positions)
       .filter(p => p.quantity > 0 || (p.totalDividends && p.totalDividends > 0))
       .map(p => ({
         ...p,
         currentPrice: quotes[p.ticker]?.regularMarketPrice,
         logoUrl: quotes[p.ticker]?.logourl
       }));
+      
+    return { portfolio: finalPortfolio, dividendReceipts: receipts };
   }, [transactions, quotes, getQuantityOnDate]);
 
   const fetchMarketData = useCallback(async (isManual = false) => {
-    // Fix: Explicitly type uniqueTickers as string[] to avoid unknown[] inference from Array.from/Set
     const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
     if (!brapiToken || uniqueTickers.length === 0) {
       if (isManual) setIsRefreshing(false);
@@ -146,7 +167,7 @@ const App: React.FC = () => {
     );
 
     switch (currentTab) {
-      case 'home': return <Home portfolio={portfolio} />;
+      case 'home': return <Home portfolio={portfolio} dividendReceipts={dividendReceipts} />;
       case 'portfolio': return <Portfolio portfolio={portfolio} />;
       case 'transactions': return (
         <Transactions 
@@ -155,7 +176,7 @@ const App: React.FC = () => {
           onDeleteTransaction={(id) => setTransactions(prev => prev.filter(x => x.id !== id))}
         />
       );
-      default: return <Home portfolio={portfolio} />;
+      default: return <Home portfolio={portfolio} dividendReceipts={dividendReceipts} />;
     }
   };
 

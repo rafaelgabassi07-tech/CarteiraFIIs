@@ -42,6 +42,17 @@ export interface Dividend {
   type: string; // "DIVIDEND" or "JCP"
 }
 
+export interface DividendReceipt {
+  id: string;
+  ticker: string;
+  type: string;
+  dateCom: string;
+  paymentDate: string;
+  rate: number;
+  quantityOwned: number;
+  totalReceived: number;
+}
+
 export interface BrapiQuote {
   symbol: string;
   shortName: string;

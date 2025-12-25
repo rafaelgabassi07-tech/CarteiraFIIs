@@ -1,13 +1,16 @@
-import React, { useMemo } from 'react';
-import { AssetPosition, AssetType } from '../types';
-import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ArrowUpRight } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { AssetPosition, AssetType, DividendReceipt } from '../types';
+import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
+  dividendReceipts: DividendReceipt[];
 }
 
-export const Home: React.FC<HomeProps> = ({ portfolio }) => {
+export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts }) => {
+  const [showDividendDetails, setShowDividendDetails] = useState(false);
+
   const totalInvested = portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0);
   const currentBalance = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
   const profitability = totalInvested > 0 ? ((currentBalance - totalInvested) / totalInvested) * 100 : 0;
@@ -42,7 +45,12 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
   
   const COLORS = ['#38bdf8', '#22c55e', '#f472b6', '#a78bfa', '#fbbf24', '#f87171', '#94a3b8', '#64748b'];
 
-  // Verifica se temos cotações carregadas (se currentPrice existe em algum ativo)
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}`;
+  };
+
   const hasMarketData = portfolio.some(p => p.currentPrice && p.currentPrice > 0);
 
   return (
@@ -79,7 +87,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
         </div>
       </div>
 
-      {/* Proventos */}
+      {/* Proventos Card */}
       <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
         <div className="bg-gradient-to-br from-emerald-950/40 to-slate-900 border border-emerald-500/10 rounded-3xl p-6 shadow-lg relative overflow-hidden">
             <div className="flex items-start justify-between mb-5">
@@ -89,7 +97,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
                     </div>
                     <div>
                         <h3 className="text-white font-bold text-lg leading-none">Proventos</h3>
-                        <p className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">Total Recebido</p>
+                        <p className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">Total Histórico</p>
                     </div>
                 </div>
                 <div className="text-right">
@@ -100,7 +108,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
             </div>
 
             <div className="text-3xl font-bold text-white mb-6 tabular-nums">
-            R$ {totalDividends.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {totalDividends.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
 
             {totalDividends > 0 ? (
@@ -123,10 +131,44 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
                           <div className="h-full bg-purple-400" style={{ width: `${(dividendsByStock / totalDividends) * 100}%` }} />
                       </div>
                   </div>
-                  {topPayer && (
-                    <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+
+                  {/* Detalhes Toggle */}
+                  <button 
+                    onClick={() => setShowDividendDetails(!showDividendDetails)}
+                    className="w-full mt-4 pt-4 border-t border-emerald-500/10 flex items-center justify-center gap-2 text-xs text-emerald-400 font-bold hover:bg-emerald-500/5 py-2 rounded-lg transition-colors"
+                  >
+                    {showDividendDetails ? 'Ocultar Extrato' : 'Ver Extrato Detalhado'}
+                    {showDividendDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
+                  
+                  {showDividendDetails && (
+                    <div className="space-y-2 mt-2 animate-fade-in bg-slate-950/30 rounded-xl p-2 max-h-60 overflow-y-auto">
+                      {dividendReceipts.map((receipt, idx) => (
+                        <div key={`${receipt.id}-${idx}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg border border-transparent hover:border-white/5 transition-all">
+                          <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white border border-white/5">
+                               {receipt.ticker.substring(0,4)}
+                             </div>
+                             <div>
+                                <div className="text-xs font-bold text-white">{receipt.ticker}</div>
+                                <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                                  <Calendar className="w-2.5 h-2.5" /> Pago: {formatDate(receipt.paymentDate)}
+                                </div>
+                             </div>
+                          </div>
+                          <div className="text-right">
+                             <div className="text-xs font-bold text-emerald-400">R$ {receipt.totalReceived.toFixed(2)}</div>
+                             <div className="text-[10px] text-slate-500">{receipt.quantityOwned} cotas x {receipt.rate.toFixed(2)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {topPayer && !showDividendDetails && (
+                    <div className="mt-2 pt-2 flex items-center justify-between">
                         <span className="text-xs text-slate-400 flex items-center gap-1">
-                            <Crown className="w-3.5 h-3.5 text-amber-400" /> Destaque
+                            <Crown className="w-3.5 h-3.5 text-amber-400" /> Maior Pagador
                         </span>
                         <span className="text-xs font-bold text-white bg-white/5 px-3 py-1 rounded-full border border-white/5">
                             {topPayer.ticker}: R$ {topPayer.totalDividends?.toFixed(2)}
@@ -143,7 +185,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
                   ) : (
                     <p className="text-xs text-slate-500 italic flex items-center justify-center gap-2">
                        <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
-                       Sincronizando dados...
+                       Sincronizando dados Brapi...
                     </p>
                   )}
                </div>
