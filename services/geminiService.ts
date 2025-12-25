@@ -74,14 +74,12 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   `;
 
   try {
-    // Atualizado para usar gemini-2.0-flash-exp que é mais estável para tools/search neste momento
-    // Se preferir o 3.0 preview, altere para 'gemini-3-flash-preview'
+    // Atualizado para usar gemini-2.5-flash (sem preview/experimental) conforme solicitado
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp", 
+      model: "gemini-2.5-flash", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        // thinkingConfig removido temporariamente pois nem todos os modelos flash suportam
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
