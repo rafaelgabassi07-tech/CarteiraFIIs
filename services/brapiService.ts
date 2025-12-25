@@ -28,35 +28,23 @@ const saveCache = (cache: QuoteCache) => {
   } catch (e) {}
 };
 
-// Função auxiliar para dividir array em pedaços (chunks)
-// A Brapi aceita múltiplos tickers separados por vírgula, mas é bom limitar para não fazer URLs gigantes
-const chunkArray = (array: string[], size: number): string[][] => {
-  const result = [];
-  for (let i = 0; i < array.length; i += size) {
-    result.push(array.slice(i, i + size));
-  }
-  return result;
-};
-
-const fetchBatchQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
+// Função para buscar UM único ativo
+const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuote | null> => {
     try {
-        // Concatena tickers com vírgula (ex: PETR4,VALE3,MXRF11)
-        const tickersParam = tickers.join(',');
-        // Removemos explicitamente modules e range para garantir apenas dados fundamentais de preço
-        const url = `${BASE_URL}/quote/${tickersParam}?token=${token}`;
-        
+        const url = `${BASE_URL}/quote/${ticker}?token=${token}`;
         const response = await fetch(url);
 
         if (response.ok) {
             const data: BrapiResponse = await response.json();
-            return data.results || [];
+            // Brapi retorna array results mesmo para single quote
+            return data.results?.[0] || null;
         }
         
-        console.warn(`Brapi: Falha no lote ${tickersParam} - Status: ${response.status}`);
-        return [];
+        console.warn(`Brapi: Falha ao buscar ${ticker} - Status: ${response.status}`);
+        return null;
     } catch (error) {
-        console.error(`Brapi: Erro de rede no lote:`, error);
-        return [];
+        console.error(`Brapi: Erro de rede em ${ticker}:`, error);
+        return null;
     }
 };
 
@@ -84,15 +72,31 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
 
   if (tickersToFetch.length === 0) return validQuotes;
 
-  // 2. Busca dados novos em Lotes (Chunks de 20 ativos por vez)
-  // Isso evita fazer dezenas de requisições simultâneas que causam erro 417/429
-  const chunks = chunkArray(tickersToFetch, 20);
+  // 2. Busca dados novos SEQUENCIALMENTE ou em PEQUENOS LOTES PARALELOS
+  // Para respeitar a exigência de "uma requisição por ativo" sem causar erro 417,
+  // processamos em blocos de 2 requisições simultâneas com um pequeno delay.
   
-  const promises = chunks.map(chunk => fetchBatchQuotes(chunk, token));
-  const resultsArrays = await Promise.all(promises);
+  const BATCH_SIZE = 2; // Máximo de requisições paralelas
+  const DELAY_MS = 300; // Delay entre lotes para não sobrecarregar
   
-  // Flatten results
-  const newQuotes = resultsArrays.flat();
+  const newQuotes: BrapiQuote[] = [];
+
+  for (let i = 0; i < tickersToFetch.length; i += BATCH_SIZE) {
+      const chunk = tickersToFetch.slice(i, i + BATCH_SIZE);
+      
+      // Executa o lote atual
+      const promises = chunk.map(t => fetchSingleQuote(t, token));
+      const results = await Promise.all(promises);
+      
+      results.forEach(r => {
+          if (r) newQuotes.push(r);
+      });
+
+      // Se ainda houver mais itens, espera um pouco antes do próximo lote
+      if (i + BATCH_SIZE < tickersToFetch.length) {
+          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+      }
+  }
 
   // 3. Atualiza Cache
   newQuotes.forEach(quote => {
@@ -106,5 +110,8 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
   });
 
   saveCache(cache);
-  return validQuotes;
+  
+  // Retorna os dados do cache (que agora incluem os novos) para garantir ordem correta se necessário
+  // Mas aqui apenas juntamos as listas
+  return [...validQuotes, ...newQuotes];
 };

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'investfiis-v3'; // Versão atualizada para forçar reload dos scripts
+const CACHE_NAME = 'investfiis-v4'; // Versão atualizada para forçar reload dos scripts
 // Use caminhos relativos para suportar deploy em subpastas ou previews
 const urlsToCache = [
   './',
