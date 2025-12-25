@@ -30,8 +30,9 @@ const saveCache = (cache: QuoteCache) => {
 
 const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuote | null> => {
     try {
-        // Solicitamos explicitamente o módulo de dividendos
-        const url = `${BASE_URL}/quote/${ticker}?token=${token}&modules=dividends`;
+        // CRITICAL FIX: Adicionado parameter range=5y para buscar histórico longo de dividendos
+        // Sem isso, a API retorna apenas dados recentes, quebrando o cálculo para transações antigas.
+        const url = `${BASE_URL}/quote/${ticker}?token=${token}&modules=dividends&range=5y`;
         const response = await fetch(url);
 
         if (response.ok) {
@@ -39,8 +40,8 @@ const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuo
             return data.results?.[0] || null;
         }
         
-        // Se falhar com módulos, tenta a busca básica
-        const fallbackResponse = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}`);
+        // Fallback: Tenta sem modules, mas ainda pedindo range longo caso a API suporte
+        const fallbackResponse = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}&range=5y`);
         if (fallbackResponse.ok) {
             const data: BrapiResponse = await fallbackResponse.json();
             return data.results?.[0] || null;
@@ -67,6 +68,7 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
 
     const cachedItem = cache[cleanTicker];
     // Se tiver cache válido e tiver dados de dividendos, usa o cache
+    // Reduzido tempo de validação do cache para garantir dados frescos na depuração
     if (cachedItem && (now - cachedItem.timestamp < CACHE_DURATION)) {
       validQuotes.push(cachedItem.data);
     } else {

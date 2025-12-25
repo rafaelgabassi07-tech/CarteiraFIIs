@@ -42,6 +42,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
   
   const COLORS = ['#38bdf8', '#22c55e', '#f472b6', '#a78bfa', '#fbbf24', '#f87171', '#94a3b8', '#64748b'];
 
+  // Verifica se temos cotações carregadas (se currentPrice existe em algum ativo)
+  const hasMarketData = portfolio.some(p => p.currentPrice && p.currentPrice > 0);
+
   return (
     <div className="pb-28 pt-6 px-5 space-y-6 max-w-lg mx-auto">
       
@@ -76,7 +79,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
         </div>
       </div>
 
-      {/* Proventos - REFORÇADO */}
+      {/* Proventos */}
       <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
         <div className="bg-gradient-to-br from-emerald-950/40 to-slate-900 border border-emerald-500/10 rounded-3xl p-6 shadow-lg relative overflow-hidden">
             <div className="flex items-start justify-between mb-5">
@@ -132,9 +135,18 @@ export const Home: React.FC<HomeProps> = ({ portfolio }) => {
                   )}
               </div>
             ) : (
-              <p className="text-xs text-slate-500 italic text-center py-2">
-                Aguardando dados da API ou novas transações...
-              </p>
+               <div className="text-center py-2">
+                  {hasMarketData ? (
+                    <p className="text-xs text-slate-500 italic">
+                      Nenhum provento registrado para o período.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500 italic flex items-center justify-center gap-2">
+                       <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
+                       Sincronizando dados...
+                    </p>
+                  )}
+               </div>
             )}
         </div>
       </div>
