@@ -150,53 +150,67 @@ export const Transactions: React.FC<TransactionsProps> = ({
            </div>
         ) : (
           (Object.entries(groupedTransactions) as [string, Transaction[]][]).map(([month, trans], gIdx) => (
-            <div key={month} className="space-y-5 animate-fade-in-up" style={{ animationDelay: `${gIdx * 80}ms` }}>
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-4 flex items-center gap-3">
-                  <div className="h-px flex-1 bg-white/[0.05]" />
-                  <span className="flex-shrink-0">{month}</span>
-                  <div className="h-px flex-1 bg-white/[0.05]" />
-                </h3>
+            <div key={month} className="space-y-6 animate-fade-in-up" style={{ animationDelay: `${gIdx * 80}ms` }}>
+                <div className="flex items-center gap-4 px-2">
+                  <div className="h-px flex-1 bg-white/[0.08]" />
+                  <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] whitespace-nowrap">
+                    {month}
+                  </h3>
+                  <div className="h-px flex-1 bg-white/[0.08]" />
+                </div>
+
                 <div className="space-y-3">
-                  {trans.map((t, idx) => (
+                  {trans.map((t) => (
                       <div 
                         key={t.id} 
-                        className="glass p-5 rounded-[2rem] flex items-center justify-between group transition-all hover:bg-white/[0.03] border border-white/[0.02] active:scale-[0.99]"
+                        className="glass-card p-5 rounded-[2.2rem] flex items-center justify-between group transition-all hover:bg-white/[0.04] border border-white/[0.03] active:scale-[0.985] shadow-lg"
                       >
-                        <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${t.type === 'BUY' ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.05)]' : 'bg-rose-500/10 border-rose-500/10 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.05)]'}`}>
+                        <div className="flex items-center gap-4 flex-1">
+                            <div className={`w-11 h-11 rounded-[1.2rem] flex items-center justify-center border transition-all ${t.type === 'BUY' ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 border-rose-500/10 text-rose-400'}`}>
                                 {t.type === 'BUY' ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                             </div>
-                            <div>
-                                <div className="flex items-center gap-2 mb-0.5">
-                                  <span className="font-black text-white text-base leading-none tracking-tight">{t.ticker}</span>
-                                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${t.assetType === AssetType.FII ? 'bg-accent/10 text-accent border-accent/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-black text-white text-base leading-none tracking-tight truncate">{t.ticker}</span>
+                                  <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md border uppercase tracking-wider ${t.assetType === AssetType.FII ? 'bg-accent/10 text-accent border-accent/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
                                     {t.assetType}
                                   </span>
                                 </div>
-                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                  {t.type === 'BUY' ? 'Compra' : 'Venda'} • {t.date.split('-').reverse().join('/')}
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[8px] font-black uppercase tracking-[0.15em] ${t.type === 'BUY' ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
+                                    {t.type === 'BUY' ? 'Compra' : 'Venda'}
+                                  </span>
+                                  <span className="w-1 h-1 rounded-full bg-slate-700" />
+                                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">
+                                    {t.date.split('-').reverse().join('/')}
+                                  </span>
                                 </div>
                             </div>
                         </div>
                         
                         <div className="flex items-center gap-4">
-                            <div className="text-right">
-                                <div className="text-white text-sm font-black tabular-nums tracking-tight">R$ {formatCurrency(t.quantity * t.price)}</div>
-                                <div className="text-[10px] text-slate-500 font-bold tabular-nums opacity-60">{t.quantity} un • {formatCurrency(t.price)}</div>
+                            <div className="text-right flex flex-col justify-center">
+                                <div className="text-white text-[15px] font-black tabular-nums tracking-tighter mb-0.5">
+                                  <span className="text-[10px] text-slate-500 mr-1 font-bold">R$</span>
+                                  {formatCurrency(t.quantity * t.price)}
+                                </div>
+                                <div className="text-[9px] text-slate-500 font-black tabular-nums tracking-tight opacity-80">
+                                  {t.quantity} un <span className="text-[7px] mx-0.5 opacity-40">@</span> {formatCurrency(t.price)}
+                                </div>
                             </div>
                             
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex flex-col gap-1 ml-1">
                                 <button 
                                   onClick={() => handleEdit(t)} 
-                                  className="p-3 rounded-xl bg-white/[0.03] text-slate-500 hover:text-accent hover:bg-accent/10 transition-all active:scale-90"
+                                  className="p-2.5 rounded-xl bg-white/[0.03] text-slate-500 hover:text-accent hover:bg-accent/10 transition-all active:scale-90 border border-white/5"
                                 >
-                                    <Pencil className="w-4 h-4" />
+                                    <Pencil className="w-3.5 h-3.5" />
                                 </button>
                                 <button 
                                   onClick={() => { if(confirm('Deseja realmente excluir esta movimentação?')) onDeleteTransaction(t.id); }} 
-                                  className="p-3 rounded-xl bg-white/[0.03] text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-90"
+                                  className="p-2.5 rounded-xl bg-white/[0.03] text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-90 border border-white/5"
                                 >
-                                    <Trash2 className="w-4 h-4" />
+                                    <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                             </div>
                         </div>

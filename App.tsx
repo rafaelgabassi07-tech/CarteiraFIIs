@@ -68,7 +68,6 @@ const App: React.FC = () => {
   }, []);
 
   const getQuantityOnDate = useCallback((ticker: string, date: string, txs: Transaction[]) => {
-    // Regra da B3: Proventos são devidos a quem possui o ativo no fechamento da Data-Com
     const target = date.split('T')[0];
     return txs
       .filter(t => t.ticker === ticker && t.date <= target)
@@ -79,7 +78,6 @@ const App: React.FC = () => {
     const positions: Record<string, AssetPosition> = {};
     let totalRealizedGain = 0;
     
-    // Assegura que as transações estão ordenadas por data para cálculo correto de PM
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
 
     sortedTxs.forEach(t => {
@@ -94,7 +92,6 @@ const App: React.FC = () => {
         p.quantity += t.quantity;
         p.averagePrice = p.quantity > 0 ? (currentCost + newCost) / p.quantity : 0;
       } else {
-        // Cálculo de Lucro/Prejuízo Realizado na venda
         const costOfSold = t.quantity * p.averagePrice;
         const revenueOfSold = t.quantity * t.price;
         totalRealizedGain += (revenueOfSold - costOfSold);
@@ -134,8 +131,35 @@ const App: React.FC = () => {
     };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
+  // --- BRAPI SYNC (PREÇOS) ---
+  const syncBrapiData = useCallback(async (force = false) => {
+    if (!brapiToken || transactions.length === 0) return;
+    
+    // Explicitly typing Set to <string>
+    const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase())));
+
+    try {
+        // force=false: usa cache se disponível (rápido). force=true: ignora cache (botão refresh).
+        const brQuotes = await getQuotes(uniqueTickers, brapiToken, force);
+        const map: Record<string, BrapiQuote> = {};
+        brQuotes.forEach(q => map[q.symbol] = q);
+        
+        if (Object.keys(map).length > 0) {
+            setQuotes(prev => ({ ...prev, ...map }));
+        }
+    } catch (error) {
+        console.error("Erro ao buscar cotações Brapi", error);
+    }
+  }, [brapiToken, transactions]);
+
+  // Effect para carregar cotações AUTOMATICAMENTE ao iniciar ou mudar transações/token
+  useEffect(() => {
+    syncBrapiData(false);
+  }, [syncBrapiData]);
+
+
+  // --- GEMINI SYNC (PROVENTOS) ---
   const handleAiSync = useCallback(async (force = false) => {
-    // Explicitly typing Set to <string> to avoid "unknown[]" inference issues with Array.from in some TS configurations
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
     
@@ -149,10 +173,6 @@ const App: React.FC = () => {
     try {
       const data = await fetchUnifiedMarketData(uniqueTickers);
       
-      // NOTA: Removemos qualquer lógica de atualização de preços via Gemini.
-      // O estado `quotes` agora é gerido exclusivamente pela Brapi.
-      
-      // Merge inteligente de proventos
       setGeminiDividends(prev => {
         const merged = [...prev, ...data.dividends];
         const uniqueMap = new Map();
@@ -164,9 +184,9 @@ const App: React.FC = () => {
       
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       lastSyncTickersRef.current = tickersStr;
-      if (force) showToast('success', 'Inteligência de Dividendos Sincronizada');
+      if (force) showToast('success', 'Dividendos Atualizados');
     } catch (e) {
-      if (force) showToast('error', 'Erro ao consultar IA de Mercado');
+      if (force) showToast('error', 'Erro na IA de Dividendos');
     } finally {
       setIsAiLoading(false);
     }
@@ -175,19 +195,15 @@ const App: React.FC = () => {
   const handleFullRefresh = async () => {
     if (isRefreshing || isAiLoading) return;
     setIsRefreshing(true);
-    // Explicitly typing Set to <string> to avoid "unknown[]" inference issues with Array.from
-    const tickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase())));
     try {
-      if (brapiToken) {
-        // Envia TRUE no último parâmetro para FORÇAR a atualização, ignorando o cache de 5min
-        const brQuotes = await getQuotes(tickers, brapiToken, true);
-        const map: Record<string, BrapiQuote> = {};
-        brQuotes.forEach(q => map[q.symbol] = q);
-        setQuotes(prev => ({ ...prev, ...map }));
-      }
-      await handleAiSync(true);
+      // Executa ambas as atualizações em paralelo e FORÇA o refresh (ignora cache)
+      await Promise.all([
+        syncBrapiData(true),
+        handleAiSync(true)
+      ]);
+      showToast('success', 'Dados atualizados com sucesso');
     } catch (error) {
-      showToast('error', 'Falha na atualização em tempo real');
+      showToast('error', 'Falha na atualização');
     } finally {
       setIsRefreshing(false);
     }
