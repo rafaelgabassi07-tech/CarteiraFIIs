@@ -29,23 +29,23 @@ const AssetCard: React.FC<{
   return (
     <>
       <div 
-          className={`bg-secondary/40 hover:bg-secondary/60 transition-all duration-300 rounded-[2rem] border border-white/5 mb-3 overflow-hidden backdrop-blur-md shadow-sm animate-fade-in-up ${isExpanded ? 'ring-1 ring-accent/30 bg-secondary/70 shadow-lg' : ''}`}
+          className={`glass-card hover:bg-white/[0.05] transition-all duration-300 rounded-[2.2rem] mb-3 overflow-hidden backdrop-blur-md animate-fade-in-up ${isExpanded ? 'ring-1 ring-accent/30 bg-white/[0.05] shadow-lg' : ''}`}
           style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
       >
         <div 
           onClick={() => setIsExpanded(!isExpanded)}
-          className="p-5 flex items-center justify-between cursor-pointer select-none group"
+          className="p-5 flex items-center justify-between cursor-pointer select-none group active:scale-[0.99] transition-transform"
         >
           <div className="flex items-center gap-4">
             <div className="relative">
               {asset.logoUrl ? (
-                <img src={asset.logoUrl} alt={asset.ticker} className="w-11 h-11 rounded-2xl bg-white object-contain p-1 shadow-md ring-1 ring-white/10" />
+                <img src={asset.logoUrl} alt={asset.ticker} className="w-12 h-12 rounded-2xl bg-white object-contain p-1 shadow-lg ring-1 ring-white/10" />
               ) : (
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-[10px] font-black text-white shadow-inner ring-1 ring-white/10 uppercase">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-[10px] font-black text-white shadow-inner ring-1 ring-white/10 uppercase border border-white/5">
                   {asset.ticker.substring(0, 4)}
                 </div>
               )}
-              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-lg flex items-center justify-center border border-primary text-[8px] font-black ${asset.assetType === AssetType.FII ? 'bg-accent text-primary' : 'bg-purple-500 text-white'}`}>
+              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-lg flex items-center justify-center border-2 border-[#0f172a] text-[8px] font-black shadow-sm ${asset.assetType === AssetType.FII ? 'bg-accent text-primary' : 'bg-purple-500 text-white'}`}>
                 {asset.assetType === AssetType.FII ? 'F' : 'A'}
               </div>
             </div>
@@ -64,7 +64,7 @@ const AssetCard: React.FC<{
                 {gainPercent >= 0 ? '+' : ''}{gainPercent.toFixed(2)}%
               </div>
             </div>
-            <div className={`p-1.5 rounded-full bg-white/5 group-hover:bg-white/10 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-accent' : 'text-slate-500'}`}>
+            <div className={`p-1.5 rounded-full bg-white/5 group-hover:bg-white/10 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-accent bg-accent/10' : 'text-slate-500'}`}>
                <ChevronDown className="w-4 h-4" />
             </div>
           </div>
@@ -114,7 +114,7 @@ const AssetCard: React.FC<{
               
               <button 
                 onClick={(e) => { e.stopPropagation(); setShowHistoryModal(true); }}
-                className="w-full flex items-center justify-between p-4 bg-accent/5 rounded-[1.8rem] border border-accent/10 hover:bg-accent/10 transition-colors group/btn"
+                className="w-full flex items-center justify-between p-4 bg-accent/5 rounded-[1.8rem] border border-accent/10 hover:bg-accent/10 transition-colors group/btn active:scale-[0.98]"
               >
                  <div className="flex items-center gap-3">
                     <div className="p-2 bg-accent/20 rounded-xl text-accent shadow-lg shadow-accent/10">
@@ -135,7 +135,7 @@ const AssetCard: React.FC<{
       </div>
 
       <SwipeableModal isOpen={showHistoryModal} onClose={() => setShowHistoryModal(false)}>
-        <div className="px-8 pt-2 pb-10">
+        <div className="px-6 pt-2 pb-10">
             {/* Conteúdo do modal mantido para brevidade */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
@@ -147,8 +147,8 @@ const AssetCard: React.FC<{
                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Histórico de Proventos</p>
                   </div>
                 </div>
-                <button onClick={() => setShowHistoryModal(false)} className="p-4 rounded-2xl bg-white/5 text-slate-400 active:scale-90 transition-all">
-                  <X className="w-6 h-6" />
+                <button onClick={() => setShowHistoryModal(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:scale-90 transition-all hover:bg-white/10">
+                  <X className="w-5 h-5" />
                 </button>
             </div>
               
@@ -209,16 +209,6 @@ const AssetCard: React.FC<{
                 })
               )}
             </div>
-            
-            <div className="p-8 border-t border-white/5 bg-secondary/30 rounded-[2rem]">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                   <Target className="w-4 h-4 text-slate-500" />
-                   <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Yield sobre Custo (YoC)</span>
-                </div>
-                <span className="text-emerald-400 font-black text-xl tabular-nums">{totalCost > 0 ? (((asset.totalDividends || 0) / totalCost) * 100).toFixed(2) : '0.00'}%</span>
-              </div>
-            </div>
         </div>
       </SwipeableModal>
     </>
@@ -231,9 +221,9 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
   if (portfolio.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] text-center px-10 animate-fade-in">
-        <div className="bg-secondary/40 p-10 rounded-[3rem] mb-8 ring-1 ring-white/[0.05] shadow-2xl relative">
-            <Building2 className="w-16 h-16 text-slate-600" />
-            <div className="absolute -top-2 -right-2 w-8 h-8 bg-accent rounded-full flex items-center justify-center text-primary font-black shadow-lg">?</div>
+        <div className="bg-[#0f172a] p-10 rounded-[3rem] mb-8 ring-1 ring-white/[0.05] shadow-2xl relative">
+            <Building2 className="w-16 h-16 text-slate-700" />
+            <div className="absolute -top-2 -right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center text-primary font-black shadow-lg animate-bounce">?</div>
         </div>
         <h3 className="text-2xl font-black text-white mb-3 tracking-tight">Carteira Vazia</h3>
         <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-xs">Registre suas compras de Ações ou FIIs para monitorar seu patrimônio em tempo real.</p>
@@ -245,11 +235,11 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
   const stocks = portfolio.filter(p => p.assetType === AssetType.STOCK);
 
   return (
-    <div className="pb-32 pt-6 px-5 max-w-lg mx-auto">
+    <div className="pb-32 pt-2 px-5 max-w-lg mx-auto">
       {fiis.length > 0 && (
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-6 px-2">
-            <div className="p-2 bg-accent/10 rounded-xl">
+        <div className="mb-10 animate-fade-in-up">
+          <div className="flex items-center gap-3 mb-5 px-2">
+            <div className="p-2 bg-accent/10 rounded-xl border border-accent/10">
                 <Building2 className="w-4 h-4 text-accent" />
             </div>
             <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-[0.25em]">Fundos Imobiliários</h3>
@@ -262,9 +252,9 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
       )}
       
       {stocks.length > 0 && (
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-6 px-2">
-            <div className="p-2 bg-purple-500/10 rounded-xl">
+        <div className="mb-10 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+          <div className="flex items-center gap-3 mb-5 px-2">
+            <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/10">
                 <Briefcase className="w-4 h-4 text-purple-400" />
             </div>
             <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-[0.25em]">Ações Brasileiras</h3>

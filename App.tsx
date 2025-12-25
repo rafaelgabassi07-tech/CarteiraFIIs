@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', text: string} | null>(null);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [isSplashActive, setIsSplashActive] = useState(true);
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => 
     JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]'));
@@ -39,8 +40,10 @@ const App: React.FC = () => {
   const lastSyncTickersRef = useRef<string>("");
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsSplashActive(false), 1600);
-    return () => clearTimeout(timer);
+    // Splash screen timing refinement
+    const fadeTimer = setTimeout(() => setIsFadingOut(true), 1200);
+    const removeTimer = setTimeout(() => setIsSplashActive(false), 1600);
+    return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
   }, []);
 
   // Monitora controllerchange para recarregar a página suavemente após update do SW
@@ -224,12 +227,12 @@ const App: React.FC = () => {
 
   if (isSplashActive) {
     return (
-      <div className="fixed inset-0 bg-primary z-[300] flex flex-col items-center justify-center animate-fade-in">
+      <div className={`fixed inset-0 bg-[#020617] z-[300] flex flex-col items-center justify-center transition-opacity duration-500 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
         <div className="relative mb-8 animate-float">
-          <div className="w-24 h-24 bg-gradient-to-br from-accent to-blue-600 rounded-[2rem] flex items-center justify-center shadow-2xl">
-            <TrendingUp className="w-12 h-12 text-primary" strokeWidth={3} />
+          <div className="w-24 h-24 bg-gradient-to-tr from-accent to-blue-600 rounded-[2rem] flex items-center justify-center shadow-2xl ring-1 ring-white/10">
+            <TrendingUp className="w-12 h-12 text-white" strokeWidth={3} />
           </div>
-          <div className="absolute inset-0 bg-accent/20 blur-3xl -z-10 animate-pulse-neon rounded-full" />
+          <div className="absolute inset-0 bg-accent/30 blur-[40px] -z-10 animate-pulse-slow rounded-full" />
         </div>
         <h1 className="text-3xl font-black text-white tracking-widest uppercase mb-2">InvestFIIs</h1>
         <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em]">Finanças Inteligentes</p>
@@ -241,8 +244,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-primary text-slate-100 selection:bg-accent/30 overflow-x-hidden pb-10">
       
       {/* Sistema de Notificações Superior Centralizado e Seguro para Mobile */}
-      {/* ALTERAÇÃO: 'top-0 pt-safe mt-4' para respeitar o notch e área segura */}
-      <div className="fixed inset-x-0 top-0 pt-safe mt-4 z-[200] flex flex-col items-center gap-4 px-4 pointer-events-none">
+      <div className="fixed inset-x-0 top-0 pt-safe mt-2 z-[200] flex flex-col items-center gap-4 px-4 pointer-events-none">
         
         {/* Banner de Nova Versão */}
         {updateRegistration && (
@@ -288,7 +290,7 @@ const App: React.FC = () => {
         isRefreshing={isRefreshing || isAiLoading} 
       />
       
-      <main className="max-w-screen-sm mx-auto min-h-[calc(100vh-160px)]">
+      <main className="max-w-screen-md mx-auto min-h-[calc(100vh-160px)]">
         {showSettings ? (
           <Settings 
             brapiToken={brapiToken} onSaveToken={setBrapiToken} 
@@ -296,7 +298,7 @@ const App: React.FC = () => {
             onResetApp={() => { localStorage.clear(); window.location.reload(); }}
           />
         ) : (
-          <div key={currentTab} className="animate-fade-in duration-500">
+          <div key={currentTab} className="animate-fade-in duration-300">
             {currentTab === 'home' && (
               <Home 
                 portfolio={portfolio} 

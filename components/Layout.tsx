@@ -20,36 +20,42 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
   isRefreshing 
 }) => {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 bg-primary/40 backdrop-blur-[24px] border-b border-white/[0.04] px-6 h-20 flex items-center justify-between pt-safe transition-all duration-500">
+    <header className={`sticky top-0 z-40 px-6 h-24 flex items-end pb-4 justify-between transition-all duration-500 ${isScrolled ? 'bg-primary/80 backdrop-blur-xl border-b border-white/5' : 'bg-transparent'}`}>
       <div className="flex items-center gap-4">
         {showBack ? (
           <button 
             onClick={onBack} 
-            className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/10 active:scale-90 transition-all text-white"
+            className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/10 active:scale-90 transition-all text-white backdrop-blur-md"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
         ) : (
-          <div className="w-10 h-10 bg-gradient-to-br from-accent to-blue-500 rounded-xl flex items-center justify-center shadow-[0_4px_20px_rgba(56,189,248,0.2)] border border-white/10 animate-float">
-            <TrendingUp className="w-5 h-5 text-primary" strokeWidth={3} />
+          <div className="w-11 h-11 bg-gradient-to-tr from-accent to-blue-600 rounded-2xl flex items-center justify-center shadow-[0_8px_30px_rgba(14,165,233,0.3)] border border-white/10 group">
+            <TrendingUp className="w-6 h-6 text-white group-hover:scale-110 transition-transform duration-300" strokeWidth={3} />
           </div>
         )}
         
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <h1 className="text-sm font-black text-white uppercase tracking-[0.15em] leading-none">
-              {title}
-            </h1>
-          </div>
+        <div className="flex flex-col justify-center h-10">
+          <h1 className="text-lg font-black text-white tracking-tight leading-none">
+            {title}
+          </h1>
           {!showBack && (
-            <div className="flex items-center gap-1.5 mt-1 opacity-60">
-               <span className="relative flex h-1.5 w-1.5">
+            <div className="flex items-center gap-1.5 mt-1 opacity-70">
+               <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_#10b981]"></span>
                 </span>
-              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-[0.1em]">
-                Live Market
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                Ao Vivo
               </span>
             </div>
           )}
@@ -61,17 +67,17 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className={`p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/10 active:scale-90 transition-all text-slate-400 ${isRefreshing ? 'text-accent border-accent/30 bg-accent/5' : ''}`}
+            className={`w-10 h-10 flex items-center justify-center rounded-2xl bg-white/[0.03] border border-white/[0.05] active:scale-90 transition-all backdrop-blur-md ${isRefreshing ? 'text-accent border-accent/30 bg-accent/10' : 'text-slate-400 hover:text-white'}`}
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
         )}
         {!showBack && onSettingsClick && (
           <button 
             onClick={onSettingsClick} 
-            className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/10 active:scale-90 transition-all text-slate-400"
+            className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white/[0.03] border border-white/[0.05] active:scale-90 transition-all text-slate-400 hover:text-white backdrop-blur-md"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-5 h-5 transition-transform hover:rotate-45 duration-300" />
           </button>
         )}
       </div>
@@ -82,13 +88,13 @@ export const Header: React.FC<HeaderProps> = ({
 export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string) => void }> = ({ currentTab, onTabChange }) => {
   const tabs = [
     { id: 'home', icon: Home, label: 'Início' },
-    { id: 'portfolio', icon: PieChart, label: 'Posição' },
+    { id: 'portfolio', icon: PieChart, label: 'Carteira' },
     { id: 'transactions', icon: ArrowRightLeft, label: 'Ordens' },
   ];
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-[100] nav-shadow">
-      <nav className="glass rounded-[2rem] px-4 py-3 flex justify-around items-center border border-white/10 relative overflow-hidden shadow-2xl">
+    <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center pointer-events-none">
+      <nav className="pointer-events-auto bg-[#0f172a]/80 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-1.5 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.6)] flex items-center gap-1 transition-all hover:scale-[1.02]">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -96,24 +102,27 @@ export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`relative flex flex-col items-center justify-center gap-1.5 transition-all duration-300 px-6 py-2 rounded-2xl tap-highlight ${isActive ? 'text-accent' : 'text-slate-500'}`}
+              className={`relative flex items-center gap-2 px-5 py-3.5 rounded-[2rem] transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] group ${isActive ? 'bg-accent/10 flex-[1.4]' : 'bg-transparent flex-1 hover:bg-white/5'}`}
             >
-              {/* Active Background Glow */}
-              {isActive && (
-                <div className="absolute inset-0 bg-accent/10 blur-xl rounded-full animate-pulse-neon" />
-              )}
-              
-              <Icon 
-                className={`w-5 h-5 transition-all duration-500 ease-out ${isActive ? 'scale-110 -translate-y-0.5' : 'opacity-40'}`} 
-                strokeWidth={isActive ? 3 : 2} 
-              />
-              
-              <span className={`text-[8px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-0 scale-90 translate-y-1'}`}>
-                {tab.label}
-              </span>
+               {/* Icon Container with Spring Animation */}
+               <div className={`relative z-10 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isActive ? '-translate-y-1 scale-110' : 'scale-100 group-active:scale-90'}`}>
+                  <Icon 
+                    className={`w-6 h-6 transition-colors duration-300 ${isActive ? 'text-accent fill-accent/20' : 'text-slate-500 group-hover:text-slate-300'}`} 
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
+                  {/* Glow effect behind active icon */}
+                  {isActive && <div className="absolute inset-0 bg-accent/40 blur-lg rounded-full -z-10 animate-pulse-slow"></div>}
+               </div>
 
-              {/* Dot indicator */}
-              <div className={`absolute -bottom-1 w-1 h-1 rounded-full bg-accent transition-all duration-500 ${isActive ? 'opacity-100 scale-100 shadow-[0_0_8px_#38bdf8]' : 'opacity-0 scale-0'}`} />
+               {/* Label Slide In/Out */}
+               <div className={`overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${isActive ? 'w-auto opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-4'}`}>
+                  <span className="text-[11px] font-black text-white tracking-wide whitespace-nowrap">
+                    {tab.label}
+                  </span>
+               </div>
+               
+               {/* Bottom Dot Indicator */}
+               <div className={`absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-accent transition-all duration-500 ${isActive ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`} />
             </button>
           );
         })}
@@ -132,40 +141,26 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   const [offsetY, setOffsetY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
-  const modalRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
 
-  // Lock body scroll when open
   useEffect(() => {
     if (isOpen) {
       setOffsetY(0);
       document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none'; // Prevents background scrolling on iOS
+      document.body.style.touchAction = 'none'; 
     } else {
       document.body.style.overflow = '';
       document.body.style.touchAction = '';
     }
-    return () => { 
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-    };
   }, [isOpen]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    // Check if we are at the top of the content
-    if (contentRef.current && contentRef.current.scrollTop > 0) return;
-    
     setIsDragging(true);
     startY.current = e.touches[0].clientY;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
-    
-    const touchY = e.touches[0].clientY;
-    const diff = touchY - startY.current;
-
-    // Only allow dragging down
+    const diff = e.touches[0].clientY - startY.current;
     if (diff > 0) {
       if (e.cancelable) e.preventDefault();
       setOffsetY(diff);
@@ -173,54 +168,45 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   };
 
   const handleTouchEnd = () => {
-    if (!isDragging) return;
     setIsDragging(false);
-
-    // Threshold to close
-    if (offsetY > 120) {
+    if (offsetY > 150) {
       onClose();
     } else {
-      setOffsetY(0); // Snap back
+      setOffsetY(0);
     }
   };
 
   if (!isOpen) return null;
 
-  // Utiliza Portal para renderizar fora da hierarquia principal (acima do Header sticky)
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-end justify-center">
-      {/* Backdrop com transição de opacidade baseada no arrasto */}
+    <div className="fixed inset-0 z-[100] flex items-end justify-center pointer-events-none">
+      {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-primary/80 backdrop-blur-md transition-opacity duration-300 ease-out"
-        style={{ opacity: isDragging ? Math.max(0, 1 - offsetY / 600) : 1 }}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500 pointer-events-auto"
+        style={{ opacity: isDragging ? Math.max(0, 1 - offsetY / 500) : 1 }}
         onClick={onClose} 
       />
       
       {/* Modal Container */}
       <div 
-        ref={modalRef}
-        className="bg-primary w-full h-[96dvh] rounded-t-[2.5rem] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] relative flex flex-col overflow-hidden will-change-transform"
+        className="bg-[#0f172a] w-full h-[95dvh] rounded-t-[2.5rem] border-t border-white/10 shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto transition-transform duration-500 cubic-bezier(0.32, 0.72, 0, 1)"
         style={{ 
           transform: `translateY(${offsetY}px)`,
-          transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)' 
+          transition: isDragging ? 'none' : 'transform 0.5s cubic-bezier(0.32, 0.72, 0, 1)' 
         }}
       >
-        {/* Drag Handle Area - Aumentada para melhor precisão */}
+        {/* Drag Handle */}
         <div 
-          className="w-full h-10 flex items-center justify-center cursor-grab active:cursor-grabbing shrink-0 absolute top-0 left-0 right-0 z-20 touch-none"
+          className="w-full h-14 flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing touch-none z-20 bg-gradient-to-b from-[#0f172a] to-transparent"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-           {/* Visual Handle */}
-           <div className="w-16 h-1.5 bg-slate-600/50 rounded-full" />
+           <div className="w-12 h-1.5 bg-slate-700/50 rounded-full" />
         </div>
 
-        {/* Content Area */}
-        <div 
-          ref={contentRef}
-          className="flex-1 overflow-y-auto no-scrollbar pt-10" // Adicionado padding-top para compensar o handle
-        >
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto no-scrollbar pb-safe">
           {children}
         </div>
       </div>
