@@ -37,8 +37,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   const IPCA_12M = 4.62; 
   const realYield = yieldOnCost - IPCA_12M;
   const isPositiveReal = realYield > 0;
-  const efficiencyPercent = IPCA_12M > 0 ? (yieldOnCost / IPCA_12M) * 100 : 0;
-
+  
   const comparisonData = [
     { name: 'IPCA', value: IPCA_12M, fill: '#f43f5e', label: 'Inflação' },
     { name: 'Você', value: yieldOnCost, fill: isPositiveReal ? '#10b981' : '#fbbf24', label: 'Sua Carteira' }
@@ -186,6 +185,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </div>
 
+      {/* Card de Rendimentos */}
       <div 
         onClick={() => setShowProventosModal(true)}
         className="animate-fade-in-up tap-highlight cursor-pointer"
@@ -229,32 +229,36 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+      {/* Grid de Alocação e Inflação (AGORA EMPILHADO: grid-cols-1) */}
+      <div className="grid grid-cols-1 gap-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
           
           {portfolio.length > 0 ? (
             <div 
               onClick={() => setShowAllocationModal(true)}
-              className="relative overflow-hidden bg-gradient-to-br from-violet-900/20 to-slate-900 border border-violet-500/20 rounded-[2.5rem] p-5 hover:border-violet-500/40 transition-all group tap-highlight cursor-pointer h-64 flex flex-col justify-between"
+              className="relative overflow-hidden bg-gradient-to-br from-violet-900/20 to-slate-900 border border-violet-500/20 rounded-[2.5rem] p-6 hover:border-violet-500/40 transition-all group tap-highlight cursor-pointer min-h-[16rem] flex flex-col justify-between"
             >
                 <div className="absolute left-0 top-0 w-32 h-32 bg-violet-500/10 blur-[40px] rounded-full"></div>
 
-                <div className="relative z-10 flex items-center justify-between mb-4">
+                <div className="relative z-10 flex items-center justify-between mb-2">
                     <h3 className="text-white font-bold flex items-center gap-2 text-xs uppercase tracking-wider">
                         <div className="w-8 h-8 flex items-center justify-center bg-violet-500/20 rounded-xl">
                             <PieIcon className="w-4 h-4 text-violet-400" />
                         </div>
-                        Carteira
+                        Alocação
                     </h3>
+                    <div className="p-1.5 rounded-full bg-white/5 text-slate-400">
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </div>
                 </div>
                 
-                <div className="relative z-10 flex flex-col gap-4 flex-1 justify-end">
-                    <div className="h-24 w-full relative pointer-events-none">
+                <div className="relative z-10 flex flex-row items-center gap-6 flex-1">
+                    <div className="h-32 w-32 relative pointer-events-none shrink-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie 
                                   data={dataByAsset} 
-                                  innerRadius={25} 
-                                  outerRadius={40} 
+                                  innerRadius={30} 
+                                  outerRadius={55} 
                                   paddingAngle={5} 
                                   dataKey="value" 
                                   stroke="none" 
@@ -266,34 +270,34 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                         </ResponsiveContainer>
                     </div>
                     
-                    <div className="min-w-0">
-                       <div className="flex flex-col gap-1.5">
-                           {dataByAsset.slice(0, 2).map((entry, index) => (
-                               <div key={entry.name} className="flex items-center justify-between gap-2">
-                                   <div className="flex items-center gap-1.5 overflow-hidden">
-                                       <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                                       <span className="text-[9px] font-bold text-slate-300 truncate">{entry.name}</span>
+                    <div className="min-w-0 flex-1">
+                       <div className="flex flex-col gap-2">
+                           {dataByAsset.slice(0, 3).map((entry, index) => (
+                               <div key={entry.name} className="flex items-center justify-between gap-2 border-b border-white/5 pb-1">
+                                   <div className="flex items-center gap-2 overflow-hidden">
+                                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                                       <span className="text-xs font-bold text-slate-300 truncate">{entry.name}</span>
                                    </div>
-                                   <span className="text-[9px] font-black text-white">
+                                   <span className="text-xs font-black text-white tabular-nums">
                                      {currentBalance > 0 ? ((entry.value / currentBalance) * 100).toFixed(0) : 0}%
                                    </span>
                                </div>
                            ))}
-                           {dataByAsset.length > 2 && <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center">+ {dataByAsset.length - 2} outros</div>}
+                           {dataByAsset.length > 3 && <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-center mt-1">+ {dataByAsset.length - 3} outros ativos</div>}
                        </div>
                     </div>
                 </div>
             </div>
           ) : (
-             <div className="glass p-8 rounded-[2.5rem] h-64 flex flex-col items-center justify-center text-center opacity-60">
-                <PieIcon className="w-8 h-8 mx-auto mb-2 text-slate-500" />
-                <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">Sem ativos</p>
+             <div className="glass p-8 rounded-[2.5rem] h-64 flex flex-col items-center justify-center text-center opacity-60 border border-dashed border-white/10">
+                <PieIcon className="w-10 h-10 mx-auto mb-3 text-slate-500" />
+                <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">Sem ativos registrados</p>
              </div>
           )}
 
           <div 
              onClick={() => setShowInflationModal(true)}
-             className={`relative overflow-hidden rounded-[2.5rem] p-5 transition-all group tap-highlight cursor-pointer h-64 flex flex-col justify-between ${isPositiveReal ? 'bg-gradient-to-br from-emerald-900/40 to-slate-900 border border-emerald-500/20 hover:border-emerald-500/40' : 'bg-gradient-to-br from-rose-900/40 to-slate-900 border border-rose-500/20 hover:border-rose-500/40'}`}
+             className={`relative overflow-hidden rounded-[2.5rem] p-6 transition-all group tap-highlight cursor-pointer min-h-[16rem] flex flex-col justify-between ${isPositiveReal ? 'bg-gradient-to-br from-emerald-900/40 to-slate-900 border border-emerald-500/20 hover:border-emerald-500/40' : 'bg-gradient-to-br from-rose-900/40 to-slate-900 border border-rose-500/20 hover:border-rose-500/40'}`}
           >
              <div className="absolute right-0 top-0 w-32 h-32 bg-white/5 blur-[40px] rounded-full"></div>
 
@@ -302,27 +306,33 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                     <div className={`w-8 h-8 flex items-center justify-center rounded-xl ${isPositiveReal ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
                         <Scale className={`w-4 h-4 ${isPositiveReal ? 'text-emerald-400' : 'text-rose-400'}`} />
                     </div>
-                    Real
+                    Ganho Real
                  </h3>
+                 <div className="p-1.5 rounded-full bg-white/5 text-slate-400">
+                    <ChevronRight className="w-3.5 h-3.5" />
+                 </div>
              </div>
 
              <div className="relative z-10 flex flex-col flex-1 justify-end">
                 <div className="flex items-baseline gap-2 mb-2">
-                    <span className={`text-2xl font-black tabular-nums tracking-tighter ${isPositiveReal ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <span className={`text-4xl font-black tabular-nums tracking-tighter ${isPositiveReal ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {isPositiveReal ? '+' : ''}{realYield.toFixed(2)}%
                     </span>
-                </div>
-                <span className={`text-[9px] font-bold uppercase tracking-wider py-0.5 px-2 rounded-lg border w-fit mb-4 ${isPositiveReal ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
-                    {isPositiveReal ? 'Ganho Real' : 'Perda Real'}
-                </span>
-
-                <div className="w-full bg-slate-800 rounded-full h-1.5 mb-2 overflow-hidden flex">
-                    <div className="h-full bg-rose-500 opacity-60" style={{ width: '40%' }}></div>
-                    <div className={`h-full ${isPositiveReal ? 'bg-emerald-400' : 'bg-yellow-400'} shadow-[0_0_10px_currentColor]`} style={{ width: '60%' }}></div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Acima da Inflação</span>
                 </div>
                 
-                <div className="flex justify-between items-center text-[8px] font-bold uppercase tracking-widest text-slate-500">
-                    <span>IPCA {IPCA_12M}%</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider py-1 px-3 rounded-lg border w-fit mb-6 ${isPositiveReal ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+                    {isPositiveReal ? 'Poder de Compra Preservado' : 'Perda de Poder de Compra'}
+                </span>
+
+                <div className="w-full bg-slate-800 rounded-full h-2 mb-3 overflow-hidden flex ring-1 ring-white/5">
+                    <div className="h-full bg-rose-500 opacity-60" style={{ width: '40%' }}></div>
+                    <div className={`h-full ${isPositiveReal ? 'bg-emerald-400' : 'bg-yellow-400'} shadow-[0_0_15px_currentColor]`} style={{ width: '60%' }}></div>
+                </div>
+                
+                <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                    <span>IPCA (12m): {IPCA_12M}%</span>
+                    <span>Sua Carteira: {yieldOnCost.toFixed(2)}%</span>
                 </div>
              </div>
           </div>
@@ -350,11 +360,10 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       )}
 
-      {/* --- MODAL PROVENTOS (Com Swipe) --- */}
+      {/* --- MODAL PROVENTOS (Revisado com ajustes visuais) --- */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
-        {/* ... (Conteúdo do modal inalterado para brevidade, mantém padrão interno) ... */}
         <div className="px-7 pt-2 pb-10">
-           <div className="flex items-center justify-between mb-6">
+           <div className="flex items-center justify-between mb-8">
               <div>
                 <h3 className="text-2xl font-black text-white tracking-tighter">Proventos</h3>
                 <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em] mt-1">Evolução de Dividendos</p>
@@ -364,14 +373,15 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
               </button>
            </div>
 
-           <div className="h-32 w-full mb-6">
+           {/* Gráfico Maior */}
+           <div className="h-48 w-full mb-8">
                  {dividendsChartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dividendsChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                        <BarChart data={dividendsChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#34d399" stopOpacity={0.8}/>
-                                    <stop offset="100%" stopColor="#34d399" stopOpacity={0.2}/>
+                                    <stop offset="0%" stopColor="#34d399" stopOpacity={1}/>
+                                    <stop offset="100%" stopColor="#34d399" stopOpacity={0.3}/>
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
@@ -379,13 +389,13 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                                 dataKey="name" 
                                 axisLine={false} 
                                 tickLine={false} 
-                                tick={{ fill: '#64748b', fontSize: 9, fontWeight: 700 }} 
+                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} 
                                 dy={10}
                             />
                             <YAxis 
                                 axisLine={false} 
                                 tickLine={false} 
-                                tick={{ fill: '#64748b', fontSize: 9, fontWeight: 700 }} 
+                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} 
                             />
                             <Tooltip 
                                 cursor={{ fill: '#ffffff05' }}
@@ -397,27 +407,33 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                             <Bar 
                                 dataKey="value" 
                                 fill="url(#barGradient)" 
-                                radius={[4, 4, 0, 0]} 
-                                barSize={24}
+                                radius={[6, 6, 0, 0]} 
+                                barSize={28}
                             />
                         </BarChart>
                     </ResponsiveContainer>
                  ) : (
-                    <div className="h-full flex items-center justify-center border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Sem dados suficientes</span>
+                    <div className="h-full flex flex-col items-center justify-center border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
+                        <BarChart3 className="w-8 h-8 text-slate-600 mb-2" />
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Sem histórico recente</span>
                     </div>
                  )}
            </div>
 
            <div className="bg-white/[0.03] p-1.5 rounded-2xl border border-white/[0.05] grid grid-cols-2 mb-6">
-              <button onClick={() => setProventosTab('statement')} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'statement' ? 'bg-emerald-500 text-primary shadow-lg' : 'text-slate-500'}`}>Extrato</button>
-              <button onClick={() => setProventosTab('ranking')} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'ranking' ? 'bg-accent text-primary shadow-lg' : 'text-slate-500'}`}>Ranking</button>
+              <button onClick={() => setProventosTab('statement')} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'statement' ? 'bg-emerald-500 text-primary shadow-lg shadow-emerald-500/20' : 'text-slate-500 hover:text-white'}`}>Extrato Detalhado</button>
+              <button onClick={() => setProventosTab('ranking')} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'ranking' ? 'bg-accent text-primary shadow-lg shadow-accent/20' : 'text-slate-500 hover:text-white'}`}>Ranking Top</button>
            </div>
 
            <div className="space-y-6">
                {proventosTab === 'statement' ? (
                  Object.keys(proventosGrouped).length === 0 ? (
-                    <div className="text-center py-20 text-slate-500 text-xs font-bold uppercase tracking-widest">Nenhum provento recebido</div>
+                    <div className="text-center py-12">
+                        <div className="p-4 bg-white/[0.03] rounded-full w-fit mx-auto mb-3">
+                             <ReceiptText className="w-6 h-6 text-slate-600" />
+                        </div>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Nenhum provento registrado</p>
+                    </div>
                  ) : (
                     Object.entries(proventosGrouped).map(([month, receipts]: [string, DividendReceipt[]], i) => (
                         <div key={month} className="space-y-3 animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
@@ -431,23 +447,23 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                             {receipts.map(r => {
                                 const isFii = r.assetType === AssetType.FII;
                                 return (
-                                <div key={r.id} className="glass p-4 rounded-3xl flex items-center justify-between border border-white/[0.02] hover:bg-white/[0.05] transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-2xl flex flex-col items-center justify-center text-[7px] font-black ring-1 uppercase shadow-sm ${isFii ? 'bg-accent/10 text-accent ring-accent/20' : 'bg-purple-500/10 text-purple-400 ring-purple-500/20'}`}>
-                                            <span className="text-[9px] mb-0.5">{r.ticker.substring(0,4)}</span>
-                                            {isFii ? 'REND' : 'DIV'}
+                                <div key={r.id} className="glass p-5 rounded-[2rem] flex items-center justify-between border border-white/[0.03] hover:bg-white/[0.05] transition-colors shadow-sm">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-11 h-11 rounded-2xl flex flex-col items-center justify-center text-[8px] font-black ring-1 uppercase shadow-sm ${isFii ? 'bg-accent/10 text-accent ring-accent/20' : 'bg-purple-500/10 text-purple-400 ring-purple-500/20'}`}>
+                                            <span className="text-[10px] mb-0.5">{r.ticker.substring(0,4)}</span>
+                                            {isFii ? 'FII' : 'AÇÃO'}
                                         </div>
                                         <div>
-                                            <div className="text-sm font-black text-white leading-none mb-1">{r.ticker}</div>
-                                            <div className="text-[8px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                                                <Calendar className="w-2.5 h-2.5" />
-                                                {r.paymentDate.split('-').reverse().join('/')}
+                                            <div className="text-base font-black text-white leading-none mb-1.5">{r.ticker}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                                <Calendar className="w-3 h-3" />
+                                                Pago: {r.paymentDate.split('-').reverse().join('/')}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <div className="text-emerald-400 font-black text-sm tabular-nums">R$ {formatCurrency(r.totalReceived)}</div>
-                                        <div className="text-[8px] text-slate-600 font-bold uppercase tracking-wider">{r.type.replace('RENDIMENTO', 'REND.').substring(0, 10)}</div>
+                                        <div className="text-[8px] text-slate-600 font-bold uppercase tracking-wider mt-0.5">{r.type === 'DIVIDENDO' ? 'DIV' : 'JCP'}</div>
                                     </div>
                                 </div>
                             )})}
@@ -456,36 +472,45 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                  )
                ) : (
                  <div className="space-y-3">
-                    {rankingProventos.map((item, idx) => (
-                        <div key={item.ticker} className="glass p-4 rounded-[2rem] flex items-center gap-4 animate-fade-in-up hover:bg-white/[0.05] transition-colors" style={{ animationDelay: `${idx * 50}ms` }}>
-                            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-black text-xs border border-white/5">
-                                #{idx + 1}
+                    {rankingProventos.length === 0 ? (
+                         <div className="text-center py-12">
+                            <div className="p-4 bg-white/[0.03] rounded-full w-fit mx-auto mb-3">
+                                 <Trophy className="w-6 h-6 text-slate-600" />
                             </div>
-                            <div className="flex-1">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-black text-white text-sm">{item.ticker}</span>
-                                    <span className="font-black text-emerald-400 tabular-nums">R$ {formatCurrency(item.total)}</span>
-                                </div>
-                                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.4)]" 
-                                        style={{ width: `${(item.total / rankingProventos[0].total) * 100}%` }}
-                                    ></div>
-                                </div>
-                            </div>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Sem dados para ranking</p>
                         </div>
-                    ))}
+                    ) : (
+                        rankingProventos.map((item, idx) => (
+                            <div key={item.ticker} className="glass p-5 rounded-[2rem] flex items-center gap-4 animate-fade-in-up hover:bg-white/[0.05] transition-colors border border-white/[0.03]" style={{ animationDelay: `${idx * 50}ms` }}>
+                                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm border ${idx === 0 ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : idx === 1 ? 'bg-slate-300/10 text-slate-300 border-slate-300/20' : idx === 2 ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 'bg-slate-800 text-slate-500 border-white/5'}`}>
+                                    #{idx + 1}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="font-black text-white text-base">{item.ticker}</span>
+                                        <span className="font-black text-emerald-400 tabular-nums">R$ {formatCurrency(item.total)}</span>
+                                    </div>
+                                    <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden ring-1 ring-white/5">
+                                        <div 
+                                            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.4)]" 
+                                            style={{ width: `${(item.total / rankingProventos[0].total) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
                  </div>
                )}
            </div>
         </div>
       </SwipeableModal>
 
-      {/* --- MODAL INFLAÇÃO e ALOCAÇÃO (Mantidos sem alterações lógicas, apenas o grid foi ajustado acima) --- */}
+      {/* --- MODAL INFLAÇÃO e ALOCAÇÃO (Mantidos com mesmo padrão de containers) --- */}
       <SwipeableModal isOpen={showInflationModal} onClose={() => setShowInflationModal(false)}>
         {/* ... */}
         <div className="px-7 pt-2 pb-10">
-             <div className="flex items-center justify-between mb-4">
+             <div className="flex items-center justify-between mb-8">
                  <div className="flex items-center gap-3">
                       <div className={`p-3 rounded-2xl ${isPositiveReal ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'} border`}>
                          {isPositiveReal ? <ShieldCheck className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
@@ -500,9 +525,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                  </button>
              </div>
 
-             <div className="h-32 w-full mb-6 relative">
+             <div className="h-48 w-full mb-8 relative">
                  <ResponsiveContainer width="100%" height="100%">
-                     <BarChart data={comparisonData} layout="vertical" margin={{ top: 0, right: 30, bottom: 0, left: 30 }} barCategoryGap={10}>
+                     <BarChart data={comparisonData} layout="vertical" margin={{ top: 0, right: 30, bottom: 0, left: 30 }} barCategoryGap={15}>
                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#ffffff05" />
                          <XAxis type="number" hide />
                          <YAxis 
@@ -515,9 +540,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                          />
                          <Bar 
                              dataKey="value" 
-                             radius={[0, 6, 6, 0]} 
-                             barSize={24} 
-                             label={{ position: 'right', fill: '#fff', fontSize: 11, fontWeight: 800, formatter: (v: any) => `${v.toFixed(2)}%` }}
+                             radius={[0, 8, 8, 0]} 
+                             barSize={32} 
+                             label={{ position: 'right', fill: '#fff', fontSize: 12, fontWeight: 800, formatter: (v: any) => `${v.toFixed(2)}%` }}
                          >
                              {comparisonData.map((entry, index) => (
                                  <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -547,7 +572,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
         {/* ... */}
         <div className="px-7 pt-2 pb-10">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-8">
             <div>
               <h3 className="text-2xl font-black text-white tracking-tighter">Alocação</h3>
               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Composição do Patrimônio</p>
@@ -558,8 +583,8 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
           </div>
 
           <div className="bg-white/[0.03] p-1.5 rounded-2xl border border-white/[0.05] grid grid-cols-2 mb-8">
-            <button onClick={() => setAllocationTab('asset')} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationTab === 'asset' ? 'bg-accent text-primary shadow-lg' : 'text-slate-500'}`}>Por Ativo</button>
-            <button onClick={() => setAllocationTab('type')} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationTab === 'type' ? 'bg-purple-500 text-white shadow-lg' : 'text-slate-500'}`}>Por Classe</button>
+            <button onClick={() => setAllocationTab('asset')} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationTab === 'asset' ? 'bg-accent text-primary shadow-lg shadow-accent/20' : 'text-slate-500 hover:text-white'}`}>Por Ativo</button>
+            <button onClick={() => setAllocationTab('type')} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationTab === 'type' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:text-white'}`}>Por Classe</button>
           </div>
 
           <div className="space-y-8">
