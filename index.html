@@ -68,6 +68,15 @@
       .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
       .pt-safe { padding-top: env(safe-area-inset-top); }
       .no-scrollbar::-webkit-scrollbar { display: none; }
+      
+      /* Remove focus outlines from charts and SVGs */
+      .recharts-wrapper, .recharts-surface, .recharts-sector {
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent;
+      }
+      svg:focus, path:focus, g:focus {
+        outline: none !important;
+      }
     </style>
   <script type="importmap">
 {

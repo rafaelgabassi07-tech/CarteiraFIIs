@@ -8,7 +8,7 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { AlertTriangle, CheckCircle2, TrendingUp, Sparkles, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw } from 'lucide-react';
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_transactions',
@@ -41,7 +41,6 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Listener para atualizações do Service Worker
   useEffect(() => {
     const handleUpdate = (e: any) => setUpdateRegistration(e.detail);
     window.addEventListener('sw-update-available', handleUpdate);
@@ -73,9 +72,11 @@ const App: React.FC = () => {
       .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
   }, []);
 
+  // Memória robusta da carteira: processada apenas quando necessário
   const { portfolio, dividendReceipts } = useMemo(() => {
     const positions: Record<string, AssetPosition> = {};
     
+    // 1. Calcular Posições e Preço Médio
     transactions.forEach(t => {
       const ticker = t.ticker.toUpperCase();
       if (!positions[ticker]) {
@@ -91,6 +92,7 @@ const App: React.FC = () => {
       }
     });
 
+    // 2. Processar Proventos do Gemini com Cache de App
     const uniqueGeminiDivs: DividendReceipt[] = Array.from(
       new Map<string, DividendReceipt>(geminiDividends.map(d => [d.id, d])).values()
     );
@@ -109,6 +111,7 @@ const App: React.FC = () => {
 
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
+    // 3. Enriquecer com Cotações em Cache
     const finalPortfolio = Object.values(positions)
       .filter(p => p.quantity > 0 || (p.totalDividends || 0) > 0)
       .map(p => ({
@@ -124,9 +127,10 @@ const App: React.FC = () => {
     const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
     if (tickers.length === 0) return;
     
+    // Bloqueia sync automático se o último foi há menos de 1 hora
     if (!force) {
       const last = localStorage.getItem(STORAGE_KEYS.SYNC);
-      if (last && Date.now() - parseInt(last) < 1000 * 60 * 60 * 2) return;
+      if (last && Date.now() - parseInt(last) < 1000 * 60 * 60) return;
     }
 
     setIsAiLoading(true);
@@ -136,12 +140,17 @@ const App: React.FC = () => {
       Object.entries(data.prices).forEach(([symbol, price]) => {
         aiQuotes[symbol] = { symbol, regularMarketPrice: price } as BrapiQuote;
       });
+      
       setQuotes(prev => ({ ...prev, ...aiQuotes }));
-      setGeminiDividends(data.dividends);
+      setGeminiDividends(prev => {
+        const merged = [...prev, ...data.dividends];
+        return Array.from(new Map(merged.map(d => [d.id, d])).values());
+      });
+      
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
-      if (force) showToast('success', 'Sincronizado com Gemini 3 Flash');
+      if (force) showToast('success', 'Dados atualizados via IA');
     } catch (e: any) {
-      showToast('error', 'Erro na sincronização inteligente');
+      showToast('error', 'Falha na IA: Usando dados locais');
     } finally {
       setIsAiLoading(false);
     }
@@ -158,6 +167,7 @@ const App: React.FC = () => {
         brQuotes.forEach(q => map[q.symbol] = q);
         setQuotes(prev => ({ ...prev, ...map }));
       }
+      // O handleAiSync já tem cache interno, então não pesará se estiver atualizado
       await handleAiSync(true);
     } catch (error) {
       showToast('error', 'Erro na atualização geral');
@@ -169,7 +179,8 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!hasRunAutoSync.current && transactions.length > 0) {
       hasRunAutoSync.current = true;
-      setTimeout(() => handleAiSync(false), 3000);
+      const timeout = setTimeout(() => handleAiSync(false), 2000);
+      return () => clearTimeout(timeout);
     }
   }, [transactions.length, handleAiSync]);
 
@@ -181,7 +192,7 @@ const App: React.FC = () => {
             <TrendingUp className="w-12 h-12 text-primary -rotate-12" />
           </div>
         </div>
-        <h1 className="text-3xl font-black text-white tracking-[0.2em] mb-2 animate-fade-in uppercase">InvestFIIs</h1>
+        <h1 className="text-3xl font-black text-white tracking-[0.2em] mb-2 uppercase">InvestFIIs</h1>
         <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
           <div className="h-full bg-accent animate-[slideRight_2s_ease-in-out_infinite]"></div>
         </div>
@@ -196,13 +207,13 @@ const App: React.FC = () => {
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 bg-accent text-primary rounded-2xl flex items-center justify-between gap-3 shadow-[0_0_40px_rgba(56,189,248,0.4)] z-[100] animate-fade-in-up border border-white/20">
           <div className="flex items-center gap-3">
             <RefreshCw className="w-5 h-5 animate-spin-slow" />
-            <span className="text-xs font-black uppercase tracking-tight">Nova versão disponível!</span>
+            <span className="text-xs font-black uppercase tracking-tight">Nova versão pronta!</span>
           </div>
           <button 
             onClick={handleApplyUpdate}
             className="bg-primary text-accent px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
           >
-            Atualizar
+            Aplicar
           </button>
         </div>
       )}

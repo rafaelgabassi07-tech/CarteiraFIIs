@@ -161,7 +161,16 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                     <div className="h-24 w-24 flex-shrink-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie data={dataByAsset} innerRadius={28} outerRadius={42} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={6}>
+                                <Pie 
+                                  data={dataByAsset} 
+                                  innerRadius={28} 
+                                  outerRadius={42} 
+                                  paddingAngle={4} 
+                                  dataKey="value" 
+                                  stroke="none" 
+                                  cornerRadius={6}
+                                  activeShape={false}
+                                >
                                     {dataByAsset.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                             </PieChart>
@@ -342,7 +351,16 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
             <div className="h-64 mb-8">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                        <Pie data={allocationTab === 'asset' ? dataByAsset : dataByType} innerRadius={70} outerRadius={100} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={8}>
+                        <Pie 
+                          data={allocationTab === 'asset' ? dataByAsset : dataByType} 
+                          innerRadius={70} 
+                          outerRadius={100} 
+                          paddingAngle={4} 
+                          dataKey="value" 
+                          stroke="none" 
+                          cornerRadius={8}
+                          activeShape={false}
+                        >
                             {(allocationTab === 'asset' ? dataByAsset : dataByType).map((entry, index) => (
                                 <Cell key={index} fill={allocationTab === 'type' ? (entry as any).color : COLORS[index % COLORS.length]} />
                             ))}

@@ -27,8 +27,12 @@ export const Header: React.FC<HeaderProps> = ({
             <ChevronLeft className="w-6 h-6" />
           </button>
         ) : (
-          <div className="w-10 h-10 bg-accent rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(56,189,248,0.2)]">
-            <TrendingUp className="w-6 h-6 text-primary" />
+          <div className="relative">
+            <div className="w-10 h-10 bg-accent rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(56,189,248,0.2)]">
+              <TrendingUp className="w-6 h-6 text-primary" />
+            </div>
+            {/* Ponto pulsante restaurado */}
+            <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-primary animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
           </div>
         )}
         <h1 className="text-lg font-black text-white uppercase tracking-widest">{title}</h1>

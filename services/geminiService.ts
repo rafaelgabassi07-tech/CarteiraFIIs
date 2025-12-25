@@ -9,6 +9,9 @@ export interface UnifiedMarketData {
   sources?: { web: { uri: string; title: string } }[];
 }
 
+const GEMINI_CACHE_KEY = 'investfiis_gemini_internal_cache';
+const CACHE_EXPIRATION = 12 * 60 * 60 * 1000; // 12 horas
+
 function cleanAndParseJSON(text: string): any {
   try {
     const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -28,13 +31,49 @@ function cleanAndParseJSON(text: string): any {
 }
 
 /**
- * Executa uma pesquisa profunda na B3 via Gemini 3 Flash.
- * Focado em capturar todas as parcelas de proventos individualmente.
+ * Sistema de Cache Inteligente
+ */
+const getCachedData = (tickers: string[]): UnifiedMarketData | null => {
+  try {
+    const cached = localStorage.getItem(GEMINI_CACHE_KEY);
+    if (!cached) return null;
+    
+    const { data, timestamp, tickers: cachedTickers } = JSON.parse(cached);
+    const isExpired = Date.now() - timestamp > CACHE_EXPIRATION;
+    
+    // Verifica se todos os tickers solicitados estão no cache
+    const hasAllTickers = tickers.every(t => cachedTickers.includes(t.toUpperCase()));
+    
+    if (!isExpired && hasAllTickers) {
+      console.log("Gemini: Usando cache interno para", tickers);
+      return data;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const saveToCache = (tickers: string[], data: UnifiedMarketData) => {
+  try {
+    localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({
+      data,
+      timestamp: Date.now(),
+      tickers: tickers.map(t => t.toUpperCase())
+    }));
+  } catch (e) {}
+};
+
+/**
+ * Executa uma pesquisa profunda na B3 via Gemini 3 Flash com cache integrado.
  */
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { prices: {}, dividends: [], metadata: {} };
 
-  // Always use { apiKey: process.env.API_KEY }
+  // 1. Tentar Cache primeiro
+  const cached = getCachedData(tickers);
+  if (cached) return cached;
+
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
@@ -43,7 +82,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     REQUISITOS DE PRECISÃO:
     1. COTAÇÃO ATUAL: Preço de fechamento mais recente.
     2. PROVENTOS (DIVIDENDOS/JCP): Liste TODOS os pagamentos dos últimos 12 meses.
-       IMPORTANTE: Se um provento foi anunciado mas será pago em múltiplas parcelas (ex: CMIG4 pagando JCP em duas datas), você DEVE retornar cada parcela como um item separado no array 'd'. Não agrupe valores que possuem datas de pagamento diferentes.
+       IMPORTANTE: Se um provento foi anunciado mas será pago em múltiplas parcelas, retorne cada parcela separadamente.
     3. SEGMENTO e TIPO: Identifique se é FII ou ACAO.
     
     ESTRUTURA JSON OBRIGATÓRIA:
@@ -57,19 +96,17 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
           "d": [
             {
               "ty": "DIVIDENDO|JCP", 
-              "dc": "YYYY-MM-DD", (Data Com / Corte)
-              "dp": "YYYY-MM-DD", (Data de Pagamento Efetivo)
-              "v": 0.000000 (Valor unitário por ação/cota)
+              "dc": "YYYY-MM-DD",
+              "dp": "YYYY-MM-DD",
+              "v": 0.000000
             }
           ]
         }
       ]
     }
-    Use o Google Search para verificar os últimos avisos aos acionistas e cronogramas de pagamento.
   `;
 
   try {
-    // Using gemini-3-flash-preview for general text tasks and search grounding
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
@@ -110,14 +147,12 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       }
     });
 
-    // Directly access response.text property
     const textOutput = response.text || "";
     const parsed = cleanAndParseJSON(textOutput);
     const result: UnifiedMarketData = { 
         prices: {}, 
         dividends: [], 
         metadata: {},
-        // Extract grounding sources as required by guidelines
         sources: (response.candidates?.[0]?.groundingMetadata?.groundingChunks as any) || []
     };
 
@@ -132,7 +167,6 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
         if (asset.d) {
           asset.d.forEach((div: any) => {
-            // Chave única robusta incluindo data de pagamento para evitar colisões em parcelas
             const uniqueId = `${ticker}-${div.dc}-${div.dp}-${div.v}`;
             result.dividends.push({
               id: uniqueId,
@@ -146,9 +180,11 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
             });
           });
         }
-      } );
+      });
     }
 
+    // Salva no cache antes de retornar
+    saveToCache(tickers, result);
     return result;
   } catch (error: any) {
     console.error("Erro Gemini Proventos:", error);
