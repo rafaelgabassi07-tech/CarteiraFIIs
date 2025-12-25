@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ChevronDown, ChevronUp, Calendar, Sparkles, Loader2, X, Layers, LayoutGrid, ArrowUpRight } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, Crown, PieChart as PieIcon, ChevronDown, ChevronUp, Calendar, Sparkles, Loader2, X, Layers, LayoutGrid, ArrowUpRight, List, BarChart3, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 interface HomeProps {
@@ -11,7 +11,9 @@ interface HomeProps {
 }
 
 export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSync, isAiLoading }) => {
-  const [showDividendDetails, setShowDividendDetails] = useState(false);
+  const [showProventosModal, setShowProventosModal] = useState(false);
+  const [proventosTab, setProventosTab] = useState<'statement' | 'ranking'>('statement');
+  
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [allocationTab, setAllocationTab] = useState<'asset' | 'type'>('asset');
 
@@ -22,24 +24,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
   const totalDividends = portfolio.reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
   const yieldOnCost = totalInvested > 0 ? (totalDividends / totalInvested) * 100 : 0;
 
-  const dividendsByFII = portfolio
-    .filter(p => p.assetType === AssetType.FII)
-    .reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
-  
-  const dividendsByStock = portfolio
-    .filter(p => p.assetType === AssetType.STOCK)
-    .reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
-
-  const topPayer = useMemo(() => {
-    if (portfolio.length === 0) return null;
-    const itemsWithDividends = portfolio.filter(p => (p.totalDividends || 0) > 0);
-    if (itemsWithDividends.length === 0) return null;
-    return itemsWithDividends.reduce((prev, current) => 
-        (prev.totalDividends || 0) > (current.totalDividends || 0) ? prev : current
-    );
-  }, [portfolio]);
-
-  // Dados para Gráfico por Ativo
+  // Dados para Gráfico por Ativo (Alocação)
   const dataByAsset = useMemo(() => {
     return portfolio
       .map(p => ({
@@ -51,17 +36,34 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
       .sort((a, b) => b.value - a.value);
   }, [portfolio]);
 
-  // Dados para Gráfico por Classe (FII vs Ação)
+  // Dados para Gráfico por Classe (Alocação)
   const dataByType = useMemo(() => {
     const fiisVal = dataByAsset.filter(d => d.type === AssetType.FII).reduce((acc, c) => acc + c.value, 0);
     const stocksVal = dataByAsset.filter(d => d.type === AssetType.STOCK).reduce((acc, c) => acc + c.value, 0);
     return [
-      { name: 'FIIs', value: fiisVal, color: '#38bdf8' }, // accent
-      { name: 'Ações', value: stocksVal, color: '#a855f7' } // purple-500
+      { name: 'FIIs', value: fiisVal, color: '#38bdf8' },
+      { name: 'Ações', value: stocksVal, color: '#a855f7' }
     ].filter(d => d.value > 0);
   }, [dataByAsset]);
 
-  // Dados filtrados para o Modal
+  // Dados para Ranking de Dividendos
+  const dividendRanking = useMemo(() => {
+    const map: Record<string, number> = {};
+    dividendReceipts.forEach(d => {
+        map[d.ticker] = (map[d.ticker] || 0) + d.totalReceived;
+    });
+    return Object.entries(map)
+        .map(([ticker, total]) => ({ ticker, total }))
+        .sort((a, b) => b.total - a.total);
+  }, [dividendReceipts]);
+
+  const lastDividend = useMemo(() => {
+      if (dividendReceipts.length === 0) return null;
+      // Assume que dividendReceipts já vem ordenado por data no App.tsx
+      return dividendReceipts[0];
+  }, [dividendReceipts]);
+
+  // Dados filtrados para o Modal de Alocação
   const modalData = allocationTab === 'asset' ? dataByAsset : dataByType;
   
   const COLORS = ['#38bdf8', '#22c55e', '#f472b6', '#a78bfa', '#fbbf24', '#f87171', '#94a3b8', '#64748b'];
@@ -69,8 +71,10 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
     const [year, month, day] = dateString.split('-');
-    return `${day}/${month}`;
+    return `${day}/${month}`; // Exibe dia/mês para economizar espaço
   };
+
+  const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="pb-28 pt-6 px-5 space-y-6 max-w-lg mx-auto">
@@ -83,7 +87,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                 Patrimônio Total
             </h2>
             <div className="text-4xl font-bold text-white mb-8 tabular-nums tracking-tight">
-            R$ {currentBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {formatCurrency(currentBalance)}
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white/5 p-3.5 rounded-2xl border border-white/5">
@@ -91,7 +95,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                         <Wallet className="w-3.5 h-3.5" /> Custo
                     </div>
                     <div className="text-sm font-semibold text-slate-200">
-                        R$ {totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {formatCurrency(totalInvested)}
                     </div>
                 </div>
                 <div className="bg-white/5 p-3.5 rounded-2xl border border-white/5">
@@ -106,123 +110,73 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
         </div>
       </div>
 
-      {/* Proventos Card */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-        <div className="bg-gradient-to-br from-emerald-950/40 to-slate-900 border border-emerald-500/10 rounded-3xl p-6 shadow-lg relative overflow-hidden">
-            <div className="flex items-start justify-between mb-5">
+      {/* Proventos Card (Redesenhado) */}
+      <div 
+        onClick={() => setShowProventosModal(true)}
+        className="animate-fade-in-up cursor-pointer group"
+        style={{ animationDelay: '100ms' }}
+      >
+        <div className="bg-gradient-to-br from-emerald-950/40 to-slate-900 border border-emerald-500/10 rounded-3xl p-6 shadow-lg relative overflow-hidden group-hover:bg-emerald-900/10 transition-all duration-300">
+            {/* Background Glow Effect */}
+            <div className="absolute -right-10 -top-10 w-32 h-32 bg-emerald-500/10 blur-[50px] rounded-full pointer-events-none group-hover:bg-emerald-500/20 transition-all duration-500"></div>
+
+            <div className="flex items-start justify-between mb-4 relative z-10">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-500/10 rounded-2xl text-emerald-400">
+                    <div className="p-2.5 bg-emerald-500/10 rounded-2xl text-emerald-400 ring-1 ring-emerald-500/20">
                         <DollarSign className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="text-white font-bold text-lg leading-none">Proventos</h3>
-                        <p className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">Total Histórico</p>
+                        <h3 className="text-white font-bold text-sm leading-none">Meus Proventos</h3>
+                        <p className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">Acumulado</p>
                     </div>
                 </div>
-                <div className="text-right">
-                    <div className="text-emerald-400 text-xs font-bold bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/10">
-                        YoC: {yieldOnCost.toFixed(2)}%
-                    </div>
+                <div className="p-2 bg-white/5 rounded-full group-hover:bg-white/10 transition-colors">
+                     <ArrowUpRight className="w-4 h-4 text-emerald-400" />
                 </div>
             </div>
 
-            <div className="text-3xl font-bold text-white mb-6 tabular-nums">
-                R$ {totalDividends.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            <div className="flex items-baseline gap-2 mb-6 relative z-10">
+                <div className="text-3xl font-bold text-white tabular-nums">
+                    R$ {formatCurrency(totalDividends)}
+                </div>
+                {yieldOnCost > 0 && (
+                    <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/10">
+                        YoC {yieldOnCost.toFixed(2)}%
+                    </span>
+                )}
             </div>
 
-            {totalDividends > 0 ? (
-              <div className="space-y-4">
-                  <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-medium">
-                          <span className="text-slate-300">FIIs</span>
-                          <span className="text-slate-200">R$ {dividendsByFII.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-950/50 rounded-full overflow-hidden">
-                          <div className="h-full bg-accent" style={{ width: `${(dividendsByFII / totalDividends) * 100}%` }} />
-                      </div>
-                  </div>
-                  <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-medium">
-                          <span className="text-slate-300">Ações</span>
-                          <span className="text-slate-200">R$ {dividendsByStock.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-950/50 rounded-full overflow-hidden">
-                          <div className="h-full bg-purple-400" style={{ width: `${(dividendsByStock / totalDividends) * 100}%` }} />
-                      </div>
-                  </div>
-
-                  {/* Detalhes Toggle */}
-                  <button 
-                    onClick={() => setShowDividendDetails(!showDividendDetails)}
-                    className="w-full mt-4 pt-4 border-t border-emerald-500/10 flex items-center justify-center gap-2 text-xs text-emerald-400 font-bold hover:bg-emerald-500/5 py-2 rounded-lg transition-colors"
-                  >
-                    {showDividendDetails ? 'Ocultar Extrato' : 'Ver Extrato Detalhado'}
-                    {showDividendDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  </button>
-                  
-                  {showDividendDetails && (
-                    <div className="space-y-2 mt-2 animate-fade-in bg-slate-950/30 rounded-xl p-2 max-h-60 overflow-y-auto">
-                      {dividendReceipts.map((receipt, idx) => (
-                        <div key={`${receipt.id}-${idx}`} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg border border-transparent hover:border-white/5 transition-all">
-                          <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white border border-white/5">
-                               {receipt.ticker.substring(0,4)}
-                             </div>
-                             <div>
-                                <div className="text-xs font-bold text-white">{receipt.ticker}</div>
-                                <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                                  <Calendar className="w-2.5 h-2.5" /> Pago: {formatDate(receipt.paymentDate)}
-                                </div>
-                             </div>
-                          </div>
-                          <div className="text-right">
-                             <div className="text-xs font-bold text-emerald-400">R$ {receipt.totalReceived.toFixed(2)}</div>
-                             <div className="text-[10px] text-slate-500">{receipt.quantityOwned} cotas x {receipt.rate.toFixed(2)}</div>
-                          </div>
+            {/* Rodapé do Card com Resumo */}
+            <div className="flex items-center justify-between pt-4 border-t border-white/5 relative z-10">
+                {lastDividend ? (
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase">Último Pagamento</span>
+                        <span className="text-xs text-slate-300 font-medium flex items-center gap-1">
+                             <span className="text-white font-bold">{lastDividend.ticker}</span> • R$ {lastDividend.totalReceived.toFixed(2)}
+                        </span>
+                    </div>
+                ) : (
+                    <span className="text-xs text-slate-500 italic">Nenhum histórico recente</span>
+                )}
+                
+                <div className="flex -space-x-2">
+                    {/* Visual fake avatars or counts */}
+                    {dividendReceipts.slice(0,3).map((_, i) => (
+                        <div key={i} className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[8px] text-slate-400 font-bold">
+                            $
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {topPayer && !showDividendDetails && (
-                    <div className="mt-2 pt-2 flex items-center justify-between">
-                        <span className="text-xs text-slate-400 flex items-center gap-1">
-                            <Crown className="w-3.5 h-3.5 text-amber-400" /> Maior Pagador
-                        </span>
-                        <span className="text-xs font-bold text-white bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                            {topPayer.ticker}: R$ {topPayer.totalDividends?.toFixed(2)}
-                        </span>
-                    </div>
-                  )}
-              </div>
-            ) : (
-               <div className="text-center py-2 flex flex-col items-center gap-3">
-                  {isAiLoading ? (
-                    <p className="text-xs text-emerald-400 italic flex items-center justify-center gap-2 animate-pulse">
-                       <Loader2 className="w-4 h-4 animate-spin" />
-                       IA analisando dividendos...
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-xs text-slate-500 italic">
-                        Nenhum provento identificado automaticamente.
-                      </p>
-                      {onAiSync && (
-                        <button 
-                          onClick={onAiSync}
-                          className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/20 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95"
-                        >
-                          <Sparkles className="w-3 h-3" /> Buscar com IA
-                        </button>
-                      )}
-                    </>
-                  )}
-               </div>
-            )}
+                    ))}
+                    {dividendReceipts.length > 3 && (
+                        <div className="w-6 h-6 rounded-full bg-emerald-900 border border-slate-800 flex items-center justify-center text-[8px] text-emerald-400 font-bold">
+                            +{dividendReceipts.length - 3}
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
       </div>
 
-      {/* Alocação CARD */}
+      {/* Alocação Card */}
       {portfolio.length > 0 && (
         <div 
           onClick={() => setShowAllocationModal(true)}
@@ -257,7 +211,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                                 </Pie>
                             </PieChart>
                         </ResponsiveContainer>
-                        {/* Center Icon */}
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <span className="text-[10px] font-bold text-slate-500">{dataByAsset.length}</span>
                         </div>
@@ -274,14 +227,126 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                                 <span className="text-white font-bold">{((entry.value / currentBalance) * 100).toFixed(0)}%</span>
                             </div>
                         ))}
-                        {dataByAsset.length > 3 && (
-                            <div className="flex items-center gap-2 text-[10px] text-slate-500 pt-1 border-t border-white/5 mt-1">
-                                <span>+ {dataByAsset.length - 3} outros ativos</span>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
+        </div>
+      )}
+
+      {/* --- MODAL DE PROVENTOS --- */}
+      {showProventosModal && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity animate-fade-in" onClick={() => setShowProventosModal(false)} />
+          
+          <div className="bg-slate-900 w-full h-[85vh] sm:h-auto sm:max-h-[80vh] sm:max-w-md rounded-t-[2rem] sm:rounded-3xl shadow-2xl border-t sm:border border-white/10 relative animate-slide-up z-10 ring-1 ring-white/5 flex flex-col">
+             
+             {/* Header Modal */}
+             <div className="flex items-center justify-between p-6 pb-2 border-b border-white/5">
+                 <div className="flex flex-col">
+                    <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                        Proventos <span className="bg-emerald-500/10 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/20">YoC {yieldOnCost.toFixed(2)}%</span>
+                    </h3>
+                    <p className="text-xs text-slate-400">Total recebido: R$ {formatCurrency(totalDividends)}</p>
+                 </div>
+                 
+                 <div className="flex items-center gap-2">
+                     {/* Botão de IA movido para cá */}
+                     {onAiSync && (
+                         <button 
+                            onClick={onAiSync}
+                            disabled={isAiLoading}
+                            className="p-2 rounded-full bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all active:scale-95 disabled:opacity-50"
+                         >
+                            {isAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                         </button>
+                     )}
+                     <button onClick={() => setShowProventosModal(false)} className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors bg-white/5">
+                         <X className="w-5 h-5" />
+                     </button>
+                 </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="p-4 grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => setProventosTab('statement')}
+                  className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${proventosTab === 'statement' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' : 'bg-secondary/40 text-slate-500 hover:text-white'}`}
+                >
+                    <List className="w-4 h-4" /> Extrato
+                </button>
+                <button 
+                  onClick={() => setProventosTab('ranking')}
+                  className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${proventosTab === 'ranking' ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20' : 'bg-secondary/40 text-slate-500 hover:text-white'}`}
+                >
+                    <BarChart3 className="w-4 h-4" /> Ranking
+                </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-3 min-h-[300px]">
+                
+                {dividendReceipts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-3 py-10">
+                        <Sparkles className="w-8 h-8 opacity-50" />
+                        <p className="text-sm">Nenhum provento registrado ainda.</p>
+                        <p className="text-xs text-center max-w-[200px] opacity-70">Use o botão de brilho acima para buscar dados automaticamente.</p>
+                    </div>
+                ) : (
+                    <>
+                        {/* VIEW: EXTRATO */}
+                        {proventosTab === 'statement' && dividendReceipts.map((receipt, idx) => (
+                            <div key={`${receipt.id}-${idx}`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-white/5 hover:border-emerald-500/20 hover:bg-emerald-500/5 transition-all group">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white border border-white/5 group-hover:scale-105 transition-transform">
+                                        {receipt.ticker.substring(0,4)}
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-bold text-white flex items-center gap-2">
+                                            {receipt.ticker}
+                                            <span className="text-[9px] font-normal text-slate-500 border border-white/10 px-1.5 rounded bg-slate-900">{receipt.type.substring(0,3)}</span>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Pgto: {formatDate(receipt.paymentDate)}</span>
+                                            <span className="opacity-50">|</span>
+                                            <span>Com: {formatDate(receipt.dateCom)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-sm font-bold text-emerald-400">R$ {formatCurrency(receipt.totalReceived)}</div>
+                                    <div className="text-[10px] text-slate-500 font-medium tabular-nums">{receipt.quantityOwned} un x R$ {receipt.rate.toFixed(2)}</div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* VIEW: RANKING */}
+                        {proventosTab === 'ranking' && dividendRanking.map((item, idx) => {
+                            const percent = (item.total / totalDividends) * 100;
+                            return (
+                                <div key={item.ticker} className="space-y-1 mb-2">
+                                    <div className="flex justify-between items-end px-1">
+                                        <div className="flex items-center gap-2">
+                                            {idx === 0 && <Crown className="w-3 h-3 text-amber-400" />}
+                                            <span className="text-xs font-bold text-white">{idx + 1}. {item.ticker}</span>
+                                        </div>
+                                        <span className="text-xs font-bold text-emerald-400">R$ {formatCurrency(item.total)}</span>
+                                    </div>
+                                    <div className="h-8 w-full bg-secondary/30 rounded-lg relative overflow-hidden border border-white/5">
+                                        <div 
+                                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-600/40 to-emerald-500/40 border-r border-emerald-500/50 transition-all duration-700"
+                                            style={{ width: `${percent}%` }}
+                                        />
+                                        <div className="absolute inset-0 flex items-center justify-end px-3">
+                                            <span className="text-[10px] font-bold text-slate-400">{percent.toFixed(1)}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </>
+                )}
+            </div>
+          </div>
         </div>
       )}
 
