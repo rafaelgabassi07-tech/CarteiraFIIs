@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR" class="antialiased">
   <head>
@@ -9,8 +10,8 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="./manifest.json" />
 
-    <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>" />
+    <!-- Favicon - Logotipo Moderno InvestFIIs -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%231e293b'/%3E%3Cstop offset='100%25' style='stop-color:%230f172a'/%3E%3C/linearGradient%3E%3ClinearGradient id='a' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2338bdf8'/%3E%3Cstop offset='100%25' style='stop-color:%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='120' fill='url(%23g)'/%3E%3Crect x='120' y='280' width='60' height='120' rx='8' fill='%23334155' opacity='.6'/%3E%3Crect x='200' y='200' width='60' height='200' rx='8' fill='%23475569' opacity='.8'/%3E%3Crect x='280' y='240' width='60' height='160' rx='8' fill='%23334155' opacity='.6'/%3E%3Crect x='360' y='140' width='60' height='260' rx='8' fill='%23475569' opacity='.8'/%3E%3Cpath d='M100 400l100-100 80 40 140-220' stroke='url(%23a)' stroke-width='32' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M370 120h50v50' stroke='url(%23a)' stroke-width='32' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
 
     <!-- PWA Settings -->
     <meta name="theme-color" content="#0f172a" />
@@ -85,13 +86,11 @@
         overflow-x: hidden;
       }
       
-      /* Scrollbar Styling */
       ::-webkit-scrollbar { width: 4px; height: 4px; }
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
       ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-      /* Utility classes for consistency */
       .glass {
         background: rgba(15, 23, 42, 0.7);
         backdrop-filter: blur(16px);
@@ -102,15 +101,12 @@
       .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
       .pt-safe { padding-top: env(safe-area-inset-top); }
 
-      /* Remove spinners from number inputs */
       input[type=number]::-webkit-inner-spin-button, 
       input[type=number]::-webkit-outer-spin-button { 
         -webkit-appearance: none; 
         margin: 0; 
       }
 
-      /* RECHARTS & FOCUS FIXES */
-      /* Remove o contorno padrão (outline) ao clicar em gráficos SVG */
       .recharts-wrapper,
       .recharts-surface,
       .recharts-sector,
@@ -118,7 +114,6 @@
         outline: none !important;
       }
       
-      /* Opcional: Remove contorno de foco globalmente para simular app nativo (já que usamos ring no Tailwind para inputs) */
       *:focus {
         outline: none !important;
       }
@@ -152,7 +147,6 @@
         </style>
       </div>
     </div>
-    <!-- Script Principal com caminho relativo -->
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>

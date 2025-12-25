@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Home, PieChart, ArrowRightLeft, Settings, TrendingUp, ChevronLeft, RefreshCw } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
@@ -9,6 +10,18 @@ interface HeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
 }
+
+// Ícone do Logotipo Customizado (Prédios + Crescimento)
+const LogoIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="14" width="4" height="6" rx="1" fill="currentColor" opacity="0.4" />
+    <rect x="7" y="10" width="4" height="10" rx="1" fill="currentColor" opacity="0.6" />
+    <rect x="12" y="12" width="4" height="8" rx="1" fill="currentColor" opacity="0.4" />
+    <rect x="17" y="7" width="4" height="13" rx="1" fill="currentColor" opacity="0.6" />
+    <path d="M2 18L8 12L13 16L22 4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M17 4H22V9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 export const Header: React.FC<HeaderProps> = ({ 
   title, 
@@ -30,8 +43,8 @@ export const Header: React.FC<HeaderProps> = ({
             <ChevronLeft className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" />
           </button>
         ) : (
-          <div className="bg-gradient-to-br from-accent/20 to-accent/5 p-2 rounded-xl ring-1 ring-white/10 shadow-[0_0_15px_rgba(56,189,248,0.15)]">
-             <TrendingUp className="w-5 h-5 text-accent" />
+          <div className="bg-gradient-to-br from-accent/20 to-accent/5 p-2 rounded-xl ring-1 ring-white/10 shadow-[0_0_15px_rgba(56,189,248,0.15)] text-accent">
+             <LogoIcon />
           </div>
         )}
         <h1 className="text-lg font-bold text-white tracking-tight flex items-center gap-2.5">
@@ -93,7 +106,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
               onClick={() => onTabChange(tab.id)}
               className={`relative flex flex-col items-center justify-center w-20 h-full transition-all duration-500 group`}
             >
-              {/* Active Indicator Background */}
               <div className={`absolute inset-0 rounded-2xl bg-white/5 transition-all duration-300 ${isActive ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} />
               
               <Icon 
@@ -111,7 +123,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
                 {tab.label}
               </span>
               
-              {/* Dot indicator for active state */}
                {isActive && (
                 <div className="absolute top-2 w-1 h-1 bg-accent rounded-full shadow-[0_0_8px_rgba(56,189,248,0.8)] animate-scale-in" />
               )}

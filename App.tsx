@@ -103,8 +103,8 @@ const App: React.FC = () => {
 
   // --- Actions ---
   const handleAiSync = useCallback(async (force = false) => {
-    // FIX: Using spread instead of Array.from to ensure string[] type inference and avoid unknown[] casting errors
-    const tickers = [...new Set(transactions.map(t => t.ticker))];
+    // Fix: Use Array.from with explicit typing to ensure tickers is inferred as string[]
+    const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
     if (tickers.length === 0) return;
 
     if (!force) {
@@ -138,8 +138,8 @@ const App: React.FC = () => {
     if (isRefreshing || isAiLoading) return;
     setIsRefreshing(true);
     
-    // FIX: Using spread instead of Array.from to ensure string[] type inference and avoid unknown[] casting errors
-    const tickers = [...new Set(transactions.map(t => t.ticker))];
+    // Fix: Use Array.from with explicit typing to ensure tickers is inferred as string[]
+    const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
     
     try {
       // 1. Tenta Brapi (Cotações rápidas)
