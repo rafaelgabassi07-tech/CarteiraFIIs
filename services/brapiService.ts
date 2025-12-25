@@ -35,14 +35,24 @@ const saveCache = (cache: QuoteCache) => {
 
 // Busca múltiplos tickers de uma vez
 const fetchBatchQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
-  if (tickers.length === 0) return [];
+  // Limpeza dos tickers: remove espaços, converte para uppercase e remove vazios
+  const sanitizedTickers = tickers
+    .map(t => t.trim().toUpperCase())
+    .filter(t => t.length > 0);
+
+  if (sanitizedTickers.length === 0) return [];
   
   try {
-    const tickersString = tickers.join(',');
+    const tickersString = sanitizedTickers.join(',');
     const response = await fetch(`${BASE_URL}/quote/${tickersString}?token=${token}&modules=summary,dividends`);
     
     if (!response.ok) {
-      console.warn(`Falha ao buscar cotações: ${response.status}`);
+      // 417 Expectation Failed geralmente ocorre com tickers inválidos na query
+      if (response.status === 417) {
+         console.warn(`Brapi retornou 417 (Expectation Failed). Verifique se os tickers estão corretos: ${tickersString}`);
+      } else {
+         console.warn(`Falha ao buscar cotações: ${response.status} - ${response.statusText}`);
+      }
       return [];
     }
     
@@ -57,7 +67,7 @@ const fetchBatchQuotes = async (tickers: string[], token: string): Promise<Brapi
 export const getQuotes = async (tickers: string[], token: string): Promise<BrapiQuote[]> => {
   if (!tickers.length) return [];
   if (!token) {
-    console.warn("Brapi Token não configurado");
+    // console.warn("Brapi Token não configurado"); // Silenciado para reduzir ruído se não configurado
     return [];
   }
 
@@ -69,11 +79,14 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
 
   // 1. Separa o que está em cache (e válido) do que precisa ser buscado
   tickers.forEach(ticker => {
-    const cachedItem = cache[ticker];
+    const cleanTicker = ticker.trim().toUpperCase();
+    if (!cleanTicker) return;
+
+    const cachedItem = cache[cleanTicker];
     if (cachedItem && (now - cachedItem.timestamp < CACHE_DURATION)) {
       validQuotes.push(cachedItem.data);
     } else {
-      tickersToFetch.push(ticker);
+      tickersToFetch.push(cleanTicker);
     }
   });
 
