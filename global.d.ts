@@ -1,0 +1,11 @@
+export {};
+
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      API_KEY: string;
+      BRAPI_TOKEN: string;
+      [key: string]: string | undefined;
+    }
+  }
+}
