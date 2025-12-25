@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, TrendingUp } from 'lucide-react';
 
 interface HeaderProps {
@@ -131,28 +132,31 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   const [offsetY, setOffsetY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
-  const currentY = useRef(0);
   const modalRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Reset state on open
+  // Lock body scroll when open
   useEffect(() => {
     if (isOpen) {
       setOffsetY(0);
       document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none'; // Prevents background scrolling on iOS
     } else {
       document.body.style.overflow = '';
+      document.body.style.touchAction = '';
     }
-    return () => { document.body.style.overflow = ''; };
+    return () => { 
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
   }, [isOpen]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    // Only allow drag if we are at the top of the scroll or touching the handle
+    // Check if we are at the top of the content
     if (contentRef.current && contentRef.current.scrollTop > 0) return;
     
     setIsDragging(true);
     startY.current = e.touches[0].clientY;
-    currentY.current = e.touches[0].clientY;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -163,7 +167,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 
     // Only allow dragging down
     if (diff > 0) {
-      // Prevent default pull-to-refresh on Android/iOS
       if (e.cancelable) e.preventDefault();
       setOffsetY(diff);
     }
@@ -173,7 +176,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     if (!isDragging) return;
     setIsDragging(false);
 
-    // Threshold to close: 120px
+    // Threshold to close
     if (offsetY > 120) {
       onClose();
     } else {
@@ -183,41 +186,45 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center p-0">
-      {/* Backdrop */}
+  // Utiliza Portal para renderizar fora da hierarquia principal (acima do Header sticky)
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-end justify-center">
+      {/* Backdrop com transição de opacidade baseada no arrasto */}
       <div 
-        className="absolute inset-0 bg-primary/80 backdrop-blur-md animate-fade-in" 
+        className="absolute inset-0 bg-primary/80 backdrop-blur-md transition-opacity duration-300 ease-out"
+        style={{ opacity: isDragging ? Math.max(0, 1 - offsetY / 600) : 1 }}
         onClick={onClose} 
       />
       
       {/* Modal Container */}
       <div 
         ref={modalRef}
-        className="bg-primary w-full h-[95vh] rounded-t-[2.5rem] border-t border-white/10 shadow-2xl relative flex flex-col overflow-hidden transition-transform duration-200 ease-out will-change-transform"
+        className="bg-primary w-full h-[96dvh] rounded-t-[2.5rem] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] relative flex flex-col overflow-hidden will-change-transform"
         style={{ 
           transform: `translateY(${offsetY}px)`,
-          transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.33, 1, 0.68, 1)' 
+          transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)' 
         }}
       >
-        {/* Drag Handle Area */}
+        {/* Drag Handle Area - Aumentada para melhor precisão */}
         <div 
-          className="w-full pt-4 pb-2 flex justify-center cursor-grab active:cursor-grabbing touch-none shrink-0"
+          className="w-full h-10 flex items-center justify-center cursor-grab active:cursor-grabbing shrink-0 absolute top-0 left-0 right-0 z-20 touch-none"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-           <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+           {/* Visual Handle */}
+           <div className="w-16 h-1.5 bg-slate-600/50 rounded-full" />
         </div>
 
         {/* Content Area */}
         <div 
           ref={contentRef}
-          className="flex-1 overflow-y-auto no-scrollbar"
+          className="flex-1 overflow-y-auto no-scrollbar pt-10" // Adicionado padding-top para compensar o handle
         >
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
