@@ -39,7 +39,7 @@ const App: React.FC = () => {
   const lastSyncTickersRef = useRef<string>("");
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsSplashActive(false), 1800);
+    const timer = setTimeout(() => setIsSplashActive(false), 1600);
     return () => clearTimeout(timer);
   }, []);
 
@@ -68,36 +68,42 @@ const App: React.FC = () => {
   }, []);
 
   const getQuantityOnDate = useCallback((ticker: string, date: string, txs: Transaction[]) => {
-    // Para proventos, a quantidade considerada é a fechada no dia da data-com
+    // Regra da B3: Proventos são devidos a quem possui o ativo no fechamento da Data-Com
     const target = date.split('T')[0];
     return txs
       .filter(t => t.ticker === ticker && t.date <= target)
       .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
   }, []);
 
-  const { portfolio, dividendReceipts } = useMemo(() => {
+  const { portfolio, dividendReceipts, realizedGain } = useMemo(() => {
     const positions: Record<string, AssetPosition> = {};
+    let totalRealizedGain = 0;
     
-    transactions.forEach(t => {
+    // Assegura que as transações estão ordenadas por data para cálculo correto de PM
+    const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+
+    sortedTxs.forEach(t => {
       const ticker = t.ticker.toUpperCase();
       if (!positions[ticker]) {
         positions[ticker] = { ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: 0 };
       }
       const p = positions[ticker];
       if (t.type === 'BUY') {
-        const cost = (p.quantity * p.averagePrice) + (t.quantity * t.price);
+        const currentCost = p.quantity * p.averagePrice;
+        const newCost = t.quantity * t.price;
         p.quantity += t.quantity;
-        p.averagePrice = p.quantity > 0 ? cost / p.quantity : 0;
+        p.averagePrice = p.quantity > 0 ? (currentCost + newCost) / p.quantity : 0;
       } else {
+        // Cálculo de Lucro/Prejuízo Realizado na venda
+        const costOfSold = t.quantity * p.averagePrice;
+        const revenueOfSold = t.quantity * t.price;
+        totalRealizedGain += (revenueOfSold - costOfSold);
         p.quantity -= t.quantity;
       }
     });
 
-    const uniqueDivsMap = new Map<string, DividendReceipt>();
-    geminiDividends.forEach(d => uniqueDivsMap.set(d.id, d));
-    
-    const receipts: DividendReceipt[] = Array.from(uniqueDivsMap.values()).map(div => {
-      const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, transactions);
+    const receipts: DividendReceipt[] = geminiDividends.map(div => {
+      const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, sortedTxs);
       const total = qtyAtDate * div.rate;
       const assetType = positions[div.ticker]?.assetType;
       
@@ -111,7 +117,7 @@ const App: React.FC = () => {
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
     const finalPortfolio = Object.values(positions)
-      .filter(p => p.quantity > 0 || (p.totalDividends || 0) > 0)
+      .filter(p => p.quantity > 0)
       .map(p => {
         const quote = quotes[p.ticker];
         return {
@@ -121,43 +127,51 @@ const App: React.FC = () => {
         };
       });
 
-    return { portfolio: finalPortfolio, dividendReceipts: receipts };
+    return { 
+      portfolio: finalPortfolio, 
+      dividendReceipts: receipts,
+      realizedGain: totalRealizedGain
+    };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
   const handleAiSync = useCallback(async (force = false) => {
+    // Explicitly typing Set to <string> to avoid "unknown[]" inference issues with Array.from in some TS configurations
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
     
     const tickersStr = uniqueTickers.join(',');
-    
-    if (!force) {
-      const lastSync = localStorage.getItem(STORAGE_KEYS.SYNC);
-      const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 60; // 1 hora de cache AI
-      if (isRecent && lastSyncTickersRef.current === tickersStr) return;
-    }
+    const lastSync = localStorage.getItem(STORAGE_KEYS.SYNC);
+    const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 60; // Cache de 1h para preços base
+
+    if (!force && isRecent && lastSyncTickersRef.current === tickersStr) return;
 
     setIsAiLoading(true);
     try {
       const data = await fetchUnifiedMarketData(uniqueTickers);
+      
+      // Merge de preços
       const aiQuotes: Record<string, BrapiQuote> = {};
       Object.entries(data.prices).forEach(([symbol, price]) => {
         aiQuotes[symbol] = { symbol, regularMarketPrice: price } as BrapiQuote;
       });
       
       setQuotes(prev => ({ ...prev, ...aiQuotes }));
+      
+      // Merge inteligente de proventos
       setGeminiDividends(prev => {
         const merged = [...prev, ...data.dividends];
-        const unique = new Map();
-        merged.forEach(d => unique.set(d.id, d));
-        return Array.from(unique.values());
+        const uniqueMap = new Map();
+        merged.forEach(d => uniqueMap.set(d.id, d));
+        return Array.from(uniqueMap.values());
       });
+
       if (data.sources) setSources(data.sources);
       
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       lastSyncTickersRef.current = tickersStr;
-      if (force) showToast('success', 'Mercado atualizado com sucesso');
-    } catch (e: any) {
-      if (force) showToast('error', 'Falha na conexão de mercado');
+      if (force) showToast('success', 'Inteligência de Mercado Sincronizada');
+    } catch (e) {
+      if (force) showToast('error', 'Erro ao consultar IA de Mercado');
     } finally {
       setIsAiLoading(false);
     }
@@ -166,7 +180,8 @@ const App: React.FC = () => {
   const handleFullRefresh = async () => {
     if (isRefreshing || isAiLoading) return;
     setIsRefreshing(true);
-    const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
+    // Explicitly typing Set to <string> to avoid "unknown[]" inference issues with Array.from
+    const tickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase())));
     try {
       if (brapiToken) {
         const brQuotes = await getQuotes(tickers, brapiToken);
@@ -176,7 +191,7 @@ const App: React.FC = () => {
       }
       await handleAiSync(true);
     } catch (error) {
-      showToast('error', 'Erro na atualização de dados');
+      showToast('error', 'Falha na atualização em tempo real');
     } finally {
       setIsRefreshing(false);
     }
@@ -184,55 +199,52 @@ const App: React.FC = () => {
 
   const handleUpdateTransaction = useCallback((id: string, updatedT: Omit<Transaction, 'id'>) => {
     setTransactions(prev => prev.map(t => t.id === id ? { ...updatedT, id } : t));
-    setTimeout(() => handleAiSync(false), 800);
-    showToast('success', 'Ordem atualizada!');
-  }, [handleAiSync, showToast]);
+    showToast('success', 'Movimentação atualizada');
+  }, [showToast]);
 
   useEffect(() => {
-    if (transactions.length > 0) {
-      const timeout = setTimeout(() => handleAiSync(false), 2000);
+    if (transactions.length > 0 && !isAiLoading) {
+      const timeout = setTimeout(() => handleAiSync(false), 1500);
       return () => clearTimeout(timeout);
     }
   }, [transactions.length, handleAiSync]);
 
   if (isSplashActive) {
     return (
-      <div className="fixed inset-0 bg-primary z-[200] flex flex-col items-center justify-center p-6 animate-fade-in">
+      <div className="fixed inset-0 bg-primary z-[200] flex flex-col items-center justify-center animate-fade-in">
         <div className="relative mb-8 animate-float">
-          <div className="w-20 h-20 bg-gradient-to-br from-accent to-blue-600 rounded-[1.5rem] rotate-12 flex items-center justify-center shadow-[0_12px_40px_rgba(56,189,248,0.4)] ring-1 ring-white/10">
-            <TrendingUp className="w-10 h-10 text-primary -rotate-12" strokeWidth={3} />
+          <div className="w-24 h-24 bg-gradient-to-br from-accent to-blue-600 rounded-[2rem] flex items-center justify-center shadow-2xl">
+            <TrendingUp className="w-12 h-12 text-primary" strokeWidth={3} />
           </div>
           <div className="absolute inset-0 bg-accent/20 blur-3xl -z-10 animate-pulse-neon rounded-full" />
         </div>
-        <h1 className="text-2xl font-black text-white tracking-[0.25em] mb-4 uppercase">InvestFIIs</h1>
-        <div className="w-32 h-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
-          <div className="h-full bg-accent w-1/2 rounded-full animate-[shimmer_1.5s_infinite] shadow-[0_0_10px_#38bdf8]"></div>
-        </div>
+        <h1 className="text-3xl font-black text-white tracking-widest uppercase mb-2">InvestFIIs</h1>
+        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em]">Finanças Inteligentes</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-primary text-slate-100 font-sans selection:bg-accent/30 overflow-x-hidden pb-10">
+    <div className="min-h-screen bg-primary text-slate-100 selection:bg-accent/30 overflow-x-hidden pb-10">
       {updateRegistration && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 glass text-white rounded-2xl flex items-center justify-between gap-3 shadow-2xl z-[150] animate-slide-up border border-accent/20">
           <div className="flex items-center gap-3">
             <RefreshCw className="w-5 h-5 animate-spin" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Nova versão pronta</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">Nova versão disponível</span>
           </div>
-          <button onClick={handleApplyUpdate} className="bg-accent text-primary px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-accent/20">Atualizar</button>
+          <button onClick={handleApplyUpdate} className="bg-accent text-primary px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Atualizar</button>
         </div>
       )}
 
       {toast && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[150] transition-all duration-300 transform animate-fade-in-up backdrop-blur-2xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90 text-white' : toast.type === 'warning' ? 'bg-amber-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[150] transition-all duration-300 animate-fade-in-up backdrop-blur-2xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
           {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
           <span className="text-[11px] font-black uppercase tracking-wider">{toast.text}</span>
         </div>
       )}
 
       <Header 
-        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'InvestFIIs' : currentTab === 'portfolio' ? 'Patrimônio' : 'Movimentações'} 
+        title={showSettings ? 'Configurações' : currentTab === 'home' ? 'Resumo' : currentTab === 'portfolio' ? 'Minha Carteira' : 'Histórico'} 
         onSettingsClick={() => setShowSettings(true)} 
         showBack={showSettings}
         onBack={() => setShowSettings(false)}
@@ -240,7 +252,7 @@ const App: React.FC = () => {
         isRefreshing={isRefreshing || isAiLoading} 
       />
       
-      <main className="max-w-screen-sm mx-auto min-h-[calc(100vh-160px)] px-1">
+      <main className="max-w-screen-sm mx-auto min-h-[calc(100vh-160px)]">
         {showSettings ? (
           <Settings 
             brapiToken={brapiToken} onSaveToken={setBrapiToken} 
@@ -250,7 +262,13 @@ const App: React.FC = () => {
         ) : (
           <div key={currentTab} className="animate-fade-in duration-500">
             {currentTab === 'home' && (
-              <Home portfolio={portfolio} dividendReceipts={dividendReceipts} isAiLoading={isAiLoading} sources={sources} />
+              <Home 
+                portfolio={portfolio} 
+                dividendReceipts={dividendReceipts} 
+                isAiLoading={isAiLoading} 
+                sources={sources}
+                realizedGain={realizedGain}
+              />
             )}
             {currentTab === 'portfolio' && <Portfolio portfolio={portfolio} dividendReceipts={dividendReceipts} />}
             {currentTab === 'transactions' && (
