@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="antialiased">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>InvestFIIs</title>
     <meta name="description" content="Carteira de FIIs e Ações" />
     
@@ -24,12 +24,34 @@
       tailwind.config = {
         theme: {
           extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
             colors: {
               primary: '#0f172a',
               secondary: '#1e293b',
               accent: '#38bdf8',
-              success: '#22c55e',
-              danger: '#ef4444',
+              success: '#10b981', // Emerald-500
+              danger: '#f43f5e',  // Rose-500
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-out',
+              'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+              'slide-in-right': 'slideInRight 0.3s ease-out',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(20px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+              slideInRight: {
+                '0%': { transform: 'translateX(20px)', opacity: '0' },
+                '100%': { transform: 'translateX(0)', opacity: '1' },
+              }
             }
           }
         }
@@ -37,10 +59,31 @@
     </script>
     
     <!-- Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
-      ::-webkit-scrollbar { width: 0px; background: transparent; }
+      body { 
+        font-family: 'Inter', sans-serif; 
+        background-color: #0f172a; 
+        color: #f8fafc; 
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      /* Scrollbar Styling */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+      /* Utility classes for consistency */
+      .glass {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      .pt-safe { padding-top: env(safe-area-inset-top); }
     </style>
 <script type="importmap">
 {
@@ -60,7 +103,7 @@
   <body>
     <div id="root">
       <div style="height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; background-color: #0f172a;">
-        <div style="width: 2rem; height: 2rem; border: 2px solid #38bdf8; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <div style="width: 2.5rem; height: 2.5rem; border: 3px solid rgba(56, 189, 248, 0.3); border-top-color: #38bdf8; border-radius: 50%; animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;"></div>
         <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
       </div>
     </div>

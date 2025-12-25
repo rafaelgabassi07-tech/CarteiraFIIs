@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Transaction, AssetType } from '../types';
-import { Plus, Trash2, Calendar } from 'lucide-react';
+import { Plus, Trash2, Calendar, X, Check } from 'lucide-react';
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -21,6 +21,8 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!ticker || !quantity || !price) return;
+    
     onAddTransaction({
       ticker: ticker.toUpperCase(),
       type,
@@ -39,48 +41,57 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
   const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
-    <div className="pb-24 pt-4 px-4 max-w-md mx-auto relative min-h-screen">
+    <div className="pb-28 pt-6 px-4 max-w-lg mx-auto relative min-h-screen">
       
       {/* Header Action */}
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-white font-bold">Histórico</h2>
+      <div className="flex justify-between items-center mb-6 sticky top-20 z-30 py-2">
+        <h2 className="text-white font-bold text-lg tracking-tight">Histórico</h2>
         <button 
           onClick={() => setShowForm(true)}
-          className="bg-accent text-slate-900 hover:bg-sky-400 font-bold py-2 px-4 rounded-full flex items-center gap-2 text-sm transition-colors"
+          className="bg-accent hover:bg-sky-400 text-slate-950 font-bold py-2.5 px-5 rounded-full flex items-center gap-2 text-sm transition-all shadow-lg shadow-accent/20 active:scale-95"
         >
-          <Plus className="w-4 h-4" /> Nova
+          <Plus className="w-4 h-4" /> Nova Transação
         </button>
       </div>
 
       {/* List */}
-      <div className="space-y-3">
+      <div className="space-y-3 animate-slide-up">
         {sortedTransactions.length === 0 ? (
-           <p className="text-center text-gray-500 py-10">Nenhuma transação registrada.</p>
+           <div className="text-center py-20 border border-dashed border-white/10 rounded-2xl bg-white/5">
+              <p className="text-slate-500 font-medium">Nenhuma transação registrada.</p>
+           </div>
         ) : (
           sortedTransactions.map((t) => (
-            <div key={t.id} className="bg-secondary p-4 rounded-xl border border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${t.type === 'BUY' ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger'}`}>
+            <div key={t.id} className="bg-secondary/40 backdrop-blur-sm p-4 rounded-xl border border-white/5 flex items-center justify-between hover:border-white/10 transition-colors group">
+              <div className="flex items-center gap-4">
+                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-sm ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20' : 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20'}`}>
                     {t.type === 'BUY' ? 'C' : 'V'}
                  </div>
                  <div>
-                    <div className="font-bold text-white text-sm">{t.ticker}</div>
-                    <div className="text-xs text-gray-400 flex items-center gap-1">
-                       <Calendar className="w-3 h-3" /> {new Date(t.date).toLocaleDateString('pt-BR')}
+                    <div className="font-bold text-white text-base tracking-tight">{t.ticker}</div>
+                    <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                       <Calendar className="w-3 h-3 text-slate-500" /> 
+                       {new Date(t.date).toLocaleDateString('pt-BR')}
                     </div>
                  </div>
               </div>
-              <div className="text-right">
-                <div className="text-white text-sm font-medium">
-                  {t.quantity} x R$ {t.price.toFixed(2)}
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-white text-sm font-medium tabular-nums">
+                    {t.quantity} x R$ {t.price.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-slate-500 tabular-nums font-medium">
+                    Total: R$ {(t.quantity * t.price).toFixed(2)}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500">
-                  Total: R$ {(t.quantity * t.price).toFixed(2)}
-                </div>
+                <button 
+                    onClick={() => onDeleteTransaction(t.id)} 
+                    className="p-2 text-slate-600 hover:text-white hover:bg-rose-500 rounded-lg transition-all"
+                    aria-label="Deletar"
+                >
+                   <Trash2 className="w-4 h-4" />
+                </button>
               </div>
-              <button onClick={() => onDeleteTransaction(t.id)} className="ml-2 text-gray-600 hover:text-danger">
-                 <Trash2 className="w-4 h-4" />
-              </button>
             </div>
           ))
         )}
@@ -88,60 +99,83 @@ export const Transactions: React.FC<TransactionsProps> = ({ transactions, onAddT
 
       {/* Modal Form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/80 z-[60] flex items-end sm:items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-white/10 animate-in slide-in-from-bottom-10 fade-in duration-300">
-            <h3 className="text-xl font-bold text-white mb-4">Nova Transação</h3>
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity" onClick={() => setShowForm(false)} />
+          
+          <div className="bg-slate-900 w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl border-t sm:border border-white/10 relative animate-slide-up z-10">
+            <div className="flex items-center justify-between mb-6">
+                 <h3 className="text-xl font-bold text-white tracking-tight">Nova Transação</h3>
+                 <button onClick={() => setShowForm(false)} className="p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+                     <X className="w-6 h-6" />
+                 </button>
+            </div>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Tipo</label>
-                  <select value={type} onChange={(e) => setType(e.target.value as any)} className="w-full bg-slate-900 text-white rounded-lg p-3 border border-slate-700 outline-none focus:border-accent">
-                    <option value="BUY">Compra</option>
-                    <option value="SELL">Venda</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-400">Ativo</label>
-                  <select value={assetType} onChange={(e) => setAssetType(e.target.value as any)} className="w-full bg-slate-900 text-white rounded-lg p-3 border border-slate-700 outline-none focus:border-accent">
-                    <option value={AssetType.FII}>FII</option>
-                    <option value={AssetType.STOCK}>Ação</option>
-                  </select>
-                </div>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              
+              {/* Toggle Type */}
+              <div className="grid grid-cols-2 bg-slate-950 p-1 rounded-xl border border-white/5">
+                <button
+                    type="button"
+                    onClick={() => setType('BUY')}
+                    className={`py-2 rounded-lg text-sm font-bold transition-all ${type === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                    Compra
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setType('SELL')}
+                    className={`py-2 rounded-lg text-sm font-bold transition-all ${type === 'SELL' ? 'bg-rose-500/20 text-rose-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                    Venda
+                </button>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-gray-400">Código (Ticker)</label>
+              {/* Asset Type */}
+               <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Tipo de Ativo</label>
+                  <div className="grid grid-cols-2 gap-3">
+                     <label className={`cursor-pointer border border-white/5 rounded-xl p-3 flex items-center justify-center gap-2 transition-all ${assetType === AssetType.FII ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-slate-950 text-slate-400'}`}>
+                        <input type="radio" name="assetType" className="hidden" checked={assetType === AssetType.FII} onChange={() => setAssetType(AssetType.FII)} />
+                        <span className="text-sm font-bold">FII</span>
+                     </label>
+                     <label className={`cursor-pointer border border-white/5 rounded-xl p-3 flex items-center justify-center gap-2 transition-all ${assetType === AssetType.STOCK ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' : 'bg-slate-950 text-slate-400'}`}>
+                        <input type="radio" name="assetType" className="hidden" checked={assetType === AssetType.STOCK} onChange={() => setAssetType(AssetType.STOCK)} />
+                        <span className="text-sm font-bold">Ação</span>
+                     </label>
+                  </div>
+               </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Ticker</label>
                 <input 
                   type="text" 
                   value={ticker} 
                   onChange={(e) => setTicker(e.target.value)} 
                   placeholder="Ex: HGLG11" 
-                  className="w-full bg-slate-900 text-white rounded-lg p-3 border border-slate-700 outline-none focus:border-accent uppercase"
+                  className="w-full bg-slate-950 text-white rounded-xl p-3.5 border border-white/5 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all uppercase font-bold tracking-wider placeholder:normal-case placeholder:font-normal placeholder:tracking-normal"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                   <label className="text-xs text-gray-400">Quantidade</label>
-                   <input type="number" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-full bg-slate-900 text-white rounded-lg p-3 border border-slate-700 outline-none focus:border-accent" required />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Qtd</label>
+                   <input type="number" inputMode="numeric" min="0" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-full bg-slate-950 text-white rounded-xl p-3.5 border border-white/5 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all font-medium tabular-nums" required placeholder="0" />
                 </div>
-                <div className="space-y-1">
-                   <label className="text-xs text-gray-400">Preço (R$)</label>
-                   <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full bg-slate-900 text-white rounded-lg p-3 border border-slate-700 outline-none focus:border-accent" required />
+                <div className="space-y-1.5">
+                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Preço (R$)</label>
+                   <input type="number" inputMode="decimal" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full bg-slate-950 text-white rounded-xl p-3.5 border border-white/5 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all font-medium tabular-nums" required placeholder="0,00" />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-gray-400">Data</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-900 text-white rounded-lg p-3 border border-slate-700 outline-none focus:border-accent" required />
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Data</label>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-950 text-white rounded-xl p-3.5 border border-white/5 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all text-sm font-medium" required />
               </div>
 
-              <div className="flex gap-3 mt-6">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-lg bg-slate-700 text-white hover:bg-slate-600 font-medium">Cancelar</button>
-                <button type="submit" className="flex-1 py-3 rounded-lg bg-accent text-slate-900 hover:bg-sky-400 font-bold">Salvar</button>
-              </div>
+              <button type="submit" className="w-full py-4 rounded-xl bg-accent text-slate-950 hover:bg-sky-400 font-bold text-base shadow-lg shadow-accent/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4">
+                <Check className="w-5 h-5" /> Salvar Transação
+              </button>
             </form>
           </div>
         </div>
