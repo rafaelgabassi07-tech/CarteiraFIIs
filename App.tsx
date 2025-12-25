@@ -279,32 +279,26 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-primary text-gray-100 font-sans selection:bg-accent selection:text-slate-900 relative">
       
-      {/* UPDATE MODAL (FORCE UPDATE) */}
+      {/* UPDATE NOTIFICATION (Non-blocking) */}
       {updateAvailable && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-6 animate-fade-in">
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-3xl border border-accent/20 shadow-2xl text-center max-w-sm w-full relative overflow-hidden">
-            {/* Efeito de fundo */}
-            <div className="absolute top-0 right-0 w-40 h-40 bg-accent/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-            
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-accent/20 shadow-[0_0_20px_rgba(56,189,248,0.2)]">
-                <DownloadCloud className="w-8 h-8 text-accent animate-bounce" />
+        <div className="fixed bottom-20 left-4 right-4 z-[60] animate-slide-up">
+          <div className="bg-slate-800/95 backdrop-blur-xl border border-accent/20 p-3.5 rounded-2xl shadow-2xl flex items-center justify-between ring-1 ring-black/20">
+            <div className="flex items-center gap-3">
+              <div className="bg-accent/10 p-2 rounded-xl">
+                <DownloadCloud className="w-5 h-5 text-accent" />
               </div>
-              
-              <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
-                Atualização Disponível <Sparkles className="w-5 h-5 text-yellow-400" />
-              </h2>
-              <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-                Uma nova versão do InvestFIIs foi detectada. Atualize agora para garantir as últimas funcionalidades e correções.
-              </p>
-              
-              <button 
-                onClick={handleUpdateApp}
-                className="w-full bg-accent hover:bg-sky-400 text-slate-950 font-bold py-4 rounded-xl shadow-lg shadow-accent/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-              >
-                Atualizar Agora
-              </button>
+              <div>
+                <p className="font-bold text-white text-sm leading-tight">Nova versão disponível</p>
+                <p className="text-[10px] text-slate-400 font-medium">Melhorias e correções prontas.</p>
+              </div>
             </div>
+            
+            <button 
+              onClick={handleUpdateApp}
+              className="bg-accent hover:bg-sky-400 text-slate-950 text-xs font-bold py-2 px-4 rounded-lg shadow-lg shadow-accent/10 active:scale-95 transition-all"
+            >
+              Atualizar
+            </button>
           </div>
         </div>
       )}
