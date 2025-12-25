@@ -5,49 +5,63 @@ export const analyzePortfolio = async (
   portfolio: AssetPosition[], 
   summary: PortfolioSummary
 ): Promise<string> => {
+  console.log("🚀 [GeminiService] Iniciando serviço de análise...");
+
   try {
     const apiKey = process.env.API_KEY;
     
+    // Debug: Verifica se a chave existe (mostra apenas os primeiros caracteres por segurança)
     if (!apiKey) {
-      return "Erro: API Key do Google não configurada. Adicione sua chave no arquivo .env ou nas variáveis de ambiente.";
+      console.error("❌ [GeminiService] Erro: API_KEY não encontrada no environment.");
+      return "Erro: API Key do Google não configurada. Verifique o arquivo .env ou vite.config.ts.";
+    } else {
+      console.log(`🔑 [GeminiService] API Key detectada: ${apiKey.substring(0, 4)}...`);
     }
 
-    // Prepara um resumo simplificado dos ativos para economizar tokens, mas mantendo o essencial
+    // Prepara os dados
     const assetsDetail = portfolio.map(p => ({
-      t: p.ticker, // Ticker
-      tp: p.assetType, // Tipo
-      q: p.quantity, // Quantidade
-      pm: p.averagePrice.toFixed(2), // Preço Médio
-      pa: p.currentPrice?.toFixed(2) || 'N/A', // Preço Atual
-      dy: p.totalDividends ? (p.totalDividends / (p.averagePrice * p.quantity) * 100).toFixed(2) + '%' : '0%' // Yield on Cost aproximado
+      ticker: p.ticker,
+      tipo: p.assetType,
+      qtd: p.quantity,
+      precoMedio: p.averagePrice.toFixed(2),
+      totalPago: (p.averagePrice * p.quantity).toFixed(2),
+      dividendosRecebidos: p.totalDividends ? p.totalDividends.toFixed(2) : '0.00',
+      yieldOnCost: p.totalDividends && p.averagePrice > 0 
+        ? ((p.totalDividends / (p.averagePrice * p.quantity)) * 100).toFixed(2) + '%' 
+        : '0%'
     }));
 
-    // Prompt único englobando todo o contexto
+    console.log("📦 [GeminiService] Payload enviado para IA:", { summary, assetsDetail });
+
+    // Prompt focado em Proventos e Saúde da Carteira
     const prompt = `
-    Você é um consultor financeiro especialista em Brasil (FIIs e Ações).
+    Atue como um analista de investimentos sênior especializado no mercado brasileiro (FIIs e Ações).
     
-    DADOS DA CARTEIRA:
-    - Patrimônio Total: R$ ${summary.currentBalance.toFixed(2)}
-    - Custo de Aquisição: R$ ${summary.totalInvested.toFixed(2)}
-    - Resultado (R$): R$ ${(summary.currentBalance - summary.totalInvested).toFixed(2)}
-    - Rentabilidade: ${summary.profitability.toFixed(2)}%
-    - Total Proventos Recebidos: R$ ${summary.totalDividends.toFixed(2)}
+    RESUMO DA CARTEIRA:
+    - Patrimônio Atual: R$ ${summary.currentBalance.toFixed(2)}
+    - Total Investido (Custo): R$ ${summary.totalInvested.toFixed(2)}
+    - Rentabilidade de Capital: ${summary.profitability.toFixed(2)}%
+    - TOTAL PROVENTOS (Dividendos/JCP) ACUMULADOS: R$ ${summary.totalDividends.toFixed(2)}
     
-    ATIVOS (JSON Simplificado):
+    DETALHE DOS ATIVOS (JSON):
     ${JSON.stringify(assetsDetail)}
 
-    TAREFA:
-    Faça uma análise concisa (máximo 4 parágrafos curtos) em Markdown.
-    1. **Diagnóstico**: Comente a saúde geral da carteira com base na rentabilidade e proventos.
-    2. **Diversificação**: Analise o balanço entre FIIs e Ações.
-    3. **Atenção**: Cite 1 ou 2 ativos que requerem atenção (se houver, baseado em queda ou risco).
-    4. **Recomendação**: Dê uma sugestão prática de próximo passo (ex: rebalancear, reinvestir, aguardar).
+    SUA MISSÃO:
+    Analise especificamente a capacidade de geração de renda passiva (Proventos) desta carteira.
+    Responda em Markdown, curto e direto (máximo 4 tópicos):
 
-    Seja direto, profissional e encorajador. Use emojis moderadamente.
+    1. **Análise de Proventos**: O valor total recebido (R$ ${summary.totalDividends.toFixed(2)}) é saudável proporcionalmente ao investido? Comente sobre o Yield on Cost dos principais ativos.
+    2. **Diversificação de Renda**: A renda vem mais de FIIs ou Ações? Isso está equilibrado?
+    3. **Ponto de Atenção**: Existe algum ativo que não pagou nada ou pagou muito pouco em relação ao investido?
+    4. **Veredito**: Uma frase final de encorajamento ou cautela sobre a estratégia de dividendos.
+
+    Use emojis para deixar a leitura fluida. Não invente dados. Se o dividendo for zero, diga que a carteira ainda está em fase de acumulação inicial.
     `;
 
     const ai = new GoogleGenAI({ apiKey });
 
+    console.log("⏳ [GeminiService] Aguardando resposta da IA...");
+    
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
@@ -56,10 +70,19 @@ export const analyzePortfolio = async (
       }
     });
 
-    return response.text || "A IA não retornou uma análise válida. Tente novamente.";
+    console.log("✅ [GeminiService] Resposta recebida com sucesso.");
+    return response.text || "A IA retornou uma resposta vazia. Tente novamente.";
 
-  } catch (error) {
-    console.error("Erro ao analisar carteira com IA:", error);
-    return "Ocorreu um erro na comunicação com a IA. Verifique sua conexão e chave de API.";
+  } catch (error: any) {
+    console.error("❌ [GeminiService] Erro CRÍTICO na requisição:", error);
+    
+    if (error.message?.includes('401') || error.message?.includes('API key')) {
+      return "Erro de Autenticação: Sua API Key é inválida ou expirou.";
+    }
+    if (error.message?.includes('429')) {
+      return "Erro de Cota: Você atingiu o limite de requisições do Gemini. Tente mais tarde.";
+    }
+    
+    return `Ocorreu um erro técnico: ${error.message}`;
   }
 };

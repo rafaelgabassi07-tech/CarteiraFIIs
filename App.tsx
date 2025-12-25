@@ -6,6 +6,7 @@ import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, PortfolioSummary } from './types';
 import { getQuotes } from './services/brapiService';
+import { analyzePortfolio } from './services/geminiService';
 import { DownloadCloud } from 'lucide-react';
 
 // Initial dummy data to show functionality if empty
@@ -35,6 +36,10 @@ const App: React.FC = () => {
 
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // AI State
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // --- Service Worker & Update Logic ---
   useEffect(() => {
@@ -155,6 +160,7 @@ const App: React.FC = () => {
     }
 
     if (isManual) setIsRefreshing(true);
+    console.log("🔄 [App] Atualizando cotações via Brapi...");
 
     try {
         const results = await getQuotes(uniqueTickers, brapiToken);
@@ -164,9 +170,10 @@ const App: React.FC = () => {
                 results.forEach(q => newQuoteMap[q.symbol] = q);
                 return newQuoteMap;
             });
+            console.log("✅ [App] Cotações atualizadas com sucesso.");
         }
     } catch (error) {
-        console.error("Falha ao atualizar cotações:", error);
+        console.error("❌ [App] Falha ao atualizar cotações:", error);
     } finally {
       if (isManual) setIsRefreshing(false);
     }
@@ -179,6 +186,41 @@ const App: React.FC = () => {
   }, [fetchMarketData]); 
 
   const handleManualRefresh = () => fetchMarketData(true);
+
+  // AI Analysis Handler
+  const handleAnalyzePortfolio = async () => {
+    console.log("🤖 [App] Botão de Análise clicado.");
+
+    if (isAnalyzing) {
+        console.warn("⚠️ [App] Análise já em andamento.");
+        return;
+    }
+    if (portfolio.length === 0) {
+        console.warn("⚠️ [App] Carteira vazia, nada para analisar.");
+        alert("Adicione ativos na carteira antes de gerar uma análise.");
+        return;
+    }
+    
+    setIsAnalyzing(true);
+    setAiAnalysis(null);
+
+    // Calculate Summary for AI
+    const totalInvested = portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0);
+    const currentBalance = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
+    const totalDividends = portfolio.reduce((acc, curr) => acc + (curr.totalDividends || 0), 0);
+    const profitability = totalInvested > 0 ? ((currentBalance - totalInvested) / totalInvested) * 100 : 0;
+
+    const summary: PortfolioSummary = {
+        totalInvested,
+        currentBalance,
+        totalDividends,
+        profitability
+    };
+
+    const result = await analyzePortfolio(portfolio, summary);
+    setAiAnalysis(result);
+    setIsAnalyzing(false);
+  };
 
   // Transaction Actions
   const handleAddTransaction = (t: Omit<Transaction, 'id'>) => {
@@ -209,7 +251,12 @@ const App: React.FC = () => {
 
     switch (currentTab) {
       case 'home':
-        return <Home portfolio={portfolio} />;
+        return <Home 
+            portfolio={portfolio} 
+            aiAnalysis={aiAnalysis}
+            isAnalyzing={isAnalyzing}
+            onAnalyze={handleAnalyzePortfolio}
+        />;
       case 'portfolio':
         return <Portfolio portfolio={portfolio} />;
       case 'transactions':
