@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt } from '../types';
-import { Building2, TrendingUp, TrendingDown, Layers, ChevronDown, DollarSign, BarChart3, Target, X, ArrowUpRight, ChevronRight } from 'lucide-react';
+import { Building2, TrendingUp, TrendingDown, Layers, ChevronDown, DollarSign, BarChart3, Target, X, ArrowUpRight, ChevronRight, ArrowDownToLine, Timer } from 'lucide-react';
 
 interface PortfolioProps {
   portfolio: AssetPosition[];
@@ -148,7 +148,7 @@ const AssetCard: React.FC<{
                   </div>
                   <div>
                     <h3 className="text-2xl font-black text-white">{asset.ticker}</h3>
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Histórico de Proventos</p>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Linha do Tempo</p>
                   </div>
                 </div>
                 <button onClick={() => setShowHistoryModal(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400">
@@ -156,12 +156,12 @@ const AssetCard: React.FC<{
                 </button>
               </div>
               
-              <div className="mt-2 p-4 glass rounded-[2rem] flex justify-between items-center bg-accent/5 border-accent/10">
+              <div className="mt-2 p-4 glass rounded-[2rem] flex justify-between items-center bg-accent/5 border border-accent/10 shadow-xl">
                 <div>
-                  <div className="text-[10px] font-black text-accent uppercase tracking-[0.2em] mb-1">Acumulado Total</div>
+                  <div className="text-[10px] font-black text-accent uppercase tracking-[0.2em] mb-1">Rendimento Bruto</div>
                   <div className="text-2xl font-black text-white tabular-nums">R$ {formatCurrency(asset.totalDividends || 0)}</div>
                 </div>
-                <div className="p-3 bg-accent/10 rounded-2xl text-accent">
+                <div className="p-3 bg-accent/10 rounded-2xl text-accent border border-accent/20">
                    <DollarSign className="w-6 h-6" />
                 </div>
               </div>
@@ -174,29 +174,48 @@ const AssetCard: React.FC<{
                   <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Sem registros</p>
                 </div>
               ) : (
-                history.map((receipt, idx) => (
-                  <div key={receipt.id} className="flex items-center justify-between p-4 glass rounded-3xl group animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-[10px] ${receipt.type.includes('JCP') ? 'bg-purple-500/10 text-purple-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                        {receipt.type.includes('JCP') ? 'JCP' : 'DIV'}
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold text-white uppercase">{receipt.paymentDate.split('-').reverse().join('/')}</div>
-                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Base: {receipt.dateCom.split('-').reverse().join('/')}</div>
+                history.map((receipt, idx) => {
+                   const isJcp = receipt.type.toUpperCase().includes('JCP');
+                   return (
+                    <div key={receipt.id} className="relative glass p-4 rounded-[1.8rem] animate-fade-in-up border border-white/5" style={{ animationDelay: `${idx * 30}ms` }}>
+                      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isJcp ? 'bg-purple-500' : 'bg-emerald-500'}`} />
+                      
+                      <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div className={`px-1.5 py-0.5 rounded-lg border text-[8px] font-black flex-shrink-0 ${isJcp ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>
+                              {isJcp ? 'JCP' : 'DIV'}
+                            </div>
+                            <span className="text-xs font-black text-white uppercase tracking-tight">
+                              Pago em {receipt.paymentDate.split('-').reverse().join('/')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                            <span className="flex items-center gap-1">
+                               <Timer className="w-2.5 h-2.5" />
+                               Base: {receipt.dateCom.split('-').reverse().join('/')}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="text-right">
+                          <div className="text-base font-black text-emerald-400 tabular-nums">
+                            R$ {formatCurrency(receipt.totalReceived)}
+                          </div>
+                          <div className="text-[9px] text-slate-600 font-bold tabular-nums mt-0.5">
+                            {receipt.quantityOwned} un × {receipt.rate.toFixed(3)}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-black text-emerald-400">R$ {formatCurrency(receipt.totalReceived)}</div>
-                      <div className="text-[10px] text-slate-500 font-bold tabular-nums">{receipt.quantityOwned} un × {receipt.rate.toFixed(4)}</div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
             
-            <div className="p-8 pb-12 border-t border-white/5 bg-secondary/20 shrink-0">
+            <div className="p-8 pb-10 border-t border-white/5 bg-secondary/30 shrink-0">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-bold uppercase tracking-widest">Yield sobre Preço Médio</span>
+                <span className="text-slate-500 font-bold uppercase tracking-widest">Yield sobre Custo</span>
                 <span className="text-white font-black text-base">{totalCost > 0 ? (((asset.totalDividends || 0) / totalCost) * 100).toFixed(2) : '0.00'}%</span>
               </div>
             </div>

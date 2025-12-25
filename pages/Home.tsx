@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, Calendar, X, ArrowUpRight, ReceiptText, Trophy, Building2, Briefcase, FilterX, Info, ExternalLink } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, PieChart as PieIcon, Calendar, X, ArrowUpRight, ReceiptText, Trophy, Building2, Briefcase, FilterX, Info, ExternalLink, ArrowDownToLine, Timer } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface HomeProps {
@@ -19,7 +19,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [allocationTab, setAllocationTab] = useState<'asset' | 'type'>('asset');
 
-  // Cálculos base com fallbacks seguros para evitar NaN ou Infinity
   const totalInvested = useMemo(() => portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0), [portfolio]);
   const currentBalance = useMemo(() => portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0), [portfolio]);
   const profitability = totalInvested > 0 ? ((currentBalance - totalInvested) / totalInvested) * 100 : 0;
@@ -116,7 +115,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
         </div>
       </div>
 
-      {/* Proventos Card */}
+      {/* Rendimentos Card */}
       <div 
         onClick={() => setShowProventosModal(true)}
         className="animate-fade-in-up cursor-pointer transition-all active:scale-[0.97]"
@@ -192,7 +191,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
         </div>
       )}
 
-      {/* Search Grounding Sources Compliance */}
+      {/* Fontes Gemini */}
       {sources.length > 0 && (
         <div className="animate-fade-in-up space-y-3" style={{ animationDelay: '300ms' }}>
           <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
@@ -219,13 +218,14 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
       {showProventosModal && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center p-0">
           <div className="absolute inset-0 bg-primary/80 backdrop-blur-md animate-fade-in" onClick={() => setShowProventosModal(false)} />
-          <div className="bg-primary w-full max-h-[90vh] rounded-t-[3rem] border-t border-white/10 shadow-2xl relative animate-slide-up flex flex-col pt-4">
+          <div className="bg-primary w-full max-h-[92vh] rounded-t-[3rem] border-t border-white/10 shadow-2xl relative animate-slide-up flex flex-col pt-4 overflow-hidden">
             <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-6 shrink-0"></div>
+            
             <div className="px-7 pb-4 flex items-center justify-between shrink-0">
               <div>
-                <h3 className="text-2xl font-black text-white">Extrato Detalhado</h3>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                  {filterClass ? `Exibindo apenas ${filterClass === AssetType.FII ? 'FIIs' : 'Ações'}` : 'Fluxo de Caixa Acumulado'}
+                <h3 className="text-2xl font-black text-white">Meu Extrato</h3>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                  {filterClass ? `Exibindo apenas ${filterClass === AssetType.FII ? 'FIIs' : 'Ações'}` : 'Visão Geral do Fluxo'}
                 </p>
               </div>
               <button onClick={() => setShowProventosModal(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400 active:scale-95 transition-all">
@@ -243,7 +243,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                   <span className="text-[10px] font-black uppercase tracking-wider">FIIs</span>
                 </div>
                 <div className={`text-lg font-black tabular-nums ${filterClass === AssetType.FII ? 'text-primary' : 'text-white'}`}>R$ {formatCurrency(totalFiisDiv)}</div>
-                {filterClass === AssetType.FII && <FilterX className="absolute bottom-2 right-2 w-3 h-3 text-primary opacity-50" />}
               </button>
 
               <button 
@@ -255,11 +254,10 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                   <span className="text-[10px] font-black uppercase tracking-wider">Ações</span>
                 </div>
                 <div className={`text-lg font-black tabular-nums ${filterClass === AssetType.STOCK ? 'text-primary' : 'text-white'}`}>R$ {formatCurrency(totalStocksDiv)}</div>
-                {filterClass === AssetType.STOCK && <FilterX className="absolute bottom-2 right-2 w-3 h-3 text-primary opacity-50" />}
               </button>
             </div>
             
-            <div className="px-7 py-4 grid grid-cols-2 gap-3 shrink-0">
+            <div className="px-7 py-3 grid grid-cols-2 gap-3 shrink-0">
                 <button 
                   onClick={() => setProventosTab('statement')} 
                   className={`flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'statement' ? 'bg-accent text-primary' : 'bg-white/5 text-slate-500'}`}
@@ -282,34 +280,51 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                         (Object.entries(groupedReceipts) as [string, DividendReceipt[]][]).map(([month, receipts]) => (
                           <div key={month} className="space-y-4">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 flex items-center gap-2">
-                              <Calendar className="w-3.5 h-3.5" /> {month}
+                              <Calendar className="w-3.5 h-3.5 text-accent" /> {month}
                             </h4>
                             <div className="space-y-3">
                               {receipts.map((receipt, idx) => {
                                 const isJcp = receipt.type.toUpperCase().includes('JCP');
                                 const isFii = receipt.assetType === AssetType.FII;
                                 return (
-                                  <div key={receipt.id} className="relative flex items-center justify-between p-4 glass rounded-[2rem] group animate-fade-in-up overflow-hidden" style={{ animationDelay: `${idx * 40}ms` }}>
-                                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${isFii ? 'bg-accent' : 'bg-purple-500'}`} />
-                                      <div className="flex items-center gap-4 pl-1">
-                                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${isFii ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-purple-500/10 border-purple-500/20 text-purple-400'}`}>
-                                            {isFii ? <Building2 className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
-                                          </div>
-                                          <div>
-                                              <div className="flex items-center gap-2">
-                                                <span className="text-sm font-black text-white">{receipt.ticker}</span>
-                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${isJcp ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
-                                                  {isJcp ? 'JCP' : 'DIV'}
-                                                </span>
+                                  <div key={receipt.id} className="relative glass p-4 rounded-[2rem] group animate-fade-in-up overflow-hidden border border-white/5" style={{ animationDelay: `${idx * 30}ms` }}>
+                                      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isFii ? 'bg-accent' : 'bg-purple-500'}`} />
+                                      
+                                      <div className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1">
+                                          {/* Lado Esquerdo: Ativo e Tags */}
+                                          <div className="flex items-center gap-3">
+                                              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border shrink-0 ${isFii ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-purple-500/10 border-purple-500/20 text-purple-400'}`}>
+                                                {isFii ? <Building2 className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
                                               </div>
-                                              <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-                                                Pago em {receipt.paymentDate.split('-').reverse().join('/')}
+                                              <div className="min-w-0">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-base font-black text-white truncate">{receipt.ticker}</span>
+                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-lg border flex-shrink-0 ${isJcp ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>
+                                                      {isJcp ? 'JCP' : 'DIV'}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center gap-3 mt-1 text-[9px] font-bold uppercase tracking-wider">
+                                                      <span className="text-slate-500 flex items-center gap-1">
+                                                        <ArrowDownToLine className="w-2.5 h-2.5 text-emerald-500" />
+                                                        {receipt.paymentDate.split('-').reverse().join('/')}
+                                                      </span>
+                                                      <span className="text-slate-600 flex items-center gap-1">
+                                                        <Timer className="w-2.5 h-2.5" />
+                                                        {receipt.dateCom.split('-').reverse().join('/')}
+                                                      </span>
+                                                  </div>
                                               </div>
                                           </div>
-                                      </div>
-                                      <div className="text-right">
-                                          <div className="text-sm font-black text-emerald-400 tabular-nums">R$ {formatCurrency(receipt.totalReceived)}</div>
-                                          <div className="text-[9px] text-slate-500 font-bold uppercase tabular-nums">Base: {receipt.dateCom.split('-').reverse().join('/')}</div>
+
+                                          {/* Lado Direito: Valor Final */}
+                                          <div className="text-right flex flex-col justify-center">
+                                              <div className="text-base font-black text-emerald-400 tabular-nums">
+                                                R$ {formatCurrency(receipt.totalReceived)}
+                                              </div>
+                                              <div className="text-[9px] text-slate-500 font-bold uppercase tabular-nums mt-0.5">
+                                                {receipt.quantityOwned} un × {receipt.rate.toFixed(3)}
+                                              </div>
+                                          </div>
                                       </div>
                                   </div>
                                 );
@@ -350,7 +365,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
         </div>
       )}
 
-      {/* Modal de Alocação Aprimorado */}
+      {/* Alocação Modal */}
       {showAllocationModal && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center p-0">
           <div className="absolute inset-0 bg-primary/80 backdrop-blur-md animate-fade-in" onClick={() => setShowAllocationModal(false)} />
@@ -360,8 +375,8 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
             
             <div className="px-7 flex items-center justify-between mb-4 shrink-0">
                 <div>
-                  <h3 className="text-2xl font-black text-white">Minha Alocação</h3>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Visão Geral da Carteira</p>
+                  <h3 className="text-2xl font-black text-white">Distribuição</h3>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Sua Carteira Atual</p>
                 </div>
                 <button onClick={() => setShowAllocationModal(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400 active:scale-95 transition-all">
                   <X className="w-5 h-5" />
@@ -373,8 +388,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                 <button onClick={() => setAllocationTab('type')} className={`py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${allocationTab === 'type' ? 'bg-accent border-accent text-primary' : 'bg-white/5 border-white/5 text-slate-400'}`}>Por Classe</button>
             </div>
 
-            {/* Gráfico Donut com Legend Central */}
-            <div className="h-64 relative mb-4 shrink-0">
+            <div className="h-60 relative mb-4 shrink-0">
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Total</span>
                     <span className="text-xl font-black text-white tabular-nums">R$ {formatCurrency(currentBalance)}</span>
@@ -383,8 +397,8 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                     <PieChart>
                         <Pie 
                           data={allocationTab === 'asset' ? dataByAsset : dataByType} 
-                          innerRadius={75} 
-                          outerRadius={95} 
+                          innerRadius={70} 
+                          outerRadius={90} 
                           paddingAngle={3} 
                           dataKey="value" 
                           stroke="none" 
@@ -395,7 +409,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                                 <Cell 
                                   key={index} 
                                   fill={allocationTab === 'type' ? (entry as any).color : COLORS[index % COLORS.length]} 
-                                  className="outline-none"
                                 />
                             ))}
                         </Pie>
@@ -403,7 +416,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               return (
-                                <div className="bg-slate-900/90 backdrop-blur-md p-3 rounded-2xl border border-white/10 shadow-2xl">
+                                <div className="bg-slate-900/95 backdrop-blur-md p-3 rounded-2xl border border-white/10 shadow-2xl">
                                   <p className="text-[10px] font-black text-accent uppercase mb-1">{payload[0].name}</p>
                                   <p className="text-sm font-black text-white">R$ {formatCurrency(payload[0].value as number)}</p>
                                 </div>
@@ -416,23 +429,22 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                 </ResponsiveContainer>
             </div>
 
-            {/* Lista de Ativos com Indicadores de Concentração */}
             <div className="flex-1 overflow-y-auto px-7 pb-12 space-y-3 no-scrollbar">
                 {(allocationTab === 'asset' ? dataByAsset : dataByType).map((entry, index) => {
                     const percentage = (entry.value / (currentBalance || 1)) * 100;
                     const color = allocationTab === 'type' ? (entry as any).color : COLORS[index % COLORS.length];
                     
                     return (
-                        <div key={index} className="group flex flex-col p-4 glass rounded-3xl animate-fade-in-up border border-white/5 hover:border-white/10 transition-all" style={{ animationDelay: `${index * 40}ms` }}>
+                        <div key={index} className="flex flex-col p-4 glass rounded-3xl animate-fade-in-up border border-white/5" style={{ animationDelay: `${index * 40}ms` }}>
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs border" style={{ backgroundColor: `${color}10`, borderColor: `${color}20`, color: color }}>
+                                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs border" style={{ backgroundColor: `${color}15`, borderColor: `${color}30`, color: color }}>
                                         {entry.name.slice(0, 4)}
                                     </div>
                                     <div>
                                         <div className="text-sm font-black text-white uppercase tracking-tight">{entry.name}</div>
                                         {allocationTab === 'asset' && (
-                                          <div className="text-[10px] text-slate-500 font-bold uppercase">{(entry as any).quantity} UNIDADES</div>
+                                          <div className="text-[10px] text-slate-500 font-bold uppercase">{(entry as any).quantity} UN</div>
                                         )}
                                     </div>
                                 </div>
@@ -441,32 +453,17 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, onAiSyn
                                     <div className="text-[10px] text-slate-500 font-bold uppercase tabular-nums">R$ {formatCurrency(entry.value)}</div>
                                 </div>
                             </div>
-                            
-                            {/* Barra de progresso discreta para visualização de peso */}
                             <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full rounded-full transition-all duration-1000 ease-out" 
-                                  style={{ width: `${percentage}%`, backgroundColor: color }}
-                                />
+                                <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${percentage}%`, backgroundColor: color }} />
                             </div>
                         </div>
                     );
                 })}
-                
-                {dataByAsset.length === 0 && (
-                  <div className="py-20 text-center flex flex-col items-center gap-4">
-                    <div className="p-4 bg-white/5 rounded-full">
-                      <Info className="w-8 h-8 text-slate-600" />
-                    </div>
-                    <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Aguardando dados de mercado...</p>
-                  </div>
-                )}
             </div>
             
-            {/* Resumo do Rodapé do Modal */}
             <div className="px-7 py-6 border-t border-white/5 bg-secondary/20 shrink-0">
                <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Ativos Listados</span>
+                  <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Total de Ativos</span>
                   <span className="text-xs font-black text-white">{allocationTab === 'asset' ? dataByAsset.length : dataByType.length}</span>
                </div>
             </div>
