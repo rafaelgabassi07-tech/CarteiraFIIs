@@ -34,7 +34,9 @@ const App: React.FC = () => {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const autoSyncRef = useRef<boolean>(false);
+  
+  // Ref para controlar a sincronização inicial e após edições
+  const lastSyncTickersRef = useRef<string>("");
 
   useEffect(() => {
     const timer = setTimeout(() => setIsSplashActive(false), 2200);
@@ -117,7 +119,6 @@ const App: React.FC = () => {
         const quote = quotes[p.ticker];
         return {
           ...p,
-          // Se não houver cotação em tempo real, usa o preço médio para evitar erro de saldo zerado
           currentPrice: quote?.regularMarketPrice || p.averagePrice,
           logoUrl: quote?.logourl
         };
@@ -127,17 +128,23 @@ const App: React.FC = () => {
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
   const handleAiSync = useCallback(async (force = false) => {
-    const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
-    if (tickers.length === 0) return;
+    // Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' inference issues
+    const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))).sort();
+    if (uniqueTickers.length === 0) return;
     
+    const tickersStr = uniqueTickers.join(',');
+    
+    // Evita sync desnecessário se nada mudou e não for forçado
     if (!force) {
-      const last = localStorage.getItem(STORAGE_KEYS.SYNC);
-      if (last && Date.now() - parseInt(last) < 1000 * 60 * 60) return;
+      const lastSync = localStorage.getItem(STORAGE_KEYS.SYNC);
+      // Ensure lastSync is not null and is parsed with radix before arithmetic operations to satisfy TS
+      const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 30; // 30 min
+      if (isRecent && lastSyncTickersRef.current === tickersStr) return;
     }
 
     setIsAiLoading(true);
     try {
-      const data = await fetchUnifiedMarketData(tickers);
+      const data = await fetchUnifiedMarketData(uniqueTickers);
       const aiQuotes: Record<string, BrapiQuote> = {};
       Object.entries(data.prices).forEach(([symbol, price]) => {
         aiQuotes[symbol] = { symbol, regularMarketPrice: price } as BrapiQuote;
@@ -152,10 +159,10 @@ const App: React.FC = () => {
       });
       
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
-      if (force) showToast('success', 'Sincronizado com IA');
+      lastSyncTickersRef.current = tickersStr;
+      if (force) showToast('success', 'Sincronizado com sucesso');
     } catch (e: any) {
-      console.error("AI Sync Error:", e);
-      if (force) showToast('error', 'Falha na IA: Tente novamente');
+      if (force) showToast('error', 'Falha na conexão com servidor');
     } finally {
       setIsAiLoading(false);
     }
@@ -164,7 +171,7 @@ const App: React.FC = () => {
   const handleFullRefresh = async () => {
     if (isRefreshing || isAiLoading) return;
     setIsRefreshing(true);
-    const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
+    const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
     try {
       if (brapiToken) {
         const brQuotes = await getQuotes(tickers, brapiToken);
@@ -182,12 +189,13 @@ const App: React.FC = () => {
 
   const handleUpdateTransaction = useCallback((id: string, updatedT: Omit<Transaction, 'id'>) => {
     setTransactions(prev => prev.map(t => t.id === id ? { ...updatedT, id } : t));
+    // Dispara sync após pequeno delay para refletir novos tickers ou quantidades
+    setTimeout(() => handleAiSync(false), 800);
     showToast('success', 'Transação atualizada!');
-  }, [showToast]);
+  }, [handleAiSync, showToast]);
 
   useEffect(() => {
-    if (!autoSyncRef.current && transactions.length > 0) {
-      autoSyncRef.current = true;
+    if (transactions.length > 0) {
       const timeout = setTimeout(() => handleAiSync(false), 2000);
       return () => clearTimeout(timeout);
     }
