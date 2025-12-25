@@ -36,14 +36,21 @@ const saveCache = (cache: QuoteCache) => {
 // Busca um único ticker com todos os módulos necessários
 const fetchSingleQuote = async (ticker: string, token: string): Promise<BrapiQuote | null> => {
     try {
-        // Solicita explicitamente summary e dividends para cada ativo
-        const response = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}&modules=summary,dividends`);
+        // Tentativa 1: Solicita explicitamente summary e dividends (mais rico)
+        let response = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}&modules=summary,dividends`);
         
+        // Fallback: Se der erro 417 (Expectation Failed) ou 400, tenta buscar sem módulos (dados básicos)
+        // O erro 417 acontece quando a Brapi não tem os dados estendidos (summary/dividends) para aquele ativo específico.
+        if (response.status === 417 || response.status === 400) {
+             console.warn(`Falha na busca detalhada para ${ticker} (${response.status}). Tentando busca simples...`);
+             response = await fetch(`${BASE_URL}/quote/${ticker}?token=${token}`);
+        }
+
         if (response.ok) {
             const data: BrapiResponse = await response.json();
             return data.results?.[0] || null;
         } else {
-            console.warn(`Erro ao buscar ${ticker}: ${response.status}`);
+            console.warn(`Erro final ao buscar ${ticker}: ${response.status}`);
             return null;
         }
     } catch (error) {
@@ -81,8 +88,6 @@ export const getQuotes = async (tickers: string[], token: string): Promise<Brapi
   }
 
   // 3. Busca Individual em Paralelo (Promise.all)
-  // Isso garante que cada ativo seja tratado isoladamente. Se um falhar, os outros funcionam.
-  // Resolve o problema de "Expectation Failed" em lotes mistos.
   const promises = tickersToFetch.map(t => fetchSingleQuote(t, token));
   const results = await Promise.all(promises);
 
