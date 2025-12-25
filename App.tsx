@@ -24,7 +24,16 @@ const App: React.FC = () => {
   
   const [brapiToken, setBrapiToken] = useState(() => {
     // Priority: LocalStorage > Environment Variable > Empty
-    return localStorage.getItem(BRAPI_TOKEN_KEY) || process.env.BRAPI_TOKEN || '';
+    let envToken = '';
+    try {
+      // Safe access to process.env for environments where it might not be defined (like Vite without polyfills)
+      if (typeof process !== 'undefined' && process.env && process.env.BRAPI_TOKEN) {
+        envToken = process.env.BRAPI_TOKEN;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return localStorage.getItem(BRAPI_TOKEN_KEY) || envToken;
   });
 
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});

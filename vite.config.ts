@@ -1,23 +1,17 @@
-import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    return {
-      server: {
-        port: 3000,
-        host: '0.0.0.0',
-      },
-      plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, '.'),
-        }
-      }
-    };
+  // Carrega variáveis de ambiente (API Keys)
+  const env = loadEnv(mode, '.', '');
+  return {
+    plugins: [react()],
+    define: {
+      // Substitui process.env pelas variáveis reais durante o build
+      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      'process.env.BRAPI_TOKEN': JSON.stringify(env.BRAPI_TOKEN),
+      // Garante que o objeto process.env exista para evitar quebras em verificações legadas
+      'process.env': {}
+    }
+  };
 });
