@@ -9,38 +9,19 @@ if (!rootElement) {
 }
 
 const initServiceWorker = async () => {
-  // Verificação de ambiente seguro e suporte
-  if ('serviceWorker' in navigator && window.isSecureContext) {
+  if ('serviceWorker' in navigator) {
     try {
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('SW: Nova versão assumindo o controle...');
-        window.location.reload();
-      });
-
-      // FIX: Resolve o caminho do SW contra a URL atual para evitar erro de origin mismatch em ambientes de sandbox/proxy
-      const swUrl = new URL('./sw.js', window.location.href).href;
-      
-      const registration = await navigator.serviceWorker.register(swUrl, { 
-        scope: './',
-        updateViaCache: 'none' 
+      // Usar './sw.js' é a forma mais segura de garantir que o navegador
+      // resolva o script relativo à origem atual da página (o sandbox .goog)
+      // e não à origem do frame pai (ai.studio).
+      const registration = await navigator.serviceWorker.register('./sw.js', {
+        updateViaCache: 'none'
       });
       
-      console.log('SW: Registrado com sucesso no escopo:', registration.scope);
-
-      // Checagem periódica a cada 60s
-      setInterval(() => {
-        registration.update().catch(() => {});
-      }, 60000);
-
-      // Checagem ao voltar para o app
-      window.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          registration.update().catch(() => {});
-        }
-      });
+      console.log('SW: Registrado (v3.1.0)');
 
       if (registration.waiting) {
-        window.dispatchEvent(new CustomEvent('sw-update-available', { detail: registration }));
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
 
       registration.addEventListener('updatefound', () => {
@@ -48,18 +29,32 @@ const initServiceWorker = async () => {
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              window.dispatchEvent(new CustomEvent('sw-update-available', { detail: registration }));
+              console.log('SW: Nova versão instalada. Atualizando...');
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
+              window.location.reload();
             }
           });
         }
       });
-    } catch (error) {
-      console.warn('SW: Falha no registro (provavelmente restrição de sandbox/origem). Tentando ignorar erro no preview.', error);
+
+      // Verificação periódica de atualização
+      setInterval(() => {
+        registration.update().catch(() => {});
+      }, 60000);
+
+    } catch (error: any) {
+      // Silencia erros de origem em ambiente de desenvolvimento/preview
+      // mas mantém logs de outros problemas reais.
+      if (error?.message?.includes('origin of the provided scriptURL')) {
+        console.warn('SW: Registro ignorado devido a restrição de domínio do ambiente de preview.');
+      } else {
+        console.error('SW: Erro no registro:', error);
+      }
     }
   }
 };
 
-window.addEventListener('load', initServiceWorker);
+initServiceWorker();
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(

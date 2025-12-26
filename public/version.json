@@ -1,22 +1,17 @@
 
 {
-  "version": "2.7.0",
-  "date": "2024-05-31",
+  "version": "3.1.0",
+  "date": "2024-06-04",
   "notes": [
     {
-      "type": "feature",
-      "title": "Nova Arquitetura de Sincronização",
-      "desc": "Otimizado para ser 40% mais rápido ao atualizar cotações e proventos via IA."
-    },
-    {
       "type": "fix",
-      "title": "Bypass de Cache Vercel",
-      "desc": "Implementada técnica de handshake para garantir que você sempre use a versão mais recente sem precisar limpar o navegador."
+      "title": "Robustez do Service Worker",
+      "desc": "Simplificação do protocolo de registro para evitar erros de 'Origin Mismatch' em ambientes de preview sandboxed."
     },
     {
       "type": "improvement",
-      "title": "Backup Total v3",
-      "desc": "O sistema de backup agora salva o estado exato da sua interface, incluindo dividendos previstos."
+      "title": "Protocolo de Sincronização",
+      "desc": "Refinamento do Handshake de emergência para garantir que todos os usuários recebam as correções de infraestrutura."
     }
   ]
 }
