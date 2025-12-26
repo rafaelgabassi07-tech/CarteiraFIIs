@@ -1,12 +1,12 @@
 
 {
-  "version": "3.1.7",
+  "version": "3.1.8",
   "date": "2024-06-05",
   "notes": [
     {
       "type": "fix",
-      "title": "Correção Crítica",
-      "desc": "Remoção de bloqueios de segurança (CORS) causados pelo Service Worker antigo."
+      "title": "Correção de Cache",
+      "desc": "Implementação de Cache Busting para forçar atualização em ambientes restritos."
     }
   ]
 }
