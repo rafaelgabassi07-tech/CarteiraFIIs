@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { DividendReceipt, AssetType } from "../types";
 
 export interface UnifiedMarketData {
@@ -14,11 +14,31 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const tickerListString = tickers.join(', ');
 
+  // Instrução reforçada para retornar JSON sem usar o modo estrito de schema (incompatível com tools)
   const prompt = `
     Atue como Especialista B3.
-    Obtenha dados oficiais para: ${tickerListString}.
-    Retorne proventos (dividendos/JCP) dos últimos 12 meses.
-    Inclua Data Com e Data de Pagamento.
+    Use a Google Search para obter dados oficiais e RECENTES para: ${tickerListString}.
+    Retorne proventos (dividendos/JCP) anunciados ou pagos nos últimos 12 meses.
+    
+    REGRA DE FORMATAÇÃO OBRIGATÓRIA:
+    Responda EXCLUSIVAMENTE um objeto JSON cru, sem marcação markdown, seguindo estritamente este formato:
+    {
+      "assets": [
+        {
+          "t": "TICKER",
+          "s": "Segmento de Atuação",
+          "type": "FII ou STOCK",
+          "d": [
+            {
+              "ty": "DIVIDENDO ou JCP",
+              "dc": "YYYY-MM-DD (Data Com)",
+              "dp": "YYYY-MM-DD (Data Pagamento)",
+              "v": 0.00 (Valor numérico)
+            }
+          ]
+        }
+      ]
+    }
   `;
 
   try {
@@ -27,43 +47,15 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            assets: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  t: { type: Type.STRING },
-                  s: { type: Type.STRING },
-                  type: { type: Type.STRING },
-                  d: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        ty: { type: Type.STRING },
-                        dc: { type: Type.STRING },
-                        dp: { type: Type.STRING },
-                        v: { type: Type.NUMBER }
-                      },
-                      required: ["ty", "dc", "v"]
-                    }
-                  }
-                },
-                required: ["t", "s", "type", "d"]
-              }
-            }
-          },
-          required: ["assets"]
-        }
+        // REMOVIDO: responseMimeType e responseSchema causam conflito com googleSearch
       }
     });
 
-    const text = response.text;
+    let text = response.text;
     if (!text) throw new Error("Resposta vazia da IA");
+
+    // Higienização: Remove blocos de código Markdown se o modelo incluir
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
     const parsed = JSON.parse(text);
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
@@ -121,6 +113,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     return result;
   } catch (error: any) {
     console.error("Erro Crítico Gemini:", error);
-    throw error;
+    // Não relança o erro para não quebrar a UI inteira, apenas retorna vazio
+    return { dividends: [], metadata: {} };
   }
 };

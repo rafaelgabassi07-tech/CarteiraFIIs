@@ -1,17 +1,12 @@
 
 {
-  "version": "3.1.0",
+  "version": "3.1.1",
   "date": "2024-06-04",
   "notes": [
     {
       "type": "fix",
-      "title": "Robustez do Service Worker",
-      "desc": "Simplificação do protocolo de registro para evitar erros de 'Origin Mismatch' em ambientes de preview sandboxed."
-    },
-    {
-      "type": "improvement",
-      "title": "Protocolo de Sincronização",
-      "desc": "Refinamento do Handshake de emergência para garantir que todos os usuários recebam as correções de infraestrutura."
+      "title": "Correção de API Gemini",
+      "desc": "Resolvido conflito entre busca online e formato JSON que impedia a atualização de proventos."
     }
   ]
 }

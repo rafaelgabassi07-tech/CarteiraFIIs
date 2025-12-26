@@ -18,7 +18,7 @@ const initServiceWorker = async () => {
         updateViaCache: 'none'
       });
       
-      console.log('SW: Registrado (v3.1.0)');
+      console.log('SW: Registrado (v3.1.1)');
 
       if (registration.waiting) {
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
