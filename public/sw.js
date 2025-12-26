@@ -1,5 +1,5 @@
 
-const STATIC_CACHE = 'investfiis-static-v2.6.0';
+const STATIC_CACHE = 'investfiis-static-v2.6.1';
 const DATA_CACHE = 'investfiis-data-v2';
 
 const STATIC_ASSETS = [
@@ -9,6 +9,7 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
   );
@@ -20,6 +21,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== STATIC_CACHE && key !== DATA_CACHE) {
+            console.log('SW: Removendo cache antigo:', key);
             return caches.delete(key);
           }
         })

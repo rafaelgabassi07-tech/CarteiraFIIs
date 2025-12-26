@@ -115,6 +115,8 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    console.log('App: Inicializado na versão 2.6.1');
+    
     const handleUpdateEvent = (e: Event) => {
       const reg = (e as CustomEvent).detail;
       loadUpdateDetails(reg);
@@ -126,6 +128,7 @@ const App: React.FC = () => {
         .then(reg => {
           if (reg && reg.waiting) {
             loadUpdateDetails(reg);
+            setShowUpdateModal(true);
           }
         })
         .catch(() => {});
@@ -231,7 +234,9 @@ const App: React.FC = () => {
     if (!brapiToken || transactions.length === 0) return;
     setIsPriceLoading(true);
     try {
-        const result = await getQuotes(Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))), brapiToken, force);
+        // Fix for Type 'unknown[]' is not assignable to type 'string[]' - explicitly typing Set and Array.from result
+        const tickersToFetch: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase())));
+        const result = await getQuotes(tickersToFetch, brapiToken, force);
         if (result.error) showToast('error', result.error);
         const map: Record<string, BrapiQuote> = {};
         result.quotes.forEach(q => map[q.symbol] = q);
@@ -240,8 +245,8 @@ const App: React.FC = () => {
   }, [brapiToken, transactions, showToast]);
 
   const handleAiSync = useCallback(async (force = false) => {
-    // Fixed: Explicitly typed uniqueTickers and added type to map callback to prevent unknown[] inference error
-    const uniqueTickers: string[] = Array.from(new Set(transactions.map((t: Transaction) => t.ticker.toUpperCase()))).sort();
+    // Fix for Type 'unknown[]' is not assignable to type 'string[]' - explicitly typing Set and Array.from result
+    const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map((t: Transaction) => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
     const lastSyncTime = localStorage.getItem(STORAGE_KEYS.SYNC);
     if (!force && lastSyncTime && (Date.now() - parseInt(lastSyncTime, 10)) < AI_CACHE_DURATION) return;
@@ -279,7 +284,7 @@ const App: React.FC = () => {
              <button onClick={() => setShowUpdateModal(true)} className="w-full bg-indigo-600 p-4 rounded-[2rem] flex items-center justify-between shadow-2xl border border-white/20 group transition-all">
                 <div className="flex items-center gap-3">
                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"><Rocket className="w-5 h-5 animate-pulse" /></div>
-                   <div className="text-left"><p className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none mb-1">Nova Versão v2.6.0</p><p className="text-xs font-black text-white uppercase tracking-tighter">Toque para atualizar</p></div>
+                   <div className="text-left"><p className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none mb-1">Nova Versão v2.6.1</p><p className="text-xs font-black text-white uppercase tracking-tighter">Toque para atualizar</p></div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-white/50 group-hover:translate-x-1 transition-transform" />
              </button>
@@ -329,7 +334,7 @@ const App: React.FC = () => {
            <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
              {(notificationFilter === 'all' || notificationFilter === 'upcoming') && upcomingEvents.map((event, idx) => (
                 <div key={event.id} className="bg-white dark:bg-white/[0.02] p-5 rounded-[2.2rem] flex items-center gap-4 border border-slate-200 dark:border-white/[0.04] animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${event.type === 'PAYMENT' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'}`}>
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${event.type === 'PAYMENT' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}`}>
                     {event.type === 'PAYMENT' ? <DollarSign className="w-6 h-6" /> : <Calendar className="w-6 h-6" />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -350,7 +355,7 @@ const App: React.FC = () => {
         <div className="px-6 pt-2 pb-12 flex flex-col min-h-full bg-secondary-light dark:bg-secondary-dark">
             <div className="text-center mb-10 pt-4">
                <div className="w-20 h-20 bg-accent/10 rounded-[2rem] flex items-center justify-center text-accent mx-auto mb-6 ring-1 ring-accent/20 shadow-2xl"><Package className="w-10 h-10" /></div>
-               <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-2">Novo Visual v2.6.0</h3>
+               <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-2">Novo Visual v2.6.1</h3>
                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Modo Claro e Escuro</p>
             </div>
             <div className="space-y-6 flex-1 mb-10">
@@ -360,6 +365,7 @@ const App: React.FC = () => {
                       <div><h4 className="font-black text-slate-900 dark:text-white text-base tracking-tight mb-1">{note.title}</h4><p className="text-xs text-slate-500 leading-relaxed">{note.desc}</p></div>
                   </div>
                ))}
+               {!updateData && <p className="text-center text-slate-500 animate-pulse">Buscando detalhes...</p>}
             </div>
             <button onClick={handleApplyUpdate} className="w-full bg-accent text-white font-black text-sm uppercase tracking-[0.2em] py-5 rounded-[2.2rem] shadow-xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3">Atualizar Agora <ArrowRight className="w-5 h-5" /></button>
         </div>

@@ -1,22 +1,17 @@
 
 {
-  "version": "2.6.0",
-  "date": "2024-05-26",
+  "version": "2.6.1",
+  "date": "2024-05-27",
   "notes": [
     {
-      "type": "feature",
-      "title": "Modo Claro e Escuro",
-      "desc": "Implementação de temas nativos com opção de sincronização automática com o sistema operacional."
-    },
-    {
-      "type": "improvement",
-      "title": "Cores e Contraste",
-      "desc": "Ajuste total na paleta de cores para garantir que cards e divisões sejam perfeitamente visíveis mesmo em ambientes externos de alta luminosidade."
+      "type": "fix",
+      "title": "Correção de Sincronização",
+      "desc": "Resolvido problema que impedia alguns dispositivos de receberem a interface de modo claro/escuro."
     },
     {
       "type": "feature",
-      "title": "Ajustes de Aparência",
-      "desc": "Nova seção dedicada em Ajustes para você escolher o seu visual preferido."
+      "title": "Update Forçado",
+      "desc": "Atualização do motor de cache para garantir a entrega das novas funcionalidades de acessibilidade visual."
     }
   ]
 }
