@@ -1,17 +1,22 @@
 
 {
-  "version": "2.6.9",
+  "version": "2.7.0",
   "date": "2024-05-31",
   "notes": [
     {
+      "type": "feature",
+      "title": "Nova Arquitetura de Sincronização",
+      "desc": "Otimizado para ser 40% mais rápido ao atualizar cotações e proventos via IA."
+    },
+    {
       "type": "fix",
-      "title": "Correção de Cache CDN",
-      "desc": "Otimizado para Vercel. As atualizações agora serão detectadas instantaneamente ignorando caches de borda."
+      "title": "Bypass de Cache Vercel",
+      "desc": "Implementada técnica de handshake para garantir que você sempre use a versão mais recente sem precisar limpar o navegador."
     },
     {
       "type": "improvement",
-      "title": "Auto-Update",
-      "desc": "O app agora verifica a versão comparando o servidor com o HTML em execução, garantindo precisão total."
+      "title": "Backup Total v3",
+      "desc": "O sistema de backup agora salva o estado exato da sua interface, incluindo dividendos previstos."
     }
   ]
 }

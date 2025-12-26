@@ -53,7 +53,7 @@ export const Transactions: React.FC<{ transactions: Transaction[], onAddTransact
   };
 
   const filtered = useMemo(() => transactions.filter(t => t.ticker.toUpperCase().includes(searchTerm.toUpperCase())).sort((a,b) => b.date.localeCompare(a.date)), [transactions, searchTerm]);
-  const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatCurrency = (val: number) => (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="pb-32 pt-2 px-4 space-y-6">
