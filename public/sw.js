@@ -1,6 +1,6 @@
 
 // Versão do cache estático. Incrementar para forçar atualização.
-const STATIC_CACHE = 'investfiis-static-v36';
+const STATIC_CACHE = 'investfiis-static-v37';
 const DATA_CACHE = 'investfiis-data-v1';
 
 const STATIC_ASSETS = [
@@ -13,7 +13,7 @@ self.addEventListener('install', (event) => {
     caches.open(STATIC_CACHE)
       .then((cache) => {
         return cache.addAll(STATIC_ASSETS).catch(err => {
-            console.warn('SW: Aviso - Falha ao pré-cachear alguns arquivos. Eles serão cacheados sob demanda.', err);
+            console.warn('SW: Aviso - Falha ao pré-cachear alguns arquivos.', err);
         });
       })
   );
@@ -38,26 +38,23 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   
-  // CORREÇÃO CRÍTICA: O Cache API só suporta requisições GET.
-  // Requisições POST (como as do Gemini API) causam o erro "Request method 'POST' is unsupported".
-  // Se não for GET, deixamos o navegador lidar nativamente (Network Only) e não cacheamos.
+  // 1. Ignorar métodos não-GET (POST do Gemini, etc)
   if (request.method !== 'GET') {
     return;
   }
 
   const url = new URL(request.url);
 
-  // 1. APIs (Brapi e Google Fonts/Maps) - Network First com Fallback para Cache
-  // Nota: Gemini é POST, então já foi filtrado acima e não entrará aqui.
+  // 2. Estratégia para APIs (Network First)
   if (url.hostname.includes('brapi.dev') || url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Copia a resposta para o cache apenas se for válida
           if(response && response.status === 200) {
-              const clonedResponse = response.clone();
+              // CLONE IMEDIATO: Fundamental para evitar "Response body is already used"
+              const responseToCache = response.clone();
               caches.open(DATA_CACHE).then((cache) => {
-                cache.put(request, clonedResponse);
+                cache.put(request, responseToCache);
               });
           }
           return response;
@@ -67,15 +64,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Navegação (HTML) - Network First (Prioridade Rede)
+  // 3. Estratégia para Navegação HTML (Network First)
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {
-          return caches.open(STATIC_CACHE).then((cache) => {
-            cache.put(request, networkResponse.clone());
-            return networkResponse;
+          // CLONE IMEDIATO
+          const responseToCache = networkResponse.clone();
+          caches.open(STATIC_CACHE).then((cache) => {
+            cache.put(request, responseToCache);
           });
+          return networkResponse;
         })
         .catch(() => {
           return caches.match(request);
@@ -84,19 +83,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Assets Estáticos (JS, CSS, Imagens) - Cache First
+  // 4. Estratégia para Assets Estáticos (Cache First)
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
-        // Cacheia qualquer arquivo JS/CSS/Imagem que for carregado com sucesso e seja da mesma origem
-        if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
+      // Se achou no cache, retorna. Senão, vai para a rede.
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      return fetch(request).then((networkResponse) => {
+        // Verifica se a resposta é válida antes de cachear
+        if (networkResponse && networkResponse.status === 200 && (url.origin === self.location.origin || url.hostname.includes('cdn.tailwindcss.com'))) {
+          // CLONE IMEDIATO: A correção principal do erro relatado.
+          // Não podemos esperar o caches.open resolver para clonar.
+          const responseToCache = networkResponse.clone();
+          
           caches.open(STATIC_CACHE).then((cache) => {
-            cache.put(request, networkResponse.clone());
+            cache.put(request, responseToCache);
           });
         }
         return networkResponse;
       });
-      return cachedResponse || fetchPromise;
     })
   );
 });
