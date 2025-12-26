@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Wallet, TrendingUp, ChevronRight, RefreshCw, CircleDollarSign, PieChart as PieIcon, Scale, ExternalLink, Sparkles, Layers, TrendingDown, LayoutGrid, PieChart as PieIcon2, ShoppingBag, BarChart3, Info, Target, ArrowUpCircle, ShieldCheck, Calendar, Zap, Star, Trophy } from 'lucide-react';
@@ -21,7 +22,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   const [proventosTab, setProventosTab] = useState<'history' | 'magic' | 'upcoming'>('history');
   const [allocationTab, setAllocationTab] = useState<'assets' | 'classes' | 'rebalance'>('assets');
 
-  // Filtro de segurança para IDs únicos
   const cleanDividendReceipts = useMemo(() => {
     const map = new Map<string, DividendReceipt>();
     dividendReceipts.forEach(div => {
@@ -30,7 +30,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
     return Array.from(map.values());
   }, [dividendReceipts]);
 
-  // Cálculos de Patrimônio
   const totalInvested = useMemo(() => portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0), [portfolio]);
   const currentBalance = useMemo(() => portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0), [portfolio]);
   
@@ -57,7 +56,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
   const COLORS = ['#38bdf8', '#818cf8', '#a855f7', '#f472b6', '#fb7185', '#34d399', '#facc15'];
 
-  // Dados de Alocação
   const assetAllocationData = useMemo(() => {
     if (currentBalance === 0) return [];
     return portfolio
@@ -94,7 +92,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
     }));
   }, [assetAllocationData, currentBalance]);
 
-  // Novidade: Magic Number Logic
   const magicNumberData = useMemo(() => {
     return portfolio.map(p => {
       const tickerDivs = cleanDividendReceipts.filter(d => d.ticker === p.ticker);
@@ -107,7 +104,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
     }).filter(p => p.rate > 0).sort((a, b) => b.progress - a.progress);
   }, [portfolio, cleanDividendReceipts]);
 
-  // Gráfico de Proventos Mensais
   const dividendsChartData = useMemo(() => {
     const agg: Record<string, number> = {};
     cleanDividendReceipts
@@ -156,7 +152,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
       {/* PATRIMÔNIO TOTAL */}
       <div className="animate-fade-in-up">
         <div className="relative overflow-hidden bg-[#0f172a] border border-white/10 p-6 rounded-[2.5rem] shadow-2xl group">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-accent/10 blur-[100px] rounded-full group-hover:bg-accent/15 transition-all duration-700"></div>
+            <div className="absolute top-0 right-0 w-80 h-80 bg-accent/10 blur-[100px] rounded-full group-hover:bg-accent/15 transition-all duration-700 pointer-events-none"></div>
             
             <div className="flex justify-between items-center mb-6 relative z-10">
                 <div className="flex items-center gap-2">
@@ -211,14 +207,18 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </div>
 
-      {/* CARD PROVENTOS - ACIONADOR DO MODAL */}
-      <div 
-        onClick={() => { console.log('Opening Proventos Modal'); setShowProventosModal(true); }}
-        className="animate-fade-in-up tap-highlight cursor-pointer"
+      {/* CARD DIVIDENDOS - ACIONADOR REFORÇADO */}
+      <button 
+        onClick={(e) => { 
+          e.preventDefault();
+          e.stopPropagation();
+          setShowProventosModal(true); 
+        }}
+        className="w-full text-left animate-fade-in-up tap-highlight outline-none"
         style={{ animationDelay: '100ms' }}
       >
-        <div className="relative overflow-hidden bg-gradient-to-tr from-emerald-500/5 to-slate-900 border border-emerald-500/10 rounded-[2.5rem] p-6 shadow-xl group hover:border-emerald-500/30 transition-all active:scale-[0.99]">
-            <div className="absolute right-0 top-0 w-40 h-40 bg-emerald-500/10 blur-[60px] rounded-full"></div>
+        <div className="relative overflow-hidden bg-gradient-to-tr from-emerald-500/5 to-slate-900 border border-emerald-500/10 rounded-[2.5rem] p-6 shadow-xl group hover:border-emerald-500/30 transition-all active:scale-[0.98]">
+            <div className="absolute right-0 top-0 w-40 h-40 bg-emerald-500/10 blur-[60px] rounded-full pointer-events-none"></div>
             <div className="relative z-10 flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 ring-1 ring-emerald-500/20">
@@ -242,7 +242,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                      </div>
                      <div className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">Total Recebido</div>
                 </div>
-                <div className="flex h-10 items-end gap-1">
+                <div className="flex h-10 items-end gap-1 pointer-events-none">
                     {dividendsChartData.slice(-5).map((d, i) => (
                         <div key={i} className="w-1.5 bg-emerald-500/20 rounded-t-sm" style={{ height: `${Math.min(100, Math.max(10, (d.value / 1000) * 100))}%` }}>
                             <div className="w-full bg-emerald-500 rounded-t-sm" style={{ height: '40%' }}></div>
@@ -251,12 +251,12 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                 </div>
             </div>
         </div>
-      </div>
+      </button>
 
       {/* CARD ALOCAÇÃO */}
-      <div 
+      <button 
         onClick={() => setShowAllocationModal(true)}
-        className="animate-fade-in-up cursor-pointer group"
+        className="w-full text-left animate-fade-in-up outline-none"
         style={{ animationDelay: '200ms' }}
       >
         <div className="relative bg-[#0f172a]/60 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] p-7 shadow-2xl transition-all hover:bg-[#0f172a]/80 active:scale-[0.98]">
@@ -272,7 +272,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                 </div>
             </div>
             <div className="flex items-center gap-8">
-                <div className="w-32 h-32 shrink-0">
+                <div className="w-32 h-32 shrink-0 pointer-events-none">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie data={assetAllocationData} innerRadius={35} outerRadius={50} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={6}>
@@ -295,12 +295,12 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                 </div>
             </div>
         </div>
-      </div>
+      </button>
 
       {/* CARD GANHO REAL */}
-      <div 
+      <button 
         onClick={() => setShowInflationModal(true)}
-        className="animate-fade-in-up cursor-pointer group"
+        className="w-full text-left animate-fade-in-up outline-none"
         style={{ animationDelay: '300ms' }}
       >
         <div className={`relative overflow-hidden bg-gradient-to-br transition-all hover:brightness-110 active:scale-[0.98] border border-white/5 rounded-[2.5rem] p-7 shadow-2xl ${realGainPercent >= 0 ? 'from-emerald-900/40 to-[#0f172a]' : 'from-rose-900/40 to-[#0f172a]'}`}>
@@ -328,15 +328,15 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                     <span>Inflação IPC-A Est.</span>
                     <span>Seu Yield Real</span>
                 </div>
-                <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden flex ring-1 ring-white/5">
+                <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden flex ring-1 ring-white/5 pointer-events-none">
                     <div className="h-full bg-rose-500/60" style={{ width: `${Math.min(100, (estimatedInflation / 10) * 100)}%` }}></div>
                     <div className="h-full bg-emerald-500 shadow-[0_0_10px_#10b981]" style={{ width: `${Math.max(0, Math.min(100, (totalReturnPercent / 10) * 100))}%` }}></div>
                 </div>
             </div>
         </div>
-      </div>
+      </button>
 
-      {/* MODAL PROVENTOS (REFORMULADO) */}
+      {/* MODAIS */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
         <div className="px-6 pt-2 pb-10 flex flex-col min-h-full">
            <div className="mb-8">
@@ -344,7 +344,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                 <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em] mt-1">Gestão de Proventos</p>
            </div>
 
-           {/* Abas do Modal */}
            <div className="flex bg-slate-950/40 p-1.5 rounded-[1.5rem] mb-8 border border-white/5">
                <button onClick={() => setProventosTab('history')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'history' ? 'bg-emerald-500 text-primary shadow-lg' : 'text-slate-500'}`}>
                   <BarChart3 className="w-3.5 h-3.5" /> Histórico
@@ -481,7 +480,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </SwipeableModal>
 
-      {/* MODAL ALOCAÇÃO */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="px-6 pt-2 pb-10">
             <div className="mb-8">
@@ -503,7 +501,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
             {allocationTab !== 'rebalance' ? (
                 <>
-                    <div className="h-64 w-full mb-10">
+                    <div className="h-64 w-full mb-10 pointer-events-none">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie 
@@ -564,7 +562,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
          </div>
       </SwipeableModal>
 
-      {/* MODAL GANHO REAL */}
       <SwipeableModal isOpen={showInflationModal} onClose={() => setShowInflationModal(false)}>
         <div className="px-6 pt-2 pb-10">
             <div className="mb-8">

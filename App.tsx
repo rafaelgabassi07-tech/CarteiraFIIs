@@ -213,8 +213,8 @@ const App: React.FC = () => {
 
   const syncBrapiData = useCallback(async (force = false) => {
     if (!brapiToken || transactions.length === 0) return;
-    // Fix: Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' inference error.
-    const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
+    // Fix: Using spread syntax to ensure string[] type inference and avoid 'unknown[]' error on line 234.
+    const uniqueTickers = [...new Set(transactions.map(t => t.ticker.toUpperCase()))];
     setIsPriceLoading(true);
     try {
         const result = await getQuotes(uniqueTickers, brapiToken, force);
@@ -230,8 +230,8 @@ const App: React.FC = () => {
   }, [brapiToken, transactions, showToast]);
 
   const handleAiSync = useCallback(async (force = false) => {
-    // Fix: Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' inference error.
-    const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))).sort();
+    // Fix: Using spread syntax to ensure string[] type inference and avoid 'unknown[]' error.
+    const uniqueTickers = [...new Set(transactions.map(t => t.ticker.toUpperCase()))].sort();
     if (uniqueTickers.length === 0) return;
     
     const tickersStr = uniqueTickers.join(',');

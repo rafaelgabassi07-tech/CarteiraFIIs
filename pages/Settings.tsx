@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Lock, Eraser, Server } from 'lucide-react';
 import { Transaction } from '../types';
@@ -75,7 +76,6 @@ export const Settings: React.FC<SettingsProps> = ({
     const link = document.createElement("a");
     link.href = url;
     link.download = `investfiis_backup_${new Date().toISOString().split('T')[0]}.json`;
-    // Fix: Remove the undefined variable 'json' which was causing a compilation error.
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -111,14 +111,13 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleClearCache = async () => {
     if (window.confirm("Limpar todo o cache? Isso inclui cotações, dados da IA e suas preferências de notificação. Suas transações NÃO serão apagadas.")) {
         try {
-            // Limpa todos os storages do app
             localStorage.removeItem('investfiis_quotes_simple_cache');
             localStorage.removeItem('investfiis_gemini_dividends_cache');
             localStorage.removeItem('investfiis_last_gemini_sync');
             localStorage.removeItem('investfiis_last_synced_tickers');
             localStorage.removeItem('investfiis_prefs_notifications');
             localStorage.removeItem('investfiis_sw_version');
-            localStorage.removeItem('investfiis_notif_processed_keys'); // Limpa chaves de notificação processadas
+            localStorage.removeItem('investfiis_notif_processed_keys'); 
             
             if ('caches' in window) {
                 const keys = await caches.keys();
@@ -216,7 +215,7 @@ export const Settings: React.FC<SettingsProps> = ({
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-600 mx-auto mb-2" />
               <span className="text-[10px] font-mono text-slate-500">
-                InvestFIIs v2.3.0
+                InvestFIIs v2.4.0
               </span>
            </div>
         </div>
@@ -271,9 +270,6 @@ export const Settings: React.FC<SettingsProps> = ({
                           />
                           {(token || isEnvToken) && <div className="absolute right-4 top-4 text-emerald-500"><CheckCircle2 className="w-4 h-4" /></div>}
                       </div>
-                      {isEnvToken && (
-                         <p className="text-[10px] text-slate-500 mt-2 italic">* O token está sendo lido das configurações de ambiente do Vercel.</p>
-                      )}
                   </div>
                   
                   <div className="flex justify-between items-center pt-2">
@@ -364,14 +360,14 @@ export const Settings: React.FC<SettingsProps> = ({
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                  <button onClick={handleExport} className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 text-left flex items-center gap-4">
+                  <button onClick={handleExport} className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 text-left flex items-center gap-4 active:scale-[0.98]">
                       <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400"><Download className="w-6 h-6" /></div>
                       <div>
                         <h3 className="text-sm font-bold text-white">Exportar Backup</h3>
                         <p className="text-[10px] text-slate-400">Salvar carteira em arquivo JSON</p>
                       </div>
                   </button>
-                  <button onClick={handleImportClick} className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 text-left flex items-center gap-4">
+                  <button onClick={handleImportClick} className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 text-left flex items-center gap-4 active:scale-[0.98]">
                       <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400"><Upload className="w-6 h-6" /></div>
                       <div>
                         <h3 className="text-sm font-bold text-white">Importar Backup</h3>
@@ -398,7 +394,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6">
                   <h3 className="text-sm font-bold text-white mb-2">Limpeza de Cache</h3>
                   <p className="text-xs text-slate-400 mb-6 leading-relaxed">Corrige problemas de cotações, dados da IA e restaura preferências de notificação padrão. Não apaga transações.</p>
-                  <button onClick={handleClearCache} className="w-full bg-sky-500/10 text-sky-500 border border-sky-500/20 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest">
+                  <button onClick={handleClearCache} className="w-full bg-sky-500/10 text-sky-500 border border-sky-500/20 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98]">
                       <Eraser className="w-4 h-4" /> Limpar Dados
                   </button>
               </div>
@@ -406,7 +402,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6">
                   <h3 className="text-sm font-bold text-white mb-2 text-rose-400">Reset de Fábrica</h3>
                   <p className="text-xs text-slate-400 mb-6 leading-relaxed">Apaga transações, chaves e preferências permanentemente.</p>
-                  <button onClick={handleReset} className="w-full bg-rose-500/10 text-rose-500 border border-rose-500/20 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest">
+                  <button onClick={handleReset} className="w-full bg-rose-500/10 text-rose-500 border border-rose-500/20 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98]">
                       <Trash2 className="w-4 h-4" /> Apagar Tudo
                   </button>
               </div>
