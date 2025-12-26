@@ -5,21 +5,34 @@ import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, VersionData, ReleaseNote } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { CheckCircle2, DownloadCloud } from 'lucide-react';
+import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '3.2.1';
+const APP_VERSION = '3.3.0';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
   DIVS: 'investfiis_v4_div_cache',
   THEME: 'investfiis_theme',
-  LAST_VERSION: 'investfiis_last_version'
+  LAST_SEEN_VERSION: 'investfiis_last_version_seen'
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
+
+// Comparador de Versão Semântica
+const compareVersions = (v1: string, v2: string) => {
+  const parts1 = v1.split('.').map(Number);
+  const parts2 = v2.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const p1 = parts1[i] || 0;
+    const p2 = parts2[i] || 0;
+    if (p1 > p2) return 1;
+    if (p1 < p2) return -1;
+  }
+  return 0;
+};
 
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
@@ -29,8 +42,8 @@ const App: React.FC = () => {
   
   // Controle de Atualização e Changelog
   const [showChangelog, setShowChangelog] = useState(false);
-  const [updateReady, setUpdateReady] = useState(false);
-  const updatePending = useRef(false);
+  const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
@@ -67,54 +80,64 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.THEME, theme);
   }, [theme]);
 
-  // Changelog Check on Mount
-  useEffect(() => {
-    const lastVersion = localStorage.getItem(STORAGE_KEYS.LAST_VERSION);
-    if (lastVersion !== APP_VERSION) {
-      // Pequeno delay para garantir que o app carregou visualmente
-      setTimeout(() => setShowChangelog(true), 1000);
-      localStorage.setItem(STORAGE_KEYS.LAST_VERSION, APP_VERSION);
-    }
-  }, []);
-
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     setToast({ type, text });
-    if (type !== 'info') setTimeout(() => setToast(null), 3000);
+    if (type !== 'info') setTimeout(() => setToast(null), 4000);
   }, []);
 
-  // SISTEMA DE ATUALIZAÇÃO SILENCIOSA (BACKGROUND v3.2.1)
+  // SISTEMA DE VERSIONAMENTO V3.3.0
   useEffect(() => {
-    const checkForUpdates = async () => {
+    const handleVersionControl = async () => {
       try {
-        const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.version !== APP_VERSION) {
-            console.log(`Nova versão detectada: ${data.version}`);
-            updatePending.current = true;
-            setUpdateReady(true);
-            showToast('info', 'Nova atualização disponível. Atualizando em 2º plano...');
+        const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
+        
+        // 1. Verificar se acabamos de atualizar (Versão Atual > Última Vista)
+        if (compareVersions(APP_VERSION, lastSeen) > 0) {
+          // Busca o version.json para pegar as notas desta versão atual
+          const res = await fetch(`./version.json?t=${Date.now()}`);
+          if (res.ok) {
+            const data: VersionData = await res.json();
+            // Só exibe se as notas baterem com a versão atual
+            if (data.version === APP_VERSION) {
+              setChangelogNotes(data.notes || []);
+              setTimeout(() => setShowChangelog(true), 1500); // Delay elegante
+            }
           }
+          localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
         }
-      } catch (e) {}
-    };
 
-    const interval = setInterval(checkForUpdates, 120 * 1000);
-    checkForUpdates();
+        // 2. Verificar se há NOVA versão disponível no servidor
+        const checkRemote = async () => {
+          try {
+            const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
+            if (res.ok) {
+              const data: VersionData = await res.json();
+              if (compareVersions(data.version, APP_VERSION) > 0) {
+                console.log(`Update disponível: ${data.version}`);
+                setUpdateAvailable(true);
+                showToast('info', 'Nova atualização disponível');
+              }
+            }
+          } catch(e) { /* Silêncio */ }
+        };
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && updatePending.current) {
-        console.log("Aplicando atualização...");
-        window.location.reload();
+        checkRemote();
+        const interval = setInterval(checkRemote, 5 * 60 * 1000); // 5 min poll
+        return () => clearInterval(interval);
+
+      } catch (e) {
+        console.error("Version Control Error", e);
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    handleVersionControl();
   }, [showToast]);
+
+  const triggerUpdate = () => {
+    if (confirm("Atualizar o aplicativo agora?")) {
+      window.location.reload();
+    }
+  };
 
   // Calculations
   const getQuantityOnDate = useCallback((ticker: string, dateLimit: string, txs: Transaction[]) => {
@@ -204,9 +227,9 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       {toast && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => updateReady && window.location.reload()}>
-          <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : toast.type === 'info' ? 'bg-blue-500/90 border-blue-400 cursor-pointer' : 'bg-rose-500/90 border-rose-400'} text-white`}>
-            {updateReady ? <DownloadCloud className="w-5 h-5 animate-bounce" /> : <CheckCircle2 className="w-5 h-5" />}
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => updateAvailable && triggerUpdate()}>
+          <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : toast.type === 'info' ? 'bg-indigo-500/90 border-indigo-400 cursor-pointer' : 'bg-rose-500/90 border-rose-400'} text-white`}>
+            {updateAvailable ? <DownloadCloud className="w-5 h-5 animate-bounce" /> : toast.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
             <span className="text-xs font-black uppercase tracking-wider">{toast.text}</span>
           </div>
         </div>
@@ -219,6 +242,8 @@ const App: React.FC = () => {
         onSettingsClick={() => setShowSettings(true)}
         onRefresh={() => syncAll(true)}
         isRefreshing={isRefreshing || isAiLoading}
+        updateAvailable={updateAvailable}
+        onUpdateClick={triggerUpdate}
       />
 
       <main className="max-w-screen-md mx-auto pt-2">
@@ -253,6 +278,7 @@ const App: React.FC = () => {
         isOpen={showChangelog} 
         onClose={() => setShowChangelog(false)} 
         version={APP_VERSION} 
+        notes={changelogNotes}
       />
     </div>
   );

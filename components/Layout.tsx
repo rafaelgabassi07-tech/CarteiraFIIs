@@ -1,7 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, TrendingUp, Bell, Rocket, Sparkles, Check } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, TrendingUp, Bell, Rocket, Sparkles, Check, Wrench, Zap, Palette, ArrowUpCircle } from 'lucide-react';
+import { ReleaseNote } from '../types';
 
 interface HeaderProps {
   title: string;
@@ -12,6 +13,8 @@ interface HeaderProps {
   isRefreshing?: boolean;
   onNotificationClick?: () => void;
   notificationCount?: number;
+  updateAvailable?: boolean;
+  onUpdateClick?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -22,7 +25,9 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
   isRefreshing,
   onNotificationClick,
-  notificationCount = 0
+  notificationCount = 0,
+  updateAvailable,
+  onUpdateClick
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -60,6 +65,14 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
       
       <div className="flex items-center gap-2">
+        {/* Badge de Update Persistente */}
+        {updateAvailable && !showBack && (
+           <button onClick={onUpdateClick} className="h-10 px-3 flex items-center gap-2 rounded-2xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 animate-pulse active:scale-90 transition-all">
+             <ArrowUpCircle className="w-4 h-4" />
+             <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">Nova Versão</span>
+           </button>
+        )}
+
         {onNotificationClick && !showBack && (
            <button onClick={onNotificationClick} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05] active:scale-90 transition-all text-slate-500 dark:text-slate-400 hover:text-accent relative shadow-sm">
              <Bell className="w-5 h-5" />
@@ -131,32 +144,59 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
   );
 };
 
-export const ChangelogModal: React.FC<{ isOpen: boolean; onClose: () => void; version: string }> = ({ isOpen, onClose, version }) => {
+export const ChangelogModal: React.FC<{ isOpen: boolean; onClose: () => void; version: string; notes?: ReleaseNote[] }> = ({ isOpen, onClose, version, notes }) => {
   if (!isOpen) return null;
+
+  const getIcon = (type: string) => {
+    switch(type) {
+      case 'feat': return <Sparkles className="w-3.5 h-3.5 text-accent" />;
+      case 'fix': return <Wrench className="w-3.5 h-3.5 text-rose-500" />;
+      case 'perf': return <Zap className="w-3.5 h-3.5 text-amber-500" />;
+      case 'ui': return <Palette className="w-3.5 h-3.5 text-purple-500" />;
+      default: return <Check className="w-3.5 h-3.5 text-emerald-500" />;
+    }
+  };
+
+  const getColor = (type: string) => {
+    switch(type) {
+      case 'feat': return 'bg-accent/10';
+      case 'fix': return 'bg-rose-500/10';
+      case 'perf': return 'bg-amber-500/10';
+      case 'ui': return 'bg-purple-500/10';
+      default: return 'bg-emerald-500/10';
+    }
+  };
 
   return createPortal(
     <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6 animate-fade-in">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
-        <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 border border-slate-200 dark:border-white/10 shadow-2xl flex flex-col items-center text-center">
-            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-6 relative">
+        <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 border border-slate-200 dark:border-white/10 shadow-2xl flex flex-col items-center text-center animate-slide-up">
+            <div className="w-20 h-20 bg-gradient-to-tr from-emerald-400 to-teal-500 rounded-[2rem] flex items-center justify-center text-white mb-6 relative shadow-lg shadow-emerald-500/20">
                 <Rocket className="w-10 h-10" />
-                <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded-full border-2 border-white dark:border-slate-900">v{version}</div>
+                <div className="absolute -bottom-3 bg-slate-900 text-white text-[10px] font-black px-3 py-1.5 rounded-full border-4 border-white dark:border-slate-800">v{version}</div>
             </div>
             <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Atualizado!</h3>
-            <p className="text-slate-500 text-sm mb-8 leading-relaxed">
-               O app foi atualizado em segundo plano com sucesso. Aproveite as melhorias de performance e correções.
+            <p className="text-slate-500 text-xs font-medium mb-8 leading-relaxed">
+               Sua carteira está rodando a versão mais recente com as seguintes melhorias:
             </p>
-            <div className="w-full space-y-3 mb-8">
-               <div className="flex items-center gap-3 text-left bg-slate-50 dark:bg-white/5 p-4 rounded-2xl">
-                  <div className="p-1.5 bg-accent/20 rounded-full text-accent"><Sparkles className="w-3.5 h-3.5" /></div>
-                  <span className="text-xs font-bold">Performance aprimorada</span>
-               </div>
-               <div className="flex items-center gap-3 text-left bg-slate-50 dark:bg-white/5 p-4 rounded-2xl">
-                   <div className="p-1.5 bg-emerald-500/20 rounded-full text-emerald-500"><Check className="w-3.5 h-3.5" /></div>
-                   <span className="text-xs font-bold">Correções de segurança</span>
-               </div>
+            
+            <div className="w-full space-y-3 mb-8 max-h-[40vh] overflow-y-auto no-scrollbar">
+               {notes && notes.length > 0 ? notes.map((note, i) => (
+                 <div key={i} className="flex items-start gap-3 text-left bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
+                    <div className={`p-1.5 rounded-full shrink-0 ${getColor(note.type)}`}>
+                      {getIcon(note.type)}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-0.5">{note.title}</h4>
+                      <p className="text-[10px] text-slate-500 leading-tight">{note.desc}</p>
+                    </div>
+                 </div>
+               )) : (
+                 <div className="text-center py-4 text-slate-400 text-xs">Melhorias gerais de sistema.</div>
+               )}
             </div>
-            <button onClick={onClose} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 transition-transform">
+
+            <button onClick={onClose} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 transition-transform hover:shadow-lg">
                 Incrível
             </button>
         </div>

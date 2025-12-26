@@ -1,12 +1,27 @@
 
 {
-  "version": "3.2.1",
-  "date": "2024-06-05",
+  "version": "3.3.0",
+  "date": "2024-06-06",
   "notes": [
     {
+      "type": "feat",
+      "title": "Centro de Atualizações",
+      "desc": "Novo sistema inteligente que avisa quando há novidades sem interromper seu uso."
+    },
+    {
+      "type": "ui",
+      "title": "Changelog Dinâmico",
+      "desc": "Agora você pode ver exatamente o que mudou diretamente no app."
+    },
+    {
       "type": "fix",
-      "title": "Melhorias de Estabilidade",
-      "desc": "Correções internas e otimização do processo de atualização."
+      "title": "Modal de Transações",
+      "desc": "Correção visual na abertura do formulário de nova ordem."
+    },
+    {
+      "type": "perf",
+      "title": "Core Otimizado",
+      "desc": "Redução no uso de rede para verificação de versão."
     }
   ]
 }
