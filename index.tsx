@@ -15,28 +15,28 @@ const initServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('./sw.js');
+      console.log('SW: Registrado com sucesso.');
 
-      // 1. Verifica se já existe um SW esperando (atualização baixada em sessão anterior)
+      // 1. Verifica se já existe um SW esperando
       if (registration.waiting) {
-        console.log('SW: Atualização já estava aguardando.');
+        console.log('SW: Atualização aguardando ativação.');
         window.dispatchEvent(new CustomEvent('sw-update-available', { detail: registration }));
       }
 
-      // 2. Monitora novas atualizações encontradas durante o uso
+      // 2. Monitora mudanças de estado no worker instalado
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
-            // Se o estado mudou para 'installed' E já existe um controlador (não é a primeira visita)
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('SW: Nova versão baixada e pronta para instalar.');
+              console.log('SW: Nova versão pronta.');
               window.dispatchEvent(new CustomEvent('sw-update-available', { detail: registration }));
             }
           });
         }
       });
     } catch (error) {
-      console.debug('Service Worker não suportado ou bloqueado pelo ambiente:', error);
+      console.warn('SW: Falha no registro:', error);
     }
   }
 };
