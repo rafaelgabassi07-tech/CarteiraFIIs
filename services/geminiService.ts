@@ -37,11 +37,12 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       ]
     }
     
-    REGRAS CRÍTICAS:
-    - Retorne APENAS o JSON, sem blocos de código markdown.
+    REGRAS CRÍTICAS PARA EVITAR DUPLICIDADE:
+    - Um provento é único pela combinação de TICKER + DATA COM + DATA PAGAMENTO + TIPO.
+    - Se houver Dividendos e JCP na mesma data, trate como dois itens distintos.
     - Datas no formato YYYY-MM-DD.
-    - PROIBIDO: Não retorne cotações, preços atuais ou valores de mercado. A missão de preços é de outra API.
-    - Se não houver proventos confirmados nos últimos 12 meses, retorne array vazio em "d".
+    - Retorne APENAS o JSON, sem blocos de código markdown.
+    - PROIBIDO: Não retorne cotações ou valores de mercado.
   `;
 
   try {
@@ -88,14 +89,19 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         if (Array.isArray(asset.d)) {
             asset.d.forEach((div: any) => {
                 if (!div.dc || !div.v) return;
-                const divId = `${ticker}-${div.dc}-${div.v}`.replace(/[^a-zA-Z0-9]/g, '');
+                
+                // Novo ID Único: Ticker + DataCom + DataPagto + Tipo
+                // Removido o valor do ID para que se o valor mudar na IA, ele apenas atualize o registro.
+                const type = div.ty?.toUpperCase() || "PROVENTO";
+                const paymentDate = div.dp || div.dc;
+                const divId = `${ticker}-${div.dc}-${paymentDate}-${type}`.replace(/[^a-zA-Z0-9]/g, '');
                 
                 result.dividends.push({
                     id: divId,
                     ticker,
-                    type: div.ty?.toUpperCase() || "PROVENTO",
+                    type: type,
                     dateCom: div.dc,
-                    paymentDate: div.dp || div.dc,
+                    paymentDate: paymentDate,
                     rate: Number(div.v),
                     quantityOwned: 0,
                     totalReceived: 0

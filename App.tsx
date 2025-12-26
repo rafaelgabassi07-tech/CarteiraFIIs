@@ -19,7 +19,6 @@ const STORAGE_KEYS = {
   NOTIFY_PREFS: 'investfiis_prefs_notifications'
 };
 
-// 24 Horas de cache para dados da IA (Proventos e Metadados)
 const AI_CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 interface MarketEvent {
@@ -47,7 +46,6 @@ const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(() => 
     JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]'));
   
-  // Prioriza token do ambiente (Vercel/process.env) -> depois localStorage
   const [brapiToken, setBrapiToken] = useState(() => {
     const envToken = process.env.BRAPI_TOKEN;
     const localToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
@@ -112,7 +110,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions));
-    // Apenas salva no local se for diferente do ambiente para não sobrescrever o "mestre"
     if (brapiToken !== process.env.BRAPI_TOKEN) {
       localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken);
     }
@@ -209,8 +206,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (geminiDividends.length === 0) return;
-    const storedPrefs = localStorage.getItem(STORAGE_KEYS.NOTIFY_PREFS);
-    const notifyPrefs = storedPrefs ? JSON.parse(storedPrefs) : { payments: true, datacom: true };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const upcoming: MarketEvent[] = [];
@@ -223,7 +218,7 @@ const App: React.FC = () => {
             const eventDate = new Date(dateStr + 'T12:00:00');
             const diffTime = eventDate.getTime() - today.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            const key = `${type}-${div.ticker}-${dateStr}`;
+            const key = `${type}-${div.id}-${dateStr}`; // Usando div.id para unicidade
             if (processedKeys.has(key)) return;
             const eventObj: MarketEvent = {
                 id: key, ticker: div.ticker, type, date: dateStr, 
@@ -291,9 +286,13 @@ const App: React.FC = () => {
     try {
       const data = await fetchUnifiedMarketData(uniqueTickers);
       setGeminiDividends(prev => {
-        const merged = [...prev, ...data.dividends];
+        // Criar um mapa do estado anterior para facilitar o merge
         const uniqueMap = new Map();
-        merged.forEach(d => uniqueMap.set(d.id, d));
+        prev.forEach(d => uniqueMap.set(d.id, d));
+        
+        // Adicionar/Sobrescrever com os dados novos da IA
+        data.dividends.forEach(d => uniqueMap.set(d.id, d));
+        
         return Array.from(uniqueMap.values());
       });
       if (data.sources) setSources(data.sources);
