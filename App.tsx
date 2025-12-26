@@ -20,7 +20,7 @@ const STORAGE_KEYS = {
   LAST_VER: 'investfiis_app_version'
 };
 
-const CURRENT_VERSION = '2.6.4';
+const CURRENT_VERSION = '2.6.6';
 const AI_CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -80,6 +80,16 @@ const App: React.FC = () => {
   
   const [upcomingEvents, setUpcomingEvents] = useState<MarketEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<MarketEvent[]>([]);
+
+  // Sincronizar transações com localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions));
+  }, [transactions]);
+
+  // Sincronizar dividendos com localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends));
+  }, [geminiDividends]);
 
   // Gerenciamento de Tema
   useEffect(() => {
@@ -175,6 +185,8 @@ const App: React.FC = () => {
 
   const { portfolio, dividendReceipts, realizedGain } = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+    
+    // Calcular dividendos
     const receipts: DividendReceipt[] = geminiDividends.map(div => {
       const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, sortedTxs);
       const eligibleQty = Math.max(0, qtyAtDate);
@@ -182,16 +194,31 @@ const App: React.FC = () => {
       const assetInfo = sortedTxs.find(t => t.ticker === div.ticker);
       return { ...div, quantityOwned: eligibleQty, totalReceived: total, assetType: assetInfo?.assetType || AssetType.FII };
     }).filter(r => r.totalReceived > 0);
+    
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+    
     const dividendsByTicker: Record<string, number> = {};
     receipts.forEach(r => {
-      if (new Date(r.paymentDate + 'T12:00:00') <= new Date()) dividendsByTicker[r.ticker] = (dividendsByTicker[r.ticker] || 0) + r.totalReceived;
+      if (new Date(r.paymentDate + 'T12:00:00') <= new Date()) {
+        dividendsByTicker[r.ticker] = (dividendsByTicker[r.ticker] || 0) + r.totalReceived;
+      }
     });
+
     const positions: Record<string, AssetPosition> = {};
     let totalRealizedGain = 0;
+    
     sortedTxs.forEach(t => {
       const ticker = t.ticker.toUpperCase();
-      if (!positions[ticker]) positions[ticker] = { ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: dividendsByTicker[ticker] || 0 };
+      if (!positions[ticker]) {
+        positions[ticker] = { 
+          ticker, 
+          quantity: 0, 
+          averagePrice: 0, 
+          assetType: t.assetType, 
+          totalDividends: dividendsByTicker[ticker] || 0 
+        };
+      }
+      
       const p = positions[ticker];
       if (t.type === 'BUY') {
         const currentCost = p.quantity * p.averagePrice;
@@ -202,7 +229,15 @@ const App: React.FC = () => {
         p.quantity -= t.quantity;
       }
     });
-    const finalPortfolio = Object.values(positions).filter(p => p.quantity > 0).map(p => ({ ...p, currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice, logoUrl: quotes[p.ticker]?.logourl }));
+
+    const finalPortfolio = Object.values(positions)
+      .filter(p => p.quantity > 0)
+      .map(p => ({ 
+        ...p, 
+        currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice, 
+        logoUrl: quotes[p.ticker]?.logourl 
+      }));
+
     return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: totalRealizedGain };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 

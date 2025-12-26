@@ -1,27 +1,22 @@
 
 {
-  "version": "2.6.5",
+  "version": "2.6.6",
   "date": "2024-05-31",
   "notes": [
     {
-      "type": "improvement",
-      "title": "Cotações em Massa",
-      "desc": "O app agora busca os preços de múltiplos ativos em uma única chamada, economizando bateria e dados."
+      "type": "fix",
+      "title": "Persistência de Dados",
+      "desc": "Corrigido erro onde transações e dividendos não eram salvos no navegador. Seus dados agora estão seguros localmente."
     },
     {
       "type": "feature",
-      "title": "Yield on Cost (YoC)",
-      "desc": "Adicionado o retorno real individual por ativo. Veja quanto sua renda rende sobre o valor que você pagou originalmente."
+      "title": "Seletor de Categoria",
+      "desc": "Agora você pode escolher entre 'Ação' e 'FII' ao cadastrar uma ordem, garantindo que o ativo apareça na categoria correta da carteira."
     },
     {
-      "type": "fix",
-      "title": "Precisão Matemática",
-      "desc": "Revisada toda a lógica de Retorno Total e Lucro Realizado para garantir 100% de consistência após vendas parciais."
-    },
-    {
-      "type": "fix",
-      "title": "Deduplicação IA",
-      "desc": "Filtro inteligente para evitar proventos duplicados no histórico caso a IA repita dados."
+      "type": "improvement",
+      "title": "Estabilidade",
+      "desc": "Melhoria na sincronização de estado global para cálculos de patrimônio em tempo real."
     }
   ]
 }
