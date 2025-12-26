@@ -1,7 +1,6 @@
-
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, ChevronRight, RefreshCw, CircleDollarSign, PieChart as PieIcon, Scale, ExternalLink, Sparkles, Layers, TrendingDown, LayoutGrid, PieChart as PieIcon2, ShoppingBag, BarChart3, Info, Target, ArrowUpCircle, ShieldCheck, Calendar, Zap, ArrowRight, Star } from 'lucide-react';
+import { Wallet, TrendingUp, ChevronRight, RefreshCw, CircleDollarSign, PieChart as PieIcon, Scale, ExternalLink, Sparkles, Layers, TrendingDown, LayoutGrid, PieChart as PieIcon2, ShoppingBag, BarChart3, Info, Target, ArrowUpCircle, ShieldCheck, Calendar, Zap, Star, Trophy } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
@@ -12,7 +11,6 @@ interface HomeProps {
   onAiSync?: () => void;
   isAiLoading?: boolean;
   sources?: { web: { uri: string; title: string } }[];
-  portfolioStartDate?: string;
 }
 
 export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realizedGain = 0, onAiSync, isAiLoading, sources = [] }) => {
@@ -23,17 +21,31 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   const [proventosTab, setProventosTab] = useState<'history' | 'magic' | 'upcoming'>('history');
   const [allocationTab, setAllocationTab] = useState<'assets' | 'classes' | 'rebalance'>('assets');
 
+  // Filtro de segurança para IDs únicos
   const cleanDividendReceipts = useMemo(() => {
     const map = new Map<string, DividendReceipt>();
-    dividendReceipts.forEach(div => map.set(div.id, div));
+    dividendReceipts.forEach(div => {
+      if (div && div.id) map.set(div.id, div);
+    });
     return Array.from(map.values());
   }, [dividendReceipts]);
 
+  // Cálculos de Patrimônio
   const totalInvested = useMemo(() => portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0), [portfolio]);
   const currentBalance = useMemo(() => portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0), [portfolio]);
-  const totalDividends = useMemo(() => cleanDividendReceipts.filter(d => new Date(d.paymentDate) <= new Date()).reduce((acc, curr) => acc + curr.totalReceived, 0), [cleanDividendReceipts]);
-  const upcomingDividends = useMemo(() => cleanDividendReceipts.filter(d => new Date(d.paymentDate) > new Date()).reduce((acc, curr) => acc + curr.totalReceived, 0), [cleanDividendReceipts]);
   
+  const totalDividends = useMemo(() => 
+    cleanDividendReceipts
+      .filter(d => d.paymentDate && new Date(d.paymentDate + 'T12:00:00') <= new Date())
+      .reduce((acc, curr) => acc + (curr.totalReceived || 0), 0)
+  , [cleanDividendReceipts]);
+
+  const upcomingDividends = useMemo(() => 
+    cleanDividendReceipts
+      .filter(d => d.paymentDate && new Date(d.paymentDate + 'T12:00:00') > new Date())
+      .reduce((acc, curr) => acc + (curr.totalReceived || 0), 0)
+  , [cleanDividendReceipts]);
+
   const unrealizedGain = currentBalance - totalInvested;
   const totalReturnVal = unrealizedGain + realizedGain + totalDividends;
   const totalReturnPercent = totalInvested > 0 ? (totalReturnVal / totalInvested) * 100 : 0;
@@ -41,10 +53,11 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   const estimatedInflation = 4.5; 
   const realGainPercent = totalInvested > 0 ? (((1 + totalReturnPercent/100) / (1 + estimatedInflation/100) - 1) * 100) : 0;
 
-  const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatCurrency = (val: number) => (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const COLORS = ['#38bdf8', '#818cf8', '#a855f7', '#f472b6', '#fb7185', '#34d399', '#facc15'];
 
+  // Dados de Alocação
   const assetAllocationData = useMemo(() => {
     if (currentBalance === 0) return [];
     return portfolio
@@ -58,7 +71,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
       .sort((a, b) => b.value - a.value);
   }, [portfolio, currentBalance]);
 
-  // Derived data for UI rendering
   const top3Assets = useMemo(() => assetAllocationData.slice(0, 3), [assetAllocationData]);
   const othersCount = useMemo(() => Math.max(0, assetAllocationData.length - 3), [assetAllocationData]);
 
@@ -71,16 +83,13 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
     return Object.entries(agg).map(([name, value]) => ({ name, value }));
   }, [assetAllocationData]);
 
-  // Logic to calculate rebalancing needs based on equal weights for all assets
   const rebalanceData = useMemo(() => {
     if (assetAllocationData.length === 0) return [];
     const n = assetAllocationData.length;
-    const idealPercent = 100 / n;
     const idealValuePerAsset = currentBalance / n;
-
     return assetAllocationData.map(asset => ({
       ...asset,
-      idealPercent,
+      idealPercent: 100 / n,
       valueNeeded: Math.max(0, idealValuePerAsset - asset.value)
     }));
   }, [assetAllocationData, currentBalance]);
@@ -88,22 +97,24 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   // Novidade: Magic Number Logic
   const magicNumberData = useMemo(() => {
     return portfolio.map(p => {
-      const lastDiv = cleanDividendReceipts.find(d => d.ticker === p.ticker);
+      const tickerDivs = cleanDividendReceipts.filter(d => d.ticker === p.ticker);
+      const lastDiv = tickerDivs.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))[0];
       const rate = lastDiv?.rate || 0;
       const price = p.currentPrice || p.averagePrice;
       const sharesNeeded = rate > 0 ? Math.ceil(price / rate) : 0;
-      const progress = p.quantity >= sharesNeeded ? 100 : (p.quantity / sharesNeeded) * 100;
+      const progress = sharesNeeded > 0 ? (p.quantity / sharesNeeded) * 100 : 0;
       return { ...p, sharesNeeded, progress, rate };
     }).filter(p => p.rate > 0).sort((a, b) => b.progress - a.progress);
   }, [portfolio, cleanDividendReceipts]);
 
+  // Gráfico de Proventos Mensais
   const dividendsChartData = useMemo(() => {
     const agg: Record<string, number> = {};
     cleanDividendReceipts
-      .filter(d => new Date(d.paymentDate) <= new Date())
+      .filter(d => d.paymentDate && new Date(d.paymentDate + 'T12:00:00') <= new Date())
       .forEach(d => {
         const key = d.paymentDate.substring(0, 7); 
-        agg[key] = (agg[key] || 0) + d.totalReceived;
+        agg[key] = (agg[key] || 0) + (d.totalReceived || 0);
     });
 
     return Object.entries(agg)
@@ -121,7 +132,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
   const proventosGrouped = useMemo(() => {
     const sorted = [...cleanDividendReceipts]
-      .filter(d => new Date(d.paymentDate) <= new Date())
+      .filter(d => d.paymentDate && new Date(d.paymentDate + 'T12:00:00') <= new Date())
       .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
     const groups: Record<string, DividendReceipt[]> = {};
     sorted.forEach(d => {
@@ -135,7 +146,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
   const upcomingProventos = useMemo(() => {
     return cleanDividendReceipts
-      .filter(d => new Date(d.paymentDate) > new Date())
+      .filter(d => d.paymentDate && new Date(d.paymentDate + 'T12:00:00') > new Date())
       .sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
   }, [cleanDividendReceipts]);
 
@@ -172,7 +183,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${totalReturnVal >= 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
                     <Sparkles className="w-3.5 h-3.5" />
                     <span className="text-xs font-black">
-                        Lucro Total: R$ {formatCurrency(totalReturnVal)}
+                        Retorno: R$ {formatCurrency(totalReturnVal)}
                     </span>
                  </div>
                  <div className={`text-xs font-black ${totalReturnVal >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -184,7 +195,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
             <div className="grid grid-cols-2 gap-3 relative z-10">
                 <div className="bg-white/[0.02] p-4 rounded-2xl border border-white/[0.05] flex justify-between items-center">
                     <div>
-                        <div className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">Custo</div>
+                        <div className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">Custo Médio</div>
                         <div className="text-sm font-bold text-slate-300">R$ {formatCurrency(totalInvested)}</div>
                     </div>
                     <Layers className="w-4 h-4 text-slate-700" />
@@ -200,9 +211,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </div>
 
-      {/* CARD DIVIDENDOS */}
+      {/* CARD PROVENTOS - ACIONADOR DO MODAL */}
       <div 
-        onClick={() => setShowProventosModal(true)}
+        onClick={() => { console.log('Opening Proventos Modal'); setShowProventosModal(true); }}
         className="animate-fade-in-up tap-highlight cursor-pointer"
         style={{ animationDelay: '100ms' }}
       >
@@ -213,7 +224,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                     <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 ring-1 ring-emerald-500/20">
                         <CircleDollarSign className="w-5 h-5" />
                     </div>
-                    <h3 className="text-white font-black text-sm uppercase tracking-tight">Proventos</h3>
+                    <h3 className="text-white font-black text-sm uppercase tracking-tight">Dividendos</h3>
                 </div>
                 <div className="flex items-center gap-2">
                    {upcomingDividends > 0 && (
@@ -229,7 +240,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                      <div className="text-3xl font-black text-white tabular-nums tracking-tighter mb-1">
                         R$ {formatCurrency(totalDividends)}
                      </div>
-                     <div className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">Recebido em conta</div>
+                     <div className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">Total Recebido</div>
                 </div>
                 <div className="flex h-10 items-end gap-1">
                     {dividendsChartData.slice(-5).map((d, i) => (
@@ -244,7 +255,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
       {/* CARD ALOCAÇÃO */}
       <div 
-        onClick={(e) => { e.stopPropagation(); setShowAllocationModal(true); }}
+        onClick={() => setShowAllocationModal(true)}
         className="animate-fade-in-up cursor-pointer group"
         style={{ animationDelay: '200ms' }}
       >
@@ -254,7 +265,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                     <div className="w-11 h-11 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 border border-white/5 shadow-inner">
                         <PieIcon className="w-5 h-5" />
                     </div>
-                    <h3 className="text-white font-black text-sm uppercase tracking-widest">Alocação</h3>
+                    <h3 className="text-white font-black text-sm uppercase tracking-widest">Estratégia</h3>
                 </div>
                 <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-slate-500 group-hover:text-white transition-colors">
                     <ChevronRight className="w-5 h-5" />
@@ -288,7 +299,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
       {/* CARD GANHO REAL */}
       <div 
-        onClick={(e) => { e.stopPropagation(); setShowInflationModal(true); }}
+        onClick={() => setShowInflationModal(true)}
         className="animate-fade-in-up cursor-pointer group"
         style={{ animationDelay: '300ms' }}
       >
@@ -300,7 +311,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                     </div>
                     <div>
                         <h3 className="text-white font-black text-sm uppercase tracking-widest">Ganho Real</h3>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Rentabilidade vs. Período</p>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Patrimônio vs Inflação</p>
                     </div>
                 </div>
                 <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-slate-500 group-hover:text-white transition-colors">
@@ -314,32 +325,26 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
             </div>
             <div className="space-y-4">
                 <div className="flex justify-between items-center text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                    <span>Inflação (Proporcional)</span>
-                    <span>Seu Yield</span>
+                    <span>Inflação IPC-A Est.</span>
+                    <span>Seu Yield Real</span>
                 </div>
                 <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden flex ring-1 ring-white/5">
                     <div className="h-full bg-rose-500/60" style={{ width: `${Math.min(100, (estimatedInflation / 10) * 100)}%` }}></div>
                     <div className="h-full bg-emerald-500 shadow-[0_0_10px_#10b981]" style={{ width: `${Math.max(0, Math.min(100, (totalReturnPercent / 10) * 100))}%` }}></div>
                 </div>
             </div>
-            <div className="mt-8 flex justify-center">
-                <div className={`inline-flex items-center gap-3 px-6 py-2.5 rounded-2xl border ${realGainPercent >= 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
-                    {realGainPercent >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em]">{realGainPercent >= 0 ? 'Acima da Inflação' : 'Abaixo da Inflação'}</span>
-                </div>
-            </div>
         </div>
       </div>
 
-      {/* MODAL PROVENTOS (NOVIDADES) */}
+      {/* MODAL PROVENTOS (REFORMULADO) */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
         <div className="px-6 pt-2 pb-10 flex flex-col min-h-full">
            <div className="mb-8">
-                <h3 className="text-2xl font-black text-white tracking-tighter">Central de Proventos</h3>
-                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em] mt-1">Sua Renda Passiva</p>
+                <h3 className="text-2xl font-black text-white tracking-tighter">Minha Renda</h3>
+                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em] mt-1">Gestão de Proventos</p>
            </div>
 
-           {/* Tabs de Proventos */}
+           {/* Abas do Modal */}
            <div className="flex bg-slate-950/40 p-1.5 rounded-[1.5rem] mb-8 border border-white/5">
                <button onClick={() => setProventosTab('history')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'history' ? 'bg-emerald-500 text-primary shadow-lg' : 'text-slate-500'}`}>
                   <BarChart3 className="w-3.5 h-3.5" /> Histórico
@@ -354,7 +359,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
            {proventosTab === 'history' && (
              <div className="space-y-8 animate-fade-in">
-                <div className="h-48 w-full">
+                <div className="h-48 w-full bg-slate-900/50 rounded-3xl p-4 border border-white/5">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={dividendsChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff05" />
@@ -367,73 +372,76 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                 </div>
 
                 <div className="space-y-6">
-                    {(Object.entries(proventosGrouped) as [string, DividendReceipt[]][]).map(([month, receipts]) => (
-                        <div key={month} className="space-y-3">
-                            <div className="flex items-center gap-3 py-2 border-b border-white/5">
-                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{month}</h4>
-                                <span className="text-[10px] font-black text-emerald-400 ml-auto">R$ {formatCurrency(receipts.reduce((a, b) => a + b.totalReceived, 0))}</span>
-                            </div>
-                            {receipts.map(r => (
-                                <div key={r.id} className="bg-white/[0.02] p-4 rounded-3xl flex items-center justify-between border border-white/[0.03]">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-[10px] font-black text-white border border-white/5">{r.ticker.substring(0,4)}</div>
-                                        <div>
-                                            <div className="text-sm font-black text-white">{r.ticker}</div>
-                                            <div className="text-[9px] font-bold text-slate-500 uppercase">{r.paymentDate.split('-').reverse().join('/')}</div>
+                    {Object.keys(proventosGrouped).length === 0 ? (
+                        <div className="py-20 text-center opacity-30">Nenhum provento recebido ainda.</div>
+                    ) : (
+                        (Object.entries(proventosGrouped) as [string, DividendReceipt[]][]).map(([month, receipts]) => (
+                            <div key={month} className="space-y-3">
+                                <div className="flex items-center gap-3 py-2 border-b border-white/5">
+                                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{month}</h4>
+                                    <span className="text-[10px] font-black text-emerald-400 ml-auto">R$ {formatCurrency(receipts.reduce((a, b) => a + (b.totalReceived || 0), 0))}</span>
+                                </div>
+                                {receipts.map(r => (
+                                    <div key={r.id} className="bg-white/[0.02] p-4 rounded-3xl flex items-center justify-between border border-white/[0.03]">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-[10px] font-black text-white border border-white/5">{r.ticker.substring(0,4)}</div>
+                                            <div>
+                                                <div className="text-sm font-black text-white">{r.ticker}</div>
+                                                <div className="text-[9px] font-bold text-slate-500 uppercase">{r.paymentDate?.split('-').reverse().join('/')}</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-sm font-black text-emerald-400">R$ {formatCurrency(r.totalReceived)}</div>
+                                            <div className="text-[8px] text-slate-600 font-bold uppercase">{r.type}</div>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="text-sm font-black text-emerald-400">R$ {formatCurrency(r.totalReceived)}</div>
-                                        <div className="text-[8px] text-slate-600 font-bold uppercase">{r.type}</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ))}
+                                ))}
+                            </div>
+                        ))
+                    )}
                 </div>
              </div>
            )}
 
            {proventosTab === 'magic' && (
              <div className="space-y-4 animate-fade-in">
-                <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-3xl mb-6">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-3xl mb-4">
                     <div className="flex items-center gap-3 mb-2">
-                        <Star className="w-4 h-4 text-emerald-400" />
-                        <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">O que é o Número Mágico?</h4>
+                        <Trophy className="w-4 h-4 text-emerald-400" />
+                        <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Aposentadoria de Ativos</h4>
                     </div>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                        É a quantidade de cotas necessária para que os dividendos mensais comprem uma nova cota do próprio ativo sem tirar dinheiro do bolso.
+                        Veja quanto falta para que os dividendos de um ativo comprem uma nova cota dele mesmo todos os meses.
                     </p>
                 </div>
 
-                {magicNumberData.map((item, i) => (
-                  <div key={item.ticker} className="bg-white/[0.02] p-5 rounded-3xl border border-white/5 space-y-4 animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <span className="text-sm font-black text-white">{item.ticker}</span>
-                            <p className="text-[9px] text-slate-500 font-bold uppercase">Meta: {item.sharesNeeded} un</p>
+                {magicNumberData.length === 0 ? (
+                    <div className="py-20 text-center opacity-30">Aguardando dados de proventos para calcular...</div>
+                ) : (
+                    magicNumberData.map((item, i) => (
+                        <div key={item.ticker} className="bg-white/[0.02] p-5 rounded-3xl border border-white/5 space-y-4 animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <span className="text-sm font-black text-white">{item.ticker}</span>
+                                    <p className="text-[9px] text-slate-500 font-bold uppercase">Meta: {item.sharesNeeded} un</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-xs font-black text-white">{item.quantity} / {item.sharesNeeded}</span>
+                                    <p className="text-[9px] text-emerald-500 font-bold uppercase">{Math.min(100, item.progress).toFixed(1)}%</p>
+                                </div>
+                            </div>
+                            <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden flex ring-1 ring-white/5">
+                                <div className={`h-full ${item.progress >= 100 ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-emerald-500/40'}`} style={{ width: `${Math.min(100, item.progress)}%` }}></div>
+                            </div>
+                            {item.progress >= 100 && (
+                                <div className="flex items-center gap-2 text-emerald-400">
+                                    <ShieldCheck className="w-3 h-3" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Auto-sustentável</span>
+                                </div>
+                            )}
                         </div>
-                        <div className="text-right">
-                            <span className="text-xs font-black text-white">{item.quantity} / {item.sharesNeeded}</span>
-                            <p className="text-[9px] text-emerald-500 font-bold uppercase">{item.progress.toFixed(1)}% Completo</p>
-                        </div>
-                    </div>
-                    <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden flex ring-1 ring-white/5">
-                        <div className={`h-full ${item.progress >= 100 ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-emerald-500/40'}`} style={{ width: `${Math.min(100, item.progress)}%` }}></div>
-                    </div>
-                    {item.progress >= 100 ? (
-                      <div className="flex items-center gap-2 text-emerald-400">
-                         <ShieldCheck className="w-3 h-3" />
-                         <span className="text-[10px] font-black uppercase">Ativo se paga sozinho!</span>
-                      </div>
-                    ) : (
-                      <div className="flex justify-between items-center text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                        <span>Faltam {item.sharesNeeded - item.quantity} cotas</span>
-                        <span>Rend: R$ {item.rate.toFixed(2)} / un</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    ))
+                )}
              </div>
            )}
 
@@ -447,7 +455,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                 ) : (
                   <div className="py-20 text-center opacity-40">
                     <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nenhum provento futuro anunciado</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nada na agenda para os próximos dias</p>
                   </div>
                 )}
 
@@ -459,12 +467,12 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                         </div>
                         <div>
                             <h4 className="font-black text-white text-base">{r.ticker}</h4>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Paga em: {r.paymentDate.split('-').reverse().join('/')}</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Previsto: {r.paymentDate?.split('-').reverse().join('/')}</p>
                         </div>
                     </div>
                     <div className="text-right">
                         <div className="text-sm font-black text-emerald-400">R$ {formatCurrency(r.totalReceived)}</div>
-                        <div className="text-[9px] font-bold text-slate-600 uppercase">Com em: {r.dateCom.split('-').reverse().join('/')}</div>
+                        <div className="text-[9px] font-bold text-slate-600 uppercase">Data Com: {r.dateCom?.split('-').reverse().join('/')}</div>
                     </div>
                   </div>
                 ))}
@@ -477,19 +485,19 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="px-6 pt-2 pb-10">
             <div className="mb-8">
-                <h3 className="text-2xl font-black text-white tracking-tighter">Minha Estratégia</h3>
-                <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">Rebalanceamento Inteligente</p>
+                <h3 className="text-2xl font-black text-white tracking-tighter">Estratégia</h3>
+                <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">Rebalanceamento de Carteira</p>
             </div>
 
             <div className="flex bg-slate-950/40 p-1.5 rounded-[1.5rem] mb-8 border border-white/5">
                <button onClick={() => setAllocationTab('assets')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationTab === 'assets' ? 'bg-indigo-500 text-primary shadow-lg' : 'text-slate-500'}`}>
-                 <LayoutGrid className="w-3.5 h-3.5" /> Ativos
+                 Ativos
                </button>
                <button onClick={() => setAllocationTab('classes')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationTab === 'classes' ? 'bg-indigo-500 text-primary shadow-lg' : 'text-slate-500'}`}>
-                 <PieIcon2 className="w-3.5 h-3.5" /> Classes
+                 Classes
                </button>
                <button onClick={() => setAllocationTab('rebalance')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationTab === 'rebalance' ? 'bg-indigo-500 text-primary shadow-lg' : 'text-slate-500'}`}>
-                 <Target className="w-3.5 h-3.5" /> Ajustes
+                 Aportes
                </button>
             </div>
 
@@ -511,52 +519,42 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
                     <div className="space-y-3">
                         {(allocationTab === 'assets' ? assetAllocationData : classAllocation).map((e, i) => (
-                            <div key={e.name} className="bg-white/[0.02] p-4 rounded-3xl flex justify-between items-center border border-white/[0.03] animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+                            <div key={e.name} className="bg-white/[0.02] p-4 rounded-3xl flex justify-between items-center border border-white/[0.03]">
                                 <div className="flex items-center gap-3">
                                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-white uppercase">{e.name}</span>
-                                        {allocationTab === 'assets' && <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest">{(e as any).segment}</span>}
-                                    </div>
+                                    <span className="text-xs font-bold text-white uppercase">{e.name}</span>
                                 </div>
                                 <div className="text-right">
-                                <div className="text-sm font-black text-white tabular-nums">R$ {formatCurrency(e.value)}</div>
-                                <div className="text-[10px] font-black text-slate-500">{((e.value / currentBalance) * 100).toFixed(1)}%</div>
+                                    <div className="text-sm font-black text-white">R$ {formatCurrency(e.value)}</div>
+                                    <div className="text-[10px] font-black text-slate-500">{((e.value / currentBalance) * 100).toFixed(1)}%</div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </>
             ) : (
-                <div className="space-y-4 animate-fade-in">
-                    <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-3xl mb-6">
-                        <div className="flex items-center gap-3 mb-2">
-                            <Info className="w-4 h-4 text-indigo-400" />
-                            <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Meta de Rebalanceamento</h4>
-                        </div>
+                <div className="space-y-4">
+                    <div className="bg-indigo-500/10 p-5 rounded-3xl mb-6">
                         <p className="text-xs text-slate-400 leading-relaxed">
-                            Simulação baseada em pesos iguais para todos os ativos. Mostra o quanto você precisa aportar em cada um para equilibrar a carteira.
+                            Simulação de pesos iguais. Foque seus novos aportes nos ativos que estão abaixo da meta ideal.
                         </p>
                     </div>
-                    {rebalanceData.map((e, i) => (
+                    {rebalanceData.map((e) => (
                         <div key={e.name} className="bg-white/[0.02] p-5 rounded-3xl border border-white/5 flex flex-col gap-3">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-black text-white">{e.name}</span>
                                 <div className={`text-[10px] font-black uppercase px-2 py-1 rounded-md ${e.valueNeeded > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-500'}`}>
-                                    {e.valueNeeded > 0 ? 'Comprar' : 'Aguardar'}
+                                    {e.valueNeeded > 0 ? 'Aportar' : 'No Peso'}
                                 </div>
                             </div>
-                            <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden flex ring-1 ring-white/5">
-                                <div className="h-full bg-indigo-500/40" style={{ width: `${e.percent}%` }}></div>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Atual: {e.percent.toFixed(1)}%</span>
-                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Meta: {e.idealPercent.toFixed(1)}%</span>
+                            <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase">
+                                <span>Atual: {e.percent.toFixed(1)}%</span>
+                                <span>Meta: {e.idealPercent.toFixed(1)}%</span>
                             </div>
                             {e.valueNeeded > 0 && (
-                                <div className="mt-2 pt-2 border-t border-white/5 flex items-center gap-2">
+                                <div className="mt-1 flex items-center gap-2">
                                     <ArrowUpCircle className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span className="text-xs font-black text-white">Aporte sugerido: R$ {formatCurrency(e.valueNeeded)}</span>
+                                    <span className="text-xs font-black text-white">Faltam: R$ {formatCurrency(e.valueNeeded)}</span>
                                 </div>
                             )}
                         </div>
@@ -571,7 +569,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         <div className="px-6 pt-2 pb-10">
             <div className="mb-8">
                 <h3 className="text-2xl font-black text-white tracking-tighter">Poder de Compra</h3>
-                <p className="text-[10px] text-yellow-500 font-black uppercase tracking-[0.2em] mt-1">Rentabilidade Real vs Nominal</p>
+                <p className="text-[10px] text-yellow-500 font-black uppercase tracking-[0.2em] mt-1">Análise de Rentabilidade Real</p>
             </div>
 
             <div className="relative overflow-hidden bg-gradient-to-br from-yellow-500/10 to-slate-900 border border-white/5 p-8 rounded-[2.5rem] mb-8 text-center">
@@ -579,49 +577,10 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                 <div className={`text-6xl font-black tracking-tighter mb-4 ${realGainPercent >= 0 ? 'text-white' : 'text-rose-500'}`}>
                     {realGainPercent >= 0 ? '+' : ''}{realGainPercent.toFixed(2)}%
                 </div>
-                <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-yellow-500/10 rounded-full border border-yellow-500/20 inline-flex mb-4">
+                <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-yellow-500/10 rounded-full border border-yellow-500/20 inline-flex">
                   <Star className="w-3.5 h-3.5 text-yellow-500" />
                   <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">Patrimônio Protegido</span>
                 </div>
-            </div>
-
-            <div className="h-40 w-full mb-8">
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={[
-                        { name: 'Jan', real: 0, nominal: 0 },
-                        { name: 'Mar', real: 1000, nominal: 1200 },
-                        { name: 'Jun', real: 2500, nominal: 3200 },
-                        { name: 'Ago', real: 4000, nominal: 5800 },
-                        { name: 'Dez', real: currentBalance * 0.7, nominal: currentBalance }
-                    ]}>
-                        <defs>
-                            <linearGradient id="colorNominal" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
-                            </linearGradient>
-                        </defs>
-                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px' }} />
-                        <Area type="monotone" dataKey="nominal" stroke="#38bdf8" fillOpacity={1} fill="url(#colorNominal)" />
-                        <Area type="monotone" dataKey="real" stroke="#fbbf24" strokeDasharray="5 5" fill="none" />
-                    </AreaChart>
-                </ResponsiveContainer>
-                <div className="flex justify-center gap-4 mt-2">
-                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-sky-400"></div><span className="text-[9px] font-black text-slate-500 uppercase">Nominal</span></div>
-                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-yellow-500"></div><span className="text-[9px] font-black text-slate-500 uppercase">Real</span></div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-8">
-               <div className="bg-white/[0.02] p-5 rounded-[2rem] border border-white/5">
-                  <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Com Proventos</div>
-                  <div className="text-xl font-black text-emerald-400">R$ {formatCurrency(totalDividends)}</div>
-               </div>
-               <div className="bg-white/[0.02] p-5 rounded-[2rem] border border-white/5">
-                  <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Poder de Compra</div>
-                  <div className={`text-xl font-black ${realGainPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {realGainPercent.toFixed(1)}%
-                  </div>
-               </div>
             </div>
 
             <div className="bg-slate-950/40 p-6 rounded-[2.2rem] border border-white/5 space-y-4">
@@ -630,9 +589,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                       <ShoppingBag className="w-5 h-5" />
                    </div>
                    <div>
-                      <h4 className="text-xs font-black text-white uppercase tracking-widest mb-1">Cesta de Compras</h4>
+                      <h4 className="text-xs font-black text-white uppercase tracking-widest mb-1">Cesta de Consumo</h4>
                       <p className="text-xs text-slate-500 leading-relaxed">
-                        Ao vencer a inflação de {estimatedInflation}%, você não apenas mantém o valor, mas expande sua capacidade de compra real.
+                        Ao vencer a inflação est. de {estimatedInflation}%, seus dividendos não apenas mantém o valor, mas expandem sua capacidade real de consumo todos os meses.
                       </p>
                    </div>
                 </div>

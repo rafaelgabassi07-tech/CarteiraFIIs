@@ -73,80 +73,52 @@ const App: React.FC = () => {
     return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
   }, []);
 
-  useEffect(() => {
-    let refreshing = false;
-    const handleControllerChange = () => {
-      if (!refreshing) {
-        refreshing = true;
-        window.location.reload();
-      }
-    };
-    if (navigator.serviceWorker) {
-      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-    }
-    return () => {
-      if (navigator.serviceWorker) {
-        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleUpdateEvent = (e: any) => setUpdateRegistration(e.detail);
-    window.addEventListener('sw-update-available', handleUpdateEvent);
-    
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistration().then((reg) => {
-            if (reg && reg.waiting) setUpdateRegistration(reg);
-        }).catch(() => {});
-    }
-    return () => window.removeEventListener('sw-update-available', handleUpdateEvent);
-  }, []);
-
-  const handleApplyUpdate = () => {
-    if (updateRegistration?.waiting) {
-      updateRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    }
-  };
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions));
-    if (brapiToken !== process.env.BRAPI_TOKEN) {
-      localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken);
-    }
-    localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends));
-  }, [transactions, brapiToken, geminiDividends]);
-
   const showToast = useCallback((type: 'success' | 'error' | 'warning', text: string) => {
     setToast({ type, text });
     setTimeout(() => setToast(null), 4000);
   }, []);
 
+  // Lógica Crítica: Quantidade de ativos no fechamento da Data Com
   const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
     const eligibleTxs = txs.filter(t => t.ticker === ticker && t.date <= dateCom);
     return eligibleTxs.reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
   }, []);
 
+  // Lógica Assertiva de Carteira e Proventos
   const { portfolio, dividendReceipts, realizedGain } = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+    
+    // Processamento de Proventos com Validação de Custódia
     const receipts: DividendReceipt[] = geminiDividends.map(div => {
       const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, sortedTxs);
       const eligibleQty = Math.max(0, qtyAtDate);
       const total = eligibleQty * div.rate;
+      
+      // Encontrar o tipo do ativo no momento da transação
+      const assetInfo = sortedTxs.find(t => t.ticker === div.ticker);
+      
       return { 
           ...div, 
           quantityOwned: eligibleQty, 
           totalReceived: total,
-          assetType: sortedTxs.find(t => t.ticker === div.ticker)?.assetType 
+          assetType: assetInfo?.assetType || AssetType.FII 
       };
     }).filter(r => r.totalReceived > 0);
 
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
-    const dividendsByTicker: Record<string, number> = {};
-    receipts.forEach(r => dividendsByTicker[r.ticker] = (dividendsByTicker[r.ticker] || 0) + r.totalReceived);
 
+    // Agregador de Proventos por Ticker
+    const dividendsByTicker: Record<string, number> = {};
+    receipts.forEach(r => {
+      if (new Date(r.paymentDate + 'T12:00:00') <= new Date()) {
+        dividendsByTicker[r.ticker] = (dividendsByTicker[r.ticker] || 0) + r.totalReceived;
+      }
+    });
+
+    // Posições Atuais e Preço Médio
     const positions: Record<string, AssetPosition> = {};
     let totalRealizedGain = 0;
+    
     sortedTxs.forEach(t => {
       const ticker = t.ticker.toUpperCase();
       if (!positions[ticker]) {
@@ -182,22 +154,18 @@ const App: React.FC = () => {
           logoUrl: quote?.logourl
         };
       });
+
     return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: totalRealizedGain };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
+  // Gestão de Eventos da Agenda
   useEffect(() => {
-    if (geminiDividends.length === 0) {
-      setUpcomingEvents([]);
-      setPastEvents([]);
-      return;
-    }
+    if (geminiDividends.length === 0) return;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const portfolioTickers = new Set(portfolio.map(p => p.ticker));
-    const prefs = JSON.parse(localStorage.getItem(STORAGE_KEYS.NOTIFY_PREFS) || '{"payments": true, "datacom": true}');
-
     const upcoming: MarketEvent[] = [];
     const history: MarketEvent[] = [];
     const processedKeys = new Set<string>();
@@ -207,14 +175,11 @@ const App: React.FC = () => {
 
         const processEvent = (dateStr: string, type: 'PAYMENT' | 'DATA_COM', desc: string, amount?: number) => {
             if (!dateStr) return;
-            if (type === 'PAYMENT' && !prefs.payments) return;
-            if (type === 'DATA_COM' && !prefs.datacom) return;
-
             const eventDate = new Date(dateStr + 'T12:00:00');
             const diffTime = eventDate.getTime() - today.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
-            const key = `${type}-${div.ticker}-${dateStr}-${amount || '0'}`; 
+            const key = `${type}-${div.ticker}-${dateStr}`; 
             if (processedKeys.has(key)) return;
 
             const currentPos = portfolio.find(p => p.ticker === div.ticker);
@@ -226,7 +191,7 @@ const App: React.FC = () => {
                 daysRemaining: diffDays, amount: estimatedAmount, description: desc, isPast: diffDays < 0
             };
 
-            if (diffDays >= 0 && diffDays <= 30) { 
+            if (diffDays >= 0 && diffDays <= 60) { 
                 upcoming.push(eventObj);
                 processedKeys.add(key);
             } else if (diffDays < 0 && diffDays >= -60) { 
@@ -235,8 +200,8 @@ const App: React.FC = () => {
             }
         };
 
-        processEvent(div.paymentDate, 'PAYMENT', `Recebimento de ${div.type === 'DIVIDENDO' ? 'Dividendo' : 'JCP'}`, div.rate);
-        processEvent(div.dateCom, 'DATA_COM', `Data Com (Corte de Dividendos)`);
+        processEvent(div.paymentDate, 'PAYMENT', `Renda de ${div.type}`, div.rate);
+        processEvent(div.dateCom, 'DATA_COM', `Data Com B3`);
     });
 
     upcoming.sort((a, b) => a.daysRemaining - b.daysRemaining);
@@ -248,50 +213,42 @@ const App: React.FC = () => {
 
   const syncBrapiData = useCallback(async (force = false) => {
     if (!brapiToken || transactions.length === 0) return;
-    const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase())));
+    // Fix: Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' inference error.
+    const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
     setIsPriceLoading(true);
     try {
         const result = await getQuotes(uniqueTickers, brapiToken, force);
         if (result.error) showToast('error', result.error);
         const map: Record<string, BrapiQuote> = {};
         result.quotes.forEach(q => map[q.symbol] = q);
-        if (Object.keys(map).length > 0) setQuotes(prev => ({ ...prev, ...map }));
-    } catch (error) {
-        console.error("Erro Brapi", error);
+        setQuotes(prev => ({ ...prev, ...map }));
+    } catch (e) {
+        console.error("Brapi Fail", e);
     } finally {
         setIsPriceLoading(false);
     }
   }, [brapiToken, transactions, showToast]);
 
-  useEffect(() => { syncBrapiData(false); }, [syncBrapiData]);
-
   const handleAiSync = useCallback(async (force = false) => {
-    const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase()))).sort();
+    // Fix: Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' inference error.
+    const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
     
     const tickersStr = uniqueTickers.join(',');
     const lastSyncTime = localStorage.getItem(STORAGE_KEYS.SYNC);
     const lastSyncedTickers = localStorage.getItem(STORAGE_KEYS.SYNC_TICKERS);
     
-    const isRecent = lastSyncTime && (Date.now() - parseInt(lastSyncTime, 10)) < AI_CACHE_DURATION;
-    const isSameTickers = lastSyncedTickers === tickersStr;
-
-    if (!force && isRecent && isSameTickers) return;
+    if (!force && lastSyncTime && (Date.now() - parseInt(lastSyncTime, 10)) < AI_CACHE_DURATION && lastSyncedTickers === tickersStr) return;
 
     setIsAiLoading(true);
     try {
       const data = await fetchUnifiedMarketData(uniqueTickers);
-      setGeminiDividends(prev => {
-        const uniqueMap = new Map();
-        prev.forEach(d => uniqueMap.set(d.id, d));
-        data.dividends.forEach(d => uniqueMap.set(d.id, d));
-        return Array.from(uniqueMap.values());
-      });
+      setGeminiDividends(data.dividends);
       if (data.sources) setSources(data.sources);
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       localStorage.setItem(STORAGE_KEYS.SYNC_TICKERS, tickersStr);
     } catch (e) {
-      if (force) showToast('error', 'IA Offline');
+      if (force) showToast('error', 'Falha ao conectar com Gemini');
     } finally {
       setIsAiLoading(false);
     }
@@ -302,33 +259,17 @@ const App: React.FC = () => {
     setIsRefreshing(true);
     try {
       await Promise.all([syncBrapiData(true), handleAiSync(true)]);
-      showToast('success', 'Tudo atualizado!');
-    } catch (error) {
-      showToast('error', 'Falha na conexão');
+      showToast('success', 'Carteira Atualizada');
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  const next7DaysSum = upcomingEvents.filter(e => e.type === 'PAYMENT' && e.daysRemaining <= 7).reduce((acc, e) => acc + (e.amount || 0), 0);
-  const next30DaysSum = upcomingEvents.filter(e => e.type === 'PAYMENT' && e.daysRemaining <= 30).reduce((acc, e) => acc + (e.amount || 0), 0);
-
-  const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  useEffect(() => { syncBrapiData(); handleAiSync(); }, [syncBrapiData, handleAiSync]);
 
   return (
     <div className="min-h-screen bg-primary text-slate-100 pb-10">
       <div className="fixed inset-x-0 top-0 pt-safe mt-2 z-[200] flex flex-col items-center gap-4 px-4 pointer-events-none">
-        {updateRegistration && (
-          <div className="w-full max-w-sm pointer-events-auto animate-slide-up">
-            <div className="bg-slate-900 border border-accent/40 p-4 rounded-3xl flex items-center justify-between gap-4 shadow-2xl">
-                <div className="flex items-center gap-3">
-                  <RefreshCw className="w-5 h-5 text-accent animate-spin" />
-                  <p className="text-xs font-bold text-white">Nova versão pronta!</p>
-                </div>
-                <button onClick={handleApplyUpdate} className="bg-accent text-primary px-4 py-2 rounded-xl text-[10px] font-black uppercase">Atualizar</button>
-            </div>
-          </div>
-        )}
         {toast && (
           <div className="w-full max-w-sm pointer-events-auto animate-fade-in-up">
             <div className={`p-4 rounded-[2rem] flex items-center gap-4 shadow-2xl backdrop-blur-md border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90' : 'bg-rose-500/90'}`}>
@@ -340,7 +281,7 @@ const App: React.FC = () => {
       </div>
 
       <Header 
-        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : 'Ordens'} 
+        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Resumo' : currentTab === 'portfolio' ? 'Custódia' : 'Movimentações'} 
         onSettingsClick={() => setShowSettings(true)} 
         showBack={showSettings}
         onBack={() => setShowSettings(false)}
@@ -350,7 +291,7 @@ const App: React.FC = () => {
         notificationCount={upcomingEvents.length}
       />
       
-      <main className="max-w-screen-md mx-auto min-h-[calc(100vh-160px)]">
+      <main className="max-w-screen-md mx-auto">
         {showSettings ? (
           <Settings 
             brapiToken={brapiToken} onSaveToken={setBrapiToken} 
@@ -366,56 +307,36 @@ const App: React.FC = () => {
         )}
       </main>
       
-      {/* MODAL NOTIFICAÇÕES APRIMORADO */}
       <SwipeableModal isOpen={showNotifications} onClose={() => setShowNotifications(false)}>
         <div className="px-6 pt-2 pb-10 flex flex-col h-full">
            <div className="flex items-center justify-between mb-8">
               <div>
-                <h3 className="text-2xl font-black text-white tracking-tighter">Minha Agenda</h3>
-                <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">Sincronizado com Gemini</p>
+                <h3 className="text-2xl font-black text-white tracking-tighter">Agenda Proventos</h3>
+                <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">Próximos Lançamentos</p>
               </div>
-              <button onClick={() => { handleAiSync(true); showToast('success', 'Revalidando dados...'); }} className="p-3 bg-white/5 rounded-2xl text-accent active:rotate-180 transition-transform duration-500">
-                <RefreshCw className="w-5 h-5" />
-              </button>
-           </div>
-
-           {/* Cards de Projeção */}
-           <div className="grid grid-cols-2 gap-3 mb-8">
-               <div className="bg-gradient-to-br from-emerald-500/10 to-slate-900 border border-emerald-500/20 p-5 rounded-[2rem]">
-                  <div className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                    <Zap className="w-2.5 h-2.5" /> Próximos 7 Dias
-                  </div>
-                  <div className="text-lg font-black text-white">R$ {formatCurrency(next7DaysSum)}</div>
-               </div>
-               <div className="bg-gradient-to-br from-sky-500/10 to-slate-900 border border-sky-500/20 p-5 rounded-[2rem]">
-                  <div className="text-[8px] font-black text-sky-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                    <Calendar className="w-2.5 h-2.5" /> Próximos 30 Dias
-                  </div>
-                  <div className="text-lg font-black text-white">R$ {formatCurrency(next30DaysSum)}</div>
-               </div>
            </div>
 
            <div className="flex bg-slate-950/40 p-1.5 rounded-[1.5rem] mb-8 border border-white/5">
                <button onClick={() => setNotificationFilter('all')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'all' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Tudo</button>
-               <button onClick={() => setNotificationFilter('upcoming')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'upcoming' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Próximos</button>
-               <button onClick={() => setNotificationFilter('history')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'history' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Passado</button>
+               <button onClick={() => setNotificationFilter('upcoming')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'upcoming' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Pendentes</button>
+               <button onClick={() => setNotificationFilter('history')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'history' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Concluídos</button>
            </div>
 
            <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
              {(notificationFilter === 'all' || notificationFilter === 'upcoming') && upcomingEvents.map((event, idx) => (
-                <div key={event.id} className="relative bg-white/[0.02] p-5 rounded-[2.2rem] flex items-center gap-4 border border-white/[0.04] animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
+                <div key={event.id} className="bg-white/[0.02] p-5 rounded-[2.2rem] flex items-center gap-4 border border-white/[0.04] animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${event.type === 'PAYMENT' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}`}>
                     {event.type === 'PAYMENT' ? <DollarSign className="w-6 h-6" /> : <Calendar className="w-6 h-6" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-black text-white text-base tracking-tighter">{event.ticker}</span>
-                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg ${event.daysRemaining <= 1 ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-500'}`}>
-                        {event.daysRemaining === 0 ? 'HOJE' : event.daysRemaining === 1 ? 'AMANHÃ' : `D-${event.daysRemaining}`}
+                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg ${event.daysRemaining <= 3 ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-500'}`}>
+                        {event.daysRemaining === 0 ? 'HOJE' : `D-${event.daysRemaining}`}
                       </span>
                     </div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide truncate">{event.description}</p>
-                    {event.amount && event.type === 'PAYMENT' && <div className="text-emerald-400 font-black text-sm mt-1">R$ {formatCurrency(event.amount)}</div>}
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{event.description}</p>
+                    {event.amount && event.type === 'PAYMENT' && <div className="text-emerald-400 font-black text-sm mt-1">Estimado R$ {event.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>}
                   </div>
                 </div>
              ))}
@@ -430,17 +351,10 @@ const App: React.FC = () => {
                       <span className="font-bold text-slate-300 text-sm">{event.ticker}</span>
                       <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{event.formattedDate}</span>
                     </div>
-                    <p className="text-[10px] text-slate-600 font-medium truncate">{event.description}</p>
+                    <p className="text-[10px] text-slate-600 font-medium">{event.description}</p>
                   </div>
                 </div>
              ))}
-           </div>
-           
-           <div className="mt-8 bg-slate-950/40 p-5 rounded-[2rem] border border-white/5 flex items-center gap-4">
-              <Info className="w-5 h-5 text-slate-600" />
-              <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
-                Os dados de proventos são baseados na data de fechamento do mercado. Dividendos anunciados após as 18h podem aparecer no dia útil seguinte.
-              </p>
            </div>
         </div>
       </SwipeableModal>
