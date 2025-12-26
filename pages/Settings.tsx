@@ -216,7 +216,7 @@ export const Settings: React.FC<SettingsProps> = ({
       {/* Rodapé */}
       <div className="text-center pt-8 pb-4 animate-fade-in opacity-50 hover:opacity-100 transition-opacity">
          <span className="text-[10px] font-mono text-slate-600">
-            InvestFIIs v1.3.3
+            InvestFIIs v1.3.4
          </span>
       </div>
     </div>

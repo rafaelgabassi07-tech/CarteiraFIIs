@@ -116,11 +116,27 @@ const App: React.FC = () => {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  const getQuantityOnDate = useCallback((ticker: string, date: string, txs: Transaction[]) => {
-    const target = date.split('T')[0];
+  /**
+   * Lógica de Elegibilidade (DATA COM):
+   * Calcula quantas cotas o usuário possuía EXATAMENTE no fechamento da Data Com.
+   * Usa comparação de timestamps (meio-dia) para evitar problemas de fuso horário.
+   */
+  const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
+    // Define a Data Com às 12:00 para evitar edge cases de UTC-3
+    const comDateObj = new Date(`${dateCom}T12:00:00`); 
+    
     return txs
-      .filter(t => t.ticker === ticker && t.date <= target)
-      .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
+      .filter(t => t.ticker === ticker)
+      .reduce((acc, t) => {
+        // Data da transação também normalizada
+        const txDateObj = new Date(`${t.date}T12:00:00`);
+        
+        // Se comprou ANTES ou NO DIA da data com, conta.
+        if (txDateObj <= comDateObj) {
+            return t.type === 'BUY' ? acc + t.quantity : acc - t.quantity;
+        }
+        return acc;
+      }, 0);
   }, []);
 
   // Calcula a data de início da carteira (primeira transação)
@@ -156,6 +172,7 @@ const App: React.FC = () => {
     });
 
     const receipts: DividendReceipt[] = geminiDividends.map(div => {
+      // Aqui aplicamos a regra blindada da Data Com
       const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, sortedTxs);
       const total = qtyAtDate * div.rate;
       const assetType = positions[div.ticker]?.assetType;

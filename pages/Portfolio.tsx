@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, TrendingUp, TrendingDown, Layers, ChevronDown, DollarSign, BarChart3, Target, X, ArrowUpRight, ChevronRight, ArrowDownToLine, Timer, Briefcase, Info } from 'lucide-react';
+import { Building2, TrendingUp, TrendingDown, Layers, ChevronDown, DollarSign, BarChart3, Target, X, ArrowUpRight, ChevronRight, ArrowDownToLine, Timer, Briefcase, Info, Scale } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
@@ -187,10 +187,14 @@ const AssetCard: React.FC<{
                               Pago em {receipt.paymentDate.split('-').reverse().join('/')}
                             </span>
                           </div>
-                          <div className="flex items-center gap-3 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                            <span className="flex items-center gap-1.5">
+                          <div className="flex flex-col gap-1">
+                             <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                <Timer className="w-3 h-3" />
                                Data-Com: {receipt.dateCom.split('-').reverse().join('/')}
+                            </span>
+                            <span className="flex items-center gap-1.5 text-[9px] font-bold text-indigo-400 uppercase tracking-widest">
+                               <Scale className="w-3 h-3" />
+                               Posição na data: {receipt.quantityOwned} un
                             </span>
                           </div>
                         </div>
