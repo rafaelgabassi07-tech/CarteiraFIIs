@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Lock, Eraser } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Lock, Eraser, Server } from 'lucide-react';
 import { Transaction } from '../types';
 
 interface SettingsProps {
@@ -30,7 +30,9 @@ export const Settings: React.FC<SettingsProps> = ({
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Estado de Preferências de Notificação
+  // Verifica se o token está vindo do process.env (Vercel)
+  const isEnvToken = process.env.BRAPI_TOKEN === brapiToken && !!process.env.BRAPI_TOKEN;
+
   const [notifyPrefs, setNotifyPrefs] = useState<NotificationPrefs>(() => {
     const saved = localStorage.getItem('investfiis_prefs_notifications');
     return saved ? JSON.parse(saved) : { payments: true, datacom: true };
@@ -52,10 +54,9 @@ export const Settings: React.FC<SettingsProps> = ({
     const permission = await Notification.requestPermission();
     setPermissionStatus(permission);
     if (permission === 'granted') {
-      new Notification("InvestFIIs", { body: "Notificações ativadas com sucesso!", icon: "/manifest-icon-192.maskable.png" });
       showMessage('success', 'Permissão concedida!');
     } else if (permission === 'denied') {
-      showMessage('error', 'Permissão negada. Ative nas configurações do navegador.');
+      showMessage('error', 'Permissão negada.');
     }
   };
 
@@ -79,7 +80,7 @@ export const Settings: React.FC<SettingsProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showMessage('success', 'Backup exportado com sucesso!');
+    showMessage('success', 'Backup exportado!');
   };
 
   const handleImportClick = () => {
@@ -101,45 +102,36 @@ export const Settings: React.FC<SettingsProps> = ({
           throw new Error("Formato inválido");
         }
       } catch (error) {
-        showMessage('error', 'Arquivo inválido. Use um backup JSON.');
+        showMessage('error', 'Arquivo inválido.');
       }
     };
     reader.readAsText(file);
-    event.target.value = ''; // Reset input
+    event.target.value = ''; 
   };
 
   const handleClearCache = async () => {
-    if (window.confirm("Isso limpará cotações, dividendos e imagens cacheadas para corrigir erros de visualização.\n\nSua carteira e configurações NÃO serão apagadas.\n\nO aplicativo será recarregado.")) {
+    if (window.confirm("Limpar cache de cotações e imagens? Suas transações NÃO serão apagadas.")) {
         try {
-            // 1. Limpa dados voláteis do LocalStorage
             localStorage.removeItem('investfiis_quotes_simple_cache');
             localStorage.removeItem('investfiis_gemini_dividends_cache');
             localStorage.removeItem('investfiis_last_gemini_sync');
+            localStorage.removeItem('investfiis_last_synced_tickers');
             
-            // 2. Limpa Cache Storage (Service Worker API Cache)
             if ('caches' in window) {
                 const keys = await caches.keys();
                 await Promise.all(keys.map(key => caches.delete(key)));
             }
             
-            // 3. Opcional: Desregistra SW para forçar update imediato
-            if ('serviceWorker' in navigator) {
-                const registrations = await navigator.serviceWorker.getRegistrations();
-                for(let registration of registrations) {
-                    await registration.unregister();
-                }
-            }
-            
-            alert('Cache limpo com sucesso! Recarregando...');
+            alert('Cache limpo! Recarregando...');
             window.location.reload();
         } catch (e) {
-            alert('Erro ao limpar cache. Tente reiniciar o navegador.');
+            alert('Erro ao limpar cache.');
         }
     }
   };
 
   const handleReset = () => {
-    if (window.confirm("ATENÇÃO: Isso apagará TODAS as suas transações e configurações permanentemente.\n\nDeseja continuar?")) {
+    if (window.confirm("ATENÇÃO: Isso apagará TODOS os seus dados permanentemente.")) {
       onResetApp();
     }
   };
@@ -174,7 +166,6 @@ export const Settings: React.FC<SettingsProps> = ({
   return (
     <div className="pb-28 pt-2 px-4 max-w-2xl mx-auto space-y-6 animate-fade-in min-h-[60vh]">
       
-      {/* Toast Notification */}
       <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[70] transition-all duration-300 transform backdrop-blur-md ring-1 ring-white/10 ${message ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} ${message?.type === 'success' ? 'bg-emerald-500/90 text-white shadow-emerald-500/20' : 'bg-rose-500/90 text-white shadow-rose-500/20'}`}>
         {message?.type === 'success' ? <CheckCircle2 className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
         <span className="text-sm font-bold">{message?.text}</span>
@@ -222,7 +213,7 @@ export const Settings: React.FC<SettingsProps> = ({
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-600 mx-auto mb-2" />
               <span className="text-[10px] font-mono text-slate-500">
-                InvestFIIs v1.9.2
+                InvestFIIs v2.1.0
               </span>
            </div>
         </div>
@@ -236,6 +227,74 @@ export const Settings: React.FC<SettingsProps> = ({
           >
             <ArrowLeft className="w-4 h-4" /> Voltar
           </button>
+
+          {activeSection === 'integrations' && (
+            <div className="space-y-6 animate-fade-in-up">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-3 bg-accent/10 rounded-2xl text-accent">
+                   <Key className="w-6 h-6" />
+                </div>
+                <div>
+                   <h2 className="text-lg font-black text-white">Integrações</h2>
+                   <p className="text-xs text-slate-500">Configure suas chaves de API</p>
+                </div>
+              </div>
+
+              <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden">
+                <div className="p-5 border-b border-white/10 flex justify-between items-start">
+                  <div>
+                    <h3 className="text-base font-bold text-white mb-1">API Brapi</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">Fonte de cotações em tempo real.</p>
+                  </div>
+                  {isEnvToken && (
+                    <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
+                      <Server className="w-3 h-3 text-emerald-400" />
+                      <span className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter">Vercel Env</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-5 bg-slate-950/30 space-y-4">
+                  <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Token de Acesso</label>
+                      <div className="relative group">
+                          <input 
+                          type="password" 
+                          value={isEnvToken ? '********************' : token}
+                          onChange={(e) => setToken(e.target.value)}
+                          disabled={isEnvToken}
+                          placeholder={isEnvToken ? "Gerenciado pelo Vercel" : "Cole seu token aqui"}
+                          className={`w-full bg-slate-900 text-white rounded-xl py-4 px-4 border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-mono text-xs shadow-inner group-hover:border-white/20 ${isEnvToken ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          />
+                          {(token || isEnvToken) && <div className="absolute right-4 top-4 text-emerald-500"><CheckCircle2 className="w-4 h-4" /></div>}
+                      </div>
+                      {isEnvToken && (
+                         <p className="text-[10px] text-slate-500 mt-2 italic">* O token está sendo lido das configurações de ambiente do Vercel.</p>
+                      )}
+                  </div>
+                  
+                  <div className="flex justify-between items-center pt-2">
+                      <a 
+                      href="https://brapi.dev/dashboard" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[10px] font-bold text-accent hover:text-white transition-colors uppercase tracking-wide group"
+                      >
+                      Obter token <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                      </a>
+                      {!isEnvToken && (
+                        <button 
+                        onClick={handleSaveToken}
+                        className="bg-accent text-primary px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95 hover:brightness-110 shadow-lg shadow-accent/20"
+                        >
+                        <Save className="w-3 h-3" /> Salvar
+                        </button>
+                      )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeSection === 'notifications' && (
             <div className="space-y-6 animate-fade-in-up">
@@ -252,98 +311,40 @@ export const Settings: React.FC<SettingsProps> = ({
                 <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden">
                     <div className="p-5 border-b border-white/10 flex items-center justify-between">
                         <div>
-                            <h3 className="text-sm font-bold text-white mb-0.5">Permissão do Navegador</h3>
-                            <p className="text-[10px] text-slate-400">Status atual do sistema</p>
+                            <h3 className="text-sm font-bold text-white mb-0.5">Status</h3>
+                            <p className="text-[10px] text-slate-400">Permissão do navegador</p>
                         </div>
                         <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
                             permissionStatus === 'granted' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-                            permissionStatus === 'denied' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 
                             'bg-slate-500/10 text-slate-400 border-slate-500/20'
                         }`}>
-                            {permissionStatus === 'granted' ? 'Permitido' : permissionStatus === 'denied' ? 'Bloqueado' : 'Padrão'}
+                            {permissionStatus === 'granted' ? 'Ativo' : 'Inativo'}
                         </div>
                     </div>
                     <div className="p-5 bg-slate-950/30">
-                        {permissionStatus !== 'granted' ? (
+                        {permissionStatus !== 'granted' && (
                             <button 
                                 onClick={requestNotificationPermission}
-                                className="w-full bg-accent text-primary font-black text-xs uppercase tracking-widest py-3 rounded-xl hover:brightness-110 active:scale-95 transition-all"
+                                className="w-full bg-accent text-primary font-black text-xs uppercase tracking-widest py-3 rounded-xl active:scale-95 transition-all"
                             >
-                                Solicitar Permissão
+                                Ativar Notificações
                             </button>
-                        ) : (
-                             <p className="text-xs text-slate-500 text-center">O app tem permissão para enviar alertas.</p>
                         )}
                     </div>
                 </div>
 
                 <div className="space-y-3">
-                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">Tipos de Alerta</h3>
                     <Toggle 
                         label="Pagamentos de Proventos" 
                         checked={notifyPrefs.payments} 
                         onChange={() => setNotifyPrefs(p => ({ ...p, payments: !p.payments }))} 
                     />
                     <Toggle 
-                        label="Alertas de Data Com (Corte)" 
+                        label="Alertas de Data Com" 
                         checked={notifyPrefs.datacom} 
                         onChange={() => setNotifyPrefs(p => ({ ...p, datacom: !p.datacom }))} 
                     />
                 </div>
-            </div>
-          )}
-
-          {activeSection === 'integrations' && (
-            <div className="space-y-6 animate-fade-in-up">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-accent/10 rounded-2xl text-accent">
-                   <Key className="w-6 h-6" />
-                </div>
-                <div>
-                   <h2 className="text-lg font-black text-white">Integrações</h2>
-                   <p className="text-xs text-slate-500">Configure suas chaves de API</p>
-                </div>
-              </div>
-
-              <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden">
-                <div className="p-5 border-b border-white/10">
-                  <h3 className="text-base font-bold text-white mb-1">API Brapi</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">Necessário para obter cotações em tempo real.</p>
-                </div>
-                
-                <div className="p-5 bg-slate-950/30 space-y-4">
-                  <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Token de Acesso</label>
-                      <div className="relative group">
-                          <input 
-                          type="text" 
-                          value={token}
-                          onChange={(e) => setToken(e.target.value)}
-                          placeholder="Cole seu token aqui"
-                          className="w-full bg-slate-900 text-white rounded-xl py-4 px-4 border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-mono text-xs shadow-inner group-hover:border-white/20"
-                          />
-                          {token && <div className="absolute right-4 top-4 text-emerald-500"><CheckCircle2 className="w-4 h-4" /></div>}
-                      </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center pt-2">
-                      <a 
-                      href="https://brapi.dev/dashboard" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-[10px] font-bold text-accent hover:text-white transition-colors uppercase tracking-wide group"
-                      >
-                      Obter token <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                      </a>
-                      <button 
-                      onClick={handleSaveToken}
-                      className="bg-accent text-primary px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95 hover:brightness-110 shadow-lg shadow-accent/20"
-                      >
-                      <Save className="w-3 h-3" /> Salvar
-                      </button>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -355,44 +356,25 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
                 <div>
                    <h2 className="text-lg font-black text-white">Dados</h2>
-                   <p className="text-xs text-slate-500">Gerencie suas informações</p>
+                   <p className="text-xs text-slate-500">Backup e Restauração</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                  <button 
-                      onClick={handleExport}
-                      className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 hover:bg-secondary/60 transition-all text-left group relative overflow-hidden active:scale-[0.98]"
-                  >
-                      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                          <Download className="w-20 h-20 text-blue-400" />
+                  <button onClick={handleExport} className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 text-left flex items-center gap-4">
+                      <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400"><Download className="w-6 h-6" /></div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white">Exportar Backup</h3>
+                        <p className="text-[10px] text-slate-400">Salvar carteira em arquivo JSON</p>
                       </div>
-                      <div className="p-2.5 bg-blue-500/10 w-fit rounded-xl text-blue-400 mb-3 group-hover:bg-blue-500/20 transition-colors">
-                          <Download className="w-5 h-5" />
-                      </div>
-                      <h3 className="text-sm font-bold text-white mb-1">Fazer Backup</h3>
-                      <p className="text-xs text-slate-400 font-medium max-w-[80%]">Baixar arquivo JSON com todas as suas transações.</p>
                   </button>
-
-                  <button 
-                      onClick={handleImportClick}
-                      className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 hover:bg-secondary/60 transition-all text-left group relative overflow-hidden active:scale-[0.98]"
-                  >
-                      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                          <Upload className="w-20 h-20 text-emerald-400" />
+                  <button onClick={handleImportClick} className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 text-left flex items-center gap-4">
+                      <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400"><Upload className="w-6 h-6" /></div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white">Importar Backup</h3>
+                        <p className="text-[10px] text-slate-400">Restaurar dados de um arquivo</p>
                       </div>
-                      <div className="p-2.5 bg-emerald-500/10 w-fit rounded-xl text-emerald-400 mb-3 group-hover:bg-emerald-500/20 transition-colors">
-                          <Upload className="w-5 h-5" />
-                      </div>
-                      <h3 className="text-sm font-bold text-white mb-1">Restaurar Backup</h3>
-                      <p className="text-xs text-slate-400 font-medium max-w-[80%]">Recuperar dados de um arquivo JSON.</p>
-                      <input 
-                          type="file" 
-                          ref={fileInputRef}
-                          onChange={handleFileChange}
-                          accept=".json"
-                          className="hidden" 
-                      />
+                      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                   </button>
               </div>
             </div>
@@ -410,38 +392,18 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
 
-              {/* Botão de Limpar Cache (Dados) */}
-              <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6 relative overflow-hidden mb-4">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-3xl pointer-events-none -mr-10 -mt-10"></div>
-                  
-                  <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 relative z-10">
-                      Limpar Cache de Dados
-                  </h3>
-                  <p className="text-xs text-slate-400 mb-6 leading-relaxed relative z-10">
-                      Útil se as cotações estiverem desatualizadas, travadas ou se os logotipos não carregarem. Não apaga sua carteira.
-                  </p>
-                  
-                  <button 
-                      onClick={handleClearCache}
-                      className="w-full bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 border border-sky-500/20 font-bold py-4 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-sky-500/5 text-xs uppercase tracking-widest relative z-10"
-                  >
+              <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6">
+                  <h3 className="text-sm font-bold text-white mb-2">Limpar Cache</h3>
+                  <p className="text-xs text-slate-400 mb-6 leading-relaxed">Corrige problemas de cotações e carregamento. Não apaga transações.</p>
+                  <button onClick={handleClearCache} className="w-full bg-sky-500/10 text-sky-500 border border-sky-500/20 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest">
                       <Eraser className="w-4 h-4" /> Limpar Dados
                   </button>
               </div>
               
-              {/* Botão de Reset Total (Perigo) */}
-              <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 relative overflow-hidden">
-                  <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                      Resetar Aplicativo
-                  </h3>
-                  <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                      Esta ação irá remover todos os dados locais, transações e configurações. O aplicativo voltará ao estado inicial.
-                  </p>
-                  
-                  <button 
-                      onClick={handleReset}
-                      className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 font-bold py-4 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-rose-500/5 text-xs uppercase tracking-widest"
-                  >
+              <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6">
+                  <h3 className="text-sm font-bold text-white mb-2 text-rose-400">Reset de Fábrica</h3>
+                  <p className="text-xs text-slate-400 mb-6 leading-relaxed">Apaga transações, chaves e preferências permanentemente.</p>
+                  <button onClick={handleReset} className="w-full bg-rose-500/10 text-rose-500 border border-rose-500/20 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest">
                       <Trash2 className="w-4 h-4" /> Apagar Tudo
                   </button>
               </div>

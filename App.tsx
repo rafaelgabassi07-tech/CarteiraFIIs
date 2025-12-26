@@ -46,8 +46,14 @@ const App: React.FC = () => {
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => 
     JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]'));
-  const [brapiToken, setBrapiToken] = useState(() => 
-    localStorage.getItem(STORAGE_KEYS.TOKEN) || '');
+  
+  // Prioriza token do ambiente (Vercel/process.env) -> depois localStorage
+  const [brapiToken, setBrapiToken] = useState(() => {
+    const envToken = process.env.BRAPI_TOKEN;
+    const localToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    return envToken || localToken || '';
+  });
+
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
   const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => 
     JSON.parse(localStorage.getItem(STORAGE_KEYS.DIVS) || '[]'));
@@ -60,7 +66,6 @@ const App: React.FC = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<MarketEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<MarketEvent[]>([]);
   
-  // Ref para evitar loops na mesma sessão
   const lastSyncTickersRef = useRef<string>("");
 
   useEffect(() => {
@@ -107,7 +112,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions));
-    localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken);
+    // Apenas salva no local se for diferente do ambiente para não sobrescrever o "mestre"
+    if (brapiToken !== process.env.BRAPI_TOKEN) {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken);
+    }
     localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends));
   }, [transactions, brapiToken, geminiDividends]);
 
@@ -264,10 +272,6 @@ const App: React.FC = () => {
     syncBrapiData(false);
   }, [syncBrapiData]);
 
-  /**
-   * handleAiSync - Sincronização inteligente com a IA (Gemini)
-   * Agora usa cache persistente de 24h e verifica se a lista de tickers mudou.
-   */
   const handleAiSync = useCallback(async (force = false) => {
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
@@ -279,9 +283,7 @@ const App: React.FC = () => {
     const isRecent = lastSyncTime && (Date.now() - parseInt(lastSyncTime, 10)) < AI_CACHE_DURATION;
     const isSameTickers = lastSyncedTickers === tickersStr;
 
-    // Só sincroniza se for forçado, se o cache expirou ou se a lista de ativos mudou
     if (!force && isRecent && isSameTickers) {
-        console.log("IA: Usando dados cacheados (Válido por 24h ou até mudança na carteira)");
         return;
     }
 
@@ -296,7 +298,6 @@ const App: React.FC = () => {
       });
       if (data.sources) setSources(data.sources);
       
-      // Salva metadados da sincronização para o próximo carregamento
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       localStorage.setItem(STORAGE_KEYS.SYNC_TICKERS, tickersStr);
       lastSyncTickersRef.current = tickersStr;
@@ -311,7 +312,6 @@ const App: React.FC = () => {
     if (isRefreshing || isAiLoading || isPriceLoading) return;
     setIsRefreshing(true);
     try {
-      // Força a atualização de ambos, ignorando cache
       await Promise.all([syncBrapiData(true), handleAiSync(true)]);
       showToast('success', 'Atualização completa concluída');
     } catch (error) {
@@ -326,7 +326,6 @@ const App: React.FC = () => {
     showToast('success', 'Movimentação atualizada');
   }, [showToast]);
 
-  // Gatilho inicial de sincronização IA
   useEffect(() => {
     if (transactions.length > 0 && !isAiLoading) {
       const timeout = setTimeout(() => handleAiSync(false), 2000);
