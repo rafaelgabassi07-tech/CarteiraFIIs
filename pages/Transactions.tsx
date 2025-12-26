@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Transaction, AssetType } from '../types';
-import { Plus, Trash2, Calendar, X, Search, TrendingUp, TrendingDown, Pencil, Filter, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, Calendar, X, Search, TrendingUp, TrendingDown, Pencil, ArrowRight } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface TransactionsProps {
@@ -78,15 +78,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
       .filter(t => t.ticker.toUpperCase().includes(searchTerm.toUpperCase()));
   }, [transactions, searchTerm]);
 
-  const stats = useMemo(() => {
-    return filteredTransactions.reduce((acc, t) => {
-      const vol = t.quantity * t.price;
-      if (t.type === 'BUY') acc.bought += vol;
-      else acc.sold += vol;
-      return acc;
-    }, { bought: 0, sold: 0 });
-  }, [filteredTransactions]);
-
   const groupedTransactions = useMemo(() => {
     const groups: Record<string, Transaction[]> = {};
     filteredTransactions.forEach(t => {
@@ -101,120 +92,108 @@ export const Transactions: React.FC<TransactionsProps> = ({
   const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="pb-32 pt-2 px-5 space-y-6 relative">
+    <div className="pb-32 pt-2 px-4 space-y-6 relative">
       {/* Luz ambiente */}
       <div className="fixed top-0 left-0 right-0 h-64 bg-slate-800/20 blur-[80px] -z-10 pointer-events-none"></div>
 
-      {/* Busca e Estatísticas Rápidas */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center gap-4">
+      {/* Busca */}
+      <div className="flex justify-between items-center gap-3">
           <div className="relative flex-1 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-accent transition-colors" />
             <input
               type="text"
-              className="w-full bg-slate-800/80 backdrop-blur-md border border-white/[0.08] pl-11 pr-4 py-4 rounded-3xl outline-none focus:border-accent/40 focus:bg-slate-800 text-sm font-bold placeholder:text-slate-500 transition-all shadow-sm text-white"
-              placeholder="Buscar ativo..."
+              className="w-full bg-slate-800/50 backdrop-blur-md border border-white/[0.08] pl-10 pr-4 py-3.5 rounded-2xl outline-none focus:border-accent/40 focus:bg-slate-800 text-sm font-bold placeholder:text-slate-600 transition-all shadow-sm text-white"
+              placeholder="Filtrar por ticker..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full bg-white/5 text-slate-400 active:scale-90">
+              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-white/5 text-slate-400 active:scale-90">
                 <X className="w-3 h-3" />
               </button>
             )}
           </div>
           <button 
             onClick={() => { resetForm(); setShowForm(true); }} 
-            className="w-14 h-14 bg-accent text-primary rounded-3xl shadow-[0_0_20px_rgba(56,189,248,0.3)] active:scale-90 transition-all hover:brightness-110 flex items-center justify-center flex-shrink-0"
+            className="w-12 h-12 bg-accent text-primary rounded-2xl shadow-[0_0_15px_rgba(56,189,248,0.2)] active:scale-90 transition-all hover:brightness-110 flex items-center justify-center flex-shrink-0"
           >
-            <Plus className="w-7 h-7" strokeWidth={3} />
+            <Plus className="w-6 h-6" strokeWidth={3} />
           </button>
-        </div>
-
-        {searchTerm && filteredTransactions.length > 0 && (
-          <div className="flex items-center gap-3 px-1 overflow-x-auto no-scrollbar">
-            <div className="flex-shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full flex items-center gap-2">
-              <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">Total Comprado: R$ {formatCurrency(stats.bought)}</span>
-            </div>
-            <div className="flex-shrink-0 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-full flex items-center gap-2">
-              <span className="text-[9px] font-black text-rose-400 uppercase tracking-wider">Total Vendido: R$ {formatCurrency(stats.sold)}</span>
-            </div>
-          </div>
-        )}
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-6">
         {Object.keys(groupedTransactions).length === 0 ? (
-           <div className="text-center py-24 flex flex-col items-center gap-4 animate-fade-in opacity-50">
-              <div className="p-8 bg-white/[0.02] rounded-[2.5rem] border border-white/[0.05]">
-                <Search className="w-10 h-10 text-slate-700 mb-2" />
+           <div className="text-center py-20 flex flex-col items-center gap-3 animate-fade-in opacity-50">
+              <div className="p-6 bg-white/[0.02] rounded-[2rem] border border-white/[0.05]">
+                <Search className="w-8 h-8 text-slate-700 mb-1" />
               </div>
-              <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px]">Nenhuma movimentação</p>
+              <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[9px]">Nenhuma movimentação</p>
            </div>
         ) : (
           (Object.entries(groupedTransactions) as [string, Transaction[]][]).map(([month, trans], gIdx) => (
-            <div key={month} className="space-y-4 animate-fade-in-up" style={{ animationDelay: `${gIdx * 80}ms` }}>
-                <div className="flex items-center gap-4 sticky top-24 z-10 py-2">
-                  <div className="bg-slate-800/90 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-lg">
-                     <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
+            <div key={month} className="space-y-3 animate-fade-in-up" style={{ animationDelay: `${gIdx * 80}ms` }}>
+                <div className="sticky top-24 z-10 flex items-center mb-2">
+                  <div className="bg-slate-900/95 backdrop-blur-xl px-3 py-1 rounded-lg border border-white/5 shadow-md">
+                     <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">
                         {month}
                      </h3>
                   </div>
-                  <div className="h-px flex-1 bg-white/[0.05]" />
+                  <div className="h-px flex-1 bg-gradient-to-r from-white/5 to-transparent ml-2" />
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {trans.map((t) => (
                       <div 
                         key={t.id} 
-                        className="bg-slate-800/40 p-5 rounded-[2.2rem] flex items-center justify-between group transition-all hover:bg-slate-800/60 border border-white/[0.05] active:scale-[0.98] shadow-sm"
+                        className="bg-slate-800/40 pl-3 pr-2 py-3 rounded-2xl flex items-center justify-between group border border-white/[0.03] active:scale-[0.99] shadow-sm relative overflow-hidden"
                       >
-                        <div className="flex items-center gap-4 flex-1">
-                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all shadow-sm ${t.type === 'BUY' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
-                                {t.type === 'BUY' ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                        {/* Linha colorida indicativa na esquerda */}
+                        <div className={`absolute left-0 top-3 bottom-3 w-0.5 rounded-r-full ${t.type === 'BUY' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {/* Icone */}
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all ${t.type === 'BUY' ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400/80' : 'bg-rose-500/5 border-rose-500/10 text-rose-400/80'}`}>
+                                {t.type === 'BUY' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                             </div>
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-black text-white text-base leading-none tracking-tight truncate">{t.ticker}</span>
-                                  <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md border uppercase tracking-wider ${t.assetType === AssetType.FII ? 'bg-accent/10 text-accent border-accent/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
-                                    {t.assetType}
-                                  </span>
+                            
+                            {/* Texto Compacto */}
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span className="font-black text-white text-sm tracking-tight">{t.ticker}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`text-[8px] font-black uppercase tracking-[0.15em] ${t.type === 'BUY' ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
-                                    {t.type === 'BUY' ? 'Compra' : 'Venda'}
-                                  </span>
-                                  <span className="w-1 h-1 rounded-full bg-slate-600" />
-                                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
-                                    {t.date.split('-').reverse().join('/')}
-                                  </span>
+                                <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider truncate flex items-center gap-1.5 opacity-80">
+                                   <span>{t.date.split('-').reverse().join('/')}</span>
+                                   <span className="w-0.5 h-0.5 rounded-full bg-slate-600" />
+                                   <span className={t.type === 'BUY' ? 'text-emerald-500' : 'text-rose-500'}>
+                                      {t.type === 'BUY' ? 'Compra' : 'Venda'}
+                                   </span>
+                                   <span className="w-0.5 h-0.5 rounded-full bg-slate-600" />
+                                   <span className="text-slate-300">{t.quantity} un x {formatCurrency(t.price)}</span>
                                 </div>
                             </div>
                         </div>
                         
-                        <div className="flex items-center gap-4">
-                            <div className="text-right flex flex-col justify-center">
-                                <div className="text-white text-[15px] font-black tabular-nums tracking-tighter mb-0.5">
-                                  <span className="text-[10px] text-slate-500 mr-1 font-bold">R$</span>
-                                  {formatCurrency(t.quantity * t.price)}
-                                </div>
-                                <div className="text-[9px] text-slate-500 font-black tabular-nums tracking-tight opacity-80">
-                                  {t.quantity} un <span className="text-[7px] mx-0.5 opacity-40">@</span> {formatCurrency(t.price)}
+                        {/* Valor e Ações */}
+                        <div className="flex items-center gap-3">
+                            <div className="text-right">
+                                <div className="text-white text-sm font-black tabular-nums tracking-tight">
+                                  R$ {formatCurrency(t.quantity * t.price)}
                                 </div>
                             </div>
                             
-                            <div className="flex flex-col gap-1 ml-1">
+                            {/* Botões de Ação Discretos */}
+                            <div className="flex flex-col gap-1 border-l border-white/5 pl-2">
                                 <button 
                                   onClick={() => handleEdit(t)} 
-                                  className="p-2.5 rounded-xl bg-white/[0.03] text-slate-500 hover:text-accent hover:bg-accent/10 transition-all active:scale-90 border border-white/5"
+                                  className="p-1.5 rounded-lg text-slate-600 hover:text-accent hover:bg-white/5 transition-colors active:scale-90"
                                 >
-                                    <Pencil className="w-3.5 h-3.5" />
+                                    <Pencil className="w-3 h-3" />
                                 </button>
                                 <button 
-                                  onClick={() => { if(confirm('Deseja realmente excluir esta movimentação?')) onDeleteTransaction(t.id); }} 
-                                  className="p-2.5 rounded-xl bg-white/[0.03] text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-90 border border-white/5"
+                                  onClick={() => { if(confirm('Excluir?')) onDeleteTransaction(t.id); }} 
+                                  className="p-1.5 rounded-lg text-slate-600 hover:text-rose-500 hover:bg-white/5 transition-colors active:scale-90"
                                 >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-3 h-3" />
                                 </button>
                             </div>
                         </div>

@@ -147,7 +147,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const MenuButton = ({ icon: Icon, label, description, onClick, colorClass = "text-slate-400" }: any) => (
     <button 
       onClick={onClick}
-      className="w-full bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/5 hover:bg-secondary/60 transition-all flex items-center justify-between group active:scale-[0.98]"
+      className="w-full bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 hover:bg-secondary/60 transition-all flex items-center justify-between group active:scale-[0.98]"
     >
       <div className="flex items-center gap-4">
         <div className={`w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center ${colorClass} group-hover:scale-110 transition-transform`}>
@@ -163,7 +163,7 @@ export const Settings: React.FC<SettingsProps> = ({
   );
 
   const Toggle = ({ label, checked, onChange }: { label: string, checked: boolean, onChange: () => void }) => (
-    <div onClick={onChange} className="flex items-center justify-between p-4 bg-white/[0.03] rounded-2xl border border-white/[0.05] cursor-pointer active:scale-[0.99] transition-transform">
+    <div onClick={onChange} className="flex items-center justify-between p-4 bg-white/[0.03] rounded-2xl border border-white/10 cursor-pointer active:scale-[0.99] transition-transform">
         <span className="text-xs font-bold text-slate-300">{label}</span>
         <div className={`transition-colors duration-300 ${checked ? 'text-emerald-400' : 'text-slate-600'}`}>
             {checked ? <ToggleRight className="w-8 h-8 fill-emerald-500/20" /> : <ToggleLeft className="w-8 h-8" />}
@@ -222,7 +222,7 @@ export const Settings: React.FC<SettingsProps> = ({
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-600 mx-auto mb-2" />
               <span className="text-[10px] font-mono text-slate-500">
-                InvestFIIs v1.8.8
+                InvestFIIs v1.9.0
               </span>
            </div>
         </div>
@@ -249,8 +249,8 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </div>
 
-                <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/5 overflow-hidden">
-                    <div className="p-5 border-b border-white/5 flex items-center justify-between">
+                <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden">
+                    <div className="p-5 border-b border-white/10 flex items-center justify-between">
                         <div>
                             <h3 className="text-sm font-bold text-white mb-0.5">Permissão do Navegador</h3>
                             <p className="text-[10px] text-slate-400">Status atual do sistema</p>
@@ -305,8 +305,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
 
-              <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/5 overflow-hidden">
-                <div className="p-5 border-b border-white/5">
+              <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden">
+                <div className="p-5 border-b border-white/10">
                   <h3 className="text-base font-bold text-white mb-1">API Brapi</h3>
                   <p className="text-xs text-slate-400 leading-relaxed">Necessário para obter cotações em tempo real.</p>
                 </div>
@@ -362,7 +362,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <div className="grid grid-cols-1 gap-4">
                   <button 
                       onClick={handleExport}
-                      className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/5 hover:bg-secondary/60 transition-all text-left group relative overflow-hidden active:scale-[0.98]"
+                      className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 hover:bg-secondary/60 transition-all text-left group relative overflow-hidden active:scale-[0.98]"
                   >
                       <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                           <Download className="w-20 h-20 text-blue-400" />
@@ -376,7 +376,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
                   <button 
                       onClick={handleImportClick}
-                      className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/5 hover:bg-secondary/60 transition-all text-left group relative overflow-hidden active:scale-[0.98]"
+                      className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 hover:bg-secondary/60 transition-all text-left group relative overflow-hidden active:scale-[0.98]"
                   >
                       <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                           <Upload className="w-20 h-20 text-emerald-400" />

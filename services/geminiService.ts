@@ -1,5 +1,5 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { DividendReceipt, AssetType } from "../types";
 
 export interface UnifiedMarketData {
@@ -8,79 +8,69 @@ export interface UnifiedMarketData {
   sources?: { web: { uri: string; title: string } }[];
 }
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_internal_cache';
-
-function cleanAndParseJSON(text: string): any {
-  try {
-    let cleaned = text.trim();
-    // Remove blocos de markdown ```json ... ```
-    if (cleaned.startsWith('```')) {
-        cleaned = cleaned.replace(/^```(json)?/, '').replace(/```$/, '');
+// Schema estrito para garantir que o Gemini retorne APENAS o JSON correto
+const MARKET_DATA_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    assets: {
+      type: Type.ARRAY,
+      description: "Lista de ativos analisados e seus dados",
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          t: { type: Type.STRING, description: "Ticker do ativo (Ex: PETR4)" },
+          s: { type: Type.STRING, description: "Setor ou Segmento de atuação" },
+          type: { type: Type.STRING, description: "Tipo do ativo: 'FII' ou 'ACAO'" },
+          d: {
+            type: Type.ARRAY,
+            description: "Lista de proventos",
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                ty: { type: Type.STRING, description: "Tipo: 'DIVIDENDO' ou 'JCP'" },
+                dc: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
+                dp: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
+                v: { type: Type.NUMBER, description: "Valor do provento" }
+              },
+              required: ["ty", "dc", "dp", "v"]
+            }
+          }
+        },
+        required: ["t", "s", "type", "d"]
+      }
     }
-    // Remove caracteres invisíveis ou whitespace extra nas pontas
-    cleaned = cleaned.trim();
-    return JSON.parse(cleaned);
-  } catch (e) {
-    console.error("Erro ao fazer parse do JSON Gemini:", e);
-    return null;
-  }
-}
+  },
+  required: ["assets"]
+};
 
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
-  // Verificação de segurança: não faz requisição se lista vazia
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-  // Confirmação: Estamos enviando TODOS os tickers em UMA única string no prompt.
-  // Isso garante que é apenas 1 requisição API (Batch), evitando 429 por volume.
   const tickerListString = tickers.join(', ');
 
   const prompt = `
     Atue como um Especialista em Dados de Mercado da B3 (Brasil).
+    Consulte fontes oficiais recentes (últimos 12 meses) para: ${tickerListString}.
     
-    Sua missão é consultar fontes oficiais recentes (últimos 12 meses) para a lista de ativos abaixo e retornar um ÚNICO JSON consolidado.
+    PARA CADA ATIVO:
+    1. Classifique se é FII ou ACAO e seu setor.
+    2. Liste TODOS os proventos (Dividendos/JCP) com Data Com nos últimos 12 meses.
     
-    LISTA DE ATIVOS: ${tickerListString} (${tickers.length} ativos no total).
-    
-    PARA CADA ATIVO DA LISTA, VOCÊ DEVE:
-    1. Classificar o Tipo (FII ou ACAO) e o Setor/Segmento de atuação.
-    2. Listar TODOS os proventos (Dividendos/JCP) com "Data Com" (Data de corte) nos últimos 12 meses.
-    
-    IMPORTANTE:
-    - O foco é a precisão das datas (Data Com e Data Pagamento).
-    - RETORNE APENAS O JSON FINAL, SEM EXPLICAÇÕES OU MARKDOWN.
-    - AS DATAS DEVEM ESTAR NO FORMATO ESTRITO YYYY-MM-DD (ISO 8601).
-    
-    REGRAS DE DADOS:
-    - Data Com (dc): A data limite para ter o ativo na carteira. Formato YYYY-MM-DD.
-    - Data Pagamento (dp): Quando o dinheiro cai na conta. Formato YYYY-MM-DD.
-    - Valor (v): Valor bruto por cota/ação.
-    - Tipo (ty): "DIVIDENDO" ou "JCP".
-    
-    SAÍDA ESPERADA (JSON):
-    {
-      "assets": [
-        {
-          "t": "TICKER",
-          "s": "Logística",
-          "type": "FII",
-          "d": [
-            {"ty": "DIVIDENDO", "dc": "2024-01-30", "dp": "2024-02-14", "v": 0.10}
-          ]
-        },
-        ... (repita para todos os ativos)
-      ]
-    }
+    REGRAS CRÍTICAS:
+    - Retorne APENAS dados confirmados.
+    - Datas no formato YYYY-MM-DD.
+    - Se não houver proventos, retorne array vazio em "d".
   `;
 
   try {
-    // SINGLE REQUEST: Chamada única com todos os dados.
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash", 
       contents: prompt,
       config: {
-        tools: [{ googleSearch: {} }] // Ferramenta de busca ativada
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        responseSchema: MARKET_DATA_SCHEMA
       }
     });
 
@@ -88,7 +78,10 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         throw new Error("Resposta vazia do Gemini");
     }
 
-    const parsed = cleanAndParseJSON(response.text);
+    // Com responseSchema, o parse é seguro e direto
+    const parsed = JSON.parse(response.text);
+    
+    // Extração de fontes (Grounding)
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[];
     
     const result: UnifiedMarketData = { 
@@ -99,7 +92,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
     if (parsed?.assets && Array.isArray(parsed.assets)) {
       parsed.assets.forEach((asset: any) => {
-        const ticker = asset.t?.toUpperCase();
+        const ticker = asset.t?.toUpperCase().trim();
         if (!ticker) return;
 
         result.metadata[ticker] = { 
@@ -109,17 +102,21 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
         if (Array.isArray(asset.d)) {
             asset.d.forEach((div: any) => {
-            const divId = `${ticker}-${div.dc}-${div.v}`.replace(/[^a-zA-Z0-9]/g, '');
-            result.dividends.push({
-                id: divId,
-                ticker,
-                type: div.ty || "PROVENTO",
-                dateCom: div.dc,
-                paymentDate: div.dp || div.dc,
-                rate: typeof div.v === 'number' ? div.v : parseFloat(div.v),
-                quantityOwned: 0,
-                totalReceived: 0
-            });
+                // Validação extra de dados antes de processar
+                if (!div.dc || !div.v) return;
+
+                const divId = `${ticker}-${div.dc}-${div.v}`.replace(/[^a-zA-Z0-9]/g, '');
+                
+                result.dividends.push({
+                    id: divId,
+                    ticker,
+                    type: div.ty?.toUpperCase() || "PROVENTO",
+                    dateCom: div.dc,
+                    paymentDate: div.dp || div.dc,
+                    rate: Number(div.v),
+                    quantityOwned: 0,
+                    totalReceived: 0
+                });
             });
         }
       });
@@ -128,9 +125,9 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     return result;
   } catch (error: any) {
     if (error.message?.includes('429')) {
-        console.warn("Gemini Rate Limit (429) atingido. Tente novamente em instantes.");
+        console.warn("Gemini Rate Limit (429). Aguarde.");
     }
-    console.error("Gemini Market Data Sync Error:", error);
+    console.error("Erro na Sincronização Gemini:", error);
     throw error;
   }
 };
