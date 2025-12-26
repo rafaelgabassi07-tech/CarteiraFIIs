@@ -24,14 +24,26 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+  // Prompt otimizado para AGRUPAR informações.
+  // Solicita explicitamente que a busca seja feita para CADA item e que o retorno cubra as três necessidades:
+  // 1. Setor (para gráfico de alocação)
+  // 2. Tipo (para separar FII de Ação)
+  // 3. Dividendos (para cálculo de inflação e histórico)
   const prompt = `
-    Analise os ativos: ${tickers.join(', ')}.
-    Use a ferramenta de busca para retornar um JSON estrito com:
-    1. "s": Segmento/Setor exato do ativo (Logística, Bancos, etc).
-    2. "type": "FII" ou "ACAO".
-    3. "d": Histórico de dividendos/JCP dos últimos 12 meses.
+    Realize uma pesquisa detalhada para CADA UM dos seguintes ativos financeiros brasileiros: ${tickers.join(', ')}.
     
-    ESTRUTURA JSON EXIGIDA:
+    Para cada ativo, você DEVE encontrar e retornar:
+    1. "s": O Segmento/Setor de atuação (ex: Logística, Bancos, Energia). Se não encontrar, deduza pelo nome da empresa.
+    2. "type": A classificação exata: "FII" (Fundos Imobiliários) ou "ACAO" (Ações).
+    3. "d": A lista COMPLETA de todos os proventos (Dividendos e JCP) que tiveram 'Data Com' (data de corte) nos últimos 12 meses.
+    
+    REGRAS CRÍTICAS:
+    - Não omita nenhum ativo da lista solicitada.
+    - Se um ativo não pagou dividendos, retorne a lista "d" vazia, mas PREENCHA "s" e "type".
+    - Data formato: YYYY-MM-DD.
+    - Valores numéricos: use ponto para decimal (ex: 1.50).
+    
+    Retorne APENAS um JSON válido com esta estrutura:
     {
       "assets": [
         {
@@ -44,11 +56,10 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         }
       ]
     }
-    Importante: Retorne apenas o JSON. Se não encontrar dividendos para um ticker, retorne a lista "d" vazia para ele.
   `;
 
   try {
-    // Fix: Updated to gemini-3-flash-preview as recommended for text tasks with search grounding.
+    // Utilizando gemini-3-flash-preview que possui melhor raciocínio para seguir instruções complexas de agrupamento e busca.
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview", 
       contents: prompt,
@@ -64,7 +75,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         dividends: [], 
         metadata: {},
         sources: groundingChunks?.filter(chunk => chunk?.web?.uri).map(chunk => ({
-            web: { uri: chunk.web.uri, title: chunk.web.title || 'Referência de Mercado' }
+            web: { uri: chunk.web.uri, title: chunk.web.title || 'Fonte Verificada' }
         })) || []
     };
 
@@ -73,18 +84,26 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         const ticker = asset.t?.toUpperCase();
         if (!ticker) return;
 
+        // Normalização do tipo para garantir que o Portfolio agrupe corretamente
+        let assetType = AssetType.STOCK;
+        const rawType = asset.type?.toUpperCase() || '';
+        if (rawType.includes('FII') || rawType.includes('FUNDO')) {
+            assetType = AssetType.FII;
+        }
+
         result.metadata[ticker] = { 
           segment: asset.s || "Outros", 
-          type: asset.type?.toUpperCase() === 'ACAO' ? AssetType.STOCK : AssetType.FII 
+          type: assetType 
         };
 
         if (asset.d && Array.isArray(asset.d)) {
           asset.d.forEach((div: any) => {
             const val = parseFloat(String(div.v).replace(',', '.'));
+            // Validação estrita: Data Com (dc) é obrigatória para vincular à carteira
             if (!div.dc || isNaN(val)) return;
             
             result.dividends.push({
-              id: `g3f-${ticker}-${div.dc}-${val}`,
+              id: `g3-${ticker}-${div.dc}-${val}`, // ID único baseado na data com
               ticker,
               type: div.ty || "PROVENTO",
               dateCom: div.dc,
@@ -92,7 +111,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
               rate: val,
               quantityOwned: 0,
               totalReceived: 0,
-              assetType: result.metadata[ticker].type
+              assetType: assetType
             });
           });
         }
