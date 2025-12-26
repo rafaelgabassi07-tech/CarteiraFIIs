@@ -31,24 +31,25 @@ function cleanAndParseJSON(text: string): any {
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
-  // Inicializa o SDK usando a API_KEY do ambiente injetada automaticamente
+  // Inicializa o SDK usando a API_KEY do ambiente
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-    Como um analista de investimentos especializado na B3, use a ferramenta de busca para encontrar os dados mais recentes dos ativos: ${tickers.join(', ')}.
+    Atue como um analista de investimentos da B3. 
+    Use a ferramenta de busca para encontrar dividendos, JCP e o setor dos ativos: ${tickers.join(', ')}.
     
-    PARA CADA ATIVO:
-    1. Identifique o tipo: FII ou ACAO (Ação).
-    2. Identifique o setor ou segmento (ex: Shoppings, Bancos, Logística).
-    3. Liste TODOS os dividendos ou JCP anunciados (futuros) ou pagos nos últimos 12 meses.
+    INSTRUÇÕES PARA O MODELO GEMINI 2.5 FLASH:
+    1. Identifique se é FII ou ACAO.
+    2. Identifique o setor/segmento.
+    3. Liste proventos dos últimos 12 meses.
     
-    REGRAS DE FORMATAÇÃO (OBRIGATÓRIO):
-    - Data Com (dc): YYYY-MM-DD
-    - Data Pagamento (dp): YYYY-MM-DD
-    - Valor (v): Número decimal puro (ex: 0.12, use ponto como separador decimal).
-    - Ticker (t): Em caixa alta.
+    FORMATO OBRIGATÓRIO (JSON):
+    - Data Com (dc): YYYY-MM-DD (Ex: 2024-05-10)
+    - Data Pagamento (dp): YYYY-MM-DD (Ex: 2024-05-25)
+    - Valor (v): Número decimal com ponto (Ex: 0.85)
+    - Ticker (t): Maiúsculo.
     
-    RETORNE APENAS O JSON NO FORMATO ABAIXO, SEM TEXTO ADICIONAL:
+    RETORNE APENAS O JSON:
     {
       "assets": [
         {
@@ -56,7 +57,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
           "s": "Segmento",
           "type": "FII",
           "d": [
-            {"ty": "DIVIDENDO", "dc": "2024-05-30", "dp": "2024-06-15", "v": 1.25}
+            {"ty": "DIVIDENDO", "dc": "2024-01-30", "dp": "2024-02-15", "v": 1.10}
           ]
         }
       ]
@@ -64,9 +65,9 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   `;
 
   try {
-    // Gemini 3 Flash Preview é recomendado para tarefas de texto/busca com baixa latência
+    // Utilizando estritamente o modelo gemini-2.5-flash conforme solicitado
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", 
+      model: "gemini-2.5-flash", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }]
@@ -82,7 +83,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         dividends: [], 
         metadata: {},
         sources: groundingChunks?.filter(chunk => chunk?.web?.uri).map(chunk => ({
-            web: { uri: chunk.web.uri, title: chunk.web.title || 'Fonte de Mercado' }
+            web: { uri: chunk.web.uri, title: chunk.web.title || 'Referência B3' }
         })) || []
     };
 
@@ -92,31 +93,27 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         
         const ticker = asset.t.toUpperCase();
         
-        // Mapeamento de Metadados
         result.metadata[ticker] = { 
           segment: asset.s || "Geral", 
           type: asset.type?.toUpperCase() === 'FII' ? AssetType.FII : AssetType.STOCK 
         };
 
-        // Processamento de Dividendos
         if (asset.d && Array.isArray(asset.d)) {
           asset.d.forEach((div: any) => {
-            // Validação mínima dos dados
             const rate = parseFloat(String(div.v).replace(',', '.'));
             if (!div.dc || isNaN(rate)) return;
             
-            // ID único para evitar duplicatas no cache do app
-            const divId = `gemini-${ticker}-${div.dc}-${rate}`.replace(/[^a-zA-Z0-9]/g, '');
+            const divId = `g25-${ticker}-${div.dc}-${rate}`.replace(/[^a-zA-Z0-9]/g, '');
             
             result.dividends.push({
               id: divId,
               ticker,
               type: div.ty || "PROVENTO",
               dateCom: div.dc,
-              paymentDate: div.dp || div.dc, // Fallback para data com se pagamento não existir
+              paymentDate: div.dp || div.dc,
               rate: rate,
-              quantityOwned: 0, // Calculado no App.tsx
-              totalReceived: 0, // Calculado no App.tsx
+              quantityOwned: 0,
+              totalReceived: 0,
               assetType: asset.type?.toUpperCase() === 'FII' ? AssetType.FII : AssetType.STOCK
             });
           });
@@ -124,10 +121,10 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       });
     }
 
-    console.log(`[Gemini] Sync finalizado. ${result.dividends.length} proventos processados.`);
+    console.log(`[Gemini 2.5 Flash] Sincronização concluída com ${result.dividends.length} registros.`);
     return result;
   } catch (error) {
-    console.error("Erro crítico ao sincronizar com Gemini:", error);
+    console.error("Erro na integração com Gemini 2.5 Flash:", error);
     throw error;
   }
 };
