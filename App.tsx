@@ -169,6 +169,25 @@ const App: React.FC = () => {
     return dates[0];
   }, [transactions]);
 
+  // Cálculo do Aporte Mensal (Mês Atual)
+  const monthlyContribution = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth(); // 0-11
+    const currentYear = now.getFullYear();
+
+    return transactions.reduce((acc, t) => {
+      // Ajuste de fuso horário simples para garantir que a data da string (YYYY-MM-DD) seja respeitada
+      const tDate = new Date(t.date + 'T12:00:00');
+      
+      if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
+        const value = t.quantity * t.price;
+        // Compra aumenta o aporte, Venda diminui (retirada de capital)
+        return t.type === 'BUY' ? acc + value : acc - value;
+      }
+      return acc;
+    }, 0);
+  }, [transactions]);
+
   const { portfolio, dividendReceipts, realizedGain } = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
@@ -489,13 +508,20 @@ const App: React.FC = () => {
                 portfolioStartDate={portfolioStartDate}
               />
             )}
-            {currentTab === 'portfolio' && <Portfolio portfolio={portfolio} dividendReceipts={dividendReceipts} />}
+            {currentTab === 'portfolio' && (
+              <Portfolio 
+                portfolio={portfolio} 
+                dividendReceipts={dividendReceipts}
+                monthlyContribution={monthlyContribution} 
+              />
+            )}
             {currentTab === 'transactions' && (
               <Transactions 
                 transactions={transactions} 
                 onAddTransaction={(t) => setTransactions(p => [...p, { ...t, id: crypto.randomUUID() }])} 
                 onUpdateTransaction={handleUpdateTransaction}
                 onDeleteTransaction={(id) => setTransactions(p => p.filter(x => x.id !== id))}
+                monthlyContribution={monthlyContribution}
               />
             )}
           </div>
@@ -503,15 +529,13 @@ const App: React.FC = () => {
       </main>
       
       <SwipeableModal isOpen={showNotifications} onClose={() => setShowNotifications(false)}>
+        {/* Modal content unchanged */}
         <div className="px-6 pt-2 pb-10 flex flex-col h-full">
            <div className="flex items-center justify-between mb-8 shrink-0">
               <div>
                 <h3 className="text-2xl font-black text-white tracking-tighter">Central de Alertas</h3>
                 <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Agenda de Proventos</p>
               </div>
-              <button onClick={() => setShowNotifications(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:scale-90 transition-all hover:bg-white/10">
-                <X className="w-5 h-5" />
-              </button>
            </div>
 
            <div className="flex-1 overflow-y-auto no-scrollbar space-y-8">

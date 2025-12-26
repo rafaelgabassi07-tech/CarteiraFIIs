@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { DividendReceipt, AssetType } from "../types";
 
 export interface UnifiedMarketData {
@@ -7,41 +7,6 @@ export interface UnifiedMarketData {
   metadata: Record<string, { segment: string; type: AssetType }>;
   sources?: { web: { uri: string; title: string } }[];
 }
-
-// Schema estrito para garantir que o Gemini retorne APENAS o JSON correto
-const MARKET_DATA_SCHEMA: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    assets: {
-      type: Type.ARRAY,
-      description: "Lista de ativos analisados e seus dados",
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          t: { type: Type.STRING, description: "Ticker do ativo (Ex: PETR4)" },
-          s: { type: Type.STRING, description: "Setor ou Segmento de atuação" },
-          type: { type: Type.STRING, description: "Tipo do ativo: 'FII' ou 'ACAO'" },
-          d: {
-            type: Type.ARRAY,
-            description: "Lista de proventos",
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                ty: { type: Type.STRING, description: "Tipo: 'DIVIDENDO' ou 'JCP'" },
-                dc: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
-                dp: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
-                v: { type: Type.NUMBER, description: "Valor do provento" }
-              },
-              required: ["ty", "dc", "dp", "v"]
-            }
-          }
-        },
-        required: ["t", "s", "type", "d"]
-      }
-    }
-  },
-  required: ["assets"]
-};
 
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
@@ -53,11 +18,27 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     Atue como um Especialista em Dados de Mercado da B3 (Brasil).
     Consulte fontes oficiais recentes (últimos 12 meses) para: ${tickerListString}.
     
-    PARA CADA ATIVO:
-    1. Classifique se é FII ou ACAO e seu setor.
-    2. Liste TODOS os proventos (Dividendos/JCP) com Data Com nos últimos 12 meses.
+    Gere um JSON VÁLIDO com a seguinte estrutura:
+    {
+      "assets": [
+        {
+          "t": "TICKER (Ex: PETR4)",
+          "s": "Setor ou Segmento",
+          "type": "FII" ou "ACAO",
+          "d": [
+            { 
+              "ty": "DIVIDENDO" ou "JCP", 
+              "dc": "Data Com (YYYY-MM-DD)", 
+              "dp": "Data Pagamento (YYYY-MM-DD)", 
+              "v": Valor (number)
+            }
+          ]
+        }
+      ]
+    }
     
     REGRAS CRÍTICAS:
+    - Retorne APENAS o JSON, sem blocos de código markdown (sem \`\`\`json).
     - Retorne APENAS dados confirmados.
     - Datas no formato YYYY-MM-DD.
     - Se não houver proventos, retorne array vazio em "d".
@@ -69,8 +50,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: MARKET_DATA_SCHEMA
+        // responseMimeType e responseSchema removidos pois conflitam com googleSearch
       }
     });
 
@@ -78,8 +58,16 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         throw new Error("Resposta vazia do Gemini");
     }
 
-    // Com responseSchema, o parse é seguro e direto
-    const parsed = JSON.parse(response.text);
+    let jsonStr = response.text.trim();
+    // Limpeza robusta de Markdown caso o modelo ignore a instrução negativa
+    if (jsonStr.startsWith('```json')) {
+        jsonStr = jsonStr.replace(/^```json/, '').replace(/```$/, '');
+    } else if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/^```/, '').replace(/```$/, '');
+    }
+    jsonStr = jsonStr.trim();
+
+    const parsed = JSON.parse(jsonStr);
     
     // Extração de fontes (Grounding)
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[];
@@ -87,7 +75,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     const result: UnifiedMarketData = { 
         dividends: [], 
         metadata: {},
-        sources: groundingChunks?.filter(chunk => chunk?.web?.uri) || []
+        sources: groundingChunks?.filter((chunk: any) => chunk?.web?.uri) || []
     };
 
     if (parsed?.assets && Array.isArray(parsed.assets)) {

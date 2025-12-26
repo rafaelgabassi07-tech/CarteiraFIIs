@@ -9,13 +9,15 @@ interface TransactionsProps {
   onAddTransaction: (t: Omit<Transaction, 'id'>) => void;
   onUpdateTransaction: (id: string, t: Omit<Transaction, 'id'>) => void;
   onDeleteTransaction: (id: string) => void;
+  monthlyContribution: number;
 }
 
 export const Transactions: React.FC<TransactionsProps> = ({ 
   transactions, 
   onAddTransaction, 
   onUpdateTransaction,
-  onDeleteTransaction 
+  onDeleteTransaction,
+  monthlyContribution
 }) => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -95,8 +97,28 @@ export const Transactions: React.FC<TransactionsProps> = ({
     <div className="pb-32 pt-2 px-4 space-y-6 relative">
       {/* Luz ambiente */}
       <div className="fixed top-0 left-0 right-0 h-64 bg-slate-800/20 blur-[80px] -z-10 pointer-events-none"></div>
+      
+      {/* Resumo Aporte Mensal */}
+      <div className="animate-fade-in-up">
+        <div className="glass p-4 rounded-[2rem] border border-white/5 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-accent/20 to-blue-500/10 flex items-center justify-center text-accent ring-1 ring-white/5">
+                 <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Aporte em {new Date().toLocaleString('pt-BR', { month: 'long' })}</p>
+                 <h3 className="text-white font-black text-base tracking-tight">Total Investido</h3>
+              </div>
+           </div>
+           <div className="text-right">
+              <div className="text-lg font-black text-white tabular-nums tracking-tight">
+                 R$ {formatCurrency(monthlyContribution)}
+              </div>
+           </div>
+        </div>
+      </div>
 
-      {/* Busca */}
+      {/* Busca e Adicionar */}
       <div className="flex justify-between items-center gap-3">
           <div className="relative flex-1 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-accent transition-colors" />
@@ -145,57 +167,52 @@ export const Transactions: React.FC<TransactionsProps> = ({
                   {trans.map((t) => (
                       <div 
                         key={t.id} 
-                        className="bg-slate-800/40 pl-3 pr-2 py-3 rounded-2xl flex items-center justify-between group border border-white/[0.03] active:scale-[0.99] shadow-sm relative overflow-hidden"
+                        className="bg-slate-800/40 rounded-2xl flex items-center relative overflow-hidden group border border-white/[0.03] active:scale-[0.99] shadow-sm"
                       >
-                        {/* Linha colorida indicativa na esquerda */}
-                        <div className={`absolute left-0 top-3 bottom-3 w-0.5 rounded-r-full ${t.type === 'BUY' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                        {/* Indicador de Tipo Lateral */}
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${t.type === 'BUY' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
 
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex-1 flex items-center py-3 pl-4 pr-1 gap-3 min-w-0">
                             {/* Icone */}
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all ${t.type === 'BUY' ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400/80' : 'bg-rose-500/5 border-rose-500/10 text-rose-400/80'}`}>
-                                {t.type === 'BUY' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all ${t.type === 'BUY' ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 border-rose-500/10 text-rose-400'}`}>
+                                {t.type === 'BUY' ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                             </div>
                             
-                            {/* Texto Compacto */}
-                            <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <span className="font-black text-white text-sm tracking-tight">{t.ticker}</span>
-                                </div>
-                                <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider truncate flex items-center gap-1.5 opacity-80">
-                                   <span>{t.date.split('-').reverse().join('/')}</span>
-                                   <span className="w-0.5 h-0.5 rounded-full bg-slate-600" />
-                                   <span className={t.type === 'BUY' ? 'text-emerald-500' : 'text-rose-500'}>
+                            {/* Grid de Conteúdo - Separação clara */}
+                            <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 items-center">
+                                {/* Linha 1: Ticker e Valor Total */}
+                                <div className="font-black text-white text-sm truncate tracking-tight">{t.ticker}</div>
+                                <div className="text-white text-sm font-black tabular-nums tracking-tight text-right">R$ {formatCurrency(t.quantity * t.price)}</div>
+
+                                {/* Linha 2: Data/Tipo e Detalhes */}
+                                <div className="flex items-center gap-1.5 overflow-hidden">
+                                   <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-[1px] rounded ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                                       {t.type === 'BUY' ? 'Compra' : 'Venda'}
                                    </span>
-                                   <span className="w-0.5 h-0.5 rounded-full bg-slate-600" />
-                                   <span className="text-slate-300">{t.quantity} un x {formatCurrency(t.price)}</span>
+                                   <span className="text-[10px] text-slate-500 font-bold truncate">
+                                      {t.date.split('-').reverse().slice(0,2).join('/')}
+                                   </span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-medium tabular-nums text-right truncate">
+                                   {t.quantity} un x {formatCurrency(t.price)}
                                 </div>
                             </div>
                         </div>
                         
-                        {/* Valor e Ações */}
-                        <div className="flex items-center gap-3">
-                            <div className="text-right">
-                                <div className="text-white text-sm font-black tabular-nums tracking-tight">
-                                  R$ {formatCurrency(t.quantity * t.price)}
-                                </div>
-                            </div>
-                            
-                            {/* Botões de Ação Discretos */}
-                            <div className="flex flex-col gap-1 border-l border-white/5 pl-2">
-                                <button 
-                                  onClick={() => handleEdit(t)} 
-                                  className="p-1.5 rounded-lg text-slate-600 hover:text-accent hover:bg-white/5 transition-colors active:scale-90"
-                                >
-                                    <Pencil className="w-3 h-3" />
-                                </button>
-                                <button 
-                                  onClick={() => { if(confirm('Excluir?')) onDeleteTransaction(t.id); }} 
-                                  className="p-1.5 rounded-lg text-slate-600 hover:text-rose-500 hover:bg-white/5 transition-colors active:scale-90"
-                                >
-                                    <Trash2 className="w-3 h-3" />
-                                </button>
-                            </div>
+                        {/* Ações Laterais */}
+                        <div className="flex flex-col gap-1 pr-2 pl-2 border-l border-white/5 py-2">
+                            <button 
+                              onClick={() => handleEdit(t)} 
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-accent hover:bg-white/5 transition-colors active:scale-90"
+                            >
+                                <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              onClick={() => { if(confirm('Excluir?')) onDeleteTransaction(t.id); }} 
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-500 hover:bg-white/5 transition-colors active:scale-90"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                         </div>
                       </div>
                   ))}
@@ -219,9 +236,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1.5">Preencha os dados da operação</p>
                       </div>
                    </div>
-                   <button onClick={() => { setShowForm(false); resetForm(); }} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:scale-90 transition-all hover:bg-white/10">
-                       <X className="w-5 h-5" />
-                   </button>
               </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">

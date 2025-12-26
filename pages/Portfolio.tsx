@@ -1,12 +1,13 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, TrendingUp, ChevronDown, DollarSign, Target, X, ChevronRight, Briefcase, Info, Scale, PieChart } from 'lucide-react';
+import { Building2, TrendingUp, ChevronDown, DollarSign, Target, X, ChevronRight, Briefcase, Info, Scale, PieChart, Calendar } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
   portfolio: AssetPosition[];
   dividendReceipts: DividendReceipt[];
+  monthlyContribution: number;
 }
 
 const AssetCard: React.FC<{ 
@@ -36,7 +37,7 @@ const AssetCard: React.FC<{
   return (
     <>
       <div 
-          className={`relative overflow-hidden transition-all duration-300 rounded-[1.8rem] mb-2.5 backdrop-blur-md animate-fade-in-up border ${isExpanded ? 'bg-slate-800/80 border-accent/20 shadow-lg ring-1 ring-accent/10' : 'bg-slate-800/40 border-white/[0.06] hover:bg-slate-800/60 shadow-sm'}`}
+          className={`relative overflow-hidden transition-all duration-300 rounded-[1.8rem] backdrop-blur-md animate-fade-in-up border ${isExpanded ? 'bg-slate-800/80 border-accent/20 shadow-lg ring-1 ring-accent/10' : 'bg-slate-800/40 border-white/[0.06] hover:bg-slate-800/60 shadow-sm'}`}
           style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
       >
         <div 
@@ -159,9 +160,6 @@ const AssetCard: React.FC<{
                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Histórico de Proventos</p>
                   </div>
                 </div>
-                <button onClick={() => setShowHistoryModal(false)} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:scale-90 transition-all hover:bg-white/10">
-                  <X className="w-4 h-4" />
-                </button>
             </div>
               
             <div className="p-5 glass rounded-[2rem] flex justify-between items-center bg-accent/5 border border-accent/10 mb-6">
@@ -223,8 +221,9 @@ const AssetCard: React.FC<{
   );
 });
 
-export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipts }) => {
+export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipts, monthlyContribution }) => {
   const getAssetHistory = (ticker: string) => dividendReceipts.filter(r => r.ticker === ticker);
+  const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (portfolio.length === 0) {
     return (
@@ -246,9 +245,29 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
     <div className="pb-32 pt-2 px-4 max-w-lg mx-auto relative">
       {/* Luz ambiente para quebrar o fundo preto */}
       <div className="fixed top-0 left-0 right-0 h-96 bg-accent/5 blur-[100px] -z-10 pointer-events-none rounded-b-[100px]"></div>
+      
+      {/* Resumo Aporte Mensal */}
+      <div className="mb-6 animate-fade-in-up">
+        <div className="glass p-4 rounded-[2rem] border border-white/5 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-accent/20 to-blue-500/10 flex items-center justify-center text-accent ring-1 ring-white/5">
+                 <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Aporte em {new Date().toLocaleString('pt-BR', { month: 'long' })}</p>
+                 <h3 className="text-white font-black text-base tracking-tight">Resumo do Mês</h3>
+              </div>
+           </div>
+           <div className="text-right">
+              <div className="text-lg font-black text-white tabular-nums tracking-tight">
+                 R$ {formatCurrency(monthlyContribution)}
+              </div>
+           </div>
+        </div>
+      </div>
 
       {fiis.length > 0 && (
-        <div className="mb-8 animate-fade-in-up">
+        <div className="mb-8 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
           <div className="flex items-center gap-3 mb-4 px-1">
             <div className="p-1.5 bg-accent/10 rounded-lg border border-accent/10">
                 <Building2 className="w-3.5 h-3.5 text-accent" />
@@ -256,14 +275,15 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
             <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-[0.25em]">Fundos Imobiliários</h3>
             <div className="h-px flex-1 bg-white/[0.05] ml-2" />
           </div>
-          <div className="space-y-1">
+          {/* AQUI: space-y-3 no container pai, sem margens no filho */}
+          <div className="space-y-3">
             {fiis.map((asset, i) => <AssetCard key={asset.ticker} asset={asset} index={i} history={getAssetHistory(asset.ticker)} />)}
           </div>
         </div>
       )}
       
       {stocks.length > 0 && (
-        <div className="mb-8 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+        <div className="mb-8 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
           <div className="flex items-center gap-3 mb-4 px-1">
             <div className="p-1.5 bg-purple-500/10 rounded-lg border border-purple-500/10">
                 <Briefcase className="w-3.5 h-3.5 text-purple-400" />
@@ -271,7 +291,8 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
             <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-[0.25em]">Ações Brasileiras</h3>
             <div className="h-px flex-1 bg-white/[0.05] ml-2" />
           </div>
-          <div className="space-y-1">
+          {/* AQUI: space-y-3 no container pai, sem margens no filho */}
+          <div className="space-y-3">
              {stocks.map((asset, i) => <AssetCard key={asset.ticker} asset={asset} index={i + fiis.length} history={getAssetHistory(asset.ticker)} />)}
           </div>
         </div>

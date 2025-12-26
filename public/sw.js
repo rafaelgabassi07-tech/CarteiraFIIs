@@ -1,6 +1,6 @@
 
 // Versão do cache estático. Incrementar para forçar atualização.
-const STATIC_CACHE = 'investfiis-static-v39';
+const STATIC_CACHE = 'investfiis-static-v43';
 const DATA_CACHE = 'investfiis-data-v1';
 
 const STATIC_ASSETS = [

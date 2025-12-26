@@ -417,9 +417,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                 <h3 className="text-2xl font-black text-white tracking-tighter">Proventos</h3>
                 <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em] mt-1">Evolução de Dividendos</p>
               </div>
-              <button onClick={() => setShowProventosModal(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:scale-90 transition-all hover:bg-white/10">
-                <X className="w-5 h-5" />
-              </button>
            </div>
 
            <div className="h-56 w-full mb-8 relative">
@@ -561,9 +558,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                  <h3 className="text-2xl font-black text-white tracking-tighter">Alocação</h3>
                  <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">Diversificação da Carteira</p>
                </div>
-               <button onClick={() => setShowAllocationModal(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:scale-90 transition-all hover:bg-white/10">
-                 <X className="w-5 h-5" />
-               </button>
             </div>
 
             <div className="flex justify-center mb-6">
@@ -634,9 +628,6 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                     <h3 className="text-2xl font-black text-white tracking-tighter">Ganho Real</h3>
                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Sua Rentabilidade vs. Inflação</p>
                 </div>
-                <button onClick={() => setShowInflationModal(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:scale-90 transition-all hover:bg-white/10">
-                    <X className="w-5 h-5" />
-                </button>
              </div>
 
              <div className="bg-slate-900 rounded-[2.5rem] p-6 mb-6 border border-white/5 relative overflow-hidden">
