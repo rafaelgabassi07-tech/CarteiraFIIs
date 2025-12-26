@@ -1,18 +1,22 @@
 
-const CACHE_NAME = 'investfiis-v17';
+// Versão do cache estático. Incrementar para forçar atualização.
+const STATIC_CACHE = 'investfiis-static-v29';
+const DATA_CACHE = 'investfiis-data-v1';
+
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './index.tsx'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('SW: Pre-caching static assets');
+    caches.open(STATIC_CACHE).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -20,7 +24,10 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
+          if (key.startsWith('investfiis-static-') && key !== STATIC_CACHE) {
+            console.log('SW: Limpando cache antigo', key);
+            return caches.delete(key);
+          }
         })
       );
     }).then(() => self.clients.claim())
@@ -31,40 +38,51 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Estratégia Stale-While-Revalidate para APIs
+  // 1. APIs (Brapi e Gemini) - Network First com Fallback para Cache
   if (url.hostname.includes('brapi.dev') || url.hostname.includes('googleapis.com')) {
     event.respondWith(
-      caches.open(CACHE_NAME).then((cache) => {
-        return cache.match(request).then((cachedResponse) => {
-          const fetchedResponse = fetch(request).then((networkResponse) => {
-            if (networkResponse.status === 200) {
-              cache.put(request, networkResponse.clone());
-            }
-            return networkResponse;
-          }).catch(() => cachedResponse);
-          return cachedResponse || fetchedResponse;
-        });
-      })
+      fetch(request)
+        .then((response) => {
+          const clonedResponse = response.clone();
+          caches.open(DATA_CACHE).then((cache) => {
+            cache.put(request, clonedResponse);
+          });
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }
 
-  // Estratégia Cache-First para Assets
+  // 2. Navegação (HTML) - Network First (Prioridade Rede)
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          return caches.open(STATIC_CACHE).then((cache) => {
+            cache.put(request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          return caches.match(request);
+        })
+    );
+    return;
+  }
+
+  // 3. Assets Estáticos - Cache First
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
-      return fetch(request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
-        }
-        if (url.origin === self.location.origin) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-            });
+      const fetchPromise = fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
+          caches.open(STATIC_CACHE).then((cache) => {
+            cache.put(request, networkResponse.clone());
+          });
         }
         return networkResponse;
       });
+      return cachedResponse || fetchPromise;
     })
   );
 });

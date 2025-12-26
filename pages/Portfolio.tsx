@@ -29,7 +29,7 @@ const AssetCard: React.FC<{
   return (
     <>
       <div 
-          className={`glass-card hover:bg-white/[0.05] transition-all duration-300 rounded-[2.2rem] mb-3 overflow-hidden backdrop-blur-md animate-fade-in-up ${isExpanded ? 'ring-1 ring-accent/30 bg-white/[0.05] shadow-lg' : ''}`}
+          className={`bg-slate-800/50 hover:bg-slate-800/70 border border-white/[0.08] transition-all duration-300 rounded-[2.2rem] mb-3 overflow-hidden backdrop-blur-md animate-fade-in-up ${isExpanded ? 'ring-1 ring-accent/30 bg-slate-800 shadow-lg' : 'shadow-sm'}`}
           style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
       >
         <div 
@@ -41,17 +41,17 @@ const AssetCard: React.FC<{
               {asset.logoUrl ? (
                 <img src={asset.logoUrl} alt={asset.ticker} className="w-12 h-12 rounded-2xl bg-white object-contain p-1 shadow-lg ring-1 ring-white/10" />
               ) : (
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-[10px] font-black text-white shadow-inner ring-1 ring-white/10 uppercase border border-white/5">
+                <div className="w-12 h-12 rounded-2xl bg-slate-700 flex items-center justify-center text-[10px] font-black text-white shadow-inner ring-1 ring-white/10 uppercase border border-white/5">
                   {asset.ticker.substring(0, 4)}
                 </div>
               )}
-              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-lg flex items-center justify-center border-2 border-[#0f172a] text-[8px] font-black shadow-sm ${asset.assetType === AssetType.FII ? 'bg-accent text-primary' : 'bg-purple-500 text-white'}`}>
+              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-lg flex items-center justify-center border-2 border-[#1e293b] text-[8px] font-black shadow-sm ${asset.assetType === AssetType.FII ? 'bg-accent text-primary' : 'bg-purple-500 text-white'}`}>
                 {asset.assetType === AssetType.FII ? 'F' : 'A'}
               </div>
             </div>
             <div>
               <h4 className="font-black text-white text-base tracking-tight leading-tight">{asset.ticker}</h4>
-              <span className="text-[10px] text-slate-500 font-bold flex items-center gap-1.5 mt-0.5 uppercase tracking-wider">
+              <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5 mt-0.5 uppercase tracking-wider">
                 {asset.quantity} un • R$ {formatCurrency(asset.averagePrice)}
               </span>
             </div>
@@ -64,14 +64,14 @@ const AssetCard: React.FC<{
                 {gainPercent >= 0 ? '+' : ''}{gainPercent.toFixed(2)}%
               </div>
             </div>
-            <div className={`p-1.5 rounded-full bg-white/5 group-hover:bg-white/10 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-accent bg-accent/10' : 'text-slate-500'}`}>
+            <div className={`p-1.5 rounded-full bg-white/5 group-hover:bg-white/10 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-accent bg-accent/10' : 'text-slate-400'}`}>
                <ChevronDown className="w-4 h-4" />
             </div>
           </div>
         </div>
 
         <div className={`transition-all duration-500 ease-in-out ${isExpanded ? 'max-h-[600px] opacity-100 border-t border-white/5' : 'max-h-0 opacity-0 overflow-hidden pointer-events-none'}`}>
-          <div className="p-5 space-y-6 bg-black/20">
+          <div className="p-5 space-y-6 bg-slate-900/30">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/[0.05]">
                 <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest flex items-center gap-1.5 mb-1.5">
@@ -100,7 +100,7 @@ const AssetCard: React.FC<{
               <div className="grid grid-cols-2 gap-y-4 px-1">
                  <div>
                     <span className="block text-[8px] text-slate-500 uppercase font-black tracking-widest mb-1">Custo Total</span>
-                    <span className="text-xs text-slate-200 font-black tabular-nums">
+                    <span className="text-xs text-slate-300 font-black tabular-nums">
                       R$ {formatCurrency(totalCost)}
                     </span>
                  </div>
@@ -239,7 +239,10 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
   const stocks = portfolio.filter(p => p.assetType === AssetType.STOCK);
 
   return (
-    <div className="pb-32 pt-2 px-5 max-w-lg mx-auto">
+    <div className="pb-32 pt-2 px-5 max-w-lg mx-auto relative">
+      {/* Luz ambiente para quebrar o fundo preto */}
+      <div className="fixed top-0 left-0 right-0 h-96 bg-accent/5 blur-[100px] -z-10 pointer-events-none rounded-b-[100px]"></div>
+
       {fiis.length > 0 && (
         <div className="mb-10 animate-fade-in-up">
           <div className="flex items-center gap-3 mb-5 px-2">

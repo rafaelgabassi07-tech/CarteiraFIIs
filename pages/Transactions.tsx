@@ -101,8 +101,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
   const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="pb-32 pt-2 px-5 space-y-6">
-      
+    <div className="pb-32 pt-2 px-5 space-y-6 relative">
+      {/* Luz ambiente */}
+      <div className="fixed top-0 left-0 right-0 h-64 bg-slate-800/20 blur-[80px] -z-10 pointer-events-none"></div>
+
       {/* Busca e Estatísticas Rápidas */}
       <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
@@ -110,7 +112,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-accent transition-colors" />
             <input
               type="text"
-              className="w-full bg-white/[0.03] backdrop-blur-md border border-white/[0.05] pl-11 pr-4 py-4 rounded-3xl outline-none focus:border-accent/40 focus:bg-white/[0.05] text-sm font-bold placeholder:text-slate-600 transition-all shadow-sm"
+              className="w-full bg-slate-800/80 backdrop-blur-md border border-white/[0.08] pl-11 pr-4 py-4 rounded-3xl outline-none focus:border-accent/40 focus:bg-slate-800 text-sm font-bold placeholder:text-slate-500 transition-all shadow-sm text-white"
               placeholder="Buscar ativo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -153,8 +155,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
           (Object.entries(groupedTransactions) as [string, Transaction[]][]).map(([month, trans], gIdx) => (
             <div key={month} className="space-y-4 animate-fade-in-up" style={{ animationDelay: `${gIdx * 80}ms` }}>
                 <div className="flex items-center gap-4 sticky top-24 z-10 py-2">
-                  <div className="bg-[#0f172a]/80 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/5 shadow-lg">
-                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">
+                  <div className="bg-slate-800/90 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-lg">
+                     <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
                         {month}
                      </h3>
                   </div>
@@ -165,10 +167,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
                   {trans.map((t) => (
                       <div 
                         key={t.id} 
-                        className="glass-card p-5 rounded-[2.2rem] flex items-center justify-between group transition-all hover:bg-white/[0.04] border border-white/[0.03] active:scale-[0.98] shadow-sm"
+                        className="bg-slate-800/40 p-5 rounded-[2.2rem] flex items-center justify-between group transition-all hover:bg-slate-800/60 border border-white/[0.05] active:scale-[0.98] shadow-sm"
                       >
                         <div className="flex items-center gap-4 flex-1">
-                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all ${t.type === 'BUY' ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 border-rose-500/10 text-rose-400'}`}>
+                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all shadow-sm ${t.type === 'BUY' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
                                 {t.type === 'BUY' ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                             </div>
                             <div className="min-w-0">
@@ -182,8 +184,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                   <span className={`text-[8px] font-black uppercase tracking-[0.15em] ${t.type === 'BUY' ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
                                     {t.type === 'BUY' ? 'Compra' : 'Venda'}
                                   </span>
-                                  <span className="w-1 h-1 rounded-full bg-slate-700" />
-                                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">
+                                  <span className="w-1 h-1 rounded-full bg-slate-600" />
+                                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
                                     {t.date.split('-').reverse().join('/')}
                                   </span>
                                 </div>

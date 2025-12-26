@@ -15,6 +15,7 @@ const STORAGE_KEYS = {
   TOKEN: 'investfiis_brapitoken',
   DIVS: 'investfiis_gemini_dividends_cache',
   SYNC: 'investfiis_last_gemini_sync',
+  NOTIFY_PREFS: 'investfiis_prefs_notifications'
 };
 
 // Interface para eventos de notificação
@@ -208,6 +209,10 @@ const App: React.FC = () => {
   useEffect(() => {
     if (geminiDividends.length === 0) return;
 
+    // Carrega preferências salvas
+    const storedPrefs = localStorage.getItem(STORAGE_KEYS.NOTIFY_PREFS);
+    const notifyPrefs = storedPrefs ? JSON.parse(storedPrefs) : { payments: true, datacom: true };
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -246,7 +251,13 @@ const App: React.FC = () => {
                 processedKeys.add(key);
 
                 // Notificação Nativa (Apenas Hoje)
-                if (diffDays === 0 && "Notification" in window && Notification.permission === "granted") {
+                // Verifica as preferências do usuário antes de enviar
+                const shouldNotify = diffDays === 0 && 
+                                   "Notification" in window && 
+                                   Notification.permission === "granted" &&
+                                   ((type === 'PAYMENT' && notifyPrefs.payments) || (type === 'DATA_COM' && notifyPrefs.datacom));
+
+                if (shouldNotify) {
                     const title = type === 'PAYMENT' 
                         ? `InvestFIIs: Pagamento ${div.ticker}` 
                         : `InvestFIIs: Data Com ${div.ticker}`;
