@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, TrendingUp, Bell, ChevronDown } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, TrendingUp, Bell, Rocket, Sparkles, Check } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
@@ -115,7 +115,7 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
 
   return createPortal(
     <div className="fixed inset-0 z-[300] flex items-end justify-center pointer-events-none">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto transition-opacity" onClick={onClose} />
       <div 
         className="bg-white dark:bg-secondary-dark w-full h-[95dvh] rounded-t-[2.5rem] border-t border-slate-200 dark:border-white/10 shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto transition-transform duration-500 ease-out"
         style={{ transform: `translateY(${offsetY}px)` }}
@@ -126,6 +126,40 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
         <div className="w-full h-10 flex items-center justify-center shrink-0 touch-none"><div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full" /></div>
         <div className="flex-1 overflow-y-auto no-scrollbar">{children}</div>
       </div>
+    </div>,
+    document.body
+  );
+};
+
+export const ChangelogModal: React.FC<{ isOpen: boolean; onClose: () => void; version: string }> = ({ isOpen, onClose, version }) => {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 animate-fade-in">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+        <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 border border-slate-200 dark:border-white/10 shadow-2xl flex flex-col items-center text-center">
+            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-6 relative">
+                <Rocket className="w-10 h-10" />
+                <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded-full border-2 border-white dark:border-slate-900">v{version}</div>
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Atualizado!</h3>
+            <p className="text-slate-500 text-sm mb-8 leading-relaxed">
+               O app foi atualizado em segundo plano com sucesso. Aproveite as melhorias de performance e correções.
+            </p>
+            <div className="w-full space-y-3 mb-8">
+               <div className="flex items-center gap-3 text-left bg-slate-50 dark:bg-white/5 p-4 rounded-2xl">
+                  <div className="p-1.5 bg-accent/20 rounded-full text-accent"><Sparkles className="w-3.5 h-3.5" /></div>
+                  <span className="text-xs font-bold">Performance aprimorada</span>
+               </div>
+               <div className="flex items-center gap-3 text-left bg-slate-50 dark:bg-white/5 p-4 rounded-2xl">
+                   <div className="p-1.5 bg-emerald-500/20 rounded-full text-emerald-500"><Check className="w-3.5 h-3.5" /></div>
+                   <span className="text-xs font-bold">Correções de segurança</span>
+               </div>
+            </div>
+            <button onClick={onClose} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 transition-transform">
+                Incrível
+            </button>
+        </div>
     </div>,
     document.body
   );

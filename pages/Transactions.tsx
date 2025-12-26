@@ -10,7 +10,7 @@ const formatBRL = (val: number | undefined | null) => {
   return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-// Interface explícita para corrigir erro TS7006 no App.tsx
+// Interface explícita para corrigir erro de inferência no App.tsx
 interface TransactionsProps {
   transactions: Transaction[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;

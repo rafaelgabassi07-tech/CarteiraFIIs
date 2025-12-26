@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, SwipeableModal } from './components/Layout';
+import { Header, BottomNav, SwipeableModal, ChangelogModal } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
@@ -8,14 +8,15 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, DownloadCloud } from 'lucide-react';
 
-const APP_VERSION = '3.2.0';
+const APP_VERSION = '3.2.1';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
   DIVS: 'investfiis_v4_div_cache',
   THEME: 'investfiis_theme',
+  LAST_VERSION: 'investfiis_last_version'
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -24,9 +25,11 @@ const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
-  const [toast, setToast] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   
-  // Ref para controlar atualização pendente sem re-renderizar
+  // Controle de Atualização e Changelog
+  const [showChangelog, setShowChangelog] = useState(false);
+  const [updateReady, setUpdateReady] = useState(false);
   const updatePending = useRef(false);
   
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -64,48 +67,54 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.THEME, theme);
   }, [theme]);
 
-  const showToast = useCallback((type: 'success' | 'error', text: string) => {
-    setToast({ type, text });
-    setTimeout(() => setToast(null), 3000);
+  // Changelog Check on Mount
+  useEffect(() => {
+    const lastVersion = localStorage.getItem(STORAGE_KEYS.LAST_VERSION);
+    if (lastVersion !== APP_VERSION) {
+      // Pequeno delay para garantir que o app carregou visualmente
+      setTimeout(() => setShowChangelog(true), 1000);
+      localStorage.setItem(STORAGE_KEYS.LAST_VERSION, APP_VERSION);
+    }
   }, []);
 
-  // SISTEMA DE ATUALIZAÇÃO SILENCIOSA (BACKGROUND v3.2.0)
+  const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
+    setToast({ type, text });
+    if (type !== 'info') setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  // SISTEMA DE ATUALIZAÇÃO SILENCIOSA (BACKGROUND v3.2.1)
   useEffect(() => {
     const checkForUpdates = async () => {
       try {
-        // Busca versão evitando cache
         const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           if (data.version !== APP_VERSION) {
-            console.log(`Nova versão disponível: ${data.version}. Aguardando background para atualizar.`);
+            console.log(`Nova versão detectada: ${data.version}`);
             updatePending.current = true;
+            setUpdateReady(true);
+            showToast('info', 'Nova atualização disponível. Atualizando em 2º plano...');
           }
         }
-      } catch (e) {
-        // Silencioso em caso de erro de rede
-      }
+      } catch (e) {}
     };
 
-    // Verifica a cada 2 minutos
     const interval = setInterval(checkForUpdates, 120 * 1000);
-    checkForUpdates(); // Verifica ao iniciar
+    checkForUpdates();
 
-    // Listener para aplicar atualização quando o usuário voltar ao app
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && updatePending.current) {
-        console.log("Aplicando atualização em background...");
+        console.log("Aplicando atualização...");
         window.location.reload();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [showToast]);
 
   // Calculations
   const getQuantityOnDate = useCallback((ticker: string, dateLimit: string, txs: Transaction[]) => {
@@ -116,7 +125,7 @@ const App: React.FC = () => {
 
   const memoizedData = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-    const nowStr = new Date().toISOString().substring(0, 7); // YYYY-MM
+    const nowStr = new Date().toISOString().substring(0, 7);
     const today = new Date();
     today.setHours(0,0,0,0);
 
@@ -195,9 +204,9 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       {toast && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up">
-          <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : 'bg-rose-500/90 border-rose-400'} text-white`}>
-            <CheckCircle2 className="w-5 h-5" />
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => updateReady && window.location.reload()}>
+          <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : toast.type === 'info' ? 'bg-blue-500/90 border-blue-400 cursor-pointer' : 'bg-rose-500/90 border-rose-400'} text-white`}>
+            {updateReady ? <DownloadCloud className="w-5 h-5 animate-bounce" /> : <CheckCircle2 className="w-5 h-5" />}
             <span className="text-xs font-black uppercase tracking-wider">{toast.text}</span>
           </div>
         </div>
@@ -239,6 +248,12 @@ const App: React.FC = () => {
       </main>
 
       {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
+
+      <ChangelogModal 
+        isOpen={showChangelog} 
+        onClose={() => setShowChangelog(false)} 
+        version={APP_VERSION} 
+      />
     </div>
   );
 };

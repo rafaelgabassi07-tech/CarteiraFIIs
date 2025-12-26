@@ -1,12 +1,12 @@
 
 {
-  "version": "3.2.0",
+  "version": "3.2.1",
   "date": "2024-06-05",
   "notes": [
     {
-      "type": "feat",
-      "title": "Atualizações Silenciosas",
-      "desc": "O app agora se atualiza automaticamente em segundo plano."
+      "type": "fix",
+      "title": "Melhorias de Estabilidade",
+      "desc": "Correções internas e otimização do processo de atualização."
     }
   ]
 }
