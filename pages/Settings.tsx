@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Lock, Eraser, Server } from 'lucide-react';
 import { Transaction } from '../types';
@@ -76,6 +75,7 @@ export const Settings: React.FC<SettingsProps> = ({
     const link = document.createElement("a");
     link.href = url;
     link.download = `investfiis_backup_${new Date().toISOString().split('T')[0]}.json`;
+    // Fix: Remove the undefined variable 'json' which was causing a compilation error.
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -118,6 +118,7 @@ export const Settings: React.FC<SettingsProps> = ({
             localStorage.removeItem('investfiis_last_synced_tickers');
             localStorage.removeItem('investfiis_prefs_notifications');
             localStorage.removeItem('investfiis_sw_version');
+            localStorage.removeItem('investfiis_notif_processed_keys'); // Limpa chaves de notificação processadas
             
             if ('caches' in window) {
                 const keys = await caches.keys();
