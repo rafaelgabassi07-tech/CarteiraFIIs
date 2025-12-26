@@ -1,22 +1,17 @@
 
 {
-  "version": "2.6.2",
-  "date": "2024-05-28",
+  "version": "2.6.3",
+  "date": "2024-05-29",
   "notes": [
     {
-      "type": "feature",
-      "title": "Recuperação de Cache",
-      "desc": "Adicionado botão em Ajustes > Sistema para forçar a limpeza manual caso o app não atualize automaticamente."
+      "type": "fix",
+      "title": "Modal de Alocação",
+      "desc": "Corrigido erro onde o modal de alocação não abria ao clicar no card de patrimônio/alocação."
     },
     {
       "type": "improvement",
-      "title": "Protocolo v2.6.2",
-      "desc": "Nova estratégia de cache agressiva para garantir que modificações visuais sejam entregues sem interferência do navegador."
-    },
-    {
-      "type": "fix",
-      "title": "Performance",
-      "desc": "Otimização no carregamento inicial de ícones e temas."
+      "title": "Estabilidade de Cache",
+      "desc": "Refinamento do Service Worker para garantir que correções críticas de UI cheguem mais rápido."
     }
   ]
 }

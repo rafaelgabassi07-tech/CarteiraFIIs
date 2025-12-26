@@ -1,8 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-// Added Globe and ExternalLink icons for display grounding sources
-import { Wallet, ChevronRight, CircleDollarSign, PieChart as PieIcon, Layers, Sparkles, BarChart3, Star, Zap, Trophy, TrendingUp, Globe, ExternalLink } from 'lucide-react';
+import { Wallet, ChevronRight, CircleDollarSign, PieChart as PieIcon, Layers, Sparkles, BarChart3, Star, Zap, Trophy, TrendingUp, Globe, ExternalLink, PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
@@ -39,7 +38,12 @@ export const Home: React.FC<HomeProps> = ({
 
   const COLORS = ['#0ea5e9', '#8b5cf6', '#ec4899', '#f43f5e', '#10b981', '#f59e0b'];
 
-  const assetAllocationData = useMemo(() => portfolio.map(p => ({ name: p.ticker, value: (p.currentPrice || p.averagePrice) * p.quantity, percent: (((p.currentPrice || p.averagePrice) * p.quantity) / (currentBalance || 1)) * 100 })).sort((a,b) => b.value - a.value), [portfolio, currentBalance]);
+  const assetAllocationData = useMemo(() => portfolio.map(p => ({ 
+    name: p.ticker, 
+    value: (p.currentPrice || p.averagePrice) * p.quantity, 
+    percent: (((p.currentPrice || p.averagePrice) * p.quantity) / (currentBalance || 1)) * 100 
+  })).sort((a,b) => b.value - a.value), [portfolio, currentBalance]);
+  
   const top3Assets = assetAllocationData.slice(0, 3);
 
   const dividendsChartData = useMemo(() => {
@@ -151,7 +155,7 @@ export const Home: React.FC<HomeProps> = ({
         </div>
       </button>
 
-      {/* Added Search Grounding Sources display as per Gemini API guidelines */}
+      {/* Grounding Sources display */}
       {sources && sources.length > 0 && (
         <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/5 animate-fade-in-up">
            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -173,7 +177,7 @@ export const Home: React.FC<HomeProps> = ({
         </div>
       )}
 
-      {/* Modais de Detalhes com fundo ajustado */}
+      {/* Proventos Details Modal */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
         <div className="px-6 pt-2 pb-10 bg-white dark:bg-secondary-dark min-h-full">
            <div className="mb-8">
@@ -226,6 +230,46 @@ export const Home: React.FC<HomeProps> = ({
                 ))}
              </div>
            )}
+        </div>
+      </SwipeableModal>
+
+      {/* Fixed: Added missing Allocation Modal */}
+      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
+        <div className="px-6 pt-2 pb-10 bg-white dark:bg-secondary-dark min-h-full">
+           <div className="mb-8">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">Detalhamento</h3>
+                <p className="text-[10px] text-accent font-black uppercase tracking-[0.2em] mt-1">Alocação de Ativos</p>
+           </div>
+           
+           <div className="flex items-center justify-center mb-10">
+              <div className="w-48 h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie data={assetAllocationData} innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={8}>
+                            {assetAllocationData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip />
+                    </PieChart>
+                </ResponsiveContainer>
+              </div>
+           </div>
+
+           <div className="space-y-4">
+             {assetAllocationData.map((asset, i) => (
+                <div key={asset.name} className="bg-slate-50 dark:bg-white/[0.02] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-3 h-10 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                        <div>
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase">{asset.name}</h4>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">{formatCurrency(asset.value)}</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-lg font-black text-slate-900 dark:text-white">{asset.percent.toFixed(1)}%</div>
+                    </div>
+                </div>
+             ))}
+           </div>
         </div>
       </SwipeableModal>
     </div>

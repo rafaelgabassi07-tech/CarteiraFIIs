@@ -1,6 +1,6 @@
 
-const STATIC_CACHE = 'investfiis-static-v2.6.2';
-const DATA_CACHE = 'investfiis-data-v2.6.2';
+const STATIC_CACHE = 'investfiis-static-v2.6.3';
+const DATA_CACHE = 'investfiis-data-v2.6.3';
 
 const STATIC_ASSETS = [
   './index.html',
@@ -20,7 +20,6 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          // Remove QUALQUER cache que não seja o atual v2.6.2
           if (key !== STATIC_CACHE && key !== DATA_CACHE) {
             console.log('SW: Removendo cache obsoleto:', key);
             return caches.delete(key);
@@ -37,7 +36,6 @@ self.addEventListener('fetch', (event) => {
   
   if (!url.protocol.startsWith('http')) return;
 
-  // Estratégia Network-First para arquivos críticos
   if (request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname.endsWith('version.json') || url.pathname === '/') {
     event.respondWith(
       fetch(request)
@@ -53,7 +51,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-While-Revalidate para o restante
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request).then((networkResponse) => {

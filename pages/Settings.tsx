@@ -118,10 +118,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 const keys = await caches.keys();
                 for (let key of keys) await caches.delete(key);
             }
-            // Limpa flag de versão para forçar re-download do version.json
             localStorage.removeItem('investfiis_app_version');
-            // FIX: Removed deprecated true argument from window.location.reload()
-            window.location.reload(); // Forçar reload do servidor
+            window.location.reload(); 
         } catch (e) {
             showMessage('error', 'Erro ao forçar atualização.');
         }
@@ -207,7 +205,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v2.6.2</span>
+              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v2.6.3</span>
            </div>
         </div>
       )}
