@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, SwipeableModal } from './components/Layout';
 import { Home } from './pages/Home';
@@ -40,7 +39,6 @@ const App: React.FC = () => {
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'upcoming' | 'history'>('all');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', text: string} | null>(null);
-  const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [isSplashActive, setIsSplashActive] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
 
@@ -64,8 +62,6 @@ const App: React.FC = () => {
   
   const [upcomingEvents, setUpcomingEvents] = useState<MarketEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<MarketEvent[]>([]);
-  
-  const lastSyncTickersRef = useRef<string>("");
 
   useEffect(() => {
     const fadeTimer = setTimeout(() => setIsFadingOut(true), 1200);
@@ -78,23 +74,31 @@ const App: React.FC = () => {
     setTimeout(() => setToast(null), 4000);
   }, []);
 
-  // Lógica Crítica: Quantidade de ativos no fechamento da Data Com
   const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
     const eligibleTxs = txs.filter(t => t.ticker === ticker && t.date <= dateCom);
     return eligibleTxs.reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
   }, []);
 
-  // Lógica Assertiva de Carteira e Proventos
+  // Novo: Cálculo de Aporte Mensal Real
+  const monthlyContribution = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    return transactions
+      .filter(t => {
+        const d = new Date(t.date + 'T12:00:00');
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.type === 'BUY';
+      })
+      .reduce((acc, t) => acc + (t.quantity * t.price), 0);
+  }, [transactions]);
+
   const { portfolio, dividendReceipts, realizedGain } = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
-    // Processamento de Proventos com Validação de Custódia
     const receipts: DividendReceipt[] = geminiDividends.map(div => {
       const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, sortedTxs);
       const eligibleQty = Math.max(0, qtyAtDate);
       const total = eligibleQty * div.rate;
-      
-      // Encontrar o tipo do ativo no momento da transação
       const assetInfo = sortedTxs.find(t => t.ticker === div.ticker);
       
       return { 
@@ -107,7 +111,6 @@ const App: React.FC = () => {
 
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
-    // Agregador de Proventos por Ticker
     const dividendsByTicker: Record<string, number> = {};
     receipts.forEach(r => {
       if (new Date(r.paymentDate + 'T12:00:00') <= new Date()) {
@@ -115,7 +118,6 @@ const App: React.FC = () => {
       }
     });
 
-    // Posições Atuais e Preço Médio
     const positions: Record<string, AssetPosition> = {};
     let totalRealizedGain = 0;
     
@@ -158,13 +160,10 @@ const App: React.FC = () => {
     return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: totalRealizedGain };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
-  // Gestão de Eventos da Agenda
   useEffect(() => {
     if (geminiDividends.length === 0) return;
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
     const portfolioTickers = new Set(portfolio.map(p => p.ticker));
     const upcoming: MarketEvent[] = [];
     const history: MarketEvent[] = [];
@@ -172,49 +171,36 @@ const App: React.FC = () => {
 
     geminiDividends.forEach(div => {
         if (!portfolioTickers.has(div.ticker)) return;
-
         const processEvent = (dateStr: string, type: 'PAYMENT' | 'DATA_COM', desc: string, amount?: number) => {
             if (!dateStr) return;
             const eventDate = new Date(dateStr + 'T12:00:00');
             const diffTime = eventDate.getTime() - today.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
             const key = `${type}-${div.ticker}-${dateStr}`; 
             if (processedKeys.has(key)) return;
-
             const currentPos = portfolio.find(p => p.ticker === div.ticker);
             const estimatedAmount = (amount || div.rate) * (currentPos?.quantity || 0);
-
             const eventObj: MarketEvent = {
                 id: key, ticker: div.ticker, type, date: dateStr, 
                 formattedDate: dateStr.split('-').reverse().join('/'),
                 daysRemaining: diffDays, amount: estimatedAmount, description: desc, isPast: diffDays < 0
             };
-
-            if (diffDays >= 0 && diffDays <= 60) { 
-                upcoming.push(eventObj);
-                processedKeys.add(key);
-            } else if (diffDays < 0 && diffDays >= -60) { 
-                history.push(eventObj);
-                processedKeys.add(key);
-            }
+            if (diffDays >= 0 && diffDays <= 60) { upcoming.push(eventObj); processedKeys.add(key); }
+            else if (diffDays < 0 && diffDays >= -60) { history.push(eventObj); processedKeys.add(key); }
         };
-
         processEvent(div.paymentDate, 'PAYMENT', `Renda de ${div.type}`, div.rate);
         processEvent(div.dateCom, 'DATA_COM', `Data Com B3`);
     });
-
     upcoming.sort((a, b) => a.daysRemaining - b.daysRemaining);
     history.sort((a, b) => b.daysRemaining - a.daysRemaining);
-    
     setUpcomingEvents(upcoming);
     setPastEvents(history);
   }, [geminiDividends, portfolio]);
 
   const syncBrapiData = useCallback(async (force = false) => {
     if (!brapiToken || transactions.length === 0) return;
-    // Fix: Using spread syntax to ensure string[] type inference and avoid 'unknown[]' error on line 234.
-    const uniqueTickers = [...new Set(transactions.map(t => t.ticker.toUpperCase()))];
+    // Fix: Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' inference issues.
+    const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
     setIsPriceLoading(true);
     try {
         const result = await getQuotes(uniqueTickers, brapiToken, force);
@@ -230,16 +216,13 @@ const App: React.FC = () => {
   }, [brapiToken, transactions, showToast]);
 
   const handleAiSync = useCallback(async (force = false) => {
-    // Fix: Using spread syntax to ensure string[] type inference and avoid 'unknown[]' error.
-    const uniqueTickers = [...new Set(transactions.map(t => t.ticker.toUpperCase()))].sort();
+    // Fix: Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' inference issues.
+    const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
-    
     const tickersStr = uniqueTickers.join(',');
     const lastSyncTime = localStorage.getItem(STORAGE_KEYS.SYNC);
     const lastSyncedTickers = localStorage.getItem(STORAGE_KEYS.SYNC_TICKERS);
-    
     if (!force && lastSyncTime && (Date.now() - parseInt(lastSyncTime, 10)) < AI_CACHE_DURATION && lastSyncedTickers === tickersStr) return;
-
     setIsAiLoading(true);
     try {
       const data = await fetchUnifiedMarketData(uniqueTickers);
@@ -281,7 +264,7 @@ const App: React.FC = () => {
       </div>
 
       <Header 
-        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Resumo' : currentTab === 'portfolio' ? 'Custódia' : 'Movimentações'} 
+        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Resumo' : currentTab === 'portfolio' ? 'Meus Ativos' : 'Movimentações'} 
         onSettingsClick={() => setShowSettings(true)} 
         showBack={showSettings}
         onBack={() => setShowSettings(false)}
@@ -300,9 +283,9 @@ const App: React.FC = () => {
           />
         ) : (
           <div key={currentTab} className="animate-fade-in">
-            {currentTab === 'home' && <Home portfolio={portfolio} dividendReceipts={dividendReceipts} isAiLoading={isAiLoading || isPriceLoading} sources={sources} realizedGain={realizedGain} />}
-            {currentTab === 'portfolio' && <Portfolio portfolio={portfolio} dividendReceipts={dividendReceipts} monthlyContribution={0} />}
-            {currentTab === 'transactions' && <Transactions transactions={transactions} onAddTransaction={(t) => setTransactions(p => [...p, { ...t, id: crypto.randomUUID() }])} onUpdateTransaction={(id, updated) => setTransactions(p => p.map(t => t.id === id ? { ...updated, id } : t))} onDeleteTransaction={(id) => setTransactions(p => p.filter(x => x.id !== id))} monthlyContribution={0} />}
+            {currentTab === 'home' && <Home portfolio={portfolio} dividendReceipts={dividendReceipts} isAiLoading={isAiLoading || isPriceLoading} sources={sources} realizedGain={realizedGain} monthlyContribution={monthlyContribution} />}
+            {currentTab === 'portfolio' && <Portfolio portfolio={portfolio} dividendReceipts={dividendReceipts} monthlyContribution={monthlyContribution} />}
+            {currentTab === 'transactions' && <Transactions transactions={transactions} onAddTransaction={(t) => setTransactions(p => [...p, { ...t, id: crypto.randomUUID() }])} onUpdateTransaction={(id, updated) => setTransactions(p => p.map(t => t.id === id ? { ...updated, id } : t))} onDeleteTransaction={(id) => setTransactions(p => p.filter(x => x.id !== id))} monthlyContribution={monthlyContribution} />}
           </div>
         )}
       </main>
@@ -311,17 +294,15 @@ const App: React.FC = () => {
         <div className="px-6 pt-2 pb-10 flex flex-col h-full">
            <div className="flex items-center justify-between mb-8">
               <div>
-                <h3 className="text-2xl font-black text-white tracking-tighter">Agenda Proventos</h3>
-                <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">Próximos Lançamentos</p>
+                <h3 className="text-2xl font-black text-white tracking-tighter">Agenda B3</h3>
+                <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">Próximos Pagamentos</p>
               </div>
            </div>
-
            <div className="flex bg-slate-950/40 p-1.5 rounded-[1.5rem] mb-8 border border-white/5">
                <button onClick={() => setNotificationFilter('all')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'all' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Tudo</button>
                <button onClick={() => setNotificationFilter('upcoming')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'upcoming' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Pendentes</button>
-               <button onClick={() => setNotificationFilter('history')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'history' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Concluídos</button>
+               <button onClick={() => setNotificationFilter('history')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'history' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Histórico</button>
            </div>
-
            <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
              {(notificationFilter === 'all' || notificationFilter === 'upcoming') && upcomingEvents.map((event, idx) => (
                 <div key={event.id} className="bg-white/[0.02] p-5 rounded-[2.2rem] flex items-center gap-4 border border-white/[0.04] animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
@@ -340,7 +321,6 @@ const App: React.FC = () => {
                   </div>
                 </div>
              ))}
-
              {(notificationFilter === 'all' || notificationFilter === 'history') && pastEvents.map((event, idx) => (
                 <div key={event.id} className="bg-white/[0.01] p-4 rounded-3xl flex items-center gap-4 border border-white/[0.02] opacity-50 grayscale">
                   <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-600">
