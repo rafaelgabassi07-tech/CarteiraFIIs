@@ -87,22 +87,31 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
       <div className="grid grid-cols-1 gap-5">
           <div onClick={() => setShowAllocationModal(true)} className="bg-slate-900 p-6 rounded-[2rem] border border-white/5 cursor-pointer min-h-[14rem] flex flex-col justify-between">
               <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Alocação por Setor</span>
-              <div className="h-32 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                          <Pie data={dataBySegment} innerRadius={35} outerRadius={50} dataKey="value" stroke="none">
-                              {dataBySegment.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                          </Pie>
-                      </PieChart>
-                  </ResponsiveContainer>
+              {/* Fix: Adicionado style com minHeight para garantir que o Recharts tenha dimensões para calcular */}
+              <div className="h-32 w-full" style={{ minHeight: '128px' }}>
+                  {dataBySegment.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie data={dataBySegment} innerRadius={35} outerRadius={50} dataKey="value" stroke="none">
+                                {dataBySegment.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                            </Pie>
+                        </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-[10px] text-slate-600 font-bold uppercase tracking-wider">
+                      Sem dados
+                    </div>
+                  )}
               </div>
               <div className="space-y-1">
-                  {dataBySegment.slice(0, 2).map((s, i) => (
+                  {dataBySegment.length > 0 ? dataBySegment.slice(0, 2).map((s, i) => (
                       <div key={i} className="flex justify-between text-[10px] font-bold">
-                          <span className="text-slate-400">{s.name}</span>
-                          <span className="text-white">{((s.value / currentBalance)*100).toFixed(0)}%</span>
+                          <span className="text-slate-400 truncate max-w-[70%]">{s.name}</span>
+                          <span className="text-white">{currentBalance > 0 ? ((s.value / currentBalance)*100).toFixed(0) : 0}%</span>
                       </div>
-                  ))}
+                  )) : (
+                    <div className="text-[10px] text-slate-700 text-center">Adicione ativos para ver o gráfico</div>
+                  )}
               </div>
           </div>
 
@@ -115,13 +124,12 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                   <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold">Ganho Real sobre custo</p>
               </div>
               <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden flex">
-                  <div className="bg-rose-500 h-full" style={{ width: `${(benchmarkInflation / (yieldOnCost || 1)) * 100}%` }}></div>
+                  <div className="bg-rose-500 h-full" style={{ width: `${Math.min((benchmarkInflation / (Math.max(yieldOnCost, 0.1))) * 100, 100)}%` }}></div>
                   <div className="bg-emerald-500 h-full flex-1"></div>
               </div>
           </div>
       </div>
 
-      {/* Fix: Added display of search grounding sources to comply with Gemini API MUST ALWAYS rule. */}
       {sources && sources.length > 0 && (
         <div className="mt-4 p-6 bg-slate-900/50 rounded-[2rem] border border-white/5">
           <h4 className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-4 flex items-center gap-2">
