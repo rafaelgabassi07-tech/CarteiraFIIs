@@ -1,17 +1,8 @@
 
-const STATIC_CACHE = 'investfiis-static-v2.6.7';
-const DATA_CACHE = 'investfiis-data-v2.6.7';
-
-const STATIC_ASSETS = [
-  './index.html',
-  './manifest.json'
-];
+const STATIC_CACHE = 'investfiis-static-v2.6.9';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -19,8 +10,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== STATIC_CACHE && key !== DATA_CACHE) {
-            console.log('SW: Removendo cache obsoleto:', key);
+          if (key !== STATIC_CACHE) {
             return caches.delete(key);
           }
         })
@@ -30,43 +20,17 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
+  const url = new URL(event.request.url);
   
-  if (!url.protocol.startsWith('http')) return;
-
-  // Forçar sempre busca na rede para o arquivo de versão para detectar atualizações
-  if (url.pathname.endsWith('version.json')) {
-    event.respondWith(fetch(request));
+  // NUNCA cachear version.json ou scripts principais
+  if (url.pathname.includes('version.json') || url.pathname.includes('index.tsx')) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }));
     return;
   }
 
-  if (request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname === '/') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.status === 200) {
-            const copy = response.clone();
-            caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
-    return;
-  }
-
+  // Estratégia Network First para o resto no Vercel
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(STATIC_CACHE).then((cache) => cache.put(request, responseToCache));
-        }
-        return networkResponse;
-      }).catch(() => null);
-      return cachedResponse || fetchPromise;
-    })
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });
 

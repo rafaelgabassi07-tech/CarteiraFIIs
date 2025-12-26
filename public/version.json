@@ -1,22 +1,17 @@
 
 {
-  "version": "2.6.8",
+  "version": "2.6.9",
   "date": "2024-05-31",
   "notes": [
     {
-      "type": "feature",
-      "title": "Backup Full Data",
-      "desc": "A exportação agora inclui não apenas suas compras/vendas, mas também todo o histórico de proventos e configurações."
+      "type": "fix",
+      "title": "Correção de Cache CDN",
+      "desc": "Otimizado para Vercel. As atualizações agora serão detectadas instantaneamente ignorando caches de borda."
     },
     {
       "type": "improvement",
-      "title": "Migração Inteligente",
-      "desc": "O importador detecta automaticamente arquivos de versões antigas e faz a conversão para o novo formato."
-    },
-    {
-      "type": "fix",
-      "title": "Integridade de Dados",
-      "desc": "Corrigido problema onde o backup ignorava ativos lançados manualmente sem sincronização prévia com a IA."
+      "title": "Auto-Update",
+      "desc": "O app agora verifica a versão comparando o servidor com o HTML em execução, garantindo precisão total."
     }
   ]
 }

@@ -20,7 +20,7 @@ const STORAGE_KEYS = {
   LAST_VER: 'investfiis_app_version'
 };
 
-const CURRENT_VERSION = '2.6.8';
+const CURRENT_VERSION = '2.6.9';
 const AI_CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -81,17 +81,11 @@ const App: React.FC = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<MarketEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<MarketEvent[]>([]);
 
-  // Sincronizar transações com localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions));
-  }, [transactions]);
+  // Persistência
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions)); }, [transactions]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
 
-  // Sincronizar dividendos com localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends));
-  }, [geminiDividends]);
-
-  // Gerenciamento de Tema
+  // Tema
   useEffect(() => {
     const root = window.document.documentElement;
     const applyTheme = (t: ThemeType) => {
@@ -99,56 +93,45 @@ const App: React.FC = () => {
       if (isDark) root.classList.add('dark');
       else root.classList.remove('dark');
     };
-
     applyTheme(theme);
     localStorage.setItem(STORAGE_KEYS.THEME, theme);
-
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const listener = () => applyTheme('system');
-      mediaQuery.addEventListener('change', listener);
-      return () => mediaQuery.removeEventListener('change', listener);
-    }
   }, [theme]);
 
   const handleSetTheme = (newTheme: ThemeType) => setTheme(newTheme);
 
-  const loadUpdateDetails = useCallback(async (reg: ServiceWorkerRegistration) => {
-    setSwRegistration(reg);
+  const loadUpdateDetails = useCallback(async (reg?: ServiceWorkerRegistration) => {
+    if (reg) setSwRegistration(reg);
     try {
-      const response = await fetch(`./version.json?t=${Date.now()}`);
+      // Bypass total de cache para o arquivo de versão (CDN Invalidation)
+      const response = await fetch(`./version.json?nocache=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setUpdateData(data);
-        const lastAppliedVer = localStorage.getItem(STORAGE_KEYS.LAST_VER);
-        if (data.version !== CURRENT_VERSION || data.version !== lastAppliedVer) {
+        
+        // Versão rodando no DOM agora
+        const domVersion = document.querySelector('meta[name="app-version"]')?.getAttribute('content') || CURRENT_VERSION;
+        
+        if (data.version !== domVersion) {
+          console.log(`Update: Nova versão detectada: ${data.version} (Atual: ${domVersion})`);
           setShowUpdateModal(true);
         }
       }
     } catch (err) {
-      console.warn('Falha ao buscar changelog dinâmico', err);
+      console.warn('Falha ao verificar versão remota', err);
     }
   }, []);
 
   useEffect(() => {
-    console.log(`App: v${CURRENT_VERSION} Ativo`);
+    // Verificação inicial
+    loadUpdateDetails();
     
-    const handleUpdateEvent = (e: Event) => {
-      const reg = (e as CustomEvent).detail;
-      loadUpdateDetails(reg);
-    };
+    // Escutar eventos do Service Worker
+    const handleUpdateEvent = (e: Event) => loadUpdateDetails((e as CustomEvent).detail);
     window.addEventListener('sw-update-available', handleUpdateEvent);
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistration()
-        .then(reg => {
-          if (reg && reg.waiting) {
-            loadUpdateDetails(reg);
-            setShowUpdateModal(true);
-          }
-        })
-        .catch(() => {});
-    }
 
     return () => window.removeEventListener('sw-update-available', handleUpdateEvent);
   }, [loadUpdateDetails]);
@@ -159,11 +142,11 @@ const App: React.FC = () => {
   }, []);
 
   const handleApplyUpdate = () => {
-    localStorage.setItem(STORAGE_KEYS.LAST_VER, CURRENT_VERSION);
+    localStorage.setItem(STORAGE_KEYS.LAST_VER, updateData?.version || CURRENT_VERSION);
     if (swRegistration?.waiting) {
       swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
-      window.location.reload(); 
+      window.location.assign(window.location.origin + window.location.pathname + '?v=' + Date.now());
     }
   };
 
@@ -186,8 +169,6 @@ const App: React.FC = () => {
 
   const { portfolio, dividendReceipts, realizedGain } = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-    
-    // Calcular dividendos
     const receipts: DividendReceipt[] = geminiDividends.map(div => {
       const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, sortedTxs);
       const eligibleQty = Math.max(0, qtyAtDate);
@@ -195,31 +176,14 @@ const App: React.FC = () => {
       const assetInfo = sortedTxs.find(t => t.ticker === div.ticker);
       return { ...div, quantityOwned: eligibleQty, totalReceived: total, assetType: assetInfo?.assetType || AssetType.FII };
     }).filter(r => r.totalReceived > 0);
-    
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
-    
     const dividendsByTicker: Record<string, number> = {};
-    receipts.forEach(r => {
-      if (new Date(r.paymentDate + 'T12:00:00') <= new Date()) {
-        dividendsByTicker[r.ticker] = (dividendsByTicker[r.ticker] || 0) + r.totalReceived;
-      }
-    });
-
+    receipts.forEach(r => { if (new Date(r.paymentDate + 'T12:00:00') <= new Date()) dividendsByTicker[r.ticker] = (dividendsByTicker[r.ticker] || 0) + r.totalReceived; });
     const positions: Record<string, AssetPosition> = {};
     let totalRealizedGain = 0;
-    
     sortedTxs.forEach(t => {
       const ticker = t.ticker.toUpperCase();
-      if (!positions[ticker]) {
-        positions[ticker] = { 
-          ticker, 
-          quantity: 0, 
-          averagePrice: 0, 
-          assetType: t.assetType, 
-          totalDividends: dividendsByTicker[ticker] || 0 
-        };
-      }
-      
+      if (!positions[ticker]) positions[ticker] = { ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: dividendsByTicker[ticker] || 0 };
       const p = positions[ticker];
       if (t.type === 'BUY') {
         const currentCost = p.quantity * p.averagePrice;
@@ -230,15 +194,7 @@ const App: React.FC = () => {
         p.quantity -= t.quantity;
       }
     });
-
-    const finalPortfolio = Object.values(positions)
-      .filter(p => p.quantity > 0)
-      .map(p => ({ 
-        ...p, 
-        currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice, 
-        logoUrl: quotes[p.ticker]?.logourl 
-      }));
-
+    const finalPortfolio = Object.values(positions).filter(p => p.quantity > 0).map(p => ({ ...p, currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice, logoUrl: quotes[p.ticker]?.logourl }));
     return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: totalRealizedGain };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
@@ -266,26 +222,26 @@ const App: React.FC = () => {
       processEvent(div.paymentDate, 'PAYMENT', `Renda de ${div.type}`, div.rate);
       processEvent(div.dateCom, 'DATA_COM', `Data Com B3`);
     });
-    upcoming.sort((a, b) => a.daysRemaining - b.daysRemaining);
-    history.sort((a, b) => b.daysRemaining - a.daysRemaining);
-    setUpcomingEvents(upcoming);
-    setPastEvents(history);
+    setUpcomingEvents(upcoming.sort((a, b) => a.daysRemaining - b.daysRemaining));
+    setPastEvents(history.sort((a, b) => b.daysRemaining - a.daysRemaining));
   }, [geminiDividends, portfolio]);
 
   const syncBrapiData = useCallback(async (force = false) => {
     if (!brapiToken || transactions.length === 0) return;
     setIsPriceLoading(true);
     try {
+        // Fix: Explicitly typing as string[] to resolve 'unknown[]' type inference issues
         const tickersToFetch: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase())));
         const result = await getQuotes(tickersToFetch, brapiToken, force);
         if (result.error) showToast('error', result.error);
         const map: Record<string, BrapiQuote> = {};
         result.quotes.forEach(q => map[q.symbol] = q);
         setQuotes(prev => ({ ...prev, ...map }));
-    } catch (e) { console.error("Brapi Fail", e); } finally { setIsPriceLoading(false); }
+    } catch (e) { console.error(e); } finally { setIsPriceLoading(false); }
   }, [brapiToken, transactions, showToast]);
 
   const handleAiSync = useCallback(async (force = false) => {
+    // Fix: Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' errors when calling fetchUnifiedMarketData
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map((t: Transaction) => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
     const lastSyncTime = localStorage.getItem(STORAGE_KEYS.SYNC);
@@ -316,18 +272,6 @@ const App: React.FC = () => {
               <CheckCircle2 className="w-5 h-5 text-white" />
               <span className="text-xs font-black uppercase text-white tracking-wider">{toast.text}</span>
             </div>
-          </div>
-        )}
-        
-        {swRegistration && (
-          <div className="w-full max-w-sm pointer-events-auto animate-fade-in-up">
-             <button onClick={() => setShowUpdateModal(true)} className="w-full bg-indigo-600 p-4 rounded-[2rem] flex items-center justify-between shadow-2xl border border-white/20 group transition-all">
-                <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"><Rocket className="w-5 h-5 animate-pulse" /></div>
-                   <div className="text-left"><p className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none mb-1">Nova Versão v{CURRENT_VERSION}</p><p className="text-xs font-black text-white uppercase tracking-tighter">Toque para aplicar</p></div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-white/50 group-hover:translate-x-1 transition-transform" />
-             </button>
           </div>
         )}
       </div>
@@ -374,7 +318,7 @@ const App: React.FC = () => {
            </div>
            <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
              {(notificationFilter === 'all' || notificationFilter === 'upcoming') && upcomingEvents.map((event, idx) => (
-                <div key={event.id} className="bg-white dark:bg-white/[0.02] p-5 rounded-[2.2rem] flex items-center gap-4 border border-slate-200 dark:border-white/[0.04] animate-fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
+                <div key={event.id} className="bg-white dark:bg-white/[0.02] p-5 rounded-[2.2rem] flex items-center gap-4 border border-slate-200 dark:border-white/[0.04] animate-fade-in-up">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${event.type === 'PAYMENT' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}`}>
                     {event.type === 'PAYMENT' ? <DollarSign className="w-6 h-6" /> : <Calendar className="w-6 h-6" />}
                   </div>
@@ -397,7 +341,7 @@ const App: React.FC = () => {
             <div className="text-center mb-10 pt-4">
                <div className="w-20 h-20 bg-accent/10 rounded-[2rem] flex items-center justify-center text-accent mx-auto mb-6 ring-1 ring-accent/20 shadow-2xl"><Package className="w-10 h-10" /></div>
                <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-2">Update Disponível</h3>
-               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão v{CURRENT_VERSION}</p>
+               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Nova Versão Detectada</p>
             </div>
             <div className="space-y-6 flex-1 mb-10">
                {updateData?.notes.map((note, idx) => (
@@ -406,9 +350,8 @@ const App: React.FC = () => {
                       <div><h4 className="font-black text-slate-900 dark:text-white text-base tracking-tight mb-1">{note.title}</h4><p className="text-xs text-slate-500 leading-relaxed">{note.desc}</p></div>
                   </div>
                ))}
-               {!updateData && <p className="text-center text-slate-500 animate-pulse font-bold text-[10px] uppercase">Verificando novidades...</p>}
             </div>
-            <button onClick={handleApplyUpdate} className="w-full bg-accent text-white font-black text-sm uppercase tracking-[0.2em] py-5 rounded-[2.2rem] shadow-xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3">Atualizar e Recarregar <ArrowRight className="w-5 h-5" /></button>
+            <button onClick={handleApplyUpdate} className="w-full bg-accent text-white font-black text-sm uppercase tracking-[0.2em] py-5 rounded-[2.2rem] shadow-xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3">Atualizar Agora <ArrowRight className="w-5 h-5" /></button>
         </div>
       </SwipeableModal>
 
