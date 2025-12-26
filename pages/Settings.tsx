@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw } from 'lucide-react';
-import { Transaction } from '../types';
+import { Transaction, DividendReceipt } from '../types';
 import { ThemeType } from '../App';
 
 interface SettingsProps {
@@ -9,9 +9,19 @@ interface SettingsProps {
   onSaveToken: (token: string) => void;
   transactions: Transaction[];
   onImportTransactions: (data: Transaction[]) => void;
+  geminiDividends: DividendReceipt[];
+  onImportDividends: (data: DividendReceipt[]) => void;
   onResetApp: () => void;
   theme: ThemeType;
   onSetTheme: (theme: ThemeType) => void;
+}
+
+interface PortfolioBackup {
+  transactions: Transaction[];
+  geminiDividends: DividendReceipt[];
+  brapiToken?: string;
+  version: string;
+  exportDate: string;
 }
 
 type SettingsSection = 'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance';
@@ -26,6 +36,8 @@ export const Settings: React.FC<SettingsProps> = ({
   onSaveToken, 
   transactions, 
   onImportTransactions,
+  geminiDividends,
+  onImportDividends,
   onResetApp,
   theme,
   onSetTheme
@@ -72,16 +84,24 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleExport = () => {
-    const dataStr = JSON.stringify(transactions, null, 2);
+    const backup: PortfolioBackup = {
+      transactions,
+      geminiDividends,
+      brapiToken: !isEnvToken ? brapiToken : undefined,
+      version: '2.6.8',
+      exportDate: new Date().toISOString()
+    };
+    
+    const dataStr = JSON.stringify(backup, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `investfiis_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `investfiis_full_backup_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showMessage('success', 'Backup exportado!');
+    showMessage('success', 'Backup completo exportado!');
   };
 
   const handleImportClick = () => {
@@ -95,9 +115,19 @@ export const Settings: React.FC<SettingsProps> = ({
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string);
+        
+        // Verifica se é o formato novo (objeto) ou antigo (array)
         if (Array.isArray(json)) {
+          // Formato legado: Apenas transações
           onImportTransactions(json);
-          showMessage('success', `${json.length} transações importadas!`);
+          showMessage('success', `${json.length} transações importadas (Formato Legado).`);
+        } else if (json.transactions && Array.isArray(json.transactions)) {
+          // Formato novo: Full Backup
+          onImportTransactions(json.transactions);
+          if (json.geminiDividends) onImportDividends(json.geminiDividends);
+          if (json.brapiToken) onSaveToken(json.brapiToken);
+          
+          showMessage('success', `Backup restaurado! ${json.transactions.length} ativos e ${json.geminiDividends?.length || 0} registros de proventos.`);
         } else {
           throw new Error("Formato inválido");
         }
@@ -200,12 +230,12 @@ export const Settings: React.FC<SettingsProps> = ({
            <MenuButton icon={Sun} label="Aparência" description="Alterar entre modo claro e escuro" colorClass="text-amber-500" onClick={() => setActiveSection('appearance')} />
            <MenuButton icon={Globe} label="Conexões e APIs" description="Gerencie chaves da Brapi e Google" colorClass="text-accent" onClick={() => setActiveSection('integrations')} />
            <MenuButton icon={Bell} label="Notificações" description="Alertas de proventos e datas" colorClass="text-yellow-500" onClick={() => setActiveSection('notifications')} />
-           <MenuButton icon={HardDrive} label="Dados e Backup" description="Importar e exportar sua carteira" colorClass="text-purple-500" onClick={() => setActiveSection('data')} />
+           <MenuButton icon={HardDrive} label="Dados e Backup" description="Backup completo da carteira" colorClass="text-purple-500" onClick={() => setActiveSection('data')} />
            <MenuButton icon={Cpu} label="Sistema" description="Limpeza de cache e reset" colorClass="text-rose-500" onClick={() => setActiveSection('system')} />
 
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v2.6.4</span>
+              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v2.6.8</span>
            </div>
         </div>
       )}
@@ -271,11 +301,11 @@ export const Settings: React.FC<SettingsProps> = ({
             <div className="space-y-4 animate-fade-in-up">
                 <button onClick={handleExport} className="w-full bg-white dark:bg-secondary-dark/40 p-5 rounded-3xl border border-slate-200 dark:border-white/10 text-left flex items-center gap-4 active:scale-[0.98] shadow-sm">
                     <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500"><Download className="w-6 h-6" /></div>
-                    <div><h3 className="text-sm font-bold text-slate-900 dark:text-white">Exportar JSON</h3><p className="text-[10px] text-slate-500">Fazer backup da sua carteira</p></div>
+                    <div><h3 className="text-sm font-bold text-slate-900 dark:text-white">Exportar Backup Total</h3><p className="text-[10px] text-slate-500">Ativos + Histórico de Dividendos</p></div>
                 </button>
                 <button onClick={handleImportClick} className="w-full bg-white dark:bg-secondary-dark/40 p-5 rounded-3xl border border-slate-200 dark:border-white/10 text-left flex items-center gap-4 active:scale-[0.98] shadow-sm">
                     <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500"><Upload className="w-6 h-6" /></div>
-                    <div><h3 className="text-sm font-bold text-slate-900 dark:text-white">Importar JSON</h3><p className="text-[10px] text-slate-500">Restaurar dados de um backup</p></div>
+                    <div><h3 className="text-sm font-bold text-slate-900 dark:text-white">Importar Backup</h3><p className="text-[10px] text-slate-500">Restaurar toda a sua carteira</p></div>
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                 </button>
             </div>
@@ -285,7 +315,7 @@ export const Settings: React.FC<SettingsProps> = ({
             <div className="space-y-6">
                 <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6 shadow-sm">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Recuperar e Atualizar</h3>
-                    <p className="text-xs text-slate-500 mb-6 leading-relaxed">Força o aplicativo a baixar as últimas modificações do servidor (Vercel) agora.</p>
+                    <p className="text-xs text-slate-500 mb-6 leading-relaxed">Força o aplicativo a baixar as últimas modificações do servidor agora.</p>
                     <button onClick={handleForceUpdate} className="w-full bg-sky-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98] shadow-lg shadow-sky-500/20"><RefreshCcw className="w-4 h-4" /> Forçar Atualização</button>
                 </div>
                 <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 shadow-sm">

@@ -20,7 +20,7 @@ const STORAGE_KEYS = {
   LAST_VER: 'investfiis_app_version'
 };
 
-const CURRENT_VERSION = '2.6.7';
+const CURRENT_VERSION = '2.6.8';
 const AI_CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -116,7 +116,6 @@ const App: React.FC = () => {
   const loadUpdateDetails = useCallback(async (reg: ServiceWorkerRegistration) => {
     setSwRegistration(reg);
     try {
-      // Usar timestamp para evitar cache do browser no fetch de metadados
       const response = await fetch(`./version.json?t=${Date.now()}`);
       if (response.ok) {
         const data = await response.json();
@@ -164,8 +163,7 @@ const App: React.FC = () => {
     if (swRegistration?.waiting) {
       swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
-      // FIX: window.location.reload() no longer accepts arguments in modern browser specs to avoid TypeScript errors
-      window.location.reload(); // Recarregar o app
+      window.location.reload(); 
     }
   };
 
@@ -350,6 +348,7 @@ const App: React.FC = () => {
           <Settings 
             brapiToken={brapiToken} onSaveToken={setBrapiToken} 
             transactions={transactions} onImportTransactions={setTransactions}
+            geminiDividends={geminiDividends} onImportDividends={setGeminiDividends}
             onResetApp={() => { localStorage.clear(); window.location.reload(); }}
             theme={theme}
             onSetTheme={handleSetTheme}

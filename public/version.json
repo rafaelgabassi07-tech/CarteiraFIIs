@@ -1,17 +1,22 @@
 
 {
-  "version": "2.6.7",
+  "version": "2.6.8",
   "date": "2024-05-31",
   "notes": [
     {
-      "type": "fix",
-      "title": "Atualização Forçada",
-      "desc": "Melhorada a detecção de novas versões para garantir que você sempre utilize o código mais recente."
+      "type": "feature",
+      "title": "Backup Full Data",
+      "desc": "A exportação agora inclui não apenas suas compras/vendas, mas também todo o histórico de proventos e configurações."
     },
     {
       "type": "improvement",
-      "title": "Gerenciamento de Cache",
-      "desc": "O arquivo de versão agora ignora o cache do Service Worker, permitindo atualizações instantâneas."
+      "title": "Migração Inteligente",
+      "desc": "O importador detecta automaticamente arquivos de versões antigas e faz a conversão para o novo formato."
+    },
+    {
+      "type": "fix",
+      "title": "Integridade de Dados",
+      "desc": "Corrigido problema onde o backup ignorava ativos lançados manualmente sem sincronização prévia com a IA."
     }
   ]
 }
