@@ -1,6 +1,6 @@
 
 // Versão dos arquivos estáticos (app shell). Incrementar ao modificar código.
-const STATIC_CACHE = 'investfiis-static-v21';
+const STATIC_CACHE = 'investfiis-static-v22';
 
 // Nome do cache de dados (APIs, Imagens). Mudar apenas se a estrutura de dados mudar drasticamente.
 const DATA_CACHE = 'investfiis-data-v1';

@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Lock } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Lock, Eraser } from 'lucide-react';
 import { Transaction } from '../types';
 
 interface SettingsProps {
@@ -108,8 +108,38 @@ export const Settings: React.FC<SettingsProps> = ({
     event.target.value = ''; // Reset input
   };
 
+  const handleClearCache = async () => {
+    if (window.confirm("Isso limpará cotações, dividendos e imagens cacheadas para corrigir erros de visualização.\n\nSua carteira e configurações NÃO serão apagadas.\n\nO aplicativo será recarregado.")) {
+        try {
+            // 1. Limpa dados voláteis do LocalStorage
+            localStorage.removeItem('investfiis_quotes_simple_cache');
+            localStorage.removeItem('investfiis_gemini_dividends_cache');
+            localStorage.removeItem('investfiis_last_gemini_sync');
+            
+            // 2. Limpa Cache Storage (Service Worker API Cache)
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map(key => caches.delete(key)));
+            }
+            
+            // 3. Opcional: Desregistra SW para forçar update imediato
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for(let registration of registrations) {
+                    await registration.unregister();
+                }
+            }
+            
+            alert('Cache limpo com sucesso! Recarregando...');
+            window.location.reload();
+        } catch (e) {
+            alert('Erro ao limpar cache. Tente reiniciar o navegador.');
+        }
+    }
+  };
+
   const handleReset = () => {
-    if (window.confirm("ATENÇÃO: Isso apagará TODAS as suas transações e configurações.\n\nDeseja continuar?")) {
+    if (window.confirm("ATENÇÃO: Isso apagará TODAS as suas transações e configurações permanentemente.\n\nDeseja continuar?")) {
       onResetApp();
     }
   };
@@ -184,7 +214,7 @@ export const Settings: React.FC<SettingsProps> = ({
            <MenuButton 
              icon={Cpu} 
              label="Sistema" 
-             description="Resetar aplicativo e cache" 
+             description="Limpeza de cache e reset" 
              colorClass="text-rose-400"
              onClick={() => setActiveSection('system')} 
            />
@@ -192,7 +222,7 @@ export const Settings: React.FC<SettingsProps> = ({
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-600 mx-auto mb-2" />
               <span className="text-[10px] font-mono text-slate-500">
-                InvestFIIs v1.3.8
+                InvestFIIs v1.3.9
               </span>
            </div>
         </div>
@@ -375,11 +405,31 @@ export const Settings: React.FC<SettingsProps> = ({
                    <ShieldAlert className="w-6 h-6" />
                 </div>
                 <div>
-                   <h2 className="text-lg font-black text-white">Zona de Perigo</h2>
-                   <p className="text-xs text-slate-500">Ações irreversíveis</p>
+                   <h2 className="text-lg font-black text-white">Sistema</h2>
+                   <p className="text-xs text-slate-500">Manutenção e Reset</p>
                 </div>
               </div>
+
+              {/* Botão de Limpar Cache (Dados) */}
+              <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6 relative overflow-hidden mb-4">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-3xl pointer-events-none -mr-10 -mt-10"></div>
+                  
+                  <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2 relative z-10">
+                      Limpar Cache de Dados
+                  </h3>
+                  <p className="text-xs text-slate-400 mb-6 leading-relaxed relative z-10">
+                      Útil se as cotações estiverem desatualizadas, travadas ou se os logotipos não carregarem. Não apaga sua carteira.
+                  </p>
+                  
+                  <button 
+                      onClick={handleClearCache}
+                      className="w-full bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 border border-sky-500/20 font-bold py-4 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-sky-500/5 text-xs uppercase tracking-widest relative z-10"
+                  >
+                      <Eraser className="w-4 h-4" /> Limpar Dados
+                  </button>
+              </div>
               
+              {/* Botão de Reset Total (Perigo) */}
               <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 relative overflow-hidden">
                   <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
                       Resetar Aplicativo
