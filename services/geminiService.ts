@@ -8,6 +8,7 @@ export interface UnifiedMarketData {
   sources?: { web: { uri: string; title: string } }[];
 }
 
+// Service to fetch unified market data using Gemini API with Search Grounding
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
@@ -47,7 +48,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   `;
 
   try {
-    // Correcting model name to 'gemini-3-flash-preview' for basic text tasks with search grounding.
+    // Using gemini-3-flash-preview as it is suitable for search-grounded basic text tasks.
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview", 
       contents: prompt,
@@ -64,12 +65,18 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     }
 
     const parsed = JSON.parse(jsonStr);
-    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[];
+    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     
     const result: UnifiedMarketData = { 
         dividends: [], 
         metadata: {},
-        sources: groundingChunks?.filter((chunk: any) => chunk?.web?.uri) || []
+        // Properly extract search grounding URLs as per guidelines and ensure type safety
+        sources: groundingChunks?.map((chunk: any) => ({
+          web: {
+            uri: chunk.web?.uri || '',
+            title: chunk.web?.title || ''
+          }
+        })).filter(s => s.web.uri) || []
     };
 
     if (parsed?.assets && Array.isArray(parsed.assets)) {

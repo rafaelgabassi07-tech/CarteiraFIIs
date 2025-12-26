@@ -1,18 +1,16 @@
 
-const STATIC_CACHE = 'investfiis-static-v2.5.0';
+const STATIC_CACHE = 'investfiis-static-v2.5.1';
 const DATA_CACHE = 'investfiis-data-v2';
 
 const STATIC_ASSETS = [
   './index.html',
-  './manifest.json',
-  './index.tsx'
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
   );
-  // Força o novo SW a se tornar ativo imediatamente
   self.skipWaiting();
 });
 
@@ -21,7 +19,9 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if ((key.startsWith('investfiis-static-') || key.startsWith('investfiis-data-')) && key !== STATIC_CACHE && key !== DATA_CACHE) {
+          // Deleta QUALQUER cache que não seja o atual para limpar versões zumbis
+          if (key !== STATIC_CACHE && key !== DATA_CACHE) {
+            console.log('SW: Removendo cache antigo:', key);
             return caches.delete(key);
           }
         })
@@ -32,11 +32,26 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  if (request.method !== 'GET') return;
+  
+  // Estratégia especial para index.html e raiz: REDE PRIMEIRO
+  // Isso garante que mudanças no Github/Vercel sejam vistas imediatamente
+  if (request.mode === 'navigate' || request.url.endsWith('index.html') || request.url === self.location.origin + '/') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
 
+  // Para outros assets: Cache first, update in background
   event.respondWith(
-    fetch(request)
-      .then((networkResponse) => {
+    caches.match(request).then((cachedResponse) => {
+      const fetchPromise = fetch(request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(STATIC_CACHE).then((cache) => {
@@ -44,8 +59,9 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
-      })
-      .catch(() => caches.match(request))
+      });
+      return cachedResponse || fetchPromise;
+    })
   );
 });
 

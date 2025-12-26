@@ -8,7 +8,6 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-// Added ChevronRight to the lucide-react imports
 import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw, Bell, Calendar, DollarSign, X, ArrowRight, History, Clock, CheckCheck, ShieldAlert, Sparkles, LayoutGrid, Info, Zap, ArrowUpCircle, ChevronRight } from 'lucide-react';
 
 const STORAGE_KEYS = {
@@ -66,7 +65,6 @@ const App: React.FC = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<MarketEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<MarketEvent[]>([]);
 
-  // Escuta por atualizações do Service Worker (A PROVA DE FALHAS)
   useEffect(() => {
     const handleUpdate = (e: Event) => {
       const reg = (e as CustomEvent).detail;
@@ -100,7 +98,6 @@ const App: React.FC = () => {
     return eligibleTxs.reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
   }, []);
 
-  // Cálculo de Aporte Mensal Real Dinâmico
   const monthlyContribution = useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -236,6 +233,7 @@ const App: React.FC = () => {
   }, [brapiToken, transactions, showToast]);
 
   const handleAiSync = useCallback(async (force = false) => {
+    // Correctly identifying and typing uniqueTickers as a string array
     const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
     const tickersStr = uniqueTickers.join(',');
@@ -244,13 +242,13 @@ const App: React.FC = () => {
     if (!force && lastSyncTime && (Date.now() - parseInt(lastSyncTime, 10)) < AI_CACHE_DURATION && lastSyncedTickers === tickersStr) return;
     setIsAiLoading(true);
     try {
-      // Added explicit cast to string[] to satisfy the compiler and fix the 'unknown[]' assignment error
-      const data = await fetchUnifiedMarketData(uniqueTickers as string[]);
+      // Fixed potential unknown[] inference by ensuring proper typing and removing redundant cast
+      const data = await fetchUnifiedMarketData(uniqueTickers);
       setGeminiDividends(data.dividends);
       if (data.sources) setSources(data.sources);
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       localStorage.setItem(STORAGE_KEYS.SYNC_TICKERS, tickersStr);
-    } catch (e) {
+    } catch (error) {
       if (force) showToast('error', 'Falha ao conectar com Gemini');
     } finally {
       setIsAiLoading(false);
@@ -282,7 +280,6 @@ const App: React.FC = () => {
           </div>
         )}
         
-        {/* Banner de Atualização Crítica */}
         {swRegistration && (
           <div className="w-full max-w-sm pointer-events-auto animate-fade-in-up">
              <button 
@@ -292,7 +289,7 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-3">
                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"><ArrowUpCircle className="w-5 h-5 animate-bounce" /></div>
                    <div className="text-left">
-                      <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">Nova Versão v2.5.0</p>
+                      <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">Nova Versão v2.5.1</p>
                       <p className="text-xs font-black text-white uppercase tracking-tighter">Toque para atualizar agora</p>
                    </div>
                 </div>

@@ -10,16 +10,29 @@ if (!rootElement) {
 
 const initServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
-    // Escuta por mudanças de controle (quando o novo SW assume)
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      console.log('SW: Controlador alterado. Recarregando página...');
+      console.log('SW: Nova versão assumindo o controle...');
       window.location.reload();
     });
 
     try {
-      const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+      const registration = await navigator.serviceWorker.register('./sw.js', { 
+        scope: './',
+        updateViaCache: 'none' // Força a busca do sw.js sempre na rede
+      });
       
-      // Se já houver um worker esperando, avisa o app
+      // Checagem periódica a cada 60s
+      setInterval(() => {
+        registration.update();
+      }, 60000);
+
+      // Checagem ao voltar para o app
+      window.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          registration.update();
+        }
+      });
+
       if (registration.waiting) {
         window.dispatchEvent(new CustomEvent('sw-update-available', { detail: registration }));
       }
