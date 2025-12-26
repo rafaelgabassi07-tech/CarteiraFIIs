@@ -1,11 +1,10 @@
 
-const STATIC_CACHE = 'investfiis-static-v2.6.4';
-const DATA_CACHE = 'investfiis-data-v2.6.4';
+const STATIC_CACHE = 'investfiis-static-v2.6.7';
+const DATA_CACHE = 'investfiis-data-v2.6.7';
 
 const STATIC_ASSETS = [
   './index.html',
-  './manifest.json',
-  './version.json'
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -36,7 +35,13 @@ self.addEventListener('fetch', (event) => {
   
   if (!url.protocol.startsWith('http')) return;
 
-  if (request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname.endsWith('version.json') || url.pathname === '/') {
+  // Forçar sempre busca na rede para o arquivo de versão para detectar atualizações
+  if (url.pathname.endsWith('version.json')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname === '/') {
     event.respondWith(
       fetch(request)
         .then((response) => {

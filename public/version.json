@@ -1,22 +1,17 @@
 
 {
-  "version": "2.6.6",
+  "version": "2.6.7",
   "date": "2024-05-31",
   "notes": [
     {
       "type": "fix",
-      "title": "Persistência de Dados",
-      "desc": "Corrigido erro onde transações e dividendos não eram salvos no navegador. Seus dados agora estão seguros localmente."
-    },
-    {
-      "type": "feature",
-      "title": "Seletor de Categoria",
-      "desc": "Agora você pode escolher entre 'Ação' e 'FII' ao cadastrar uma ordem, garantindo que o ativo apareça na categoria correta da carteira."
+      "title": "Atualização Forçada",
+      "desc": "Melhorada a detecção de novas versões para garantir que você sempre utilize o código mais recente."
     },
     {
       "type": "improvement",
-      "title": "Estabilidade",
-      "desc": "Melhoria na sincronização de estado global para cálculos de patrimônio em tempo real."
+      "title": "Gerenciamento de Cache",
+      "desc": "O arquivo de versão agora ignora o cache do Service Worker, permitindo atualizações instantâneas."
     }
   ]
 }

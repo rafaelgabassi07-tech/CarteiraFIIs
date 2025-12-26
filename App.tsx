@@ -20,7 +20,7 @@ const STORAGE_KEYS = {
   LAST_VER: 'investfiis_app_version'
 };
 
-const CURRENT_VERSION = '2.6.6';
+const CURRENT_VERSION = '2.6.7';
 const AI_CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -116,11 +116,13 @@ const App: React.FC = () => {
   const loadUpdateDetails = useCallback(async (reg: ServiceWorkerRegistration) => {
     setSwRegistration(reg);
     try {
+      // Usar timestamp para evitar cache do browser no fetch de metadados
       const response = await fetch(`./version.json?t=${Date.now()}`);
       if (response.ok) {
         const data = await response.json();
         setUpdateData(data);
-        if (data.version !== localStorage.getItem(STORAGE_KEYS.LAST_VER)) {
+        const lastAppliedVer = localStorage.getItem(STORAGE_KEYS.LAST_VER);
+        if (data.version !== CURRENT_VERSION || data.version !== lastAppliedVer) {
           setShowUpdateModal(true);
         }
       }
@@ -162,7 +164,8 @@ const App: React.FC = () => {
     if (swRegistration?.waiting) {
       swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
-      window.location.reload();
+      // FIX: window.location.reload() no longer accepts arguments in modern browser specs to avoid TypeScript errors
+      window.location.reload(); // Recarregar o app
     }
   };
 
