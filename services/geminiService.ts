@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { DividendReceipt, AssetType } from "../types";
 
 export interface UnifiedMarketData {
@@ -8,22 +8,13 @@ export interface UnifiedMarketData {
   sources?: { web: { uri: string; title: string } }[];
 }
 
-/**
- * Extrai e limpa o JSON da resposta do Gemini, lidando com possíveis markdown ou textos extras.
- */
 function cleanAndParseJSON(text: string): any {
   try {
-    // Busca o primeiro bloco que parece um objeto JSON
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.warn("Nenhum bloco JSON encontrado na resposta da IA.");
-      return null;
-    }
-    
-    const cleaned = jsonMatch[0].trim();
-    return JSON.parse(cleaned);
+    const jsonMatch = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+    if (!jsonMatch) return null;
+    return JSON.parse(jsonMatch[0].trim());
   } catch (e) {
-    console.error("Erro ao processar JSON do Gemini:", e, "Texto original:", text);
+    console.error("Erro no parse JSON Gemini:", e);
     return null;
   }
 }
@@ -31,100 +22,86 @@ function cleanAndParseJSON(text: string): any {
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
-  // Inicializa o SDK usando a API_KEY do ambiente
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-    Atue como um analista de investimentos da B3. 
-    Use a ferramenta de busca para encontrar dividendos, JCP e o setor dos ativos: ${tickers.join(', ')}.
+    Analise os ativos: ${tickers.join(', ')}.
+    Use a ferramenta de busca para retornar um JSON estrito com:
+    1. "s": Segmento/Setor exato do ativo (Logística, Bancos, etc).
+    2. "type": "FII" ou "ACAO".
+    3. "d": Histórico de dividendos/JCP dos últimos 12 meses.
     
-    INSTRUÇÕES PARA O MODELO GEMINI 2.5 FLASH:
-    1. Identifique se é FII ou ACAO.
-    2. Identifique o setor/segmento.
-    3. Liste proventos dos últimos 12 meses.
-    
-    FORMATO OBRIGATÓRIO (JSON):
-    - Data Com (dc): YYYY-MM-DD (Ex: 2024-05-10)
-    - Data Pagamento (dp): YYYY-MM-DD (Ex: 2024-05-25)
-    - Valor (v): Número decimal com ponto (Ex: 0.85)
-    - Ticker (t): Maiúsculo.
-    
-    RETORNE APENAS O JSON:
+    ESTRUTURA JSON EXIGIDA:
     {
       "assets": [
         {
           "t": "TICKER",
-          "s": "Segmento",
+          "s": "Setor",
           "type": "FII",
           "d": [
-            {"ty": "DIVIDENDO", "dc": "2024-01-30", "dp": "2024-02-15", "v": 1.10}
+            {"ty": "DIVIDENDO", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": 0.00}
           ]
         }
       ]
     }
+    Importante: Retorne apenas o JSON. Se não encontrar dividendos para um ticker, retorne a lista "d" vazia para ele.
   `;
 
   try {
-    // Utilizando estritamente o modelo gemini-2.5-flash conforme solicitado
+    // Fix: Updated to gemini-3-flash-preview as recommended for text tasks with search grounding.
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", 
+      model: "gemini-3-flash-preview", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }]
       }
     });
 
-    const rawText = response.text || "";
-    const parsed = cleanAndParseJSON(rawText);
-    
+    const parsed = cleanAndParseJSON(response.text || "");
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[];
     
     const result: UnifiedMarketData = { 
         dividends: [], 
         metadata: {},
         sources: groundingChunks?.filter(chunk => chunk?.web?.uri).map(chunk => ({
-            web: { uri: chunk.web.uri, title: chunk.web.title || 'Referência B3' }
+            web: { uri: chunk.web.uri, title: chunk.web.title || 'Referência de Mercado' }
         })) || []
     };
 
     if (parsed?.assets && Array.isArray(parsed.assets)) {
       parsed.assets.forEach((asset: any) => {
-        if (!asset.t) return;
-        
-        const ticker = asset.t.toUpperCase();
-        
+        const ticker = asset.t?.toUpperCase();
+        if (!ticker) return;
+
         result.metadata[ticker] = { 
-          segment: asset.s || "Geral", 
-          type: asset.type?.toUpperCase() === 'FII' ? AssetType.FII : AssetType.STOCK 
+          segment: asset.s || "Outros", 
+          type: asset.type?.toUpperCase() === 'ACAO' ? AssetType.STOCK : AssetType.FII 
         };
 
         if (asset.d && Array.isArray(asset.d)) {
           asset.d.forEach((div: any) => {
-            const rate = parseFloat(String(div.v).replace(',', '.'));
-            if (!div.dc || isNaN(rate)) return;
-            
-            const divId = `g25-${ticker}-${div.dc}-${rate}`.replace(/[^a-zA-Z0-9]/g, '');
+            const val = parseFloat(String(div.v).replace(',', '.'));
+            if (!div.dc || isNaN(val)) return;
             
             result.dividends.push({
-              id: divId,
+              id: `g3f-${ticker}-${div.dc}-${val}`,
               ticker,
               type: div.ty || "PROVENTO",
               dateCom: div.dc,
               paymentDate: div.dp || div.dc,
-              rate: rate,
+              rate: val,
               quantityOwned: 0,
               totalReceived: 0,
-              assetType: asset.type?.toUpperCase() === 'FII' ? AssetType.FII : AssetType.STOCK
+              assetType: result.metadata[ticker].type
             });
           });
         }
       });
     }
 
-    console.log(`[Gemini 2.5 Flash] Sincronização concluída com ${result.dividends.length} registros.`);
     return result;
   } catch (error) {
-    console.error("Erro na integração com Gemini 2.5 Flash:", error);
+    console.error("Erro Gemini Sync:", error);
     throw error;
   }
 };
