@@ -3,7 +3,7 @@ import { BrapiResponse, BrapiQuote } from '../types';
 
 const BASE_URL = 'https://brapi.dev/api';
 const CACHE_KEY = 'investfiis_quotes_simple_cache';
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos de cache
+const CACHE_DURATION = 2 * 60 * 1000; // Reduzido para 2 minutos para maior fluidez
 
 interface CacheItem {
   data: BrapiQuote;
@@ -24,16 +24,10 @@ const saveCache = (cache: Record<string, CacheItem>) => {
   } catch (e) {}
 };
 
-// Função auxiliar para criar um atraso entre requisições
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-/**
- * Brapi Service - Modo Individual:
- * Realiza requisições ticker por ticker para tokens que não suportam lote (batch).
- * Implementa throttling para evitar erros de Rate Limit.
- */
-export const getQuotes = async (tickers: string[], token: string, forceRefresh = false): Promise<BrapiQuote[]> => {
-  if (!tickers.length || !token) return [];
+export const getQuotes = async (tickers: string[], token: string, forceRefresh = false): Promise<{ quotes: BrapiQuote[], error?: string }> => {
+  if (!tickers.length || !token) return { quotes: [] };
 
   const cache = loadCache();
   const now = Date.now();
@@ -42,7 +36,6 @@ export const getQuotes = async (tickers: string[], token: string, forceRefresh =
 
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
   
-  // 1. Filtrar o que já temos no cache válido
   uniqueTickers.forEach(ticker => {
     const cachedItem = cache[ticker];
     const isCacheValid = cachedItem && (now - cachedItem.timestamp < CACHE_DURATION);
@@ -54,9 +47,10 @@ export const getQuotes = async (tickers: string[], token: string, forceRefresh =
     }
   });
 
-  if (tickersToFetch.length === 0) return results;
+  if (tickersToFetch.length === 0) return { quotes: results };
 
-  // 2. Buscar o restante individualmente
+  let errorOccurred = "";
+
   for (const ticker of tickersToFetch) {
     try {
       const url = `${BASE_URL}/quote/${ticker}?token=${token}`;
@@ -67,28 +61,36 @@ export const getQuotes = async (tickers: string[], token: string, forceRefresh =
         if (data.results && data.results[0]) {
           const quote = data.results[0];
           results.push(quote);
-          // Atualiza cache individual
           cache[ticker] = { data: quote, timestamp: now };
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error(`[Brapi] Erro ${response.status} no ativo ${ticker}:`, errorData.message || 'Erro desconhecido');
+        const msg = errorData.message || 'Erro na API';
         
-        // Se recebermos 429 (Too Many Requests), paramos o loop para não queimar o token
+        if (response.status === 401 || response.status === 403) {
+          errorOccurred = "Token Brapi inválido ou expirado.";
+          break; // Interrompe pois o token não funciona
+        }
+        
         if (response.status === 429) {
-          console.warn("[Brapi] Limite de requisições atingido. Interrompendo busca.");
+          errorOccurred = "Limite de requisições do seu plano Brapi atingido.";
           break;
         }
+
+        console.error(`[Brapi] Erro no ativo ${ticker}:`, msg);
       }
       
-      // Pequeno delay (100ms) entre requisições para estabilidade
-      await sleep(100);
+      // Delay de segurança entre chamadas individuais
+      await sleep(150);
       
     } catch (error) {
-      console.error(`[Brapi] Falha de rede para ${ticker}:`, error);
+      console.error(`[Brapi] Falha de rede para ${ticker}`);
     }
   }
 
   saveCache(cache);
-  return results;
+  return { 
+    quotes: results, 
+    error: errorOccurred || undefined 
+  };
 };

@@ -9,12 +9,14 @@ if (!rootElement) {
 }
 
 /**
- * Registro do Service Worker com detecção robusta de atualização.
+ * Registro do Service Worker com detecção robusta de atualização e tratamento de erros de origem.
  */
 const initServiceWorker = async () => {
-  if ('serviceWorker' in navigator) {
+  // Verificação de ambiente: Service Workers exigem contexto seguro e mesma origem.
+  // Em ambientes de frame/sandbox como AI Studio, o registro pode falhar por mismatch de origem.
+  if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
     try {
-      const registration = await navigator.serviceWorker.register('./sw.js');
+      const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
       console.log('SW: Registrado com sucesso.');
 
       // 1. Verifica se já existe um SW esperando
@@ -36,7 +38,8 @@ const initServiceWorker = async () => {
         }
       });
     } catch (error) {
-      console.warn('SW: Falha no registro:', error);
+      // Falha silenciosa ou log de aviso apenas, para não quebrar a inicialização do App
+      console.warn('SW: O registro do Service Worker foi bloqueado ou falhou. Isso é comum em ambientes de desenvolvimento/frames.', error);
     }
   }
 };

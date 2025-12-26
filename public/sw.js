@@ -1,6 +1,6 @@
 
 // Versão do cache estático. Incrementar para forçar atualização.
-const STATIC_CACHE = 'investfiis-static-v47';
+const STATIC_CACHE = 'investfiis-static-v50';
 const DATA_CACHE = 'investfiis-data-v1';
 
 const STATIC_ASSETS = [
@@ -39,7 +39,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
 
   if (url.hostname.includes('brapi.dev') || url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com')) {
