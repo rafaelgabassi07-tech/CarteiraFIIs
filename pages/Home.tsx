@@ -1,8 +1,8 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, TrendingDown, Coins, Building2, ArrowUpCircle, ChevronRight, RefreshCw, CircleDollarSign, PieChart as PieIcon, Scale, Info, ExternalLink, X, Calendar, Trophy, ReceiptText, BarChart3, Calculator, Percent, Sparkles, Layers, ShieldCheck, Flame } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
+import { Wallet, TrendingUp, ChevronRight, RefreshCw, CircleDollarSign, PieChart as PieIcon, Scale, ExternalLink, Info, Sparkles, Layers, ShieldCheck, Flame } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
 interface HomeProps {
@@ -34,11 +34,22 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   const totalReturnVal = unrealizedGain + realizedGain + totalDividends;
   const totalReturnPercent = totalInvested > 0 ? (totalReturnVal / totalInvested) * 100 : 0;
 
+  // IPCA Acumulado Médio (Simulação)
+  const estimatedInflation = 4.5; 
+  const realGainPercent = totalInvested > 0 ? (((1 + totalReturnPercent/100) / (1 + estimatedInflation/100) - 1) * 100) : 0;
+
   const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // IPCA Acumulado Médio (Simulação 1 ano ou proporcional)
-  const estimatedInflation = 4.5; // 4.5% ao ano (estimativa IPCA)
-  const realGainPercent = ((1 + totalReturnPercent/100) / (1 + estimatedInflation/100) - 1) * 100;
+  // Cálculos de Alocação para o Preview
+  const typeAllocation = useMemo(() => {
+    if (currentBalance === 0) return { fii: 0, stock: 0 };
+    const fiiVal = portfolio.filter(p => p.assetType === AssetType.FII).reduce((acc, p) => acc + (p.currentPrice || p.averagePrice) * p.quantity, 0);
+    const stockVal = portfolio.filter(p => p.assetType === AssetType.STOCK).reduce((acc, p) => acc + (p.currentPrice || p.averagePrice) * p.quantity, 0);
+    return {
+      fii: (fiiVal / currentBalance) * 100,
+      stock: (stockVal / currentBalance) * 100
+    };
+  }, [portfolio, currentBalance]);
 
   const dataByAsset = useMemo(() => {
     return portfolio
@@ -193,10 +204,10 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </div>
 
-      {/* CARDS SECUNDÁRIOS REFORMULADOS */}
+      {/* CARDS SECUNDÁRIOS REFORMULADOS COM PREVIEWS */}
       <div className="grid grid-cols-1 gap-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
           
-          {/* Card Alocação */}
+          {/* Card Alocação - Preview Percentual */}
           <div 
             onClick={() => setShowAllocationModal(true)} 
             className="group relative overflow-hidden bg-gradient-to-r from-indigo-500/5 to-slate-900 border border-indigo-500/10 p-5 rounded-[2.2rem] flex items-center justify-between transition-all hover:border-indigo-500/30 active:scale-[0.98] cursor-pointer"
@@ -208,15 +219,24 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                   </div>
                   <div>
                       <h4 className="text-white font-black text-sm uppercase tracking-tight">Alocação Ativa</h4>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{portfolio.length} ativos distribuídos</p>
+                      <div className="flex gap-2 items-center mt-1">
+                        <div className="flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-accent"></div>
+                          <span className="text-[10px] text-slate-400 font-bold tabular-nums">{typeAllocation.fii.toFixed(0)}% FII</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                          <span className="text-[10px] text-slate-400 font-bold tabular-nums">{typeAllocation.stock.toFixed(0)}% Ações</span>
+                        </div>
+                      </div>
                   </div>
               </div>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-slate-600 group-hover:text-white transition-all">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-slate-600 group-hover:text-white transition-all shadow-inner">
                   <ChevronRight className="w-5 h-5" />
               </div>
           </div>
 
-          {/* Card Ganho Real */}
+          {/* Card Ganho Real - Preview Percentual Real */}
           <div 
             onClick={() => setShowInflationModal(true)} 
             className="group relative overflow-hidden bg-gradient-to-r from-yellow-500/5 to-slate-900 border border-yellow-500/10 p-5 rounded-[2.2rem] flex items-center justify-between transition-all hover:border-yellow-500/30 active:scale-[0.98] cursor-pointer"
@@ -228,10 +248,14 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                   </div>
                   <div>
                       <h4 className="text-white font-black text-sm uppercase tracking-tight">Ganho Real</h4>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Poder de compra real</p>
+                      <div className="mt-1">
+                        <span className={`text-[11px] font-black tracking-widest tabular-nums uppercase ${realGainPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {realGainPercent >= 0 ? '+' : ''}{realGainPercent.toFixed(2)}% Acima IPCA
+                        </span>
+                      </div>
                   </div>
               </div>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-slate-600 group-hover:text-white transition-all">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-slate-600 group-hover:text-white transition-all shadow-inner">
                   <ChevronRight className="w-5 h-5" />
               </div>
           </div>
