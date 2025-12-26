@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, SwipeableModal } from './components/Layout';
 import { Home } from './pages/Home';
@@ -8,7 +7,7 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw, Bell, Calendar, DollarSign, X, ArrowRight, CheckCheck, BellRing } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw, Bell, Calendar, DollarSign, X, ArrowRight, CheckCheck, BellRing, DownloadCloud } from 'lucide-react';
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_transactions',
@@ -91,10 +90,20 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const handleUpdate = (e: any) => setUpdateRegistration(e.detail);
+    const handleUpdate = (e: any) => {
+      console.log('App: Update available event received');
+      setUpdateRegistration(e.detail);
+    };
     window.addEventListener('sw-update-available', handleUpdate);
     return () => window.removeEventListener('sw-update-available', handleUpdate);
   }, []);
+
+  const handleUpdateApp = useCallback(() => {
+    if (updateRegistration && updateRegistration.waiting) {
+      updateRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+    window.location.reload();
+  }, [updateRegistration]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions));
@@ -214,8 +223,7 @@ const App: React.FC = () => {
 
   const syncBrapiData = useCallback(async (force = false) => {
     if (!brapiToken || transactions.length === 0) return;
-    // Fix: Explicitly type unique as string[] to avoid unknown[] error
-    const unique: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
+    const unique: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))) as string[];
     try {
       const brQuotes = await getQuotes(unique, brapiToken, force);
       const map: Record<string, BrapiQuote> = {};
@@ -225,8 +233,7 @@ const App: React.FC = () => {
   }, [brapiToken, transactions]);
 
   const handleAiSync = useCallback(async (force = false) => {
-    // Fix: Explicitly type unique as string[] to avoid unknown[] error
-    const unique: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))).sort();
+    const unique: string[] = (Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))) as string[]).sort();
     if (unique.length === 0) return;
     const tickersStr = unique.join(',');
     if (!force && localStorage.getItem(STORAGE_KEYS.SYNC) && (Date.now() - parseInt(localStorage.getItem(STORAGE_KEYS.SYNC)!,10)) < 3600000 && lastSyncTickersRef.current === tickersStr) return;
@@ -282,6 +289,18 @@ const App: React.FC = () => {
         {currentTab==='transactions' && <Transactions transactions={transactions} onAddTransaction={(t)=>setTransactions(p=>[...p,{...t,id:Math.random().toString(36).substr(2,9)}])} onUpdateTransaction={(id,t)=>setTransactions(p=>p.map(x=>x.id===id?{...t,id}:x))} onDeleteTransaction={(id)=>setTransactions(p=>p.filter(x=>x.id!==id))} />}
       </main>
       <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />
+      
+      {/* Floating Update Button */}
+      {updateRegistration && (
+         <button 
+            onClick={handleUpdateApp}
+            className="fixed bottom-24 right-5 z-[200] flex items-center gap-3 bg-emerald-500 text-primary px-5 py-3 rounded-2xl shadow-xl shadow-emerald-500/20 font-black text-xs uppercase tracking-widest animate-fade-in-up active:scale-95 transition-transform"
+         >
+            <DownloadCloud className="w-5 h-5 animate-bounce" />
+            Nova Versão Disponível
+         </button>
+      )}
+
       <SwipeableModal isOpen={showSettings} onClose={()=>setShowSettings(false)}>
         <Settings brapiToken={brapiToken} onSaveToken={setBrapiToken} transactions={transactions} onImportTransactions={setTransactions} onResetApp={()=>{localStorage.clear(); window.location.reload();}} />
       </SwipeableModal>

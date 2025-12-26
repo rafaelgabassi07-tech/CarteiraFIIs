@@ -1,6 +1,6 @@
 
 // Versão do cache estático. Incrementar para forçar atualização.
-const STATIC_CACHE = 'investfiis-static-v24';
+const STATIC_CACHE = 'investfiis-static-v25';
 const DATA_CACHE = 'investfiis-data-v1';
 
 const STATIC_ASSETS = [
@@ -25,6 +25,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key.startsWith('investfiis-static-') && key !== STATIC_CACHE) {
+            console.log('SW: Limpando cache antigo', key);
             return caches.delete(key);
           }
         })
@@ -57,6 +58,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request).then((networkResponse) => {
+        // Atualiza o cache se a rede retornar sucesso
         if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
           caches.open(STATIC_CACHE).then((cache) => {
             cache.put(request, networkResponse.clone());
