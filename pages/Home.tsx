@@ -1,8 +1,8 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, TrendingDown, Coins, Building2, ArrowUpCircle, ChevronRight, RefreshCw, CircleDollarSign, PieChart as PieIcon, Scale, Info, ExternalLink, X, Calendar, Trophy, ReceiptText, BarChart3, Calculator, Percent, Sparkles, Layers } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
+import { Wallet, TrendingUp, TrendingDown, Coins, Building2, ArrowUpCircle, ChevronRight, RefreshCw, CircleDollarSign, PieChart as PieIcon, Scale, Info, ExternalLink, X, Calendar, Trophy, ReceiptText, BarChart3, Calculator, Percent, Sparkles, Layers, ShieldCheck, Flame } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
 interface HomeProps {
@@ -19,17 +19,11 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [proventosTab, setProventosTab] = useState<'statement' | 'ranking'>('statement');
   const [showAllocationModal, setShowAllocationModal] = useState(false);
-  const [allocationTab, setAllocationTab] = useState<'asset' | 'type'>('asset');
   const [showInflationModal, setShowInflationModal] = useState(false);
 
-  // --- LIMPEZA DE DUPLICIDADES (Anti-Triplicação) ---
   const cleanDividendReceipts = useMemo(() => {
     const map = new Map<string, DividendReceipt>();
-    // Percorre todos e mantém apenas o mais recente/valido para cada ID
-    dividendReceipts.forEach(div => {
-      // O ID já é robusto, mas aqui garantimos unicidade final na UI
-      map.set(div.id, div);
-    });
+    dividendReceipts.forEach(div => map.set(div.id, div));
     return Array.from(map.values());
   }, [dividendReceipts]);
 
@@ -39,17 +33,19 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   const unrealizedGain = currentBalance - totalInvested;
   const totalReturnVal = unrealizedGain + realizedGain + totalDividends;
   const totalReturnPercent = totalInvested > 0 ? (totalReturnVal / totalInvested) * 100 : 0;
-  const yieldOnCost = totalInvested > 0 ? (totalDividends / totalInvested) * 100 : 0;
 
   const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // IPCA Acumulado Médio (Simulação 1 ano ou proporcional)
+  const estimatedInflation = 4.5; // 4.5% ao ano (estimativa IPCA)
+  const realGainPercent = ((1 + totalReturnPercent/100) / (1 + estimatedInflation/100) - 1) * 100;
 
   const dataByAsset = useMemo(() => {
     return portfolio
       .map(p => ({
         name: p.ticker,
         value: (p.currentPrice || p.averagePrice) * p.quantity,
-        type: p.assetType,
-        color: p.assetType === AssetType.FII ? '#38bdf8' : '#a855f7' 
+        type: p.assetType
       }))
       .filter(p => p.value > 0)
       .sort((a, b) => b.value - a.value);
@@ -101,10 +97,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   return (
     <div className="pb-32 pt-2 px-5 space-y-6">
       
-      {/* NOVO PATRIMÔNIO TOTAL - VISUAL REFINADO */}
+      {/* PATRIMÔNIO TOTAL */}
       <div className="animate-fade-in-up">
         <div className="relative overflow-hidden bg-[#0f172a] border border-white/10 p-6 rounded-[2.5rem] shadow-2xl group">
-            {/* Background Layers */}
             <div className="absolute top-0 right-0 w-80 h-80 bg-accent/10 blur-[100px] rounded-full group-hover:bg-accent/15 transition-all duration-700"></div>
             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none"></div>
             
@@ -158,18 +153,10 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                     <CircleDollarSign className="w-4 h-4 text-emerald-900" />
                 </div>
             </div>
-            
-            {/* Barra de Progresso de Performance */}
-            <div className="mt-6 h-1.5 w-full bg-slate-900 rounded-full overflow-hidden flex ring-1 ring-white/5 relative z-10">
-                <div 
-                  className={`h-full transition-all duration-1000 ease-out ${totalReturnVal >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                  style={{ width: `${Math.min(100, (currentBalance / Math.max(totalInvested, currentBalance)) * 100)}%` }}
-                />
-            </div>
         </div>
       </div>
 
-      {/* CARD RENDIMENTOS - REFINADO */}
+      {/* CARD DIVIDENDOS */}
       <div 
         onClick={() => setShowProventosModal(true)}
         className="animate-fade-in-up tap-highlight cursor-pointer"
@@ -193,7 +180,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                      <div className="text-3xl font-black text-white tabular-nums tracking-tighter mb-1">
                         R$ {formatCurrency(totalDividends)}
                      </div>
-                     <div className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">Yield on Cost: {yieldOnCost.toFixed(2)}%</div>
+                     <div className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">Total Acumulado</div>
                 </div>
                 <div className="flex h-10 items-end gap-1">
                     {dividendsChartData.slice(-5).map((d, i) => (
@@ -206,41 +193,54 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </div>
 
-      {/* GRID DE CARDS SECUNDÁRIOS */}
-      <div className="grid grid-cols-1 gap-5 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-          {/* Alocação */}
-          <div onClick={() => setShowAllocationModal(true)} className="glass p-6 rounded-[2.5rem] flex items-center justify-between group active:scale-[0.99] cursor-pointer">
-              <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 border border-indigo-500/20">
-                      <PieIcon className="w-5 h-5" />
+      {/* CARDS SECUNDÁRIOS REFORMULADOS */}
+      <div className="grid grid-cols-1 gap-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+          
+          {/* Card Alocação */}
+          <div 
+            onClick={() => setShowAllocationModal(true)} 
+            className="group relative overflow-hidden bg-gradient-to-r from-indigo-500/5 to-slate-900 border border-indigo-500/10 p-5 rounded-[2.2rem] flex items-center justify-between transition-all hover:border-indigo-500/30 active:scale-[0.98] cursor-pointer"
+          >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-[50px] rounded-full"></div>
+              <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-500/5 group-hover:scale-110 transition-transform">
+                      <PieIcon className="w-6 h-6" />
                   </div>
                   <div>
-                      <h4 className="text-white font-bold text-xs uppercase tracking-widest">Alocação</h4>
-                      <p className="text-[10px] text-slate-500">{portfolio.length} Ativos na Carteira</p>
+                      <h4 className="text-white font-black text-sm uppercase tracking-tight">Alocação Ativa</h4>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{portfolio.length} ativos distribuídos</p>
                   </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-slate-700" />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-slate-600 group-hover:text-white transition-all">
+                  <ChevronRight className="w-5 h-5" />
+              </div>
           </div>
 
-          {/* Ganho Real */}
-          <div onClick={() => setShowInflationModal(true)} className="glass p-6 rounded-[2.5rem] flex items-center justify-between group active:scale-[0.99] cursor-pointer">
-              <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-yellow-500/10 rounded-2xl flex items-center justify-center text-yellow-500 border border-yellow-500/20">
-                      <Scale className="w-5 h-5" />
+          {/* Card Ganho Real */}
+          <div 
+            onClick={() => setShowInflationModal(true)} 
+            className="group relative overflow-hidden bg-gradient-to-r from-yellow-500/5 to-slate-900 border border-yellow-500/10 p-5 rounded-[2.2rem] flex items-center justify-between transition-all hover:border-yellow-500/30 active:scale-[0.98] cursor-pointer"
+          >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 blur-[50px] rounded-full"></div>
+              <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-12 h-12 bg-yellow-500/10 rounded-2xl flex items-center justify-center text-yellow-500 border border-yellow-500/20 shadow-lg shadow-yellow-500/5 group-hover:scale-110 transition-transform">
+                      <Scale className="w-6 h-6" />
                   </div>
                   <div>
-                      <h4 className="text-white font-bold text-xs uppercase tracking-widest">Ganho Real</h4>
-                      <p className="text-[10px] text-slate-500">Rentabilidade vs Inflação</p>
+                      <h4 className="text-white font-black text-sm uppercase tracking-tight">Ganho Real</h4>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Poder de compra real</p>
                   </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-slate-700" />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-slate-600 group-hover:text-white transition-all">
+                  <ChevronRight className="w-5 h-5" />
+              </div>
           </div>
       </div>
 
-      {/* FONTES DE DADOS IA */}
+      {/* FONTES DE DADOS */}
       {sources.length > 0 && (
         <div className="animate-fade-in-up py-4 px-2" style={{ animationDelay: '300ms' }}>
-          <h3 className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em] mb-3">Fontes Consultadas (Gemini)</h3>
+          <h3 className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em] mb-3">Fontes de Dados (IA)</h3>
           <div className="flex flex-wrap gap-2">
             {sources.map((s, i) => (
               <a key={i} href={s.web.uri} target="_blank" className="bg-white/[0.02] py-2 px-3 rounded-xl text-[9px] font-bold text-slate-500 border border-white/5 flex items-center gap-2 hover:border-accent/30 transition-all">
@@ -251,45 +251,32 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       )}
 
-      {/* MODAL PROVENTOS (REFINADO COM LIMPEZA) */}
+      {/* MODAIS */}
+      
+      {/* Modal Proventos */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
         <div className="px-6 pt-2 pb-10">
            <div className="mb-8">
                 <h3 className="text-2xl font-black text-white tracking-tighter">Proventos</h3>
                 <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em] mt-1">Extrato de Rendimentos</p>
            </div>
-
            <div className="h-48 w-full mb-8">
-                 {dividendsChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dividendsChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff05" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 800 }} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 800 }} />
-                            <Tooltip 
-                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                                itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
-                                formatter={(val: number) => [`R$ ${formatCurrency(val)}`, 'Recebido']}
-                            />
-                            <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center border border-dashed border-white/5 rounded-3xl bg-white/[0.01]">
-                        <BarChart3 className="w-8 h-8 text-slate-800 mb-2" />
-                        <span className="text-[9px] font-black text-slate-700 uppercase tracking-widest">Aguardando Dados</span>
-                    </div>
-                 )}
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dividendsChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff05" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 800 }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 800 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px' }} />
+                        <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                    </BarChart>
+                </ResponsiveContainer>
            </div>
-
-           <div className="bg-white/[0.03] p-1 rounded-2xl border border-white/[0.05] flex mb-6">
-              <button onClick={() => setProventosTab('statement')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'statement' ? 'bg-emerald-500 text-primary' : 'text-slate-500'}`}>Extrato</button>
-              <button onClick={() => setProventosTab('ranking')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'ranking' ? 'bg-accent text-primary' : 'text-slate-500'}`}>Ranking</button>
+           <div className="bg-white/[0.03] p-1 rounded-2xl flex mb-6 border border-white/5">
+              <button onClick={() => setProventosTab('statement')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'statement' ? 'bg-emerald-500 text-primary shadow-lg shadow-emerald-500/20' : 'text-slate-500'}`}>Extrato</button>
+              <button onClick={() => setProventosTab('ranking')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'ranking' ? 'bg-emerald-500 text-primary shadow-lg shadow-emerald-500/20' : 'text-slate-500'}`}>Ranking</button>
            </div>
-
            <div className="space-y-6">
                {proventosTab === 'statement' ? (
-                 /* Fix type error by explicitly casting Object.entries of proventosGrouped to ensure TypeScript recognizes the value as an array of DividendReceipt. */
                  (Object.entries(proventosGrouped) as [string, DividendReceipt[]][]).map(([month, receipts]) => (
                     <div key={month} className="space-y-3">
                         <div className="flex items-center gap-3 py-2 border-b border-white/5">
@@ -299,16 +286,14 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                         {receipts.map(r => (
                             <div key={r.id} className="bg-white/[0.02] p-4 rounded-3xl flex items-center justify-between border border-white/[0.03]">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-[10px] font-black text-white border border-white/5">
-                                        {r.ticker.substring(0,4)}
-                                    </div>
+                                    <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-[10px] font-black text-white border border-white/5">{r.ticker.substring(0,4)}</div>
                                     <div>
                                         <div className="text-sm font-black text-white">{r.ticker}</div>
                                         <div className="text-[9px] font-bold text-slate-500 uppercase">{r.paymentDate.split('-').reverse().join('/')}</div>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-sm font-black text-emerald-400 tabular-nums">R$ {formatCurrency(r.totalReceived)}</div>
+                                    <div className="text-sm font-black text-emerald-400">R$ {formatCurrency(r.totalReceived)}</div>
                                     <div className="text-[8px] text-slate-600 font-bold uppercase">{r.type}</div>
                                 </div>
                             </div>
@@ -337,7 +322,60 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </SwipeableModal>
 
-      {/* MODAL ALOCAÇÃO (COMPACTO) */}
+      {/* Modal Ganho Real */}
+      <SwipeableModal isOpen={showInflationModal} onClose={() => setShowInflationModal(false)}>
+        <div className="px-6 pt-2 pb-10">
+            <div className="mb-8">
+                <h3 className="text-2xl font-black text-white tracking-tighter">Ganho Real</h3>
+                <p className="text-[10px] text-yellow-500 font-black uppercase tracking-[0.2em] mt-1">Rentabilidade Acima da Inflação</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="bg-white/[0.03] p-5 rounded-[2rem] border border-white/5">
+                   <div className="flex items-center gap-2 mb-3">
+                      <TrendingUp className="w-4 h-4 text-emerald-400" />
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Carteira</span>
+                   </div>
+                   <div className="text-2xl font-black text-white">{totalReturnPercent.toFixed(2)}%</div>
+                   <p className="text-[9px] text-slate-500 font-bold mt-1">Total Acumulado</p>
+                </div>
+                <div className="bg-white/[0.03] p-5 rounded-[2rem] border border-white/5">
+                   <div className="flex items-center gap-2 mb-3">
+                      <Flame className="w-4 h-4 text-rose-400" />
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Inflação</span>
+                   </div>
+                   <div className="text-2xl font-black text-white">{estimatedInflation.toFixed(2)}%</div>
+                   <p className="text-[9px] text-slate-500 font-bold mt-1">IPCA Estimado</p>
+                </div>
+            </div>
+
+            <div className="relative overflow-hidden bg-gradient-to-br from-yellow-500/10 to-slate-900 border border-yellow-500/20 p-8 rounded-[2.5rem] mb-8 text-center">
+                <div className="absolute top-0 left-0 w-24 h-24 bg-yellow-500/5 blur-3xl"></div>
+                <div className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.4em] mb-4">Seu Ganho Real é de</div>
+                <div className={`text-6xl font-black tracking-tighter mb-4 ${realGainPercent >= 0 ? 'text-white' : 'text-rose-500'}`}>
+                    {realGainPercent >= 0 ? '+' : ''}{realGainPercent.toFixed(2)}%
+                </div>
+                <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/10 rounded-full border border-yellow-500/20 inline-flex">
+                    <ShieldCheck className="w-4 h-4 text-yellow-500" />
+                    <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">Protegido contra inflação</span>
+                </div>
+            </div>
+
+            <div className="bg-slate-950/40 p-6 rounded-3xl border border-white/5">
+                <h4 className="text-xs font-black text-white uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <Info className="w-4 h-4 text-accent" /> Entenda o cálculo
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                    O ganho real é o que sobra da sua rentabilidade após descontar o aumento generalizado de preços (IPCA). É o que efetivamente aumenta seu poder de compra.
+                </p>
+                <div className="mt-4 p-3 bg-white/[0.02] rounded-xl border border-white/5 text-[10px] font-mono text-slate-400 text-center">
+                    (1 + Carteira) / (1 + Inflação) - 1
+                </div>
+            </div>
+        </div>
+      </SwipeableModal>
+
+      {/* Modal Alocação */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="px-6 pt-2 pb-10">
             <h3 className="text-2xl font-black text-white tracking-tighter mb-8">Alocação</h3>
