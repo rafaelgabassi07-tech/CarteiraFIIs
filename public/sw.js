@@ -1,6 +1,6 @@
 
-const STATIC_CACHE = 'investfiis-static-v2.6.3';
-const DATA_CACHE = 'investfiis-data-v2.6.3';
+const STATIC_CACHE = 'investfiis-static-v2.6.4';
+const DATA_CACHE = 'investfiis-data-v2.6.4';
 
 const STATIC_ASSETS = [
   './index.html',

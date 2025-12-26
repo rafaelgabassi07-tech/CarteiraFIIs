@@ -205,7 +205,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v2.6.3</span>
+              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v2.6.4</span>
            </div>
         </div>
       )}

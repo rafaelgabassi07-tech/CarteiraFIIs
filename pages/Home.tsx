@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Wallet, ChevronRight, CircleDollarSign, PieChart as PieIcon, Layers, Sparkles, BarChart3, Star, Zap, Trophy, TrendingUp, Globe, ExternalLink, PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -38,11 +38,14 @@ export const Home: React.FC<HomeProps> = ({
 
   const COLORS = ['#0ea5e9', '#8b5cf6', '#ec4899', '#f43f5e', '#10b981', '#f59e0b'];
 
-  const assetAllocationData = useMemo(() => portfolio.map(p => ({ 
-    name: p.ticker, 
-    value: (p.currentPrice || p.averagePrice) * p.quantity, 
-    percent: (((p.currentPrice || p.averagePrice) * p.quantity) / (currentBalance || 1)) * 100 
-  })).sort((a,b) => b.value - a.value), [portfolio, currentBalance]);
+  const assetAllocationData = useMemo(() => {
+    if (!portfolio.length) return [];
+    return portfolio.map(p => ({ 
+      name: p.ticker, 
+      value: (p.currentPrice || p.averagePrice) * p.quantity, 
+      percent: (((p.currentPrice || p.averagePrice) * p.quantity) / (currentBalance || 1)) * 100 
+    })).sort((a,b) => b.value - a.value);
+  }, [portfolio, currentBalance]);
   
   const top3Assets = assetAllocationData.slice(0, 3);
 
@@ -121,8 +124,14 @@ export const Home: React.FC<HomeProps> = ({
       </button>
 
       {/* Alocação Card */}
-      <button onClick={() => setShowAllocationModal(true)} className="w-full text-left animate-fade-in-up">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-7 shadow-sm dark:shadow-2xl">
+      <button 
+        onClick={() => {
+            console.log('Opening Allocation Modal...');
+            setShowAllocationModal(true);
+        }} 
+        className="w-full text-left animate-fade-in-up relative z-10"
+      >
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-7 shadow-sm dark:shadow-2xl hover:border-accent/40 transition-all active:scale-[0.98]">
             <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
                     <div className="w-11 h-11 bg-accent/10 rounded-2xl flex items-center justify-center text-accent border border-accent/20"><PieIcon className="w-5 h-5" /></div>
@@ -130,28 +139,44 @@ export const Home: React.FC<HomeProps> = ({
                 </div>
                 <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600" />
             </div>
-            <div className="flex items-center gap-8">
-                <div className="w-32 h-32 shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie data={assetAllocationData} innerRadius={35} outerRadius={50} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={6}>
-                                {assetAllocationData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                            </Pie>
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
-                <div className="flex-1 space-y-4">
-                    {top3Assets.map((asset, i) => (
-                        <div key={asset.name} className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-                                <span className="text-[10px] font-black text-slate-700 dark:text-white/90 uppercase">{asset.name}</span>
+            
+            {portfolio.length > 0 ? (
+                <div className="flex items-center gap-8">
+                    <div className="w-32 h-32 shrink-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie 
+                                    data={assetAllocationData} 
+                                    innerRadius={35} 
+                                    outerRadius={50} 
+                                    paddingAngle={4} 
+                                    dataKey="value" 
+                                    stroke="none" 
+                                    cornerRadius={6}
+                                >
+                                    {assetAllocationData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="flex-1 space-y-4">
+                        {top3Assets.map((asset, i) => (
+                            <div key={asset.name} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                                    <span className="text-[10px] font-black text-slate-700 dark:text-white/90 uppercase">{asset.name}</span>
+                                </div>
+                                <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">{asset.percent.toFixed(0)}%</span>
                             </div>
-                            <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">{asset.percent.toFixed(0)}%</span>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div className="flex flex-col items-center justify-center py-4 border border-dashed border-slate-200 dark:border-white/5 rounded-2xl">
+                    <PieChartIcon className="w-8 h-8 text-slate-300 mb-2" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase">Adicione ativos para ver o gráfico</p>
+                </div>
+            )}
         </div>
       </button>
 
@@ -193,13 +218,20 @@ export const Home: React.FC<HomeProps> = ({
            {proventosTab === 'history' && (
              <div className="space-y-8">
                 <div className="h-48 w-full bg-slate-50 dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dividendsChartData}>
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
-                            <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '10px' }} />
-                            <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    {dividendsChartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dividendsChartData}>
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
+                                <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '10px' }} />
+                                <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full opacity-30">
+                            <BarChart3 className="w-8 h-8 mb-2" />
+                            <span className="text-[10px] font-black uppercase">Sem histórico</span>
+                        </div>
+                    )}
                 </div>
                 <div className="space-y-3">
                   {dividendReceipts.length === 0 ? <div className="py-20 text-center text-slate-400 font-bold uppercase text-[10px]">Sem dados para exibir</div> : dividendReceipts.slice(0, 10).map(r => (
@@ -217,7 +249,7 @@ export const Home: React.FC<HomeProps> = ({
 
            {proventosTab === 'magic' && (
              <div className="space-y-4">
-                {magicNumberData.map(item => (
+                {magicNumberData.length > 0 ? magicNumberData.map(item => (
                     <div key={item.ticker} className="bg-slate-50 dark:bg-white/[0.02] p-5 rounded-3xl border border-slate-200 dark:border-white/5 space-y-4">
                         <div className="flex justify-between items-center">
                             <div><span className="text-sm font-black text-slate-900 dark:text-white">{item.ticker}</span><p className="text-[9px] text-slate-400 font-bold uppercase">Meta: {item.sharesNeeded} un</p></div>
@@ -227,13 +259,15 @@ export const Home: React.FC<HomeProps> = ({
                             <div className={`h-full bg-emerald-500`} style={{ width: `${Math.min(100, item.progress)}%` }}></div>
                         </div>
                     </div>
-                ))}
+                )) : (
+                    <div className="py-20 text-center text-slate-400 font-bold uppercase text-[10px]">Número mágico exige histórico de dividendos</div>
+                )}
              </div>
            )}
         </div>
       </SwipeableModal>
 
-      {/* Fixed: Added missing Allocation Modal */}
+      {/* Alocação Details Modal */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
         <div className="px-6 pt-2 pb-10 bg-white dark:bg-secondary-dark min-h-full">
            <div className="mb-8">
@@ -241,35 +275,49 @@ export const Home: React.FC<HomeProps> = ({
                 <p className="text-[10px] text-accent font-black uppercase tracking-[0.2em] mt-1">Alocação de Ativos</p>
            </div>
            
-           <div className="flex items-center justify-center mb-10">
-              <div className="w-48 h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie data={assetAllocationData} innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={8}>
-                            {assetAllocationData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip />
-                    </PieChart>
-                </ResponsiveContainer>
-              </div>
-           </div>
+           {assetAllocationData.length > 0 ? (
+             <>
+               <div className="flex items-center justify-center mb-10">
+                  <div className="w-48 h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie 
+                                data={assetAllocationData} 
+                                innerRadius={55} 
+                                outerRadius={80} 
+                                paddingAngle={4} 
+                                dataKey="value" 
+                                stroke="none" 
+                                cornerRadius={8}
+                            >
+                                {assetAllocationData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                            </Pie>
+                            <Tooltip />
+                        </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+               </div>
 
-           <div className="space-y-4">
-             {assetAllocationData.map((asset, i) => (
-                <div key={asset.name} className="bg-slate-50 dark:bg-white/[0.02] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-3 h-10 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-                        <div>
-                            <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase">{asset.name}</h4>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">{formatCurrency(asset.value)}</p>
+               <div className="space-y-4">
+                 {assetAllocationData.map((asset, i) => (
+                    <div key={asset.name} className="bg-slate-50 dark:bg-white/[0.02] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="w-3 h-10 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                            <div>
+                                <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase">{asset.name}</h4>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase">{formatCurrency(asset.value)}</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-lg font-black text-slate-900 dark:text-white">{asset.percent.toFixed(1)}%</div>
                         </div>
                     </div>
-                    <div className="text-right">
-                        <div className="text-lg font-black text-slate-900 dark:text-white">{asset.percent.toFixed(1)}%</div>
-                    </div>
-                </div>
-             ))}
-           </div>
+                 ))}
+               </div>
+             </>
+           ) : (
+             <div className="py-20 text-center text-slate-400 font-bold uppercase text-[10px]">Sua carteira está vazia</div>
+           )}
         </div>
       </SwipeableModal>
     </div>

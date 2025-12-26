@@ -20,7 +20,7 @@ const STORAGE_KEYS = {
   LAST_VER: 'investfiis_app_version'
 };
 
-const CURRENT_VERSION = '2.6.3';
+const CURRENT_VERSION = '2.6.4';
 const AI_CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -288,7 +288,7 @@ const App: React.FC = () => {
              <button onClick={() => setShowUpdateModal(true)} className="w-full bg-indigo-600 p-4 rounded-[2rem] flex items-center justify-between shadow-2xl border border-white/20 group transition-all">
                 <div className="flex items-center gap-3">
                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"><Rocket className="w-5 h-5 animate-pulse" /></div>
-                   <div className="text-left"><p className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none mb-1">Nova Versão v2.6.3</p><p className="text-xs font-black text-white uppercase tracking-tighter">Toque para aplicar</p></div>
+                   <div className="text-left"><p className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none mb-1">Nova Versão v{CURRENT_VERSION}</p><p className="text-xs font-black text-white uppercase tracking-tighter">Toque para aplicar</p></div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-white/50 group-hover:translate-x-1 transition-transform" />
              </button>
@@ -360,7 +360,7 @@ const App: React.FC = () => {
             <div className="text-center mb-10 pt-4">
                <div className="w-20 h-20 bg-accent/10 rounded-[2rem] flex items-center justify-center text-accent mx-auto mb-6 ring-1 ring-accent/20 shadow-2xl"><Package className="w-10 h-10" /></div>
                <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-2">Update Disponível</h3>
-               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão v2.6.3</p>
+               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão v{CURRENT_VERSION}</p>
             </div>
             <div className="space-y-6 flex-1 mb-10">
                {updateData?.notes.map((note, idx) => (

@@ -114,7 +114,7 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end justify-center pointer-events-none">
+    <div className="fixed inset-0 z-[300] flex items-end justify-center pointer-events-none">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto" onClick={onClose} />
       <div 
         className="bg-white dark:bg-secondary-dark w-full h-[95dvh] rounded-t-[2.5rem] border-t border-slate-200 dark:border-white/10 shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto transition-transform duration-500 ease-out"

@@ -17,7 +17,10 @@ const initServiceWorker = async () => {
         window.location.reload();
       });
 
-      const registration = await navigator.serviceWorker.register('./sw.js', { 
+      // FIX: Resolve o caminho do SW contra a URL atual para evitar erro de origin mismatch em ambientes de sandbox/proxy
+      const swUrl = new URL('./sw.js', window.location.href).href;
+      
+      const registration = await navigator.serviceWorker.register(swUrl, { 
         scope: './',
         updateViaCache: 'none' 
       });
@@ -51,8 +54,7 @@ const initServiceWorker = async () => {
         }
       });
     } catch (error) {
-      // Ignora erro de origem no ambiente de preview do AI Studio
-      console.warn('SW: Falha no registro (provavelmente restrição de sandbox/origem).', error);
+      console.warn('SW: Falha no registro (provavelmente restrição de sandbox/origem). Tentando ignorar erro no preview.', error);
     }
   }
 };
