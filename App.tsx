@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, SwipeableModal } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
@@ -8,9 +8,9 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { Rocket, CheckCircle2, Package, ArrowRight } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
-const APP_VERSION = '3.1.8';
+const APP_VERSION = '3.2.0';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -23,9 +23,11 @@ export type ThemeType = 'light' | 'dark' | 'system';
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
   const [toast, setToast] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  
+  // Ref para controlar atualização pendente sem re-renderizar
+  const updatePending = useRef(false);
   
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
@@ -67,25 +69,42 @@ const App: React.FC = () => {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // Update Check & Auto-fix for stale SW
+  // SISTEMA DE ATUALIZAÇÃO SILENCIOSA (BACKGROUND v3.2.0)
   useEffect(() => {
-    const check = async () => {
+    const checkForUpdates = async () => {
       try {
-        // Adiciona timestamp para evitar cache do browser na verificação de versão
+        // Busca versão evitando cache
         const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
-          // Se a versão do JSON for maior que a do App, mostra modal
           if (data.version !== APP_VERSION) {
-            setShowUpdateModal(true);
+            console.log(`Nova versão disponível: ${data.version}. Aguardando background para atualizar.`);
+            updatePending.current = true;
           }
         }
-      } catch {}
+      } catch (e) {
+        // Silencioso em caso de erro de rede
+      }
     };
-    check();
-    
-    // Log de versão para debug
-    console.log(`InvestFIIs v${APP_VERSION} running.`);
+
+    // Verifica a cada 2 minutos
+    const interval = setInterval(checkForUpdates, 120 * 1000);
+    checkForUpdates(); // Verifica ao iniciar
+
+    // Listener para aplicar atualização quando o usuário voltar ao app
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && updatePending.current) {
+        console.log("Aplicando atualização em background...");
+        window.location.reload();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Calculations
@@ -220,20 +239,6 @@ const App: React.FC = () => {
       </main>
 
       {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
-
-      <SwipeableModal isOpen={showUpdateModal} onClose={() => setShowUpdateModal(false)}>
-        <div className="p-8 bg-white dark:bg-slate-900 h-full flex flex-col items-center justify-center text-center">
-            <div className="w-24 h-24 bg-accent/10 rounded-full flex items-center justify-center text-accent mb-6 shadow-inner"><Rocket className="w-12 h-12" /></div>
-            <h3 className="text-3xl font-black mb-2">Atualização Crítica</h3>
-            <p className="text-slate-500 mb-10">Correções de segurança e cache aplicadas (v{APP_VERSION}).</p>
-            <button onClick={() => {
-                // Força reload duro ignorando cache
-                window.location.href = window.location.href;
-            }} className="w-full bg-accent text-white py-5 rounded-3xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
-                Atualizar Agora <ArrowRight className="w-5 h-5" />
-            </button>
-        </div>
-      </SwipeableModal>
     </div>
   );
 };

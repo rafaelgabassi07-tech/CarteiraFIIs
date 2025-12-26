@@ -4,19 +4,28 @@ import { Transaction, AssetType } from '../types';
 import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
-// Shared safe formatter
-const formatBRL = (val: any) => {
+// Formatador seguro com tipagem explícita
+const formatBRL = (val: number | undefined | null) => {
   const num = typeof val === 'number' ? val : 0;
   return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-export const Transactions: React.FC<{ 
-  transactions: Transaction[], 
-  onAddTransaction: any, 
-  onUpdateTransaction: any, 
-  onDeleteTransaction: any, 
-  monthlyContribution: number 
-}> = ({ transactions, onAddTransaction, onUpdateTransaction, onDeleteTransaction, monthlyContribution }) => {
+// Interface explícita para corrigir erro TS7006 no App.tsx
+interface TransactionsProps {
+  transactions: Transaction[];
+  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  onUpdateTransaction: (id: string, transaction: Omit<Transaction, 'id'>) => void;
+  onDeleteTransaction: (id: string) => void;
+  monthlyContribution: number;
+}
+
+export const Transactions: React.FC<TransactionsProps> = ({ 
+  transactions, 
+  onAddTransaction, 
+  onUpdateTransaction, 
+  onDeleteTransaction, 
+  monthlyContribution 
+}) => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
