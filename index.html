@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="app-version" content="3.1.5" />
+    <meta name="app-version" content="3.1.7" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -19,25 +19,17 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
     <script>
-      // SCRIPT DE SEGURANÇA E LIMPEZA (v3.1.5)
-      (async function() {
-        try {
-          // Se estiver rodando em Iframe ou Sandbox, força a remoção de SWs
-          if (window.self !== window.top || window.location.hostname.includes('usercontent')) {
-            if ('serviceWorker' in navigator) {
-              const regs = await navigator.serviceWorker.getRegistrations();
-              for(let reg of regs) { await reg.unregister().catch(() => {}); }
-            }
+      // SCRIPT DE SEGURANÇA (v3.1.7)
+      // Garante que nenhum Service Worker interfira no carregamento inicial
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
           }
-          // Limpeza periódica de caches de versões antigas
-          if ('caches' in window) {
-            const keys = await caches.keys();
-            for(let key of keys) {
-               if(key.includes('investfiis') && !key.includes('v3.1.5')) await caches.delete(key).catch(()=>{});
-            }
-          }
-        } catch (e) {}
-      })();
+        }).catch(function(err) {
+          console.error('Erro ao limpar SW:', err);
+        });
+      }
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
