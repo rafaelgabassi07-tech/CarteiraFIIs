@@ -1,6 +1,6 @@
 
 // Versão do cache estático. Incrementar para forçar atualização.
-const STATIC_CACHE = 'investfiis-static-v34';
+const STATIC_CACHE = 'investfiis-static-v35';
 const DATA_CACHE = 'investfiis-data-v1';
 
 // REMOVIDO './' e './index.tsx' pois causam erro de "Request failed" em alguns ambientes (404).

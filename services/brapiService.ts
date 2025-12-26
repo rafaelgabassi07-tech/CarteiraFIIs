@@ -3,7 +3,7 @@ import { BrapiResponse, BrapiQuote } from '../types';
 
 const BASE_URL = 'https://brapi.dev/api';
 const CACHE_KEY = 'investfiis_quotes_simple_cache';
-const CACHE_DURATION = 10 * 60 * 1000; // Aumentado para 10 min para reduzir chamadas
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos de cache
 
 interface CacheItem {
   data: BrapiQuote;
@@ -25,9 +25,9 @@ const saveCache = (cache: Record<string, CacheItem>) => {
 };
 
 /**
- * Brapi Service Otimizado:
- * Utiliza BATCH REQUESTS (Lotes) para evitar erro 429 (Too Many Requests).
- * Agrupa até 20 tickers por chamada de API.
+ * Brapi Service Ajustado:
+ * Realiza uma requisição HTTP separada para cada ativo (1:1).
+ * Utiliza Promise.all para paralelizar as chamadas.
  */
 export const getQuotes = async (tickers: string[], token: string, forceRefresh = false): Promise<BrapiQuote[]> => {
   if (!tickers.length || !token) return [];
@@ -52,47 +52,36 @@ export const getQuotes = async (tickers: string[], token: string, forceRefresh =
 
   if (tickersToFetch.length === 0) return validQuotes;
 
-  // Lógica de Chunking (Lotes) para evitar 429
-  // A Brapi aceita vírgula: /quote/PETR4,VALE3,HGLG11
-  const CHUNK_SIZE = 20; 
   const newQuotes: BrapiQuote[] = [];
 
-  // Divide os tickers em grupos de 20
-  const chunks = [];
-  for (let i = 0; i < tickersToFetch.length; i += CHUNK_SIZE) {
-    chunks.push(tickersToFetch.slice(i, i + CHUNK_SIZE));
-  }
-
-  // Processa os chunks sequencialmente (ou Promise.all com cuidado)
-  const promises = chunks.map(async (chunk) => {
-    const tickersParam = chunk.join(',');
-    console.log(`[Brapi] Buscando lote: ${tickersParam}`);
-    
+  // Mapeia cada ticker para uma Promise de requisição individual
+  const promises = tickersToFetch.map(async (ticker) => {
+    // console.log(`[Brapi] Buscando ativo individual: ${ticker}`);
     try {
-      const url = `${BASE_URL}/quote/${tickersParam}?token=${token}`;
+      const url = `${BASE_URL}/quote/${ticker}?token=${token}`;
       const response = await fetch(url);
 
       if (response.ok) {
         const data: BrapiResponse = await response.json();
+        // A API retorna { results: [ ... ] }. Pegamos todos os resultados (geralmente 1 nesse caso).
         return data.results || [];
-      } else if (response.status === 429) {
-        console.warn(`[Brapi] Erro 429 (Muitas requisições) para lote: ${tickersParam}`);
-        return null;
       } else {
-        console.warn(`[Brapi] Falha (${response.status}) para lote: ${tickersParam}`);
+        console.warn(`[Brapi] Erro ${response.status} ao buscar ${ticker}`);
         return null;
       }
     } catch (error) {
-      console.error(`[Brapi] Erro de rede para lote: ${tickersParam}`, error);
+      console.error(`[Brapi] Falha de rede ao buscar ${ticker}`, error);
       return null;
     }
   });
 
+  // Aguarda todas as requisições finalizarem (em paralelo)
   const results = await Promise.all(promises);
 
-  results.forEach(batchResult => {
-    if (batchResult) {
-      batchResult.forEach(quote => {
+  // Processa os resultados
+  results.forEach(tickerResults => {
+    if (tickerResults && Array.isArray(tickerResults)) {
+      tickerResults.forEach(quote => {
         newQuotes.push(quote);
         if (quote.symbol) {
           cache[quote.symbol] = { data: quote, timestamp: now };
@@ -104,6 +93,8 @@ export const getQuotes = async (tickers: string[], token: string, forceRefresh =
   saveCache(cache);
   
   const allQuotes = [...validQuotes, ...newQuotes];
+  
+  // Remove duplicatas caso existam
   const uniqueMap = new Map<string, BrapiQuote>();
   allQuotes.forEach(q => uniqueMap.set(q.symbol, q));
   
