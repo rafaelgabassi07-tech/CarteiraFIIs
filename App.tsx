@@ -8,7 +8,7 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw, Bell, Calendar, DollarSign, X, ArrowRight, History, Clock, CheckCheck, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw, Bell, Calendar, DollarSign, X, ArrowRight, History, Clock, CheckCheck, ShieldAlert, Sparkles, LayoutGrid, Info } from 'lucide-react';
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_transactions',
@@ -37,6 +37,7 @@ const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationFilter, setNotificationFilter] = useState<'all' | 'upcoming' | 'history'>('all');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', text: string} | null>(null);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
@@ -204,43 +205,72 @@ const App: React.FC = () => {
     return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: totalRealizedGain };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
+  // Lógica de Notificações Aprimorada (Failsafe)
   useEffect(() => {
-    if (geminiDividends.length === 0) return;
+    if (geminiDividends.length === 0) {
+      setUpcomingEvents([]);
+      setPastEvents([]);
+      return;
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    // Failsafe: Filtrar apenas ativos que existem no portfolio atual
+    const portfolioTickers = new Set(portfolio.map(p => p.ticker));
+    const prefs = JSON.parse(localStorage.getItem(STORAGE_KEYS.NOTIFY_PREFS) || '{"payments": true, "datacom": true}');
+
     const upcoming: MarketEvent[] = [];
     const history: MarketEvent[] = [];
     const processedKeys = new Set<string>();
 
     geminiDividends.forEach(div => {
+        // Só processa se o ativo estiver na carteira
+        if (!portfolioTickers.has(div.ticker)) return;
+
         const processEvent = (dateStr: string, type: 'PAYMENT' | 'DATA_COM', desc: string, amount?: number) => {
             if (!dateStr) return;
+            
+            // Verifica preferências do usuário
+            if (type === 'PAYMENT' && !prefs.payments) return;
+            if (type === 'DATA_COM' && !prefs.datacom) return;
+
             const eventDate = new Date(dateStr + 'T12:00:00');
             const diffTime = eventDate.getTime() - today.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            const key = `${type}-${div.id}-${dateStr}`; // Usando div.id para unicidade
+            
+            const key = `${type}-${div.ticker}-${dateStr}-${amount || '0'}`; 
             if (processedKeys.has(key)) return;
+
+            // Busca quantidade atual para estimar valor
+            const currentPos = portfolio.find(p => p.ticker === div.ticker);
+            const estimatedAmount = (amount || div.rate) * (currentPos?.quantity || 0);
+
             const eventObj: MarketEvent = {
                 id: key, ticker: div.ticker, type, date: dateStr, 
                 formattedDate: dateStr.split('-').reverse().join('/'),
-                daysRemaining: diffDays, amount, description: desc, isPast: diffDays < 0
+                daysRemaining: diffDays, amount: estimatedAmount, description: desc, isPast: diffDays < 0
             };
-            if (diffDays >= 0 && diffDays <= 7) {
+
+            if (diffDays >= 0 && diffDays <= 15) { // Estendido para 15 dias para melhor planejamento
                 upcoming.push(eventObj);
                 processedKeys.add(key);
-            } else if (diffDays < 0 && diffDays >= -30) {
+            } else if (diffDays < 0 && diffDays >= -60) { // Estendido para 60 dias de histórico
                 history.push(eventObj);
                 processedKeys.add(key);
             }
         };
-        processEvent(div.paymentDate, 'PAYMENT', `Pagamento de ${div.type === 'DIVIDENDO' ? 'Dividendo' : 'JCP'}`, div.rate);
-        processEvent(div.dateCom, 'DATA_COM', `Data Com (Corte)`);
+
+        processEvent(div.paymentDate, 'PAYMENT', `Recebimento de ${div.type === 'DIVIDENDO' ? 'Dividendo' : 'JCP'}`, div.rate);
+        processEvent(div.dateCom, 'DATA_COM', `Data Com (Corte Dividendos)`);
     });
+
     upcoming.sort((a, b) => a.daysRemaining - b.daysRemaining);
     history.sort((a, b) => b.daysRemaining - a.daysRemaining);
+    
     setUpcomingEvents(upcoming);
     setPastEvents(history);
-  }, [geminiDividends]);
+  }, [geminiDividends, portfolio]);
 
   const syncBrapiData = useCallback(async (force = false) => {
     if (!brapiToken || transactions.length === 0) return;
@@ -286,13 +316,9 @@ const App: React.FC = () => {
     try {
       const data = await fetchUnifiedMarketData(uniqueTickers);
       setGeminiDividends(prev => {
-        // Criar um mapa do estado anterior para facilitar o merge
         const uniqueMap = new Map();
         prev.forEach(d => uniqueMap.set(d.id, d));
-        
-        // Adicionar/Sobrescrever com os dados novos da IA
         data.dividends.forEach(d => uniqueMap.set(d.id, d));
-        
         return Array.from(uniqueMap.values());
       });
       if (data.sources) setSources(data.sources);
@@ -348,6 +374,8 @@ const App: React.FC = () => {
       </div>
     );
   }
+
+  const nextPaydaySum = upcomingEvents.filter(e => e.type === 'PAYMENT' && e.daysRemaining <= 7).reduce((acc, e) => acc + (e.amount || 0), 0);
 
   return (
     <div className="min-h-screen bg-primary text-slate-100 selection:bg-accent/30 overflow-x-hidden pb-10">
@@ -436,58 +464,92 @@ const App: React.FC = () => {
         )}
       </main>
       
+      {/* MODAL NOTIFICAÇÕES APRIMORADO */}
       <SwipeableModal isOpen={showNotifications} onClose={() => setShowNotifications(false)}>
         <div className="px-6 pt-2 pb-10 flex flex-col h-full">
            <div className="flex items-center justify-between mb-8 shrink-0">
               <div>
-                <h3 className="text-2xl font-black text-white tracking-tighter">Central de Alertas</h3>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Agenda de Proventos</p>
+                <h3 className="text-2xl font-black text-white tracking-tighter">Eventos de Mercado</h3>
+                <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">Sua agenda personalizada</p>
+              </div>
+              <div className="flex gap-2">
+                 <button onClick={() => showToast('success', 'Tudo limpo!')} className="p-2 bg-white/5 rounded-xl text-slate-500 active:scale-90 transition-all">
+                    <CheckCheck className="w-5 h-5" />
+                 </button>
               </div>
            </div>
+
+           {/* Filtros de Notificação */}
+           <div className="flex bg-slate-950/40 p-1.5 rounded-[1.5rem] mb-8 border border-white/5 shrink-0">
+               <button onClick={() => setNotificationFilter('all')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'all' ? 'bg-indigo-500 text-primary shadow-lg' : 'text-slate-500'}`}>Tudo</button>
+               <button onClick={() => setNotificationFilter('upcoming')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'upcoming' ? 'bg-indigo-500 text-primary shadow-lg' : 'text-slate-500'}`}>Próximos</button>
+               <button onClick={() => setNotificationFilter('history')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'history' ? 'bg-indigo-500 text-primary shadow-lg' : 'text-slate-500'}`}>Passado</button>
+           </div>
+
            <div className="flex-1 overflow-y-auto no-scrollbar space-y-8">
-             <div className="space-y-3">
-               <div className="flex items-center gap-2 mb-2 px-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
-                  <h4 className="text-xs font-black text-white uppercase tracking-widest">Em Breve</h4>
+             
+             {/* Card de Resumo de Pagamentos */}
+             {nextPaydaySum > 0 && notificationFilter !== 'history' && (
+               <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500/20 to-slate-900 border border-emerald-500/20 p-6 rounded-[2.5rem] mb-6 animate-fade-in">
+                  <div className="flex items-center gap-3 mb-2">
+                     <Sparkles className="w-4 h-4 text-emerald-400" />
+                     <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Previsão 7 Dias</span>
+                  </div>
+                  <div className="text-3xl font-black text-white tabular-nums">R$ {formatCurrency(nextPaydaySum)}</div>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">Estimado para receber na semana</p>
                </div>
-               {upcomingEvents.length === 0 ? (
-                 <div className="glass p-6 rounded-[2rem] flex flex-col items-center justify-center border border-dashed border-white/10 bg-white/[0.02]">
-                    <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-3">
-                      <CheckCheck className="w-6 h-6 text-emerald-500/50" />
-                    </div>
-                    <p className="text-slate-500 font-black text-[10px] uppercase tracking-widest text-center">Tudo tranquilo por aqui.<br/>Sem eventos para os próximos 7 dias.</p>
+             )}
+
+             {/* Seção Futura */}
+             {(notificationFilter === 'all' || notificationFilter === 'upcoming') && (
+               <div className="space-y-4">
+                 <div className="flex items-center gap-2 mb-2 px-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_#6366f1]"></div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-widest">Próximos Alertas</h4>
                  </div>
-               ) : (
-                 upcomingEvents.map((event) => (
-                   <div key={event.id} className="glass p-5 rounded-[2rem] flex items-center gap-4 border border-white/[0.04] animate-fade-in-up">
-                     <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-xs font-black ring-1 shrink-0 ${event.type === 'PAYMENT' ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20' : 'bg-yellow-500/10 text-yellow-400 ring-yellow-500/20'}`}>
-                        {event.type === 'PAYMENT' ? <DollarSign className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
-                     </div>
-                     <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start">
-                          <h4 className="font-black text-white text-base">{event.ticker}</h4>
-                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${event.daysRemaining === 0 ? 'bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/20' : 'bg-white/5 text-slate-400'}`}>
-                             {event.daysRemaining === 0 ? 'HOJE' : event.daysRemaining === 1 ? 'AMANHÃ' : `${event.daysRemaining} DIAS`}
-                          </span>
-                        </div>
-                        <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">{event.description}</p>
-                        {event.amount && <div className="text-emerald-400 font-black text-sm tabular-nums mt-1">R$ {formatCurrency(event.amount)} / cota</div>}
-                        <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">{event.formattedDate}</div>
-                     </div>
+                 {upcomingEvents.length === 0 ? (
+                   <div className="bg-white/[0.02] p-8 rounded-[2.5rem] flex flex-col items-center justify-center border border-dashed border-white/5">
+                      <div className="w-14 h-14 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                        <CheckCheck className="w-7 h-7 text-emerald-500/30" />
+                      </div>
+                      <p className="text-slate-500 font-black text-[10px] uppercase tracking-widest text-center leading-relaxed">Sua agenda está limpa.<br/>Nenhum evento nos próximos 15 dias.</p>
                    </div>
-                 ))
-               )}
-             </div>
-             {pastEvents.length > 0 && (
-               <div className="space-y-3 opacity-60 hover:opacity-100 transition-opacity duration-300">
-                 <div className="flex items-center gap-2 mb-2 px-1 mt-6 border-t border-white/5 pt-6">
+                 ) : (
+                   upcomingEvents.map((event, idx) => (
+                     <div key={event.id} className="relative glass p-5 rounded-[2.5rem] flex items-center gap-4 border border-white/[0.04] animate-fade-in-up" style={{ animationDelay: `${idx * 50}ms` }}>
+                       <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-xs font-black ring-1 shrink-0 ${event.type === 'PAYMENT' ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20' : 'bg-yellow-500/10 text-yellow-400 ring-yellow-500/20'}`}>
+                          {event.type === 'PAYMENT' ? <DollarSign className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
+                       </div>
+                       <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-black text-white text-base tracking-tighter">{event.ticker}</h4>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${event.daysRemaining === 0 ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/5 text-slate-400'}`}>
+                               {event.daysRemaining === 0 ? 'HOJE' : event.daysRemaining === 1 ? 'AMANHÃ' : `${event.daysRemaining} DIAS`}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">{event.description}</p>
+                          {event.type === 'PAYMENT' && event.amount && <div className="text-emerald-400 font-black text-sm tabular-nums mt-1">R$ {formatCurrency(event.amount)} <span className="text-[10px] text-slate-600 font-bold ml-1">estimado</span></div>}
+                          <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                             <Clock className="w-3 h-3" /> {event.formattedDate}
+                          </div>
+                       </div>
+                     </div>
+                   ))
+                 )}
+               </div>
+             )}
+
+             {/* Seção Histórico */}
+             {(notificationFilter === 'all' || notificationFilter === 'history') && pastEvents.length > 0 && (
+               <div className="space-y-4 pt-4">
+                 <div className="flex items-center gap-2 mb-2 px-1 border-t border-white/5 pt-6">
                     <History className="w-3.5 h-3.5 text-slate-500" />
-                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">Histórico Recente (30d)</h4>
+                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">Histórico Recente</h4>
                  </div>
-                 {pastEvents.map((event) => (
-                   <div key={event.id} className="bg-white/[0.02] p-4 rounded-[1.5rem] flex items-center gap-3 border border-white/[0.02]">
+                 {pastEvents.map((event, idx) => (
+                   <div key={event.id} className="bg-white/[0.02] p-4 rounded-3xl flex items-center gap-4 border border-white/[0.02] opacity-60 hover:opacity-100 transition-opacity" style={{ animationDelay: `${idx * 30}ms` }}>
                      <div className="w-10 h-10 rounded-xl bg-white/[0.03] flex items-center justify-center text-slate-500 shrink-0">
-                        {event.type === 'PAYMENT' ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                        {event.type === 'PAYMENT' ? <CheckCircle2 className="w-4 h-4 text-emerald-500/50" /> : <Clock className="w-4 h-4" />}
                      </div>
                      <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center">
@@ -500,6 +562,17 @@ const App: React.FC = () => {
                  ))}
                </div>
              )}
+           </div>
+
+           {/* Dica do Especialista */}
+           <div className="mt-8 bg-indigo-500/5 border border-indigo-500/10 p-5 rounded-[2rem] flex items-start gap-4 shrink-0">
+              <Info className="w-5 h-5 text-indigo-400 shrink-0" />
+              <div>
+                 <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Dica Pro</h4>
+                 <p className="text-[10px] text-slate-500 leading-relaxed">
+                    Eventos de "Data Com" são o limite para garantir o direito aos próximos proventos. Fique atento às datas marcadas em amarelo!
+                 </p>
+              </div>
            </div>
         </div>
       </SwipeableModal>

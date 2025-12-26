@@ -30,7 +30,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Verifica se o token está vindo do process.env (Vercel)
   const isEnvToken = process.env.BRAPI_TOKEN === brapiToken && !!process.env.BRAPI_TOKEN;
 
   const [notifyPrefs, setNotifyPrefs] = useState<NotificationPrefs>(() => {
@@ -110,28 +109,31 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleClearCache = async () => {
-    if (window.confirm("Limpar cache de cotações e imagens? Suas transações NÃO serão apagadas.")) {
+    if (window.confirm("Limpar todo o cache? Isso inclui cotações, dados da IA e suas preferências de notificação. Suas transações NÃO serão apagadas.")) {
         try {
+            // Limpa todos os storages do app
             localStorage.removeItem('investfiis_quotes_simple_cache');
             localStorage.removeItem('investfiis_gemini_dividends_cache');
             localStorage.removeItem('investfiis_last_gemini_sync');
             localStorage.removeItem('investfiis_last_synced_tickers');
+            localStorage.removeItem('investfiis_prefs_notifications');
+            localStorage.removeItem('investfiis_sw_version');
             
             if ('caches' in window) {
                 const keys = await caches.keys();
                 await Promise.all(keys.map(key => caches.delete(key)));
             }
             
-            alert('Cache limpo! Recarregando...');
-            window.location.reload();
+            showMessage('success', 'Cache e preferências limpos! Recarregando...');
+            setTimeout(() => window.location.reload(), 1500);
         } catch (e) {
-            alert('Erro ao limpar cache.');
+            showMessage('error', 'Erro ao limpar cache.');
         }
     }
   };
 
   const handleReset = () => {
-    if (window.confirm("ATENÇÃO: Isso apagará TODOS os seus dados permanentemente.")) {
+    if (window.confirm("ATENÇÃO: Isso apagará TODOS os seus dados permanentemente, incluindo todas as transações cadastradas.")) {
       onResetApp();
     }
   };
@@ -213,7 +215,7 @@ export const Settings: React.FC<SettingsProps> = ({
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-600 mx-auto mb-2" />
               <span className="text-[10px] font-mono text-slate-500">
-                InvestFIIs v2.1.0
+                InvestFIIs v2.3.0
               </span>
            </div>
         </div>
@@ -393,8 +395,8 @@ export const Settings: React.FC<SettingsProps> = ({
               </div>
 
               <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6">
-                  <h3 className="text-sm font-bold text-white mb-2">Limpar Cache</h3>
-                  <p className="text-xs text-slate-400 mb-6 leading-relaxed">Corrige problemas de cotações e carregamento. Não apaga transações.</p>
+                  <h3 className="text-sm font-bold text-white mb-2">Limpeza de Cache</h3>
+                  <p className="text-xs text-slate-400 mb-6 leading-relaxed">Corrige problemas de cotações, dados da IA e restaura preferências de notificação padrão. Não apaga transações.</p>
                   <button onClick={handleClearCache} className="w-full bg-sky-500/10 text-sky-500 border border-sky-500/20 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest">
                       <Eraser className="w-4 h-4" /> Limpar Dados
                   </button>
