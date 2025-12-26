@@ -1,0 +1,22 @@
+
+{
+  "version": "2.5.3",
+  "date": "2024-05-20",
+  "notes": [
+    {
+      "type": "feature",
+      "title": "Central de Atualizações",
+      "desc": "Agora você pode ver o que mudou antes de atualizar o aplicativo."
+    },
+    {
+      "type": "fix",
+      "title": "Recarregamento Inteligente",
+      "desc": "Corrigido o problema onde o app atualizava sozinho sem aviso."
+    },
+    {
+      "type": "improvement",
+      "title": "Gestão de Cache",
+      "desc": "Limpeza automática de arquivos antigos para economizar espaço e evitar erros."
+    }
+  ]
+}

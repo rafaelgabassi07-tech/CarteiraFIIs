@@ -8,7 +8,7 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw, Bell, Calendar, DollarSign, X, ArrowRight, History, Clock, CheckCheck, ShieldAlert, Sparkles, LayoutGrid, Info, Zap, ArrowUpCircle, ChevronRight } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw, Bell, Calendar, DollarSign, X, ArrowRight, History, Clock, CheckCheck, ShieldAlert, Sparkles, LayoutGrid, Info, Zap, ArrowUpCircle, ChevronRight, Rocket, ShieldCheck, Wrench, Package } from 'lucide-react';
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_transactions',
@@ -20,6 +20,17 @@ const STORAGE_KEYS = {
 };
 
 const AI_CACHE_DURATION = 24 * 60 * 60 * 1000;
+
+interface ChangelogNote {
+  type: 'feature' | 'fix' | 'improvement';
+  title: string;
+  desc: string;
+}
+
+interface UpdateData {
+  version: string;
+  notes: ChangelogNote[];
+}
 
 interface MarketEvent {
   id: string;
@@ -37,6 +48,8 @@ const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateData, setUpdateData] = useState<UpdateData | null>(null);
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'upcoming' | 'history'>('all');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', text: string} | null>(null);
@@ -65,10 +78,22 @@ const App: React.FC = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<MarketEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<MarketEvent[]>([]);
 
+  // Monitora disponibilidade de atualização e busca changelog
   useEffect(() => {
-    const handleUpdate = (e: Event) => {
+    const handleUpdate = async (e: Event) => {
       const reg = (e as CustomEvent).detail;
       setSwRegistration(reg);
+      
+      // Busca as novidades da nova versão
+      try {
+        const response = await fetch(`./version.json?t=${Date.now()}`);
+        if (response.ok) {
+          const data = await response.json();
+          setUpdateData(data);
+        }
+      } catch (err) {
+        console.warn('Falha ao buscar changelog dinâmico', err);
+      }
     };
     window.addEventListener('sw-update-available', handleUpdate);
     return () => window.removeEventListener('sw-update-available', handleUpdate);
@@ -217,7 +242,6 @@ const App: React.FC = () => {
 
   const syncBrapiData = useCallback(async (force = false) => {
     if (!brapiToken || transactions.length === 0) return;
-    // Fix: Explicitly type the Set as string to fix unknown[] conversion issue
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase())));
     setIsPriceLoading(true);
     try {
@@ -234,7 +258,6 @@ const App: React.FC = () => {
   }, [brapiToken, transactions, showToast]);
 
   const handleAiSync = useCallback(async (force = false) => {
-    // Fix: Explicitly type the Set as string to fix unknown[] conversion issue
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
     const tickersStr = uniqueTickers.join(',');
@@ -283,14 +306,14 @@ const App: React.FC = () => {
         {swRegistration && (
           <div className="w-full max-w-sm pointer-events-auto animate-fade-in-up">
              <button 
-                onClick={handleApplyUpdate}
+                onClick={() => setShowUpdateModal(true)}
                 className="w-full bg-indigo-600 hover:bg-indigo-500 p-4 rounded-[2rem] flex items-center justify-between shadow-[0_15px_30px_rgba(79,70,229,0.4)] border border-white/20 group transition-all"
              >
                 <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"><ArrowUpCircle className="w-5 h-5 animate-bounce" /></div>
+                   <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"><Rocket className="w-5 h-5 animate-pulse" /></div>
                    <div className="text-left">
-                      <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">Nova Versão v2.5.2</p>
-                      <p className="text-xs font-black text-white uppercase tracking-tighter">Toque para atualizar agora</p>
+                      <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">Nova Versão Disponível</p>
+                      <p className="text-xs font-black text-white uppercase tracking-tighter">Ver novidades e atualizar</p>
                    </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-white/50 group-hover:translate-x-1 transition-transform" />
@@ -326,6 +349,7 @@ const App: React.FC = () => {
         )}
       </main>
       
+      {/* MODAL DE NOTIFICAÇÕES (AGENDA) */}
       <SwipeableModal isOpen={showNotifications} onClose={() => setShowNotifications(false)}>
         <div className="px-6 pt-2 pb-10 flex flex-col h-full">
            <div className="flex items-center justify-between mb-8">
@@ -334,6 +358,7 @@ const App: React.FC = () => {
                 <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">Próximos Pagamentos</p>
               </div>
            </div>
+           {/* ... conteúdo da agenda ... */}
            <div className="flex bg-slate-950/40 p-1.5 rounded-[1.5rem] mb-8 border border-white/5">
                <button onClick={() => setNotificationFilter('all')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'all' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Tudo</button>
                <button onClick={() => setNotificationFilter('upcoming')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'upcoming' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Pendentes</button>
@@ -372,6 +397,56 @@ const App: React.FC = () => {
                 </div>
              ))}
            </div>
+        </div>
+      </SwipeableModal>
+
+      {/* NOVO MODAL DE ATUALIZAÇÃO COM CHANGELOG */}
+      <SwipeableModal isOpen={showUpdateModal} onClose={() => setShowUpdateModal(false)}>
+        <div className="px-6 pt-2 pb-12 flex flex-col min-h-full">
+            <div className="text-center mb-10 pt-4">
+               <div className="w-20 h-20 bg-indigo-500/10 rounded-[2rem] flex items-center justify-center text-indigo-400 mx-auto mb-6 ring-1 ring-indigo-500/20 shadow-2xl">
+                  <Package className="w-10 h-10" />
+               </div>
+               <h3 className="text-3xl font-black text-white tracking-tighter mb-2">Novidades Chegaram!</h3>
+               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão {updateData?.version || 'v2.5.3'}</p>
+            </div>
+
+            <div className="space-y-6 flex-1 mb-10">
+               {updateData?.notes.map((note, idx) => (
+                  <div key={idx} className="bg-white/[0.03] p-6 rounded-[2.5rem] border border-white/5 flex gap-5 animate-fade-in-up" style={{ animationDelay: `${idx * 100}ms` }}>
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${
+                        note.type === 'feature' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
+                        note.type === 'fix' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
+                        'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                      }`}>
+                        {note.type === 'feature' ? <Rocket className="w-6 h-6" /> : 
+                         note.type === 'fix' ? <ShieldCheck className="w-6 h-6" /> : 
+                         <Wrench className="w-6 h-6" />}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-white text-base tracking-tight mb-1">{note.title}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed">{note.desc}</p>
+                      </div>
+                  </div>
+               ))}
+               {!updateData && (
+                 <div className="py-10 text-center text-slate-600 text-xs font-bold animate-pulse">Carregando notas da versão...</div>
+               )}
+            </div>
+
+            <button 
+              onClick={handleApplyUpdate}
+              className="w-full bg-indigo-600 text-white font-black text-sm uppercase tracking-[0.2em] py-5 rounded-[2.2rem] shadow-[0_20px_40px_rgba(79,70,229,0.3)] hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3 border border-indigo-400/20"
+            >
+               Atualizar Aplicativo
+               <ArrowRight className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => setShowUpdateModal(false)}
+              className="w-full mt-4 text-slate-600 text-[10px] font-black uppercase tracking-widest py-2 active:scale-95 transition-all"
+            >
+              Lembrar mais tarde
+            </button>
         </div>
       </SwipeableModal>
 
