@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-v3.1.1';
+const CACHE_NAME = 'investfiis-v3.1.4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

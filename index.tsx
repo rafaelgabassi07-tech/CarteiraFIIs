@@ -9,16 +9,33 @@ if (!rootElement) {
 }
 
 const initServiceWorker = async () => {
+  const hostname = window.location.hostname;
+  
+  // Verifica se estamos em ambiente de preview/sandbox do Google ou AI Studio
+  const isPreviewEnvironment = 
+    hostname.includes('googleusercontent.com') || 
+    hostname.includes('usercontent.goog') || 
+    hostname.includes('ai.studio') ||
+    hostname === 'localhost'; // Opcional: Desativar em localhost se desejar
+
+  if (isPreviewEnvironment) {
+    console.log('SW: Ambiente de Preview detectado. Service Worker desativado.');
+    // Garante que nenhum SW antigo permaneça
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.unregister().catch(() => {}));
+      });
+    }
+    return;
+  }
+
   if ('serviceWorker' in navigator) {
     try {
-      // Usar './sw.js' é a forma mais segura de garantir que o navegador
-      // resolva o script relativo à origem atual da página (o sandbox .goog)
-      // e não à origem do frame pai (ai.studio).
       const registration = await navigator.serviceWorker.register('./sw.js', {
         updateViaCache: 'none'
       });
       
-      console.log('SW: Registrado (v3.1.1)');
+      console.log('SW: Registrado (v3.1.4)');
 
       if (registration.waiting) {
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -37,19 +54,21 @@ const initServiceWorker = async () => {
         }
       });
 
-      // Verificação periódica de atualização
       setInterval(() => {
         registration.update().catch(() => {});
       }, 60000);
 
     } catch (error: any) {
-      // Silencia erros de origem em ambiente de desenvolvimento/preview
-      // mas mantém logs de outros problemas reais.
-      if (error?.message?.includes('origin of the provided scriptURL')) {
-        console.warn('SW: Registro ignorado devido a restrição de domínio do ambiente de preview.');
-      } else {
-        console.error('SW: Erro no registro:', error);
-      }
+       // Tratamento específico para erros de Sandbox/Cross-Origin
+       if (error.message && (
+          error.message.includes('origin') || 
+          error.message.includes('scriptURL') ||
+          error.message.includes('security')
+       )) {
+         console.warn('SW: Registro bloqueado por política de segurança do navegador (Esperado em Preview).');
+         return;
+       }
+       console.error('SW: Erro no registro:', error);
     }
   }
 };
