@@ -10,18 +10,20 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '3.3.0';
+const APP_VERSION = '3.4.0';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
   DIVS: 'investfiis_v4_div_cache',
   THEME: 'investfiis_theme',
-  LAST_SEEN_VERSION: 'investfiis_last_version_seen'
+  ACCENT: 'investfiis_accent_color',
+  PRIVACY: 'investfiis_privacy_mode',
+  LAST_SEEN_VERSION: 'investfiis_last_version_seen',
+  PREFS_NOTIF: 'investfiis_prefs_notifications'
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-// Comparador de Versão Semântica
 const compareVersions = (v1: string, v2: string) => {
   const parts1 = v1.split('.').map(Number);
   const parts2 = v2.split('.').map(Number);
@@ -37,10 +39,15 @@ const compareVersions = (v1: string, v2: string) => {
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Settings States
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
+  const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#0ea5e9');
+  const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
+  
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   
-  // Controle de Atualização e Changelog
+  // Update States
   const [showChangelog, setShowChangelog] = useState(false);
   const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -62,6 +69,8 @@ const App: React.FC = () => {
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
+  const prevDividendsRef = useRef<DividendReceipt[]>(geminiDividends);
+
   const [sources, setSources] = useState<{ web: { uri: string; title: string } }[]>([]);
 
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -72,7 +81,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken); }, [brapiToken]);
 
-  // Theme
+  // Theme & Appearance
   useEffect(() => {
     const root = window.document.documentElement;
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -80,63 +89,88 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.THEME, theme);
   }, [theme]);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty('--color-accent', accentColor);
+    localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
+  }, [accentColor]);
+
+  useEffect(() => {
+    if (privacyMode) document.body.classList.add('privacy-blur');
+    else document.body.classList.remove('privacy-blur');
+    localStorage.setItem(STORAGE_KEYS.PRIVACY, String(privacyMode));
+  }, [privacyMode]);
+
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     setToast({ type, text });
     if (type !== 'info') setTimeout(() => setToast(null), 4000);
   }, []);
 
-  // SISTEMA DE VERSIONAMENTO V3.3.0
+  // SISTEMA DE NOTIFICAÇÃO INTELIGENTE
+  useEffect(() => {
+    if (geminiDividends.length > prevDividendsRef.current.length) {
+      // Identificar novos dividendos
+      const newDivs = geminiDividends.filter(d => !prevDividendsRef.current.find(p => p.id === d.id));
+      
+      if (newDivs.length > 0) {
+        const prefs = JSON.parse(localStorage.getItem(STORAGE_KEYS.PREFS_NOTIF) || '{"payments":true}');
+        
+        if (prefs.payments) {
+          const msg = `${newDivs.length} novos proventos detectados!`;
+          
+          // Tentar notificação nativa
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("InvestFIIs - Novidade", { body: msg, icon: '/icon.png' });
+          } else {
+            showToast('success', msg);
+          }
+        }
+      }
+    }
+    prevDividendsRef.current = geminiDividends;
+  }, [geminiDividends, showToast]);
+
+  // Version Control
   useEffect(() => {
     const handleVersionControl = async () => {
       try {
         const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
-        
-        // 1. Verificar se acabamos de atualizar (Versão Atual > Última Vista)
         if (compareVersions(APP_VERSION, lastSeen) > 0) {
-          // Busca o version.json para pegar as notas desta versão atual
           const res = await fetch(`./version.json?t=${Date.now()}`);
           if (res.ok) {
             const data: VersionData = await res.json();
-            // Só exibe se as notas baterem com a versão atual
             if (data.version === APP_VERSION) {
               setChangelogNotes(data.notes || []);
-              setTimeout(() => setShowChangelog(true), 1500); // Delay elegante
+              setTimeout(() => setShowChangelog(true), 1500);
             }
           }
           localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
         }
 
-        // 2. Verificar se há NOVA versão disponível no servidor
         const checkRemote = async () => {
           try {
             const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
               const data: VersionData = await res.json();
               if (compareVersions(data.version, APP_VERSION) > 0) {
-                console.log(`Update disponível: ${data.version}`);
                 setUpdateAvailable(true);
                 showToast('info', 'Nova atualização disponível');
               }
             }
-          } catch(e) { /* Silêncio */ }
+          } catch(e) {}
         };
 
         checkRemote();
-        const interval = setInterval(checkRemote, 5 * 60 * 1000); // 5 min poll
+        const interval = setInterval(checkRemote, 5 * 60 * 1000);
         return () => clearInterval(interval);
 
-      } catch (e) {
-        console.error("Version Control Error", e);
-      }
+      } catch (e) { console.error("Version Error", e); }
     };
 
     handleVersionControl();
   }, [showToast]);
 
   const triggerUpdate = () => {
-    if (confirm("Atualizar o aplicativo agora?")) {
-      window.location.reload();
-    }
+    if (confirm("Atualizar o aplicativo agora?")) window.location.reload();
   };
 
   // Calculations
@@ -252,8 +286,11 @@ const App: React.FC = () => {
             brapiToken={brapiToken} onSaveToken={setBrapiToken}
             transactions={transactions} onImportTransactions={setTransactions}
             geminiDividends={geminiDividends} onImportDividends={setGeminiDividends}
-            theme={theme} onSetTheme={setTheme}
             onResetApp={() => { localStorage.clear(); window.location.reload(); }}
+            
+            theme={theme} onSetTheme={setTheme}
+            accentColor={accentColor} onSetAccentColor={setAccentColor}
+            privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode}
           />
         ) : (
           <div className="animate-fade-in">

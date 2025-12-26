@@ -26,10 +26,16 @@ export const getQuotes = async (tickers: string[], token: string, force = false)
   if (!toFetch.length) return { quotes: results };
 
   try {
-    const chunkSize = 15;
+    // Otimização: Aumentado para 20 (limite comum da Brapi) para reduzir requests
+    const chunkSize = 20; 
+    
     for (let i = 0; i < toFetch.length; i += chunkSize) {
       const chunk = toFetch.slice(i, i + chunkSize);
-      const url = `${BASE_URL}/quote/${chunk.join(',')}?token=${token}`;
+      
+      // OBRIGATÓRIO: O .join(',') garante que seja UMA requisição para múltiplos ativos.
+      // Adicionado range=1d&interval=1d para garantir resposta rápida sem histórico pesado
+      const url = `${BASE_URL}/quote/${chunk.join(',')}?token=${token}&range=1d&interval=1d`;
+      
       const res = await fetch(url);
       
       if (res.ok) {

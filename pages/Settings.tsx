@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette } from 'lucide-react';
 import { Transaction, DividendReceipt } from '../types';
 import { ThemeType } from '../App';
 
@@ -14,6 +14,10 @@ interface SettingsProps {
   onResetApp: () => void;
   theme: ThemeType;
   onSetTheme: (theme: ThemeType) => void;
+  accentColor: string;
+  onSetAccentColor: (color: string) => void;
+  privacyMode: boolean;
+  onSetPrivacyMode: (enabled: boolean) => void;
 }
 
 interface PortfolioBackup {
@@ -31,6 +35,14 @@ interface NotificationPrefs {
   datacom: boolean;
 }
 
+const ACCENT_COLORS = [
+  { name: 'Azul Céu', hex: '#0ea5e9', class: 'bg-sky-500' },
+  { name: 'Esmeralda', hex: '#10b981', class: 'bg-emerald-500' },
+  { name: 'Roxo Real', hex: '#8b5cf6', class: 'bg-violet-500' },
+  { name: 'Laranja Solar', hex: '#f97316', class: 'bg-orange-500' },
+  { name: 'Rosa Choque', hex: '#ec4899', class: 'bg-pink-500' },
+];
+
 export const Settings: React.FC<SettingsProps> = ({ 
   brapiToken, 
   onSaveToken, 
@@ -40,7 +52,11 @@ export const Settings: React.FC<SettingsProps> = ({
   onImportDividends,
   onResetApp,
   theme,
-  onSetTheme
+  onSetTheme,
+  accentColor,
+  onSetAccentColor,
+  privacyMode,
+  onSetPrivacyMode
 }) => {
   const [activeSection, setActiveSection] = useState<SettingsSection>('menu');
   const [token, setToken] = useState(brapiToken);
@@ -88,7 +104,7 @@ export const Settings: React.FC<SettingsProps> = ({
       transactions,
       geminiDividends,
       brapiToken: !isEnvToken ? brapiToken : undefined,
-      version: '2.6.8',
+      version: '3.4.0',
       exportDate: new Date().toISOString()
     };
     
@@ -115,19 +131,14 @@ export const Settings: React.FC<SettingsProps> = ({
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string);
-        
-        // Verifica se é o formato novo (objeto) ou antigo (array)
         if (Array.isArray(json)) {
-          // Formato legado: Apenas transações
           onImportTransactions(json);
           showMessage('success', `${json.length} transações importadas (Formato Legado).`);
         } else if (json.transactions && Array.isArray(json.transactions)) {
-          // Formato novo: Full Backup
           onImportTransactions(json.transactions);
           if (json.geminiDividends) onImportDividends(json.geminiDividends);
           if (json.brapiToken) onSaveToken(json.brapiToken);
-          
-          showMessage('success', `Backup restaurado! ${json.transactions.length} ativos e ${json.geminiDividends?.length || 0} registros de proventos.`);
+          showMessage('success', `Backup restaurado com sucesso!`);
         } else {
           throw new Error("Formato inválido");
         }
@@ -138,40 +149,16 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleForceUpdate = async () => {
-    if (window.confirm("Isso irá desregistrar o Service Worker, limpar o cache de arquivos e recarregar o app. Suas transações NÃO serão afetadas. Continuar?")) {
+    if (window.confirm("Isso irá recarregar o app e limpar caches temporários. Continuar?")) {
         try {
-            if ('serviceWorker' in navigator) {
-                const registrations = await navigator.serviceWorker.getRegistrations();
-                for (let reg of registrations) await reg.unregister();
-            }
             if ('caches' in window) {
                 const keys = await caches.keys();
                 for (let key of keys) await caches.delete(key);
             }
-            localStorage.removeItem('investfiis_app_version');
             window.location.reload(); 
         } catch (e) {
             showMessage('error', 'Erro ao forçar atualização.');
         }
-    }
-  };
-
-  const handleClearCache = async () => {
-    if (window.confirm("Limpar todo o cache? Isso inclui cotações, dados da IA e suas preferências de notificação. Suas transações NÃO serão apagadas.")) {
-        try {
-            localStorage.removeItem('investfiis_quotes_simple_cache');
-            localStorage.removeItem('investfiis_gemini_dividends_cache');
-            localStorage.removeItem('investfiis_last_gemini_sync');
-            localStorage.removeItem('investfiis_last_synced_tickers');
-            localStorage.removeItem('investfiis_prefs_notifications');
-            localStorage.removeItem('investfiis_notif_processed_keys'); 
-            if ('caches' in window) {
-                const keys = await caches.keys();
-                await Promise.all(keys.map(key => caches.delete(key)));
-            }
-            showMessage('success', 'Cache e preferências limpos!');
-            setTimeout(() => window.location.reload(), 1500);
-        } catch (e) { showMessage('error', 'Erro ao limpar cache.'); }
     }
   };
 
@@ -193,11 +180,14 @@ export const Settings: React.FC<SettingsProps> = ({
     </button>
   );
 
-  const Toggle = ({ label, checked, onChange }: { label: string, checked: boolean, onChange: () => void }) => (
-    <div onClick={onChange} className="flex items-center justify-between p-4 bg-white dark:bg-white/[0.03] rounded-2xl border border-slate-200 dark:border-white/10 cursor-pointer active:scale-[0.99] transition-transform shadow-sm dark:shadow-none">
-        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{label}</span>
+  const Toggle = ({ label, checked, onChange, icon: Icon }: { label: string, checked: boolean, onChange: () => void, icon?: any }) => (
+    <div onClick={onChange} className="flex items-center justify-between p-5 bg-white dark:bg-white/[0.03] rounded-3xl border border-slate-200 dark:border-white/10 cursor-pointer active:scale-[0.99] transition-transform shadow-sm dark:shadow-none">
+        <div className="flex items-center gap-3">
+          {Icon && <Icon className="w-5 h-5 text-slate-400" />}
+          <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{label}</span>
+        </div>
         <div className={`transition-colors duration-300 ${checked ? 'text-accent' : 'text-slate-400'}`}>
-            {checked ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
+            {checked ? <ToggleRight className="w-10 h-10" /> : <ToggleLeft className="w-10 h-10" />}
         </div>
     </div>
   );
@@ -227,15 +217,15 @@ export const Settings: React.FC<SettingsProps> = ({
               <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Configurações Gerais</p>
            </div>
            
-           <MenuButton icon={Sun} label="Aparência" description="Alterar entre modo claro e escuro" colorClass="text-amber-500" onClick={() => setActiveSection('appearance')} />
-           <MenuButton icon={Globe} label="Conexões e APIs" description="Gerencie chaves da Brapi e Google" colorClass="text-accent" onClick={() => setActiveSection('integrations')} />
+           <MenuButton icon={Palette} label="Aparência" description="Cores, temas e privacidade" colorClass="text-accent" onClick={() => setActiveSection('appearance')} />
+           <MenuButton icon={Globe} label="Conexões e APIs" description="Gerencie chaves da Brapi e Google" colorClass="text-emerald-500" onClick={() => setActiveSection('integrations')} />
            <MenuButton icon={Bell} label="Notificações" description="Alertas de proventos e datas" colorClass="text-yellow-500" onClick={() => setActiveSection('notifications')} />
            <MenuButton icon={HardDrive} label="Dados e Backup" description="Backup completo da carteira" colorClass="text-purple-500" onClick={() => setActiveSection('data')} />
            <MenuButton icon={Cpu} label="Sistema" description="Limpeza de cache e reset" colorClass="text-rose-500" onClick={() => setActiveSection('system')} />
 
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v2.6.8</span>
+              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v3.4.0</span>
            </div>
         </div>
       )}
@@ -247,16 +237,56 @@ export const Settings: React.FC<SettingsProps> = ({
           </button>
 
           {activeSection === 'appearance' && (
-            <div className="space-y-6 animate-fade-in-up">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500"><Sun className="w-6 h-6" /></div>
-                <div><h2 className="text-lg font-black text-slate-900 dark:text-white">Aparência</h2><p className="text-xs text-slate-500">Escolha o seu visual preferido</p></div>
+            <div className="space-y-8 animate-fade-in-up">
+              
+              {/* Tema */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl"><Sun className="w-5 h-5" /></div>
+                    <h3 className="font-bold text-sm uppercase tracking-wide">Modo de Cor</h3>
+                </div>
+                <div className="flex gap-3">
+                    <AppearanceCard id="light" label="Claro" icon={Sun} />
+                    <AppearanceCard id="dark" label="Escuro" icon={Moon} />
+                    <AppearanceCard id="system" label="Sistema" icon={Monitor} />
+                </div>
               </div>
-              <div className="flex gap-4">
-                  <AppearanceCard id="light" label="Claro" icon={Sun} />
-                  <AppearanceCard id="dark" label="Escuro" icon={Moon} />
-                  <AppearanceCard id="system" label="Sistema" icon={Monitor} />
+
+              {/* Destaque */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl"><Palette className="w-5 h-5" /></div>
+                    <h3 className="font-bold text-sm uppercase tracking-wide">Cor de Destaque</h3>
+                </div>
+                <div className="grid grid-cols-5 gap-3">
+                    {ACCENT_COLORS.map(c => (
+                        <button 
+                            key={c.hex}
+                            onClick={() => onSetAccentColor(c.hex)}
+                            className={`aspect-square rounded-2xl ${c.class} flex items-center justify-center transition-transform active:scale-90 border-2 ${accentColor === c.hex ? 'border-white dark:border-slate-900 shadow-xl scale-110' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                            title={c.name}
+                        >
+                            {accentColor === c.hex && <CheckCircle2 className="w-5 h-5 text-white drop-shadow-md" />}
+                        </button>
+                    ))}
+                </div>
               </div>
+
+              {/* Privacidade */}
+              <div className="space-y-4">
+                 <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl"><EyeOff className="w-5 h-5" /></div>
+                    <h3 className="font-bold text-sm uppercase tracking-wide">Privacidade</h3>
+                </div>
+                 <Toggle 
+                    label="Borrar valores sensíveis" 
+                    icon={privacyMode ? EyeOff : Eye}
+                    checked={privacyMode} 
+                    onChange={() => onSetPrivacyMode(!privacyMode)} 
+                 />
+                 <p className="text-xs text-slate-500 px-2">Valores monetários serão ocultados até que você interaja com eles.</p>
+              </div>
+
             </div>
           )}
 
@@ -284,7 +314,7 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
 
           {activeSection === 'notifications' && (
-            <div className="space-y-4">
+            <div className="space-y-4 animate-fade-in-up">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-3 bg-yellow-500/10 rounded-2xl text-yellow-500"><Bell className="w-6 h-6" /></div>
                     <div><h2 className="text-lg font-black text-slate-900 dark:text-white">Notificações</h2><p className="text-xs text-slate-500">Status: {permissionStatus === 'granted' ? 'Ativo' : 'Pendente'}</p></div>
@@ -292,8 +322,12 @@ export const Settings: React.FC<SettingsProps> = ({
                 {permissionStatus !== 'granted' && (
                   <button onClick={requestNotificationPermission} className="w-full bg-accent text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl shadow-lg active:scale-95 transition-all mb-4">Autorizar Navegador</button>
                 )}
-                <Toggle label="Pagamentos de Proventos" checked={notifyPrefs.payments} onChange={() => setNotifyPrefs(p => ({ ...p, payments: !p.payments }))} />
+                <Toggle label="Novos Pagamentos Detectados" checked={notifyPrefs.payments} onChange={() => setNotifyPrefs(p => ({ ...p, payments: !p.payments }))} />
                 <Toggle label="Alertas de Data Com" checked={notifyPrefs.datacom} onChange={() => setNotifyPrefs(p => ({ ...p, datacom: !p.datacom }))} />
+                
+                <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl mt-4">
+                  <p className="text-xs text-slate-500 leading-relaxed">O app irá te notificar quando a Inteligência Artificial detectar novos proventos que não estavam na sua base de dados anterior.</p>
+                </div>
             </div>
           )}
 
@@ -312,7 +346,7 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
 
           {activeSection === 'system' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in-up">
                 <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6 shadow-sm">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Recuperar e Atualizar</h3>
                     <p className="text-xs text-slate-500 mb-6 leading-relaxed">Força o aplicativo a baixar as últimas modificações do servidor agora.</p>

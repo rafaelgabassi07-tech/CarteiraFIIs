@@ -1,27 +1,27 @@
 
 {
-  "version": "3.3.0",
-  "date": "2024-06-06",
+  "version": "3.4.0",
+  "date": "2024-06-07",
   "notes": [
     {
       "type": "feat",
-      "title": "Centro de Atualizações",
-      "desc": "Novo sistema inteligente que avisa quando há novidades sem interromper seu uso."
+      "title": "Personalização Visual",
+      "desc": "Agora você pode escolher a cor de destaque do aplicativo (Azul, Verde, Roxo, etc)."
     },
     {
-      "type": "ui",
-      "title": "Changelog Dinâmico",
-      "desc": "Agora você pode ver exatamente o que mudou diretamente no app."
+      "type": "feat",
+      "title": "Modo Privacidade",
+      "desc": "Oculte valores sensíveis automaticamente. Toque ou passe o mouse para revelar."
     },
     {
-      "type": "fix",
-      "title": "Modal de Transações",
-      "desc": "Correção visual na abertura do formulário de nova ordem."
+      "type": "feat",
+      "title": "Notificações Inteligentes",
+      "desc": "O app agora avisa nativamente quando a IA encontra novos proventos."
     },
     {
       "type": "perf",
-      "title": "Core Otimizado",
-      "desc": "Redução no uso de rede para verificação de versão."
+      "title": "Otimização Brapi",
+      "desc": "Melhoria no uso de lotes (batching) para reduzir requisições à API."
     }
   ]
 }
