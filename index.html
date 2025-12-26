@@ -4,7 +4,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="app-version" content="1.6.0" />
     <title>InvestFIIs - Carteira Inteligente</title>
     <meta name="description" content="Sua carteira inteligente de FIIs e Ações Brasileiras." />
     
@@ -62,41 +61,41 @@
     <style>
       body { 
         font-family: 'Inter', sans-serif; 
-        /* Mudança de fundo chapado para gradiente radial sutil */
-        background: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 100%);
-        background-attachment: fixed;
+        background-color: #020617; 
         color: #f8fafc; 
         -webkit-tap-highlight-color: transparent;
-        overscroll-behavior-y: contain; 
-        min-height: 100vh;
+        overscroll-behavior-y: contain; /* Evita pull-to-refresh nativo feio */
       }
 
+      /* Scrollbar Oculta mas funcional */
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-      /* Vidro mais claro para melhor contraste */
+      /* Efeitos de Vidro Refinados */
       .glass {
-        background: rgba(30, 41, 59, 0.6);
+        background: rgba(30, 41, 59, 0.3);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
       }
       
       .glass-card {
-        /* Fundo base mais sólido para cards */
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.0) 100%);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
       }
 
+      /* Classes utilitárias para áreas seguras do iPhone */
       .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
       .pt-safe { padding-top: env(safe-area-inset-top); }
       
+      /* Reset para gráficos */
       .recharts-wrapper, .recharts-surface, .recharts-sector { outline: none !important; }
 
+      /* Animação Spring para Botões */
       .tap-highlight {
         transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease;
       }
