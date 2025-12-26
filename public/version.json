@@ -1,17 +1,22 @@
 
 {
-  "version": "2.6.1",
-  "date": "2024-05-27",
+  "version": "2.6.2",
+  "date": "2024-05-28",
   "notes": [
     {
-      "type": "fix",
-      "title": "Correção de Sincronização",
-      "desc": "Resolvido problema que impedia alguns dispositivos de receberem a interface de modo claro/escuro."
+      "type": "feature",
+      "title": "Recuperação de Cache",
+      "desc": "Adicionado botão em Ajustes > Sistema para forçar a limpeza manual caso o app não atualize automaticamente."
     },
     {
-      "type": "feature",
-      "title": "Update Forçado",
-      "desc": "Atualização do motor de cache para garantir a entrega das novas funcionalidades de acessibilidade visual."
+      "type": "improvement",
+      "title": "Protocolo v2.6.2",
+      "desc": "Nova estratégia de cache agressiva para garantir que modificações visuais sejam entregues sem interferência do navegador."
+    },
+    {
+      "type": "fix",
+      "title": "Performance",
+      "desc": "Otimização no carregamento inicial de ícones e temas."
     }
   ]
 }

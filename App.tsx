@@ -16,9 +16,11 @@ const STORAGE_KEYS = {
   DIVS: 'investfiis_gemini_dividends_cache',
   SYNC: 'investfiis_last_gemini_sync',
   SYNC_TICKERS: 'investfiis_last_synced_tickers',
-  THEME: 'investfiis_theme'
+  THEME: 'investfiis_theme',
+  LAST_VER: 'investfiis_app_version'
 };
 
+const CURRENT_VERSION = '2.6.2';
 const AI_CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -108,6 +110,10 @@ const App: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setUpdateData(data);
+        // Só mostra o modal se a versão do JSON for superior à instalada
+        if (data.version !== localStorage.getItem(STORAGE_KEYS.LAST_VER)) {
+          setShowUpdateModal(true);
+        }
       }
     } catch (err) {
       console.warn('Falha ao buscar changelog dinâmico', err);
@@ -115,7 +121,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    console.log('App: Inicializado na versão 2.6.1');
+    console.log(`App: v${CURRENT_VERSION} Ativo`);
     
     const handleUpdateEvent = (e: Event) => {
       const reg = (e as CustomEvent).detail;
@@ -143,6 +149,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleApplyUpdate = () => {
+    localStorage.setItem(STORAGE_KEYS.LAST_VER, CURRENT_VERSION);
     if (swRegistration?.waiting) {
       swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
@@ -234,7 +241,6 @@ const App: React.FC = () => {
     if (!brapiToken || transactions.length === 0) return;
     setIsPriceLoading(true);
     try {
-        // Fix for Type 'unknown[]' is not assignable to type 'string[]' - explicitly typing Set and Array.from result
         const tickersToFetch: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase())));
         const result = await getQuotes(tickersToFetch, brapiToken, force);
         if (result.error) showToast('error', result.error);
@@ -245,7 +251,6 @@ const App: React.FC = () => {
   }, [brapiToken, transactions, showToast]);
 
   const handleAiSync = useCallback(async (force = false) => {
-    // Fix for Type 'unknown[]' is not assignable to type 'string[]' - explicitly typing Set and Array.from result
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map((t: Transaction) => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
     const lastSyncTime = localStorage.getItem(STORAGE_KEYS.SYNC);
@@ -284,7 +289,7 @@ const App: React.FC = () => {
              <button onClick={() => setShowUpdateModal(true)} className="w-full bg-indigo-600 p-4 rounded-[2rem] flex items-center justify-between shadow-2xl border border-white/20 group transition-all">
                 <div className="flex items-center gap-3">
                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"><Rocket className="w-5 h-5 animate-pulse" /></div>
-                   <div className="text-left"><p className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none mb-1">Nova Versão v2.6.1</p><p className="text-xs font-black text-white uppercase tracking-tighter">Toque para atualizar</p></div>
+                   <div className="text-left"><p className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none mb-1">Nova Versão v2.6.2</p><p className="text-xs font-black text-white uppercase tracking-tighter">Toque para aplicar</p></div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-white/50 group-hover:translate-x-1 transition-transform" />
              </button>
@@ -355,8 +360,8 @@ const App: React.FC = () => {
         <div className="px-6 pt-2 pb-12 flex flex-col min-h-full bg-secondary-light dark:bg-secondary-dark">
             <div className="text-center mb-10 pt-4">
                <div className="w-20 h-20 bg-accent/10 rounded-[2rem] flex items-center justify-center text-accent mx-auto mb-6 ring-1 ring-accent/20 shadow-2xl"><Package className="w-10 h-10" /></div>
-               <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-2">Novo Visual v2.6.1</h3>
-               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Modo Claro e Escuro</p>
+               <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-2">Update Disponível</h3>
+               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão v2.6.2</p>
             </div>
             <div className="space-y-6 flex-1 mb-10">
                {updateData?.notes.map((note, idx) => (
@@ -365,9 +370,9 @@ const App: React.FC = () => {
                       <div><h4 className="font-black text-slate-900 dark:text-white text-base tracking-tight mb-1">{note.title}</h4><p className="text-xs text-slate-500 leading-relaxed">{note.desc}</p></div>
                   </div>
                ))}
-               {!updateData && <p className="text-center text-slate-500 animate-pulse">Buscando detalhes...</p>}
+               {!updateData && <p className="text-center text-slate-500 animate-pulse font-bold text-[10px] uppercase">Verificando novidades...</p>}
             </div>
-            <button onClick={handleApplyUpdate} className="w-full bg-accent text-white font-black text-sm uppercase tracking-[0.2em] py-5 rounded-[2.2rem] shadow-xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3">Atualizar Agora <ArrowRight className="w-5 h-5" /></button>
+            <button onClick={handleApplyUpdate} className="w-full bg-accent text-white font-black text-sm uppercase tracking-[0.2em] py-5 rounded-[2.2rem] shadow-xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3">Atualizar e Recarregar <ArrowRight className="w-5 h-5" /></button>
         </div>
       </SwipeableModal>
 

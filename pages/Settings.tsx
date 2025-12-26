@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Lock, Eraser, Server, Sun, Moon, Monitor } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw } from 'lucide-react';
 import { Transaction } from '../types';
 import { ThemeType } from '../App';
 
@@ -107,6 +107,27 @@ export const Settings: React.FC<SettingsProps> = ({
     event.target.value = ''; 
   };
 
+  const handleForceUpdate = async () => {
+    if (window.confirm("Isso irá desregistrar o Service Worker, limpar o cache de arquivos e recarregar o app. Suas transações NÃO serão afetadas. Continuar?")) {
+        try {
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let reg of registrations) await reg.unregister();
+            }
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                for (let key of keys) await caches.delete(key);
+            }
+            // Limpa flag de versão para forçar re-download do version.json
+            localStorage.removeItem('investfiis_app_version');
+            // FIX: Removed deprecated true argument from window.location.reload()
+            window.location.reload(); // Forçar reload do servidor
+        } catch (e) {
+            showMessage('error', 'Erro ao forçar atualização.');
+        }
+    }
+  };
+
   const handleClearCache = async () => {
     if (window.confirm("Limpar todo o cache? Isso inclui cotações, dados da IA e suas preferências de notificação. Suas transações NÃO serão apagadas.")) {
         try {
@@ -115,7 +136,6 @@ export const Settings: React.FC<SettingsProps> = ({
             localStorage.removeItem('investfiis_last_gemini_sync');
             localStorage.removeItem('investfiis_last_synced_tickers');
             localStorage.removeItem('investfiis_prefs_notifications');
-            localStorage.removeItem('investfiis_sw_version');
             localStorage.removeItem('investfiis_notif_processed_keys'); 
             if ('caches' in window) {
                 const keys = await caches.keys();
@@ -187,7 +207,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v2.6.0</span>
+              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v2.6.2</span>
            </div>
         </div>
       )}
@@ -266,14 +286,14 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'system' && (
             <div className="space-y-6">
                 <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6 shadow-sm">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Limpar Cache Local</h3>
-                    <p className="text-xs text-slate-500 mb-6 leading-relaxed">Restaura cotações e configurações padrão. Suas transações permanecem salvas.</p>
-                    <button onClick={handleClearCache} className="w-full bg-sky-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98]">Limpar Agora</button>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Recuperar e Atualizar</h3>
+                    <p className="text-xs text-slate-500 mb-6 leading-relaxed">Força o aplicativo a baixar as últimas modificações do servidor (Vercel) agora.</p>
+                    <button onClick={handleForceUpdate} className="w-full bg-sky-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98] shadow-lg shadow-sky-500/20"><RefreshCcw className="w-4 h-4" /> Forçar Atualização</button>
                 </div>
                 <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 shadow-sm">
                     <h3 className="text-sm font-bold text-rose-500 mb-2">Resetar Aplicativo</h3>
                     <p className="text-xs text-slate-500 mb-6 leading-relaxed">CUIDADO: Apaga permanentemente todas as suas transações e chaves.</p>
-                    <button onClick={onResetApp} className="w-full bg-rose-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98]">Apagar Tudo</button>
+                    <button onClick={onResetApp} className="w-full bg-rose-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98] shadow-lg shadow-rose-500/20"><Trash2 className="w-4 h-4" /> Apagar Tudo</button>
                 </div>
             </div>
           )}

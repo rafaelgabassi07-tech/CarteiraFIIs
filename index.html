@@ -4,11 +4,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="app-version" content="2.6.1" />
+    <meta name="app-version" content="2.6.2" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>InvestFIIs - v2.6.1</title>
+    <title>InvestFIIs - v2.6.2</title>
     <meta name="description" content="Sua carteira inteligente de FIIs e Ações Brasileiras." />
     
     <link rel="manifest" href="./manifest.json" />
@@ -21,7 +21,6 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Script para evitar flash do tema errado
       (function() {
         const theme = localStorage.getItem('investfiis_theme') || 'system';
         const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
