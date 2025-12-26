@@ -1,20 +1,24 @@
 
 // Versão do cache estático. Incrementar para forçar atualização.
-const STATIC_CACHE = 'investfiis-static-v33';
+const STATIC_CACHE = 'investfiis-static-v34';
 const DATA_CACHE = 'investfiis-data-v1';
 
+// REMOVIDO './' e './index.tsx' pois causam erro de "Request failed" em alguns ambientes (404).
+// Eles serão cacheados dinamicamente pelo evento 'fetch' assim que forem acessados.
 const STATIC_ASSETS = [
-  './',
   './index.html',
-  './manifest.json',
-  './index.tsx'
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(STATIC_CACHE)
+      .then((cache) => {
+        // Adicionado catch para garantir que o SW instale mesmo se um arquivo falhar
+        return cache.addAll(STATIC_ASSETS).catch(err => {
+            console.warn('SW: Aviso - Falha ao pré-cachear alguns arquivos estáticos. Eles serão cacheados sob demanda.', err);
+        });
+      })
   );
   self.skipWaiting();
 });
@@ -75,6 +79,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request).then((networkResponse) => {
+        // Cacheia qualquer arquivo JS/CSS/Imagem que for carregado com sucesso
         if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
           caches.open(STATIC_CACHE).then((cache) => {
             cache.put(request, networkResponse.clone());
