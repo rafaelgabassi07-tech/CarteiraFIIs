@@ -78,13 +78,11 @@ const App: React.FC = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<MarketEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<MarketEvent[]>([]);
 
-  // Monitora disponibilidade de atualização e busca changelog
   useEffect(() => {
     const handleUpdate = async (e: Event) => {
       const reg = (e as CustomEvent).detail;
       setSwRegistration(reg);
       
-      // Busca as novidades da nova versão
       try {
         const response = await fetch(`./version.json?t=${Date.now()}`);
         if (response.ok) {
@@ -349,7 +347,6 @@ const App: React.FC = () => {
         )}
       </main>
       
-      {/* MODAL DE NOTIFICAÇÕES (AGENDA) */}
       <SwipeableModal isOpen={showNotifications} onClose={() => setShowNotifications(false)}>
         <div className="px-6 pt-2 pb-10 flex flex-col h-full">
            <div className="flex items-center justify-between mb-8">
@@ -358,7 +355,6 @@ const App: React.FC = () => {
                 <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">Próximos Pagamentos</p>
               </div>
            </div>
-           {/* ... conteúdo da agenda ... */}
            <div className="flex bg-slate-950/40 p-1.5 rounded-[1.5rem] mb-8 border border-white/5">
                <button onClick={() => setNotificationFilter('all')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'all' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Tudo</button>
                <button onClick={() => setNotificationFilter('upcoming')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationFilter === 'upcoming' ? 'bg-indigo-500 text-primary' : 'text-slate-500'}`}>Pendentes</button>
@@ -400,7 +396,6 @@ const App: React.FC = () => {
         </div>
       </SwipeableModal>
 
-      {/* NOVO MODAL DE ATUALIZAÇÃO COM CHANGELOG */}
       <SwipeableModal isOpen={showUpdateModal} onClose={() => setShowUpdateModal(false)}>
         <div className="px-6 pt-2 pb-12 flex flex-col min-h-full">
             <div className="text-center mb-10 pt-4">
@@ -408,7 +403,7 @@ const App: React.FC = () => {
                   <Package className="w-10 h-10" />
                </div>
                <h3 className="text-3xl font-black text-white tracking-tighter mb-2">Novidades Chegaram!</h3>
-               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão {updateData?.version || 'v2.5.3'}</p>
+               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão {updateData?.version || 'v2.5.4'}</p>
             </div>
 
             <div className="space-y-6 flex-1 mb-10">

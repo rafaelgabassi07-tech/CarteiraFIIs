@@ -1,22 +1,22 @@
 
 {
-  "version": "2.5.3",
-  "date": "2024-05-20",
+  "version": "2.5.4",
+  "date": "2024-05-21",
   "notes": [
     {
-      "type": "feature",
-      "title": "Central de Atualizações",
-      "desc": "Agora você pode ver o que mudou antes de atualizar o aplicativo."
-    },
-    {
       "type": "fix",
-      "title": "Recarregamento Inteligente",
-      "desc": "Corrigido o problema onde o app atualizava sozinho sem aviso."
+      "title": "Correção no Service Worker",
+      "desc": "Revisão completa para garantir que o app não atualize sem autorização do usuário."
     },
     {
       "type": "improvement",
-      "title": "Gestão de Cache",
-      "desc": "Limpeza automática de arquivos antigos para economizar espaço e evitar erros."
+      "title": "Performance de Rede",
+      "desc": "Otimização na prioridade de carregamento dos ativos essenciais."
+    },
+    {
+      "type": "feature",
+      "title": "Estabilidade Auditada",
+      "desc": "Sistema de cache resiliente contra erros de extensões do navegador."
     }
   ]
 }
