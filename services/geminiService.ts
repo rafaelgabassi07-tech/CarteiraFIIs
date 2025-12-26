@@ -1,5 +1,5 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { DividendReceipt, AssetType } from "../types";
 
 export interface UnifiedMarketData {
@@ -8,7 +8,6 @@ export interface UnifiedMarketData {
   sources?: { web: { uri: string; title: string } }[];
 }
 
-// Service to fetch unified market data using Gemini API with Search Grounding
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
@@ -16,61 +15,62 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   const tickerListString = tickers.join(', ');
 
   const prompt = `
-    Atue como um Especialista em Auditoria de Dados da B3.
-    Consulte fontes oficiais (B3, RI das empresas, StatusInvest, fundamentus) para os ativos: ${tickerListString}.
-    
-    Preciso dos dados de proventos (Dividendos e JCP) anunciados e históricos dos últimos 12 meses.
-    
-    Gere um JSON VÁLIDO:
-    {
-      "assets": [
-        {
-          "t": "TICKER",
-          "s": "Setor/Segmento exato",
-          "type": "FII" ou "ACAO",
-          "d": [
-            { 
-              "ty": "DIVIDENDO" ou "JCP", 
-              "dc": "Data Com - Data limite para ter o ativo (YYYY-MM-DD)", 
-              "dp": "Data de Pagamento real (YYYY-MM-DD)", 
-              "v": Valor bruto por cota/ação (number)
-            }
-          ]
-        }
-      ]
-    }
-    
-    REGRAS CRÍTICAS:
-    1. DIFERENCIAÇÃO: Ações pagam JCP/DIV com frequências variadas. FIIs pagam mensalmente. Verifique ambos.
-    2. DATA COM: É o dado mais importante. Se um provento foi anunciado mas não pago, use a data prevista.
-    3. UNICIDADE: Não duplique proventos.
-    4. APENAS JSON.
+    Atue como Especialista B3.
+    Consulte fontes oficiais para os ativos: ${tickerListString}.
+    Obtenha dividendos e JCP anunciados e históricos (últimos 12 meses).
+    Diferencie FIIs (mensais) de Ações (variados).
   `;
 
   try {
-    // Using gemini-3-flash-preview as it is suitable for search-grounded basic text tasks.
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            assets: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  t: { type: Type.STRING, description: "Ticker do ativo" },
+                  s: { type: Type.STRING, description: "Segmento/Setor" },
+                  type: { type: Type.STRING, description: "FII ou ACAO" },
+                  d: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        ty: { type: Type.STRING, description: "DIVIDENDO ou JCP" },
+                        dc: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
+                        dp: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
+                        v: { type: Type.NUMBER, description: "Valor por cota" }
+                      },
+                      required: ["ty", "dc", "v"]
+                    }
+                  }
+                },
+                required: ["t", "s", "type", "d"]
+              }
+            }
+          },
+          required: ["assets"]
+        }
       }
     });
 
-    if (!response.text) throw new Error("Resposta vazia");
+    const text = response.text;
+    if (!text) throw new Error("Resposta vazia da IA");
 
-    let jsonStr = response.text.trim();
-    if (jsonStr.includes('```')) {
-        jsonStr = jsonStr.replace(/```json|```/g, '').trim();
-    }
-
-    const parsed = JSON.parse(jsonStr);
+    const parsed = JSON.parse(text);
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     
     const result: UnifiedMarketData = { 
         dividends: [], 
         metadata: {},
-        // Properly extract search grounding URLs as per guidelines and ensure type safety
         sources: groundingChunks?.map((chunk: any) => ({
           web: {
             uri: chunk.web?.uri || '',
@@ -92,9 +92,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         if (Array.isArray(asset.d)) {
             asset.d.forEach((div: any) => {
                 if (!div.dc || !div.v) return;
-                
                 const type = div.ty?.toUpperCase() || "DIVIDENDO";
-                // ID único: Ticker + DataCom + Tipo para evitar duplicidade em updates
                 const divId = `DIV-${ticker}-${div.dc}-${type}`.replace(/[^a-zA-Z0-9]/g, '');
                 
                 result.dividends.push({
@@ -114,7 +112,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
     return result;
   } catch (error: any) {
-    console.error("Erro Gemini:", error);
+    console.error("Erro Crítico Gemini:", error);
     throw error;
   }
 };

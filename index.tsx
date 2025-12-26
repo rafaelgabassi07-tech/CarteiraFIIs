@@ -9,27 +9,30 @@ if (!rootElement) {
 }
 
 const initServiceWorker = async () => {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      console.log('SW: Nova versão assumindo o controle...');
-      window.location.reload();
-    });
-
+  // Verificação de ambiente seguro e suporte
+  if ('serviceWorker' in navigator && window.isSecureContext) {
     try {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('SW: Nova versão assumindo o controle...');
+        window.location.reload();
+      });
+
       const registration = await navigator.serviceWorker.register('./sw.js', { 
         scope: './',
-        updateViaCache: 'none' // Força a busca do sw.js sempre na rede
+        updateViaCache: 'none' 
       });
       
+      console.log('SW: Registrado com sucesso no escopo:', registration.scope);
+
       // Checagem periódica a cada 60s
       setInterval(() => {
-        registration.update();
+        registration.update().catch(() => {});
       }, 60000);
 
       // Checagem ao voltar para o app
       window.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-          registration.update();
+          registration.update().catch(() => {});
         }
       });
 
@@ -48,7 +51,8 @@ const initServiceWorker = async () => {
         }
       });
     } catch (error) {
-      console.warn('SW: Registro falhou.', error);
+      // Ignora erro de origem no ambiente de preview do AI Studio
+      console.warn('SW: Falha no registro (provavelmente restrição de sandbox/origem).', error);
     }
   }
 };

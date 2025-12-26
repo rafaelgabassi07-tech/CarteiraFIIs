@@ -78,24 +78,41 @@ const App: React.FC = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<MarketEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<MarketEvent[]>([]);
 
-  useEffect(() => {
-    const handleUpdate = async (e: Event) => {
-      const reg = (e as CustomEvent).detail;
-      setSwRegistration(reg);
-      
-      try {
-        const response = await fetch(`./version.json?t=${Date.now()}`);
-        if (response.ok) {
-          const data = await response.json();
-          setUpdateData(data);
-        }
-      } catch (err) {
-        console.warn('Falha ao buscar changelog dinâmico', err);
+  const loadUpdateDetails = useCallback(async (reg: ServiceWorkerRegistration) => {
+    setSwRegistration(reg);
+    try {
+      const response = await fetch(`./version.json?t=${Date.now()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUpdateData(data);
       }
-    };
-    window.addEventListener('sw-update-available', handleUpdate);
-    return () => window.removeEventListener('sw-update-available', handleUpdate);
+    } catch (err) {
+      console.warn('Falha ao buscar changelog dinâmico', err);
+    }
   }, []);
+
+  useEffect(() => {
+    const handleUpdateEvent = (e: Event) => {
+      const reg = (e as CustomEvent).detail;
+      loadUpdateDetails(reg);
+    };
+    window.addEventListener('sw-update-available', handleUpdateEvent);
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration()
+        .then(reg => {
+          if (reg && reg.waiting) {
+            loadUpdateDetails(reg);
+          }
+        })
+        .catch(err => {
+          // Captura erro de Origin Mismatch silenciosamente
+          console.debug('Service Worker não disponível neste contexto de origem.');
+        });
+    }
+
+    return () => window.removeEventListener('sw-update-available', handleUpdateEvent);
+  }, [loadUpdateDetails]);
 
   useEffect(() => {
     const fadeTimer = setTimeout(() => setIsFadingOut(true), 1200);
@@ -403,7 +420,7 @@ const App: React.FC = () => {
                   <Package className="w-10 h-10" />
                </div>
                <h3 className="text-3xl font-black text-white tracking-tighter mb-2">Novidades Chegaram!</h3>
-               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão {updateData?.version || 'v2.5.4'}</p>
+               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão {updateData?.version || 'v2.5.7'}</p>
             </div>
 
             <div className="space-y-6 flex-1 mb-10">
