@@ -86,10 +86,47 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // Lógica Robustecida de Atualização de Service Worker
   useEffect(() => {
-    const handleUpdate = (e: any) => setUpdateRegistration(e.detail);
-    window.addEventListener('sw-update-available', handleUpdate);
-    return () => window.removeEventListener('sw-update-available', handleUpdate);
+    // 1. Escuta evento disparado pelo index.tsx
+    const handleUpdateEvent = (e: any) => {
+        console.log('App: Update event received', e.detail);
+        setUpdateRegistration(e.detail);
+    };
+    window.addEventListener('sw-update-available', handleUpdateEvent);
+
+    // 2. Verificação Manual no Mount (Corrige Race Condition)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration()
+            .then((reg) => {
+                if (reg && reg.waiting) {
+                    console.log('App: Found waiting SW on mount');
+                    setUpdateRegistration(reg);
+                }
+            })
+            .catch(err => {
+                console.warn('SW: Falha ao verificar registro (provável ambiente restrito):', err);
+            });
+    }
+
+    // 3. Verificação ao ganhar foco (Usuário volta para a aba)
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible' && 'serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistration()
+                .then(reg => {
+                    if (reg) reg.update();
+                })
+                .catch(err => {
+                     console.warn('SW: Falha ao atualizar registro ao focar:', err);
+                });
+        }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+        window.removeEventListener('sw-update-available', handleUpdateEvent);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const handleApplyUpdate = () => {
