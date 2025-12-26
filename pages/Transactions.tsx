@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Transaction, AssetType } from '../types';
 import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
@@ -39,7 +39,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
     assetType: AssetType.FII
   });
 
-  const resetForm = () => { 
+  const resetForm = useCallback(() => { 
     setForm({
       ticker: '',
       type: 'BUY',
@@ -49,6 +49,11 @@ export const Transactions: React.FC<TransactionsProps> = ({
       assetType: AssetType.FII
     });
     setEditingId(null); 
+  }, []);
+
+  const handleOpenNew = () => {
+    resetForm();
+    setShowForm(true);
   };
 
   const handleEdit = (t: Transaction) => { 
@@ -112,7 +117,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
             />
           </div>
           <button 
-            onClick={() => { resetForm(); setShowForm(true); }} 
+            onClick={handleOpenNew} 
             className="w-14 h-14 bg-accent text-white rounded-2xl shadow-lg active:scale-90 transition-all flex items-center justify-center shrink-0"
           >
             <Plus className="w-7 h-7" strokeWidth={3} />

@@ -114,10 +114,10 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[300] flex items-end justify-center pointer-events-none">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto transition-opacity" onClick={onClose} />
+    <div className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-none">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto transition-opacity animate-fade-in" onClick={onClose} />
       <div 
-        className="bg-white dark:bg-secondary-dark w-full h-[95dvh] rounded-t-[2.5rem] border-t border-slate-200 dark:border-white/10 shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto transition-transform duration-500 ease-out"
+        className="bg-white dark:bg-secondary-dark w-full h-[95dvh] rounded-t-[2.5rem] border-t border-slate-200 dark:border-white/10 shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto transition-transform duration-500 ease-out animate-slide-up"
         style={{ transform: `translateY(${offsetY}px)` }}
         onTouchStart={(e) => { setIsDragging(true); startY.current = e.touches[0].clientY; }}
         onTouchMove={(e) => { if(!isDragging) return; const diff = e.touches[0].clientY - startY.current; if(diff > 0) setOffsetY(diff); }}
@@ -135,7 +135,7 @@ export const ChangelogModal: React.FC<{ isOpen: boolean; onClose: () => void; ve
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 animate-fade-in">
+    <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6 animate-fade-in">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
         <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 border border-slate-200 dark:border-white/10 shadow-2xl flex flex-col items-center text-center">
             <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-6 relative">
