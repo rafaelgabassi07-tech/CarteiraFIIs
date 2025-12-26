@@ -16,7 +16,7 @@ const STORAGE_KEYS = {
   DIVS: 'investfiis_gemini_dividends_cache',
   SYNC: 'investfiis_last_gemini_sync',
   SYNC_TICKERS: 'investfiis_last_synced_tickers',
-  NOTIFY_PREFS: 'investfiis_prefs_notifications'
+  NOTIFY_PREFS: 'investfiis_notifications'
 };
 
 const AI_CACHE_DURATION = 24 * 60 * 60 * 1000;
@@ -420,7 +420,7 @@ const App: React.FC = () => {
                   <Package className="w-10 h-10" />
                </div>
                <h3 className="text-3xl font-black text-white tracking-tighter mb-2">Novidades Chegaram!</h3>
-               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão {updateData?.version || 'v2.5.7'}</p>
+               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Versão {updateData?.version || 'v2.5.8'}</p>
             </div>
 
             <div className="space-y-6 flex-1 mb-10">

@@ -1,17 +1,17 @@
 
 {
-  "version": "2.5.7",
-  "date": "2024-05-24",
+  "version": "2.5.8",
+  "date": "2024-05-25",
   "notes": [
     {
-      "type": "fix",
-      "title": "Estabilidade de Origem",
-      "desc": "Corrigido erro 'Origin Mismatch' que ocorria ao tentar registrar o Service Worker em ambientes de sandbox ou iframes cross-origin."
+      "type": "feature",
+      "title": "Gemini 2.5 Flash",
+      "desc": "Atualizado o motor de IA para a versão 2.5 Flash, otimizando o agrupamento de múltiplos ativos em uma única requisição."
     },
     {
       "type": "improvement",
-      "title": "Registro Resiliente",
-      "desc": "Adicionado try-catch em todas as chamadas de API do Worker para evitar interrupções no funcionamento do app."
+      "title": "Processamento em Lote",
+      "desc": "Refinada a lógica de extração de dados para garantir que FIIs e Ações da sua carteira sejam analisados simultaneamente via Google Search Grounding."
     }
   ]
 }

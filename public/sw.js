@@ -1,5 +1,5 @@
 
-const STATIC_CACHE = 'investfiis-static-v2.5.7';
+const STATIC_CACHE = 'investfiis-static-v2.5.8';
 const DATA_CACHE = 'investfiis-data-v2';
 
 const STATIC_ASSETS = [
