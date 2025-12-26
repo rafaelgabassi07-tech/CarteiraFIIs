@@ -4,11 +4,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="app-version" content="2.5.8" />
+    <meta name="app-version" content="2.6.0" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>InvestFIIs - v2.5.8</title>
+    <title>InvestFIIs - v2.6.0</title>
     <meta name="description" content="Sua carteira inteligente de FIIs e Ações Brasileiras." />
     
     <link rel="manifest" href="./manifest.json" />
@@ -21,15 +21,29 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+      // Script para evitar flash do tema errado
+      (function() {
+        const theme = localStorage.getItem('investfiis_theme') || 'system';
+        const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (isDark) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+      })();
+
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: { sans: ['Inter', 'sans-serif'] },
             spacing: { '22': '5.5rem' },
             colors: {
-              primary: '#020617',
-              secondary: '#0f172a',
-              surface: '#1e293b',
+              primary: {
+                light: '#f8fafc',
+                dark: '#020617'
+              },
+              secondary: {
+                light: '#ffffff',
+                dark: '#0f172a'
+              },
               accent: '#0ea5e9',
               'accent-glow': '#38bdf8',
             },
@@ -56,12 +70,18 @@
     <style>
       body { 
         font-family: 'Inter', sans-serif; 
-        background: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 100%);
-        background-attachment: fixed;
-        color: #f8fafc; 
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: contain; 
         min-height: 100vh;
+      }
+      .dark body {
+        background: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 100%);
+        background-attachment: fixed;
+        color: #f8fafc;
+      }
+      body:not(.dark body) {
+        background: #f8fafc;
+        color: #0f172a;
       }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

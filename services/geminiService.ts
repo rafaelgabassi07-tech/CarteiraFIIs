@@ -1,4 +1,5 @@
 
+// Use correct import for GoogleGenAI and Type
 import { GoogleGenAI, Type } from "@google/genai";
 import { DividendReceipt, AssetType } from "../types";
 
@@ -11,6 +12,7 @@ export interface UnifiedMarketData {
 export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
+  // Always use { apiKey: process.env.API_KEY } for initialization as per guidelines
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const tickerListString = tickers.join(', ');
 
@@ -22,8 +24,9 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   `;
 
   try {
+    // Using 'gemini-3-flash-preview' for basic text tasks and search grounding as recommended
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", 
+      model: "gemini-3-flash-preview", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -62,10 +65,12 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       }
     });
 
+    // Access the text property directly, do not call as a method
     const text = response.text;
     if (!text) throw new Error("Resposta vazia da IA");
 
     const parsed = JSON.parse(text);
+    // Extract website URLs from groundingChunks as required by guidelines
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     
     const result: UnifiedMarketData = { 
@@ -76,7 +81,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
             uri: chunk.web?.uri || '',
             title: chunk.web?.title || ''
           }
-        })).filter(s => s.web.uri) || []
+        })).filter((s: any) => s.web.uri) || []
     };
 
     if (parsed?.assets && Array.isArray(parsed.assets)) {

@@ -1,17 +1,22 @@
 
 {
-  "version": "2.5.8",
-  "date": "2024-05-25",
+  "version": "2.6.0",
+  "date": "2024-05-26",
   "notes": [
     {
       "type": "feature",
-      "title": "Gemini 2.5 Flash",
-      "desc": "Atualizado o motor de IA para a versão 2.5 Flash, otimizando o agrupamento de múltiplos ativos em uma única requisição."
+      "title": "Modo Claro e Escuro",
+      "desc": "Implementação de temas nativos com opção de sincronização automática com o sistema operacional."
     },
     {
       "type": "improvement",
-      "title": "Processamento em Lote",
-      "desc": "Refinada a lógica de extração de dados para garantir que FIIs e Ações da sua carteira sejam analisados simultaneamente via Google Search Grounding."
+      "title": "Cores e Contraste",
+      "desc": "Ajuste total na paleta de cores para garantir que cards e divisões sejam perfeitamente visíveis mesmo em ambientes externos de alta luminosidade."
+    },
+    {
+      "type": "feature",
+      "title": "Ajustes de Aparência",
+      "desc": "Nova seção dedicada em Ajustes para você escolher o seu visual preferido."
     }
   ]
 }

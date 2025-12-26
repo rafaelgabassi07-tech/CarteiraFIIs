@@ -1,7 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Lock, Eraser, Server } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Lock, Eraser, Server, Sun, Moon, Monitor } from 'lucide-react';
 import { Transaction } from '../types';
+import { ThemeType } from '../App';
 
 interface SettingsProps {
   brapiToken: string;
@@ -9,9 +10,11 @@ interface SettingsProps {
   transactions: Transaction[];
   onImportTransactions: (data: Transaction[]) => void;
   onResetApp: () => void;
+  theme: ThemeType;
+  onSetTheme: (theme: ThemeType) => void;
 }
 
-type SettingsSection = 'menu' | 'integrations' | 'data' | 'system' | 'notifications';
+type SettingsSection = 'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance';
 
 interface NotificationPrefs {
   payments: boolean;
@@ -23,7 +26,9 @@ export const Settings: React.FC<SettingsProps> = ({
   onSaveToken, 
   transactions, 
   onImportTransactions,
-  onResetApp 
+  onResetApp,
+  theme,
+  onSetTheme
 }) => {
   const [activeSection, setActiveSection] = useState<SettingsSection>('menu');
   const [token, setToken] = useState(brapiToken);
@@ -52,11 +57,8 @@ export const Settings: React.FC<SettingsProps> = ({
     }
     const permission = await Notification.requestPermission();
     setPermissionStatus(permission);
-    if (permission === 'granted') {
-      showMessage('success', 'Permissão concedida!');
-    } else if (permission === 'denied') {
-      showMessage('error', 'Permissão negada.');
-    }
+    if (permission === 'granted') showMessage('success', 'Permissão concedida!');
+    else if (permission === 'denied') showMessage('error', 'Permissão negada.');
   };
 
   const showMessage = (type: 'success' | 'error', text: string) => {
@@ -89,7 +91,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -100,9 +101,7 @@ export const Settings: React.FC<SettingsProps> = ({
         } else {
           throw new Error("Formato inválido");
         }
-      } catch (error) {
-        showMessage('error', 'Arquivo inválido.');
-      }
+      } catch (error) { showMessage('error', 'Arquivo inválido.'); }
     };
     reader.readAsText(file);
     event.target.value = ''; 
@@ -118,57 +117,57 @@ export const Settings: React.FC<SettingsProps> = ({
             localStorage.removeItem('investfiis_prefs_notifications');
             localStorage.removeItem('investfiis_sw_version');
             localStorage.removeItem('investfiis_notif_processed_keys'); 
-            
             if ('caches' in window) {
                 const keys = await caches.keys();
                 await Promise.all(keys.map(key => caches.delete(key)));
             }
-            
-            showMessage('success', 'Cache e preferências limpos! Recarregando...');
+            showMessage('success', 'Cache e preferências limpos!');
             setTimeout(() => window.location.reload(), 1500);
-        } catch (e) {
-            showMessage('error', 'Erro ao limpar cache.');
-        }
-    }
-  };
-
-  const handleReset = () => {
-    if (window.confirm("ATENÇÃO: Isso apagará TODOS os seus dados permanentemente, incluindo todas as transações cadastradas.")) {
-      onResetApp();
+        } catch (e) { showMessage('error', 'Erro ao limpar cache.'); }
     }
   };
 
   const MenuButton = ({ icon: Icon, label, description, onClick, colorClass = "text-slate-400" }: any) => (
     <button 
       onClick={onClick}
-      className="w-full bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 hover:bg-secondary/60 transition-all flex items-center justify-between group active:scale-[0.98]"
+      className="w-full bg-white dark:bg-secondary-dark/40 backdrop-blur-md rounded-3xl p-5 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-secondary-dark/60 transition-all flex items-center justify-between group active:scale-[0.98] shadow-sm dark:shadow-none"
     >
       <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center ${colorClass} group-hover:scale-110 transition-transform`}>
+        <div className={`w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center ${colorClass} group-hover:scale-110 transition-transform`}>
           <Icon className="w-6 h-6" />
         </div>
         <div className="text-left">
-          <h3 className="text-base font-bold text-white mb-0.5">{label}</h3>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{label}</h3>
           <p className="text-xs text-slate-500 font-medium">{description}</p>
         </div>
       </div>
-      <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-white transition-colors" />
+      <ChevronRight className="w-5 h-5 text-slate-400 dark:text-slate-600 group-hover:text-accent transition-colors" />
     </button>
   );
 
   const Toggle = ({ label, checked, onChange }: { label: string, checked: boolean, onChange: () => void }) => (
-    <div onClick={onChange} className="flex items-center justify-between p-4 bg-white/[0.03] rounded-2xl border border-white/10 cursor-pointer active:scale-[0.99] transition-transform">
-        <span className="text-xs font-bold text-slate-300">{label}</span>
-        <div className={`transition-colors duration-300 ${checked ? 'text-emerald-400' : 'text-slate-600'}`}>
-            {checked ? <ToggleRight className="w-8 h-8 fill-emerald-500/20" /> : <ToggleLeft className="w-8 h-8" />}
+    <div onClick={onChange} className="flex items-center justify-between p-4 bg-white dark:bg-white/[0.03] rounded-2xl border border-slate-200 dark:border-white/10 cursor-pointer active:scale-[0.99] transition-transform shadow-sm dark:shadow-none">
+        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{label}</span>
+        <div className={`transition-colors duration-300 ${checked ? 'text-accent' : 'text-slate-400'}`}>
+            {checked ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
         </div>
     </div>
+  );
+
+  const AppearanceCard = ({ id, label, icon: Icon }: { id: ThemeType, label: string, icon: any }) => (
+    <button 
+      onClick={() => onSetTheme(id)}
+      className={`flex-1 p-6 rounded-3xl border transition-all flex flex-col items-center gap-3 active:scale-95 ${theme === id ? 'bg-accent text-white border-accent shadow-lg' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400'}`}
+    >
+      <Icon className="w-8 h-8" />
+      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+    </button>
   );
 
   return (
     <div className="pb-28 pt-2 px-4 max-w-2xl mx-auto space-y-6 animate-fade-in min-h-[60vh]">
       
-      <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[70] transition-all duration-300 transform backdrop-blur-md ring-1 ring-white/10 ${message ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} ${message?.type === 'success' ? 'bg-emerald-500/90 text-white shadow-emerald-500/20' : 'bg-rose-500/90 text-white shadow-rose-500/20'}`}>
+      <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[70] transition-all duration-300 transform backdrop-blur-md border ${message ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} ${message?.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'}`}>
         {message?.type === 'success' ? <CheckCircle2 className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
         <span className="text-sm font-bold">{message?.text}</span>
       </div>
@@ -176,236 +175,106 @@ export const Settings: React.FC<SettingsProps> = ({
       {activeSection === 'menu' && (
         <div className="space-y-4 animate-slide-up">
            <div className="px-2 mb-2">
-              <h2 className="text-xl font-black text-white">Ajustes</h2>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Geral</p>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white">Ajustes</h2>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Configurações Gerais</p>
            </div>
            
-           <MenuButton 
-             icon={Globe} 
-             label="Conexões e APIs" 
-             description="Gerencie chaves da Brapi e Google" 
-             colorClass="text-accent"
-             onClick={() => setActiveSection('integrations')} 
-           />
-
-           <MenuButton 
-             icon={Bell} 
-             label="Notificações" 
-             description="Alertas de proventos e datas" 
-             colorClass="text-yellow-400"
-             onClick={() => setActiveSection('notifications')} 
-           />
-           
-           <MenuButton 
-             icon={HardDrive} 
-             label="Dados e Backup" 
-             description="Importar e exportar sua carteira" 
-             colorClass="text-purple-400"
-             onClick={() => setActiveSection('data')} 
-           />
-           
-           <MenuButton 
-             icon={Cpu} 
-             label="Sistema" 
-             description="Limpeza de cache e reset" 
-             colorClass="text-rose-400"
-             onClick={() => setActiveSection('system')} 
-           />
+           <MenuButton icon={Sun} label="Aparência" description="Alterar entre modo claro e escuro" colorClass="text-amber-500" onClick={() => setActiveSection('appearance')} />
+           <MenuButton icon={Globe} label="Conexões e APIs" description="Gerencie chaves da Brapi e Google" colorClass="text-accent" onClick={() => setActiveSection('integrations')} />
+           <MenuButton icon={Bell} label="Notificações" description="Alertas de proventos e datas" colorClass="text-yellow-500" onClick={() => setActiveSection('notifications')} />
+           <MenuButton icon={HardDrive} label="Dados e Backup" description="Importar e exportar sua carteira" colorClass="text-purple-500" onClick={() => setActiveSection('data')} />
+           <MenuButton icon={Cpu} label="Sistema" description="Limpeza de cache e reset" colorClass="text-rose-500" onClick={() => setActiveSection('system')} />
 
            <div className="pt-8 text-center opacity-40">
-              <Smartphone className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-              <span className="text-[10px] font-mono text-slate-500">
-                InvestFIIs v2.5.2
-              </span>
+              <Smartphone className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v2.6.0</span>
            </div>
         </div>
       )}
 
       {activeSection !== 'menu' && (
         <div className="animate-fade-in">
-          <button 
-            onClick={() => setActiveSection('menu')}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6 font-bold text-sm px-1 py-2"
-          >
+          <button onClick={() => setActiveSection('menu')} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-accent transition-colors mb-6 font-bold text-sm px-1 py-2">
             <ArrowLeft className="w-4 h-4" /> Voltar
           </button>
+
+          {activeSection === 'appearance' && (
+            <div className="space-y-6 animate-fade-in-up">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500"><Sun className="w-6 h-6" /></div>
+                <div><h2 className="text-lg font-black text-slate-900 dark:text-white">Aparência</h2><p className="text-xs text-slate-500">Escolha o seu visual preferido</p></div>
+              </div>
+              <div className="flex gap-4">
+                  <AppearanceCard id="light" label="Claro" icon={Sun} />
+                  <AppearanceCard id="dark" label="Escuro" icon={Moon} />
+                  <AppearanceCard id="system" label="Sistema" icon={Monitor} />
+              </div>
+            </div>
+          )}
 
           {activeSection === 'integrations' && (
             <div className="space-y-6 animate-fade-in-up">
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-accent/10 rounded-2xl text-accent">
-                   <Key className="w-6 h-6" />
-                </div>
-                <div>
-                   <h2 className="text-lg font-black text-white">Integrações</h2>
-                   <p className="text-xs text-slate-500">Configure suas chaves de API</p>
-                </div>
+                <div className="p-3 bg-accent/10 rounded-2xl text-accent"><Key className="w-6 h-6" /></div>
+                <div><h2 className="text-lg font-black text-slate-900 dark:text-white">Integrações</h2><p className="text-xs text-slate-500">Configure suas chaves de API</p></div>
               </div>
-
-              <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden">
-                <div className="p-5 border-b border-white/10 flex justify-between items-start">
-                  <div>
-                    <h3 className="text-base font-bold text-white mb-1">API Brapi</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">Fonte de cotações em tempo real.</p>
-                  </div>
-                  {isEnvToken && (
-                    <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
-                      <Server className="w-3 h-3 text-emerald-400" />
-                      <span className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter">Vercel Env</span>
-                    </div>
-                  )}
+              <div className="bg-white dark:bg-secondary-dark/40 backdrop-blur-md rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm dark:shadow-none">
+                <div className="p-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-start">
+                  <div><h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">API Brapi</h3><p className="text-xs text-slate-500 leading-relaxed">Fonte de cotações em tempo real.</p></div>
                 </div>
-                
-                <div className="p-5 bg-slate-950/30 space-y-4">
+                <div className="p-5 bg-slate-50 dark:bg-slate-950/30 space-y-4">
                   <div>
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Token de Acesso</label>
-                      <div className="relative group">
-                          <input 
-                          type="password" 
-                          value={isEnvToken ? '********************' : token}
-                          onChange={(e) => setToken(e.target.value)}
-                          disabled={isEnvToken}
-                          placeholder={isEnvToken ? "Gerenciado pelo Vercel" : "Cole seu token aqui"}
-                          className={`w-full bg-slate-900 text-white rounded-xl py-4 px-4 border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-mono text-xs shadow-inner group-hover:border-white/20 ${isEnvToken ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          />
-                          {(token || isEnvToken) && <div className="absolute right-4 top-4 text-emerald-500"><CheckCircle2 className="w-4 h-4" /></div>}
-                      </div>
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 block">Token de Acesso</label>
+                      <input type="password" value={isEnvToken ? '********************' : token} onChange={(e) => setToken(e.target.value)} disabled={isEnvToken} placeholder="Cole seu token aqui" className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl py-4 px-4 border border-slate-200 dark:border-white/10 focus:border-accent outline-none transition-all font-mono text-xs shadow-inner" />
                   </div>
-                  
-                  <div className="flex justify-between items-center pt-2">
-                      <a 
-                      href="https://brapi.dev/dashboard" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-[10px] font-bold text-accent hover:text-white transition-colors uppercase tracking-wide group"
-                      >
-                      Obter token <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                      </a>
-                      {!isEnvToken && (
-                        <button 
-                        onClick={handleSaveToken}
-                        className="bg-accent text-primary px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95 hover:brightness-110 shadow-lg shadow-accent/20"
-                        >
-                        <Save className="w-3 h-3" /> Salvar
-                        </button>
-                      )}
-                  </div>
+                  {!isEnvToken && (
+                    <button onClick={handleSaveToken} className="w-full bg-accent text-white py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-accent/20">Salvar Token</button>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
           {activeSection === 'notifications' && (
-            <div className="space-y-6 animate-fade-in-up">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="p-3 bg-yellow-500/10 rounded-2xl text-yellow-400">
-                        <Bell className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-black text-white">Notificações</h2>
-                        <p className="text-xs text-slate-500">Gerencie seus alertas</p>
-                    </div>
+            <div className="space-y-4">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-yellow-500/10 rounded-2xl text-yellow-500"><Bell className="w-6 h-6" /></div>
+                    <div><h2 className="text-lg font-black text-slate-900 dark:text-white">Notificações</h2><p className="text-xs text-slate-500">Status: {permissionStatus === 'granted' ? 'Ativo' : 'Pendente'}</p></div>
                 </div>
-
-                <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden">
-                    <div className="p-5 border-b border-white/10 flex items-center justify-between">
-                        <div>
-                            <h3 className="text-sm font-bold text-white mb-0.5">Status</h3>
-                            <p className="text-[10px] text-slate-400">Permissão do navegador</p>
-                        </div>
-                        <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
-                            permissionStatus === 'granted' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-                            'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                        }`}>
-                            {permissionStatus === 'granted' ? 'Ativo' : 'Inativo'}
-                        </div>
-                    </div>
-                    <div className="p-5 bg-slate-950/30">
-                        {permissionStatus !== 'granted' && (
-                            <button 
-                                onClick={requestNotificationPermission}
-                                className="w-full bg-accent text-primary font-black text-xs uppercase tracking-widest py-3 rounded-xl active:scale-95 transition-all"
-                            >
-                                Ativar Notificações
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                <div className="space-y-3">
-                    <Toggle 
-                        label="Pagamentos de Proventos" 
-                        checked={notifyPrefs.payments} 
-                        onChange={() => setNotifyPrefs(p => ({ ...p, payments: !p.payments }))} 
-                    />
-                    <Toggle 
-                        label="Alertas de Data Com" 
-                        checked={notifyPrefs.datacom} 
-                        onChange={() => setNotifyPrefs(p => ({ ...p, datacom: !p.datacom }))} 
-                    />
-                </div>
+                {permissionStatus !== 'granted' && (
+                  <button onClick={requestNotificationPermission} className="w-full bg-accent text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl shadow-lg active:scale-95 transition-all mb-4">Autorizar Navegador</button>
+                )}
+                <Toggle label="Pagamentos de Proventos" checked={notifyPrefs.payments} onChange={() => setNotifyPrefs(p => ({ ...p, payments: !p.payments }))} />
+                <Toggle label="Alertas de Data Com" checked={notifyPrefs.datacom} onChange={() => setNotifyPrefs(p => ({ ...p, datacom: !p.datacom }))} />
             </div>
           )}
 
           {activeSection === 'data' && (
-            <div className="space-y-6 animate-fade-in-up">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-400">
-                   <HardDrive className="w-6 h-6" />
-                </div>
-                <div>
-                   <h2 className="text-lg font-black text-white">Dados</h2>
-                   <p className="text-xs text-slate-500">Backup e Restauração</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                  <button onClick={handleExport} className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 text-left flex items-center gap-4 active:scale-[0.98]">
-                      <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400"><Download className="w-6 h-6" /></div>
-                      <div>
-                        <h3 className="text-sm font-bold text-white">Exportar Backup</h3>
-                        <p className="text-[10px] text-slate-400">Salvar carteira em arquivo JSON</p>
-                      </div>
-                  </button>
-                  <button onClick={handleImportClick} className="bg-secondary/40 backdrop-blur-md rounded-3xl p-5 border border-white/10 text-left flex items-center gap-4 active:scale-[0.98]">
-                      <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400"><Upload className="w-6 h-6" /></div>
-                      <div>
-                        <h3 className="text-sm font-bold text-white">Importar Backup</h3>
-                        <p className="text-[10px] text-slate-400">Restaurar dados de um arquivo</p>
-                      </div>
-                      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                  </button>
-              </div>
+            <div className="space-y-4 animate-fade-in-up">
+                <button onClick={handleExport} className="w-full bg-white dark:bg-secondary-dark/40 p-5 rounded-3xl border border-slate-200 dark:border-white/10 text-left flex items-center gap-4 active:scale-[0.98] shadow-sm">
+                    <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500"><Download className="w-6 h-6" /></div>
+                    <div><h3 className="text-sm font-bold text-slate-900 dark:text-white">Exportar JSON</h3><p className="text-[10px] text-slate-500">Fazer backup da sua carteira</p></div>
+                </button>
+                <button onClick={handleImportClick} className="w-full bg-white dark:bg-secondary-dark/40 p-5 rounded-3xl border border-slate-200 dark:border-white/10 text-left flex items-center gap-4 active:scale-[0.98] shadow-sm">
+                    <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500"><Upload className="w-6 h-6" /></div>
+                    <div><h3 className="text-sm font-bold text-slate-900 dark:text-white">Importar JSON</h3><p className="text-[10px] text-slate-500">Restaurar dados de um backup</p></div>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+                </button>
             </div>
           )}
 
           {activeSection === 'system' && (
-            <div className="space-y-6 animate-fade-in-up">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-500">
-                   <ShieldAlert className="w-6 h-6" />
+            <div className="space-y-6">
+                <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6 shadow-sm">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Limpar Cache Local</h3>
+                    <p className="text-xs text-slate-500 mb-6 leading-relaxed">Restaura cotações e configurações padrão. Suas transações permanecem salvas.</p>
+                    <button onClick={handleClearCache} className="w-full bg-sky-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98]">Limpar Agora</button>
                 </div>
-                <div>
-                   <h2 className="text-lg font-black text-white">Sistema</h2>
-                   <p className="text-xs text-slate-500">Manutenção e Reset</p>
+                <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 shadow-sm">
+                    <h3 className="text-sm font-bold text-rose-500 mb-2">Resetar Aplicativo</h3>
+                    <p className="text-xs text-slate-500 mb-6 leading-relaxed">CUIDADO: Apaga permanentemente todas as suas transações e chaves.</p>
+                    <button onClick={onResetApp} className="w-full bg-rose-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98]">Apagar Tudo</button>
                 </div>
-              </div>
-
-              <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6">
-                  <h3 className="text-sm font-bold text-white mb-2">Limpeza de Cache</h3>
-                  <p className="text-xs text-slate-400 mb-6 leading-relaxed">Corrige problemas de cotações, dados da IA e restaura preferências de notificação padrão. Não apaga transações.</p>
-                  <button onClick={handleClearCache} className="w-full bg-sky-500/10 text-sky-500 border border-sky-500/20 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98]">
-                      <Eraser className="w-4 h-4" /> Limpar Dados
-                  </button>
-              </div>
-              
-              <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6">
-                  <h3 className="text-sm font-bold text-white mb-2 text-rose-400">Reset de Fábrica</h3>
-                  <p className="text-xs text-slate-400 mb-6 leading-relaxed">Apaga transações, chaves e preferências permanentemente.</p>
-                  <button onClick={handleReset} className="w-full bg-rose-500/10 text-rose-500 border border-rose-500/20 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98]">
-                      <Trash2 className="w-4 h-4" /> Apagar Tudo
-                  </button>
-              </div>
             </div>
           )}
         </div>
