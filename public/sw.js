@@ -1,6 +1,6 @@
 
 // Versão do cache estático. Incrementar para forçar atualização.
-const STATIC_CACHE = 'investfiis-static-v43';
+const STATIC_CACHE = 'investfiis-static-v45';
 const DATA_CACHE = 'investfiis-data-v1';
 
 const STATIC_ASSETS = [
@@ -38,20 +38,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   
-  // 1. Ignorar métodos não-GET (POST do Gemini, etc)
   if (request.method !== 'GET') {
     return;
   }
 
   const url = new URL(request.url);
 
-  // 2. Estratégia para APIs (Network First)
   if (url.hostname.includes('brapi.dev') || url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
           if(response && response.status === 200) {
-              // CLONE IMEDIATO: Fundamental para evitar "Response body is already used"
               const responseToCache = response.clone();
               caches.open(DATA_CACHE).then((cache) => {
                 cache.put(request, responseToCache);
@@ -64,12 +61,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Estratégia para Navegação HTML (Network First)
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {
-          // CLONE IMEDIATO
           const responseToCache = networkResponse.clone();
           caches.open(STATIC_CACHE).then((cache) => {
             cache.put(request, responseToCache);
@@ -83,21 +78,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Estratégia para Assets Estáticos (Cache First)
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      // Se achou no cache, retorna. Senão, vai para a rede.
       if (cachedResponse) {
         return cachedResponse;
       }
 
       return fetch(request).then((networkResponse) => {
-        // Verifica se a resposta é válida antes de cachear
         if (networkResponse && networkResponse.status === 200 && (url.origin === self.location.origin || url.hostname.includes('cdn.tailwindcss.com'))) {
-          // CLONE IMEDIATO: A correção principal do erro relatado.
-          // Não podemos esperar o caches.open resolver para clonar.
           const responseToCache = networkResponse.clone();
-          
           caches.open(STATIC_CACHE).then((cache) => {
             cache.put(request, responseToCache);
           });
