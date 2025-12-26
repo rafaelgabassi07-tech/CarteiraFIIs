@@ -1,22 +1,27 @@
 
 {
-  "version": "2.6.4",
-  "date": "2024-05-30",
+  "version": "2.6.5",
+  "date": "2024-05-31",
   "notes": [
     {
-      "type": "fix",
-      "title": "Service Worker Preview",
-      "desc": "Corrigido erro de registro do Service Worker em ambientes de preview (AI Studio/Vercel) usando resolução de URL absoluta."
-    },
-    {
-      "type": "fix",
-      "title": "Modal de Alocação",
-      "desc": "Ajustado z-index e lógica de renderização para garantir que o modal de alocação abra em todos os dispositivos."
-    },
-    {
       "type": "improvement",
-      "title": "Estabilidade",
-      "desc": "Melhoria na robustez dos gráficos da Recharts ao lidar com carteiras iniciais vazias."
+      "title": "Cotações em Massa",
+      "desc": "O app agora busca os preços de múltiplos ativos em uma única chamada, economizando bateria e dados."
+    },
+    {
+      "type": "feature",
+      "title": "Yield on Cost (YoC)",
+      "desc": "Adicionado o retorno real individual por ativo. Veja quanto sua renda rende sobre o valor que você pagou originalmente."
+    },
+    {
+      "type": "fix",
+      "title": "Precisão Matemática",
+      "desc": "Revisada toda a lógica de Retorno Total e Lucro Realizado para garantir 100% de consistência após vendas parciais."
+    },
+    {
+      "type": "fix",
+      "title": "Deduplicação IA",
+      "desc": "Filtro inteligente para evitar proventos duplicados no histórico caso a IA repita dados."
     }
   ]
 }

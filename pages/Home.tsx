@@ -28,13 +28,23 @@ export const Home: React.FC<HomeProps> = ({
 
   const formatCurrency = (val: number) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  // Somas de Patrimônio
   const totalInvested = useMemo(() => portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0), [portfolio]);
   const currentBalance = useMemo(() => portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0), [portfolio]);
+  
+  // Somas de Proventos
   const totalDividends = useMemo(() => dividendReceipts.filter(d => d.paymentDate && new Date(d.paymentDate + 'T12:00:00') <= new Date()).reduce((acc, curr) => acc + (curr.totalReceived || 0), 0), [dividendReceipts]);
   const upcomingDividends = useMemo(() => dividendReceipts.filter(d => d.paymentDate && new Date(d.paymentDate + 'T12:00:00') > new Date()).reduce((acc, curr) => acc + (curr.totalReceived || 0), 0), [dividendReceipts]);
   
+  // Cálculo de Retorno (Wealth Growth)
+  // Fórmula: (Valor Atual - Custo) + Lucro Realizado + Dividendos Recebidos
   const totalReturnVal = (currentBalance - totalInvested) + realizedGain + totalDividends;
-  const totalReturnPercent = totalInvested > 0 ? (totalReturnVal / totalInvested) * 100 : 0;
+  
+  // Percentual de Retorno Seguro contra Divisão por Zero
+  const totalReturnPercent = useMemo(() => {
+    if (totalInvested <= 0) return totalReturnVal > 0 ? 100 : 0;
+    return (totalReturnVal / totalInvested) * 100;
+  }, [totalReturnVal, totalInvested]);
 
   const COLORS = ['#0ea5e9', '#8b5cf6', '#ec4899', '#f43f5e', '#10b981', '#f59e0b'];
 
@@ -86,7 +96,7 @@ export const Home: React.FC<HomeProps> = ({
               <div className="flex items-center gap-3">
                  <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border ${totalReturnVal >= 0 ? 'bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-400'}`}>
                     <Sparkles className="w-3 h-3" />
-                    <span className="text-[10px] font-black">{totalReturnVal >= 0 ? '+' : ''}{totalReturnPercent.toFixed(2)}% de retorno</span>
+                    <span className="text-[10px] font-black">{totalReturnVal >= 0 ? '+' : ''}{totalReturnPercent.toFixed(2)}% de retorno histórico</span>
                  </div>
               </div>
             </div>
@@ -125,10 +135,7 @@ export const Home: React.FC<HomeProps> = ({
 
       {/* Alocação Card */}
       <button 
-        onClick={() => {
-            console.log('Opening Allocation Modal...');
-            setShowAllocationModal(true);
-        }} 
+        onClick={() => setShowAllocationModal(true)} 
         className="w-full text-left animate-fade-in-up relative z-10"
       >
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-7 shadow-sm dark:shadow-2xl hover:border-accent/40 transition-all active:scale-[0.98]">
@@ -221,7 +228,7 @@ export const Home: React.FC<HomeProps> = ({
                     {dividendsChartData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={dividendsChartData}>
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeights: 900 }} />
                                 <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '10px' }} />
                                 <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
                             </BarChart>

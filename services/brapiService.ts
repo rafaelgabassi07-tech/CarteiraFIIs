@@ -3,7 +3,7 @@ import { BrapiResponse, BrapiQuote } from '../types';
 
 const BASE_URL = 'https://brapi.dev/api';
 const CACHE_KEY = 'investfiis_quotes_simple_cache';
-const CACHE_DURATION = 2 * 60 * 1000; // Reduzido para 2 minutos para maior fluidez
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos de cache
 
 interface CacheItem {
   data: BrapiQuote;
@@ -23,8 +23,6 @@ const saveCache = (cache: Record<string, CacheItem>) => {
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
   } catch (e) {}
 };
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const getQuotes = async (tickers: string[], token: string, forceRefresh = false): Promise<{ quotes: BrapiQuote[], error?: string }> => {
   if (!tickers.length || !token) return { quotes: [] };
@@ -49,48 +47,41 @@ export const getQuotes = async (tickers: string[], token: string, forceRefresh =
 
   if (tickersToFetch.length === 0) return { quotes: results };
 
-  let errorOccurred = "";
-
-  for (const ticker of tickersToFetch) {
-    try {
-      const url = `${BASE_URL}/quote/${ticker}?token=${token}`;
+  try {
+    // Brapi permite até 20 tickers por chamada no plano free, separados por vírgula
+    // Fazemos em chunks caso o usuário tenha muitos ativos
+    const chunkSize = 15;
+    for (let i = 0; i < tickersToFetch.length; i += chunkSize) {
+      const chunk = tickersToFetch.slice(i, i + chunkSize);
+      const tickersString = chunk.join(',');
+      const url = `${BASE_URL}/quote/${tickersString}?token=${token}`;
+      
       const response = await fetch(url);
-
       if (response.ok) {
         const data: BrapiResponse = await response.json();
-        if (data.results && data.results[0]) {
-          const quote = data.results[0];
-          results.push(quote);
-          cache[ticker] = { data: quote, timestamp: now };
+        if (data.results) {
+          data.results.forEach(quote => {
+            if (quote.symbol) {
+              results.push(quote);
+              cache[quote.symbol.toUpperCase()] = { data: quote, timestamp: now };
+            }
+          });
         }
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        const msg = errorData.message || 'Erro na API';
-        
         if (response.status === 401 || response.status === 403) {
-          errorOccurred = "Token Brapi inválido ou expirado.";
-          break; // Interrompe pois o token não funciona
+          return { quotes: results, error: "Token Brapi inválido ou expirado." };
         }
-        
         if (response.status === 429) {
-          errorOccurred = "Limite de requisições do seu plano Brapi atingido.";
-          break;
+          return { quotes: results, error: "Limite de requisições Brapi atingido." };
         }
-
-        console.error(`[Brapi] Erro no ativo ${ticker}:`, msg);
       }
-      
-      // Delay de segurança entre chamadas individuais
-      await sleep(150);
-      
-    } catch (error) {
-      console.error(`[Brapi] Falha de rede para ${ticker}`);
     }
-  }
 
-  saveCache(cache);
-  return { 
-    quotes: results, 
-    error: errorOccurred || undefined 
-  };
+    saveCache(cache);
+    return { quotes: results };
+
+  } catch (error) {
+    console.error(`[Brapi] Falha crítica de conexão`, error);
+    return { quotes: results, error: "Erro de conexão com servidor de cotações." };
+  }
 };
