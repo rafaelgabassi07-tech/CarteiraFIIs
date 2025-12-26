@@ -15,37 +15,41 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   const tickerListString = tickers.join(', ');
 
   const prompt = `
-    Atue como um Especialista em Dados de Mercado da B3 (Brasil).
-    Consulte fontes oficiais recentes para: ${tickerListString}.
+    Atue como um Especialista em Auditoria de Dados da B3.
+    Consulte fontes oficiais (B3, RI das empresas, StatusInvest, fundamentus) para os ativos: ${tickerListString}.
     
-    Gere um JSON VÁLIDO com a seguinte estrutura:
+    Preciso dos dados de proventos (Dividendos e JCP) anunciados e históricos dos últimos 12 meses.
+    
+    Gere um JSON VÁLIDO:
     {
       "assets": [
         {
           "t": "TICKER",
-          "s": "Setor",
+          "s": "Setor/Segmento exato",
           "type": "FII" ou "ACAO",
           "d": [
             { 
               "ty": "DIVIDENDO" ou "JCP", 
-              "dc": "Data Com (YYYY-MM-DD)", 
-              "dp": "Data Pagamento (YYYY-MM-DD)", 
-              "v": Valor (number)
+              "dc": "Data Com - Data limite para ter o ativo (YYYY-MM-DD)", 
+              "dp": "Data de Pagamento real (YYYY-MM-DD)", 
+              "v": Valor bruto por cota/ação (number)
             }
           ]
         }
       ]
     }
     
-    REGRAS DE OURO PARA UNICIDADE:
-    1. Um provento é ÚNICO pela combinação de TICKER + MÊS/ANO da DATA COM + TIPO.
-    2. Ignore variações pequenas no dia exato do pagamento se for o mesmo mês de competência.
-    3. Retorne APENAS o JSON, sem markdown.
+    REGRAS CRÍTICAS:
+    1. DIFERENCIAÇÃO: Ações pagam JCP/DIV com frequências variadas. FIIs pagam mensalmente. Verifique ambos.
+    2. DATA COM: É o dado mais importante. Se um provento foi anunciado mas não pago, use a data prevista.
+    3. UNICIDADE: Não duplique proventos.
+    4. APENAS JSON.
   `;
 
   try {
+    // Correcting model name to 'gemini-3-flash-preview' for basic text tasks with search grounding.
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", 
+      model: "gemini-3-flash-preview", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -82,12 +86,9 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
             asset.d.forEach((div: any) => {
                 if (!div.dc || !div.v) return;
                 
-                // ID Robusto: Ticker + Ano/Mes da Data Com + Tipo
-                // Isso evita duplicar se a IA variar o dia do pagamento ou o valor exato
-                const dateParts = div.dc.split('-');
-                const monthYear = `${dateParts[0]}-${dateParts[1]}`;
                 const type = div.ty?.toUpperCase() || "DIVIDENDO";
-                const divId = `${ticker}-${monthYear}-${type}`.replace(/[^a-zA-Z0-9]/g, '');
+                // ID único: Ticker + DataCom + Tipo para evitar duplicidade em updates
+                const divId = `DIV-${ticker}-${div.dc}-${type}`.replace(/[^a-zA-Z0-9]/g, '');
                 
                 result.dividends.push({
                     id: divId,

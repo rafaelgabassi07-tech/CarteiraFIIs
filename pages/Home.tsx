@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Wallet, TrendingUp, ChevronRight, RefreshCw, CircleDollarSign, PieChart as PieIcon, Scale, ExternalLink, Sparkles, Layers, TrendingDown, LayoutGrid, PieChart as PieIcon2, ShoppingBag, BarChart3, Info, Target, ArrowUpCircle, ShieldCheck } from 'lucide-react';
+import { Wallet, TrendingUp, ChevronRight, RefreshCw, CircleDollarSign, PieChart as PieIcon, Scale, ExternalLink, Sparkles, Layers, TrendingDown, LayoutGrid, PieChart as PieIcon2, ShoppingBag, BarChart3, Info, Target, ArrowUpCircle, ShieldCheck, Calendar, Zap, ArrowRight, Star } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
@@ -20,6 +20,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showInflationModal, setShowInflationModal] = useState(false);
   
+  const [proventosTab, setProventosTab] = useState<'history' | 'magic' | 'upcoming'>('history');
   const [allocationTab, setAllocationTab] = useState<'assets' | 'classes' | 'rebalance'>('assets');
 
   const cleanDividendReceipts = useMemo(() => {
@@ -30,7 +31,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
   const totalInvested = useMemo(() => portfolio.reduce((acc, curr) => acc + (curr.averagePrice * curr.quantity), 0), [portfolio]);
   const currentBalance = useMemo(() => portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0), [portfolio]);
-  const totalDividends = useMemo(() => cleanDividendReceipts.reduce((acc, curr) => acc + curr.totalReceived, 0), [cleanDividendReceipts]);
+  const totalDividends = useMemo(() => cleanDividendReceipts.filter(d => new Date(d.paymentDate) <= new Date()).reduce((acc, curr) => acc + curr.totalReceived, 0), [cleanDividendReceipts]);
+  const upcomingDividends = useMemo(() => cleanDividendReceipts.filter(d => new Date(d.paymentDate) > new Date()).reduce((acc, curr) => acc + curr.totalReceived, 0), [cleanDividendReceipts]);
+  
   const unrealizedGain = currentBalance - totalInvested;
   const totalReturnVal = unrealizedGain + realizedGain + totalDividends;
   const totalReturnPercent = totalInvested > 0 ? (totalReturnVal / totalInvested) * 100 : 0;
@@ -55,6 +58,10 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
       .sort((a, b) => b.value - a.value);
   }, [portfolio, currentBalance]);
 
+  // Derived data for UI rendering
+  const top3Assets = useMemo(() => assetAllocationData.slice(0, 3), [assetAllocationData]);
+  const othersCount = useMemo(() => Math.max(0, assetAllocationData.length - 3), [assetAllocationData]);
+
   const classAllocation = useMemo(() => {
     const agg: Record<string, number> = {};
     assetAllocationData.forEach(p => {
@@ -64,23 +71,37 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
     return Object.entries(agg).map(([name, value]) => ({ name, value }));
   }, [assetAllocationData]);
 
-  // Lógica de Rebalanceamento Ideal (Igualitário para exemplo)
+  // Logic to calculate rebalancing needs based on equal weights for all assets
   const rebalanceData = useMemo(() => {
     if (assetAllocationData.length === 0) return [];
-    const idealPercent = 100 / assetAllocationData.length;
-    return assetAllocationData.map(a => {
-        const diff = idealPercent - a.percent;
-        const valueNeeded = (diff / 100) * currentBalance;
-        return { ...a, idealPercent, diff, valueNeeded };
-    });
+    const n = assetAllocationData.length;
+    const idealPercent = 100 / n;
+    const idealValuePerAsset = currentBalance / n;
+
+    return assetAllocationData.map(asset => ({
+      ...asset,
+      idealPercent,
+      valueNeeded: Math.max(0, idealValuePerAsset - asset.value)
+    }));
   }, [assetAllocationData, currentBalance]);
 
-  const top3Assets = assetAllocationData.slice(0, 3);
-  const othersCount = assetAllocationData.length - 3;
+  // Novidade: Magic Number Logic
+  const magicNumberData = useMemo(() => {
+    return portfolio.map(p => {
+      const lastDiv = cleanDividendReceipts.find(d => d.ticker === p.ticker);
+      const rate = lastDiv?.rate || 0;
+      const price = p.currentPrice || p.averagePrice;
+      const sharesNeeded = rate > 0 ? Math.ceil(price / rate) : 0;
+      const progress = p.quantity >= sharesNeeded ? 100 : (p.quantity / sharesNeeded) * 100;
+      return { ...p, sharesNeeded, progress, rate };
+    }).filter(p => p.rate > 0).sort((a, b) => b.progress - a.progress);
+  }, [portfolio, cleanDividendReceipts]);
 
   const dividendsChartData = useMemo(() => {
     const agg: Record<string, number> = {};
-    cleanDividendReceipts.forEach(d => {
+    cleanDividendReceipts
+      .filter(d => new Date(d.paymentDate) <= new Date())
+      .forEach(d => {
         const key = d.paymentDate.substring(0, 7); 
         agg[key] = (agg[key] || 0) + d.totalReceived;
     });
@@ -99,7 +120,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   }, [cleanDividendReceipts]);
 
   const proventosGrouped = useMemo(() => {
-    const sorted = [...cleanDividendReceipts].sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+    const sorted = [...cleanDividendReceipts]
+      .filter(d => new Date(d.paymentDate) <= new Date())
+      .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
     const groups: Record<string, DividendReceipt[]> = {};
     sorted.forEach(d => {
         const dateObj = new Date(d.paymentDate + 'T12:00:00');
@@ -108,6 +131,12 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         groups[monthYear].push(d);
     });
     return groups;
+  }, [cleanDividendReceipts]);
+
+  const upcomingProventos = useMemo(() => {
+    return cleanDividendReceipts
+      .filter(d => new Date(d.paymentDate) > new Date())
+      .sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
   }, [cleanDividendReceipts]);
 
   return (
@@ -184,16 +213,23 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                     <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 ring-1 ring-emerald-500/20">
                         <CircleDollarSign className="w-5 h-5" />
                     </div>
-                    <h3 className="text-white font-black text-sm uppercase tracking-tight">Dividendos</h3>
+                    <h3 className="text-white font-black text-sm uppercase tracking-tight">Proventos</h3>
                 </div>
-                <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-white transition-colors" />
+                <div className="flex items-center gap-2">
+                   {upcomingDividends > 0 && (
+                     <div className="bg-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase px-2 py-1 rounded-lg border border-emerald-500/20 animate-pulse">
+                        + R$ {formatCurrency(upcomingDividends)} Pendente
+                     </div>
+                   )}
+                   <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-white transition-colors" />
+                </div>
             </div>
             <div className="relative z-10 flex items-end justify-between">
                 <div>
                      <div className="text-3xl font-black text-white tabular-nums tracking-tighter mb-1">
                         R$ {formatCurrency(totalDividends)}
                      </div>
-                     <div className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">Total Acumulado</div>
+                     <div className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">Recebido em conta</div>
                 </div>
                 <div className="flex h-10 items-end gap-1">
                     {dividendsChartData.slice(-5).map((d, i) => (
@@ -295,21 +331,149 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
         </div>
       </div>
 
-      {/* FONTES DE DADOS */}
-      {sources.length > 0 && (
-        <div className="animate-fade-in-up py-4 px-2" style={{ animationDelay: '400ms' }}>
-          <h3 className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em] mb-3">Fontes Consultadas (Gemini)</h3>
-          <div className="flex flex-wrap gap-2">
-            {sources.map((s, i) => (
-              <a key={i} href={s.web.uri} target="_blank" className="bg-white/[0.02] py-2 px-3 rounded-xl text-[9px] font-bold text-slate-500 border border-white/5 flex items-center gap-2 hover:border-accent/30 transition-all">
-                <ExternalLink className="w-2.5 h-2.5" /> {s.web.title?.slice(0, 20)}...
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* MODAL PROVENTOS (NOVIDADES) */}
+      <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
+        <div className="px-6 pt-2 pb-10 flex flex-col min-h-full">
+           <div className="mb-8">
+                <h3 className="text-2xl font-black text-white tracking-tighter">Central de Proventos</h3>
+                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em] mt-1">Sua Renda Passiva</p>
+           </div>
 
-      {/* MODAL ALOCAÇÃO APRIMORADO */}
+           {/* Tabs de Proventos */}
+           <div className="flex bg-slate-950/40 p-1.5 rounded-[1.5rem] mb-8 border border-white/5">
+               <button onClick={() => setProventosTab('history')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'history' ? 'bg-emerald-500 text-primary shadow-lg' : 'text-slate-500'}`}>
+                  <BarChart3 className="w-3.5 h-3.5" /> Histórico
+               </button>
+               <button onClick={() => setProventosTab('magic')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'magic' ? 'bg-emerald-500 text-primary shadow-lg' : 'text-slate-500'}`}>
+                  <Star className="w-3.5 h-3.5" /> Mágico
+               </button>
+               <button onClick={() => setProventosTab('upcoming')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${proventosTab === 'upcoming' ? 'bg-emerald-500 text-primary shadow-lg' : 'text-slate-500'}`}>
+                  <Zap className="w-3.5 h-3.5" /> Agenda
+               </button>
+           </div>
+
+           {proventosTab === 'history' && (
+             <div className="space-y-8 animate-fade-in">
+                <div className="h-48 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dividendsChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff05" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 800 }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 800 }} />
+                            <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px' }} />
+                            <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                <div className="space-y-6">
+                    {(Object.entries(proventosGrouped) as [string, DividendReceipt[]][]).map(([month, receipts]) => (
+                        <div key={month} className="space-y-3">
+                            <div className="flex items-center gap-3 py-2 border-b border-white/5">
+                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{month}</h4>
+                                <span className="text-[10px] font-black text-emerald-400 ml-auto">R$ {formatCurrency(receipts.reduce((a, b) => a + b.totalReceived, 0))}</span>
+                            </div>
+                            {receipts.map(r => (
+                                <div key={r.id} className="bg-white/[0.02] p-4 rounded-3xl flex items-center justify-between border border-white/[0.03]">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-[10px] font-black text-white border border-white/5">{r.ticker.substring(0,4)}</div>
+                                        <div>
+                                            <div className="text-sm font-black text-white">{r.ticker}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase">{r.paymentDate.split('-').reverse().join('/')}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-sm font-black text-emerald-400">R$ {formatCurrency(r.totalReceived)}</div>
+                                        <div className="text-[8px] text-slate-600 font-bold uppercase">{r.type}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+             </div>
+           )}
+
+           {proventosTab === 'magic' && (
+             <div className="space-y-4 animate-fade-in">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-3xl mb-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Star className="w-4 h-4 text-emerald-400" />
+                        <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">O que é o Número Mágico?</h4>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                        É a quantidade de cotas necessária para que os dividendos mensais comprem uma nova cota do próprio ativo sem tirar dinheiro do bolso.
+                    </p>
+                </div>
+
+                {magicNumberData.map((item, i) => (
+                  <div key={item.ticker} className="bg-white/[0.02] p-5 rounded-3xl border border-white/5 space-y-4 animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <span className="text-sm font-black text-white">{item.ticker}</span>
+                            <p className="text-[9px] text-slate-500 font-bold uppercase">Meta: {item.sharesNeeded} un</p>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-xs font-black text-white">{item.quantity} / {item.sharesNeeded}</span>
+                            <p className="text-[9px] text-emerald-500 font-bold uppercase">{item.progress.toFixed(1)}% Completo</p>
+                        </div>
+                    </div>
+                    <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden flex ring-1 ring-white/5">
+                        <div className={`h-full ${item.progress >= 100 ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-emerald-500/40'}`} style={{ width: `${Math.min(100, item.progress)}%` }}></div>
+                    </div>
+                    {item.progress >= 100 ? (
+                      <div className="flex items-center gap-2 text-emerald-400">
+                         <ShieldCheck className="w-3 h-3" />
+                         <span className="text-[10px] font-black uppercase">Ativo se paga sozinho!</span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                        <span>Faltam {item.sharesNeeded - item.quantity} cotas</span>
+                        <span>Rend: R$ {item.rate.toFixed(2)} / un</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+             </div>
+           )}
+
+           {proventosTab === 'upcoming' && (
+             <div className="space-y-4 animate-fade-in">
+                {upcomingDividends > 0 ? (
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-[2.5rem] mb-6 text-center">
+                    <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.3em] mb-2">Total Pendente</p>
+                    <div className="text-4xl font-black text-white tabular-nums">R$ {formatCurrency(upcomingDividends)}</div>
+                  </div>
+                ) : (
+                  <div className="py-20 text-center opacity-40">
+                    <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nenhum provento futuro anunciado</p>
+                  </div>
+                )}
+
+                {upcomingProventos.map((r, i) => (
+                  <div key={r.id} className="bg-white/[0.03] p-5 rounded-3xl border border-white/5 flex items-center justify-between animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                            <Zap className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h4 className="font-black text-white text-base">{r.ticker}</h4>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Paga em: {r.paymentDate.split('-').reverse().join('/')}</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-sm font-black text-emerald-400">R$ {formatCurrency(r.totalReceived)}</div>
+                        <div className="text-[9px] font-bold text-slate-600 uppercase">Com em: {r.dateCom.split('-').reverse().join('/')}</div>
+                    </div>
+                  </div>
+                ))}
+             </div>
+           )}
+        </div>
+      </SwipeableModal>
+
+      {/* MODAL ALOCAÇÃO */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="px-6 pt-2 pb-10">
             <div className="mb-8">
@@ -402,7 +566,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
          </div>
       </SwipeableModal>
 
-      {/* MODAL GANHO REAL APRIMORADO */}
+      {/* MODAL GANHO REAL */}
       <SwipeableModal isOpen={showInflationModal} onClose={() => setShowInflationModal(false)}>
         <div className="px-6 pt-2 pb-10">
             <div className="mb-8">
@@ -416,12 +580,11 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                     {realGainPercent >= 0 ? '+' : ''}{realGainPercent.toFixed(2)}%
                 </div>
                 <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-yellow-500/10 rounded-full border border-yellow-500/20 inline-flex mb-4">
-                  <ShieldCheck className="w-3.5 h-3.5 text-yellow-500" />
+                  <Star className="w-3.5 h-3.5 text-yellow-500" />
                   <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">Patrimônio Protegido</span>
                 </div>
             </div>
 
-            {/* Gráfico de Área Simulando Curva de Crescimento */}
             <div className="h-40 w-full mb-8">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={[
