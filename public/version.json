@@ -1,27 +1,22 @@
 
 {
-  "version": "3.4.0",
-  "date": "2024-06-07",
+  "version": "3.5.0",
+  "date": "2024-06-08",
   "notes": [
     {
       "type": "feat",
-      "title": "Personalização Visual",
-      "desc": "Agora você pode escolher a cor de destaque do aplicativo (Azul, Verde, Roxo, etc)."
-    },
-    {
-      "type": "feat",
-      "title": "Modo Privacidade",
-      "desc": "Oculte valores sensíveis automaticamente. Toque ou passe o mouse para revelar."
-    },
-    {
-      "type": "feat",
-      "title": "Notificações Inteligentes",
-      "desc": "O app agora avisa nativamente quando a IA encontra novos proventos."
+      "title": "Super Estratégia",
+      "desc": "Novo painel com gráficos detalhados por Ativo, Classe (FII/Ação) e Setor."
     },
     {
       "type": "perf",
-      "title": "Otimização Brapi",
-      "desc": "Melhoria no uso de lotes (batching) para reduzir requisições à API."
+      "title": "Conexão Brapi 1:1",
+      "desc": "Migração para requisições individuais por ativo, garantindo maior estabilidade."
+    },
+    {
+      "type": "ui",
+      "title": "Segmentação Inteligente",
+      "desc": "Visualização automática de setores (Logística, Bancos, etc) alimentada por IA."
     }
   ]
 }

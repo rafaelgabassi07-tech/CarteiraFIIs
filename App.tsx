@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '3.4.0';
+const APP_VERSION = '3.5.0';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -207,7 +207,7 @@ const App: React.FC = () => {
     let gain = 0;
     sortedTxs.forEach(t => {
       if (!positions[t.ticker]) {
-        positions[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: divPaidMap[t.ticker] || 0 };
+        positions[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: divPaidMap[t.ticker] || 0, segment: geminiDividends.find(d => d.ticker === t.ticker)?.assetType ? 'Geral' : undefined };
       }
       const p = positions[t.ticker];
       if (t.type === 'BUY') {
@@ -220,6 +220,19 @@ const App: React.FC = () => {
       }
     });
 
+    // Merge manual segment data if available from Gemini metadata
+    // Note: The metadata is usually passed down, but for simplicity we rely on the object logic here
+    // In a fuller implementation, metadata should be passed to useMemo. 
+    // For now, let's assume segment is populated by GeminiService logic into the transaction/position flow eventually, 
+    // or we can pass it explicitly. 
+    // Since App.tsx calls fetchUnifiedMarketData, let's ensure metadata is used.
+    
+    // Correction: fetchUnifiedMarketData returns metadata. We should store it.
+    // However, without changing the state structure too much, we will rely on what's available.
+    // The previous implementation of geminiService populates metadata separately.
+    // Let's attach metadata to positions in the future steps if needed. 
+    // For this update, we use the `segment` property if available.
+
     const finalPortfolio = Object.values(positions)
       .filter(p => p.quantity > 0)
       .map(p => ({
@@ -230,6 +243,25 @@ const App: React.FC = () => {
 
     return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: gain, monthlyContribution: contribution };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
+
+  // Update Gemini data integration to include segment info in portfolio
+  // We need to pass metadata from geminiDividends (which comes from fetchUnifiedMarketData) to the portfolio construction
+  // But geminiDividends is just an array.
+  // We will enhance this in next steps. For now, we use the basic segment info if present.
+  
+  // Real update to ensure segment data flows:
+  // We need to store metadata state in App.tsx.
+  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType }>>({});
+
+  const memoizedDataWithMetadata = useMemo(() => {
+     const data = memoizedData;
+     data.portfolio = data.portfolio.map(p => ({
+       ...p,
+       segment: assetsMetadata[p.ticker]?.segment || 'Outros',
+       assetType: assetsMetadata[p.ticker]?.type || p.assetType
+     }));
+     return data;
+  }, [memoizedData, assetsMetadata]);
 
   const syncAll = useCallback(async (force = false) => {
     const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
@@ -246,6 +278,7 @@ const App: React.FC = () => {
       setIsAiLoading(true);
       const aiData = await fetchUnifiedMarketData(tickers);
       setGeminiDividends(aiData.dividends);
+      setAssetsMetadata(aiData.metadata); // Store metadata
       setSources(aiData.sources || []);
       if (force) showToast('success', 'Carteira Atualizada');
     } catch (e) {
@@ -294,15 +327,15 @@ const App: React.FC = () => {
           />
         ) : (
           <div className="animate-fade-in">
-            {currentTab === 'home' && <Home {...memoizedData} sources={sources} isAiLoading={isAiLoading} />}
-            {currentTab === 'portfolio' && <Portfolio {...memoizedData} />}
+            {currentTab === 'home' && <Home {...memoizedDataWithMetadata} sources={sources} isAiLoading={isAiLoading} />}
+            {currentTab === 'portfolio' && <Portfolio {...memoizedDataWithMetadata} />}
             {currentTab === 'transactions' && (
               <Transactions 
                 transactions={transactions} 
                 onAddTransaction={(t) => setTransactions(p => [...p, { ...t, id: crypto.randomUUID() }])}
                 onUpdateTransaction={(id, updated) => setTransactions(p => p.map(t => t.id === id ? { ...updated, id } : t))}
                 onDeleteTransaction={(id) => setTransactions(p => p.filter(t => t.id !== id))}
-                monthlyContribution={memoizedData.monthlyContribution}
+                monthlyContribution={memoizedDataWithMetadata.monthlyContribution}
               />
             )}
           </div>

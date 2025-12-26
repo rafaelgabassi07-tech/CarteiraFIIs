@@ -1,8 +1,8 @@
 
 import React, { useMemo, useState } from 'react';
-import { AssetPosition, DividendReceipt } from '../types';
-import { Wallet, ChevronRight, CircleDollarSign, PieChart as PieIcon, Sparkles, Globe, ExternalLink, Calendar, Target, Zap } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts';
+import { AssetPosition, DividendReceipt, AssetType } from '../types';
+import { Wallet, ChevronRight, CircleDollarSign, PieChart as PieIcon, Sparkles, Globe, ExternalLink, Calendar, Target, Zap, Layers, BarChart3, GripVertical } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, YAxis } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
 interface HomeProps {
@@ -20,6 +20,8 @@ const formatBRL = (val: any) => {
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+type AllocationView = 'ASSET' | 'CLASS' | 'SECTOR';
+
 export const Home: React.FC<HomeProps> = ({ 
   portfolio, 
   dividendReceipts, 
@@ -29,6 +31,7 @@ export const Home: React.FC<HomeProps> = ({
 }) => {
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
+  const [allocationView, setAllocationView] = useState<AllocationView>('ASSET');
 
   // Cálculos de Patrimônio
   const { invested, balance } = useMemo(() => {
@@ -52,13 +55,38 @@ export const Home: React.FC<HomeProps> = ({
   const totalReturnVal = (balance - invested) + realizedGain + received;
   const returnPercent = invested > 0 ? (totalReturnVal / invested) * 100 : 0;
 
-  const COLORS = ['#0ea5e9', '#8b5cf6', '#ec4899', '#f43f5e', '#10b981', '#f59e0b'];
+  const COLORS = ['#0ea5e9', '#8b5cf6', '#ec4899', '#f43f5e', '#10b981', '#f59e0b', '#6366f1', '#14b8a6'];
 
-  const chartData = useMemo(() => {
+  // Dados para Gráficos
+  const assetData = useMemo(() => {
     return portfolio.map(p => ({ 
       name: p.ticker, 
       value: (p.currentPrice || p.averagePrice) * p.quantity 
     })).sort((a,b) => b.value - a.value);
+  }, [portfolio]);
+
+  const classData = useMemo(() => {
+    const groups = { [AssetType.FII]: 0, [AssetType.STOCK]: 0 };
+    portfolio.forEach(p => {
+      const val = (p.currentPrice || p.averagePrice) * p.quantity;
+      groups[p.assetType] = (groups[p.assetType] || 0) + val;
+    });
+    return [
+      { name: 'FIIs', value: groups[AssetType.FII] },
+      { name: 'Ações', value: groups[AssetType.STOCK] }
+    ].filter(d => d.value > 0);
+  }, [portfolio]);
+
+  const sectorData = useMemo(() => {
+    const sectors: Record<string, number> = {};
+    portfolio.forEach(p => {
+      const val = (p.currentPrice || p.averagePrice) * p.quantity;
+      const sec = p.segment || 'Outros';
+      sectors[sec] = (sectors[sec] || 0) + val;
+    });
+    return Object.entries(sectors)
+      .map(([k, v]) => ({ name: k, value: v }))
+      .sort((a,b) => b.value - a.value);
   }, [portfolio]);
 
   const barData = useMemo(() => {
@@ -126,7 +154,7 @@ export const Home: React.FC<HomeProps> = ({
             <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
                     <div className="w-11 h-11 bg-accent/10 rounded-2xl flex items-center justify-center text-accent border border-accent/20"><PieIcon className="w-5 h-5" /></div>
-                    <h3 className="text-xs font-black uppercase tracking-widest">Alocação de Ativos</h3>
+                    <h3 className="text-xs font-black uppercase tracking-widest">Estratégia de Carteira</h3>
                 </div>
                 <ChevronRight className="w-5 h-5 text-slate-300" />
             </div>
@@ -136,14 +164,14 @@ export const Home: React.FC<HomeProps> = ({
                     <div className="w-32 h-32 shrink-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie data={chartData} innerRadius={40} outerRadius={55} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={6}>
-                                    {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                <Pie data={assetData} innerRadius={40} outerRadius={55} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={6}>
+                                    {assetData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                 </Pie>
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
                     <div className="flex-1 space-y-3">
-                        {chartData.slice(0, 3).map((asset, i) => (
+                        {assetData.slice(0, 3).map((asset, i) => (
                             <div key={asset.name} className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
@@ -210,20 +238,105 @@ export const Home: React.FC<HomeProps> = ({
         </div>
       </SwipeableModal>
 
-      {/* Modal Alocação */}
+      {/* Modal Estratégia Melhorado */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
         <div className="px-6 pt-2 pb-10 bg-white dark:bg-secondary-dark min-h-full">
-            <h3 className="text-2xl font-black tracking-tighter mb-8">Estratégia</h3>
-            <div className="space-y-4">
-              {chartData.map((asset, i) => (
-                <div key={asset.name} className="bg-slate-50 dark:bg-white/[0.02] p-5 rounded-[2rem] flex items-center justify-between border border-slate-200 dark:border-white/5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-3 h-10 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-                    <div><h4 className="font-black text-sm">{asset.name}</h4><p className="text-[10px] font-bold text-slate-400">{formatBRL(asset.value)}</p></div>
-                  </div>
-                  <div className="text-lg font-black">{((asset.value / (balance || 1)) * 100).toFixed(1)}%</div>
+            <h3 className="text-2xl font-black tracking-tighter mb-6">Estratégia</h3>
+            
+            {/* Abas */}
+            <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl mb-8">
+               <button onClick={() => setAllocationView('ASSET')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${allocationView === 'ASSET' ? 'bg-white dark:bg-slate-800 shadow-md text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                 <GripVertical className="w-3 h-3" /> Ativos
+               </button>
+               <button onClick={() => setAllocationView('CLASS')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${allocationView === 'CLASS' ? 'bg-white dark:bg-slate-800 shadow-md text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                 <PieIcon className="w-3 h-3" /> Classe
+               </button>
+               <button onClick={() => setAllocationView('SECTOR')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${allocationView === 'SECTOR' ? 'bg-white dark:bg-slate-800 shadow-md text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                 <Layers className="w-3 h-3" /> Setor
+               </button>
+            </div>
+
+            {/* Conteúdo Dinâmico */}
+            <div className="animate-fade-in">
+              {allocationView === 'ASSET' && (
+                <div className="space-y-4">
+                  {assetData.map((asset, i) => {
+                    const pct = ((asset.value / (balance || 1)) * 100);
+                    return (
+                      <div key={asset.name} className="bg-slate-50 dark:bg-white/[0.02] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 bottom-0 bg-slate-200/20 dark:bg-white/5" style={{ width: `${pct}%` }} />
+                        <div className="relative flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-3 h-10 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                            <div><h4 className="font-black text-sm">{asset.name}</h4><p className="text-[10px] font-bold text-slate-400">{formatBRL(asset.value)}</p></div>
+                          </div>
+                          <div className="text-lg font-black">{pct.toFixed(1)}%</div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              )}
+
+              {allocationView === 'CLASS' && (
+                <div className="flex flex-col items-center">
+                    <div className="w-64 h-64 relative mb-8">
+                       <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={classData} innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" stroke="none" cornerRadius={8}>
+                                    {classData.map((_, i) => <Cell key={i} fill={i === 0 ? '#10b981' : '#0ea5e9'} />)}
+                                </Pie>
+                                <Tooltip formatter={(value) => formatBRL(value)} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="text-center">
+                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total</p>
+                               <p className="text-xl font-black text-slate-900 dark:text-white">{formatBRL(balance)}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="w-full space-y-3">
+                        {classData.map((item, i) => (
+                           <div key={item.name} className="flex justify-between items-center p-4 rounded-2xl bg-slate-50 dark:bg-white/5">
+                              <div className="flex items-center gap-3">
+                                 <div className={`w-3 h-3 rounded-full ${i === 0 ? 'bg-emerald-500' : 'bg-sky-500'}`} />
+                                 <span className="font-bold text-sm">{item.name}</span>
+                              </div>
+                              <span className="font-black">{((item.value / balance) * 100).toFixed(1)}%</span>
+                           </div>
+                        ))}
+                    </div>
+                </div>
+              )}
+
+              {allocationView === 'SECTOR' && (
+                <div className="space-y-6">
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                         <BarChart layout="vertical" data={sectorData.slice(0, 8)} margin={{ left: 10, right: 30 }}>
+                            <XAxis type="number" hide />
+                            <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                            <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px' }} formatter={(val) => formatBRL(val)} />
+                            <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20}>
+                               {sectorData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                            </Bar>
+                         </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        {sectorData.slice(0, 6).map((sec, i) => (
+                            <div key={sec.name} className="p-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                                    <span className="text-[10px] font-black uppercase text-slate-400 truncate">{sec.name}</span>
+                                </div>
+                                <div className="text-sm font-black">{((sec.value / balance) * 100).toFixed(1)}%</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+              )}
             </div>
         </div>
       </SwipeableModal>

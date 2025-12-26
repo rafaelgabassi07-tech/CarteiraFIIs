@@ -26,28 +26,36 @@ export const getQuotes = async (tickers: string[], token: string, force = false)
   if (!toFetch.length) return { quotes: results };
 
   try {
-    // Otimização: Aumentado para 20 (limite comum da Brapi) para reduzir requests
-    const chunkSize = 20; 
-    
-    for (let i = 0; i < toFetch.length; i += chunkSize) {
-      const chunk = toFetch.slice(i, i + chunkSize);
-      
-      // OBRIGATÓRIO: O .join(',') garante que seja UMA requisição para múltiplos ativos.
-      // Adicionado range=1d&interval=1d para garantir resposta rápida sem histórico pesado
-      const url = `${BASE_URL}/quote/${chunk.join(',')}?token=${token}&range=1d&interval=1d`;
-      
-      const res = await fetch(url);
-      
-      if (res.ok) {
-        const data: BrapiResponse = await res.json();
-        data.results.forEach(q => {
-          if (q.symbol) {
-            results.push(q);
-            cache[q.symbol.toUpperCase()] = { data: q, timestamp: now };
+    // ALTERAÇÃO SOLICITADA: Requisição individual por ativo (1:1)
+    // Utilizamos Promise.all para disparar todas em paralelo e não travar o app
+    const promises = toFetch.map(async (ticker) => {
+      try {
+        const url = `${BASE_URL}/quote/${ticker}?token=${token}&range=1d&interval=1d`;
+        const res = await fetch(url);
+        
+        if (res.ok) {
+          const data: BrapiResponse = await res.json();
+          // A Brapi retorna um array results mesmo na chamada individual
+          if (data.results && data.results.length > 0) {
+            const quote = data.results[0];
+            return { symbol: ticker, data: quote };
           }
-        });
+        }
+      } catch (err) {
+        console.warn(`Falha ao buscar ${ticker}`, err);
       }
-    }
+      return null;
+    });
+
+    const fetchedResults = await Promise.all(promises);
+
+    fetchedResults.forEach(item => {
+      if (item && item.data) {
+        results.push(item.data);
+        cache[item.symbol] = { data: item.data, timestamp: now };
+      }
+    });
+
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
     return { quotes: results };
   } catch (e) {
