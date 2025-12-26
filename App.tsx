@@ -118,26 +118,19 @@ const App: React.FC = () => {
   }, []);
 
   /**
-   * Lógica de Elegibilidade (DATA COM):
-   * Calcula quantas cotas o usuário possuía EXATAMENTE no fechamento da Data Com.
-   * Usa comparação de timestamps (meio-dia) para evitar problemas de fuso horário.
+   * REVISÃO DE LÓGICA DE ELEGIBILIDADE (DATA COM):
+   * Determina a quantidade de ativos possuídos EXATAMENTE em uma data de corte.
+   * Utiliza comparação léxica de strings (YYYY-MM-DD) para evitar problemas de timezone.
+   * Se a transação ocorreu antes ou NO DIA da data com, ela entra no cálculo.
    */
   const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
-    // Define a Data Com às 12:00 para evitar edge cases de UTC-3
-    const comDateObj = new Date(`${dateCom}T12:00:00`); 
+    // Filtra transações do ativo que ocorreram na data ou antes
+    // Ex: Data Com = '2024-05-15'. Transação em '2024-05-15' conta. Transação em '2024-05-16' não.
+    const eligibleTxs = txs.filter(t => t.ticker === ticker && t.date <= dateCom);
     
-    return txs
-      .filter(t => t.ticker === ticker)
-      .reduce((acc, t) => {
-        // Data da transação também normalizada
-        const txDateObj = new Date(`${t.date}T12:00:00`);
-        
-        // Se comprou ANTES ou NO DIA da data com, conta.
-        if (txDateObj <= comDateObj) {
-            return t.type === 'BUY' ? acc + t.quantity : acc - t.quantity;
-        }
-        return acc;
-      }, 0);
+    return eligibleTxs.reduce((acc, t) => {
+        return t.type === 'BUY' ? acc + t.quantity : acc - t.quantity;
+    }, 0);
   }, []);
 
   // Calcula a data de início da carteira (primeira transação)
@@ -147,24 +140,72 @@ const App: React.FC = () => {
     return dates[0];
   }, [transactions]);
 
+  /**
+   * CÁLCULO PRINCIPAL DA CARTEIRA E PROVENTOS
+   * Ordem de processamento corrigida:
+   * 1. Calcular Recibos de Proventos (histórico) com base nas datas de aquisição.
+   * 2. Agrupar total de dividendos por ativo.
+   * 3. Calcular Posição Atual (Quantidade e Preço Médio).
+   * 4. Enriquecer Posição Atual com Totais de Dividendos.
+   */
   const { portfolio, dividendReceipts, realizedGain } = useMemo(() => {
+    const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+    
+    // --- 1. Processamento de Proventos (Baseado em Aquisição) ---
+    // Itera sobre CADA dividendo informado pela IA e verifica se o usuário tinha o ativo na data.
+    const receipts: DividendReceipt[] = geminiDividends.map(div => {
+      // Verifica quantas cotas o usuário tinha na Data Com deste dividendo específico
+      const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, sortedTxs);
+      
+      // Se tinha 0 ou menos, não recebe nada
+      const eligibleQty = Math.max(0, qtyAtDate);
+      const total = eligibleQty * div.rate;
+      
+      return { 
+          ...div, 
+          quantityOwned: eligibleQty, 
+          totalReceived: total,
+          // Tenta inferir o tipo de ativo se já tivermos transações dele, senão mantém undefined
+          assetType: sortedTxs.find(t => t.ticker === div.ticker)?.assetType 
+      };
+    }).filter(r => r.totalReceived > 0); // Remove recibos onde o valor recebido é 0
+
+    // Ordena recibos por data de pagamento (mais recente primeiro)
+    receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+
+    // Agrupa totais recebidos por ticker para exibir no card do ativo
+    const dividendsByTicker: Record<string, number> = {};
+    receipts.forEach(r => {
+        dividendsByTicker[r.ticker] = (dividendsByTicker[r.ticker] || 0) + r.totalReceived;
+    });
+
+    // --- 2. Processamento da Posição Atual da Carteira ---
     const positions: Record<string, AssetPosition> = {};
     let totalRealizedGain = 0;
-    
-    const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
 
     sortedTxs.forEach(t => {
       const ticker = t.ticker.toUpperCase();
       if (!positions[ticker]) {
-        positions[ticker] = { ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: 0 };
+        // Inicializa ativo com totalDividends vindo do cálculo histórico preciso
+        positions[ticker] = { 
+            ticker, 
+            quantity: 0, 
+            averagePrice: 0, 
+            assetType: t.assetType, 
+            totalDividends: dividendsByTicker[ticker] || 0 
+        };
       }
+      
       const p = positions[ticker];
+      
       if (t.type === 'BUY') {
         const currentCost = p.quantity * p.averagePrice;
         const newCost = t.quantity * t.price;
         p.quantity += t.quantity;
+        // PM = (Custo Anterior + Novo Custo) / Nova Quantidade Total
         p.averagePrice = p.quantity > 0 ? (currentCost + newCost) / p.quantity : 0;
       } else {
+        // Venda: Realiza Lucro/Prejuízo e abate quantidade
         const costOfSold = t.quantity * p.averagePrice;
         const revenueOfSold = t.quantity * t.price;
         totalRealizedGain += (revenueOfSold - costOfSold);
@@ -172,23 +213,9 @@ const App: React.FC = () => {
       }
     });
 
-    const receipts: DividendReceipt[] = geminiDividends.map(div => {
-      // Aqui aplicamos a regra blindada da Data Com
-      const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, sortedTxs);
-      const total = qtyAtDate * div.rate;
-      const assetType = positions[div.ticker]?.assetType;
-      
-      if (total > 0 && positions[div.ticker]) {
-        positions[div.ticker].totalDividends = (positions[div.ticker].totalDividends || 0) + total;
-      }
-      
-      return { ...div, quantityOwned: qtyAtDate, totalReceived: total, assetType };
-    }).filter(r => r.totalReceived > 0);
-
-    receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
-
+    // --- 3. Montagem Final do Portfolio ---
     const finalPortfolio = Object.values(positions)
-      .filter(p => p.quantity > 0)
+      .filter(p => p.quantity > 0) // Remove ativos totalmente vendidos
       .map(p => {
         const quote = quotes[p.ticker];
         return {

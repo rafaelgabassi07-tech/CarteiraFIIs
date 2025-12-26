@@ -45,12 +45,12 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     2. Listar TODOS os proventos (Dividendos/JCP) com "Data Com" (Data de corte) nos últimos 12 meses.
     
     IMPORTANTE:
-    - NÃO inclua preços ou cotações atuais.
-    - O foco é a precisão das datas e valores de proventos.
+    - O foco é a precisão das datas (Data Com e Data Pagamento).
     - RETORNE APENAS O JSON FINAL, SEM EXPLICAÇÕES OU MARKDOWN.
+    - AS DATAS DEVEM ESTAR NO FORMATO ESTRITO YYYY-MM-DD (ISO 8601).
     
     REGRAS DE DADOS:
-    - Data Com (dc): A data limite para ter o ativo na carteira e receber o provento. Formato YYYY-MM-DD.
+    - Data Com (dc): A data limite para ter o ativo na carteira. Formato YYYY-MM-DD.
     - Data Pagamento (dp): Quando o dinheiro cai na conta. Formato YYYY-MM-DD.
     - Valor (v): Valor bruto por cota/ação.
     - Tipo (ty): "DIVIDENDO" ou "JCP".
