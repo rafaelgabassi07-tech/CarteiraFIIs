@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, SwipeableModal } from './components/Layout';
 import { Home } from './pages/Home';
@@ -378,6 +377,16 @@ const App: React.FC = () => {
     setIsRefreshing(true);
     try {
       await Promise.all([syncBrapiData(true), handleAiSync(true)]);
+      
+      // FORÇA A VERIFICAÇÃO DE ATUALIZAÇÃO DO SW
+      if ('serviceWorker' in navigator) {
+         try {
+           const reg = await navigator.serviceWorker.ready;
+           await reg.update();
+           console.log('SW: Verificação de atualização manual solicitada.');
+         } catch(e) { console.log('SW update check failed', e); }
+      }
+
       showToast('success', 'Dados atualizados com sucesso');
     } catch (error) {
       showToast('error', 'Falha na atualização');
