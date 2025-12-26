@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, SwipeableModal } from './components/Layout';
 import { Home } from './pages/Home';
@@ -7,7 +8,8 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw, Bell, Calendar, DollarSign, X, ArrowRight, History, Clock, CheckCheck, ShieldAlert, Sparkles, LayoutGrid, Info, Zap } from 'lucide-react';
+// Added ChevronRight to the lucide-react imports
+import { AlertTriangle, CheckCircle2, TrendingUp, RefreshCw, Bell, Calendar, DollarSign, X, ArrowRight, History, Clock, CheckCheck, ShieldAlert, Sparkles, LayoutGrid, Info, Zap, ArrowUpCircle, ChevronRight } from 'lucide-react';
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_transactions',
@@ -39,6 +41,7 @@ const App: React.FC = () => {
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'upcoming' | 'history'>('all');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'warning', text: string} | null>(null);
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [isSplashActive, setIsSplashActive] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
 
@@ -63,6 +66,16 @@ const App: React.FC = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<MarketEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<MarketEvent[]>([]);
 
+  // Escuta por atualizações do Service Worker (A PROVA DE FALHAS)
+  useEffect(() => {
+    const handleUpdate = (e: Event) => {
+      const reg = (e as CustomEvent).detail;
+      setSwRegistration(reg);
+    };
+    window.addEventListener('sw-update-available', handleUpdate);
+    return () => window.removeEventListener('sw-update-available', handleUpdate);
+  }, []);
+
   useEffect(() => {
     const fadeTimer = setTimeout(() => setIsFadingOut(true), 1200);
     const removeTimer = setTimeout(() => setIsSplashActive(false), 1600);
@@ -74,12 +87,20 @@ const App: React.FC = () => {
     setTimeout(() => setToast(null), 4000);
   }, []);
 
+  const handleApplyUpdate = () => {
+    if (swRegistration?.waiting) {
+      swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    } else {
+      window.location.reload();
+    }
+  };
+
   const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
     const eligibleTxs = txs.filter(t => t.ticker === ticker && t.date <= dateCom);
     return eligibleTxs.reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
   }, []);
 
-  // Novo: Cálculo de Aporte Mensal Real
+  // Cálculo de Aporte Mensal Real Dinâmico
   const monthlyContribution = useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -199,7 +220,6 @@ const App: React.FC = () => {
 
   const syncBrapiData = useCallback(async (force = false) => {
     if (!brapiToken || transactions.length === 0) return;
-    // Fix: Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' inference issues.
     const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
     setIsPriceLoading(true);
     try {
@@ -216,7 +236,6 @@ const App: React.FC = () => {
   }, [brapiToken, transactions, showToast]);
 
   const handleAiSync = useCallback(async (force = false) => {
-    // Fix: Explicitly typing uniqueTickers as string[] to avoid 'unknown[]' inference issues.
     const uniqueTickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
     const tickersStr = uniqueTickers.join(',');
@@ -225,7 +244,8 @@ const App: React.FC = () => {
     if (!force && lastSyncTime && (Date.now() - parseInt(lastSyncTime, 10)) < AI_CACHE_DURATION && lastSyncedTickers === tickersStr) return;
     setIsAiLoading(true);
     try {
-      const data = await fetchUnifiedMarketData(uniqueTickers);
+      // Added explicit cast to string[] to satisfy the compiler and fix the 'unknown[]' assignment error
+      const data = await fetchUnifiedMarketData(uniqueTickers as string[]);
       setGeminiDividends(data.dividends);
       if (data.sources) setSources(data.sources);
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
@@ -259,6 +279,25 @@ const App: React.FC = () => {
               {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
               <span className="text-xs font-black uppercase tracking-wider">{toast.text}</span>
             </div>
+          </div>
+        )}
+        
+        {/* Banner de Atualização Crítica */}
+        {swRegistration && (
+          <div className="w-full max-w-sm pointer-events-auto animate-fade-in-up">
+             <button 
+                onClick={handleApplyUpdate}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 p-4 rounded-[2rem] flex items-center justify-between shadow-[0_15px_30px_rgba(79,70,229,0.4)] border border-white/20 group transition-all"
+             >
+                <div className="flex items-center gap-3">
+                   <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"><ArrowUpCircle className="w-5 h-5 animate-bounce" /></div>
+                   <div className="text-left">
+                      <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">Nova Versão v2.5.0</p>
+                      <p className="text-xs font-black text-white uppercase tracking-tighter">Toque para atualizar agora</p>
+                   </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-white/50 group-hover:translate-x-1 transition-transform" />
+             </button>
           </div>
         )}
       </div>

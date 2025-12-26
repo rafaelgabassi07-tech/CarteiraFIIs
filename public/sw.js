@@ -1,7 +1,6 @@
 
-// Versão do cache estático. Incrementar para forçar atualização.
-const STATIC_CACHE = 'investfiis-static-v53';
-const DATA_CACHE = 'investfiis-data-v1';
+const STATIC_CACHE = 'investfiis-static-v2.5.0';
+const DATA_CACHE = 'investfiis-data-v2';
 
 const STATIC_ASSETS = [
   './index.html',
@@ -11,13 +10,9 @@ const STATIC_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then((cache) => {
-        return cache.addAll(STATIC_ASSETS).catch(err => {
-            console.warn('SW: Aviso - Falha ao pré-cachear alguns arquivos.', err);
-        });
-      })
+    caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
   );
+  // Força o novo SW a se tornar ativo imediatamente
   self.skipWaiting();
 });
 
@@ -26,8 +21,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key.startsWith('investfiis-static-') && key !== STATIC_CACHE) {
-            console.log('SW: Limpando cache antigo', key);
+          if ((key.startsWith('investfiis-static-') || key.startsWith('investfiis-data-')) && key !== STATIC_CACHE && key !== DATA_CACHE) {
             return caches.delete(key);
           }
         })
@@ -39,24 +33,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
-  const url = new URL(request.url);
-
-  if (url.hostname.includes('brapi.dev') || url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com')) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if(response && response.status === 200) {
-              const responseToCache = response.clone();
-              caches.open(DATA_CACHE).then((cache) => {
-                cache.put(request, responseToCache);
-              });
-          }
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
-    return;
-  }
 
   event.respondWith(
     fetch(request)
