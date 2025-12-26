@@ -1,5 +1,7 @@
 
-const CACHE_NAME = 'investfiis-v3.1.5';
+// Service Worker de Limpeza (v3.1.6)
+// Este script substitui qualquer versão anterior e se desinstala imediatamente
+// para resolver conflitos de CORS em ambientes de preview.
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -7,59 +9,17 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    self.registration.unregister()
+      .then(() => {
+        return self.clients.matchAll();
+      })
+      .then((clients) => {
+        clients.forEach(client => client.postMessage({ type: 'SW_REMOVED' }));
+      })
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  
-  if (
-    url.pathname.includes('version.json') || 
-    url.pathname.includes('manifest.json') ||
-    url.pathname.includes('sw.js') ||
-    url.search.includes('nocache')
-  ) {
-    event.respondWith(fetch(event.request, { cache: 'no-store' }));
-    return;
-  }
-
-  if (event.request.destination === 'script' || event.request.destination === 'style') {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, networkResponse.clone());
-        });
-        return networkResponse;
-      });
-      return cachedResponse || fetchPromise;
-    })
-  );
-});
-
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  // Passa tudo direto para a rede, sem cache
+  event.respondWith(fetch(event.request));
 });

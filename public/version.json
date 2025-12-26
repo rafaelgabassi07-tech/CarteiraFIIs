@@ -1,12 +1,12 @@
 
 {
-  "version": "3.1.5",
+  "version": "3.1.6",
   "date": "2024-06-05",
   "notes": [
     {
       "type": "fix",
-      "title": "Limpeza de Console",
-      "desc": "Remoção completa de tentativas de registro de Service Worker em ambientes de Sandbox para evitar erros de CORS."
+      "title": "Correção de Rede",
+      "desc": "Remoção de componentes offline que causavam conflito no carregamento do app em ambientes restritos."
     }
   ]
 }
