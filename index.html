@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="app-version" content="3.1.8" />
+    <meta name="app-version" content="3.2.0" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -18,24 +18,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
-    <script>
-      // SCRIPT DE SEGURANÇA (v3.1.8)
-      // Tratamento de erro robusto para evitar 'InvalidStateError'
-      (async function() {
-        if ('serviceWorker' in navigator) {
-          try {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for(let registration of registrations) {
-              try { await registration.unregister(); } catch(e) {}
-            }
-          } catch (err) {
-            // Ignora silenciosamente erros de estado inválido comuns em sandboxes
-            console.warn('Ambiente restrito: SW desativado.');
-          }
-        }
-      })();
-    </script>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       (function() {
@@ -96,7 +78,6 @@
 </head>
   <body class="bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100 min-h-screen">
     <div id="root"></div>
-    <!-- ADICIONADO ?v=3.1.8 PARA FORÇAR O RELOAD IGNORANDO O SW ANTIGO -->
-    <script type="module" src="./index.tsx?v=3.1.8"></script>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>
