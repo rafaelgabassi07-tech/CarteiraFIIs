@@ -12,20 +12,17 @@ const GEMINI_CACHE_KEY = 'investfiis_gemini_internal_cache';
 
 function cleanAndParseJSON(text: string): any {
   try {
-    // Remove marcadores de código markdown se existirem
+    // Remove marcadores de código markdown se existirem e textos extras
     const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    // Tenta encontrar o primeiro { e o último }
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    
+    if (firstBrace !== -1 && lastBrace !== -1) {
+        return JSON.parse(cleaned.substring(firstBrace, lastBrace + 1));
+    }
     return JSON.parse(cleaned);
   } catch (e) {
-    // Tentativa de recuperação de JSON quebrado
-    const firstBrace = text.indexOf("{");
-    const lastBrace = text.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace !== -1) {
-      try {
-        return JSON.parse(text.substring(firstBrace, lastBrace + 1));
-      } catch (e2) {
-        return null;
-      }
-    }
     return null;
   }
 }
@@ -39,7 +36,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   const prompt = `
     Atue como um Especialista em Dados de Mercado da B3 (Brasil).
     
-    Sua missão é consultar fontes oficiais recentes (últimos 12 meses) para a lista de ativos abaixo e retornar um ÚNICO JSON consolidado com foco em PROVENTOS e SEGMENTOS.
+    Sua missão é consultar fontes oficiais recentes (últimos 12 meses) para a lista de ativos abaixo e retornar um ÚNICO JSON consolidado.
     
     LISTA DE ATIVOS: ${tickers.join(', ')} (${tickers.length} ativos no total).
     
@@ -50,6 +47,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     IMPORTANTE:
     - NÃO inclua preços ou cotações atuais.
     - O foco é a precisão das datas e valores de proventos.
+    - RETORNE APENAS O JSON FINAL, SEM EXPLICAÇÕES OU MARKDOWN.
     
     REGRAS DE DADOS:
     - Data Com (dc): A data limite para ter o ativo na carteira e receber o provento. Formato YYYY-MM-DD.
@@ -74,43 +72,13 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   `;
 
   try {
-    // Atualizado para usar gemini-2.5-flash (sem preview/experimental) conforme solicitado
+    // Atualizado para usar gemini-2.5-flash
+    // REMOVIDO responseMimeType e responseSchema pois conflitam com tools: googleSearch
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash", 
       contents: prompt,
       config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            assets: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  t: { type: Type.STRING },
-                  s: { type: Type.STRING },
-                  type: { type: Type.STRING },
-                  d: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        ty: { type: Type.STRING },
-                        dc: { type: Type.STRING },
-                        dp: { type: Type.STRING },
-                        v: { type: Type.NUMBER }
-                      },
-                      required: ["dc", "v"]
-                    }
-                  }
-                },
-                required: ["t", "type"]
-              }
-            }
-          }
-        }
+        tools: [{ googleSearch: {} }]
       }
     });
 
