@@ -123,6 +123,13 @@ const App: React.FC = () => {
       .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
   }, []);
 
+  // Calcula a data de início da carteira (primeira transação)
+  const portfolioStartDate = useMemo(() => {
+    if (transactions.length === 0) return new Date().toISOString();
+    const dates = transactions.map(t => t.date).sort();
+    return dates[0];
+  }, [transactions]);
+
   const { portfolio, dividendReceipts, realizedGain } = useMemo(() => {
     const positions: Record<string, AssetPosition> = {};
     let totalRealizedGain = 0;
@@ -421,6 +428,7 @@ const App: React.FC = () => {
                 isAiLoading={isAiLoading} 
                 sources={sources}
                 realizedGain={realizedGain}
+                portfolioStartDate={portfolioStartDate}
               />
             )}
             {currentTab === 'portfolio' && <Portfolio portfolio={portfolio} dividendReceipts={dividendReceipts} />}

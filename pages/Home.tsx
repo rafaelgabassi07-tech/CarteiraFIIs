@@ -12,9 +12,10 @@ interface HomeProps {
   onAiSync?: () => void;
   isAiLoading?: boolean;
   sources?: { web: { uri: string; title: string } }[];
+  portfolioStartDate?: string;
 }
 
-export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realizedGain = 0, onAiSync, isAiLoading, sources = [] }) => {
+export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realizedGain = 0, onAiSync, isAiLoading, sources = [], portfolioStartDate }) => {
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [proventosTab, setProventosTab] = useState<'statement' | 'ranking'>('statement');
   
@@ -37,11 +38,33 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
   const assetCount = portfolio.length;
 
   const IPCA_12M = 4.62; 
-  const realYield = yieldOnCost - IPCA_12M;
+  
+  // Cálculo de Inflação Proporcional
+  const { benchmarkInflation, inflationLabel } = useMemo(() => {
+    if (!portfolioStartDate) return { benchmarkInflation: IPCA_12M, inflationLabel: "12 Meses" };
+    
+    const start = new Date(portfolioStartDate);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Se a carteira tem menos de 12 meses (aprox 365 dias), usa inflação proporcional
+    if (diffDays < 365 && diffDays > 0) {
+        const proportional = (IPCA_12M / 365) * diffDays;
+        return { 
+            benchmarkInflation: proportional, 
+            inflationLabel: "Proporcional" // Indica que é inflação do período, não 12m cheios
+        };
+    }
+    
+    return { benchmarkInflation: IPCA_12M, inflationLabel: "12 Meses" };
+  }, [portfolioStartDate]);
+
+  const realYield = yieldOnCost - benchmarkInflation;
   const isPositiveReal = realYield > 0;
   
   const comparisonData = [
-    { name: 'Inflação (IPCA)', value: IPCA_12M, fill: '#f43f5e' }, // Rose 500
+    { name: `Inflação (${inflationLabel})`, value: benchmarkInflation, fill: '#f43f5e' }, // Rose 500
     { name: 'Seus Dividendos', value: yieldOnCost, fill: isPositiveReal ? '#10b981' : '#fbbf24' } // Emerald 500 or Amber 400
   ];
 
@@ -302,7 +325,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
              </div>
           )}
 
-          {/* Ganho Real - Aprimorado */}
+          {/* Ganho Real - Aprimorado com Lógica Proporcional */}
           <div 
              onClick={() => setShowInflationModal(true)}
              className={`relative overflow-hidden rounded-[2.5rem] p-6 transition-all group tap-highlight cursor-pointer min-h-[16rem] flex flex-col justify-between shadow-lg active:scale-[0.99] z-10 ${isPositiveReal ? 'bg-gradient-to-tr from-emerald-950/50 to-slate-900 border border-emerald-500/20 hover:border-emerald-500/40' : 'bg-gradient-to-tr from-rose-950/50 to-slate-900 border border-rose-500/20 hover:border-rose-500/40'}`}
@@ -315,7 +338,9 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                         <Scale className={`w-4 h-4 ${isPositiveReal ? 'text-emerald-400' : 'text-rose-400'}`} />
                         Ganho Real
                     </h3>
-                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Poder de Compra (12m)</p>
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
+                         {inflationLabel === "Proporcional" ? "Rentabilidade vs. Período" : "Poder de Compra (12m)"}
+                    </p>
                  </div>
                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-white transition-colors">
                     <ChevronRight className="w-4 h-4" />
@@ -332,24 +357,24 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                 {/* Barra de Progresso Comparativa */}
                 <div className="space-y-2">
                    <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-500">
-                      <span>Inflação (IPCA)</span>
+                      <span>Inflação ({inflationLabel})</span>
                       <span>Seu Yield</span>
                    </div>
                    <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden flex ring-1 ring-white/10 relative">
                        {/* Marcador de Zero/Inflação */}
                        <div 
                          className="h-full bg-rose-500/60 z-10 relative" 
-                         style={{ width: `${Math.min(100, (IPCA_12M / Math.max(IPCA_12M, yieldOnCost)) * 80)}%` }} 
+                         style={{ width: `${Math.min(100, (benchmarkInflation / Math.max(benchmarkInflation, yieldOnCost)) * 80)}%` }} 
                        />
                        
                        {/* Barra de Yield */}
                        <div 
                          className={`absolute top-0 left-0 h-full z-20 transition-all duration-1000 ease-out ${isPositiveReal ? 'bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)]' : 'bg-yellow-400 opacity-80'}`} 
-                         style={{ width: `${Math.min(100, (yieldOnCost / Math.max(IPCA_12M, yieldOnCost)) * 100)}%` }}
+                         style={{ width: `${Math.min(100, (yieldOnCost / Math.max(benchmarkInflation, yieldOnCost)) * 100)}%` }}
                        />
                    </div>
                    <div className="flex justify-between text-[10px] font-bold text-white tabular-nums">
-                      <span className="text-rose-400">{IPCA_12M}%</span>
+                      <span className="text-rose-400">{benchmarkInflation.toFixed(2)}%</span>
                       <span className={isPositiveReal ? 'text-emerald-400' : 'text-yellow-400'}>{yieldOnCost.toFixed(2)}%</span>
                    </div>
                 </div>
@@ -616,7 +641,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
 
              <div className="bg-slate-900 rounded-[2.5rem] p-6 mb-6 border border-white/5 relative overflow-hidden">
                 <div className="relative z-10 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Resultado Final (12 Meses)</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Resultado Final ({inflationLabel})</p>
                     <div className={`text-6xl font-black tracking-tighter tabular-nums mb-2 drop-shadow-xl ${isPositiveReal ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {isPositiveReal ? '+' : ''}{realYield.toFixed(2)}%
                     </div>
@@ -639,8 +664,8 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                      </div>
                      <div className="text-slate-600 font-black text-xl">-</div>
                      <div className="text-center">
-                         <div className="text-2xl font-black text-rose-400 tabular-nums">{IPCA_12M}%</div>
-                         <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">IPCA (12m)</div>
+                         <div className="text-2xl font-black text-rose-400 tabular-nums">{benchmarkInflation.toFixed(2)}%</div>
+                         <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">IPCA ({inflationLabel})</div>
                      </div>
                      <div className="text-slate-600 font-black text-xl">=</div>
                      <div className="text-center">
@@ -662,7 +687,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                             cursor={{ fill: 'transparent' }}
                             contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #ffffff10', borderRadius: '12px' }}
                             itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
-                            formatter={(val: number) => [`${val}%`, 'Taxa']}
+                            formatter={(val: number) => [`${val.toFixed(2)}%`, 'Taxa']}
                         />
                         <Bar dataKey="value" radius={[0, 6, 6, 0]}>
                             {comparisonData.map((entry, index) => (
@@ -677,7 +702,7 @@ export const Home: React.FC<HomeProps> = ({ portfolio, dividendReceipts, realize
                  <div className="flex items-center gap-2 mb-2 font-bold text-indigo-400 uppercase tracking-wider text-[10px]">
                      <Info className="w-3.5 h-3.5" /> Entenda
                  </div>
-                 O <strong>Ganho Real</strong> é o que realmente importa. Se o seu retorno (Yield) for menor que a inflação (IPCA), você está perdendo poder de compra, mesmo que o número em reais aumente.
+                 O <strong>Ganho Real</strong> desconta a inflação do seu retorno. Se sua carteira tem menos de 1 ano, usamos a inflação proporcional ao tempo investido para uma comparação justa.
              </div>
           </div>
       </SwipeableModal>
