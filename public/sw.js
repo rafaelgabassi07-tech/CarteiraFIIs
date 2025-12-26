@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-v19';
+const CACHE_NAME = 'investfiis-v20';
 const STATIC_ASSETS = [
   './',
   './index.html',

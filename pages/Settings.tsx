@@ -1,6 +1,6 @@
 
-import React, { useState, useRef } from 'react';
-import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Lock } from 'lucide-react';
 import { Transaction } from '../types';
 
 interface SettingsProps {
@@ -11,7 +11,12 @@ interface SettingsProps {
   onResetApp: () => void;
 }
 
-type SettingsSection = 'menu' | 'integrations' | 'data' | 'system';
+type SettingsSection = 'menu' | 'integrations' | 'data' | 'system' | 'notifications';
+
+interface NotificationPrefs {
+  payments: boolean;
+  datacom: boolean;
+}
 
 export const Settings: React.FC<SettingsProps> = ({ 
   brapiToken, 
@@ -24,6 +29,35 @@ export const Settings: React.FC<SettingsProps> = ({
   const [token, setToken] = useState(brapiToken);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Estado de Preferências de Notificação
+  const [notifyPrefs, setNotifyPrefs] = useState<NotificationPrefs>(() => {
+    const saved = localStorage.getItem('investfiis_prefs_notifications');
+    return saved ? JSON.parse(saved) : { payments: true, datacom: true };
+  });
+
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+
+  useEffect(() => {
+    localStorage.setItem('investfiis_prefs_notifications', JSON.stringify(notifyPrefs));
+  }, [notifyPrefs]);
+
+  const requestNotificationPermission = async () => {
+    if (!("Notification" in window)) {
+      showMessage('error', 'Navegador não suporta notificações.');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setPermissionStatus(permission);
+    if (permission === 'granted') {
+      new Notification("InvestFIIs", { body: "Notificações ativadas com sucesso!", icon: "/manifest-icon-192.maskable.png" });
+      showMessage('success', 'Permissão concedida!');
+    } else if (permission === 'denied') {
+      showMessage('error', 'Permissão negada. Ative nas configurações do navegador.');
+    }
+  };
 
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
@@ -98,6 +132,15 @@ export const Settings: React.FC<SettingsProps> = ({
     </button>
   );
 
+  const Toggle = ({ label, checked, onChange }: { label: string, checked: boolean, onChange: () => void }) => (
+    <div onClick={onChange} className="flex items-center justify-between p-4 bg-white/[0.03] rounded-2xl border border-white/[0.05] cursor-pointer active:scale-[0.99] transition-transform">
+        <span className="text-xs font-bold text-slate-300">{label}</span>
+        <div className={`transition-colors duration-300 ${checked ? 'text-emerald-400' : 'text-slate-600'}`}>
+            {checked ? <ToggleRight className="w-8 h-8 fill-emerald-500/20" /> : <ToggleLeft className="w-8 h-8" />}
+        </div>
+    </div>
+  );
+
   return (
     <div className="pb-28 pt-2 px-4 max-w-2xl mx-auto space-y-6 animate-fade-in min-h-[60vh]">
       
@@ -121,6 +164,14 @@ export const Settings: React.FC<SettingsProps> = ({
              colorClass="text-accent"
              onClick={() => setActiveSection('integrations')} 
            />
+
+           <MenuButton 
+             icon={Bell} 
+             label="Notificações" 
+             description="Alertas de proventos e datas" 
+             colorClass="text-yellow-400"
+             onClick={() => setActiveSection('notifications')} 
+           />
            
            <MenuButton 
              icon={HardDrive} 
@@ -141,7 +192,7 @@ export const Settings: React.FC<SettingsProps> = ({
            <div className="pt-8 text-center opacity-40">
               <Smartphone className="w-8 h-8 text-slate-600 mx-auto mb-2" />
               <span className="text-[10px] font-mono text-slate-500">
-                InvestFIIs v1.3.6
+                InvestFIIs v1.3.7
               </span>
            </div>
         </div>
@@ -155,6 +206,62 @@ export const Settings: React.FC<SettingsProps> = ({
           >
             <ArrowLeft className="w-4 h-4" /> Voltar
           </button>
+
+          {activeSection === 'notifications' && (
+            <div className="space-y-6 animate-fade-in-up">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-3 bg-yellow-500/10 rounded-2xl text-yellow-400">
+                        <Bell className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-black text-white">Notificações</h2>
+                        <p className="text-xs text-slate-500">Gerencie seus alertas</p>
+                    </div>
+                </div>
+
+                <div className="bg-secondary/40 backdrop-blur-md rounded-3xl border border-white/5 overflow-hidden">
+                    <div className="p-5 border-b border-white/5 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-sm font-bold text-white mb-0.5">Permissão do Navegador</h3>
+                            <p className="text-[10px] text-slate-400">Status atual do sistema</p>
+                        </div>
+                        <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
+                            permissionStatus === 'granted' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
+                            permissionStatus === 'denied' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 
+                            'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                        }`}>
+                            {permissionStatus === 'granted' ? 'Permitido' : permissionStatus === 'denied' ? 'Bloqueado' : 'Padrão'}
+                        </div>
+                    </div>
+                    <div className="p-5 bg-slate-950/30">
+                        {permissionStatus !== 'granted' ? (
+                            <button 
+                                onClick={requestNotificationPermission}
+                                className="w-full bg-accent text-primary font-black text-xs uppercase tracking-widest py-3 rounded-xl hover:brightness-110 active:scale-95 transition-all"
+                            >
+                                Solicitar Permissão
+                            </button>
+                        ) : (
+                             <p className="text-xs text-slate-500 text-center">O app tem permissão para enviar alertas.</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">Tipos de Alerta</h3>
+                    <Toggle 
+                        label="Pagamentos de Proventos" 
+                        checked={notifyPrefs.payments} 
+                        onChange={() => setNotifyPrefs(p => ({ ...p, payments: !p.payments }))} 
+                    />
+                    <Toggle 
+                        label="Alertas de Data Com (Corte)" 
+                        checked={notifyPrefs.datacom} 
+                        onChange={() => setNotifyPrefs(p => ({ ...p, datacom: !p.datacom }))} 
+                    />
+                </div>
+            </div>
+          )}
 
           {activeSection === 'integrations' && (
             <div className="space-y-6 animate-fade-in-up">

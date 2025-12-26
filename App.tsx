@@ -259,11 +259,17 @@ const App: React.FC = () => {
                todayList.push(eventObj);
                processedKeys.add(key);
                
-               // Notificação Nativa (Apenas se permissão concedida)
+               // Lógica de Notificação com Preferências
                if ("Notification" in window && Notification.permission === "granted") {
-                    const title = type === 'PAYMENT' ? `InvestFIIs: Pagamento ${div.ticker}` : `InvestFIIs: Data Com ${div.ticker}`;
-                    const body = type === 'PAYMENT' ? `Recebimento de R$ ${amount?.toFixed(2)} por cota hoje.` : `Hoje é a data limite para garantir os proventos.`;
-                    new Notification(title, { body, icon: "/manifest-icon-192.maskable.png" });
+                    const savedPrefs = localStorage.getItem('investfiis_prefs_notifications');
+                    const prefs = savedPrefs ? JSON.parse(savedPrefs) : { payments: true, datacom: true };
+
+                    // Verifica se o usuário permitiu este tipo de notificação
+                    if ((type === 'PAYMENT' && prefs.payments) || (type === 'DATA_COM' && prefs.datacom)) {
+                        const title = type === 'PAYMENT' ? `InvestFIIs: Pagamento ${div.ticker}` : `InvestFIIs: Data Com ${div.ticker}`;
+                        const body = type === 'PAYMENT' ? `Recebimento de R$ ${amount?.toFixed(2)} por cota hoje.` : `Hoje é a data limite para garantir os proventos.`;
+                        new Notification(title, { body, icon: "/manifest-icon-192.maskable.png" });
+                    }
                }
 
             } else if (diffDays > 0 && diffDays <= 7) {
