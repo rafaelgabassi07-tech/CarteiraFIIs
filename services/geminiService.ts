@@ -16,14 +16,14 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
   const prompt = `
     Atue como um Especialista em Dados de Mercado da B3 (Brasil).
-    Consulte fontes oficiais recentes (últimos 12 meses) para: ${tickerListString}.
+    Consulte fontes oficiais recentes para: ${tickerListString}.
     
     Gere um JSON VÁLIDO com a seguinte estrutura:
     {
       "assets": [
         {
-          "t": "TICKER (Ex: PETR4)",
-          "s": "Setor ou Segmento",
+          "t": "TICKER",
+          "s": "Setor",
           "type": "FII" ou "ACAO",
           "d": [
             { 
@@ -37,12 +37,10 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       ]
     }
     
-    REGRAS CRÍTICAS PARA EVITAR DUPLICIDADE:
-    - Um provento é único pela combinação de TICKER + DATA COM + DATA PAGAMENTO + TIPO.
-    - Se houver Dividendos e JCP na mesma data, trate como dois itens distintos.
-    - Datas no formato YYYY-MM-DD.
-    - Retorne APENAS o JSON, sem blocos de código markdown.
-    - PROIBIDO: Não retorne cotações ou valores de mercado.
+    REGRAS DE OURO PARA UNICIDADE:
+    1. Um provento é ÚNICO pela combinação de TICKER + MÊS/ANO da DATA COM + TIPO.
+    2. Ignore variações pequenas no dia exato do pagamento se for o mesmo mês de competência.
+    3. Retorne APENAS o JSON, sem markdown.
   `;
 
   try {
@@ -54,20 +52,14 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       }
     });
 
-    if (!response.text) {
-        throw new Error("Resposta vazia do Gemini");
-    }
+    if (!response.text) throw new Error("Resposta vazia");
 
     let jsonStr = response.text.trim();
-    if (jsonStr.startsWith('```json')) {
-        jsonStr = jsonStr.replace(/^```json/, '').replace(/```$/, '');
-    } else if (jsonStr.startsWith('```')) {
-        jsonStr = jsonStr.replace(/^```/, '').replace(/```$/, '');
+    if (jsonStr.includes('```')) {
+        jsonStr = jsonStr.replace(/```json|```/g, '').trim();
     }
-    jsonStr = jsonStr.trim();
 
     const parsed = JSON.parse(jsonStr);
-    
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[];
     
     const result: UnifiedMarketData = { 
@@ -90,18 +82,19 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
             asset.d.forEach((div: any) => {
                 if (!div.dc || !div.v) return;
                 
-                // Novo ID Único: Ticker + DataCom + DataPagto + Tipo
-                // Removido o valor do ID para que se o valor mudar na IA, ele apenas atualize o registro.
-                const type = div.ty?.toUpperCase() || "PROVENTO";
-                const paymentDate = div.dp || div.dc;
-                const divId = `${ticker}-${div.dc}-${paymentDate}-${type}`.replace(/[^a-zA-Z0-9]/g, '');
+                // ID Robusto: Ticker + Ano/Mes da Data Com + Tipo
+                // Isso evita duplicar se a IA variar o dia do pagamento ou o valor exato
+                const dateParts = div.dc.split('-');
+                const monthYear = `${dateParts[0]}-${dateParts[1]}`;
+                const type = div.ty?.toUpperCase() || "DIVIDENDO";
+                const divId = `${ticker}-${monthYear}-${type}`.replace(/[^a-zA-Z0-9]/g, '');
                 
                 result.dividends.push({
                     id: divId,
                     ticker,
                     type: type,
                     dateCom: div.dc,
-                    paymentDate: paymentDate,
+                    paymentDate: div.dp || div.dc,
                     rate: Number(div.v),
                     quantityOwned: 0,
                     totalReceived: 0
@@ -113,7 +106,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
     return result;
   } catch (error: any) {
-    console.error("Erro na Sincronização Gemini:", error);
+    console.error("Erro Gemini:", error);
     throw error;
   }
 };
