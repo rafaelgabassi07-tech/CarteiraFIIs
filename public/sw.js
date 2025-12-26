@@ -1,6 +1,6 @@
 
 // Versão do cache estático. Incrementar para forçar atualização.
-const STATIC_CACHE = 'investfiis-static-v26';
+const STATIC_CACHE = 'investfiis-static-v27';
 const DATA_CACHE = 'investfiis-data-v1';
 
 const STATIC_ASSETS = [
@@ -38,7 +38,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // APIs (Brapi e Gemini) - Network First com Fallback para Cache
+  // 1. APIs (Brapi e Gemini) - Network First com Fallback para Cache
   if (url.hostname.includes('brapi.dev') || url.hostname.includes('googleapis.com')) {
     event.respondWith(
       fetch(request)
@@ -54,11 +54,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Assets Estáticos - Cache First com atualização em background
+  // 2. Navegação (HTML) - Network First (Prioridade Rede)
+  // Isso garante que o Vercel entregue a nova versão imediatamente.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          return caches.open(STATIC_CACHE).then((cache) => {
+            cache.put(request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          // Se estiver offline, usa o cache
+          return caches.match(request);
+        })
+    );
+    return;
+  }
+
+  // 3. Assets Estáticos (JS, CSS, Imagens) - Cache First com atualização em background (Stale-While-Revalidate)
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request).then((networkResponse) => {
-        // Atualiza o cache se a rede retornar sucesso
         if (networkResponse && networkResponse.status === 200 && url.origin === self.location.origin) {
           caches.open(STATIC_CACHE).then((cache) => {
             cache.put(request, networkResponse.clone());
