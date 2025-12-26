@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, SwipeableModal } from './components/Layout';
 import { Home } from './pages/Home';
@@ -57,6 +58,7 @@ const App: React.FC = () => {
   const [pastEvents, setPastEvents] = useState<MarketEvent[]>([]);
   
   const lastSyncTickersRef = useRef<string>("");
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
     // Splash screen timing refinement
@@ -153,15 +155,7 @@ const App: React.FC = () => {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  /**
-   * REVISÃO DE LÓGICA DE ELEGIBILIDADE (DATA COM):
-   * Determina a quantidade de ativos possuídos EXATAMENTE em uma data de corte.
-   * Utiliza comparação léxica de strings (YYYY-MM-DD) para evitar problemas de timezone.
-   * Se a transação ocorreu antes ou NO DIA da data com, ela entra no cálculo.
-   */
   const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
-    // Filtra transações do ativo que ocorreram na data ou antes
-    // Ex: Data Com = '2024-05-15'. Transação em '2024-05-15' conta. Transação em '2024-05-16' não.
     const eligibleTxs = txs.filter(t => t.ticker === ticker && t.date <= dateCom);
     
     return eligibleTxs.reduce((acc, t) => {
@@ -169,31 +163,17 @@ const App: React.FC = () => {
     }, 0);
   }, []);
 
-  // Calcula a data de início da carteira (primeira transação)
   const portfolioStartDate = useMemo(() => {
     if (transactions.length === 0) return new Date().toISOString();
     const dates = transactions.map(t => t.date).sort();
     return dates[0];
   }, [transactions]);
 
-  /**
-   * CÁLCULO PRINCIPAL DA CARTEIRA E PROVENTOS
-   * Ordem de processamento corrigida:
-   * 1. Calcular Recibos de Proventos (histórico) com base nas datas de aquisição.
-   * 2. Agrupar total de dividendos por ativo.
-   * 3. Calcular Posição Atual (Quantidade e Preço Médio).
-   * 4. Enriquecer Posição Atual com Totais de Dividendos.
-   */
   const { portfolio, dividendReceipts, realizedGain } = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
-    // --- 1. Processamento de Proventos (Baseado em Aquisição) ---
-    // Itera sobre CADA dividendo informado pela IA e verifica se o usuário tinha o ativo na data.
     const receipts: DividendReceipt[] = geminiDividends.map(div => {
-      // Verifica quantas cotas o usuário tinha na Data Com deste dividendo específico
       const qtyAtDate = getQuantityOnDate(div.ticker, div.dateCom, sortedTxs);
-      
-      // Se tinha 0 ou menos, não recebe nada
       const eligibleQty = Math.max(0, qtyAtDate);
       const total = eligibleQty * div.rate;
       
@@ -201,28 +181,23 @@ const App: React.FC = () => {
           ...div, 
           quantityOwned: eligibleQty, 
           totalReceived: total,
-          // Tenta inferir o tipo de ativo se já tivermos transações dele, senão mantém undefined
           assetType: sortedTxs.find(t => t.ticker === div.ticker)?.assetType 
       };
-    }).filter(r => r.totalReceived > 0); // Remove recibos onde o valor recebido é 0
+    }).filter(r => r.totalReceived > 0);
 
-    // Ordena recibos por data de pagamento (mais recente primeiro)
     receipts.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
-    // Agrupa totais recebidos por ticker para exibir no card do ativo
     const dividendsByTicker: Record<string, number> = {};
     receipts.forEach(r => {
         dividendsByTicker[r.ticker] = (dividendsByTicker[r.ticker] || 0) + r.totalReceived;
     });
 
-    // --- 2. Processamento da Posição Atual da Carteira ---
     const positions: Record<string, AssetPosition> = {};
     let totalRealizedGain = 0;
 
     sortedTxs.forEach(t => {
       const ticker = t.ticker.toUpperCase();
       if (!positions[ticker]) {
-        // Inicializa ativo com totalDividends vindo do cálculo histórico preciso
         positions[ticker] = { 
             ticker, 
             quantity: 0, 
@@ -238,10 +213,8 @@ const App: React.FC = () => {
         const currentCost = p.quantity * p.averagePrice;
         const newCost = t.quantity * t.price;
         p.quantity += t.quantity;
-        // PM = (Custo Anterior + Novo Custo) / Nova Quantidade Total
         p.averagePrice = p.quantity > 0 ? (currentCost + newCost) / p.quantity : 0;
       } else {
-        // Venda: Realiza Lucro/Prejuízo e abate quantidade
         const costOfSold = t.quantity * p.averagePrice;
         const revenueOfSold = t.quantity * t.price;
         totalRealizedGain += (revenueOfSold - costOfSold);
@@ -249,9 +222,8 @@ const App: React.FC = () => {
       }
     });
 
-    // --- 3. Montagem Final do Portfolio ---
     const finalPortfolio = Object.values(positions)
-      .filter(p => p.quantity > 0) // Remove ativos totalmente vendidos
+      .filter(p => p.quantity > 0)
       .map(p => {
         const quote = quotes[p.ticker];
         return {
@@ -268,11 +240,9 @@ const App: React.FC = () => {
     };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
 
-  // Lógica de Detecção de Eventos Próximos (Alertas) E Histórico
   useEffect(() => {
     if (geminiDividends.length === 0) return;
 
-    // Carrega preferências salvas
     const storedPrefs = localStorage.getItem(STORAGE_KEYS.NOTIFY_PREFS);
     const notifyPrefs = storedPrefs ? JSON.parse(storedPrefs) : { payments: true, datacom: true };
 
@@ -284,7 +254,6 @@ const App: React.FC = () => {
     const processedKeys = new Set<string>();
 
     geminiDividends.forEach(div => {
-        // Função auxiliar para processar evento
         const processEvent = (dateStr: string, type: 'PAYMENT' | 'DATA_COM', desc: string, amount?: number) => {
             if (!dateStr) return;
             
@@ -308,13 +277,10 @@ const App: React.FC = () => {
                 isPast: diffDays < 0
             };
 
-            // Regra: Próximos 7 dias (incluindo hoje)
             if (diffDays >= 0 && diffDays <= 7) {
                 upcoming.push(eventObj);
                 processedKeys.add(key);
 
-                // Notificação Nativa (Apenas Hoje)
-                // Verifica as preferências do usuário antes de enviar
                 const shouldNotify = diffDays === 0 && 
                                    "Notification" in window && 
                                    Notification.permission === "granted" &&
@@ -331,30 +297,16 @@ const App: React.FC = () => {
                     new Notification(title, { body, icon: "/manifest-icon-192.maskable.png" });
                 }
             }
-            // Regra: Passado (Últimos 30 dias)
             else if (diffDays < 0 && diffDays >= -30) {
                 history.push(eventObj);
                 processedKeys.add(key);
             }
         };
 
-        // Verifica Pagamento
-        processEvent(
-            div.paymentDate, 
-            'PAYMENT', 
-            `Pagamento de ${div.type === 'DIVIDENDO' ? 'Dividendo' : 'JCP'}`, 
-            div.rate
-        );
-
-        // Verifica Data Com
-        processEvent(
-            div.dateCom, 
-            'DATA_COM', 
-            `Data Com (Corte)`
-        );
+        processEvent(div.paymentDate, 'PAYMENT', `Pagamento de ${div.type === 'DIVIDENDO' ? 'Dividendo' : 'JCP'}`, div.rate);
+        processEvent(div.dateCom, 'DATA_COM', `Data Com (Corte)`);
     });
 
-    // Ordenação: Próximos (Mais perto primeiro) | Histórico (Mais recente primeiro)
     upcoming.sort((a, b) => a.daysRemaining - b.daysRemaining);
     history.sort((a, b) => b.daysRemaining - a.daysRemaining);
 
@@ -385,10 +337,15 @@ const App: React.FC = () => {
   const handleAiSync = useCallback(async (force = false) => {
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
+    
     const tickersStr = uniqueTickers.join(',');
     const lastSync = localStorage.getItem(STORAGE_KEYS.SYNC);
+    
+    // Check de 1 hora para evitar flood de requests ao Gemini
     const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 60;
+    
     if (!force && isRecent && lastSyncTickersRef.current === tickersStr) return;
+    
     setIsAiLoading(true);
     try {
       const data = await fetchUnifiedMarketData(uniqueTickers);
@@ -415,7 +372,6 @@ const App: React.FC = () => {
     try {
       await Promise.all([syncBrapiData(true), handleAiSync(true)]);
       
-      // FORÇA A VERIFICAÇÃO DE ATUALIZAÇÃO DO SW
       if ('serviceWorker' in navigator) {
          try {
            const reg = await navigator.serviceWorker.ready;
@@ -437,9 +393,13 @@ const App: React.FC = () => {
     showToast('success', 'Movimentação atualizada');
   }, [showToast]);
 
+  // Debounce do useEffect para evitar chamadas excessivas na montagem
   useEffect(() => {
     if (transactions.length > 0 && !isAiLoading) {
-      const timeout = setTimeout(() => handleAiSync(false), 1500);
+      // Pequeno delay para garantir que não é um re-render rápido
+      const timeout = setTimeout(() => {
+         handleAiSync(false);
+      }, 2000);
       return () => clearTimeout(timeout);
     }
   }, [transactions.length, handleAiSync]);
@@ -464,10 +424,8 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-primary text-slate-100 selection:bg-accent/30 overflow-x-hidden pb-10">
       
-      {/* Sistema de Notificações Superior Centralizado */}
       <div className="fixed inset-x-0 top-0 pt-safe mt-2 z-[200] flex flex-col items-center gap-4 px-4 pointer-events-none">
         
-        {/* Banner de Nova Versão */}
         {updateRegistration && (
           <div className="w-full max-w-sm pointer-events-auto animate-slide-up">
             <div className="relative overflow-hidden bg-slate-900 border border-accent/40 p-4 rounded-3xl flex items-center justify-between gap-4 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] ring-1 ring-white/10 group">
@@ -491,7 +449,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Toasts (Sucesso/Erro) */}
         {toast && (
           <div className="w-full max-w-sm pointer-events-auto animate-fade-in-up">
             <div className={`p-4 rounded-[2rem] flex items-center gap-4 shadow-2xl backdrop-blur-2xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90' : 'bg-rose-500/90'} text-white`}>
@@ -545,7 +502,6 @@ const App: React.FC = () => {
         )}
       </main>
       
-      {/* Notifications Modal */}
       <SwipeableModal isOpen={showNotifications} onClose={() => setShowNotifications(false)}>
         <div className="px-6 pt-2 pb-10 flex flex-col h-full">
            <div className="flex items-center justify-between mb-8 shrink-0">
@@ -559,7 +515,6 @@ const App: React.FC = () => {
            </div>
 
            <div className="flex-1 overflow-y-auto no-scrollbar space-y-8">
-             {/* Seção Futuro */}
              <div className="space-y-3">
                <div className="flex items-center gap-2 mb-2 px-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
@@ -599,7 +554,6 @@ const App: React.FC = () => {
                )}
              </div>
 
-             {/* Seção Passado / Histórico */}
              {pastEvents.length > 0 && (
                <div className="space-y-3 opacity-60 hover:opacity-100 transition-opacity duration-300">
                  <div className="flex items-center gap-2 mb-2 px-1 mt-6 border-t border-white/5 pt-6">
