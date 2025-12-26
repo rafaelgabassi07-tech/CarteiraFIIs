@@ -143,13 +143,15 @@ const App: React.FC = () => {
   }, []);
 
   const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
+    // Normaliza para o meio do dia para evitar problemas de timezone
     const comDateObj = new Date(`${dateCom}T12:00:00`); 
+    if (isNaN(comDateObj.getTime())) return 0;
     
     return txs
       .filter(t => t.ticker === ticker)
       .reduce((acc, t) => {
         const txDateObj = new Date(`${t.date}T12:00:00`);
-        if (txDateObj <= comDateObj) {
+        if (!isNaN(txDateObj.getTime()) && txDateObj <= comDateObj) {
             return t.type === 'BUY' ? acc + t.quantity : acc - t.quantity;
         }
         return acc;
@@ -236,6 +238,8 @@ const App: React.FC = () => {
             if (!dateStr) return;
             
             const eventDate = new Date(dateStr + 'T12:00:00');
+            if (isNaN(eventDate.getTime())) return;
+
             const diffTime = eventDate.getTime() - today.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
@@ -316,25 +320,42 @@ const App: React.FC = () => {
   const handleAiSync = useCallback(async (force = false) => {
     const uniqueTickers: string[] = Array.from(new Set<string>(transactions.map(t => t.ticker.toUpperCase()))).sort();
     if (uniqueTickers.length === 0) return;
+    
     const tickersStr = uniqueTickers.join(',');
     const lastSync = localStorage.getItem(STORAGE_KEYS.SYNC);
-    const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 60;
-    if (!force && isRecent && lastSyncTickersRef.current === tickersStr) return;
+    const isRecent = lastSync && (Date.now() - parseInt(lastSync, 10)) < 1000 * 60 * 60; // 1 hora
+    
+    if (!force && isRecent && lastSyncTickersRef.current === tickersStr) {
+       console.log("Gemini: Dados recentes encontrados em cache. Pulando sincronização.");
+       return;
+    }
+
     setIsAiLoading(true);
+    console.log("Gemini: Iniciando busca de dados de mercado para:", tickersStr);
+    
     try {
       const data = await fetchUnifiedMarketData(uniqueTickers);
-      setGeminiDividends(prev => {
-        const merged = [...prev, ...data.dividends];
-        const uniqueMap = new Map();
-        merged.forEach(d => uniqueMap.set(d.id, d));
-        return Array.from(uniqueMap.values());
-      });
+      
+      if (data.dividends.length > 0) {
+        setGeminiDividends(prev => {
+          const merged = [...prev, ...data.dividends];
+          const uniqueMap = new Map();
+          merged.forEach(d => uniqueMap.set(d.id, d));
+          return Array.from(uniqueMap.values());
+        });
+        if (force) showToast('success', `${data.dividends.length} proventos encontrados!`);
+      } else if (force) {
+        showToast('warning', 'IA não encontrou proventos recentes.');
+      }
+
       if (data.sources) setSources(data.sources);
+      
       localStorage.setItem(STORAGE_KEYS.SYNC, Date.now().toString());
       lastSyncTickersRef.current = tickersStr;
-      if (force) showToast('success', 'Dividendos Atualizados');
+      
     } catch (e) {
-      if (force) showToast('error', 'Erro na IA de Dividendos');
+      console.error("Gemini: Erro na sincronização", e);
+      if (force) showToast('error', 'Falha ao conectar com IA de Dividendos');
     } finally {
       setIsAiLoading(false);
     }
@@ -345,9 +366,9 @@ const App: React.FC = () => {
     setIsRefreshing(true);
     try {
       await Promise.all([syncBrapiData(true), handleAiSync(true)]);
-      showToast('success', 'Dados atualizados com sucesso');
+      showToast('success', 'Carteira atualizada com sucesso');
     } catch (error) {
-      showToast('error', 'Falha na atualização');
+      showToast('error', 'Falha na atualização global');
     } finally {
       setIsRefreshing(false);
     }
@@ -360,7 +381,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (transactions.length > 0 && !isAiLoading) {
-      const timeout = setTimeout(() => handleAiSync(false), 1500);
+      const timeout = setTimeout(() => handleAiSync(false), 2000);
       return () => clearTimeout(timeout);
     }
   }, [transactions.length, handleAiSync]);
@@ -397,147 +418,141 @@ const App: React.FC = () => {
                     <p className="text-xs font-bold text-white whitespace-nowrap">Nova versão disponível</p>
                   </div>
                 </div>
+                {/* Fixed truncated button and completed JSX */}
                 <button 
                   onClick={handleApplyUpdate} 
-                  className="relative z-10 bg-accent text-primary px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-accent/20 tap-highlight"
+                  className="relative z-10 bg-accent text-primary px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-accent/20"
                 >
-                  Atualizar
+                  Reiniciar
                 </button>
-            </div>
-          </div>
-        )}
-
-        {toast && (
-          <div className="w-full max-w-sm pointer-events-auto animate-fade-in-up">
-            <div className={`p-4 rounded-[2rem] flex items-center gap-4 shadow-2xl backdrop-blur-2xl border border-white/10 ${toast.type === 'success' ? 'bg-emerald-500/90' : 'bg-rose-500/90'} text-white`}>
-              {toast.type === 'success' ? <CheckCircle2 className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
-              <span className="text-xs font-black uppercase tracking-wider">{toast.text}</span>
             </div>
           </div>
         )}
       </div>
 
       <Header 
-        title={showSettings ? 'Configurações' : currentTab === 'home' ? 'Resumo' : currentTab === 'portfolio' ? 'Minha Carteira' : 'Histórico'} 
-        onSettingsClick={() => setShowSettings(true)} 
-        showBack={showSettings}
-        onBack={() => setShowSettings(false)}
-        onRefresh={handleFullRefresh} 
-        isRefreshing={isRefreshing || isAiLoading}
+        title={currentTab === 'home' ? 'Início' : currentTab === 'portfolio' ? 'Carteira' : 'Ordens'} 
+        onSettingsClick={() => setShowSettings(true)}
+        onRefresh={handleFullRefresh}
+        isRefreshing={isRefreshing}
         onNotificationClick={() => setShowNotifications(true)}
         notificationCount={todayEvents.length + upcomingEvents.length}
       />
-      
-      <main className="max-w-screen-md mx-auto min-h-[calc(100vh-160px)]">
-        {showSettings ? (
-          <Settings 
-            brapiToken={brapiToken} onSaveToken={setBrapiToken} 
-            transactions={transactions} onImportTransactions={setTransactions}
-            onResetApp={() => { localStorage.clear(); window.location.reload(); }}
+
+      <main className="relative z-10">
+        {currentTab === 'home' && (
+          <Home 
+            portfolio={portfolio} 
+            dividendReceipts={dividendReceipts} 
+            realizedGain={realizedGain}
+            onAiSync={() => handleAiSync(true)}
+            isAiLoading={isAiLoading}
+            sources={sources}
+            portfolioStartDate={portfolioStartDate}
           />
-        ) : (
-          <div key={currentTab} className="animate-fade-in duration-300">
-            {currentTab === 'home' && (
-              <Home 
-                portfolio={portfolio} 
-                dividendReceipts={dividendReceipts} 
-                isAiLoading={isAiLoading} 
-                sources={sources}
-                realizedGain={realizedGain}
-                portfolioStartDate={portfolioStartDate}
-              />
-            )}
-            {currentTab === 'portfolio' && <Portfolio portfolio={portfolio} dividendReceipts={dividendReceipts} />}
-            {currentTab === 'transactions' && (
-              <Transactions 
-                transactions={transactions} 
-                onAddTransaction={(t) => setTransactions(p => [...p, { ...t, id: crypto.randomUUID() }])} 
-                onUpdateTransaction={handleUpdateTransaction}
-                onDeleteTransaction={(id) => setTransactions(p => p.filter(x => x.id !== id))}
-              />
-            )}
-          </div>
+        )}
+        {currentTab === 'portfolio' && (
+          <Portfolio 
+            portfolio={portfolio} 
+            dividendReceipts={dividendReceipts} 
+          />
+        )}
+        {currentTab === 'transactions' && (
+          <Transactions 
+            transactions={transactions} 
+            onAddTransaction={(t) => {
+                const newT = { ...t, id: Math.random().toString(36).substr(2, 9) };
+                setTransactions(prev => [...prev, newT]);
+                showToast('success', 'Transação adicionada');
+            }}
+            onUpdateTransaction={handleUpdateTransaction}
+            onDeleteTransaction={(id) => {
+                setTransactions(prev => prev.filter(tx => tx.id !== id));
+                showToast('success', 'Transação excluída');
+            }}
+          />
         )}
       </main>
-      
-      {/* Notifications Modal Reformulado */}
+
+      <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />
+
+      <SwipeableModal isOpen={showSettings} onClose={() => setShowSettings(false)}>
+        <Settings 
+          brapiToken={brapiToken} 
+          onSaveToken={setBrapiToken} 
+          transactions={transactions} 
+          onImportTransactions={(data) => {
+            setTransactions(data);
+            setShowSettings(false);
+          }}
+          onResetApp={() => {
+            setTransactions([]);
+            setBrapiToken('');
+            setGeminiDividends([]);
+            localStorage.clear();
+            window.location.reload();
+          }}
+        />
+      </SwipeableModal>
+
       <SwipeableModal isOpen={showNotifications} onClose={() => setShowNotifications(false)}>
-        <div className="px-6 pt-2 pb-10 flex flex-col h-full">
-           <div className="flex items-center justify-between mb-8 shrink-0">
-              <div>
-                <h3 className="text-2xl font-black text-white tracking-tighter">Central de Alertas</h3>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Sua agenda financeira</p>
-              </div>
-              <button onClick={() => setShowNotifications(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:scale-90 transition-all hover:bg-white/10">
-                <X className="w-5 h-5" />
-              </button>
-           </div>
-
-           <div className="flex-1 overflow-y-auto no-scrollbar space-y-8 pb-10">
-             
-             {/* Acontecendo Hoje */}
-             {todayEvents.length > 0 && (
-                <div className="space-y-3">
-                   <div className="flex items-center gap-2 px-1">
-                      <div className="relative">
-                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] relative"></div>
-                      </div>
-                      <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest">Acontecendo Hoje</h4>
-                   </div>
-                   {todayEvents.map(event => <EventCard key={event.id} event={event} />)}
+        <div className="px-6 pt-2 pb-10">
+            <div className="flex items-center justify-between mb-8">
+                <div>
+                    <h3 className="text-2xl font-black text-white tracking-tighter">Eventos</h3>
+                    <p className="text-[10px] text-accent font-black uppercase tracking-[0.2em] mt-1">Datas de Proventos</p>
                 </div>
-             )}
+                <button onClick={() => setShowNotifications(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:scale-90 transition-all hover:bg-white/10">
+                    <X className="w-5 h-5" />
+                </button>
+            </div>
 
-             {/* Próximos 7 Dias */}
-             <div className="space-y-3">
-               <div className="flex items-center gap-2 px-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-slate-500"></div>
-                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">Próximos 7 Dias</h4>
-               </div>
-               
-               {upcomingEvents.length === 0 ? (
-                 <div className="glass p-6 rounded-[2rem] flex flex-col items-center justify-center border border-dashed border-white/10 bg-white/[0.02]">
-                    <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-3">
-                      <CheckCheck className="w-6 h-6 text-slate-600" />
-                    </div>
-                    <p className="text-slate-500 font-black text-[10px] uppercase tracking-widest text-center">Sem eventos agendados.</p>
-                 </div>
-               ) : (
-                 upcomingEvents.map(event => <EventCard key={event.id} event={event} />)
-               )}
-             </div>
-
-             {/* Histórico Recente */}
-             {pastEvents.length > 0 && (
-               <div className="space-y-3 opacity-60 hover:opacity-100 transition-opacity duration-300">
-                 <div className="flex items-center gap-2 mb-2 px-1 mt-6 border-t border-white/5 pt-6">
-                    <History className="w-3.5 h-3.5 text-slate-500" />
-                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">Histórico Recente (30d)</h4>
-                 </div>
-                 {pastEvents.map((event) => (
-                   <div key={event.id} className="bg-white/[0.02] p-4 rounded-[1.5rem] flex items-center gap-3 border border-white/[0.02]">
-                     <div className="w-10 h-10 rounded-xl bg-white/[0.03] flex items-center justify-center text-slate-500 shrink-0">
-                        {event.type === 'PAYMENT' ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                     </div>
-                     <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center">
-                          <h4 className="font-bold text-slate-300 text-sm">{event.ticker}</h4>
-                          <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                             {event.formattedDate}
-                          </span>
+            <div className="space-y-8">
+                {todayEvents.length > 0 && (
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                           <BellRing className="w-3.5 h-3.5" /> Acontecendo Hoje
+                        </h4>
+                        <div className="space-y-3">
+                            {todayEvents.map(e => <EventCard key={e.id} event={e} />)}
                         </div>
-                        <p className="text-[10px] text-slate-500 font-medium truncate">{event.description}</p>
-                     </div>
-                   </div>
-                 ))}
-               </div>
-             )}
-           </div>
+                    </div>
+                )}
+
+                {upcomingEvents.length > 0 && (
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Próximos 7 Dias</h4>
+                        <div className="space-y-3">
+                            {upcomingEvents.map(e => <EventCard key={e.id} event={e} />)}
+                        </div>
+                    </div>
+                )}
+
+                {pastEvents.length > 0 && (
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em]">Histórico Recente (30d)</h4>
+                        <div className="space-y-3">
+                            {pastEvents.map(e => <EventCard key={e.id} event={e} />)}
+                        </div>
+                    </div>
+                )}
+
+                {todayEvents.length === 0 && upcomingEvents.length === 0 && pastEvents.length === 0 && (
+                    <div className="py-20 text-center opacity-40">
+                        <CheckCheck className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+                        <p className="text-slate-500 font-black text-[10px] uppercase tracking-widest">Nenhum evento registrado</p>
+                    </div>
+                )}
+            </div>
         </div>
       </SwipeableModal>
 
-      {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
+      {toast && (
+        <div className={`fixed bottom-28 left-1/2 -translate-x-1/2 z-[300] px-6 py-4 rounded-2xl flex items-center gap-3 shadow-2xl animate-fade-in-up ring-1 ring-white/10 backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 text-white' : toast.type === 'error' ? 'bg-rose-500/90 text-white' : 'bg-amber-500/90 text-white'}`}>
+            {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+            <span className="text-xs font-black">{toast.text}</span>
+        </div>
+      )}
     </div>
   );
 };
