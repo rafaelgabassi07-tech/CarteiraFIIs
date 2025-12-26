@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-v3.1.4';
+const CACHE_NAME = 'investfiis-v3.1.5';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -11,7 +11,6 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log('SW: Removendo cache antigo:', key);
             return caches.delete(key);
           }
         })

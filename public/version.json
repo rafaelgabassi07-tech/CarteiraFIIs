@@ -1,12 +1,12 @@
 
 {
-  "version": "3.1.4",
+  "version": "3.1.5",
   "date": "2024-06-05",
   "notes": [
     {
       "type": "fix",
-      "title": "Correção de Erros de Console",
-      "desc": "Tratamento de erros de origem cruzada para Service Workers em ambientes de desenvolvimento e preview."
+      "title": "Limpeza de Console",
+      "desc": "Remoção completa de tentativas de registro de Service Worker em ambientes de Sandbox para evitar erros de CORS."
     }
   ]
 }

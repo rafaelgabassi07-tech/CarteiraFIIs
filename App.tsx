@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { Rocket, CheckCircle2, Package, ArrowRight } from 'lucide-react';
 
-const APP_VERSION = '3.1.4';
+const APP_VERSION = '3.1.5';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',

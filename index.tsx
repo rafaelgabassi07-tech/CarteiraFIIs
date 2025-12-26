@@ -9,33 +9,44 @@ if (!rootElement) {
 }
 
 const initServiceWorker = async () => {
+  // 1. Detecção de Iframe: O ambiente de preview geralmente roda dentro de um iframe.
+  // Service Workers falham frequentemente em iframes de terceiros devido a particionamento de armazenamento.
+  const isIframe = window.self !== window.top;
+  
   const hostname = window.location.hostname;
   
-  // Verifica se estamos em ambiente de preview/sandbox do Google ou AI Studio
+  // 2. Lista de domínios conhecidos de Sandbox/Preview que bloqueiam SW ou causam CORS
   const isPreviewEnvironment = 
-    hostname.includes('googleusercontent.com') || 
+    isIframe ||
+    hostname.includes('googleusercontent') || 
     hostname.includes('usercontent.goog') || 
     hostname.includes('ai.studio') ||
-    hostname === 'localhost'; // Opcional: Desativar em localhost se desejar
+    hostname.includes('webcontainer') ||
+    hostname === 'localhost';
 
   if (isPreviewEnvironment) {
-    console.log('SW: Ambiente de Preview detectado. Service Worker desativado.');
-    // Garante que nenhum SW antigo permaneça
+    // Não registramos nada e tentamos limpar qualquer resíduo silenciosamente
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(regs => {
-        regs.forEach(reg => reg.unregister().catch(() => {}));
-      });
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          await reg.unregister();
+        }
+      } catch (e) {
+        // Ignora erros de limpeza em ambientes restritos
+      }
     }
     return;
   }
 
+  // Apenas tenta registrar em produção real (URL final do usuário)
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('./sw.js', {
         updateViaCache: 'none'
       });
       
-      console.log('SW: Registrado (v3.1.4)');
+      console.log('SW: Registrado (v3.1.5)');
 
       if (registration.waiting) {
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -46,29 +57,15 @@ const initServiceWorker = async () => {
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('SW: Nova versão instalada. Atualizando...');
               newWorker.postMessage({ type: 'SKIP_WAITING' });
               window.location.reload();
             }
           });
         }
       });
-
-      setInterval(() => {
-        registration.update().catch(() => {});
-      }, 60000);
-
-    } catch (error: any) {
-       // Tratamento específico para erros de Sandbox/Cross-Origin
-       if (error.message && (
-          error.message.includes('origin') || 
-          error.message.includes('scriptURL') ||
-          error.message.includes('security')
-       )) {
-         console.warn('SW: Registro bloqueado por política de segurança do navegador (Esperado em Preview).');
-         return;
-       }
-       console.error('SW: Erro no registro:', error);
+    } catch (error) {
+       // Silencia erros de registro para não poluir o console do usuário
+       // console.error('SW: Falha no registro', error); 
     }
   }
 };
