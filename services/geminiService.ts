@@ -38,10 +38,10 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     }
     
     REGRAS CRÍTICAS:
-    - Retorne APENAS o JSON, sem blocos de código markdown (sem \`\`\`json).
-    - Retorne APENAS dados confirmados.
+    - Retorne APENAS o JSON, sem blocos de código markdown.
     - Datas no formato YYYY-MM-DD.
-    - Se não houver proventos, retorne array vazio em "d".
+    - PROIBIDO: Não retorne cotações, preços atuais ou valores de mercado. A missão de preços é de outra API.
+    - Se não houver proventos confirmados nos últimos 12 meses, retorne array vazio em "d".
   `;
 
   try {
@@ -50,7 +50,6 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        // responseMimeType e responseSchema removidos pois conflitam com googleSearch
       }
     });
 
@@ -59,7 +58,6 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     }
 
     let jsonStr = response.text.trim();
-    // Limpeza robusta de Markdown caso o modelo ignore a instrução negativa
     if (jsonStr.startsWith('```json')) {
         jsonStr = jsonStr.replace(/^```json/, '').replace(/```$/, '');
     } else if (jsonStr.startsWith('```')) {
@@ -69,7 +67,6 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
     const parsed = JSON.parse(jsonStr);
     
-    // Extração de fontes (Grounding)
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as any[];
     
     const result: UnifiedMarketData = { 
@@ -90,9 +87,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
         if (Array.isArray(asset.d)) {
             asset.d.forEach((div: any) => {
-                // Validação extra de dados antes de processar
                 if (!div.dc || !div.v) return;
-
                 const divId = `${ticker}-${div.dc}-${div.v}`.replace(/[^a-zA-Z0-9]/g, '');
                 
                 result.dividends.push({
@@ -112,9 +107,6 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
     return result;
   } catch (error: any) {
-    if (error.message?.includes('429')) {
-        console.warn("Gemini Rate Limit (429). Aguarde.");
-    }
     console.error("Erro na Sincronização Gemini:", error);
     throw error;
   }

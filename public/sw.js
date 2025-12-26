@@ -1,6 +1,6 @@
 
 // Versão do cache estático. Incrementar para forçar atualização.
-const STATIC_CACHE = 'investfiis-static-v46';
+const STATIC_CACHE = 'investfiis-static-v47';
 const DATA_CACHE = 'investfiis-data-v1';
 
 const STATIC_ASSETS = [
@@ -38,14 +38,10 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  
-  if (request.method !== 'GET') {
-    return;
-  }
+  if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
 
-  // 1. APIs e Dados (Network First)
   if (url.hostname.includes('brapi.dev') || url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com')) {
     event.respondWith(
       fetch(request)
@@ -63,8 +59,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Navegação e Arquivos de Código (Network First)
-  // Mudamos para Network First para garantir que mudanças no código (App.tsx, etc) sejam baixadas imediatamente.
   event.respondWith(
     fetch(request)
       .then((networkResponse) => {
@@ -76,10 +70,7 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       })
-      .catch(() => {
-        // Se a rede falhar, tenta o cache
-        return caches.match(request);
-      })
+      .catch(() => caches.match(request))
   );
 });
 
