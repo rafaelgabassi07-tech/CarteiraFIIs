@@ -107,16 +107,16 @@ export const Transactions: React.FC<TransactionsProps> = ({
       <div className="space-y-4">
         <div className="flex justify-between items-center gap-4">
           <div className="relative flex-1 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-accent transition-colors" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-accent transition-colors" />
             <input
               type="text"
-              className="w-full bg-white/[0.03] backdrop-blur-md border border-white/[0.05] pl-11 pr-4 py-4 rounded-3xl outline-none focus:border-accent/40 focus:bg-white/[0.05] text-sm font-bold placeholder:text-slate-600 transition-all shadow-sm"
+              className="w-full bg-slate-800/60 backdrop-blur-md border border-white/10 pl-11 pr-4 py-4 rounded-3xl outline-none focus:border-accent/40 focus:bg-slate-800 text-sm font-bold placeholder:text-slate-500 text-white transition-all shadow-sm"
               placeholder="Buscar ativo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full bg-white/5 text-slate-400 active:scale-90">
+              <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full bg-white/5 text-slate-400 active:scale-90 hover:bg-white/10">
                 <X className="w-3 h-3" />
               </button>
             )}
@@ -153,64 +153,68 @@ export const Transactions: React.FC<TransactionsProps> = ({
           (Object.entries(groupedTransactions) as [string, Transaction[]][]).map(([month, trans], gIdx) => (
             <div key={month} className="space-y-4 animate-fade-in-up" style={{ animationDelay: `${gIdx * 80}ms` }}>
                 <div className="flex items-center gap-4 sticky top-24 z-10 py-2">
-                  <div className="bg-[#0f172a]/80 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/5 shadow-lg">
-                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">
+                  <div className="bg-slate-800/90 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-lg">
+                     <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] whitespace-nowrap">
                         {month}
                      </h3>
                   </div>
-                  <div className="h-px flex-1 bg-white/[0.05]" />
+                  <div className="h-px flex-1 bg-white/[0.1]" />
                 </div>
 
                 <div className="space-y-3">
                   {trans.map((t) => (
                       <div 
                         key={t.id} 
-                        className="glass-card p-5 rounded-[2.2rem] flex items-center justify-between group transition-all hover:bg-white/[0.04] border border-white/[0.03] active:scale-[0.98] shadow-sm"
+                        className={`p-5 rounded-[2.2rem] flex items-center justify-between group transition-all hover:bg-slate-700/50 border active:scale-[0.98] shadow-sm
+                          ${t.type === 'BUY' 
+                            ? 'bg-gradient-to-r from-slate-800 to-slate-900 border-white/5' 
+                            : 'bg-gradient-to-r from-slate-800 to-slate-900 border-white/5'}
+                        `}
                       >
                         <div className="flex items-center gap-4 flex-1">
-                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all ${t.type === 'BUY' ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 border-rose-500/10 text-rose-400'}`}>
+                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all shrink-0 ${t.type === 'BUY' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
                                 {t.type === 'BUY' ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                             </div>
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="font-black text-white text-base leading-none tracking-tight truncate">{t.ticker}</span>
-                                  <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md border uppercase tracking-wider ${t.assetType === AssetType.FII ? 'bg-accent/10 text-accent border-accent/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
-                                    {t.assetType}
+                                  <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md border uppercase tracking-wider ${t.assetType === AssetType.FII ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
+                                    {t.assetType === AssetType.FII ? 'FII' : 'Ação'}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                  <span className={`text-[8px] font-black uppercase tracking-[0.15em] ${t.type === 'BUY' ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
+                                  <span className={`text-[8px] font-black uppercase tracking-[0.15em] ${t.type === 'BUY' ? 'text-emerald-500/80' : 'text-rose-500/80'}`}>
                                     {t.type === 'BUY' ? 'Compra' : 'Venda'}
                                   </span>
-                                  <span className="w-1 h-1 rounded-full bg-slate-700" />
-                                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">
+                                  <span className="w-1 h-1 rounded-full bg-slate-600" />
+                                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
                                     {t.date.split('-').reverse().join('/')}
                                   </span>
                                 </div>
                             </div>
                         </div>
                         
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 pl-2">
                             <div className="text-right flex flex-col justify-center">
                                 <div className="text-white text-[15px] font-black tabular-nums tracking-tighter mb-0.5">
                                   <span className="text-[10px] text-slate-500 mr-1 font-bold">R$</span>
                                   {formatCurrency(t.quantity * t.price)}
                                 </div>
-                                <div className="text-[9px] text-slate-500 font-black tabular-nums tracking-tight opacity-80">
+                                <div className="text-[9px] text-slate-400 font-black tabular-nums tracking-tight">
                                   {t.quantity} un <span className="text-[7px] mx-0.5 opacity-40">@</span> {formatCurrency(t.price)}
                                 </div>
                             </div>
                             
-                            <div className="flex flex-col gap-1 ml-1">
+                            <div className="flex flex-col gap-1.5">
                                 <button 
                                   onClick={() => handleEdit(t)} 
-                                  className="p-2.5 rounded-xl bg-white/[0.03] text-slate-500 hover:text-accent hover:bg-accent/10 transition-all active:scale-90 border border-white/5"
+                                  className="p-2 rounded-xl bg-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-700 transition-all active:scale-90 border border-white/5"
                                 >
                                     <Pencil className="w-3.5 h-3.5" />
                                 </button>
                                 <button 
                                   onClick={() => { if(confirm('Deseja realmente excluir esta movimentação?')) onDeleteTransaction(t.id); }} 
-                                  className="p-2.5 rounded-xl bg-white/[0.03] text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-90 border border-white/5"
+                                  className="p-2 rounded-xl bg-slate-700/50 text-slate-400 hover:text-rose-400 hover:bg-rose-500/20 transition-all active:scale-90 border border-white/5"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -250,7 +254,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                 <button type="button" onClick={() => setAssetType(AssetType.FII)} className={`py-4 rounded-3xl border font-black text-[10px] uppercase tracking-widest transition-all ${assetType === AssetType.FII ? 'bg-accent/10 border-accent/20 text-accent shadow-lg shadow-accent/5' : 'bg-white/5 border-transparent text-slate-500'}`}>Fundos (FII)</button>
+                 <button type="button" onClick={() => setAssetType(AssetType.FII)} className={`py-4 rounded-3xl border font-black text-[10px] uppercase tracking-widest transition-all ${assetType === AssetType.FII ? 'bg-sky-500/10 border-sky-500/20 text-sky-400 shadow-lg shadow-sky-500/5' : 'bg-white/5 border-transparent text-slate-500'}`}>Fundos (FII)</button>
                  <button type="button" onClick={() => setAssetType(AssetType.STOCK)} className={`py-4 rounded-3xl border font-black text-[10px] uppercase tracking-widest transition-all ${assetType === AssetType.STOCK ? 'bg-purple-500/10 border-purple-500/20 text-purple-400 shadow-lg shadow-purple-500/5' : 'bg-white/5 border-transparent text-slate-500'}`}>Ações</button>
               </div>
 
@@ -262,7 +266,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     value={ticker} 
                     onChange={(e) => setTicker(e.target.value)} 
                     placeholder="EX: PETR4" 
-                    className="w-full bg-white/[0.03] border border-white/[0.05] pl-24 pr-6 py-5 rounded-[1.5rem] outline-none focus:border-accent/40 focus:bg-white/[0.06] text-sm font-black uppercase tracking-[0.1em] transition-all placeholder:text-slate-700" 
+                    className="w-full bg-white/[0.03] border border-white/[0.05] pl-24 pr-6 py-5 rounded-[1.5rem] outline-none focus:border-accent/40 focus:bg-white/[0.06] text-sm font-black uppercase tracking-[0.1em] transition-all placeholder:text-slate-700 text-white" 
                     required 
                   />
                 </div>
@@ -274,7 +278,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                       type="number" 
                       value={quantity} 
                       onChange={(e) => setQuantity(e.target.value)} 
-                      className="w-full bg-white/[0.03] border border-white/[0.05] pl-16 pr-6 py-5 rounded-[1.5rem] outline-none focus:border-accent/40 focus:bg-white/[0.06] text-sm font-black tabular-nums transition-all" 
+                      className="w-full bg-white/[0.03] border border-white/[0.05] pl-16 pr-6 py-5 rounded-[1.5rem] outline-none focus:border-accent/40 focus:bg-white/[0.06] text-sm font-black tabular-nums transition-all text-white" 
                       required 
                     />
                   </div>
@@ -285,7 +289,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                       step="0.01" 
                       value={price} 
                       onChange={(e) => setPrice(e.target.value)} 
-                      className="w-full bg-white/[0.03] border border-white/[0.05] pl-14 pr-6 py-5 rounded-[1.5rem] outline-none focus:border-accent/40 focus:bg-white/[0.06] text-sm font-black tabular-nums transition-all" 
+                      className="w-full bg-white/[0.03] border border-white/[0.05] pl-14 pr-6 py-5 rounded-[1.5rem] outline-none focus:border-accent/40 focus:bg-white/[0.06] text-sm font-black tabular-nums transition-all text-white" 
                       required 
                     />
                   </div>

@@ -23,58 +23,69 @@ const AssetCard: React.FC<{
   
   const gainPercent = asset.averagePrice > 0 ? ((currentPrice - asset.averagePrice) / asset.averagePrice) * 100 : 0;
   const gainValue = totalValue - totalCost;
+  const isFii = asset.assetType === AssetType.FII;
   
   const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <>
       <div 
-          className={`glass-card hover:bg-white/[0.05] transition-all duration-300 rounded-[2.2rem] mb-3 overflow-hidden backdrop-blur-md animate-fade-in-up ${isExpanded ? 'ring-1 ring-accent/30 bg-white/[0.05] shadow-lg' : ''}`}
+          className={`relative mb-3 overflow-hidden rounded-[2.2rem] transition-all duration-300 animate-fade-in-up group active:scale-[0.99]
+            ${isFii 
+                ? 'bg-gradient-to-br from-slate-800 to-slate-900 border border-sky-500/10 hover:border-sky-500/20 shadow-[0_4px_20px_-4px_rgba(14,165,233,0.1)]' 
+                : 'bg-gradient-to-br from-slate-800 to-slate-900 border border-purple-500/10 hover:border-purple-500/20 shadow-[0_4px_20px_-4px_rgba(168,85,247,0.1)]'}
+            ${isExpanded ? 'ring-1 ring-white/10 z-10 scale-[1.01]' : ''}
+          `}
           style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
       >
+        {/* Barra Lateral Colorida para Identificação Rápida */}
+        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isFii ? 'bg-sky-500' : 'bg-purple-500'} opacity-80`} />
+
         <div 
           onClick={() => setIsExpanded(!isExpanded)}
-          className="p-5 flex items-center justify-between cursor-pointer select-none group active:scale-[0.99] transition-transform"
+          className="p-5 pl-7 flex items-center justify-between cursor-pointer select-none"
         >
           <div className="flex items-center gap-4">
             <div className="relative">
               {asset.logoUrl ? (
-                <img src={asset.logoUrl} alt={asset.ticker} className="w-12 h-12 rounded-2xl bg-white object-contain p-1 shadow-lg ring-1 ring-white/10" />
+                <img src={asset.logoUrl} alt={asset.ticker} className="w-12 h-12 rounded-2xl bg-white object-contain p-1 shadow-md ring-1 ring-white/10" />
               ) : (
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-[10px] font-black text-white shadow-inner ring-1 ring-white/10 uppercase border border-white/5">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[10px] font-black text-white shadow-inner ring-1 ring-white/10 uppercase border border-white/5 ${isFii ? 'bg-gradient-to-br from-sky-600 to-sky-800' : 'bg-gradient-to-br from-purple-600 to-purple-800'}`}>
                   {asset.ticker.substring(0, 4)}
                 </div>
               )}
-              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-lg flex items-center justify-center border-2 border-[#0f172a] text-[8px] font-black shadow-sm ${asset.assetType === AssetType.FII ? 'bg-accent text-primary' : 'bg-purple-500 text-white'}`}>
-                {asset.assetType === AssetType.FII ? 'F' : 'A'}
-              </div>
             </div>
             <div>
-              <h4 className="font-black text-white text-base tracking-tight leading-tight">{asset.ticker}</h4>
-              <span className="text-[10px] text-slate-500 font-bold flex items-center gap-1.5 mt-0.5 uppercase tracking-wider">
-                {asset.quantity} un • R$ {formatCurrency(asset.averagePrice)}
+              <h4 className="font-black text-white text-base tracking-tight leading-tight flex items-center gap-2">
+                  {asset.ticker}
+                  <span className={`text-[7px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider border ${isFii ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
+                      {isFii ? 'FII' : 'Ação'}
+                  </span>
+              </h4>
+              <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5 mt-1 uppercase tracking-wider">
+                {asset.quantity} un • <span className="text-slate-500">Médio:</span> R$ {formatCurrency(asset.averagePrice)}
               </span>
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="text-right">
               <div className="font-black text-white text-base tabular-nums tracking-tighter">R$ {formatCurrency(totalValue)}</div>
               <div className={`text-[10px] font-black flex items-center justify-end gap-1 mt-0.5 tabular-nums ${gainPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {gainPercent >= 0 ? '+' : ''}{gainPercent.toFixed(2)}%
               </div>
             </div>
-            <div className={`p-1.5 rounded-full bg-white/5 group-hover:bg-white/10 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-accent bg-accent/10' : 'text-slate-500'}`}>
+            <div className={`p-1.5 rounded-full bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-white bg-white/10' : 'text-slate-500'}`}>
                <ChevronDown className="w-4 h-4" />
             </div>
           </div>
         </div>
 
         <div className={`transition-all duration-500 ease-in-out ${isExpanded ? 'max-h-[600px] opacity-100 border-t border-white/5' : 'max-h-0 opacity-0 overflow-hidden pointer-events-none'}`}>
-          <div className="p-5 space-y-6 bg-black/20">
+          <div className="p-5 pl-7 space-y-6 bg-black/20">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/[0.05]">
-                <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest flex items-center gap-1.5 mb-1.5">
+                <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-1.5 mb-1.5">
                   <Target className="w-3 h-3" /> Lucro Bruto
                 </span>
                 <div className={`text-sm font-black tabular-nums ${gainValue >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -82,7 +93,7 @@ const AssetCard: React.FC<{
                 </div>
               </div>
               <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/[0.05]">
-                <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest flex items-center gap-1.5 mb-1.5">
+                <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-1.5 mb-1.5">
                   <DollarSign className="w-3 h-3 text-emerald-400" /> Proventos
                 </span>
                 <div className="text-sm font-black text-white tabular-nums">
@@ -93,8 +104,8 @@ const AssetCard: React.FC<{
 
             <div className="pt-2 space-y-4">
               <div className="flex items-center gap-2 mb-3">
-                 <BarChart3 className="w-3.5 h-3.5 text-accent" />
-                 <span className="text-[10px] font-black text-white uppercase tracking-widest">Métricas de Performance</span>
+                 <BarChart3 className="w-3.5 h-3.5 text-slate-400" />
+                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Métricas de Performance</span>
               </div>
               
               <div className="grid grid-cols-2 gap-y-4 px-1">
@@ -114,20 +125,22 @@ const AssetCard: React.FC<{
               
               <button 
                 onClick={(e) => { e.stopPropagation(); setShowHistoryModal(true); }}
-                className="w-full flex items-center justify-between p-4 bg-accent/5 rounded-[1.8rem] border border-accent/10 hover:bg-accent/10 transition-colors group/btn active:scale-[0.98]"
+                className={`w-full flex items-center justify-between p-4 rounded-[1.8rem] border transition-colors group/btn active:scale-[0.98] mt-2
+                    ${isFii ? 'bg-sky-500/5 border-sky-500/10 hover:bg-sky-500/10' : 'bg-purple-500/5 border-purple-500/10 hover:bg-purple-500/10'}
+                `}
               >
                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-accent/20 rounded-xl text-accent shadow-lg shadow-accent/10">
+                    <div className={`p-2 rounded-xl shadow-lg ${isFii ? 'bg-sky-500/20 text-sky-400 shadow-sky-500/10' : 'bg-purple-500/20 text-purple-400 shadow-purple-500/10'}`}>
                       <TrendingUp className="w-4 h-4" />
                     </div>
                     <div className="text-left">
-                      <div className="text-[9px] font-black text-accent uppercase leading-none mb-1 tracking-widest">Rendimentos</div>
+                      <div className={`text-[9px] font-black uppercase leading-none mb-1 tracking-widest ${isFii ? 'text-sky-400' : 'text-purple-400'}`}>Rendimentos</div>
                       <div className="text-xs font-black text-white">
                         Ver histórico detalhado
                       </div>
                     </div>
                  </div>
-                 <ChevronRight className="w-4 h-4 text-accent/50 group-hover/btn:translate-x-1 transition-transform" />
+                 <ChevronRight className={`w-4 h-4 transition-transform group-hover/btn:translate-x-1 ${isFii ? 'text-sky-500/50' : 'text-purple-500/50'}`} />
               </button>
             </div>
           </div>
@@ -139,7 +152,7 @@ const AssetCard: React.FC<{
             {/* Conteúdo do modal mantido para brevidade */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-accent/20 to-accent/5 rounded-[1.5rem] flex items-center justify-center text-accent font-black text-2xl shadow-xl ring-1 ring-accent/20">
+                  <div className={`w-16 h-16 bg-gradient-to-br rounded-[1.5rem] flex items-center justify-center font-black text-2xl shadow-xl ring-1 ${isFii ? 'from-sky-500/20 to-sky-500/5 text-sky-400 ring-sky-500/20' : 'from-purple-500/20 to-purple-500/5 text-purple-400 ring-purple-500/20'}`}>
                     {asset.ticker.slice(0, 4)}
                   </div>
                   <div>
@@ -152,12 +165,12 @@ const AssetCard: React.FC<{
                 </button>
             </div>
               
-            <div className="p-6 glass rounded-[2.5rem] flex justify-between items-center bg-accent/5 border border-accent/10 mb-6">
+            <div className="p-6 glass rounded-[2.5rem] flex justify-between items-center bg-slate-800/50 border border-white/5 mb-6">
                 <div>
-                  <div className="text-[9px] font-black text-accent uppercase tracking-[0.3em] mb-1.5 opacity-70">Total Recebido</div>
+                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1.5">Total Recebido</div>
                   <div className="text-3xl font-black text-white tabular-nums">R$ {formatCurrency(asset.totalDividends || 0)}</div>
                 </div>
-                <div className="p-4 bg-accent/10 rounded-[1.5rem] text-accent border border-accent/20 shadow-inner">
+                <div className="p-4 bg-emerald-500/10 rounded-[1.5rem] text-emerald-400 border border-emerald-500/20 shadow-inner">
                    <DollarSign className="w-8 h-8" />
                 </div>
             </div>
@@ -174,7 +187,7 @@ const AssetCard: React.FC<{
                 history.map((receipt, idx) => {
                    const isJcp = receipt.type.toUpperCase().includes('JCP');
                    return (
-                    <div key={receipt.id} className="relative glass p-5 rounded-[2.2rem] animate-fade-in-up border border-white/[0.04]" style={{ animationDelay: `${idx * 40}ms` }}>
+                    <div key={receipt.id} className="relative bg-white/[0.03] p-5 rounded-[2.2rem] animate-fade-in-up border border-white/[0.04]" style={{ animationDelay: `${idx * 40}ms` }}>
                       <div className={`absolute left-0 top-6 bottom-6 w-1 rounded-r-full ${isJcp ? 'bg-purple-500' : 'bg-emerald-500'} shadow-[0_0_10px_currentColor]`} />
                       
                       <div className="grid grid-cols-[1fr_auto] items-center gap-4">
@@ -192,7 +205,7 @@ const AssetCard: React.FC<{
                                <Timer className="w-3 h-3" />
                                Data-Com: {receipt.dateCom.split('-').reverse().join('/')}
                             </span>
-                            <span className="flex items-center gap-1.5 text-[9px] font-bold text-indigo-400 uppercase tracking-widest">
+                            <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                                <Scale className="w-3 h-3" />
                                Posição na data: {receipt.quantityOwned} un
                             </span>
@@ -203,7 +216,7 @@ const AssetCard: React.FC<{
                           <div className="text-lg font-black text-emerald-400 tabular-nums leading-none">
                             R$ {formatCurrency(receipt.totalReceived)}
                           </div>
-                          <div className="text-[10px] text-slate-600 font-black tabular-nums mt-2 tracking-tighter">
+                          <div className="text-[10px] text-slate-500 font-black tabular-nums mt-2 tracking-tighter">
                             {receipt.quantityOwned} un × {receipt.rate.toFixed(4)}
                           </div>
                         </div>
@@ -243,8 +256,8 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividendReceipt
       {fiis.length > 0 && (
         <div className="mb-10 animate-fade-in-up">
           <div className="flex items-center gap-3 mb-5 px-2">
-            <div className="p-2 bg-accent/10 rounded-xl border border-accent/10">
-                <Building2 className="w-4 h-4 text-accent" />
+            <div className="p-2 bg-sky-500/10 rounded-xl border border-sky-500/10">
+                <Building2 className="w-4 h-4 text-sky-500" />
             </div>
             <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-[0.25em]">Fundos Imobiliários</h3>
             <div className="h-px flex-1 bg-white/[0.05] ml-2" />
