@@ -52,10 +52,14 @@ const App: React.FC = () => {
   
   // Estados de Atualização
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
-  const [showUpdateBanner, setShowUpdateBanner] = useState(false); // Estado separado para visibilidade do banner
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [availableVersion, setAvailableVersion] = useState<string | null>(null);
   const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([]);
   const [showChangelog, setShowChangelog] = useState(false);
+  
+  // Novo estado para a barra de progresso
+  const [updateProgress, setUpdateProgress] = useState(0);
+  
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -138,58 +142,66 @@ const App: React.FC = () => {
 
   // --- LÓGICA DE ATUALIZAÇÃO MANUAL E ESTRITA ---
   const checkForUpdates = useCallback(async (manual = false) => {
-    // 1. Verificação de Service Worker (Instalado e Esperando)
     if ('serviceWorker' in navigator) {
         let reg = swRegistrationRef.current;
-        
-        // Se não tivermos a referência, buscamos novamente
         if (!reg) {
             const registration = await navigator.serviceWorker.getRegistration();
-            reg = registration || null; // Fix TS Type: undefined -> null
+            reg = registration || null; 
             swRegistrationRef.current = reg;
         }
 
         if (reg) {
             if (manual) {
-                // Check forçado no servidor
                 try { await reg.update(); } catch(e){}
             }
-
-            // Se JÁ houver um SW esperando (waiting), ativamos a UI de update
             if (reg.waiting) {
                 setIsUpdateAvailable(true);
-                setShowUpdateBanner(true); // Exibe banner quando SW está esperando
-                // Busca metadados (notas) do JSON
+                setShowUpdateBanner(true);
                 fetchVersionJson(); 
                 return true;
             }
         }
     }
-
-    // 2. Fallback JSON (para notificações visuais mesmo sem SW pronto ainda)
     const jsonUpdated = await fetchVersionJson();
     return jsonUpdated;
   }, []);
 
-  const performUpdate = () => {
-    if ('serviceWorker' in navigator && swRegistrationRef.current && swRegistrationRef.current.waiting) {
-        // Envia mensagem para o SW que está ESPERANDO (waiting) para assumir (skipWaiting)
-        // Isso é o único momento que a atualização é aplicada
-        swRegistrationRef.current.waiting.postMessage({ type: 'SKIP_WAITING' });
-    } else {
-        // Fallback simples se não houver SW ou erro
-        window.location.reload();
-    }
+  // Lógica de Atualização com Animação
+  const startUpdateProcess = () => {
+    // Se já estiver em progresso, ignora
+    if (updateProgress > 0) return;
+
+    // Inicia animação
+    let progress = 0;
+    const interval = setInterval(() => {
+        // Incremento não linear para parecer "download real"
+        const increment = Math.max(1, Math.floor(Math.random() * 10));
+        progress += increment;
+
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+            setUpdateProgress(100);
+            
+            // Pequeno delay no 100% para satisfação visual antes do reload
+            setTimeout(() => {
+                if ('serviceWorker' in navigator && swRegistrationRef.current && swRegistrationRef.current.waiting) {
+                    swRegistrationRef.current.waiting.postMessage({ type: 'SKIP_WAITING' });
+                } else {
+                    window.location.reload();
+                }
+            }, 600);
+        } else {
+            setUpdateProgress(progress);
+        }
+    }, 150); // Velocidade da animação
   };
 
   useEffect(() => {
-     // Check inicial ao carregar
      checkForUpdates();
      
      if ('serviceWorker' in navigator) {
          let refreshing = false;
-
-         // Listener: Quando o SW novo assumir o controle (após skipWaiting), recarrega a página
          navigator.serviceWorker.addEventListener('controllerchange', () => {
              if (!refreshing) {
                  refreshing = true;
@@ -200,23 +212,18 @@ const App: React.FC = () => {
          navigator.serviceWorker.getRegistration().then(reg => {
              if (reg) {
                  swRegistrationRef.current = reg;
-                 
-                 // Caso 1: Já existe um esperando ao abrir o app
                  if (reg.waiting) {
                      setIsUpdateAvailable(true);
-                     setShowUpdateBanner(true); // Exibe banner
+                     setShowUpdateBanner(true);
                      fetchVersionJson();
                  }
-
-                 // Caso 2: Detecta nova instalação em segundo plano
                  reg.addEventListener('updatefound', () => {
                      const newWorker = reg.installing;
                      if (newWorker) {
                          newWorker.addEventListener('statechange', () => {
-                             // Quando o novo worker terminar de instalar e entrar em espera (installed/waiting)
                              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                  setIsUpdateAvailable(true);
-                                 setShowUpdateBanner(true); // Exibe banner
+                                 setShowUpdateBanner(true);
                                  fetchVersionJson();
                              }
                          });
@@ -226,7 +233,6 @@ const App: React.FC = () => {
          });
      }
 
-     // Lógica de "O que há de novo" (apenas visual, não afeta o update do código)
      const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
      if (compareVersions(APP_VERSION, lastSeen) > 0) {
          localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
@@ -448,8 +454,8 @@ const App: React.FC = () => {
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       {/* Banner de Atualização que estava faltando */}
       <UpdateBanner 
-        isOpen={showUpdateBanner} // Alterado para usar o estado exclusivo do banner
-        onDismiss={() => setShowUpdateBanner(false)} // Fecha apenas o banner, mantendo o botão no header
+        isOpen={showUpdateBanner} 
+        onDismiss={() => setShowUpdateBanner(false)} 
         onUpdate={() => setShowChangelog(true)} 
         version={availableVersion || 'Nova'} 
       />
@@ -537,11 +543,15 @@ const App: React.FC = () => {
 
       <ChangelogModal 
         isOpen={showChangelog} 
-        onClose={() => setShowChangelog(false)} 
+        onClose={() => {
+            // Só permite fechar se não estiver atualizando
+            if (updateProgress === 0) setShowChangelog(false);
+        }} 
         version={availableVersion || APP_VERSION} 
         notes={releaseNotes}
         isUpdatePending={isUpdateAvailable}
-        onUpdate={performUpdate}
+        onUpdate={startUpdateProcess}
+        progress={updateProgress}
       />
       
       <NotificationsModal 

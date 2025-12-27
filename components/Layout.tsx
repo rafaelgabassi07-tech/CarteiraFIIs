@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles } from 'lucide-react';
@@ -310,12 +311,13 @@ export const ChangelogModal: React.FC<{
   notes?: ReleaseNote[];
   isUpdatePending?: boolean;
   onUpdate?: () => void;
-}> = ({ isOpen, onClose, version, notes, isUpdatePending, onUpdate }) => {
+  progress?: number;
+}> = ({ isOpen, onClose, version, notes, isUpdatePending, onUpdate, progress = 0 }) => {
   if (!isOpen) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6 animate-fade-in">
-        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl transition-all" onClick={onClose} />
+        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl transition-all" onClick={progress > 0 ? undefined : onClose} />
         
         <div className="relative bg-white dark:bg-[#0f172a] w-full max-w-sm rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-scale-in border border-white/10">
             <div className="relative h-40 bg-slate-900 overflow-hidden shrink-0">
@@ -332,9 +334,11 @@ export const ChangelogModal: React.FC<{
                     <p className="text-[10px] font-medium text-white/60 uppercase tracking-widest">Release Notes</p>
                 </div>
                 
-                <button onClick={onClose} className="absolute top-5 right-5 p-2 rounded-full bg-black/20 text-white/70 hover:bg-black/40 backdrop-blur-md transition-all active:scale-90 z-20">
-                    <X className="w-5 h-5" />
-                </button>
+                {progress === 0 && (
+                  <button onClick={onClose} className="absolute top-5 right-5 p-2 rounded-full bg-black/20 text-white/70 hover:bg-black/40 backdrop-blur-md transition-all active:scale-90 z-20">
+                      <X className="w-5 h-5" />
+                  </button>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto max-h-[50vh] p-8 bg-white dark:bg-[#0f172a]">
@@ -366,10 +370,31 @@ export const ChangelogModal: React.FC<{
 
             <div className="p-6 bg-white dark:bg-[#0f172a] border-t border-slate-100 dark:border-white/5 shrink-0">
                {isUpdatePending ? (
-                 <button onClick={onUpdate} className="w-full bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl shadow-accent/20 hover:shadow-2xl hover:brightness-110 flex items-center justify-center gap-3">
-                    <Download className="w-4 h-4" strokeWidth={2.5} /> 
-                    <span>Instalar Atualização</span>
-                 </button>
+                 progress > 0 ? (
+                   <div className="w-full">
+                      <div className="flex justify-between items-center mb-2 px-1">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">
+                             {progress < 100 ? 'Baixando...' : 'Aplicando...'}
+                          </span>
+                          <span className="text-[10px] font-bold text-accent tabular-nums">
+                             {progress}%
+                          </span>
+                      </div>
+                      <div className="h-3 w-full bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden relative">
+                          <div 
+                             className="h-full bg-accent transition-all duration-300 ease-out relative overflow-hidden" 
+                             style={{ width: `${progress}%` }}
+                          >
+                             <div className="absolute inset-0 bg-white/30 animate-[shimmer_1.5s_infinite] w-full transform -skew-x-12 translate-x-[-100%]"></div>
+                          </div>
+                      </div>
+                   </div>
+                 ) : (
+                   <button onClick={onUpdate} className="w-full bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl shadow-accent/20 hover:shadow-2xl hover:brightness-110 flex items-center justify-center gap-3">
+                      <Download className="w-4 h-4" strokeWidth={2.5} /> 
+                      <span>Instalar Atualização</span>
+                   </button>
+                 )
                ) : (
                  <button onClick={onClose} className="w-full bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-300 py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all hover:bg-slate-100 dark:hover:bg-white/10">
                     Fechar Notas
@@ -381,3 +406,4 @@ export const ChangelogModal: React.FC<{
     document.body
   );
 };
+
