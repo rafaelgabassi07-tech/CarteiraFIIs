@@ -42,31 +42,34 @@
               accent: 'var(--color-accent)', 
             },
             animation: {
-              'fade-in': 'fadeIn 0.4s ease-out',
+              'fade-in': 'fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
               'fade-in-up': 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
               'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'scale-in': 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+              'slide-in-right': 'slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
             },
             keyframes: {
               fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-              fadeInUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+              fadeInUp: { '0%': { opacity: '0', transform: 'translateY(15px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
               slideUp: { '0%': { transform: 'translateY(100%)' }, '100%': { transform: 'translateY(0)' } },
-              scaleIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } }
+              scaleIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+              slideInRight: { '0%': { opacity: '0', transform: 'translateX(20px)' }, '100%': { opacity: '1', transform: 'translateX(0)' } }
             },
             boxShadow: {
               'glow': '0 0 20px -5px var(--color-accent)',
+              'card': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
             }
           }
         }
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
       body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
       
       /* Scrollbar Customizada */
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar { width: 4px; height: 4px; }
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
       .dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
@@ -93,8 +96,8 @@
       /* Glassmorphism Utilities */
       .glass {
         background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
       }
       .dark .glass {
         background: rgba(15, 23, 42, 0.6);
@@ -116,7 +119,7 @@
 }
 </script>
 </head>
-  <body class="bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100 min-h-screen selection:bg-accent selection:text-white">
+  <body class="bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100 min-h-screen selection:bg-accent selection:text-white overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>

@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, HardDrive, Cpu, Smartphone, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, GitBranch, History, Sparkles } from 'lucide-react';
 import { Transaction, DividendReceipt } from '../types';
 import { ThemeType } from '../App';
 
@@ -18,6 +18,10 @@ interface SettingsProps {
   onSetAccentColor: (color: string) => void;
   privacyMode: boolean;
   onSetPrivacyMode: (enabled: boolean) => void;
+  appVersion: string;
+  updateAvailable: boolean;
+  onCheckUpdates: () => void;
+  onShowChangelog: () => void;
 }
 
 interface PortfolioBackup {
@@ -28,7 +32,7 @@ interface PortfolioBackup {
   exportDate: string;
 }
 
-type SettingsSection = 'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance';
+type SettingsSection = 'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates';
 
 interface NotificationPrefs {
   payments: boolean;
@@ -56,7 +60,11 @@ export const Settings: React.FC<SettingsProps> = ({
   accentColor,
   onSetAccentColor,
   privacyMode,
-  onSetPrivacyMode
+  onSetPrivacyMode,
+  appVersion,
+  updateAvailable,
+  onCheckUpdates,
+  onShowChangelog
 }) => {
   const [activeSection, setActiveSection] = useState<SettingsSection>('menu');
   const [token, setToken] = useState(brapiToken);
@@ -148,46 +156,34 @@ export const Settings: React.FC<SettingsProps> = ({
     event.target.value = ''; 
   };
 
-  const handleForceUpdate = async () => {
-    if (window.confirm("Isso irá recarregar o app e limpar caches temporários. Continuar?")) {
-        try {
-            if ('caches' in window) {
-                const keys = await caches.keys();
-                for (let key of keys) await caches.delete(key);
-            }
-            window.location.reload(); 
-        } catch (e) {
-            showMessage('error', 'Erro ao forçar atualização.');
-        }
-    }
-  };
-
   const MenuButton = ({ icon: Icon, label, description, onClick, colorClass = "text-slate-400" }: any) => (
     <button 
       onClick={onClick}
-      className="w-full bg-white dark:bg-secondary-dark/40 backdrop-blur-md rounded-3xl p-5 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-secondary-dark/60 transition-all flex items-center justify-between group active:scale-[0.98] shadow-sm dark:shadow-none"
+      className="w-full bg-white dark:bg-secondary-dark/40 backdrop-blur-md rounded-[2rem] p-5 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-secondary-dark/60 transition-all flex items-center justify-between group active:scale-[0.98] shadow-sm dark:shadow-none hover:shadow-card"
     >
-      <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center ${colorClass} group-hover:scale-110 transition-transform`}>
-          <Icon className="w-6 h-6" />
+      <div className="flex items-center gap-5">
+        <div className={`w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center ${colorClass} group-hover:scale-110 transition-transform`}>
+          <Icon className="w-6 h-6" strokeWidth={1.5} />
         </div>
         <div className="text-left">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{label}</h3>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{label}</h3>
           <p className="text-xs text-slate-500 font-medium">{description}</p>
         </div>
       </div>
-      <ChevronRight className="w-5 h-5 text-slate-400 dark:text-slate-600 group-hover:text-accent transition-colors" />
+      <div className="p-2 rounded-full bg-slate-50 dark:bg-white/5 group-hover:bg-white dark:group-hover:bg-white/10 transition-colors">
+        <ChevronRight className="w-5 h-5 text-slate-400 dark:text-slate-600 group-hover:text-accent transition-colors" />
+      </div>
     </button>
   );
 
   const Toggle = ({ label, checked, onChange, icon: Icon }: { label: string, checked: boolean, onChange: () => void, icon?: any }) => (
-    <div onClick={onChange} className="flex items-center justify-between p-5 bg-white dark:bg-white/[0.03] rounded-3xl border border-slate-200 dark:border-white/10 cursor-pointer active:scale-[0.99] transition-transform shadow-sm dark:shadow-none">
+    <div onClick={onChange} className="flex items-center justify-between p-5 bg-white dark:bg-white/[0.03] rounded-3xl border border-slate-200 dark:border-white/10 cursor-pointer active:scale-[0.99] transition-transform shadow-sm dark:shadow-none hover:bg-slate-50 dark:hover:bg-white/5">
         <div className="flex items-center gap-3">
-          {Icon && <Icon className="w-5 h-5 text-slate-400" />}
+          {Icon && <Icon className="w-5 h-5 text-slate-400" strokeWidth={2} />}
           <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{label}</span>
         </div>
         <div className={`transition-colors duration-300 ${checked ? 'text-accent' : 'text-slate-400'}`}>
-            {checked ? <ToggleRight className="w-10 h-10" /> : <ToggleLeft className="w-10 h-10" />}
+            {checked ? <ToggleRight className="w-10 h-10" strokeWidth={1.5} /> : <ToggleLeft className="w-10 h-10" strokeWidth={1.5} />}
         </div>
     </div>
   );
@@ -195,15 +191,15 @@ export const Settings: React.FC<SettingsProps> = ({
   const AppearanceCard = ({ id, label, icon: Icon }: { id: ThemeType, label: string, icon: any }) => (
     <button 
       onClick={() => onSetTheme(id)}
-      className={`flex-1 p-6 rounded-3xl border transition-all flex flex-col items-center gap-3 active:scale-95 ${theme === id ? 'bg-accent text-white border-accent shadow-lg' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400'}`}
+      className={`flex-1 p-6 rounded-3xl border transition-all flex flex-col items-center gap-3 active:scale-95 ${theme === id ? 'bg-accent text-white border-accent shadow-lg' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-50'}`}
     >
-      <Icon className="w-8 h-8" />
+      <Icon className="w-8 h-8" strokeWidth={1.5} />
       <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
     </button>
   );
 
   return (
-    <div className="pb-28 pt-2 px-4 max-w-2xl mx-auto space-y-6 animate-fade-in min-h-[60vh]">
+    <div className="pb-32 pt-2 px-5 max-w-2xl mx-auto space-y-6 animate-fade-in min-h-[60vh]">
       
       <div className={`fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-sm p-4 rounded-2xl flex items-center gap-3 shadow-2xl z-[70] transition-all duration-300 transform backdrop-blur-md border ${message ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} ${message?.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'}`}>
         {message?.type === 'success' ? <CheckCircle2 className="w-6 h-6 shrink-0" /> : <AlertTriangle className="w-6 h-6 shrink-0" />}
@@ -220,29 +216,29 @@ export const Settings: React.FC<SettingsProps> = ({
            <MenuButton icon={Palette} label="Aparência" description="Cores, temas e privacidade" colorClass="text-accent" onClick={() => setActiveSection('appearance')} />
            <MenuButton icon={Globe} label="Conexões e APIs" description="Gerencie chaves da Brapi e Google" colorClass="text-emerald-500" onClick={() => setActiveSection('integrations')} />
            <MenuButton icon={Bell} label="Notificações" description="Alertas de proventos e datas" colorClass="text-yellow-500" onClick={() => setActiveSection('notifications')} />
+           <MenuButton icon={RefreshCcw} label="Versão e Atualizações" description={`v${appVersion}`} colorClass="text-indigo-500" onClick={() => setActiveSection('updates')} />
            <MenuButton icon={HardDrive} label="Dados e Backup" description="Backup completo da carteira" colorClass="text-purple-500" onClick={() => setActiveSection('data')} />
-           <MenuButton icon={Cpu} label="Sistema" description="Limpeza de cache e reset" colorClass="text-rose-500" onClick={() => setActiveSection('system')} />
+           <MenuButton icon={Cpu} label="Sistema" description="Zonas de perigo e resets" colorClass="text-rose-500" onClick={() => setActiveSection('system')} />
 
            <div className="pt-8 text-center opacity-40">
-              <Smartphone className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v3.4.0</span>
+              <Smartphone className="w-8 h-8 text-slate-400 mx-auto mb-2" strokeWidth={1} />
+              <span className="text-[10px] font-mono text-slate-500">InvestFIIs v{appVersion}</span>
            </div>
         </div>
       )}
 
       {activeSection !== 'menu' && (
         <div className="animate-fade-in">
-          <button onClick={() => setActiveSection('menu')} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-accent transition-colors mb-6 font-bold text-sm px-1 py-2">
-            <ArrowLeft className="w-4 h-4" /> Voltar
+          <button onClick={() => setActiveSection('menu')} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-accent transition-colors mb-6 font-bold text-sm px-1 py-2 group">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Voltar
           </button>
 
           {activeSection === 'appearance' && (
             <div className="space-y-8 animate-fade-in-up">
               
-              {/* Tema */}
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl"><Sun className="w-5 h-5" /></div>
+                    <div className="p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl"><Sun className="w-5 h-5" strokeWidth={2} /></div>
                     <h3 className="font-bold text-sm uppercase tracking-wide">Modo de Cor</h3>
                 </div>
                 <div className="flex gap-3">
@@ -252,10 +248,9 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
 
-              {/* Destaque */}
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl"><Palette className="w-5 h-5" /></div>
+                    <div className="p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl"><Palette className="w-5 h-5" strokeWidth={2} /></div>
                     <h3 className="font-bold text-sm uppercase tracking-wide">Cor de Destaque</h3>
                 </div>
                 <div className="grid grid-cols-5 gap-3">
@@ -266,16 +261,15 @@ export const Settings: React.FC<SettingsProps> = ({
                             className={`aspect-square rounded-2xl ${c.class} flex items-center justify-center transition-transform active:scale-90 border-2 ${accentColor === c.hex ? 'border-white dark:border-slate-900 shadow-xl scale-110' : 'border-transparent opacity-60 hover:opacity-100'}`}
                             title={c.name}
                         >
-                            {accentColor === c.hex && <CheckCircle2 className="w-5 h-5 text-white drop-shadow-md" />}
+                            {accentColor === c.hex && <CheckCircle2 className="w-6 h-6 text-white drop-shadow-md" />}
                         </button>
                     ))}
                 </div>
               </div>
 
-              {/* Privacidade */}
               <div className="space-y-4">
                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl"><EyeOff className="w-5 h-5" /></div>
+                    <div className="p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl"><EyeOff className="w-5 h-5" strokeWidth={2} /></div>
                     <h3 className="font-bold text-sm uppercase tracking-wide">Privacidade</h3>
                 </div>
                  <Toggle 
@@ -293,7 +287,7 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'integrations' && (
             <div className="space-y-6 animate-fade-in-up">
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-accent/10 rounded-2xl text-accent"><Key className="w-6 h-6" /></div>
+                <div className="p-3 bg-accent/10 rounded-2xl text-accent"><Key className="w-6 h-6" strokeWidth={1.5} /></div>
                 <div><h2 className="text-lg font-black text-slate-900 dark:text-white">Integrações</h2><p className="text-xs text-slate-500">Configure suas chaves de API</p></div>
               </div>
               <div className="bg-white dark:bg-secondary-dark/40 backdrop-blur-md rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm dark:shadow-none">
@@ -316,7 +310,7 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'notifications' && (
             <div className="space-y-4 animate-fade-in-up">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-yellow-500/10 rounded-2xl text-yellow-500"><Bell className="w-6 h-6" /></div>
+                    <div className="p-3 bg-yellow-500/10 rounded-2xl text-yellow-500"><Bell className="w-6 h-6" strokeWidth={1.5} /></div>
                     <div><h2 className="text-lg font-black text-slate-900 dark:text-white">Notificações</h2><p className="text-xs text-slate-500">Status: {permissionStatus === 'granted' ? 'Ativo' : 'Pendente'}</p></div>
                 </div>
                 {permissionStatus !== 'granted' && (
@@ -325,20 +319,72 @@ export const Settings: React.FC<SettingsProps> = ({
                 <Toggle label="Novos Pagamentos Detectados" checked={notifyPrefs.payments} onChange={() => setNotifyPrefs(p => ({ ...p, payments: !p.payments }))} />
                 <Toggle label="Alertas de Data Com" checked={notifyPrefs.datacom} onChange={() => setNotifyPrefs(p => ({ ...p, datacom: !p.datacom }))} />
                 
-                <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl mt-4">
+                <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl mt-4 border border-slate-100 dark:border-white/5">
                   <p className="text-xs text-slate-500 leading-relaxed">O app irá te notificar quando a Inteligência Artificial detectar novos proventos que não estavam na sua base de dados anterior.</p>
                 </div>
             </div>
           )}
 
+          {activeSection === 'updates' && (
+              <div className="space-y-6 animate-fade-in-up">
+                  <div className="flex items-center gap-3 mb-4">
+                      <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-500"><RefreshCcw className="w-6 h-6" strokeWidth={1.5} /></div>
+                      <div><h2 className="text-lg font-black text-slate-900 dark:text-white">Atualizações</h2><p className="text-xs text-slate-500">Versão e Melhorias</p></div>
+                  </div>
+
+                  <div className={`p-8 rounded-[2.5rem] border flex flex-col items-center justify-center text-center gap-4 relative overflow-hidden transition-all duration-500 ${updateAvailable ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/30' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10'}`}>
+                      {updateAvailable && <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl -mr-10 -mt-10 animate-pulse"></div>}
+                      
+                      <div className={`w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg ${updateAvailable ? 'bg-white text-indigo-600' : 'bg-slate-100 dark:bg-white/10 text-slate-400 dark:text-slate-300'}`}>
+                          {updateAvailable ? <Rocket className="w-8 h-8 animate-bounce" strokeWidth={1.5} /> : <GitBranch className="w-8 h-8" strokeWidth={1.5} />}
+                      </div>
+
+                      <div>
+                         <h3 className={`text-2xl font-black mb-1 ${updateAvailable ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                            {updateAvailable ? 'Atualização Disponível' : 'Você está atualizado'}
+                         </h3>
+                         <p className={`text-sm font-medium ${updateAvailable ? 'text-indigo-100' : 'text-slate-500'}`}>
+                            Versão Instalada: v{appVersion}
+                         </p>
+                      </div>
+
+                      {updateAvailable && (
+                        <button onClick={onShowChangelog} className="mt-2 px-6 py-3 bg-white text-indigo-600 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-transform flex items-center gap-2">
+                           <Download className="w-4 h-4" /> Instalar Agora
+                        </button>
+                      )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                      <button onClick={onCheckUpdates} className="bg-white dark:bg-white/5 p-4 rounded-3xl border border-slate-200 dark:border-white/10 flex flex-col items-center gap-2 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
+                          <RefreshCcw className="w-6 h-6 text-slate-400" strokeWidth={1.5} />
+                          <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Verificar</span>
+                      </button>
+                      <button onClick={onShowChangelog} className="bg-white dark:bg-white/5 p-4 rounded-3xl border border-slate-200 dark:border-white/10 flex flex-col items-center gap-2 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10">
+                          <History className="w-6 h-6 text-slate-400" strokeWidth={1.5} />
+                          <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Histórico</span>
+                      </button>
+                  </div>
+
+                  {!updateAvailable && (
+                      <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex gap-3 items-start">
+                          <Sparkles className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                          <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium leading-relaxed">
+                              Seu aplicativo está rodando a versão mais recente com todos os recursos de segurança e performance ativos.
+                          </p>
+                      </div>
+                  )}
+              </div>
+          )}
+
           {activeSection === 'data' && (
             <div className="space-y-4 animate-fade-in-up">
-                <button onClick={handleExport} className="w-full bg-white dark:bg-secondary-dark/40 p-5 rounded-3xl border border-slate-200 dark:border-white/10 text-left flex items-center gap-4 active:scale-[0.98] shadow-sm">
-                    <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500"><Download className="w-6 h-6" /></div>
+                <button onClick={handleExport} className="w-full bg-white dark:bg-secondary-dark/40 p-5 rounded-3xl border border-slate-200 dark:border-white/10 text-left flex items-center gap-4 active:scale-[0.98] shadow-sm hover:bg-slate-50">
+                    <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500"><Download className="w-6 h-6" strokeWidth={1.5} /></div>
                     <div><h3 className="text-sm font-bold text-slate-900 dark:text-white">Exportar Backup Total</h3><p className="text-[10px] text-slate-500">Ativos + Histórico de Dividendos</p></div>
                 </button>
-                <button onClick={handleImportClick} className="w-full bg-white dark:bg-secondary-dark/40 p-5 rounded-3xl border border-slate-200 dark:border-white/10 text-left flex items-center gap-4 active:scale-[0.98] shadow-sm">
-                    <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500"><Upload className="w-6 h-6" /></div>
+                <button onClick={handleImportClick} className="w-full bg-white dark:bg-secondary-dark/40 p-5 rounded-3xl border border-slate-200 dark:border-white/10 text-left flex items-center gap-4 active:scale-[0.98] shadow-sm hover:bg-slate-50">
+                    <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500"><Upload className="w-6 h-6" strokeWidth={1.5} /></div>
                     <div><h3 className="text-sm font-bold text-slate-900 dark:text-white">Importar Backup</h3><p className="text-[10px] text-slate-500">Restaurar toda a sua carteira</p></div>
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                 </button>
@@ -347,11 +393,6 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'system' && (
             <div className="space-y-6 animate-fade-in-up">
-                <div className="rounded-3xl border border-sky-500/20 bg-sky-500/5 p-6 shadow-sm">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Recuperar e Atualizar</h3>
-                    <p className="text-xs text-slate-500 mb-6 leading-relaxed">Força o aplicativo a baixar as últimas modificações do servidor agora.</p>
-                    <button onClick={handleForceUpdate} className="w-full bg-sky-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-[0.98] shadow-lg shadow-sky-500/20"><RefreshCcw className="w-4 h-4" /> Forçar Atualização</button>
-                </div>
                 <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 shadow-sm">
                     <h3 className="text-sm font-bold text-rose-500 mb-2">Resetar Aplicativo</h3>
                     <p className="text-xs text-slate-500 mb-6 leading-relaxed">CUIDADO: Apaga permanentemente todas as suas transações e chaves.</p>
