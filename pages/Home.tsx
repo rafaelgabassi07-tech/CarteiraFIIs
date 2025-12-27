@@ -1,8 +1,8 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, Layers, LayoutGrid, TrendingUp, Calculator, PiggyBank, CalendarClock, GripHorizontal } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip } from 'recharts';
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, Layers, LayoutGrid, TrendingUp } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
 interface HomeProps {
@@ -56,7 +56,7 @@ export const Home: React.FC<HomeProps> = ({
 
   const [allocationTab, setAllocationTab] = useState<'assets' | 'types' | 'segments'>('assets');
   const [incomeTab, setIncomeTab] = useState<'summary' | 'magic' | 'calendar'>('summary');
-  const [gainTab, setGainTab] = useState<'performance' | 'sources' | 'projection'>('performance');
+  const [gainTab, setGainTab] = useState<'general' | 'breakdown'>('general');
 
   // State para controle da animação do gráfico
   const [activeIndex, setActiveIndex] = useState(0);
@@ -199,47 +199,13 @@ export const Home: React.FC<HomeProps> = ({
   const COLORS = [accentColor, '#8b5cf6', '#10b981', '#f97316', '#f43f5e', '#64748b', '#3b82f6', '#ec4899'];
   const inflacaoPeriodo = inflationRate; 
   
-  // CALCULOS FINANCEIROS GLOBAIS
-  const totalNominalReturn = totalAppreciation + realizedGain + received;
+  // CORREÇÃO: Ganho Real agora considera (Valorização Carteira + Dividendos Recebidos + Lucro Vendas)
+  const totalNominalReturn = totalAppreciation + realizedGain;
   const nominalYield = invested > 0 ? (totalNominalReturn / invested) * 100 : 0;
-  const ganhoRealPercent = nominalYield - inflacaoPeriodo;
+  const ganhoReal = nominalYield - inflacaoPeriodo;
   
-  // Cálculo monetário do "Custo de Oportunidade da Inflação"
-  // Quanto o dinheiro "Investido" deveria ter rendido apenas para empatar com a inflação
-  const inflationCostValue = invested * (inflacaoPeriodo / 100);
-  const ganhoRealValue = totalNominalReturn - inflationCostValue;
-
-  const isAboveInflation = ganhoRealPercent > 0;
+  const isAboveInflation = ganhoReal > 0;
   const isPositiveBalance = totalAppreciation >= 0;
-
-  // Dados para o Gráfico de Fontes de Lucro
-  const sourcesData = useMemo(() => {
-    return [
-      { name: 'Valorização', value: Math.max(0, totalAppreciation), color: '#10b981' }, // Emerald
-      { name: 'Dividendos', value: received, color: accentColor }, // Accent
-      { name: 'Trades', value: Math.max(0, realizedGain), color: '#f59e0b' } // Amber
-    ].filter(d => d.value > 0);
-  }, [totalAppreciation, received, realizedGain, accentColor]);
-
-  // Dados para Projeção (Juros Compostos Simplificados)
-  const projectionData = useMemo(() => {
-    if (balance <= 0) return [];
-    // Taxa mensal aproximada baseada no histórico recente ou média segura (ex: 0.8% a.m)
-    // Se tivermos averageMonthly e balance, podemos estimar o DY mensal atual
-    const estimatedMonthlyYield = balance > 0 ? (averageMonthly / balance) : 0.008;
-    const safeMonthlyRate = Math.max(0.005, Math.min(estimatedMonthlyYield, 0.015)); // Cap entre 0.5% e 1.5% a.m para realismo
-    
-    const project = (months: number) => {
-        return balance * Math.pow(1 + safeMonthlyRate, months);
-    }
-
-    return [
-        { label: 'Hoje', value: balance },
-        { label: '1 Ano', value: project(12) },
-        { label: '2 Anos', value: project(24) },
-        { label: '5 Anos', value: project(60) },
-    ];
-  }, [balance, averageMonthly]);
 
   return (
     <div className="pt-24 pb-28 px-5 space-y-6 max-w-lg mx-auto">
@@ -320,7 +286,7 @@ export const Home: React.FC<HomeProps> = ({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-          {/* 3. CARD ALOCAÇÃO */}
+          {/* 3. CARD ALOCAÇÃO (UPGRADE) */}
           <button 
             onClick={() => setShowAllocationModal(true)} 
             className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm active:scale-[0.96] transition-all text-left flex flex-col h-full group hover:shadow-lg relative overflow-hidden"
@@ -331,8 +297,10 @@ export const Home: React.FC<HomeProps> = ({
                     <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent mb-2 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Alocação</h3>
                  </div>
+                 {/* Mini Gráfico de Rosca removido conforme solicitado */}
              </div>
 
+             {/* Lista Top 3 Segmentos */}
              <div className="w-full mt-auto space-y-1.5">
                  {topSegments.length > 0 ? topSegments.map((seg, i) => {
                      const totalVal = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
@@ -365,7 +333,7 @@ export const Home: React.FC<HomeProps> = ({
              <div>
                 <div className="flex items-end gap-1 mb-2">
                     <span className={`text-2xl font-bold tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {isAboveInflation ? '+' : ''}{ganhoRealPercent.toFixed(1)}%
+                        {isAboveInflation ? '+' : ''}{ganhoReal.toFixed(1)}%
                     </span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
@@ -456,141 +424,48 @@ export const Home: React.FC<HomeProps> = ({
                 <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><Scale className="w-5 h-5" strokeWidth={2} /></div>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Análise de Rentabilidade</h3>
             </div>
+            <ModalTabs active={gainTab} onChange={setGainTab} tabs={[{ id: 'general', label: 'Geral' }, { id: 'breakdown', label: 'Composição' }]} />
             
-            <ModalTabs active={gainTab} onChange={setGainTab} tabs={[
-                { id: 'performance', label: 'Performance' }, 
-                { id: 'sources', label: 'Fontes' }, 
-                { id: 'projection', label: 'Futuro' }
-            ]} />
-            
-            {gainTab === 'performance' && (
-                <div className="animate-fade-in space-y-4">
-                    <div className="bg-white dark:bg-[#0f172a] p-10 rounded-[3rem] text-center mt-6 border border-slate-100 dark:border-white/5 shadow-sm">
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-6">Resultado Líquido Real</p>
-                        <div className={`text-6xl font-bold tabular-nums tracking-tighter mb-6 ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {isAboveInflation ? '+' : ''}{ganhoRealPercent.toFixed(2)}%
-                        </div>
-                        
-                        {/* Gráfico de Barra "Tijolo" Comparativo */}
-                        <div className="w-full bg-slate-100 dark:bg-white/5 h-8 rounded-full relative overflow-hidden flex mb-2">
-                            {/* Inflação (Base) */}
-                            <div className="h-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-300" style={{ width: '40%' }}>
-                                IPCA {inflacaoPeriodo}%
-                            </div>
-                            {/* Ganho Real */}
-                            <div className={`h-full ${isAboveInflation ? 'bg-emerald-500' : 'bg-rose-500'} flex-1 flex items-center justify-center text-[9px] font-bold text-white relative`}>
-                                Real {ganhoRealPercent.toFixed(1)}%
-                                {isAboveInflation && <div className="absolute left-0 top-0 bottom-0 w-1 bg-white/20"></div>}
-                            </div>
-                        </div>
-                        
-                        <p className="text-[10px] text-slate-400 mt-6 leading-relaxed max-w-xs mx-auto">
-                            Considera Valorização + Dividendos + Vendas, subtraindo a inflação acumulada de {inflacaoPeriodo}% desde {portfolioStartDate ? portfolioStartDate.split('-').reverse().slice(0,2).join('/') : 'o início'}.
-                        </p>
+            {gainTab === 'general' && (
+                <div className="bg-white dark:bg-[#0f172a] p-10 rounded-[3rem] text-center mt-6 border border-slate-100 dark:border-white/5 shadow-sm animate-scale-in">
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-6">Resultado Líquido Real</p>
+                    <div className={`text-6xl font-bold tabular-nums tracking-tighter mb-6 ${ganhoReal >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {ganhoReal >= 0 ? '+' : ''}{ganhoReal.toFixed(2)}%
                     </div>
-                    
-                    {/* Card de Valor Monetário */}
-                    <div className="bg-slate-50 dark:bg-white/[0.03] p-6 rounded-[2.5rem] flex items-center justify-between border border-slate-100 dark:border-white/5">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><Calculator className="w-5 h-5" /></div>
-                            <div>
-                                <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Em Dinheiro</h4>
-                                <p className="text-[9px] text-slate-400">Ganho Real Monetário</p>
-                            </div>
-                        </div>
-                        <div className={`text-lg font-bold tabular-nums ${ganhoRealValue >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {formatBRL(ganhoRealValue)}
-                        </div>
+                    <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-slate-50 dark:bg-white/5">
+                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Acima da Inflação ({inflacaoPeriodo}%)</span>
                     </div>
+                    <p className="text-[10px] text-slate-400 mt-6 leading-relaxed">Considera Valorização da Cota + Dividendos + Vendas, descontado o IPCA acumulado desde {portfolioStartDate ? portfolioStartDate.split('-').reverse().slice(0,2).join('/') : 'o início'}.</p>
                 </div>
             )}
 
-            {gainTab === 'sources' && (
-                <div className="space-y-6 mt-4 animate-fade-in flex flex-col items-center">
-                    <div className="h-64 w-64 relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={sourcesData}
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                    stroke="none"
-                                    cornerRadius={6}
-                                >
-                                    {sourcesData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip 
-                                    formatter={(value: number) => formatBRL(value)}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        {/* Centro do Donut */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Nominal</span>
-                            <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{formatBRL(totalNominalReturn)}</span>
-                        </div>
-                    </div>
-
-                    <div className="w-full space-y-3">
-                        {sourcesData.map((source) => (
-                            <div key={source.name} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: source.color }}></div>
-                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{source.name}</span>
-                                </div>
-                                <div className="text-right">
-                                    <span className="block text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(source.value)}</span>
-                                    <span className="text-[9px] font-bold text-slate-400">
-                                        {((source.value / totalNominalReturn) * 100).toFixed(1)}%
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {gainTab === 'projection' && (
-                <div className="space-y-6 mt-4 animate-fade-in">
-                    <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-8 rounded-[3rem] text-center text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden">
-                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                         <div className="relative z-10">
-                             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md border border-white/20">
-                                 <PiggyBank className="w-6 h-6 text-white" />
+            {gainTab === 'breakdown' && (
+                <div className="space-y-4 mt-4 animate-fade-in">
+                    <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent"><TrendingUp className="w-5 h-5" /></div>
+                             <div>
+                                 <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Valorização</h4>
+                                 <p className="text-[9px] text-slate-400">Patrimônio</p>
                              </div>
-                             <h3 className="text-lg font-bold mb-2">Poder dos Juros Compostos</h3>
-                             <p className="text-[10px] text-indigo-100 font-medium leading-relaxed max-w-xs mx-auto">
-                                 Estimativa considerando reinvestimento integral dos dividendos e manutenção da rentabilidade atual.
-                             </p>
+                         </div>
+                         <div className={`font-bold tabular-nums ${totalAppreciation >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                             {formatBRL(totalAppreciation)}
                          </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3">
-                        {projectionData.map((proj, i) => (
-                            <div key={proj.label} className="flex items-center justify-between p-5 bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm animate-fade-in-up" style={{ animationDelay: `${i * 100}ms` }}>
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${i === 0 ? 'bg-slate-100 dark:bg-white/5 text-slate-400' : 'bg-accent/10 text-accent'}`}>
-                                        <CalendarClock className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">{proj.label}</span>
-                                        {i > 0 && <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                            +{((proj.value / balance - 1) * 100).toFixed(0)}%
-                                        </span>}
-                                    </div>
-                                </div>
-                                <div className="text-lg font-bold text-slate-900 dark:text-white tabular-nums tracking-tight">
-                                    {formatBRL(proj.value)}
-                                </div>
-                            </div>
-                        ))}
+                    <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500"><CircleDollarSign className="w-5 h-5" /></div>
+                             <div>
+                                 <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Realizado</h4>
+                                 <p className="text-[9px] text-slate-400">Proventos + Vendas</p>
+                             </div>
+                         </div>
+                         <div className="font-bold tabular-nums text-emerald-500">
+                             {formatBRL(realizedGain)}
+                         </div>
                     </div>
-                    <p className="text-[9px] text-center text-slate-400 italic">Simulação hipotética. Rentabilidade passada não garante futuro.</p>
                 </div>
             )}
          </div>
