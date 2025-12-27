@@ -1,16 +1,22 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { Transaction, AssetType } from '../types';
-import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign } from 'lucide-react';
+import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign, ArrowUpCircle } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
-// Formatador seguro com tipagem explícita
+// Formatador seguro
 const formatBRL = (val: number | undefined | null) => {
   const num = typeof val === 'number' ? val : 0;
   return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-// Interface explícita
+// Formata mês/ano (ex: Junho 2024)
+const formatMonthYear = (dateStr: string) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr + 'T12:00:00');
+  return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+};
+
 interface TransactionsProps {
   transactions: Transaction[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
@@ -23,8 +29,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
   transactions, 
   onAddTransaction, 
   onUpdateTransaction, 
-  onDeleteTransaction, 
-  monthlyContribution 
+  onDeleteTransaction
 }) => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -85,11 +90,30 @@ export const Transactions: React.FC<TransactionsProps> = ({
     setShowForm(false); 
   };
 
-  const filtered = useMemo(() => 
-    transactions
+  // Lógica de Agrupamento Mensal
+  const groupedTransactions = useMemo(() => {
+    const filtered = transactions
       .filter(t => t.ticker.toUpperCase().includes(searchTerm.toUpperCase()))
-      .sort((a,b) => b.date.localeCompare(a.date)), 
-  [transactions, searchTerm]);
+      .sort((a,b) => b.date.localeCompare(a.date));
+
+    const groups: Record<string, { totalInvested: number, items: Transaction[] }> = {};
+
+    filtered.forEach(t => {
+      const monthKey = t.date.substring(0, 7); // YYYY-MM
+      if (!groups[monthKey]) {
+        groups[monthKey] = { totalInvested: 0, items: [] };
+      }
+      groups[monthKey].items.push(t);
+      // Somar apenas compras ao total investido do mês
+      if (t.type === 'BUY') {
+        groups[monthKey].totalInvested += (t.price * t.quantity);
+      }
+    });
+
+    return groups;
+  }, [transactions, searchTerm]);
+
+  const sortedMonthKeys = Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a));
 
   return (
     <div className="pb-32 px-5 space-y-6">
@@ -116,32 +140,55 @@ export const Transactions: React.FC<TransactionsProps> = ({
          </div>
       </div>
 
-      {/* Lista */}
-      <div className="space-y-4">
-        {filtered.map((t, i) => (
-            <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-[2rem] p-5 flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-sm hover:border-slate-300 dark:hover:border-white/10 transition-all animate-fade-in-up" style={{ animationDelay: `${i * 30}ms` }}>
-                <div className="flex items-center gap-5">
-                    <div className={`w-12 h-12 rounded-[1.2rem] flex items-center justify-center shrink-0 border ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
-                        {t.type === 'BUY' ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+      {/* Lista Agrupada */}
+      <div className="space-y-8 animate-fade-in">
+        {sortedMonthKeys.map(monthKey => {
+            const group = groupedTransactions[monthKey];
+            return (
+                <div key={monthKey}>
+                    <div className="flex items-center justify-between px-2 mb-3">
+                        <h3 className="text-slate-500 font-black text-xs uppercase tracking-widest">{formatMonthYear(monthKey + '-01')}</h3>
+                        {group.totalInvested > 0 && (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                <ArrowUpCircle className="w-3 h-3" />
+                                <span className="text-[10px] font-black uppercase tracking-wide">Aportado: R$ {formatBRL(group.totalInvested)}</span>
+                            </div>
+                        )}
                     </div>
-                    <div>
-                      <h4 className="font-black text-sm text-slate-900 dark:text-white mb-0.5">{t.ticker}</h4>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.type === 'BUY' ? 'Compra' : 'Venda'}</p>
+                    
+                    <div className="space-y-2.5">
+                        {group.items.map((t) => (
+                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-[1.2rem] p-3 pl-4 flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-sm hover:border-slate-300 dark:hover:border-white/10 transition-all">
+                              <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/10' : 'bg-rose-500/10 text-rose-500 border-rose-500/10'}`}>
+                                      {t.type === 'BUY' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-black text-sm text-slate-900 dark:text-white">{t.ticker}</h4>
+                                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded uppercase">{t.date.split('-')[2]}</span>
+                                    </div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t.type === 'BUY' ? 'Compra' : 'Venda'}</p>
+                                  </div>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                  <div className="text-right">
+                                    <div className="text-xs font-black text-slate-900 dark:text-white tabular-nums">R$ {formatBRL(t.quantity * t.price)}</div>
+                                    <div className="text-[9px] text-slate-400 font-bold uppercase tabular-nums">{t.quantity} un x {formatBRL(t.price)}</div>
+                                  </div>
+                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button onClick={() => handleEdit(t)} className="p-1.5 rounded-full bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-accent transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                                      <button onClick={() => confirm('Remover?') && onDeleteTransaction(t.id)} className="p-1.5 rounded-full bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  </div>
+                              </div>
+                           </div>
+                        ))}
                     </div>
                 </div>
-                <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <div className="text-sm font-black text-slate-900 dark:text-white tabular-nums">R$ {formatBRL(t.quantity * t.price)}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tabular-nums">{t.quantity}un @ {formatBRL(t.price)}</div>
-                    </div>
-                    <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleEdit(t)} className="p-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 hover:text-accent hover:scale-110 transition-all"><Pencil className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => confirm('Remover esta ordem?') && onDeleteTransaction(t.id)} className="p-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 hover:text-rose-500 hover:scale-110 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                </div>
-            </div>
-        ))}
-        {filtered.length === 0 && (
+            );
+        })}
+
+        {sortedMonthKeys.length === 0 && (
            <div className="py-24 text-center">
              <Briefcase className="w-12 h-12 text-slate-200 dark:text-slate-800 mx-auto mb-4" />
              <p className="text-slate-400 font-black uppercase text-[10px] tracking-[0.2em]">Nenhuma ordem encontrada</p>
@@ -149,7 +196,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         )}
       </div>
 
-      {/* Modal Formulário */}
+      {/* Modal Formulário (Mantido) */}
       <SwipeableModal isOpen={showForm} onClose={() => { setShowForm(false); resetForm(); }}>
         <div className="bg-slate-50 dark:bg-[#0b1121] min-h-full">
             <div className="sticky top-0 bg-slate-50/95 dark:bg-[#0b1121]/95 backdrop-blur-xl p-6 z-20 border-b border-transparent">

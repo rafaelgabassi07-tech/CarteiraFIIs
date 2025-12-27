@@ -1,22 +1,22 @@
 
 {
-  "version": "4.6.0",
+  "version": "4.7.0",
   "date": "2024-06-17",
   "notes": [
     {
-      "type": "ui",
-      "title": "Novo Design da Home",
-      "desc": "Cards redesenhados com visual moderno, métricas expandidas (Média Mensal, Lucro Total) e melhor legibilidade."
+      "type": "feat",
+      "title": "Organização Mensal de Ordens",
+      "desc": "Agora suas transações são agrupadas por mês, mostrando o total investido em cada período no cabeçalho."
     },
     {
       "type": "ui",
-      "title": "Carteira Aprimorada",
-      "desc": "Cards de ativos agora mostram comparação direta de preço, tags de segmento e estatísticas detalhadas ao expandir."
+      "title": "Ordens mais Compactas",
+      "desc": "Redesenhamos os cards de transação para ocupar menos espaço e focar no que importa."
     },
     {
-      "type": "fix",
-      "title": "Navegação Limpa",
-      "desc": "Cabeçalhos de modais unificados para evitar duplicação de títulos na interface."
+      "type": "ui",
+      "title": "Novo Changelog",
+      "desc": "Visual de novidades mais limpo e flutuante, estilo glassmorphism."
     }
   ]
 }

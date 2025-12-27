@@ -46,11 +46,13 @@
               'fade-in-up': 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
               'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'scale-in': 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
             },
             keyframes: {
               fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
               fadeInUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-              slideUp: { '0%': { transform: 'translateY(100%)' }, '100%': { transform: 'translateY(0)' } }
+              slideUp: { '0%': { transform: 'translateY(100%)' }, '100%': { transform: 'translateY(0)' } },
+              scaleIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } }
             },
             boxShadow: {
               'glow': '0 0 20px -5px var(--color-accent)',
@@ -73,6 +75,10 @@
       .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
       .pt-safe { padding-top: env(safe-area-inset-top); }
       
+      /* Remove outline chato ao clicar em gráficos/svgs */
+      *:focus { outline: none !important; }
+      .recharts-wrapper:focus, .recharts-layer:focus, .recharts-sector:focus { outline: none !important; }
+
       /* Modo Privacidade */
       .privacy-blur .tabular-nums {
         filter: blur(8px);
