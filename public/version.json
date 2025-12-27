@@ -1,12 +1,12 @@
 
 {
-  "version": "5.4.5",
+  "version": "5.4.9",
   "date": "2025-05-24",
   "notes": [
     {
-      "type": "perf",
-      "title": "Modo Cache Imutável (v5.4.5)",
-      "desc": "O sistema de atualização agora é 100% manual. Removemos qualquer possibilidade de downloads em segundo plano que alterem o cache do app."
+      "type": "fix",
+      "title": "Sistema Restaurado",
+      "desc": "Reversão para o sistema de atualização original para garantir estabilidade."
     }
   ]
 }

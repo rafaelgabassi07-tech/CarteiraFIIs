@@ -5,12 +5,13 @@ import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, VersionData, ReleaseNote, AppNotification, AssetFundamentals } from './types';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ReleaseNote, VersionData } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '5.4.5';
+const APP_VERSION = '5.4.9'; // Versão restaurada e incrementada
+
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -18,13 +19,14 @@ const STORAGE_KEYS = {
   THEME: 'investfiis_theme',
   ACCENT: 'investfiis_accent_color',
   PRIVACY: 'investfiis_privacy_mode',
-  LAST_SEEN_VERSION: 'investfiis_last_version_seen',
   PREFS_NOTIF: 'investfiis_prefs_notifications',
-  INDICATORS: 'investfiis_v4_indicators'
+  INDICATORS: 'investfiis_v4_indicators',
+  LAST_SEEN_VERSION: 'investfiis_last_version_seen'
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
+// Helper de comparação de versão local
 const compareVersions = (v1: string, v2: string) => {
   const parts1 = v1.split('.').map(Number);
   const parts2 = v2.split('.').map(Number);
@@ -37,18 +39,6 @@ const compareVersions = (v1: string, v2: string) => {
   return 0;
 };
 
-// Função de Atualização Manual
-const performSmartUpdate = async () => {
-  if ('serviceWorker' in navigator) {
-    const reg = await navigator.serviceWorker.getRegistration();
-    if (reg && reg.waiting) {
-        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        return; 
-    }
-  }
-  window.location.reload();
-};
-
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
@@ -59,10 +49,12 @@ const App: React.FC = () => {
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
+  
+  // Estados de Atualização (Restaurados no App.tsx)
+  const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+  const [availableVersion, setAvailableVersion] = useState<string | null>(null);
+  const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([]);
   const [showChangelog, setShowChangelog] = useState(false);
-  const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
-  const [changelogVersion, setChangelogVersion] = useState(APP_VERSION);
-  const [updateAvailable, setUpdateAvailable] = useState(false);
   
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
@@ -126,6 +118,55 @@ const App: React.FC = () => {
     else document.body.classList.remove('privacy-blur');
     localStorage.setItem(STORAGE_KEYS.PRIVACY, String(privacyMode));
   }, [privacyMode]);
+
+  // Lógica de Atualização Restaurada
+  const checkForUpdates = useCallback(async (manual = false) => {
+    try {
+        const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (res.ok) {
+            const data: VersionData = await res.json();
+            if (compareVersions(data.version, APP_VERSION) > 0) {
+                setAvailableVersion(data.version);
+                setReleaseNotes(data.notes || []);
+                setIsUpdateAvailable(true);
+            } else if (manual) {
+                // Feedback visual apenas se for manual
+                return false; 
+            }
+        }
+    } catch (e) {
+        console.warn("Erro ao checar updates:", e);
+    }
+    return true;
+  }, []);
+
+  const performUpdate = () => {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+            for(let reg of regs) reg.unregister();
+            window.location.reload();
+        });
+    } else {
+        window.location.reload();
+    }
+  };
+
+  useEffect(() => {
+     checkForUpdates();
+     
+     // Check de Changelog (exibir se atualizou recentemente)
+     const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
+     if (compareVersions(APP_VERSION, lastSeen) > 0) {
+         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
+         fetch(`./version.json?t=${Date.now()}`).then(r => r.json()).then(data => {
+             if (data.version === APP_VERSION) {
+                 setReleaseNotes(data.notes || []);
+                 // Opcional: mostrar changelog automaticamente
+                 // setShowChangelog(true); 
+             }
+         }).catch(() => {});
+     }
+  }, [checkForUpdates]);
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     setToast({ type, text });
@@ -286,68 +327,16 @@ const App: React.FC = () => {
     }
   }, [geminiDividends, memoizedData.portfolio, addNotification, checkDailyEvents]);
 
-  const checkForUpdates = async (manual = false) => {
-      if (manual) showToast('info', 'Buscando atualizações...');
-      
-      // Checagem Principal: Existe um worker aguardando?
-      if ('serviceWorker' in navigator) {
-          const reg = await navigator.serviceWorker.getRegistration();
-          if (reg && reg.waiting) {
-              setUpdateAvailable(true);
-              // REMOVIDO: showToast automático. Apenas seta o estado para o ícone no header.
-              return;
-          }
-      }
-
-      // Fallback: Checagem via JSON (Apenas se não houver worker waiting)
-      try {
-        const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
-        if (res.ok) {
-          const data: VersionData = await res.json();
-          if (compareVersions(data.version, APP_VERSION) > 0) {
-            setUpdateAvailable(true);
-            setChangelogNotes(data.notes || []);
-            setChangelogVersion(data.version);
-            
-            // REMOVIDO: showToast automático.
-            if (manual) {
-                 setShowChangelog(true);
-            }
-          } else if (manual) {
-            showToast('success', 'Você já tem a versão mais recente.');
-          }
-        } else if (manual) {
-             showToast('error', 'Falha ao buscar atualização.');
-        }
-      } catch(e) { 
-          if (manual) showToast('error', 'Erro de conexão.');
-      }
+  // Wrapper para checagem manual via Settings
+  const handleManualUpdateCheck = async () => {
+    showToast('info', 'Verificando atualizações...');
+    const hasUpdates = await checkForUpdates(true); // Passa true para indicar manual
+    
+    if (!isUpdateAvailable && hasUpdates === false) {
+        // Se após checar NÃO mudou o estado para true
+        showToast('success', 'Você já tem a versão mais recente.');
+    }
   };
-
-  useEffect(() => {
-    // Verifica atualizações APENAS na montagem do componente (Load inicial)
-    const handleVersionControl = async () => {
-      const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
-      
-      // Se a versão atual é maior que a última vista, atualiza o storage
-      if (compareVersions(APP_VERSION, lastSeen) > 0) {
-         try {
-            // Busca notas apenas para popular modal se o usuario clicar
-            const res = await fetch(`./version.json?t=${Date.now()}`);
-            if (res.ok) {
-              const data: VersionData = await res.json();
-              setChangelogNotes(data.notes || []);
-              setChangelogVersion(APP_VERSION);
-            }
-         } catch(e) {}
-         // Não abre changelog automaticamente. Deixa o usuário descobrir.
-         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
-      } else {
-         checkForUpdates();
-      }
-    };
-    handleVersionControl();
-  }, [showToast]);
 
   const syncAll = useCallback(async (force = false) => {
     const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
@@ -395,15 +384,13 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       {toast && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => updateAvailable && setShowChangelog(true)}>
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => isUpdateAvailable && setShowChangelog(true)}>
           <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl shadow-accent/20 border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : toast.type === 'info' ? 'bg-accent/90 border-accent/40 cursor-pointer' : 'bg-rose-500/90 border-rose-400'} text-white`}>
-            {updateAvailable ? <DownloadCloud className="w-5 h-5 animate-bounce" /> : toast.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+            {isUpdateAvailable ? <DownloadCloud className="w-5 h-5 animate-bounce" /> : toast.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
             <span className="text-xs font-black uppercase tracking-wider">{toast.text}</span>
           </div>
         </div>
       )}
-
-      {/* UpdateBanner REMOVIDO para evitar sobreposição */}
 
       <Header 
         title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Minha Custódia' : 'Histórico de Ordens'}
@@ -412,7 +399,7 @@ const App: React.FC = () => {
         onSettingsClick={() => setShowSettings(true)}
         onRefresh={() => syncAll(true)}
         isRefreshing={isRefreshing || isAiLoading}
-        updateAvailable={updateAvailable}
+        updateAvailable={isUpdateAvailable}
         onUpdateClick={() => setShowChangelog(true)}
         onNotificationClick={() => setShowNotifications(true)}
         notificationCount={notifications.length}
@@ -430,8 +417,8 @@ const App: React.FC = () => {
             accentColor={accentColor} onSetAccentColor={setAccentColor}
             privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode}
             appVersion={APP_VERSION}
-            updateAvailable={updateAvailable}
-            onCheckUpdates={() => checkForUpdates(true)}
+            updateAvailable={isUpdateAvailable}
+            onCheckUpdates={handleManualUpdateCheck}
             onShowChangelog={() => setShowChangelog(true)}
           />
         ) : (
@@ -465,10 +452,10 @@ const App: React.FC = () => {
       <ChangelogModal 
         isOpen={showChangelog} 
         onClose={() => setShowChangelog(false)} 
-        version={changelogVersion} 
-        notes={changelogNotes}
-        isUpdatePending={updateAvailable}
-        onUpdate={performSmartUpdate}
+        version={availableVersion || APP_VERSION} 
+        notes={releaseNotes}
+        isUpdatePending={isUpdateAvailable}
+        onUpdate={performUpdate}
       />
       
       <NotificationsModal 
