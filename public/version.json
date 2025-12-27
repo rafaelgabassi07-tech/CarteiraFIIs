@@ -1,12 +1,17 @@
 
 {
-  "version": "5.4.5",
+  "version": "5.4.6",
   "date": "2025-05-24",
   "notes": [
     {
+      "type": "fix",
+      "title": "Correção de Loop de Atualização",
+      "desc": "Isolamos o sistema de update para prevenir notificações constantes."
+    },
+    {
       "type": "perf",
-      "title": "Modo Cache Imutável (v5.4.5)",
-      "desc": "O sistema de atualização agora é 100% manual. Removemos qualquer possibilidade de downloads em segundo plano que alterem o cache do app."
+      "title": "Novo Hook de Gestão",
+      "desc": "O controle de versões agora roda em um processo separado para maior estabilidade."
     }
   ]
 }
