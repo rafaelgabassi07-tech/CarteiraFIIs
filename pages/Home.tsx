@@ -130,6 +130,11 @@ export const Home: React.FC<HomeProps> = ({
     return { assetData, typeData, segmentData, allocationSummary: { fiiPercent, stockPercent } };
   }, [portfolio]);
 
+  // Dados filtrados para o card de alocação (Top 3 Segmentos)
+  const topSegments = useMemo(() => {
+      return segmentData.slice(0, 3);
+  }, [segmentData]);
+
   const magicNumbers = useMemo(() => {
     return portfolio.map(p => {
         const lastDiv = [...dividendReceipts]
@@ -281,35 +286,64 @@ export const Home: React.FC<HomeProps> = ({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-          {/* 3. CARD ALOCAÇÃO */}
+          {/* 3. CARD ALOCAÇÃO (UPGRADE) */}
           <button 
             onClick={() => setShowAllocationModal(true)} 
-            className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg"
+            className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm active:scale-[0.96] transition-all text-left flex flex-col h-full group hover:shadow-lg relative overflow-hidden"
             style={{ animationDelay: '200ms' }}
           >
-             <div className="mb-6">
-                 <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent mb-3 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
-                 <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Alocação</h3>
+             <div className="flex justify-between items-start mb-2 w-full">
+                 <div>
+                    <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent mb-2 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Alocação</h3>
+                 </div>
+                 
+                 {/* Mini Gráfico de Rosca */}
+                 <div className="h-14 w-14 relative shrink-0">
+                     <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie 
+                                data={topSegments.length > 0 ? topSegments : [{value: 1}]} 
+                                innerRadius={18} 
+                                outerRadius={28} 
+                                dataKey="value" 
+                                stroke="none" 
+                                isAnimationActive={false}
+                            >
+                                {topSegments.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                            </Pie>
+                        </PieChart>
+                     </ResponsiveContainer>
+                 </div>
              </div>
-             <div>
-                 <div className="flex justify-between text-[10px] font-semibold text-slate-500 uppercase mb-3">
-                    <span>FIIs {allocationSummary.fiiPercent.toFixed(0)}%</span>
-                    <span>Ações {allocationSummary.stockPercent.toFixed(0)}%</span>
-                 </div>
-                 <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden flex">
-                    <div className="h-full bg-accent" style={{ width: `${allocationSummary.fiiPercent}%` }}></div>
-                    <div className="h-full bg-accent/30" style={{ width: `${allocationSummary.stockPercent}%` }}></div>
-                 </div>
+
+             {/* Lista Top 3 Segmentos */}
+             <div className="w-full mt-auto space-y-1.5">
+                 {topSegments.length > 0 ? topSegments.map((seg, i) => {
+                     const totalVal = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
+                     const percent = totalVal > 0 ? (seg.value / totalVal) * 100 : 0;
+                     return (
+                        <div key={i} className="flex justify-between items-center text-[10px]">
+                            <span className="flex items-center gap-1.5 font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[80px]">
+                                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                                {seg.name}
+                            </span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300 tabular-nums">{percent.toFixed(0)}%</span>
+                        </div>
+                     );
+                 }) : (
+                     <p className="text-[9px] text-slate-400">Sem dados</p>
+                 )}
              </div>
           </button>
 
           {/* 4. CARD GANHO REAL (ATUALIZADO) */}
           <button 
             onClick={() => setShowRealGainModal(true)} 
-            className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg"
+            className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg"
             style={{ animationDelay: '250ms' }}
           >
-             <div className="mb-6">
+             <div className="mb-4">
                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 mb-3 group-hover:scale-110 transition-transform"><Scale className="w-5 h-5" strokeWidth={2} /></div>
                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Ganho Real</h3>
              </div>
