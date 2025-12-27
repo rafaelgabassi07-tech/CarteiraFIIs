@@ -1,18 +1,19 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.4.2';
+const CACHE_NAME = 'investfiis-ultra-v5.4.3';
 const DYNAMIC_CACHE = 'investfiis-dynamic-v1';
 
+// Apenas arquivos vitais da UI entram no cache imutável de instalação.
+// O version.json foi removido daqui para evitar leituras de versão obsoleta.
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './manifest.json',
-  './version.json'
+  './manifest.json'
 ];
 
 // Instalação: Cache dos arquivos estáticos essenciais
 self.addEventListener('install', (event) => {
-  // REMOVIDO: self.skipWaiting(); 
-  // Motivo: Queremos que a atualização fique em estado 'waiting' até o usuário confirmar no banner.
+  // NÃO usamos skipWaiting() aqui. O worker entra em estado "waiting"
+  // e só ativa quando o usuário clica no botão do banner.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -27,12 +28,12 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME && key !== DYNAMIC_CACHE) {
-            // Limpa versões antigas apenas quando a nova assume o controle
+            console.log('[SW] Removendo cache antigo:', key);
             return caches.delete(key);
           }
         })
       );
-    }).then(() => self.clients.claim()) // Assume o controle da página
+    }).then(() => self.clients.claim()) // Assume o controle imediatamente após ativação autorizada
   );
 });
 
@@ -40,34 +41,37 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Ignorar requisições de API e externas (exceto assets locais)
+  // 1. Ignorar requisições externas (API, Analytics, etc)
   if (url.origin !== self.location.origin) {
     return;
   }
 
-  // 2. Sempre buscar version.json na rede (Network First)
-  // Isso garante que o app saiba imediatamente de novas versões
+  // 2. Estratégia Network Only para version.json
+  // Garante que o app sempre verifique a versão real no servidor, sem cache.
   if (url.pathname.includes('version.json')) {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
+      fetch(event.request, { cache: 'no-store' }).catch(() => {
+        // Se offline, tenta cache ou retorna erro controlado
+        return caches.match(event.request);
+      })
     );
     return;
   }
 
-  // 3. Estratégia Stale-While-Revalidate para o app
-  // Entrega o cache rápido, mas atualiza o cache em segundo plano
+  // 3. Estratégia Stale-While-Revalidate para o restante do App
+  // Entrega o conteúdo rápido do cache, mas atualiza em background se houver internet
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
-          // Atualiza o cache dinâmico
+          // Atualiza o cache dinâmico com a nova versão do arquivo
           caches.open(DYNAMIC_CACHE).then((cache) => {
             cache.put(event.request, networkResponse.clone());
           });
           return networkResponse;
         })
         .catch(() => {
-          // Fallback se offline e sem cache (raro neste ponto)
+          // Se falhar o fetch, não faz nada (já retornou o cache se existir)
         });
       
       return cachedResponse || fetchPromise;
@@ -78,6 +82,6 @@ self.addEventListener('fetch', (event) => {
 // Listener para mensagens do App (Acionado pelo botão "Atualizar")
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting(); // Agora sim, força a atualização
+    self.skipWaiting(); // Autoriza a troca de versão
   }
 });

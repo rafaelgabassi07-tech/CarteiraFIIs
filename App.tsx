@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '5.4.2';
+const APP_VERSION = '5.4.3';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -37,16 +37,17 @@ const compareVersions = (v1: string, v2: string) => {
   return 0;
 };
 
+// Função de Atualização Manual
 const performSmartUpdate = async () => {
   if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.getRegistration();
-    // Se houver um worker esperando (baixado mas não ativo), mandamos ele ativar
     if (reg && reg.waiting) {
+        // Envia mensagem ao SW para assumir o controle
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         return; 
     }
   }
-  // Fallback: Recarrega a página se não houver SW ou se for atualização simples
+  // Fallback
   window.location.reload();
 };
 
@@ -64,7 +65,9 @@ const App: React.FC = () => {
   const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
   const [changelogVersion, setChangelogVersion] = useState(APP_VERSION);
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [isUpdateDismissed, setIsUpdateDismissed] = useState(false);
+  
+  // Controle de Sessão para o Banner de Update
+  const [isUpdateDismissed, setIsUpdateDismissed] = useState(() => sessionStorage.getItem('investfiis_update_dismissed') === 'true');
   
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
@@ -104,6 +107,12 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken); }, [brapiToken]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
 
+  // Handler para dispensar update nesta sessão
+  const handleDismissUpdate = () => {
+      setIsUpdateDismissed(true);
+      sessionStorage.setItem('investfiis_update_dismissed', 'true');
+  };
+
   useEffect(() => {
     const root = window.document.documentElement;
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -111,7 +120,6 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.THEME, theme);
   }, [theme]);
 
-  // Efeito para Cor de Destaque com Suporte a Opacidade (RGB)
   useEffect(() => {
     document.documentElement.style.setProperty('--color-accent', accentColor);
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
@@ -291,26 +299,37 @@ const App: React.FC = () => {
 
   const checkForUpdates = async (manual = false) => {
       if (manual) showToast('info', 'Buscando atualizações...');
+      
+      // 1. Checagem de Service Worker Waiting (Prioritário)
+      if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg && reg.waiting) {
+              setUpdateAvailable(true);
+              if (!manual && !isUpdateDismissed) showToast('info', 'Nova versão pronta para instalar.');
+              return;
+          }
+      }
+
+      // 2. Checagem de Metadados JSON (Fallback)
       try {
         const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const data: VersionData = await res.json();
-          // Lógica de Comparação Robusta
           if (compareVersions(data.version, APP_VERSION) > 0) {
             setUpdateAvailable(true);
             setChangelogNotes(data.notes || []);
             setChangelogVersion(data.version);
+            
             if (!manual) {
-                // Se for automático, mostra o banner (se não foi dispensado anteriormente na sessão)
-                // Aqui reiniciamos o dismiss para garantir que o usuário veja a nova versão
-                setIsUpdateDismissed(false);
-                showToast('info', 'Nova atualização disponível');
-                addNotification({
-                    title: 'Atualização do Sistema',
-                    message: `InvestFIIs v${data.version} está pronta. Toque para atualizar.`,
-                    type: 'update',
-                    category: 'update'
-                });
+                if (!isUpdateDismissed) {
+                    showToast('info', 'Nova atualização disponível');
+                    addNotification({
+                        title: 'Atualização do Sistema',
+                        message: `InvestFIIs v${data.version} está pronta. Toque para atualizar.`,
+                        type: 'update',
+                        category: 'update'
+                    });
+                }
             } else {
                 setShowChangelog(true);
             }
@@ -336,7 +355,7 @@ const App: React.FC = () => {
             const data: VersionData = await res.json();
             setChangelogNotes(data.notes || []);
             setChangelogVersion(APP_VERSION);
-            setTimeout(() => setShowChangelog(true), 1500); // Mostra changelog após update
+            setTimeout(() => setShowChangelog(true), 1500); 
           }
         } catch(e) {}
         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
@@ -401,10 +420,10 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Banner de Atualização Persistente mas Dispensável */}
+      {/* Banner de Atualização com persistência de sessão */}
       <UpdateBanner 
         isOpen={updateAvailable && !isUpdateDismissed} 
-        onDismiss={() => setIsUpdateDismissed(true)} 
+        onDismiss={handleDismissUpdate} 
         onUpdate={() => setShowChangelog(true)} 
         version={changelogVersion}
       />

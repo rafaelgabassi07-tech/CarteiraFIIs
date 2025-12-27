@@ -1,8 +1,13 @@
 
 {
-  "version": "5.4.2",
+  "version": "5.4.3",
   "date": "2025-05-24",
   "notes": [
+    {
+      "type": "fix",
+      "title": "Atualização Controlada (v5.4.3)",
+      "desc": "Otimização profunda do Service Worker. O app não atualizará mais em segundo plano sem sua permissão."
+    },
     {
       "type": "fix",
       "title": "Update Estável (v5.4.2)",
@@ -12,11 +17,6 @@
       "type": "ui",
       "title": "Visual Personalizado (v5.4.1)",
       "desc": "A Cor de Destaque agora controla todo o brilho e a atmosfera do aplicativo (Glow UI)."
-    },
-    {
-      "type": "ui",
-      "title": "Alertas Inteligentes (v5.4.0)",
-      "desc": "Novo sistema de notificações de atualização: feche o alerta quando quiser e atualize mais tarde pelo menu."
     }
   ]
 }
