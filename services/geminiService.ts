@@ -15,47 +15,51 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
   const tickerListString = tickers.join(', ');
   const today = new Date().toISOString().split('T')[0];
 
-  // Instrução reforçada para retornar JSON com DADOS FUNDAMENTALISTAS + PROVENTOS + NOTÍCIAS
+  // Prompt Otimizado com Search Grounding
   const prompt = `
     Data de Hoje: ${today}.
-    Atue como Analista Financeiro Sênior da B3.
-    Use a Google Search para obter dados RECENTES para: ${tickerListString}.
+    Investigue os seguintes ativos na B3: ${tickerListString}.
     
-    1. Obtenha proventos (dividendos/JCP) dos últimos 12 meses.
-    2. Obtenha indicadores fundamentalistas ATUAIS: P/VP, P/L (para ações), DY 12M (Yield anualizado), Liquidez Diária média, Número de Cotistas/Acionistas e uma BREVE descrição do negócio (máx 150 caracteres).
-    3. Pesquise 2 ou 3 notícias RECENTES e RELEVANTES sobre o ativo (Título, Fonte, Data e Link).
-    4. Baseado nas notícias recentes, defina um SENTIMENTO (Otimista, Neutro ou Pessimista) e uma razão super curta (ex: "Resultado trimestral acima do esperado").
+    PARA CADA ATIVO, extraia dados RECENTES usando o Google Search:
 
-    REGRA DE FORMATAÇÃO OBRIGATÓRIA:
-    Responda EXCLUSIVAMENTE um objeto JSON cru.
-    
-    Formato esperado:
+    1. **Dados Fundamentalistas (Latest):**
+       - Preço/Valor Patrimonial (P/VP) (Número).
+       - Preço/Lucro (P/L) (Número, null se for FII).
+       - Dividend Yield 12 Meses (DY) (Número %, ex: 10.5).
+       - Liquidez Diária Média (Texto formatado, ex: "R$ 5 M").
+       - Número de Cotistas/Acionistas (Texto formatado).
+       - Descrição curta do negócio (Max 120 chars).
+       - Segmento de atuação.
+       - Tipo: "FII" ou "ACAO".
+
+    2. **Proventos (Últimos 12 Meses):**
+       - Liste TODOS os dividendos e JCP com "Data Com", "Data Pagamento" e "Valor".
+       - Importante: Datas no formato YYYY-MM-DD.
+
+    3. **Notícias & Sentimento:**
+       - 2 notícias recentes (Título, Fonte, Data, Link).
+       - Sentimento geral (Otimista, Neutro, Pessimista) e motivo curto.
+
+    SAÍDA JSON OBRIGATÓRIA (Sem Markdown):
     {
       "assets": [
         {
           "t": "TICKER",
           "s": "Segmento",
-          "type": "FII ou STOCK",
+          "type": "FII/ACAO",
           "f": {
-             "pvp": 0.00 (Number),
-             "pl": 0.00 (Number, null se FII),
-             "dy": 0.00 (Number, % anual),
-             "liq": "R$ X M (String formatada)",
-             "cot": "X mil (String formatada)",
-             "desc": "Texto curto sobre o ativo.",
-             "sent": "Otimista/Neutro/Pessimista",
-             "sent_why": "Motivo curto",
-             "news": [
-                { "ti": "Título", "src": "Fonte", "dt": "Data/Hora", "url": "Link" }
-             ]
+             "pvp": 0.00,
+             "pl": 0.00,
+             "dy": 0.00,
+             "liq": "string",
+             "cot": "string",
+             "desc": "string",
+             "sent": "string",
+             "sent_why": "string",
+             "news": [{ "ti": "Titulo", "src": "Fonte", "dt": "Data", "url": "Link" }]
           },
           "d": [
-            {
-              "ty": "DIVIDENDO ou JCP",
-              "dc": "YYYY-MM-DD",
-              "dp": "YYYY-MM-DD",
-              "v": 0.00
-            }
+            { "ty": "DIV/JCP", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": 0.00 }
           ]
         }
       ]
@@ -64,15 +68,20 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", 
+      model: "gemini-2.5-flash", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
+        systemInstruction: "Você é uma API JSON estrita de dados financeiros da B3. Nunca use Markdown. Retorne apenas JSON válido.",
+        temperature: 0.1, // Reduz alucinações
       }
     });
 
     let text = response.text;
     if (!text) throw new Error("Resposta vazia da IA");
+
+    // Limpeza de Markdown caso o modelo insista em colocar ```json
+    text = text.replace(/```json/g, '').replace(/```/g, '');
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -101,7 +110,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         const ticker = asset.t?.toUpperCase().trim();
         if (!ticker) return;
 
-        // Parse Fundamentals
+        // Parse Fundamentals com tratamento de segurança
         const fundamentals: AssetFundamentals = {
             p_vp: typeof asset.f?.pvp === 'number' ? asset.f.pvp : undefined,
             p_l: typeof asset.f?.pl === 'number' ? asset.f.pl : undefined,
@@ -127,7 +136,8 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
         if (Array.isArray(asset.d)) {
             asset.d.forEach((div: any) => {
-                if (!div.dc || !div.v) return;
+                // Validação rigorosa de datas e valores
+                if (!div.dc || !div.v || isNaN(Number(div.v))) return;
                 
                 const uniqueKey = `${ticker}-${div.dc}-${div.v}`.replace(/\s+/g, '');
                 if (seenDividends.has(uniqueKey)) return;
@@ -140,7 +150,7 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
                     ticker,
                     type: type,
                     dateCom: div.dc,
-                    paymentDate: div.dp || div.dc,
+                    paymentDate: div.dp || div.dc, // Fallback para data com se pagamento não existir
                     rate: Number(div.v),
                     quantityOwned: 0,
                     totalReceived: 0
