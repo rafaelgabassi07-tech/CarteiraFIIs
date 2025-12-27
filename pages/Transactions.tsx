@@ -114,14 +114,14 @@ export const Transactions: React.FC<TransactionsProps> = ({
   return (
     <div className="pt-24 pb-28 px-5 space-y-4 max-w-lg mx-auto">
       
-      {/* Barra de Busca e Botão Novo Otimizados */}
+      {/* Barra de Busca e Botão Novo Otimizados - Sem Bordas */}
       <div className="sticky top-24 z-30 pt-2 pb-4 bg-slate-50/95 dark:bg-[#020617]/95 backdrop-blur-md -mx-5 px-5 transition-all">
          <div className="flex gap-3">
              <div className="relative flex-1 group">
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-accent transition-colors" />
                <input 
                  type="text" 
-                 className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 pl-11 pr-4 py-3 rounded-2xl outline-none text-sm font-semibold placeholder:text-slate-400 focus:border-accent/50 focus:ring-4 focus:ring-accent/10 transition-all shadow-sm" 
+                 className="w-full bg-white dark:bg-white/5 pl-11 pr-4 py-3 rounded-2xl outline-none text-sm font-semibold placeholder:text-slate-400 focus:ring-4 focus:ring-accent/10 transition-all shadow-sm" 
                  placeholder="Filtrar..." 
                  value={searchTerm} 
                  onChange={(e) => setSearchTerm(e.target.value)} 
@@ -149,7 +149,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                            </h3>
                         </div>
                         {group.totalInvested > 0 && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10">
+                            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-500/5 text-emerald-600 dark:text-emerald-400">
                                 <span className="text-[9px] font-bold uppercase tracking-wider">Aporte: R$ {formatBRL(group.totalInvested)}</span>
                             </div>
                         )}
@@ -157,10 +157,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     
                     <div className="space-y-2">
                         {group.items.map((t) => (
-                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3 flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-sm active:scale-[0.99] transition-all">
+                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3 flex items-center justify-between shadow-sm active:scale-[0.99] transition-all">
                               <div className="flex items-center gap-3">
-                                  {/* Indicador de Tipo Compacto */}
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/10' : 'bg-rose-500/5 text-rose-500 border-rose-500/10'}`}>
+                                  {/* Indicador de Tipo Compacto - Sem Borda */}
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
                                       {t.type === 'BUY' ? <TrendingUp className="w-4 h-4" strokeWidth={2.5} /> : <TrendingDown className="w-4 h-4" strokeWidth={2.5} />}
                                   </div>
                                   
@@ -185,8 +185,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     </div>
                                   </div>
                                   
-                                  {/* Divisor Vertical */}
-                                  <div className="w-[1px] h-8 bg-slate-100 dark:bg-white/5 mx-0.5"></div>
+                                  {/* Divisor Vertical - Substituído por Espaço */}
                                   
                                   {/* Ações Compactas */}
                                   <div className="flex flex-col gap-1">
@@ -214,9 +213,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
       <SwipeableModal isOpen={showForm} onClose={() => { setShowForm(false); resetForm(); }}>
         <div className="px-4 py-2 pb-6">
             <div className="flex items-center gap-4 mb-8 px-2">
-                <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 border border-indigo-500/20">
-                    <Plus className="w-6 h-6" strokeWidth={2.5} />
-                </div>
+                <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500"><Plus className="w-6 h-6" strokeWidth={2.5} /></div>
                 <div>
                     <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h3>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registre sua operação</p>
@@ -226,13 +223,13 @@ export const Transactions: React.FC<TransactionsProps> = ({
             <form onSubmit={handleSubmit} className="space-y-5">
               
               <section className="px-1">
-                 <div className="flex bg-slate-100 dark:bg-white/5 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5">
+                 <div className="flex bg-slate-100 dark:bg-white/5 p-1.5 rounded-2xl">
                     <button type="button" onClick={() => setForm({...form, type: 'BUY'})} className={`flex-1 py-4 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${form.type === 'BUY' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Compra</button>
                     <button type="button" onClick={() => setForm({...form, type: 'SELL'})} className={`flex-1 py-4 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${form.type === 'SELL' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Venda</button>
                  </div>
               </section>
 
-              <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 space-y-5 shadow-sm">
+              <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] space-y-5 shadow-sm">
                  <div className="space-y-2">
                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5"><Briefcase className="w-3 h-3" /> Ticker</label>
                     <input 
@@ -240,7 +237,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                       value={form.ticker} 
                       onChange={(e) => setForm({...form, ticker: e.target.value})} 
                       placeholder="EX: MXRF11" 
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 p-5 rounded-2xl outline-none font-bold uppercase text-lg text-center tracking-widest focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-slate-300" 
+                      className="w-full bg-slate-50 dark:bg-black/20 p-5 rounded-2xl outline-none font-bold uppercase text-lg text-center tracking-widest focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-slate-300" 
                       required 
                     />
                  </div>
@@ -253,7 +250,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         value={form.quantity} 
                         onChange={(e) => setForm({...form, quantity: e.target.value})} 
                         placeholder="0" 
-                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 p-5 rounded-2xl outline-none font-bold text-center text-lg focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-slate-300" 
+                        className="w-full bg-slate-50 dark:bg-black/20 p-5 rounded-2xl outline-none font-bold text-center text-lg focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-slate-300" 
                         required 
                       />
                     </div>
@@ -265,7 +262,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         value={form.price} 
                         onChange={(e) => setForm({...form, price: e.target.value})} 
                         placeholder="0,00" 
-                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 p-5 rounded-2xl outline-none font-bold text-center text-lg focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-slate-300" 
+                        className="w-full bg-slate-50 dark:bg-black/20 p-5 rounded-2xl outline-none font-bold text-center text-lg focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-slate-300" 
                         required 
                       />
                     </div>
@@ -277,7 +274,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                       type="date" 
                       value={form.date} 
                       onChange={(e) => setForm({...form, date: e.target.value})} 
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 p-5 rounded-2xl outline-none font-bold text-center focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all dark:text-white" 
+                      className="w-full bg-slate-50 dark:bg-black/20 p-5 rounded-2xl outline-none font-bold text-center focus:ring-4 focus:ring-accent/10 transition-all dark:text-white" 
                       required 
                     />
                  </div>

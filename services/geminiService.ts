@@ -47,7 +47,7 @@ const normalizeValue = (val: any): number => {
 };
 
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
-  if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
+  if (!tickers || tickers.length ===0) return { dividends: [], metadata: {} };
 
   // 1. Verificação de Cache (Performance)
   const tickerKey = tickers.slice().sort().join('|');
@@ -75,6 +75,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const portfolioStart = startDate || today; 
 
   // Prompt Otimizado para Velocidade (Menos Tokens de Saída)
+  // REMOVIDO: Notícias (pesado)
   const prompt = `
     Hoje: ${today}. Início Carteira: ${portfolioStart}.
     Ativos: ${tickerListString}.
@@ -86,9 +87,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     1. Dados: P/VP, P/L, DY 12m, Liquidez, Cotistas.
     2. Descrição: Max 15 palavras.
     3. Sentimento: Resumido (max 10 palavras).
-    4. Notícias: 2 manchetes recentes.
-    5. Proventos: Últimos 12 meses (Data Com, Pagto, Valor).
-    6. Macro: IPCA acumulado (${portfolioStart} a ${today}).
+    4. Proventos: Últimos 12 meses (Data Com, Pagto, Valor).
+    5. Macro: IPCA acumulado (${portfolioStart} a ${today}).
 
     JSON OBRIGATÓRIO:
     {
@@ -100,8 +100,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           "type": "FII/ACAO",
           "f": {
              "pvp": 0.00, "pl": 0.00, "dy": 0.00, "liq": "str", "cot": "str",
-             "desc": "str", "sent": "str", "sent_why": "str",
-             "news": [{ "ti": "Titulo", "src": "Fonte", "dt": "Data", "url": "Link" }]
+             "desc": "str", "sent": "str", "sent_why": "str"
           },
           "d": [ { "ty": "DIV/JCP", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": 0.00 } ]
         }
@@ -165,12 +164,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             description: asset.f?.desc || '',
             sentiment: asset.f?.sent || 'Neutro',
             sentiment_reason: asset.f?.sent_why || '',
-            news: Array.isArray(asset.f?.news) ? asset.f.news.map((n: any) => ({
-                title: n.ti || 'Notícia',
-                source: n.src || 'Web',
-                date: n.dt || '',
-                url: n.url || '#'
-            })) : []
+            news: [] // Removido por performance
         };
 
         result.metadata[ticker] = { 

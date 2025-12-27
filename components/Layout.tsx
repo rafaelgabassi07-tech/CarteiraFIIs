@@ -40,11 +40,11 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-300 ${isScrolled ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 pt-2' : 'bg-transparent pt-4'}`}>
+    <header className={`fixed top-0 left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-300 ${isScrolled ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2' : 'bg-transparent pt-4'}`}>
       <div className="flex items-center gap-3 w-full">
         {showBack ? (
           <div className="flex items-center gap-4 animate-fade-in w-full">
-            <button onClick={onBack} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group">
+            <button onClick={onBack} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group">
               <ChevronLeft className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" strokeWidth={2.5} />
             </button>
             <div className="flex flex-col ml-1">
@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {/* Ponto Pulsante agora usa Accent */}
                   <div className="relative flex h-2.5 w-2.5 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent border border-white dark:border-[#020617]"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
                   </div>
 
                   <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{title}</h1>
@@ -83,20 +83,20 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {onNotificationClick && !showBack && (
-          <button onClick={onNotificationClick} className="relative w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group">
+          <button onClick={onNotificationClick} className="relative w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group">
             <Bell className="w-6 h-6 group-hover:rotate-12 transition-transform" strokeWidth={2} />
-            {notificationCount > 0 && <span className="absolute top-3 right-3.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-[#020617]"></span>}
+            {notificationCount > 0 && <span className="absolute top-3 right-3.5 w-2 h-2 bg-rose-500 rounded-full shadow-sm"></span>}
           </button>
         )}
 
         {onRefresh && !showBack && (
-          <button onClick={onRefresh} disabled={isRefreshing} className={`w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm ${isRefreshing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-white/10'}`}>
+          <button onClick={onRefresh} disabled={isRefreshing} className={`w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm ${isRefreshing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-white/10'}`}>
              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin text-accent' : ''}`} strokeWidth={2} />
           </button>
         )}
 
         {!showBack && onSettingsClick && (
-          <button onClick={onSettingsClick} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group">
+          <button onClick={onSettingsClick} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group">
             <Settings className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" strokeWidth={2} />
           </button>
         )}
@@ -115,7 +115,7 @@ export const UpdateBanner: React.FC<{
 
   return (
     <div className="fixed top-24 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-sm animate-fade-in-up">
-      <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl shadow-accent/10 border border-accent/20 ring-1 ring-accent/10 flex items-center justify-between gap-4">
+      <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl shadow-accent/10 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/30 shrink-0">
              <Rocket className="w-5 h-5" strokeWidth={2} />
@@ -147,7 +147,7 @@ export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string
 
   return (
     <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-6 pointer-events-none">
-      <nav className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl border border-slate-200/50 dark:border-white/10 p-2 rounded-[1.5rem] flex items-center gap-2 shadow-2xl shadow-slate-200/50 dark:shadow-black/50 pointer-events-auto transition-all duration-300 ring-1 ring-black/5">
+      <nav className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl p-2 rounded-[1.5rem] flex items-center gap-2 shadow-2xl shadow-slate-200/50 dark:shadow-black/50 pointer-events-auto transition-all duration-300">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -194,7 +194,7 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
     <div className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-none">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm pointer-events-auto transition-opacity duration-300 animate-fade-in" onClick={onClose} />
       <div 
-        className="bg-white dark:bg-[#0b1121] w-full h-[calc(100dvh-4.5rem)] rounded-t-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto transition-transform duration-300 cubic-bezier(0.2, 0.8, 0.2, 1) animate-slide-up ring-1 ring-slate-900/5 dark:ring-white/10"
+        className="bg-white dark:bg-[#0b1121] w-full h-[calc(100dvh-4.5rem)] rounded-t-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto transition-transform duration-300 cubic-bezier(0.2, 0.8, 0.2, 1) animate-slide-up"
         style={{ transform: `translateY(${offsetY}px)` }}
         onTouchStart={(e) => { setIsDragging(true); startY.current = e.touches[0].clientY; }}
         onTouchMove={(e) => { if(!isDragging) return; const diff = e.touches[0].clientY - startY.current; if(diff > 0) setOffsetY(diff); }}
@@ -217,14 +217,14 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
     <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6 animate-fade-in">
         <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-all" onClick={onClose} />
         
-        <div className="relative bg-white dark:bg-[#0f172a] w-full max-w-sm rounded-[2.5rem] overflow-hidden border border-slate-200 dark:border-white/5 shadow-2xl flex flex-col animate-scale-in max-h-[75vh] ring-1 ring-white/10">
-            <div className="p-6 bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5 flex justify-between items-center sticky top-0 z-10">
+        <div className="relative bg-white dark:bg-[#0f172a] w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col animate-scale-in max-h-[75vh]">
+            <div className="p-6 bg-slate-50 dark:bg-white/5 flex justify-between items-center sticky top-0 z-10">
                <div>
                   <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Central</h3>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Notificações</p>
                </div>
                {notifications.length > 0 && (
-                   <button onClick={onClear} className="px-3 py-1.5 rounded-xl bg-white dark:bg-white/10 border border-slate-200 dark:border-white/5 text-[10px] font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors active:scale-95 uppercase tracking-wide">
+                   <button onClick={onClear} className="px-3 py-1.5 rounded-xl bg-white dark:bg-white/10 text-[10px] font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors active:scale-95 uppercase tracking-wide">
                      Limpar
                    </button>
                )}
@@ -233,7 +233,7 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
             <div className="overflow-y-auto p-4 space-y-4 bg-white dark:bg-[#0f172a]">
               {notifications.length === 0 ? (
                 <div className="py-16 text-center text-slate-400 flex flex-col items-center">
-                   <div className="w-16 h-16 bg-slate-50 dark:bg-white/5 rounded-[2rem] flex items-center justify-center mb-6 border border-slate-100 dark:border-white/5 rotate-3">
+                   <div className="w-16 h-16 bg-slate-50 dark:bg-white/5 rounded-[2rem] flex items-center justify-center mb-6 rotate-3">
                       <Bell className="w-8 h-8 text-slate-300" strokeWidth={1.5} />
                    </div>
                    <p className="text-sm font-bold text-slate-900 dark:text-white mb-2 tracking-tight">Tudo tranquilo por aqui</p>
@@ -243,27 +243,23 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
                 notifications.map(n => {
                   let Icon = Info;
                   let bgClass = 'bg-slate-100 text-slate-500';
-                  let borderClass = 'border-slate-100 dark:border-white/5';
                   
                   if (n.category === 'payment' || n.type === 'success') {
                     Icon = DollarSign;
                     bgClass = 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20';
-                    borderClass = 'border-emerald-500/20 bg-emerald-500/5';
                   } else if (n.category === 'datacom') {
                     Icon = Calendar;
                     bgClass = 'bg-amber-500 text-white shadow-lg shadow-amber-500/20';
-                    borderClass = 'border-amber-500/20 bg-amber-500/5';
                   } else if (n.category === 'update') {
                     Icon = Rocket;
                     bgClass = 'bg-accent text-white shadow-lg shadow-accent/20';
-                    borderClass = 'border-accent/20 bg-accent/5';
                   } else {
                     Icon = Bell;
                     bgClass = 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-200';
                   }
 
                   return (
-                    <div key={n.id} className={`p-4 rounded-[2rem] border ${borderClass} flex gap-4 transition-all hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group`}>
+                    <div key={n.id} className="p-4 rounded-[2rem] flex gap-4 transition-all hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group bg-slate-50 dark:bg-white/5">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${bgClass}`}>
                           <Icon className="w-6 h-6" strokeWidth={2} />
                         </div>
@@ -282,7 +278,7 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
               )}
             </div>
             
-            <div className="p-4 bg-white dark:bg-[#0f172a] border-t border-slate-50 dark:border-white/5">
+            <div className="p-4 bg-white dark:bg-[#0f172a]">
                 <button onClick={onClose} className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-[0.2em] active:scale-[0.98] transition-all shadow-xl">
                 Fechar Central
                 </button>
@@ -306,12 +302,12 @@ export const ChangelogModal: React.FC<{
     <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6 animate-fade-in">
         <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-all" onClick={onClose} />
         
-        <div className="relative bg-white dark:bg-[#0f172a] w-full max-w-sm rounded-[2.5rem] p-0 shadow-2xl flex flex-col items-center animate-scale-in overflow-hidden ring-1 ring-white/10">
+        <div className="relative bg-white dark:bg-[#0f172a] w-full max-w-sm rounded-[2.5rem] p-0 shadow-2xl flex flex-col items-center animate-scale-in overflow-hidden">
             <button onClick={onClose} className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 active:scale-90 transition-all z-50">
               <X className="w-5 h-5" />
             </button>
 
-            <div className="w-full px-8 pt-10 pb-8 text-center bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5">
+            <div className="w-full px-8 pt-10 pb-8 text-center bg-slate-50 dark:bg-white/5">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-accent shadow-xl shadow-accent/30 mb-5 text-white transform -rotate-3">
                   {isUpdatePending ? <Gift className="w-8 h-8" strokeWidth={1.5} /> : <Rocket className="w-8 h-8" strokeWidth={1.5} />}
                 </div>

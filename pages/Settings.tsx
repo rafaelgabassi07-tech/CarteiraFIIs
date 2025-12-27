@@ -213,7 +213,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const SettingsItem = ({ icon: Icon, label, description, onClick, colorClass, delay = 0, badge }: any) => (
     <button 
       onClick={onClick} 
-      className="w-full bg-white dark:bg-[#0f172a] p-4 rounded-[1.8rem] border border-transparent flex items-center justify-between group active:scale-[0.98] transition-all hover:border-slate-200 dark:hover:border-white/10 animate-fade-in-up shadow-sm"
+      className="w-full bg-white dark:bg-[#0f172a] p-4 rounded-[1.8rem] flex items-center justify-between group active:scale-[0.98] transition-all animate-fade-in-up shadow-sm"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center gap-4">
@@ -233,7 +233,7 @@ export const Settings: React.FC<SettingsProps> = ({
   );
 
   const Toggle = ({ label, checked, onChange, icon: Icon, description }: any) => (
-    <div onClick={onChange} className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer active:scale-[0.99] transition-all ${checked ? 'bg-white dark:bg-[#0f172a] border-accent/20 shadow-sm' : 'bg-slate-50 dark:bg-white/5 border-transparent'}`}>
+    <div onClick={onChange} className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer active:scale-[0.99] transition-all ${checked ? 'bg-white dark:bg-[#0f172a] shadow-sm' : 'bg-slate-50 dark:bg-white/5'}`}>
         <div className="flex items-center gap-3">
           {Icon && <div className={`p-2.5 rounded-xl ${checked ? 'bg-accent/10 text-accent' : 'bg-slate-200 dark:bg-white/10 text-slate-400'}`}><Icon className="w-4 h-4" strokeWidth={2.2} /></div>}
           <div>
@@ -300,14 +300,14 @@ export const Settings: React.FC<SettingsProps> = ({
             <div className="space-y-8 animate-fade-in-up">
               
               {/* Live Preview Dinâmico */}
-              <div className="relative w-full overflow-hidden rounded-[2.5rem] bg-white dark:bg-[#0b1121] p-8 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-white/5 transition-colors duration-500">
+              <div className="relative w-full overflow-hidden rounded-[2.5rem] bg-white dark:bg-[#0b1121] p-8 shadow-xl shadow-slate-200/50 dark:shadow-none transition-colors duration-500">
                   {/* Background Glow */}
                   <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-20 blur-[50px] transition-colors duration-500" style={{ backgroundColor: accentColor }}></div>
                   
                   {/* Conteúdo Simulado Home */}
                   <div className="relative z-10">
                       <div className="mb-6 flex items-center justify-between">
-                           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-white/5 w-fit border border-slate-100 dark:border-white/5">
+                           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-white/5 w-fit">
                               <Wallet className="w-3.5 h-3.5 text-slate-400" strokeWidth={2} />
                               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Patrimônio</span>
                            </div>
@@ -341,7 +341,7 @@ export const Settings: React.FC<SettingsProps> = ({
                              key={c.hex} 
                              onClick={() => onSetAccentColor(c.hex)}
                              className={`group relative flex flex-col items-center gap-3 p-3 rounded-3xl transition-all duration-300 ${
-                               isActive ? 'bg-white dark:bg-[#0b1121] shadow-lg ring-1 ring-slate-100 dark:ring-white/10 scale-105 z-10' : 'hover:bg-white/50 dark:hover:bg-white/5'
+                               isActive ? 'bg-white dark:bg-[#0b1121] shadow-lg scale-105 z-10' : 'hover:bg-white/50 dark:hover:bg-white/5'
                              }`}
                            >
                               <div className={`w-12 h-12 rounded-2xl ${c.class} shadow-lg relative flex items-center justify-center transition-transform group-hover:scale-110`}>
@@ -379,10 +379,10 @@ export const Settings: React.FC<SettingsProps> = ({
                           <button
                             key={mode.id}
                             onClick={() => onSetTheme(mode.id as ThemeType)}
-                            className={`group relative flex flex-col items-center justify-center gap-3 py-6 rounded-3xl border-2 transition-all duration-300 ${
+                            className={`group relative flex flex-col items-center justify-center gap-3 py-6 rounded-3xl transition-all duration-300 ${
                               isActive 
-                                ? 'border-accent bg-accent/5 scale-[1.02] shadow-xl shadow-accent/10' 
-                                : 'border-transparent bg-white dark:bg-[#0b1121] hover:bg-slate-50 dark:hover:bg-white/5'
+                                ? 'bg-accent/5 scale-[1.02] shadow-xl shadow-accent/10' 
+                                : 'bg-white dark:bg-[#0b1121] hover:bg-slate-50 dark:hover:bg-white/5'
                             }`}
                           >
                             {isActive && (
@@ -410,7 +410,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
               <div className="space-y-4 pt-2">
                  <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2">Interface & Efeitos</h3>
-                 <div className="bg-white dark:bg-[#0f172a] p-2 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm space-y-1">
+                 <div className="bg-white dark:bg-[#0f172a] p-2 rounded-[2rem] shadow-sm space-y-1">
                     <Toggle label="Efeito Glassmorphism" description="Desfoque translúcido no cabeçalho" icon={Layers} checked={glassMode} onChange={() => setGlassMode(!glassMode)} />
                     <div className="h-[1px] bg-slate-100 dark:bg-white/5 mx-4"></div>
                     <Toggle label="Animações Fluídas" description="Transições suaves entre telas" icon={Gauge} checked={animations} onChange={() => setAnimations(!animations)} />
@@ -422,7 +422,7 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'notifications' && (
             <div className="space-y-6 animate-fade-in-up">
                {/* Preview de Notificação */}
-               <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-6 rounded-[2.5rem] border border-transparent relative overflow-hidden">
+               <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-6 rounded-[2.5rem] relative overflow-hidden">
                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
                    <div className="relative z-10 mb-6 text-center">
                         <div className="w-14 h-14 bg-white dark:bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm text-amber-500">
@@ -433,7 +433,7 @@ export const Settings: React.FC<SettingsProps> = ({
                    </div>
                    
                    {/* Card Mock */}
-                   <div className="bg-white dark:bg-[#0b1121] p-4 rounded-2xl border border-transparent flex gap-3 shadow-lg transform rotate-1 scale-95 opacity-90 hover:rotate-0 hover:scale-100 transition-all duration-500 cursor-default">
+                   <div className="bg-white dark:bg-[#0b1121] p-4 rounded-2xl flex gap-3 shadow-lg transform rotate-1 scale-95 opacity-90 hover:rotate-0 hover:scale-100 transition-all duration-500 cursor-default">
                         <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                            <Sparkles className="w-5 h-5" />
                         </div>
@@ -469,7 +469,7 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'integrations' && (
             <div className="space-y-8 animate-fade-in-up">
                <div className="flex items-center gap-4 mb-4 px-2">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20"><Radio className="w-6 h-6" strokeWidth={2.5} /></div>
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500"><Radio className="w-6 h-6" strokeWidth={2.5} /></div>
                   <div>
                       <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1.5">Conexões</h2>
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status dos serviços</p>
@@ -481,7 +481,7 @@ export const Settings: React.FC<SettingsProps> = ({
                   <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
                       Provedor de Dados
                   </h3>
-                  <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-transparent relative overflow-hidden shadow-sm">
+                  <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] relative overflow-hidden shadow-sm">
                       <div className="flex items-center justify-between mb-4">
                          <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
@@ -496,7 +496,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       
                       <div className="relative group z-10">
                           <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-accent transition-colors" />
-                          <input type="password" value={isEnvToken ? '****************' : token} onChange={(e) => setToken(e.target.value)} disabled={isEnvToken} placeholder="Token Brapi.dev" className="w-full bg-slate-50 dark:bg-black/20 rounded-2xl py-5 pl-14 pr-6 text-sm font-mono outline-none border border-transparent focus:border-accent transition-all text-center tracking-widest" />
+                          <input type="password" value={isEnvToken ? '****************' : token} onChange={(e) => setToken(e.target.value)} disabled={isEnvToken} placeholder="Token Brapi.dev" className="w-full bg-slate-50 dark:bg-black/20 rounded-2xl py-5 pl-14 pr-6 text-sm font-mono outline-none focus:ring-4 focus:ring-accent/10 transition-all text-center tracking-widest" />
                       </div>
                       
                       <div className="flex gap-2 mt-4">
@@ -505,7 +505,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                  <Save className="w-3 h-3" /> Salvar
                              </button>
                          )}
-                         <button onClick={handleTestBrapi} className="flex-1 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white border border-slate-200 dark:border-white/5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center gap-2">
+                         <button onClick={handleTestBrapi} className="flex-1 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center gap-2">
                              <Activity className="w-3 h-3" /> Testar
                          </button>
                       </div>
@@ -517,7 +517,7 @@ export const Settings: React.FC<SettingsProps> = ({
                   <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
                       Inteligência Artificial
                   </h3>
-                  <div className="bg-gradient-to-br from-indigo-500/5 to-purple-500/5 p-6 rounded-[2.5rem] border border-transparent relative overflow-hidden flex items-center justify-between">
+                  <div className="bg-gradient-to-br from-indigo-500/5 to-purple-500/5 p-6 rounded-[2.5rem] relative overflow-hidden flex items-center justify-between">
                       <div className="flex items-center gap-4">
                          <div className="w-12 h-12 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
                             <Sparkles className="w-6 h-6" />
@@ -530,7 +530,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             </p>
                          </div>
                       </div>
-                      <div className="bg-white dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/10">
+                      <div className="bg-white dark:bg-white/5 p-3 rounded-2xl">
                           <Cpu className="w-5 h-5 text-indigo-500" />
                       </div>
                   </div>
@@ -541,7 +541,7 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'data' && (
              <div className="space-y-6 animate-fade-in-up">
                  {/* Card de Uso Visual */}
-                 <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-transparent shadow-sm relative overflow-hidden">
+                 <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm relative overflow-hidden">
                     <div className="flex items-center justify-between relative z-10 mb-6">
                          <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-lg"><HardDrive className="w-6 h-6" strokeWidth={2} /></div>
@@ -580,9 +580,9 @@ export const Settings: React.FC<SettingsProps> = ({
                     <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 mb-2">Gerenciamento</h3>
                     
                     {/* Item de Cotações */}
-                    <div className="w-full bg-white dark:bg-[#0f172a] p-5 rounded-[1.8rem] border border-transparent flex items-center justify-between group active:scale-[0.99] transition-all">
+                    <div className="w-full bg-white dark:bg-[#0f172a] p-5 rounded-[1.8rem] flex items-center justify-between group active:scale-[0.99] transition-all">
                         <div className="flex items-center gap-4">
-                           <div className="w-11 h-11 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center border border-sky-500/20"><Cloud className="w-5 h-5" strokeWidth={2} /></div>
+                           <div className="w-11 h-11 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center"><Cloud className="w-5 h-5" strokeWidth={2} /></div>
                            <div>
                               <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider mb-0.5">Cotações (Cache)</h4>
                               <p className="text-[9px] font-medium text-slate-400 leading-tight max-w-[150px]">Preços salvos para acesso offline.</p>
@@ -597,9 +597,9 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     {/* Item de Dividendos IA */}
-                    <div className="w-full bg-white dark:bg-[#0f172a] p-5 rounded-[1.8rem] border border-transparent flex items-center justify-between group active:scale-[0.99] transition-all">
+                    <div className="w-full bg-white dark:bg-[#0f172a] p-5 rounded-[1.8rem] flex items-center justify-between group active:scale-[0.99] transition-all">
                         <div className="flex items-center gap-4">
-                           <div className="w-11 h-11 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center border border-purple-500/20"><Sparkles className="w-5 h-5" strokeWidth={2} /></div>
+                           <div className="w-11 h-11 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center"><Sparkles className="w-5 h-5" strokeWidth={2} /></div>
                            <div>
                               <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider mb-0.5">Dividendos (IA)</h4>
                               <p className="text-[9px] font-medium text-slate-400 leading-tight max-w-[150px]">Histórico gerado pela IA.</p>
@@ -614,9 +614,9 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     {/* Item de Transações (ReadOnly) */}
-                    <div className="w-full bg-white dark:bg-[#0f172a] p-5 rounded-[1.8rem] border border-transparent flex items-center justify-between opacity-80 grayscale-[0.5]">
+                    <div className="w-full bg-white dark:bg-[#0f172a] p-5 rounded-[1.8rem] flex items-center justify-between opacity-80 grayscale-[0.5]">
                         <div className="flex items-center gap-4">
-                           <div className="w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20"><FileJson className="w-5 h-5" strokeWidth={2} /></div>
+                           <div className="w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center"><FileJson className="w-5 h-5" strokeWidth={2} /></div>
                            <div>
                               <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider mb-0.5">Transações</h4>
                               <p className="text-[9px] font-medium text-slate-400 leading-tight max-w-[150px]">Seus dados pessoais.</p>
@@ -636,7 +636,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <Download className="w-5 h-5" />
                         <span className="text-[9px] font-black uppercase tracking-widest">Backup</span>
                     </button>
-                    <button onClick={handleImportClick} className="bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 py-5 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/5">
+                    <button onClick={handleImportClick} className="bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white py-5 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/5">
                         <Upload className="w-5 h-5" />
                         <span className="text-[9px] font-black uppercase tracking-widest">Restaurar</span>
                     </button>
@@ -647,12 +647,12 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'system' && (
               <div className="space-y-6 animate-fade-in-up">
-                  <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-transparent space-y-4">
+                  <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] space-y-4">
                      <h3 className="font-black text-base text-slate-900 dark:text-white px-1 tracking-tight">Privacidade</h3>
                      <Toggle label="Modo Invisível" description="Borra valores na tela principal" icon={EyeOff} checked={privacyMode} onChange={() => onSetPrivacyMode(!privacyMode)} />
                   </div>
 
-                  <div className="bg-rose-500/10 p-8 rounded-[3rem] text-center border border-rose-500/20 relative overflow-hidden group">
+                  <div className="bg-rose-500/10 p-8 rounded-[3rem] text-center relative overflow-hidden group">
                       <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-rose-500 to-transparent"></div>
                       <div className="relative z-10">
                         <div className="w-20 h-20 bg-rose-500 rounded-3xl flex items-center justify-center mx-auto mb-6 text-white shadow-2xl shadow-rose-500/30">
@@ -678,7 +678,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       
                       <div className="relative z-10">
                         <div className="flex justify-center mb-6">
-                            <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center text-white border border-white/20">
+                            <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center text-white">
                                 <Rocket className="w-10 h-10" strokeWidth={1.5} />
                             </div>
                         </div>
@@ -686,7 +686,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <h3 className="text-2xl font-black text-white mb-1 tracking-tighter">InvestFIIs Ultra</h3>
                         <p className="text-xs font-bold text-indigo-200 mb-8 uppercase tracking-widest">Versão Atual {appVersion}</p>
                         
-                        <div className="bg-black/20 rounded-2xl p-1.5 flex items-center gap-1.5 mb-6 w-fit mx-auto border border-white/10">
+                        <div className="bg-black/20 rounded-2xl p-1.5 flex items-center gap-1.5 mb-6 w-fit mx-auto">
                              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-2"></div>
                              <span className="text-[9px] font-black text-white uppercase tracking-widest pr-2">Sistema Operacional</span>
                         </div>
@@ -698,7 +698,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       </div>
                   </div>
                   
-                  <button onClick={onShowChangelog} className="w-full bg-white dark:bg-[#0f172a] p-5 rounded-[2.2rem] border border-transparent flex items-center justify-between active:scale-[0.98] transition-all group hover:border-indigo-500/30">
+                  <button onClick={onShowChangelog} className="w-full bg-white dark:bg-[#0f172a] p-5 rounded-[2.2rem] border border-transparent flex items-center justify-between active:scale-[0.98] transition-all group">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-500/10 transition-all"><History className="w-6 h-6" strokeWidth={2} /></div>
                             <div className="text-left">

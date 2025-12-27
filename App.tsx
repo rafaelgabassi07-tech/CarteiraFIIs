@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, UpdateBanner } from './components/Layout';
+import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
@@ -64,8 +64,6 @@ const App: React.FC = () => {
   const [changelogVersion, setChangelogVersion] = useState(APP_VERSION);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   
-  const [isUpdateDismissed, setIsUpdateDismissed] = useState(() => sessionStorage.getItem('investfiis_update_dismissed') === 'true');
-  
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -103,11 +101,6 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken); }, [brapiToken]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
-
-  const handleDismissUpdate = () => {
-      setIsUpdateDismissed(true);
-      sessionStorage.setItem('investfiis_update_dismissed', 'true');
-  };
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -301,7 +294,7 @@ const App: React.FC = () => {
           const reg = await navigator.serviceWorker.getRegistration();
           if (reg && reg.waiting) {
               setUpdateAvailable(true);
-              if (!manual && !isUpdateDismissed) showToast('info', 'Nova versão pronta para instalar.');
+              // REMOVIDO: showToast automático. Apenas seta o estado para o ícone no header.
               return;
           }
       }
@@ -316,9 +309,8 @@ const App: React.FC = () => {
             setChangelogNotes(data.notes || []);
             setChangelogVersion(data.version);
             
-            if (!manual && !isUpdateDismissed) {
-                 showToast('info', 'Nova atualização disponível');
-            } else if (manual) {
+            // REMOVIDO: showToast automático.
+            if (manual) {
                  setShowChangelog(true);
             }
           } else if (manual) {
@@ -337,20 +329,21 @@ const App: React.FC = () => {
     const handleVersionControl = async () => {
       const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
       
-      // Se a versão atual é maior que a última vista, mostra o changelog
+      // Se a versão atual é maior que a última vista, atualiza o storage
       if (compareVersions(APP_VERSION, lastSeen) > 0) {
-        try {
-          const res = await fetch(`./version.json?t=${Date.now()}`);
-          if (res.ok) {
-            const data: VersionData = await res.json();
-            setChangelogNotes(data.notes || []);
-            setChangelogVersion(APP_VERSION);
-            setTimeout(() => setShowChangelog(true), 1500); 
-          }
-        } catch(e) {}
-        localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
+         try {
+            // Busca notas apenas para popular modal se o usuario clicar
+            const res = await fetch(`./version.json?t=${Date.now()}`);
+            if (res.ok) {
+              const data: VersionData = await res.json();
+              setChangelogNotes(data.notes || []);
+              setChangelogVersion(APP_VERSION);
+            }
+         } catch(e) {}
+         // Não abre changelog automaticamente. Deixa o usuário descobrir.
+         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
       } else {
-        checkForUpdates();
+         checkForUpdates();
       }
     };
     handleVersionControl();
@@ -410,13 +403,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Banner de Atualização com persistência de sessão */}
-      <UpdateBanner 
-        isOpen={updateAvailable && !isUpdateDismissed} 
-        onDismiss={handleDismissUpdate} 
-        onUpdate={() => setShowChangelog(true)} 
-        version={changelogVersion}
-      />
+      {/* UpdateBanner REMOVIDO para evitar sobreposição */}
 
       <Header 
         title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Minha Custódia' : 'Histórico de Ordens'}
