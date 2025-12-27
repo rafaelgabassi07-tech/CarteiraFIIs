@@ -77,11 +77,16 @@ export const Home: React.FC<HomeProps> = ({
   }, [portfolio]);
 
   const { received, upcoming, averageMonthly } = useMemo(() => {
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    // Data Local YYYY-MM-DD
+    const todayDate = new Date();
+    const year = todayDate.getFullYear();
+    const month = String(todayDate.getMonth() + 1).padStart(2, '0');
+    const day = String(todayDate.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
     const totals = dividendReceipts.reduce((acc, curr) => {
-      const pDate = new Date(curr.paymentDate + 'T12:00:00');
-      if (pDate <= today) acc.received += curr.totalReceived;
+      // Comparação direta de strings YYYY-MM-DD
+      if (curr.paymentDate <= todayStr) acc.received += curr.totalReceived;
       else acc.upcoming += curr.totalReceived;
       return acc;
     }, { received: 0, upcoming: 0 });
@@ -502,7 +507,14 @@ export const Home: React.FC<HomeProps> = ({
                     <div className="space-y-0 relative pl-4 animate-fade-in pb-8">
                       <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-200 dark:bg-white/5"></div>
                       {dividendReceipts.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 20).map((r, idx) => {
-                        const isUpcoming = new Date(r.paymentDate + 'T12:00:00') > new Date();
+                        // Comparação de string YYYY-MM-DD
+                        const todayDate = new Date();
+                        const year = todayDate.getFullYear();
+                        const month = String(todayDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(todayDate.getDate()).padStart(2, '0');
+                        const todayStr = `${year}-${month}-${day}`;
+                        
+                        const isUpcoming = r.paymentDate > todayStr;
                         return (
                             <div key={`${r.id}-${idx}`} className="relative pl-8 py-3 group animate-fade-in-up" style={{ animationDelay: `${idx * 30}ms` }}>
                                 <div className={`absolute left-[11px] top-7 w-4 h-4 rounded-full border-[3px] border-slate-50 dark:border-[#0b1121] z-10 ${isUpcoming ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`}></div>

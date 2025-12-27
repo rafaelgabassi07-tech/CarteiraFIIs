@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '5.1.0';
+const APP_VERSION = '5.1.1';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -137,8 +137,13 @@ const App: React.FC = () => {
   const memoizedData = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     const nowStr = new Date().toISOString().substring(0, 7);
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    
+    // GERAÇÃO ROBUSTA DA DATA LOCAL "HOJE" (YYYY-MM-DD)
+    const todayDate = new Date();
+    const year = todayDate.getFullYear();
+    const month = String(todayDate.getMonth() + 1).padStart(2, '0');
+    const day = String(todayDate.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
 
     const contribution = transactions
       .filter(t => t.type === 'BUY' && t.date.startsWith(nowStr))
@@ -153,8 +158,8 @@ const App: React.FC = () => {
     let totalDividendsReceived = 0;
 
     receipts.forEach(r => {
-      const pDate = new Date(r.paymentDate + 'T12:00:00');
-      if (pDate <= today) {
+      // Comparação direta de strings YYYY-MM-DD para evitar problemas de fuso horário
+      if (r.paymentDate <= todayStr) {
         divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived;
         totalDividendsReceived += r.totalReceived;
       }
@@ -204,7 +209,12 @@ const App: React.FC = () => {
 
   // Função Aprimorada para Notificações Ricas
   const checkDailyEvents = useCallback((currentDividends: DividendReceipt[], portfolio: AssetPosition[]) => {
-      const today = new Date().toISOString().split('T')[0];
+      // Geração da data local para comparação
+      const todayDate = new Date();
+      const year = todayDate.getFullYear();
+      const month = String(todayDate.getMonth() + 1).padStart(2, '0');
+      const day = String(todayDate.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
       
       currentDividends.forEach(div => {
          // Encontra o ativo na carteira para contexto
