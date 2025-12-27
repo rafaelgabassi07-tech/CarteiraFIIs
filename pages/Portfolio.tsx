@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, ChevronDown, DollarSign, Target, ChevronRight, Briefcase, Calendar, PieChart, Scale, TrendingUp } from 'lucide-react';
+import { Building2, ChevronDown, DollarSign, Target, ChevronRight, Briefcase, Calendar, PieChart, Scale, TrendingUp, History, Wallet } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: DividendReceipt[], totalPortfolioValue: number }> = ({ asset, index, history, totalPortfolioValue }) => {
@@ -90,53 +90,69 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
       </div>
 
       <SwipeableModal isOpen={showHistoryModal} onClose={() => setShowHistoryModal(false)}>
-        <div className="px-6 pt-2 pb-10 bg-slate-50 dark:bg-[#0b1121] min-h-full">
-            <div className="flex items-center justify-between mb-8">
+        <div className="bg-slate-50 dark:bg-[#0b1121] min-h-full">
+            
+            {/* Header Sticky */}
+            <div className="sticky top-0 bg-slate-50/80 dark:bg-[#0b1121]/80 backdrop-blur-xl p-6 z-20 border-b border-slate-200 dark:border-white/5">
                 <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-white dark:bg-white/5 rounded-[1.2rem] flex items-center justify-center text-slate-900 dark:text-white font-black text-xl border border-slate-200 dark:border-white/10 shadow-sm">{asset.ticker.slice(0, 4)}</div>
+                    <div className="w-12 h-12 bg-white dark:bg-white/5 rounded-[1.2rem] flex items-center justify-center text-slate-900 dark:text-white font-black text-sm border border-slate-200 dark:border-white/10 shadow-sm">{asset.ticker.slice(0, 4)}</div>
                     <div>
                       <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">{asset.ticker}</h3>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1.5">Histórico de Proventos</p>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1.5">Detalhes do Ativo</p>
                     </div>
                 </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-3 mb-8">
-                <div className="p-5 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-3 opacity-20"><DollarSign className="w-8 h-8 text-emerald-500" /></div>
-                    <div className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em] mb-1">Total Recebido</div>
-                    <div className="text-xl font-black text-slate-900 dark:text-white tabular-nums">R$ {formatCurrency(asset.totalDividends || 0)}</div>
-                </div>
-                <div className="p-5 rounded-[2rem] bg-indigo-500/10 border border-indigo-500/20 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-3 opacity-20"><Scale className="w-8 h-8 text-indigo-500" /></div>
-                    <div className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em] mb-1">YoC Real</div>
-                    <div className="text-xl font-black text-slate-900 dark:text-white tabular-nums">{yoc.toFixed(2)}%</div>
-                </div>
-            </div>
-
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 pl-2">Extrato Detalhado</h4>
-            <div className="space-y-3">
-              {history.map(receipt => (
-                <div key={receipt.id} className="bg-white dark:bg-white/[0.03] p-5 rounded-[1.5rem] border border-slate-100 dark:border-white/5 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="w-1 h-8 rounded-full bg-emerald-500"></div>
-                    <div>
-                      <div className="text-xs font-black text-slate-900 dark:text-white mb-0.5 uppercase tracking-wide">{receipt.paymentDate.split('-').reverse().slice(0,2).join('/')}</div>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase">{receipt.type}</p>
+            <div className="p-6 space-y-8">
+                {/* Performance Section */}
+                <section>
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Wallet className="w-3 h-3" /> Indicadores
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="p-5 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-3 opacity-20"><DollarSign className="w-8 h-8 text-emerald-500" /></div>
+                            <div className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em] mb-1">Total Recebido</div>
+                            <div className="text-xl font-black text-slate-900 dark:text-white tabular-nums">R$ {formatCurrency(asset.totalDividends || 0)}</div>
+                        </div>
+                        <div className="p-5 rounded-[2rem] bg-indigo-500/10 border border-indigo-500/20 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-3 opacity-20"><Scale className="w-8 h-8 text-indigo-500" /></div>
+                            <div className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em] mb-1">YoC Real</div>
+                            <div className="text-xl font-black text-slate-900 dark:text-white tabular-nums">{yoc.toFixed(2)}%</div>
+                        </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-black text-emerald-500 tabular-nums">R$ {formatCurrency(receipt.totalReceived)}</div>
-                    <p className="text-[9px] text-slate-400 font-medium tabular-nums">R$ {receipt.rate.toFixed(4)} p/un</p>
-                  </div>
-                </div>
-              ))}
-              {history.length === 0 && (
-                <div className="py-20 flex flex-col items-center justify-center opacity-40">
-                  <Building2 className="w-12 h-12 mb-4 stroke-1" />
-                  <span className="font-bold text-xs uppercase tracking-widest">Sem proventos</span>
-                </div>
-              )}
+                </section>
+
+                {/* History Section */}
+                <section>
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <History className="w-3 h-3" /> Extrato Detalhado
+                    </h4>
+                    <div className="space-y-3">
+                      {history.length > 0 ? (
+                          history.map(receipt => (
+                            <div key={receipt.id} className="bg-white dark:bg-[#0f172a] p-5 rounded-[1.5rem] border border-slate-200 dark:border-white/5 flex justify-between items-center shadow-sm">
+                              <div className="flex items-center gap-3">
+                                <div className="w-1 h-8 rounded-full bg-emerald-500"></div>
+                                <div>
+                                  <div className="text-xs font-black text-slate-900 dark:text-white mb-0.5 uppercase tracking-wide">{receipt.paymentDate.split('-').reverse().slice(0,2).join('/')}</div>
+                                  <p className="text-[9px] text-slate-400 font-bold uppercase">{receipt.type}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm font-black text-emerald-500 tabular-nums">R$ {formatCurrency(receipt.totalReceived)}</div>
+                                <p className="text-[9px] text-slate-400 font-medium tabular-nums">R$ {receipt.rate.toFixed(4)} p/un</p>
+                              </div>
+                            </div>
+                          ))
+                      ) : (
+                        <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[2rem]">
+                          <Building2 className="w-8 h-8 mb-3 text-slate-300 stroke-1" />
+                          <span className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Sem histórico de proventos</span>
+                        </div>
+                      )}
+                    </div>
+                </section>
             </div>
         </div>
       </SwipeableModal>

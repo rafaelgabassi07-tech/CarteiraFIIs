@@ -1,22 +1,22 @@
 
 {
-  "version": "4.2.0",
-  "date": "2024-06-14",
+  "version": "4.3.0",
+  "date": "2024-06-15",
   "notes": [
     {
+      "type": "ui",
+      "title": "Novo Layout Home",
+      "desc": "Cards de Alocação e Ganho Real agora são exibidos em largura total para melhor visualização."
+    },
+    {
+      "type": "ui",
+      "title": "Modais Organizados",
+      "desc": "Todas as janelas de detalhes foram reestruturadas com seções claras e melhor separação de informações."
+    },
+    {
       "type": "feat",
-      "title": "Central de Notificações",
-      "desc": "Novo ícone de sino e central para avisos de proventos e sistema."
-    },
-    {
-      "type": "perf",
-      "title": "Smart Update",
-      "desc": "O app agora verifica atualizações automaticamente ao voltar para a aba."
-    },
-    {
-      "type": "fix",
-      "title": "Ícone de Notificação",
-      "desc": "Corrigido o desaparecimento do ícone nos cabeçalhos das telas."
+      "title": "Formulário Inteligente",
+      "desc": "Adicionar transações ficou mais fácil com o novo layout agrupado por contexto."
     }
   ]
 }

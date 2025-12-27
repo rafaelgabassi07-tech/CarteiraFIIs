@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { Transaction, AssetType } from '../types';
-import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase } from 'lucide-react';
+import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 // Formatador seguro com tipagem explícita
@@ -151,65 +151,80 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
       {/* Modal Formulário */}
       <SwipeableModal isOpen={showForm} onClose={() => { setShowForm(false); resetForm(); }}>
-        <div className="px-6 pt-4 pb-10 min-h-full">
-            <h3 className="text-2xl font-black mb-8 text-center">{editingId ? 'Editar Ordem' : 'Nova Movimentação'}</h3>
-            <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-slate-50 dark:bg-[#0b1121] min-h-full">
+            <div className="sticky top-0 bg-slate-50/80 dark:bg-[#0b1121]/80 backdrop-blur-xl p-6 z-20 border-b border-slate-200 dark:border-white/5">
+                <h3 className="text-2xl font-black text-center text-slate-900 dark:text-white">{editingId ? 'Editar Ordem' : 'Nova Movimentação'}</h3>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="p-6 space-y-8">
               
-              <div className="flex bg-slate-100 dark:bg-[#020617] p-1.5 rounded-[1.5rem] border border-slate-200 dark:border-white/5">
-                <button type="button" onClick={() => setForm({...form, type: 'BUY'})} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${form.type === 'BUY' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Compra</button>
-                <button type="button" onClick={() => setForm({...form, type: 'SELL'})} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${form.type === 'SELL' ? 'bg-rose-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Venda</button>
-              </div>
+              {/* Tipo de Operação */}
+              <section>
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Tipo de Operação</label>
+                 <div className="flex bg-white dark:bg-[#0f172a] p-1.5 rounded-[1.5rem] border border-slate-200 dark:border-white/5 shadow-sm">
+                    <button type="button" onClick={() => setForm({...form, type: 'BUY'})} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${form.type === 'BUY' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Compra</button>
+                    <button type="button" onClick={() => setForm({...form, type: 'SELL'})} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${form.type === 'SELL' ? 'bg-rose-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Venda</button>
+                 </div>
+              </section>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Código do Ativo</label>
-                  <input 
-                    type="text" 
-                    value={form.ticker} 
-                    onChange={(e) => setForm({...form, ticker: e.target.value})} 
-                    placeholder="EX: PETR4" 
-                    className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 p-5 rounded-[1.5rem] outline-none font-black uppercase text-lg text-center tracking-wider focus:border-accent transition-colors" 
-                    required 
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantidade</label>
-                    <input 
-                      type="number" 
-                      value={form.quantity} 
-                      onChange={(e) => setForm({...form, quantity: e.target.value})} 
-                      placeholder="0" 
-                      className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 p-5 rounded-[1.5rem] outline-none font-black text-center text-lg focus:border-accent transition-colors" 
-                      required 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Preço Unitário</label>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      value={form.price} 
-                      onChange={(e) => setForm({...form, price: e.target.value})} 
-                      placeholder="0,00" 
-                      className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 p-5 rounded-[1.5rem] outline-none font-black text-center text-lg focus:border-accent transition-colors" 
-                      required 
-                    />
-                  </div>
-                </div>
+              {/* Dados do Ativo */}
+              <section className="bg-white dark:bg-[#0f172a] p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-sm">
+                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Briefcase className="w-3 h-3" /> Detalhes do Ativo
+                 </h4>
+                 
+                 <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Código (Ticker)</label>
+                      <input 
+                        type="text" 
+                        value={form.ticker} 
+                        onChange={(e) => setForm({...form, ticker: e.target.value})} 
+                        placeholder="EX: PETR4" 
+                        className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 rounded-xl outline-none font-black uppercase text-lg text-center tracking-wider focus:border-accent transition-colors" 
+                        required 
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 flex items-center gap-1"><Hash className="w-3 h-3" /> Qtd</label>
+                        <input 
+                          type="number" 
+                          value={form.quantity} 
+                          onChange={(e) => setForm({...form, quantity: e.target.value})} 
+                          placeholder="0" 
+                          className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 rounded-xl outline-none font-black text-center text-lg focus:border-accent transition-colors" 
+                          required 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Preço</label>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          value={form.price} 
+                          onChange={(e) => setForm({...form, price: e.target.value})} 
+                          placeholder="0,00" 
+                          className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 rounded-xl outline-none font-black text-center text-lg focus:border-accent transition-colors" 
+                          required 
+                        />
+                      </div>
+                    </div>
+                 </div>
+              </section>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Data da Operação</label>
+              {/* Data */}
+              <section>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block flex items-center gap-2"><Calendar className="w-3 h-3" /> Data da Execução</label>
                   <input 
                     type="date" 
                     value={form.date} 
                     onChange={(e) => setForm({...form, date: e.target.value})} 
-                    className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 p-5 rounded-[1.5rem] outline-none font-bold text-center focus:border-accent transition-colors dark:text-white" 
+                    className="w-full bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/5 p-5 rounded-[1.5rem] outline-none font-bold text-center focus:border-accent transition-colors dark:text-white shadow-sm" 
                     required 
                   />
-                </div>
-              </div>
+              </section>
 
               <button type="submit" className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-xl hover:shadow-2xl">
                 {editingId ? 'Salvar Alterações' : 'Adicionar Ordem'}
