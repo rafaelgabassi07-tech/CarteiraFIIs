@@ -11,7 +11,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle, Loader2, Info } from 'lucide-react';
 
-const APP_VERSION = '5.5.0'; 
+const APP_VERSION = '5.5.1'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -128,11 +128,13 @@ const App: React.FC = () => {
           const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
           if (res.ok) {
               const data: VersionData = await res.json();
+              // Se a versão do JSON for maior que a do App OU se tivermos um SW esperando
               if (compareVersions(data.version, APP_VERSION) > 0) {
                   setAvailableVersion(data.version);
                   setReleaseNotes(data.notes || []);
                   setIsUpdateAvailable(true);
-                  setShowUpdateBanner(true); // Exibe banner quando nova versão detectada via JSON
+                  // Só exibe o banner se ainda não estiver atualizando
+                  if (updateProgress === 0) setShowUpdateBanner(true);
                   return true;
               }
           }
@@ -154,6 +156,7 @@ const App: React.FC = () => {
             if (manual) {
                 try { await reg.update(); } catch(e){}
             }
+            // Se houver um worker esperando, significa que o download já ocorreu em background
             if (reg.waiting) {
                 setIsUpdateAvailable(true);
                 setShowUpdateBanner(true);
@@ -168,14 +171,13 @@ const App: React.FC = () => {
 
   // Lógica de Atualização com Animação
   const startUpdateProcess = () => {
-    // Se já estiver em progresso, ignora
     if (updateProgress > 0) return;
 
-    // Inicia animação
+    // Inicia animação visual
     let progress = 0;
     const interval = setInterval(() => {
-        // Incremento não linear para parecer "download real"
-        const increment = Math.max(1, Math.floor(Math.random() * 10));
+        // Incremento aleatório para parecer "download real"
+        const increment = Math.max(1, Math.floor(Math.random() * 15));
         progress += increment;
 
         if (progress >= 100) {
@@ -183,18 +185,20 @@ const App: React.FC = () => {
             clearInterval(interval);
             setUpdateProgress(100);
             
-            // Pequeno delay no 100% para satisfação visual antes do reload
+            // Aplica a atualização após completar a barra
             setTimeout(() => {
                 if ('serviceWorker' in navigator && swRegistrationRef.current && swRegistrationRef.current.waiting) {
+                    // Envia sinal para o SW trocar a versão
                     swRegistrationRef.current.waiting.postMessage({ type: 'SKIP_WAITING' });
                 } else {
+                    // Fallback se não encontrar o SW
                     window.location.reload();
                 }
-            }, 600);
+            }, 800);
         } else {
             setUpdateProgress(progress);
         }
-    }, 150); // Velocidade da animação
+    }, 100); // Velocidade do "Download"
   };
 
   useEffect(() => {
@@ -202,6 +206,8 @@ const App: React.FC = () => {
      
      if ('serviceWorker' in navigator) {
          let refreshing = false;
+         
+         // Quando o SW novo assume (após o SKIP_WAITING), a página recarrega
          navigator.serviceWorker.addEventListener('controllerchange', () => {
              if (!refreshing) {
                  refreshing = true;
@@ -212,15 +218,20 @@ const App: React.FC = () => {
          navigator.serviceWorker.getRegistration().then(reg => {
              if (reg) {
                  swRegistrationRef.current = reg;
+                 
+                 // Se já entrou com update pendente
                  if (reg.waiting) {
                      setIsUpdateAvailable(true);
                      setShowUpdateBanner(true);
                      fetchVersionJson();
                  }
+                 
+                 // Detecta quando um novo SW é encontrado no servidor
                  reg.addEventListener('updatefound', () => {
                      const newWorker = reg.installing;
                      if (newWorker) {
                          newWorker.addEventListener('statechange', () => {
+                             // Quando termina de baixar e instala (entra em 'installed'/'waiting')
                              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                  setIsUpdateAvailable(true);
                                  setShowUpdateBanner(true);
@@ -233,6 +244,7 @@ const App: React.FC = () => {
          });
      }
 
+     // Lógica de Changelog (Notas de Versão)
      const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
      if (compareVersions(APP_VERSION, lastSeen) > 0) {
          localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);

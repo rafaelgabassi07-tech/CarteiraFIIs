@@ -1,27 +1,28 @@
 
+
 {
-  "version": "5.5.0",
-  "date": "2025-05-25",
+  "version": "5.5.1",
+  "date": "2025-05-26",
   "notes": [
     {
-      "type": "ui",
-      "title": "Nova Central de Notificações",
-      "desc": "O antigo pop-up foi substituído por uma Inbox imersiva em tela cheia para melhor leitura dos seus alertas."
+      "type": "feat",
+      "title": "Experiência de Atualização",
+      "desc": "Novo sistema de atualização com feedback visual em tempo real e barra de progresso."
     },
     {
       "type": "ui",
-      "title": "Redesign de Atualizações",
-      "desc": "A tela de verificação de sistema agora é nativa e interativa, eliminando toasts intrusivos."
+      "title": "Visual Proventos",
+      "desc": "Redesign completo do modal de proventos com gráficos de evolução de 12 meses."
+    },
+    {
+      "type": "ui",
+      "title": "Benchmark de Inflação",
+      "desc": "Novo comparativo visual entre a rentabilidade da sua carteira e o IPCA acumulado."
     },
     {
       "type": "feat",
-      "title": "Dynamic Pill",
-      "desc": "Novo sistema de feedback visual no topo da tela para ações rápidas como sincronização e sucesso."
-    },
-    {
-      "type": "fix",
-      "title": "Estabilidade do Cache",
-      "desc": "Correções na lógica de armazenamento local para evitar recarregamentos desnecessários da API."
+      "title": "Central de Alertas",
+      "desc": "Controle granular de notificações para dividendos, data com e metas financeiras."
     }
   ]
 }
