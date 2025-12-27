@@ -418,7 +418,7 @@ export const Home: React.FC<HomeProps> = ({
                             animationEasing="ease-out"
                             onClick={onPieEnter}
                         >
-                            {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length] }} />)}
+                            {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                         </Pie>
                     </PieChart>
                     </ResponsiveContainer>
