@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, PieChart, Target, ChevronDown, ChevronUp, Layers, BadgeDollarSign, Landmark, ScrollText, Tag, Calculator, Hash, Wallet, Users, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap } from 'lucide-react';
+import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: DividendReceipt[], totalPortfolioValue: number }> = ({ asset, index, history, totalPortfolioValue }) => {
@@ -86,7 +86,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                  
                  <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center gap-3 p-4 bg-white dark:bg-[#0b1121] rounded-3xl border border-slate-100 dark:border-white/5">
-                       <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0"><BadgeDollarSign className="w-4 h-4" /></div>
+                       <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0"><DollarSign className="w-4 h-4" /></div>
                        <div>
                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Yield On Cost</p>
                           <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{yoc.toFixed(2)}%</p>
@@ -113,7 +113,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                         onClick={(e) => { e.stopPropagation(); setShowDetailsModal(true); }} 
                         className="flex-1 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                      >
-                        <BarChart3 className="w-4 h-4" /> Análise
+                        <BarChart className="w-4 h-4" /> Análise
                      </button>
                  </div>
             </div>
@@ -160,7 +160,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                   )) : (
                       <div className="text-center py-16 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-white/10">
                          <div className="w-14 h-14 bg-white dark:bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                            <Layers className="w-7 h-7 text-slate-300 dark:text-slate-600" strokeWidth={1.5} />
+                            <Landmark className="w-7 h-7 text-slate-300 dark:text-slate-600" strokeWidth={1.5} />
                          </div>
                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">Sem proventos registrados</p>
                       </div>
@@ -238,7 +238,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                  {/* Valuation */}
                  <div className="space-y-3">
                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-                       <BarChart3 className="w-3 h-3" /> Valuation
+                       <BarChart className="w-3 h-3" /> Valuation
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-white dark:bg-[#0b1121] p-4 rounded-3xl border border-slate-100 dark:border-white/5">
@@ -371,7 +371,7 @@ export const Portfolio: React.FC<{ portfolio: AssetPosition[], dividendReceipts:
            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700"></div>
            <div className="relative z-10 flex items-center gap-5">
               <div className="w-14 h-14 rounded-3xl bg-indigo-500 text-white flex items-center justify-center shadow-xl shadow-indigo-500/30">
-                < LandMarkIcon className="w-7 h-7" strokeWidth={2.5} />
+                <LandMarkIcon className="w-7 h-7" strokeWidth={2.5} />
               </div>
               <div>
                 <p className="text-[10px] font-bold uppercase text-indigo-500/70 tracking-[0.15em] mb-1">Total em Aportes</p>

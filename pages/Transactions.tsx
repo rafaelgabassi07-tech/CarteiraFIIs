@@ -155,13 +155,13 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         )}
                     </div>
                     
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                         {group.items.map((t) => (
-                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3.5 flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-sm active:scale-[0.99] transition-all">
+                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3 flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-sm active:scale-[0.99] transition-all">
                               <div className="flex items-center gap-3">
                                   {/* Indicador de Tipo Compacto */}
-                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/10' : 'bg-rose-500/5 text-rose-500 border-rose-500/10'}`}>
-                                      {t.type === 'BUY' ? <TrendingUp className="w-5 h-5" strokeWidth={2.5} /> : <TrendingDown className="w-5 h-5" strokeWidth={2.5} />}
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/10' : 'bg-rose-500/5 text-rose-500 border-rose-500/10'}`}>
+                                      {t.type === 'BUY' ? <TrendingUp className="w-4 h-4" strokeWidth={2.5} /> : <TrendingDown className="w-4 h-4" strokeWidth={2.5} />}
                                   </div>
                                   
                                   {/* Info Ativo Refinado */}
@@ -190,8 +190,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                   
                                   {/* Ações Compactas */}
                                   <div className="flex flex-col gap-1">
-                                      <button onClick={() => handleEdit(t)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-accent/10 hover:text-accent transition-colors active:scale-90"><Pencil className="w-3 h-3" /></button>
-                                      <button onClick={() => confirm('Deseja excluir esta ordem?') && onDeleteTransaction(t.id)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors active:scale-90"><Trash2 className="w-3 h-3" /></button>
+                                      <button onClick={() => handleEdit(t)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-accent/10 hover:text-accent transition-colors active:scale-90"><Pencil className="w-3 h-3" /></button>
+                                      <button onClick={() => confirm('Deseja excluir esta ordem?') && onDeleteTransaction(t.id)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors active:scale-90"><Trash2 className="w-3 h-3" /></button>
                                   </div>
                               </div>
                            </div>
