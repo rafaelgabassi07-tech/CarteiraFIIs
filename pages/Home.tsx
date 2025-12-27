@@ -13,6 +13,7 @@ interface HomeProps {
   isAiLoading?: boolean;
   inflationRate?: number; // IPCA Dinâmico
   portfolioStartDate?: string;
+  accentColor?: string; // Cor recebida para gráficos
 }
 
 const formatBRL = (val: any) => {
@@ -46,7 +47,8 @@ export const Home: React.FC<HomeProps> = ({
   sources = [],
   isAiLoading = false,
   inflationRate = 4.5, // Default apenas se não vier da IA
-  portfolioStartDate
+  portfolioStartDate,
+  accentColor = '#0ea5e9'
 }) => {
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -188,7 +190,8 @@ export const Home: React.FC<HomeProps> = ({
     );
   };
 
-  const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f97316', '#f43f5e', '#64748b', '#3b82f6', '#ec4899'];
+  // Cores do gráfico agora usam a Accent Color como primária
+  const COLORS = [accentColor, '#8b5cf6', '#10b981', '#f97316', '#f43f5e', '#64748b', '#3b82f6', '#ec4899'];
   const inflacaoPeriodo = inflationRate; 
   
   // CORREÇÃO: Ganho Real agora considera (Valorização Carteira + Dividendos Recebidos + Lucro Vendas)
@@ -205,6 +208,7 @@ export const Home: React.FC<HomeProps> = ({
       {/* 1. HERO CARD */}
       <div className="animate-fade-in-up">
         <div className="bg-white dark:bg-[#0f172a] p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden group">
+            {/* Efeito Glow com a Accent Color */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none group-hover:bg-accent/10 transition-colors duration-500"></div>
             
             <div className="relative z-10">
@@ -263,7 +267,7 @@ export const Home: React.FC<HomeProps> = ({
                         <span className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</span>
                     </div>
                     {upcoming > 0 && (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wide shadow-lg shadow-emerald-500/20">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-white text-[10px] font-bold uppercase tracking-wide shadow-lg shadow-accent/20">
                             <Sparkles className="w-3 h-3" />
                             <span>Futuro: {formatBRL(upcoming)}</span>
                         </div>
@@ -284,7 +288,7 @@ export const Home: React.FC<HomeProps> = ({
             style={{ animationDelay: '200ms' }}
           >
              <div className="mb-6">
-                 <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 mb-3 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
+                 <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent mb-3 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Alocação</h3>
              </div>
              <div>
@@ -293,8 +297,8 @@ export const Home: React.FC<HomeProps> = ({
                     <span>Ações {allocationSummary.stockPercent.toFixed(0)}%</span>
                  </div>
                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden flex">
-                    <div className="h-full bg-indigo-500" style={{ width: `${allocationSummary.fiiPercent}%` }}></div>
-                    <div className="h-full bg-indigo-300 dark:bg-indigo-400/30" style={{ width: `${allocationSummary.stockPercent}%` }}></div>
+                    <div className="h-full bg-accent" style={{ width: `${allocationSummary.fiiPercent}%` }}></div>
+                    <div className="h-full bg-accent/30" style={{ width: `${allocationSummary.stockPercent}%` }}></div>
                  </div>
              </div>
           </button>
@@ -341,7 +345,7 @@ export const Home: React.FC<HomeProps> = ({
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
         <div className="px-4 py-2">
             <div className="flex items-center gap-3 px-2 mb-6 mt-2">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><LayoutGrid className="w-5 h-5" strokeWidth={2} /></div>
+                <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent"><LayoutGrid className="w-5 h-5" strokeWidth={2} /></div>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Detalhamento</h3>
             </div>
             <ModalTabs 
@@ -379,17 +383,17 @@ export const Home: React.FC<HomeProps> = ({
                     <button 
                         key={item.name} 
                         onClick={() => setActiveIndex(i)}
-                        className={`w-full flex items-center justify-between p-4 rounded-3xl border transition-all duration-300 animate-fade-in-up ${isActive ? 'bg-indigo-500/5 border-indigo-500/20 shadow-sm scale-[1.01]' : 'bg-white dark:bg-[#0f172a] border-slate-100 dark:border-white/5'}`}
+                        className={`w-full flex items-center justify-between p-4 rounded-3xl border transition-all duration-300 animate-fade-in-up ${isActive ? 'bg-accent/5 border-accent/20 shadow-sm scale-[1.01]' : 'bg-white dark:bg-[#0f172a] border-slate-100 dark:border-white/5'}`}
                         style={{ animationDelay: `${i * 50}ms` }}
                     >
                         <div className="flex items-center gap-4">
-                            <div className={`w-3 h-3 rounded-full shadow-sm ring-2 ${isActive ? 'ring-indigo-200 dark:ring-indigo-900' : 'ring-white dark:ring-[#0f172a]'}`} style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                            <div className={`w-3 h-3 rounded-full shadow-sm ring-2 ${isActive ? 'ring-accent/40' : 'ring-white dark:ring-[#0f172a]'}`} style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
                             <div className="text-left">
-                                <h4 className={`font-bold text-xs uppercase tracking-wide ${isActive ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>{item.name}</h4>
+                                <h4 className={`font-bold text-xs uppercase tracking-wide ${isActive ? 'text-accent' : 'text-slate-900 dark:text-white'}`}>{item.name}</h4>
                                 <p className="text-[10px] font-medium text-slate-400">{formatBRL(item.value)}</p>
                             </div>
                         </div>
-                        <span className={`text-sm font-bold tabular-nums ${isActive ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>{percent.toFixed(1)}%</span>
+                        <span className={`text-sm font-bold tabular-nums ${isActive ? 'text-accent' : 'text-slate-900 dark:text-white'}`}>{percent.toFixed(1)}%</span>
                     </button>
                     );
                 })}
@@ -422,7 +426,7 @@ export const Home: React.FC<HomeProps> = ({
                 <div className="space-y-4 mt-4 animate-fade-in">
                     <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 flex items-center justify-between">
                          <div className="flex items-center gap-4">
-                             <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><TrendingUp className="w-5 h-5" /></div>
+                             <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent"><TrendingUp className="w-5 h-5" /></div>
                              <div>
                                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Valorização</h4>
                                  <p className="text-[9px] text-slate-400">Patrimônio</p>
@@ -472,7 +476,7 @@ export const Home: React.FC<HomeProps> = ({
                             </div>
                             <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] text-center shadow-sm">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Futuro</p>
-                                <p className="text-xl font-bold text-indigo-500 tabular-nums">{formatBRL(upcoming)}</p>
+                                <p className="text-xl font-bold text-accent tabular-nums">{formatBRL(upcoming)}</p>
                             </div>
                         </div>
                     </div>
@@ -480,8 +484,8 @@ export const Home: React.FC<HomeProps> = ({
 
                 {incomeTab === 'magic' && (
                     <div className="space-y-4 animate-fade-in">
-                        <div className="bg-indigo-500/5 p-6 rounded-[2rem] border border-indigo-500/10 mb-4">
-                             <div className="flex gap-2 items-center text-indigo-500 mb-2">
+                        <div className="bg-accent/5 p-6 rounded-[2rem] border border-accent/10 mb-4">
+                             <div className="flex gap-2 items-center text-accent mb-2">
                                 <Target className="w-5 h-5" />
                                 <span className="text-xs font-bold uppercase tracking-wide">Magic Number</span>
                              </div>
@@ -520,18 +524,18 @@ export const Home: React.FC<HomeProps> = ({
                         const isUpcoming = r.paymentDate > todayStr;
                         return (
                             <div key={`${r.id}-${idx}`} className="relative pl-8 py-3 group animate-fade-in-up" style={{ animationDelay: `${idx * 30}ms` }}>
-                                <div className={`absolute left-[11px] top-7 w-4 h-4 rounded-full border-[3px] border-slate-50 dark:border-[#0b1121] z-10 ${isUpcoming ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
-                                <div className={`p-5 rounded-[2rem] border transition-all flex justify-between items-center ${isUpcoming ? 'bg-white dark:bg-[#0f172a] border-indigo-500/30 shadow-lg shadow-indigo-500/5' : 'bg-white dark:bg-[#0f172a] border-slate-100 dark:border-white/5'}`}>
+                                <div className={`absolute left-[11px] top-7 w-4 h-4 rounded-full border-[3px] border-slate-50 dark:border-[#0b1121] z-10 ${isUpcoming ? 'bg-accent' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
+                                <div className={`p-5 rounded-[2rem] border transition-all flex justify-between items-center ${isUpcoming ? 'bg-white dark:bg-[#0f172a] border-accent/30 shadow-lg shadow-accent/5' : 'bg-white dark:bg-[#0f172a] border-slate-100 dark:border-white/5'}`}>
                                     <div>
                                         <div className="flex items-center gap-2 mb-1.5">
                                             <span className="font-bold text-sm text-slate-900 dark:text-white">{r.ticker}</span>
-                                            {isUpcoming && <span className="text-[9px] font-bold bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded uppercase tracking-wide">Futuro</span>}
+                                            {isUpcoming && <span className="text-[9px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded uppercase tracking-wide">Futuro</span>}
                                         </div>
                                         <div className="flex items-center gap-2 text-[10px] text-slate-400 uppercase font-bold tracking-wide">
                                             <span>{r.type.substring(0,3)}</span> • <span>{r.paymentDate.split('-').reverse().slice(0,2).join('/')}</span>
                                         </div>
                                     </div>
-                                    <span className={`font-bold text-sm tabular-nums ${isUpcoming ? 'text-indigo-500' : 'text-slate-900 dark:text-white'}`}>{formatBRL(r.totalReceived)}</span>
+                                    <span className={`font-bold text-sm tabular-nums ${isUpcoming ? 'text-accent' : 'text-slate-900 dark:text-white'}`}>{formatBRL(r.totalReceived)}</span>
                                 </div>
                             </div>
                         );

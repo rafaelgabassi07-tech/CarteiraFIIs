@@ -55,18 +55,18 @@ export const Header: React.FC<HeaderProps> = ({
         ) : (
           <div className="flex flex-col animate-fade-in">
               <div className="flex items-center gap-2.5">
-                  {/* Ponto Pulsante (Live Status) - Reposicionado para o início */}
+                  {/* Ponto Pulsante agora usa Accent */}
                   <div className="relative flex h-2.5 w-2.5 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-white dark:border-[#020617]"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent border border-white dark:border-[#020617]"></span>
                   </div>
 
                   <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{title}</h1>
 
                   {updateAvailable && (
                     <span className="relative flex h-2 w-2 ml-1" onClick={onUpdateClick}>
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500 cursor-pointer"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-accent cursor-pointer"></span>
                     </span>
                   )}
               </div>
@@ -77,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="flex items-center gap-3">
         {updateAvailable && !showBack && (
-          <button onClick={onUpdateClick} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 active:scale-95 transition-all animate-scale-in hover:brightness-110">
+          <button onClick={onUpdateClick} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/30 active:scale-95 transition-all animate-scale-in hover:brightness-110">
             <Download className="w-5 h-5 animate-pulse" strokeWidth={2.5} />
           </button>
         )}
@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {onRefresh && !showBack && (
           <button onClick={onRefresh} disabled={isRefreshing} className={`w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm ${isRefreshing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-white/10'}`}>
-             <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} strokeWidth={2} />
+             <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin text-accent' : ''}`} strokeWidth={2} />
           </button>
         )}
 
@@ -115,9 +115,9 @@ export const UpdateBanner: React.FC<{
 
   return (
     <div className="fixed top-24 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-sm animate-fade-in-up">
-      <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl border border-indigo-500/20 ring-1 ring-indigo-500/10 flex items-center justify-between gap-4">
+      <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl shadow-accent/10 border border-accent/20 ring-1 ring-accent/10 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/30 shrink-0">
              <Rocket className="w-5 h-5" strokeWidth={2} />
           </div>
           <div>
@@ -126,7 +126,7 @@ export const UpdateBanner: React.FC<{
           </div>
         </div>
         <div className="flex items-center gap-2">
-           <button onClick={onUpdate} className="px-3 py-2 bg-indigo-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-md">
+           <button onClick={onUpdate} className="px-3 py-2 bg-accent text-white rounded-xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-md">
              Atualizar
            </button>
            <button onClick={onDismiss} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-white active:scale-90 transition-all">
@@ -155,7 +155,7 @@ export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string
             <button 
               key={tab.id} 
               onClick={() => onTabChange(tab.id)} 
-              className={`relative flex items-center justify-center h-12 rounded-2xl transition-all duration-500 ease-out active:scale-90 ${isActive ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md px-6' : 'px-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'}`}
+              className={`relative flex items-center justify-center h-12 rounded-2xl transition-all duration-500 ease-out active:scale-90 ${isActive ? 'bg-accent text-white shadow-lg shadow-accent/30 px-6' : 'px-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'}`}
             >
                <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-110' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
                
@@ -255,8 +255,8 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
                     borderClass = 'border-amber-500/20 bg-amber-500/5';
                   } else if (n.category === 'update') {
                     Icon = Rocket;
-                    bgClass = 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20';
-                    borderClass = 'border-indigo-500/20 bg-indigo-500/5';
+                    bgClass = 'bg-accent text-white shadow-lg shadow-accent/20';
+                    borderClass = 'border-accent/20 bg-accent/5';
                   } else {
                     Icon = Bell;
                     bgClass = 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-200';
@@ -312,7 +312,7 @@ export const ChangelogModal: React.FC<{
             </button>
 
             <div className="w-full px-8 pt-10 pb-8 text-center bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-500 to-purple-600 shadow-xl shadow-indigo-500/30 mb-5 text-white transform -rotate-3">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-accent shadow-xl shadow-accent/30 mb-5 text-white transform -rotate-3">
                   {isUpdatePending ? <Gift className="w-8 h-8" strokeWidth={1.5} /> : <Rocket className="w-8 h-8" strokeWidth={1.5} />}
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-1">
@@ -327,7 +327,7 @@ export const ChangelogModal: React.FC<{
                 <div className="space-y-4">
                   {notes && notes.length > 0 ? notes.map((note, i) => (
                     <div key={i} className="flex items-start gap-4">
-                       <div className={`mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${note.type === 'feat' ? 'bg-amber-100 text-amber-600' : note.type === 'ui' ? 'bg-purple-100 text-purple-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                       <div className={`mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${note.type === 'feat' ? 'bg-amber-100 text-amber-600' : note.type === 'ui' ? 'bg-accent/10 text-accent' : 'bg-emerald-100 text-emerald-600'}`}>
                           {note.type === 'feat' ? <Star className="w-4 h-4" /> : note.type === 'ui' ? <Palette className="w-4 h-4" /> : <Check className="w-4 h-4" />}
                        </div>
                        <div>
@@ -343,7 +343,7 @@ export const ChangelogModal: React.FC<{
 
             <div className="w-full p-6 bg-white dark:bg-[#0f172a]">
               {isUpdatePending ? (
-                 <button onClick={onUpdate} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl hover:shadow-2xl flex items-center justify-center gap-2">
+                 <button onClick={onUpdate} className="w-full bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl hover:shadow-2xl flex items-center justify-center gap-2">
                     <Download className="w-4 h-4" strokeWidth={2.5} /> Atualizar Agora
                  </button>
               ) : (

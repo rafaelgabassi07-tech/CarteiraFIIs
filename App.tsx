@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '5.4.0';
+const APP_VERSION = '5.4.1';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -37,7 +37,6 @@ const compareVersions = (v1: string, v2: string) => {
   return 0;
 };
 
-// Estratégia de Atualização "Padrão PWA"
 const performSmartUpdate = async () => {
   if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.getRegistration();
@@ -59,13 +58,10 @@ const App: React.FC = () => {
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
-  
   const [showChangelog, setShowChangelog] = useState(false);
   const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
   const [changelogVersion, setChangelogVersion] = useState(APP_VERSION);
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  
-  // Novo estado para controlar a visibilidade do banner de atualização
   const [isUpdateDismissed, setIsUpdateDismissed] = useState(false);
   
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -88,7 +84,6 @@ const App: React.FC = () => {
     } catch { return []; }
   });
   
-  // Estado para indicadores macroeconômicos (IPCA dinâmico)
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => {
       try {
           const saved = localStorage.getItem(STORAGE_KEYS.INDICATORS);
@@ -114,9 +109,19 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.THEME, theme);
   }, [theme]);
 
+  // Efeito CRÍTICO para Cor de Destaque com Suporte a Opacidade (RGB)
   useEffect(() => {
+    // 1. Salva a cor Hex padrão
     document.documentElement.style.setProperty('--color-accent', accentColor);
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
+    
+    // 2. Converte para RGB para permitir classes como 'bg-accent/20'
+    const hex = accentColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
+    document.documentElement.style.setProperty('--color-accent-rgb', `${r} ${g} ${b}`);
   }, [accentColor]);
 
   useEffect(() => {
@@ -149,8 +154,6 @@ const App: React.FC = () => {
   const memoizedData = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     const nowStr = new Date().toISOString().substring(0, 7);
-    
-    // GERAÇÃO ROBUSTA DA DATA LOCAL "HOJE" (YYYY-MM-DD)
     const todayDate = new Date();
     const year = todayDate.getFullYear();
     const month = String(todayDate.getMonth() + 1).padStart(2, '0');
@@ -296,14 +299,8 @@ const App: React.FC = () => {
             setUpdateAvailable(true);
             setChangelogNotes(data.notes || []);
             setChangelogVersion(data.version);
-            
-            // Só exibe o banner se não for uma verificação manual (manual exibe changelog direto)
             if (!manual) {
-                // Se o usuário já dispensou antes, não força o banner, mas mantém updateAvailable true
-                // Mas se for uma NOVA verificação de sessão, reseta o dismiss?
-                // Vamos optar por: sempre mostrar o banner quando detectado, o usuário fecha se quiser
                 setIsUpdateDismissed(false);
-                
                 showToast('info', 'Nova atualização disponível');
                 addNotification({
                     title: 'Atualização do Sistema',
@@ -360,21 +357,17 @@ const App: React.FC = () => {
       }
       setIsAiLoading(true);
       
-      // Determina a data de início da carteira (primeira transação)
       let startDate = '';
       if (transactions.length > 0) {
-         // Encontra a data mais antiga
          startDate = transactions.reduce((min, t) => t.date < min ? t.date : min, transactions[0].date);
       }
 
-      // Passa 'force' para o serviço Gemini
       const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
       
       setGeminiDividends(aiData.dividends);
       setAssetsMetadata(aiData.metadata);
       setSources(aiData.sources || []);
       
-      // Atualiza indicadores macroeconômicos se a IA retornou
       if (aiData.indicators && typeof aiData.indicators.ipca_cumulative === 'number') {
           setMarketIndicators({
               ipca: aiData.indicators.ipca_cumulative,
@@ -397,7 +390,7 @@ const App: React.FC = () => {
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       {toast && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => updateAvailable && setShowChangelog(true)}>
-          <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : toast.type === 'info' ? 'bg-indigo-500/90 border-indigo-400 cursor-pointer' : 'bg-rose-500/90 border-rose-400'} text-white`}>
+          <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl shadow-accent/20 border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : toast.type === 'info' ? 'bg-accent/90 border-accent/40 cursor-pointer' : 'bg-rose-500/90 border-rose-400'} text-white`}>
             {updateAvailable ? <DownloadCloud className="w-5 h-5 animate-bounce" /> : toast.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
             <span className="text-xs font-black uppercase tracking-wider">{toast.text}</span>
           </div>
@@ -450,6 +443,7 @@ const App: React.FC = () => {
                     isAiLoading={isAiLoading} 
                     inflationRate={marketIndicators.ipca}
                     portfolioStartDate={marketIndicators.startDate}
+                    accentColor={accentColor}
                 />
             )}
             {currentTab === 'portfolio' && <Portfolio {...memoizedData} />}

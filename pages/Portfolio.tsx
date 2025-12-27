@@ -64,7 +64,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
 
           {/* Barra de Progresso Discreta (Peso) */}
           <div className="w-full h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden mt-2">
-              <div className={`h-full transition-all duration-1000 ${asset.assetType === AssetType.FII ? 'bg-orange-500' : 'bg-blue-500'}`} style={{ width: `${portfolioShare}%` }}></div>
+              <div className="h-full bg-accent transition-all duration-1000" style={{ width: `${portfolioShare}%` }}></div>
           </div>
 
           {isExpanded && (
@@ -93,7 +93,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                        </div>
                     </div>
                     <div className="flex items-center gap-3 p-4 bg-white dark:bg-[#0b1121] rounded-3xl border border-slate-100 dark:border-white/5">
-                       <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0"><Landmark className="w-4 h-4" /></div>
+                       <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0"><Landmark className="w-4 h-4" /></div>
                        <div>
                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Dividendos</p>
                           <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">R$ {formatCurrency(asset.totalDividends || 0)}</p>
@@ -111,7 +111,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                      </button>
                      <button 
                         onClick={(e) => { e.stopPropagation(); setShowDetailsModal(true); }} 
-                        className="flex-1 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                        className="flex-1 py-4 bg-accent text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg hover:shadow-xl hover:brightness-110 flex items-center justify-center gap-2"
                      >
                         <BarChart className="w-4 h-4" /> Análise
                      </button>
@@ -367,18 +367,18 @@ export const Portfolio: React.FC<{ portfolio: AssetPosition[], dividendReceipts:
       
       {/* Hero: Aportes */}
       <div className="animate-fade-in-up">
-        <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/5 p-8 rounded-[3rem] border border-indigo-500/10 shadow-sm flex items-center justify-between group overflow-hidden relative">
-           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700"></div>
+        <div className="bg-gradient-to-br from-accent/10 to-accent/5 p-8 rounded-[3rem] border border-accent/10 shadow-sm flex items-center justify-between group overflow-hidden relative">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700"></div>
            <div className="relative z-10 flex items-center gap-5">
-              <div className="w-14 h-14 rounded-3xl bg-indigo-500 text-white flex items-center justify-center shadow-xl shadow-indigo-500/30">
+              <div className="w-14 h-14 rounded-3xl bg-accent text-white flex items-center justify-center shadow-xl shadow-accent/30">
                 <LandMarkIcon className="w-7 h-7" strokeWidth={2.5} />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase text-indigo-500/70 tracking-[0.15em] mb-1">Total em Aportes</p>
+                <p className="text-[10px] font-bold uppercase text-accent/70 tracking-[0.15em] mb-1">Total em Aportes</p>
                 <h3 className="text-slate-900 dark:text-white font-bold text-2xl tracking-tighter tabular-nums">R$ {formatCurrency(monthlyContribution)}</h3>
               </div>
            </div>
-           <div className="bg-white/40 dark:bg-white/5 p-3 rounded-2xl backdrop-blur-sm group-hover:bg-indigo-500 group-hover:text-white transition-all cursor-help">
+           <div className="bg-white/40 dark:bg-white/5 p-3 rounded-2xl backdrop-blur-sm group-hover:bg-accent group-hover:text-white transition-all cursor-help">
               <TrendingUp className="w-5 h-5" />
            </div>
         </div>
