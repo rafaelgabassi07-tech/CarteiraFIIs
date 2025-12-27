@@ -1,27 +1,22 @@
 
 {
-  "version": "5.4.0",
+  "version": "5.4.2",
   "date": "2025-05-24",
   "notes": [
+    {
+      "type": "fix",
+      "title": "Update Estável (v5.4.2)",
+      "desc": "Aprimoramento crítico no ciclo de vida da atualização para evitar reinícios automáticos indesejados."
+    },
+    {
+      "type": "ui",
+      "title": "Visual Personalizado (v5.4.1)",
+      "desc": "A Cor de Destaque agora controla todo o brilho e a atmosfera do aplicativo (Glow UI)."
+    },
     {
       "type": "ui",
       "title": "Alertas Inteligentes (v5.4.0)",
       "desc": "Novo sistema de notificações de atualização: feche o alerta quando quiser e atualize mais tarde pelo menu."
-    },
-    {
-      "type": "perf",
-      "title": "Turbo Gemini (v5.3.0)",
-      "desc": "Implementado Cache Inteligente de 3 horas para dados da IA e otimização do prompt para reduzir latência."
-    },
-    {
-      "type": "fix",
-      "title": "Sanitização de Dados IA (v5.2.1)",
-      "desc": "Correção crítica no processamento de datas e valores numéricos da IA que impediam a exibição de proventos."
-    },
-    {
-      "type": "feat",
-      "title": "Inflação Dinâmica (v5.2.0)",
-      "desc": "O Ganho Real agora desconta o IPCA acumulado exato desde a data do primeiro aporte da carteira."
     }
   ]
 }

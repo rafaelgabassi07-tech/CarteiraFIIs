@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '5.4.1';
+const APP_VERSION = '5.4.2';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -40,11 +40,13 @@ const compareVersions = (v1: string, v2: string) => {
 const performSmartUpdate = async () => {
   if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.getRegistration();
+    // Se houver um worker esperando (baixado mas não ativo), mandamos ele ativar
     if (reg && reg.waiting) {
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         return; 
     }
   }
+  // Fallback: Recarrega a página se não houver SW ou se for atualização simples
   window.location.reload();
 };
 
@@ -109,13 +111,11 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.THEME, theme);
   }, [theme]);
 
-  // Efeito CRÍTICO para Cor de Destaque com Suporte a Opacidade (RGB)
+  // Efeito para Cor de Destaque com Suporte a Opacidade (RGB)
   useEffect(() => {
-    // 1. Salva a cor Hex padrão
     document.documentElement.style.setProperty('--color-accent', accentColor);
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
     
-    // 2. Converte para RGB para permitir classes como 'bg-accent/20'
     const hex = accentColor.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
@@ -295,11 +295,14 @@ const App: React.FC = () => {
         const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const data: VersionData = await res.json();
+          // Lógica de Comparação Robusta
           if (compareVersions(data.version, APP_VERSION) > 0) {
             setUpdateAvailable(true);
             setChangelogNotes(data.notes || []);
             setChangelogVersion(data.version);
             if (!manual) {
+                // Se for automático, mostra o banner (se não foi dispensado anteriormente na sessão)
+                // Aqui reiniciamos o dismiss para garantir que o usuário veja a nova versão
                 setIsUpdateDismissed(false);
                 showToast('info', 'Nova atualização disponível');
                 addNotification({
@@ -326,13 +329,14 @@ const App: React.FC = () => {
     const handleVersionControl = async () => {
       const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
       if (compareVersions(APP_VERSION, lastSeen) > 0) {
+        // Atualização bem-sucedida detectada
         try {
           const res = await fetch(`./version.json?t=${Date.now()}`);
           if (res.ok) {
             const data: VersionData = await res.json();
             setChangelogNotes(data.notes || []);
             setChangelogVersion(APP_VERSION);
-            setTimeout(() => setShowChangelog(true), 1500);
+            setTimeout(() => setShowChangelog(true), 1500); // Mostra changelog após update
           }
         } catch(e) {}
         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);

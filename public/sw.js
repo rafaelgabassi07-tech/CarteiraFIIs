@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.4.0';
+const CACHE_NAME = 'investfiis-ultra-v5.4.2';
 const DYNAMIC_CACHE = 'investfiis-dynamic-v1';
 
 const ASSETS_TO_CACHE = [
@@ -11,7 +11,8 @@ const ASSETS_TO_CACHE = [
 
 // Instalação: Cache dos arquivos estáticos essenciais
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Força o SW a ativar imediatamente
+  // REMOVIDO: self.skipWaiting(); 
+  // Motivo: Queremos que a atualização fique em estado 'waiting' até o usuário confirmar no banner.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -19,19 +20,19 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Ativação: Limpeza de caches antigos IMEDIATA
+// Ativação: Limpeza de caches antigos
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME && key !== DYNAMIC_CACHE) {
-            console.log('Removendo cache antigo:', key);
+            // Limpa versões antigas apenas quando a nova assume o controle
             return caches.delete(key);
           }
         })
       );
-    }).then(() => self.clients.claim()) // Assume o controle da página imediatamente
+    }).then(() => self.clients.claim()) // Assume o controle da página
   );
 });
 
@@ -39,12 +40,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Ignorar requisições de API e externas
+  // 1. Ignorar requisições de API e externas (exceto assets locais)
   if (url.origin !== self.location.origin) {
     return;
   }
 
-  // 2. Sempre buscar version.json na rede
+  // 2. Sempre buscar version.json na rede (Network First)
+  // Isso garante que o app saiba imediatamente de novas versões
   if (url.pathname.includes('version.json')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
@@ -53,19 +55,19 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 3. Estratégia Stale-While-Revalidate para o app
+  // Entrega o cache rápido, mas atualiza o cache em segundo plano
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
-          // Atualiza o cache dinâmico com a nova versão
+          // Atualiza o cache dinâmico
           caches.open(DYNAMIC_CACHE).then((cache) => {
             cache.put(event.request, networkResponse.clone());
           });
           return networkResponse;
         })
         .catch(() => {
-          // Se falhar a rede e não tiver cache, tenta retornar algo (fallback)
-          // Mas normalmente o cachedResponse já resolveu
+          // Fallback se offline e sem cache (raro neste ponto)
         });
       
       return cachedResponse || fetchPromise;
@@ -73,9 +75,9 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Listener para mensagens do App
+// Listener para mensagens do App (Acionado pelo botão "Atualizar")
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+    self.skipWaiting(); // Agora sim, força a atualização
   }
 });
