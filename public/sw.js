@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v4.8.0';
+const CACHE_NAME = 'investfiis-ultra-v5.0.2-fix';
 const DYNAMIC_CACHE = 'investfiis-dynamic-v1';
 
 const ASSETS_TO_CACHE = [
@@ -19,18 +19,19 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Ativação: Limpeza de caches antigos
+// Ativação: Limpeza de caches antigos IMEDIATA
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME && key !== DYNAMIC_CACHE) {
+            console.log('Removendo cache antigo:', key);
             return caches.delete(key);
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => self.clients.claim()) // Assume o controle da página imediatamente
   );
 });
 
@@ -38,37 +39,41 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Ignorar requisições de API (Brapi, Gemini, etc) do cache estático
-  // Deixa o navegador/app lidar com o cache de dados ou Network Only
+  // 1. Ignorar requisições de API e externas
   if (url.origin !== self.location.origin) {
     return;
   }
 
-  // 2. Estratégia Network First para version.json (Sempre buscar versão nova)
+  // 2. Sempre buscar version.json na rede
   if (url.pathname.includes('version.json')) {
     event.respondWith(
-      fetch(event.request)
-        .catch(() => caches.match(event.request))
+      fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // 3. Estratégia Stale-While-Revalidate para ativos estáticos (JS, CSS, Imagens)
-  // Retorna o cache rápido, mas atualiza no fundo para a próxima visita
+  // 3. Estratégia Stale-While-Revalidate para o app
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        return caches.open(DYNAMIC_CACHE).then((cache) => {
-          cache.put(event.request, networkResponse.clone());
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
+          // Atualiza o cache dinâmico com a nova versão
+          caches.open(DYNAMIC_CACHE).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+          });
           return networkResponse;
+        })
+        .catch(() => {
+          // Se falhar a rede e não tiver cache, tenta retornar algo (fallback)
+          // Mas normalmente o cachedResponse já resolveu
         });
-      });
+      
       return cachedResponse || fetchPromise;
     })
   );
 });
 
-// Listener para forçar atualização via mensagem do App
+// Listener para mensagens do App
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
