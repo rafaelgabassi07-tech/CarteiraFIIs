@@ -65,6 +65,7 @@ const App: React.FC = () => {
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   
+  // Controle de Changelog e Update
   const [showChangelog, setShowChangelog] = useState(false);
   const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
   const [changelogVersion, setChangelogVersion] = useState(APP_VERSION);
@@ -143,6 +144,7 @@ const App: React.FC = () => {
     prevDividendsRef.current = geminiDividends;
   }, [geminiDividends, addNotification]);
 
+  // Controle de Versão e Atualizações
   const checkForUpdates = async (manual = false) => {
       if (manual) showToast('info', 'Buscando atualizações...');
       
@@ -151,10 +153,14 @@ const App: React.FC = () => {
         if (res.ok) {
           const data: VersionData = await res.json();
           if (compareVersions(data.version, APP_VERSION) > 0) {
+            // Nova atualização encontrada!
             setUpdateAvailable(true);
             setChangelogNotes(data.notes || []);
             setChangelogVersion(data.version);
+            
+            // Abre o modal automaticamente para mostrar o que há de novo (Proativo)
             setShowChangelog(true);
+
             showToast('info', 'Nova atualização disponível');
           } else if (manual) {
             showToast('success', 'Você já tem a versão mais recente.');
@@ -170,11 +176,14 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleVersionControl = async () => {
       const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
+      
+      // Checa se acabou de atualizar (Versão Atual > Ultima Vista)
       if (compareVersions(APP_VERSION, lastSeen) > 0) {
         try {
           const res = await fetch(`./version.json?t=${Date.now()}`);
           if (res.ok) {
             const data: VersionData = await res.json();
+            // Mostra o changelog da versão ATUAL (Pós update)
             setChangelogNotes(data.notes || []);
             setChangelogVersion(APP_VERSION);
             setTimeout(() => setShowChangelog(true), 1500);
@@ -182,6 +191,7 @@ const App: React.FC = () => {
         } catch(e) {}
         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
       } else {
+        // Se não acabou de atualizar, verifica se há uma NOVA disponível
         checkForUpdates();
       }
     };
@@ -295,7 +305,7 @@ const App: React.FC = () => {
   useEffect(() => { syncAll(); }, []);
 
   return (
-    <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark overflow-x-hidden">
+    <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       {toast && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => updateAvailable && setShowChangelog(true)}>
           <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : toast.type === 'info' ? 'bg-indigo-500/90 border-indigo-400 cursor-pointer' : 'bg-rose-500/90 border-rose-400'} text-white`}>
@@ -318,7 +328,7 @@ const App: React.FC = () => {
         notificationCount={notifications.length}
       />
 
-      <main className="max-w-screen-md mx-auto pt-4">
+      <main className="max-w-screen-md mx-auto pt-2">
         {showSettings ? (
           <Settings 
             brapiToken={brapiToken} onSaveToken={setBrapiToken}
@@ -334,7 +344,7 @@ const App: React.FC = () => {
             onShowChangelog={() => setShowChangelog(true)}
           />
         ) : (
-          <div key={currentTab} className="animate-fade-in">
+          <div className="animate-fade-in">
             {currentTab === 'home' && <Home {...memoizedData} sources={sources} isAiLoading={isAiLoading} />}
             {currentTab === 'portfolio' && <Portfolio {...memoizedData} />}
             {currentTab === 'transactions' && (
