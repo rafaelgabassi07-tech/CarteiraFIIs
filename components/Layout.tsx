@@ -104,8 +104,8 @@ export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string
   ];
 
   return (
-    <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-6 pointer-events-none">
-      <nav className="bg-[#0b1121]/95 dark:bg-[#020617]/90 backdrop-blur-xl border border-white/5 p-1.5 rounded-[2.5rem] flex items-center gap-1 shadow-2xl shadow-black/40 pointer-events-auto transition-all duration-300">
+    <div className="fixed bottom-8 left-0 right-0 z-50 flex justify-center px-6 pointer-events-none">
+      <nav className="bg-slate-950/90 dark:bg-[#020617]/95 backdrop-blur-2xl border border-white/10 p-1.5 rounded-2xl flex items-center gap-1.5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)] pointer-events-auto transition-all duration-300 ring-1 ring-white/5">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -113,14 +113,14 @@ export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string
             <button 
               key={tab.id} 
               onClick={() => onTabChange(tab.id)} 
-              className={`relative flex items-center justify-center h-12 transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${isActive ? 'bg-white text-[#0b1121] px-5 rounded-[2rem] shadow-lg scale-100' : 'text-slate-400 dark:text-slate-500 px-4 scale-95 hover:text-slate-200'}`}
+              className={`relative flex items-center justify-center h-12 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${isActive ? 'bg-white text-slate-950 px-5 rounded-xl shadow-xl scale-100' : 'text-slate-400 dark:text-slate-500 px-4 scale-95 hover:text-slate-200'}`}
             >
-               <Icon className={`w-5 h-5 ${isActive ? 'mr-2' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
-               <span className={`text-xs font-black tracking-tight overflow-hidden transition-all duration-500 ${isActive ? 'max-w-[80px] opacity-100' : 'max-w-0 opacity-0'}`}>
+               <Icon className={`w-5 h-5 transition-transform duration-500 ${isActive ? 'scale-110 mr-2.5' : 'scale-100'}`} strokeWidth={isActive ? 2.5 : 2} />
+               <span className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all duration-500 ease-in-out ${isActive ? 'max-w-[100px] opacity-100' : 'max-w-0 opacity-0'}`}>
                  {tab.label}
                </span>
                {isActive && (
-                 <div className="absolute inset-0 rounded-[2rem] bg-white pointer-events-none -z-10" />
+                 <div className="absolute inset-0 bg-white -z-10 animate-fade-in" />
                )}
             </button>
           );
