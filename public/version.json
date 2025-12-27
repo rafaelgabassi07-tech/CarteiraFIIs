@@ -1,22 +1,22 @@
 
 {
-  "version": "4.5.1",
-  "date": "2024-06-16",
+  "version": "4.6.0",
+  "date": "2024-06-17",
   "notes": [
     {
       "type": "ui",
-      "title": "Novo Visual de Novidades",
-      "desc": "A tela de atualizações foi redesenhada para mostrar melhor as novidades que chegam no app."
+      "title": "Novo Design da Home",
+      "desc": "Cards redesenhados com visual moderno, métricas expandidas (Média Mensal, Lucro Total) e melhor legibilidade."
     },
     {
-      "type": "feat",
-      "title": "Update Proativo",
-      "desc": "O app agora avisa automaticamente e com estilo quando uma nova versão está pronta."
+      "type": "ui",
+      "title": "Carteira Aprimorada",
+      "desc": "Cards de ativos agora mostram comparação direta de preço, tags de segmento e estatísticas detalhadas ao expandir."
     },
     {
       "type": "fix",
-      "title": "Indicadores Visuais",
-      "desc": "Novos indicadores no topo da tela para mostrar o status de sincronização e updates."
+      "title": "Navegação Limpa",
+      "desc": "Cabeçalhos de modais unificados para evitar duplicação de títulos na interface."
     }
   ]
 }
