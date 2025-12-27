@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, UpdateBanner } from './components/Layout';
 import { Home } from './pages/Home';
@@ -51,6 +52,7 @@ const App: React.FC = () => {
   
   // Estados de Atualização
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false); // Estado separado para visibilidade do banner
   const [availableVersion, setAvailableVersion] = useState<string | null>(null);
   const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([]);
   const [showChangelog, setShowChangelog] = useState(false);
@@ -125,7 +127,8 @@ const App: React.FC = () => {
               if (compareVersions(data.version, APP_VERSION) > 0) {
                   setAvailableVersion(data.version);
                   setReleaseNotes(data.notes || []);
-                  setIsUpdateAvailable(true); // Garante que a UI de update apareça se JSON for mais novo
+                  setIsUpdateAvailable(true);
+                  setShowUpdateBanner(true); // Exibe banner quando nova versão detectada via JSON
                   return true;
               }
           }
@@ -155,6 +158,7 @@ const App: React.FC = () => {
             // Se JÁ houver um SW esperando (waiting), ativamos a UI de update
             if (reg.waiting) {
                 setIsUpdateAvailable(true);
+                setShowUpdateBanner(true); // Exibe banner quando SW está esperando
                 // Busca metadados (notas) do JSON
                 fetchVersionJson(); 
                 return true;
@@ -200,6 +204,7 @@ const App: React.FC = () => {
                  // Caso 1: Já existe um esperando ao abrir o app
                  if (reg.waiting) {
                      setIsUpdateAvailable(true);
+                     setShowUpdateBanner(true); // Exibe banner
                      fetchVersionJson();
                  }
 
@@ -211,6 +216,7 @@ const App: React.FC = () => {
                              // Quando o novo worker terminar de instalar e entrar em espera (installed/waiting)
                              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                  setIsUpdateAvailable(true);
+                                 setShowUpdateBanner(true); // Exibe banner
                                  fetchVersionJson();
                              }
                          });
@@ -442,8 +448,8 @@ const App: React.FC = () => {
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       {/* Banner de Atualização que estava faltando */}
       <UpdateBanner 
-        isOpen={isUpdateAvailable} 
-        onDismiss={() => setIsUpdateAvailable(false)} 
+        isOpen={showUpdateBanner} // Alterado para usar o estado exclusivo do banner
+        onDismiss={() => setShowUpdateBanner(false)} // Fecha apenas o banner, mantendo o botão no header
         onUpdate={() => setShowChangelog(true)} 
         version={availableVersion || 'Nova'} 
       />
@@ -549,3 +555,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
