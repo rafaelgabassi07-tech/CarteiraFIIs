@@ -237,8 +237,8 @@ export const Settings: React.FC<SettingsProps> = ({
                   </div>
                </div>
                <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-200 dark:border-white/5 p-2 space-y-2">
-                  <Toggle label="Novos Pagamentos" icon={Sparkles} checked={notifyPrefs.payments} onChange={() => setNotifyPrefs(p => ({ ...p, payments: !p.payments }))} />
-                  <Toggle label="Data Com" icon={Calendar} checked={notifyPrefs.datacom} onChange={() => setNotifyPrefs(p => ({ ...p, datacom: !p.datacom }))} />
+                  <Toggle label="Novos Pagamentos" icon={Sparkles} checked={notifyPrefs.payments} onChange={() => setNotifyPrefs((p: any) => ({ ...p, payments: !p.payments }))} />
+                  <Toggle label="Data Com" icon={Calendar} checked={notifyPrefs.datacom} onChange={() => setNotifyPrefs((p: any) => ({ ...p, datacom: !p.datacom }))} />
                </div>
              </div>
           )}
