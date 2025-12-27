@@ -155,9 +155,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         )}
                     </div>
                     
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                         {group.items.map((t) => (
-                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3.5 flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-sm active:scale-[0.99] transition-all">
+                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3 flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-sm active:scale-[0.99] transition-all">
                               <div className="flex items-center gap-3">
                                   {/* Indicador de Tipo Compacto */}
                                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/10' : 'bg-rose-500/5 text-rose-500 border-rose-500/10'}`}>
