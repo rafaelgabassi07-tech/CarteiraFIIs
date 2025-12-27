@@ -5,12 +5,12 @@ import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, VersionData, ReleaseNote, AppNotification } from './types';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, VersionData, ReleaseNote, AppNotification, AssetFundamentals } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '4.9.0';
+const APP_VERSION = '5.0.0';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -37,19 +37,16 @@ const compareVersions = (v1: string, v2: string) => {
 };
 
 const performSmartUpdate = async () => {
-  // 1. Tenta notificar o SW atual para pular a espera (caso haja um waiting)
   if ('serviceWorker' in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
     for (const registration of registrations) {
        if (registration.waiting) {
          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
        }
-       // Opcional: Desregistrar para forçar limpeza total se necessário
        await registration.unregister();
     }
   }
   
-  // 2. Limpa caches de dados antigos do navegador para evitar conflitos de versão
   if ('caches' in window) {
     try {
         const keys = await caches.keys();
@@ -59,7 +56,6 @@ const performSmartUpdate = async () => {
     } catch(e) { console.error("Cache clear error", e); }
   }
   
-  // 3. Recarrega a página para baixar os novos assets
   window.location.reload();
 };
 
@@ -74,7 +70,6 @@ const App: React.FC = () => {
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   
-  // Controle de Changelog e Update
   const [showChangelog, setShowChangelog] = useState(false);
   const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
   const [changelogVersion, setChangelogVersion] = useState(APP_VERSION);
@@ -103,7 +98,7 @@ const App: React.FC = () => {
   const [sources, setSources] = useState<{ web: { uri: string; title: string } }[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType }>>({});
+  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>({});
 
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
@@ -133,27 +128,63 @@ const App: React.FC = () => {
   }, []);
 
   const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
-    setNotifications(prev => [
-      { ...notification, id: crypto.randomUUID(), timestamp: Date.now(), read: false },
-      ...prev
-    ]);
+    setNotifications(prev => {
+      // Evita duplicatas pelo título no mesmo dia
+      if (prev.some(n => n.title === notification.title)) return prev;
+      return [
+        { ...notification, id: crypto.randomUUID(), timestamp: Date.now(), read: false },
+        ...prev
+      ];
+    });
   }, []);
 
+  // Nova Função: Verificação de Eventos Diários (Data Com, Pagamentos)
+  const checkDailyEvents = useCallback((currentDividends: DividendReceipt[]) => {
+      const today = new Date().toISOString().split('T')[0];
+      
+      currentDividends.forEach(div => {
+         // Evento 1: Pagamento Hoje
+         if (div.paymentDate === today && div.totalReceived > 0) {
+             addNotification({
+                 title: `Pagamento: ${div.ticker}`,
+                 message: `O dia chegou! ${div.ticker} pagou R$ ${div.totalReceived.toLocaleString('pt-BR', {minimumFractionDigits: 2})} hoje.`,
+                 type: 'success',
+                 category: 'payment'
+             });
+         }
+
+         // Evento 2: Data Com Hoje (Aviso Importante)
+         if (div.dateCom === today) {
+             addNotification({
+                 title: `Data Com: ${div.ticker}`,
+                 message: `Hoje é a data limite para garantir os proventos de R$ ${div.rate.toFixed(4)}/cota anunciados.`,
+                 type: 'warning',
+                 category: 'datacom'
+             });
+         }
+      });
+  }, [addNotification]);
+
+  // Detector de Novos Dividendos via IA
   useEffect(() => {
     if (geminiDividends.length > prevDividendsRef.current.length) {
       const newDivs = geminiDividends.filter(d => !prevDividendsRef.current.find(p => p.id === d.id));
       if (newDivs.length > 0) {
         addNotification({
-          title: 'Novos Proventos',
-          message: `${newDivs.length} novos pagamentos foram identificados pela IA.`,
-          type: 'success'
+          title: 'Novos Anúncios',
+          message: `${newDivs.length} novos dividendos foram rastreados pela IA recentemente.`,
+          type: 'info',
+          category: 'general'
         });
       }
     }
     prevDividendsRef.current = geminiDividends;
-  }, [geminiDividends, addNotification]);
+    
+    // Executa verificação diária sempre que os dividendos mudam/carregam
+    checkDailyEvents(geminiDividends);
 
-  // Controle de Versão e Atualizações
+  }, [geminiDividends, addNotification, checkDailyEvents]);
+
   const checkForUpdates = async (manual = false) => {
       if (manual) showToast('info', 'Buscando atualizações...');
       
@@ -162,15 +193,19 @@ const App: React.FC = () => {
         if (res.ok) {
           const data: VersionData = await res.json();
           if (compareVersions(data.version, APP_VERSION) > 0) {
-            // Nova atualização encontrada!
             setUpdateAvailable(true);
             setChangelogNotes(data.notes || []);
             setChangelogVersion(data.version);
-            
-            // Abre o modal automaticamente para mostrar o que há de novo (Proativo)
             setShowChangelog(true);
-
             showToast('info', 'Nova atualização disponível');
+            
+            addNotification({
+                title: 'Atualização Disponível',
+                message: `A versão ${data.version} está pronta para ser instalada com novidades.`,
+                type: 'update',
+                category: 'update'
+            });
+
           } else if (manual) {
             showToast('success', 'Você já tem a versão mais recente.');
           }
@@ -185,14 +220,11 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleVersionControl = async () => {
       const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
-      
-      // Checa se acabou de atualizar (Versão Atual > Ultima Vista)
       if (compareVersions(APP_VERSION, lastSeen) > 0) {
         try {
           const res = await fetch(`./version.json?t=${Date.now()}`);
           if (res.ok) {
             const data: VersionData = await res.json();
-            // Mostra o changelog da versão ATUAL (Pós update)
             setChangelogNotes(data.notes || []);
             setChangelogVersion(APP_VERSION);
             setTimeout(() => setShowChangelog(true), 1500);
@@ -200,23 +232,10 @@ const App: React.FC = () => {
         } catch(e) {}
         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
       } else {
-        // Se não acabou de atualizar, verifica se há uma NOVA disponível
         checkForUpdates();
       }
     };
-
     handleVersionControl();
-
-    const onVisibilityChange = () => {
-        if (document.visibilityState === 'visible') checkForUpdates();
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    const interval = setInterval(() => checkForUpdates(), 15 * 60 * 1000);
-
-    return () => {
-        clearInterval(interval);
-        document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
   }, [showToast]);
 
   const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
@@ -279,7 +298,9 @@ const App: React.FC = () => {
         currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice,
         logoUrl: quotes[p.ticker]?.logourl,
         assetType: assetsMetadata[p.ticker]?.type || p.assetType,
-        segment: assetsMetadata[p.ticker]?.segment || p.segment
+        segment: assetsMetadata[p.ticker]?.segment || p.segment,
+        // Merging fundamentals
+        ...assetsMetadata[p.ticker]?.fundamentals
       }));
 
     return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: gain, monthlyContribution: contribution };
@@ -335,6 +356,7 @@ const App: React.FC = () => {
         onUpdateClick={() => setShowChangelog(true)}
         onNotificationClick={() => setShowNotifications(true)}
         notificationCount={notifications.length}
+        appVersion={APP_VERSION}
       />
 
       <main className="max-w-screen-md mx-auto pt-2">

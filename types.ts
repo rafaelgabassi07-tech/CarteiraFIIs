@@ -14,7 +14,27 @@ export interface Transaction {
   assetType: AssetType;
 }
 
-export interface AssetPosition {
+export interface AssetNews {
+  title: string;
+  url: string;
+  source: string;
+  date: string;
+}
+
+export interface AssetFundamentals {
+  p_vp?: number;
+  p_l?: number;
+  dy_12m?: number;
+  liquidity?: string;
+  shareholders?: string;
+  description?: string;
+  market_cap?: string;
+  sentiment?: 'Otimista' | 'Neutro' | 'Pessimista' | string;
+  sentiment_reason?: string;
+  news?: AssetNews[];
+}
+
+export interface AssetPosition extends AssetFundamentals {
   ticker: string;
   quantity: number;
   averagePrice: number;
@@ -63,11 +83,14 @@ export interface VersionData {
   notes: ReleaseNote[];
 }
 
+export type NotificationCategory = 'payment' | 'datacom' | 'general' | 'update';
+
 export interface AppNotification {
   id: string;
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'update';
+  category?: NotificationCategory;
   timestamp: number;
   read: boolean;
   actionLabel?: string;

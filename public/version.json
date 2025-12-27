@@ -1,22 +1,22 @@
 
 {
-  "version": "4.9.0",
-  "date": "2025-05-21",
+  "version": "5.0.0",
+  "date": "2025-05-22",
   "notes": [
     {
       "type": "feat",
-      "title": "Gráficos Interativos",
-      "desc": "Nova experiência de donut chart: clique nas fatias para ver detalhes centralizados com animações suaves."
+      "title": "Experiência Nativa",
+      "desc": "Implementação de apple-touch-icon e ícones maskable para que o app pareça nativo ao ser instalado (sem badge do Google no ícone)."
     },
     {
       "type": "ui",
-      "title": "Visualização Limpa",
-      "desc": "Remoção de tooltips flutuantes em favor de informações fixas no centro do gráfico para melhor usabilidade mobile."
+      "title": "Logo Refinado",
+      "desc": "Atualização do logotipo vetorial para maior clareza e contraste em diferentes telas."
     },
     {
-      "type": "perf",
-      "title": "Otimização de Render",
-      "desc": "Melhoria na transição entre abas de alocação."
+      "type": "fix",
+      "title": "Correção de Update",
+      "desc": "Melhoria na limpeza de cache para garantir que novas atualizações de ícones e manifest sejam aplicadas imediatamente."
     }
   ]
 }
