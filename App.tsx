@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '4.2.0';
+const APP_VERSION = '4.5.0';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -45,10 +45,12 @@ const performSmartUpdate = async () => {
     }
   }
   if ('caches' in window) {
-    const keys = await caches.keys();
-    for (const key of keys) {
-      await caches.delete(key);
-    }
+    try {
+        const keys = await caches.keys();
+        for (const key of keys) {
+            await caches.delete(key);
+        }
+    } catch(e) { console.error("Cache clear error", e); }
   }
   // Reload forçado
   window.location.reload();
@@ -142,8 +144,9 @@ const App: React.FC = () => {
   }, [geminiDividends, addNotification]);
 
   // Controle de Versão e Atualizações
-  useEffect(() => {
-    const checkRemoteVersion = async () => {
+  const checkForUpdates = async (manual = false) => {
+      if (manual) showToast('info', 'Buscando atualizações...');
+      
       try {
         const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
@@ -165,11 +168,18 @@ const App: React.FC = () => {
                 }, ...prev];
             });
             showToast('info', 'Nova atualização disponível');
+          } else if (manual) {
+            showToast('success', 'Você já tem a versão mais recente.');
           }
+        } else if (manual) {
+             showToast('error', 'Falha ao buscar atualização.');
         }
-      } catch(e) { console.error("Update Check Failed", e); }
-    };
+      } catch(e) { 
+          if (manual) showToast('error', 'Erro de conexão.');
+      }
+  };
 
+  useEffect(() => {
     const handleVersionControl = async () => {
       const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
       // Se a versão atual for maior que a última vista, mostra changelog
@@ -186,17 +196,17 @@ const App: React.FC = () => {
         } catch(e) {}
         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
       }
-      checkRemoteVersion();
+      checkForUpdates();
     };
 
     handleVersionControl();
 
     // Smart Update Trigger: Verifica ao focar na janela
     const onVisibilityChange = () => {
-        if (document.visibilityState === 'visible') checkRemoteVersion();
+        if (document.visibilityState === 'visible') checkForUpdates();
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
-    const interval = setInterval(checkRemoteVersion, 10 * 60 * 1000); // 10 min
+    const interval = setInterval(() => checkForUpdates(), 15 * 60 * 1000); // 15 min
 
     return () => {
         clearInterval(interval);

@@ -9,7 +9,15 @@ export const getQuotes = async (tickers: string[], token: string, force = false)
   if (!tickers.length || !token) return { quotes: [] };
 
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
-  const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+  
+  let cache: Record<string, any> = {};
+  try {
+      cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+  } catch (e) {
+      console.warn("Cache corrompido, resetando...", e);
+      localStorage.removeItem(CACHE_KEY);
+  }
+
   const now = Date.now();
   
   const results: BrapiQuote[] = [];

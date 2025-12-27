@@ -1,12 +1,22 @@
 
 {
-  "version": "4.4.1",
+  "version": "4.5.0",
   "date": "2024-06-16",
   "notes": [
     {
       "type": "fix",
-      "title": "Correção de Erro na Home",
-      "desc": "Corrigido um erro de inicialização que impedia o carregamento dos gráficos de alocação."
+      "title": "Precisão da IA Aumentada",
+      "desc": "A IA agora reconhece a data atual, evitando projeções erradas de dividendos."
+    },
+    {
+      "type": "feat",
+      "title": "Atualizações Inteligentes",
+      "desc": "O sistema detecta novas versões automaticamente e permite update com um clique."
+    },
+    {
+      "type": "fix",
+      "title": "Estabilidade de Dados",
+      "desc": "Correções aplicadas no cache local e cálculos de rentabilidade para evitar erros de tela branca."
     }
   ]
 }

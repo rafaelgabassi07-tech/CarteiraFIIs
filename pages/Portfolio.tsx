@@ -13,7 +13,10 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
   const totalValue = currentPrice * asset.quantity;
   const totalCost = asset.averagePrice * asset.quantity;
   
-  const gainPercent = asset.averagePrice > 0 ? ((currentPrice - asset.averagePrice) / asset.averagePrice) * 100 : 0;
+  // CORREÇÃO: Evitar divisão por zero se o preço médio for 0 (ex: bonificação)
+  const gainPercent = asset.averagePrice > 0 
+    ? ((currentPrice - asset.averagePrice) / asset.averagePrice) * 100 
+    : 0;
   
   const portfolioShare = totalPortfolioValue > 0 ? (totalValue / totalPortfolioValue) * 100 : 0;
 

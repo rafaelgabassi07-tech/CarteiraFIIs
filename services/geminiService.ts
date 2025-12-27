@@ -13,15 +13,19 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const tickerListString = tickers.join(', ');
+  const today = new Date().toISOString().split('T')[0];
 
   // Instrução reforçada para retornar JSON sem usar o modo estrito de schema (incompatível com tools)
   const prompt = `
+    Data de Hoje: ${today}.
     Atue como Especialista B3.
     Use a Google Search para obter dados oficiais e RECENTES para: ${tickerListString}.
-    Retorne proventos (dividendos/JCP) anunciados ou pagos nos últimos 12 meses.
+    Retorne proventos (dividendos/JCP) anunciados ou pagos nos últimos 12 meses (baseado na data de hoje).
     
     REGRA DE FORMATAÇÃO OBRIGATÓRIA:
-    Responda EXCLUSIVAMENTE um objeto JSON cru, sem marcação markdown, seguindo estritamente este formato:
+    Responda EXCLUSIVAMENTE um objeto JSON cru.
+    
+    Formato esperado:
     {
       "assets": [
         {
@@ -54,10 +58,14 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
     let text = response.text;
     if (!text) throw new Error("Resposta vazia da IA");
 
-    // Higienização: Remove blocos de código Markdown se o modelo incluir
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-    const parsed = JSON.parse(text);
+    // Higienização Avançada: Busca o primeiro { e o último } para extrair apenas o JSON
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+        console.warn("IA não retornou um JSON válido:", text);
+        throw new Error("Formato inválido");
+    }
+    
+    const parsed = JSON.parse(jsonMatch[0]);
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     
     const result: UnifiedMarketData = { 
