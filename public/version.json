@@ -1,12 +1,27 @@
 
 {
-  "version": "5.4.9",
-  "date": "2025-05-24",
+  "version": "5.5.0",
+  "date": "2025-05-25",
   "notes": [
     {
+      "type": "ui",
+      "title": "Nova Central de Notificações",
+      "desc": "O antigo pop-up foi substituído por uma Inbox imersiva em tela cheia para melhor leitura dos seus alertas."
+    },
+    {
+      "type": "ui",
+      "title": "Redesign de Atualizações",
+      "desc": "A tela de verificação de sistema agora é nativa e interativa, eliminando toasts intrusivos."
+    },
+    {
+      "type": "feat",
+      "title": "Dynamic Pill",
+      "desc": "Novo sistema de feedback visual no topo da tela para ações rápidas como sincronização e sucesso."
+    },
+    {
       "type": "fix",
-      "title": "Sistema Restaurado",
-      "desc": "Reversão para o sistema de atualização original para garantir estabilidade."
+      "title": "Estabilidade do Cache",
+      "desc": "Correções na lógica de armazenamento local para evitar recarregamentos desnecessários da API."
     }
   ]
 }

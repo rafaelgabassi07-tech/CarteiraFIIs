@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio } from 'lucide-react';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2 } from 'lucide-react';
 import { Transaction, DividendReceipt } from '../types';
 import { ThemeType } from '../App';
 
@@ -25,7 +25,7 @@ interface SettingsProps {
   onSetPrivacyMode: (enabled: boolean) => void;
   appVersion: string;
   updateAvailable: boolean;
-  onCheckUpdates: () => void;
+  onCheckUpdates: () => Promise<boolean>;
   onShowChangelog: () => void;
 }
 
@@ -52,6 +52,9 @@ export const Settings: React.FC<SettingsProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isEnvToken = process.env.BRAPI_TOKEN === brapiToken && !!process.env.BRAPI_TOKEN;
   
+  // Estado local para o botão de update
+  const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'latest' | 'available'>('idle');
+
   // Estado para funcionalidades locais
   const [glassMode, setGlassMode] = useState(() => localStorage.getItem('investfiis_glass_mode') !== 'false');
   const [animations, setAnimations] = useState(() => localStorage.getItem('investfiis_animations') !== 'false');
@@ -208,6 +211,28 @@ export const Settings: React.FC<SettingsProps> = ({
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  // Wrapper para controlar o estado do botão de update
+  const handleCheckUpdate = async () => {
+    if (updateAvailable) {
+       onShowChangelog();
+       return;
+    }
+    setCheckStatus('checking');
+    
+    // Mínimo delay para feedback visual agradável
+    const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
+    const checkPromise = onCheckUpdates();
+    
+    const [_, hasUpdate] = await Promise.all([minDelay, checkPromise]);
+    
+    if (hasUpdate) {
+        setCheckStatus('available');
+    } else {
+        setCheckStatus('latest');
+        setTimeout(() => setCheckStatus('idle'), 3000);
+    }
   };
 
   const SettingsItem = ({ icon: Icon, label, description, onClick, colorClass, delay = 0, badge }: any) => (
@@ -672,42 +697,74 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
           
           {activeSection === 'updates' && (
-              <div className="space-y-6 animate-fade-in-up">
-                  <div className="bg-indigo-600 p-8 rounded-[3rem] text-center shadow-xl shadow-indigo-500/30 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                      
-                      <div className="relative z-10">
-                        <div className="flex justify-center mb-6">
-                            <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center text-white">
-                                <Rocket className="w-10 h-10" strokeWidth={1.5} />
-                            </div>
+              <div className="animate-fade-in flex flex-col items-center justify-center min-h-[50vh] text-center space-y-8">
+                   
+                   {/* Versão Central Grande */}
+                   <div className="relative">
+                        <div className="w-40 h-40 bg-accent/5 rounded-full blur-3xl absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -z-10"></div>
+                        <h1 className="text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+                            {appVersion}
+                        </h1>
+                        <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border ${updateAvailable || checkStatus === 'available' ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'}`}>
+                           <span className={`relative flex h-2 w-2`}>
+                              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${updateAvailable || checkStatus === 'available' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+                              <span className={`relative inline-flex rounded-full h-2 w-2 ${updateAvailable || checkStatus === 'available' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+                           </span>
+                           <span className="text-[10px] font-black uppercase tracking-widest">
+                                {updateAvailable || checkStatus === 'available' ? 'Atualização Disponível' : 'Sistema Operacional'}
+                           </span>
                         </div>
-                        
-                        <h3 className="text-2xl font-black text-white mb-1 tracking-tighter">InvestFIIs Ultra</h3>
-                        <p className="text-xs font-bold text-indigo-200 mb-8 uppercase tracking-widest">Versão Atual {appVersion}</p>
-                        
-                        <div className="bg-black/20 rounded-2xl p-1.5 flex items-center gap-1.5 mb-6 w-fit mx-auto">
-                             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-2"></div>
-                             <span className="text-[9px] font-black text-white uppercase tracking-widest pr-2">Sistema Operacional</span>
-                        </div>
+                   </div>
 
-                        <button onClick={updateAvailable ? onShowChangelog : onCheckUpdates} className="w-full bg-white text-indigo-600 py-5 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-indigo-50">
-                            {updateAvailable ? <Box className="w-4 h-4" /> : <RefreshCcw className="w-4 h-4" />}
-                            {updateAvailable ? 'Instalar Nova Versão' : 'Verificar Atualização'}
-                        </button>
-                      </div>
-                  </div>
-                  
-                  <button onClick={onShowChangelog} className="w-full bg-white dark:bg-[#0f172a] p-5 rounded-[2.2rem] border border-transparent flex items-center justify-between active:scale-[0.98] transition-all group">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-500/10 transition-all"><History className="w-6 h-6" strokeWidth={2} /></div>
-                            <div className="text-left">
-                                <span className="block text-sm font-black text-slate-900 dark:text-white tracking-tight">O que há de novo?</span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Notas de Versão</span>
-                            </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-slate-300" />
-                   </button>
+                   {/* Ações Minimalistas com Feedback Visual no Botão */}
+                   <div className="w-full max-w-xs space-y-4 pt-4">
+                       <button 
+                         onClick={handleCheckUpdate}
+                         disabled={checkStatus === 'checking' || checkStatus === 'latest'}
+                         className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 relative overflow-hidden ${
+                           checkStatus === 'checking'
+                             ? 'bg-slate-100 dark:bg-white/5 text-slate-400 cursor-wait'
+                             : checkStatus === 'latest'
+                             ? 'bg-emerald-500 text-white cursor-default'
+                             : updateAvailable || checkStatus === 'available' 
+                               ? 'bg-amber-500 text-white shadow-amber-500/30 hover:bg-amber-600' 
+                               : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-[1.02]'
+                         }`}
+                       >
+                           {checkStatus === 'checking' ? (
+                               <>
+                                 <Loader2 className="w-4 h-4 animate-spin" />
+                                 <span>Conectando...</span>
+                               </>
+                           ) : checkStatus === 'latest' ? (
+                               <>
+                                 <CheckCircle2 className="w-4 h-4 animate-scale-in" />
+                                 <span className="animate-fade-in">Sistema Atualizado</span>
+                               </>
+                           ) : updateAvailable || checkStatus === 'available' ? (
+                               <>
+                                 <Download className="w-4 h-4" />
+                                 <span>Instalar Agora</span>
+                               </>
+                           ) : (
+                               <>
+                                 <RefreshCcw className="w-4 h-4" />
+                                 <span>Verificar Atualizações</span>
+                               </>
+                           )}
+                       </button>
+                       
+                       <button 
+                         onClick={onShowChangelog}
+                         className="w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-95 flex items-center justify-center gap-2"
+                       >
+                           <History className="w-4 h-4" /> Notas de Versão
+                       </button>
+                   </div>
+                   
+                   <p className="absolute bottom-0 text-[9px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-[0.4em] opacity-50">
+                       InvestFIIs Ultra
+                   </p>
               </div>
           )}
         </div>

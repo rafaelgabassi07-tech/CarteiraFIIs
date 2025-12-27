@@ -8,9 +8,9 @@ import { Settings } from './pages/Settings';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ReleaseNote, VersionData } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
+import { CheckCircle2, DownloadCloud, AlertCircle, Loader2, Info } from 'lucide-react';
 
-const APP_VERSION = '5.4.9'; // Versão restaurada e incrementada
+const APP_VERSION = '5.5.0'; // Atualização para v5.5.0 Ultra
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -129,15 +129,13 @@ const App: React.FC = () => {
                 setAvailableVersion(data.version);
                 setReleaseNotes(data.notes || []);
                 setIsUpdateAvailable(true);
-            } else if (manual) {
-                // Feedback visual apenas se for manual
-                return false; 
+                return true; // Encontrou update
             }
         }
     } catch (e) {
         console.warn("Erro ao checar updates:", e);
     }
-    return true;
+    return false; // Não encontrou
   }, []);
 
   const performUpdate = () => {
@@ -170,7 +168,7 @@ const App: React.FC = () => {
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     setToast({ type, text });
-    if (type !== 'info') setTimeout(() => setToast(null), 4000);
+    if (type !== 'info') setTimeout(() => setToast(null), 3000);
   }, []);
 
   const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
@@ -327,15 +325,11 @@ const App: React.FC = () => {
     }
   }, [geminiDividends, memoizedData.portfolio, addNotification, checkDailyEvents]);
 
-  // Wrapper para checagem manual via Settings
-  const handleManualUpdateCheck = async () => {
-    showToast('info', 'Verificando atualizações...');
-    const hasUpdates = await checkForUpdates(true); // Passa true para indicar manual
-    
-    if (!isUpdateAvailable && hasUpdates === false) {
-        // Se após checar NÃO mudou o estado para true
-        showToast('success', 'Você já tem a versão mais recente.');
-    }
+  // Wrapper para checagem manual - Agora retorna Promise<boolean> e não mostra Toast
+  const handleManualUpdateCheck = async (): Promise<boolean> => {
+    // Retorna true se encontrou, false se não
+    const hasUpdates = await checkForUpdates(true);
+    return hasUpdates;
   };
 
   const syncAll = useCallback(async (force = false) => {
@@ -370,9 +364,9 @@ const App: React.FC = () => {
           });
       }
 
-      if (force) showToast('success', 'Carteira Atualizada');
+      if (force) showToast('success', 'Carteira Sincronizada');
     } catch (e) {
-      showToast('error', 'Falha na conexão');
+      showToast('error', 'Sem conexão');
     } finally {
       setIsRefreshing(false);
       setIsAiLoading(false);
@@ -383,11 +377,26 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
+      {/* Dynamic Pill Toast */}
       {toast && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => isUpdateAvailable && setShowChangelog(true)}>
-          <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl shadow-accent/20 border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : toast.type === 'info' ? 'bg-accent/90 border-accent/40 cursor-pointer' : 'bg-rose-500/90 border-rose-400'} text-white`}>
-            {isUpdateAvailable ? <DownloadCloud className="w-5 h-5 animate-bounce" /> : toast.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-            <span className="text-xs font-black uppercase tracking-wider">{toast.text}</span>
+        <div 
+          className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] animate-fade-in-up" 
+          onClick={() => isUpdateAvailable && setShowChangelog(true)}
+        >
+          <div className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-slate-900/90 dark:bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-900/10 transition-all cursor-pointer hover:scale-105 active:scale-95 border border-white/10 dark:border-black/5">
+             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'info' ? 'bg-slate-800 dark:bg-slate-200' : toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                 {toast.type === 'info' ? (
+                    <Loader2 className="w-4 h-4 text-white dark:text-slate-900 animate-spin" />
+                 ) : toast.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                 ) : (
+                    <AlertCircle className="w-4 h-4 text-white" />
+                 )}
+             </div>
+             
+             <span className="text-xs font-bold text-white dark:text-slate-900 tracking-wide">
+                {toast.text}
+             </span>
           </div>
         </div>
       )}
