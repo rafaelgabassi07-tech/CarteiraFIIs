@@ -36,26 +36,17 @@ const compareVersions = (v1: string, v2: string) => {
   return 0;
 };
 
+// Estratégia de Atualização "Padrão PWA"
+// Envia sinal para o SW pular a espera. O index.tsx detecta a mudança de controlador e recarrega.
 const performSmartUpdate = async () => {
   if ('serviceWorker' in navigator) {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    for (const registration of registrations) {
-       if (registration.waiting) {
-         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-       }
-       await registration.unregister();
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg && reg.waiting) {
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        return; // O reload acontecerá via evento 'controllerchange' no index.tsx
     }
   }
-  
-  if ('caches' in window) {
-    try {
-        const keys = await caches.keys();
-        for (const key of keys) {
-            await caches.delete(key);
-        }
-    } catch(e) { console.error("Cache clear error", e); }
-  }
-  
+  // Fallback se não houver SW ou não estiver esperando
   window.location.reload();
 };
 
