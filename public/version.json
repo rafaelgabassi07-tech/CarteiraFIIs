@@ -1,22 +1,22 @@
 
 {
-  "version": "4.8.0",
-  "date": "2025-05-20",
+  "version": "4.9.0",
+  "date": "2025-05-21",
   "notes": [
     {
-      "type": "ui",
-      "title": "Redesign da Navegação",
-      "desc": "Nova barra inferior flutuante com estilo 'Squircle' e animações aprimoradas."
+      "type": "feat",
+      "title": "Gráficos Interativos",
+      "desc": "Nova experiência de donut chart: clique nas fatias para ver detalhes centralizados com animações suaves."
     },
     {
       "type": "ui",
-      "title": "Cabeçalho Vivo",
-      "desc": "Indicador de status pulsante para uma experiência mais conectada e tipografia refinada."
+      "title": "Visualização Limpa",
+      "desc": "Remoção de tooltips flutuantes em favor de informações fixas no centro do gráfico para melhor usabilidade mobile."
     },
     {
-      "type": "fix",
-      "title": "Correções de Performance",
-      "desc": "Otimizações no sistema de atualização e correção de tipos."
+      "type": "perf",
+      "title": "Otimização de Render",
+      "desc": "Melhoria na transição entre abas de alocação."
     }
   ]
 }

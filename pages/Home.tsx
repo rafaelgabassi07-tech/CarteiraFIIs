@@ -1,8 +1,8 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, Layers, LayoutGrid } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
 interface HomeProps {
@@ -51,6 +51,18 @@ export const Home: React.FC<HomeProps> = ({
   const [allocationTab, setAllocationTab] = useState<'assets' | 'types' | 'segments'>('assets');
   const [incomeTab, setIncomeTab] = useState<'summary' | 'magic' | 'calendar'>('summary');
   const [gainTab, setGainTab] = useState<'general' | 'benchmark'>('general');
+
+  // State para controle da animação do gráfico
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Reseta o index ativo quando troca a aba do gráfico para evitar erros de renderização
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [allocationTab]);
+
+  const onPieEnter = useCallback((_: any, index: number) => {
+    setActiveIndex(index);
+  }, []);
 
   const { invested, balance, totalAppreciation, appreciationPercent } = useMemo(() => {
     const res = portfolio.reduce((acc, curr) => ({
@@ -131,7 +143,43 @@ export const Home: React.FC<HomeProps> = ({
     }).filter(m => m !== null).sort((a,b) => (b?.progress || 0) - (a?.progress || 0));
   }, [portfolio, dividendReceipts]);
 
-  const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e', '#64748b', '#3b82f6', '#ec4899'];
+  // Shape customizado para o gráfico interativo
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props;
+    return (
+      <g>
+        <text x={cx} y={cy - 10} dy={0} textAnchor="middle" className="text-sm font-black dark:fill-white fill-slate-900" style={{ fontSize: '16px' }}>
+          {payload.name}
+        </text>
+        <text x={cx} y={cy + 10} dy={8} textAnchor="middle" className="text-xs font-bold fill-slate-400">
+          {formatBRL(value)}
+        </text>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius + 8}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+          cornerRadius={6}
+        />
+        <Sector
+          cx={cx}
+          cy={cy}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          innerRadius={outerRadius + 12}
+          outerRadius={outerRadius + 14}
+          fill={fill}
+          opacity={0.2}
+          cornerRadius={10}
+        />
+      </g>
+    );
+  };
+
+  const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f97316', '#f43f5e', '#64748b', '#3b82f6', '#ec4899'];
   const inflacaoPeriodo = 4.50; 
   const yieldCarteira = invested > 0 ? (received / invested) * 100 : 0;
   const ganhoReal = yieldCarteira - inflacaoPeriodo;
@@ -285,38 +333,48 @@ export const Home: React.FC<HomeProps> = ({
                 onChange={setAllocationTab} 
                 tabs={[{ id: 'assets', label: 'Por Ativo' }, { id: 'types', label: 'Por Classe' }, { id: 'segments', label: 'Por Segmento' }]} 
             />
-            <div className="h-64 w-full mb-6">
+            <div className="h-72 w-full mb-2">
                     <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie 
+                            activeIndex={activeIndex}
+                            activeShape={renderActiveShape}
                             data={allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData} 
-                            innerRadius={70} 
-                            outerRadius={90} 
-                            paddingAngle={4} 
+                            innerRadius={75} 
+                            outerRadius={100} 
+                            paddingAngle={3} 
                             dataKey="value" 
                             stroke="none" 
-                            cornerRadius={8}
+                            cornerRadius={6}
+                            animationDuration={1500}
+                            animationEasing="ease-out"
+                            onClick={onPieEnter}
                         >
                             {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                         </Pie>
-                        <Tooltip formatter={(value: number) => formatBRL(value)} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px -5px rgba(0,0,0,0.1)' }} />
                     </PieChart>
                     </ResponsiveContainer>
             </div>
             <div className="space-y-3 pb-8">
                 {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((item, i) => {
                     const percent = ((item.value / (balance || 1)) * 100);
+                    const isActive = i === activeIndex;
                     return (
-                    <div key={item.name} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/5 shadow-sm animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+                    <button 
+                        key={item.name} 
+                        onClick={() => setActiveIndex(i)}
+                        className={`w-full flex items-center justify-between p-4 rounded-2xl border shadow-sm transition-all duration-300 animate-fade-in-up ${isActive ? 'bg-indigo-500/5 border-indigo-500/30 scale-[1.02]' : 'bg-white dark:bg-[#0f172a] border-slate-200 dark:border-white/5'}`}
+                        style={{ animationDelay: `${i * 50}ms` }}
+                    >
                         <div className="flex items-center gap-4">
-                            <div className="w-3 h-3 rounded-full shadow-sm ring-2 ring-white dark:ring-[#0f172a]" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-                            <div>
-                                <h4 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-wide">{item.name}</h4>
+                            <div className={`w-3 h-3 rounded-full shadow-sm ring-2 ${isActive ? 'ring-indigo-200 dark:ring-indigo-900' : 'ring-white dark:ring-[#0f172a]'}`} style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                            <div className="text-left">
+                                <h4 className={`font-black text-xs uppercase tracking-wide ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>{item.name}</h4>
                                 <p className="text-[10px] font-bold text-slate-400">{formatBRL(item.value)}</p>
                             </div>
                         </div>
-                        <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{percent.toFixed(1)}%</span>
-                    </div>
+                        <span className={`text-sm font-black tabular-nums ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>{percent.toFixed(1)}%</span>
+                    </button>
                     );
                 })}
             </div>
