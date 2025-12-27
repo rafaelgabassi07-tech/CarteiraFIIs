@@ -232,6 +232,15 @@ export const ChangelogModal: React.FC<{
         
         <div className="relative bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl w-full max-w-md rounded-[2.5rem] p-0 border border-white/20 shadow-2xl flex flex-col items-center animate-scale-in overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
             
+            {/* Botão de Fechar (X) */}
+            <button 
+              onClick={onClose} 
+              className="absolute top-5 right-5 p-2 rounded-full bg-black/5 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-black/10 dark:hover:bg-white/10 transition-all z-50 active:scale-90"
+              aria-label="Fechar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
             {/* Header Clean */}
             <div className="w-full px-8 pt-10 pb-4 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-500 to-purple-600 shadow-xl shadow-indigo-500/30 mb-6 text-white">
