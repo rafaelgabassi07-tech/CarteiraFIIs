@@ -26,27 +26,28 @@ export const getQuotes = async (tickers: string[], token: string, force = false)
   if (!toFetch.length) return { quotes: results };
 
   try {
-    // ALTERAÇÃO SOLICITADA: Requisição individual por ativo (1:1)
-    // Utilizamos Promise.all para disparar todas em paralelo e não travar o app
+    // REQUISIÇÃO 1:1 SOLICITADA
+    // Mapeia cada ticker para uma promessa de fetch individual
     const promises = toFetch.map(async (ticker) => {
       try {
+        // Chamada individual para UM ativo apenas por URL
         const url = `${BASE_URL}/quote/${ticker}?token=${token}&range=1d&interval=1d`;
         const res = await fetch(url);
         
         if (res.ok) {
           const data: BrapiResponse = await res.json();
-          // A Brapi retorna um array results mesmo na chamada individual
           if (data.results && data.results.length > 0) {
             const quote = data.results[0];
             return { symbol: ticker, data: quote };
           }
         }
       } catch (err) {
-        console.warn(`Falha ao buscar ${ticker}`, err);
+        console.warn(`Erro no ativo ${ticker}:`, err);
       }
       return null;
     });
 
+    // Executa as chamadas individuais em paralelo para performance
     const fetchedResults = await Promise.all(promises);
 
     fetchedResults.forEach(item => {

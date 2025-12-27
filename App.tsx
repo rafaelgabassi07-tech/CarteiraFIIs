@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '3.5.0';
+const APP_VERSION = '3.8.0';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -40,14 +40,11 @@ const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   
-  // Settings States
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#0ea5e9');
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
-  
-  // Update States
   const [showChangelog, setShowChangelog] = useState(false);
   const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -70,18 +67,15 @@ const App: React.FC = () => {
     } catch { return []; }
   });
   const prevDividendsRef = useRef<DividendReceipt[]>(geminiDividends);
-
   const [sources, setSources] = useState<{ web: { uri: string; title: string } }[]>([]);
-
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType }>>({});
 
-  // Persistence
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken); }, [brapiToken]);
 
-  // Theme & Appearance
   useEffect(() => {
     const root = window.document.documentElement;
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -105,21 +99,15 @@ const App: React.FC = () => {
     if (type !== 'info') setTimeout(() => setToast(null), 4000);
   }, []);
 
-  // SISTEMA DE NOTIFICAÇÃO INTELIGENTE
   useEffect(() => {
     if (geminiDividends.length > prevDividendsRef.current.length) {
-      // Identificar novos dividendos
       const newDivs = geminiDividends.filter(d => !prevDividendsRef.current.find(p => p.id === d.id));
-      
       if (newDivs.length > 0) {
         const prefs = JSON.parse(localStorage.getItem(STORAGE_KEYS.PREFS_NOTIF) || '{"payments":true}');
-        
         if (prefs.payments) {
           const msg = `${newDivs.length} novos proventos detectados!`;
-          
-          // Tentar notificação nativa
           if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("InvestFIIs - Novidade", { body: msg, icon: '/icon.png' });
+            new Notification("InvestFIIs - Novidade", { body: msg });
           } else {
             showToast('success', msg);
           }
@@ -129,7 +117,6 @@ const App: React.FC = () => {
     prevDividendsRef.current = geminiDividends;
   }, [geminiDividends, showToast]);
 
-  // Version Control
   useEffect(() => {
     const handleVersionControl = async () => {
       try {
@@ -145,7 +132,6 @@ const App: React.FC = () => {
           }
           localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
         }
-
         const checkRemote = async () => {
           try {
             const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -158,14 +144,11 @@ const App: React.FC = () => {
             }
           } catch(e) {}
         };
-
         checkRemote();
         const interval = setInterval(checkRemote, 5 * 60 * 1000);
         return () => clearInterval(interval);
-
       } catch (e) { console.error("Version Error", e); }
     };
-
     handleVersionControl();
   }, [showToast]);
 
@@ -173,10 +156,11 @@ const App: React.FC = () => {
     if (confirm("Atualizar o aplicativo agora?")) window.location.reload();
   };
 
-  // Calculations
-  const getQuantityOnDate = useCallback((ticker: string, dateLimit: string, txs: Transaction[]) => {
+  const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
+    // Regra B3: Você tem direito ao provento se fechar a "Data Com" com o ativo.
+    // Portanto, consideramos todas as transações ATÉ a data Com inclusive.
     return txs
-      .filter(t => t.ticker === ticker && t.date <= dateLimit)
+      .filter(t => t.ticker === ticker && t.date <= dateCom)
       .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
   }, []);
 
@@ -190,6 +174,7 @@ const App: React.FC = () => {
       .filter(t => t.type === 'BUY' && t.date.startsWith(nowStr))
       .reduce((acc, t) => acc + (t.quantity * t.price), 0);
 
+    // Auditoria Cruzada: Filtragem rigorosa por Data Com
     const receipts: DividendReceipt[] = geminiDividends.map(div => {
       const qty = Math.max(0, getQuantityOnDate(div.ticker, div.dateCom, sortedTxs));
       return { ...div, quantityOwned: qty, totalReceived: qty * div.rate };
@@ -207,7 +192,14 @@ const App: React.FC = () => {
     let gain = 0;
     sortedTxs.forEach(t => {
       if (!positions[t.ticker]) {
-        positions[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: divPaidMap[t.ticker] || 0, segment: geminiDividends.find(d => d.ticker === t.ticker)?.assetType ? 'Geral' : undefined };
+        positions[t.ticker] = { 
+            ticker: t.ticker, 
+            quantity: 0, 
+            averagePrice: 0, 
+            assetType: t.assetType, 
+            totalDividends: divPaidMap[t.ticker] || 0,
+            segment: assetsMetadata[t.ticker]?.segment || 'Geral' 
+        };
       }
       const p = positions[t.ticker];
       if (t.type === 'BUY') {
@@ -220,48 +212,18 @@ const App: React.FC = () => {
       }
     });
 
-    // Merge manual segment data if available from Gemini metadata
-    // Note: The metadata is usually passed down, but for simplicity we rely on the object logic here
-    // In a fuller implementation, metadata should be passed to useMemo. 
-    // For now, let's assume segment is populated by GeminiService logic into the transaction/position flow eventually, 
-    // or we can pass it explicitly. 
-    // Since App.tsx calls fetchUnifiedMarketData, let's ensure metadata is used.
-    
-    // Correction: fetchUnifiedMarketData returns metadata. We should store it.
-    // However, without changing the state structure too much, we will rely on what's available.
-    // The previous implementation of geminiService populates metadata separately.
-    // Let's attach metadata to positions in the future steps if needed. 
-    // For this update, we use the `segment` property if available.
-
     const finalPortfolio = Object.values(positions)
       .filter(p => p.quantity > 0)
       .map(p => ({
         ...p,
         currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice,
-        logoUrl: quotes[p.ticker]?.logourl
+        logoUrl: quotes[p.ticker]?.logourl,
+        assetType: assetsMetadata[p.ticker]?.type || p.assetType,
+        segment: assetsMetadata[p.ticker]?.segment || p.segment
       }));
 
     return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: gain, monthlyContribution: contribution };
-  }, [transactions, quotes, geminiDividends, getQuantityOnDate]);
-
-  // Update Gemini data integration to include segment info in portfolio
-  // We need to pass metadata from geminiDividends (which comes from fetchUnifiedMarketData) to the portfolio construction
-  // But geminiDividends is just an array.
-  // We will enhance this in next steps. For now, we use the basic segment info if present.
-  
-  // Real update to ensure segment data flows:
-  // We need to store metadata state in App.tsx.
-  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType }>>({});
-
-  const memoizedDataWithMetadata = useMemo(() => {
-     const data = memoizedData;
-     data.portfolio = data.portfolio.map(p => ({
-       ...p,
-       segment: assetsMetadata[p.ticker]?.segment || 'Outros',
-       assetType: assetsMetadata[p.ticker]?.type || p.assetType
-     }));
-     return data;
-  }, [memoizedData, assetsMetadata]);
+  }, [transactions, quotes, geminiDividends, getQuantityOnDate, assetsMetadata]);
 
   const syncAll = useCallback(async (force = false) => {
     const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
@@ -278,7 +240,7 @@ const App: React.FC = () => {
       setIsAiLoading(true);
       const aiData = await fetchUnifiedMarketData(tickers);
       setGeminiDividends(aiData.dividends);
-      setAssetsMetadata(aiData.metadata); // Store metadata
+      setAssetsMetadata(aiData.metadata);
       setSources(aiData.sources || []);
       if (force) showToast('success', 'Carteira Atualizada');
     } catch (e) {
@@ -320,22 +282,21 @@ const App: React.FC = () => {
             transactions={transactions} onImportTransactions={setTransactions}
             geminiDividends={geminiDividends} onImportDividends={setGeminiDividends}
             onResetApp={() => { localStorage.clear(); window.location.reload(); }}
-            
             theme={theme} onSetTheme={setTheme}
             accentColor={accentColor} onSetAccentColor={setAccentColor}
             privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode}
           />
         ) : (
           <div className="animate-fade-in">
-            {currentTab === 'home' && <Home {...memoizedDataWithMetadata} sources={sources} isAiLoading={isAiLoading} />}
-            {currentTab === 'portfolio' && <Portfolio {...memoizedDataWithMetadata} />}
+            {currentTab === 'home' && <Home {...memoizedData} sources={sources} isAiLoading={isAiLoading} />}
+            {currentTab === 'portfolio' && <Portfolio {...memoizedData} />}
             {currentTab === 'transactions' && (
               <Transactions 
                 transactions={transactions} 
                 onAddTransaction={(t) => setTransactions(p => [...p, { ...t, id: crypto.randomUUID() }])}
                 onUpdateTransaction={(id, updated) => setTransactions(p => p.map(t => t.id === id ? { ...updated, id } : t))}
                 onDeleteTransaction={(id) => setTransactions(p => p.filter(t => t.id !== id))}
-                monthlyContribution={memoizedDataWithMetadata.monthlyContribution}
+                monthlyContribution={memoizedData.monthlyContribution}
               />
             )}
           </div>
