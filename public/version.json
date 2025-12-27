@@ -1,22 +1,22 @@
 
 {
-  "version": "4.5.0",
+  "version": "4.5.1",
   "date": "2024-06-16",
   "notes": [
     {
-      "type": "fix",
-      "title": "Precisão da IA Aumentada",
-      "desc": "A IA agora reconhece a data atual, evitando projeções erradas de dividendos."
+      "type": "ui",
+      "title": "Novo Visual de Novidades",
+      "desc": "A tela de atualizações foi redesenhada para mostrar melhor as novidades que chegam no app."
     },
     {
       "type": "feat",
-      "title": "Atualizações Inteligentes",
-      "desc": "O sistema detecta novas versões automaticamente e permite update com um clique."
+      "title": "Update Proativo",
+      "desc": "O app agora avisa automaticamente e com estilo quando uma nova versão está pronta."
     },
     {
       "type": "fix",
-      "title": "Estabilidade de Dados",
-      "desc": "Correções aplicadas no cache local e cálculos de rentabilidade para evitar erros de tela branca."
+      "title": "Indicadores Visuais",
+      "desc": "Novos indicadores no topo da tela para mostrar o status de sincronização e updates."
     }
   ]
 }

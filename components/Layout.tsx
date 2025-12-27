@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, TrendingUp, Bell, Rocket, Sparkles, Check, Wrench, Zap, Palette, ArrowUpCircle, X, Trash2, Info } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, TrendingUp, Bell, Rocket, Sparkles, Check, Wrench, Zap, Palette, ArrowUpCircle, X, Trash2, Info, Download, Star } from 'lucide-react';
 import { ReleaseNote, AppNotification } from '../types';
 
 interface HeaderProps {
@@ -55,10 +55,12 @@ export const Header: React.FC<HeaderProps> = ({
           {!showBack && (
             <div className="flex items-center gap-2 mt-1.5 opacity-80">
                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${updateAvailable ? 'bg-indigo-400' : 'bg-emerald-400'}`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${updateAvailable ? 'bg-indigo-500' : 'bg-emerald-500'}`}></span>
                 </span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">Sincronizado</span>
+              <span className={`text-[10px] font-bold uppercase tracking-widest ${updateAvailable ? 'text-indigo-500' : 'text-slate-500 dark:text-slate-400'}`}>
+                {updateAvailable ? 'Nova Versão' : 'Sincronizado'}
+              </span>
             </div>
           )}
         </div>
@@ -66,13 +68,11 @@ export const Header: React.FC<HeaderProps> = ({
       
       <div className="flex items-center gap-2 animate-fade-in">
         {updateAvailable && !showBack && (
-           <button onClick={onUpdateClick} className="h-10 px-4 flex items-center gap-2 rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 animate-pulse active:scale-95 transition-all">
-             <ArrowUpCircle className="w-4 h-4" />
-             <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">Update</span>
+           <button onClick={onUpdateClick} className="h-10 w-10 flex items-center justify-center rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 animate-pulse active:scale-95 transition-all">
+             <Download className="w-5 h-5" />
            </button>
         )}
 
-        {/* Renderiza o botão se onNotificationClick for fornecido */}
         {onNotificationClick && !showBack && (
            <button onClick={onNotificationClick} className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 active:scale-90 transition-all text-slate-500 dark:text-slate-400 hover:text-accent relative hover:bg-slate-50 dark:hover:bg-white/10">
              <Bell className="w-5 h-5" />
@@ -208,65 +208,105 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
   );
 };
 
-export const ChangelogModal: React.FC<{ isOpen: boolean; onClose: () => void; version: string; notes?: ReleaseNote[] }> = ({ isOpen, onClose, version, notes }) => {
+export const ChangelogModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  version: string; 
+  notes?: ReleaseNote[];
+  isUpdatePending?: boolean;
+  onUpdate?: () => void;
+}> = ({ isOpen, onClose, version, notes, isUpdatePending, onUpdate }) => {
   if (!isOpen) return null;
 
   const getIcon = (type: string) => {
     switch(type) {
-      case 'feat': return <Sparkles className="w-4 h-4 text-accent" />;
-      case 'fix': return <Wrench className="w-4 h-4 text-rose-500" />;
-      case 'perf': return <Zap className="w-4 h-4 text-amber-500" />;
-      case 'ui': return <Palette className="w-4 h-4 text-purple-500" />;
-      default: return <Check className="w-4 h-4 text-emerald-500" />;
+      case 'feat': return <Star className="w-4 h-4" />;
+      case 'fix': return <Wrench className="w-4 h-4" />;
+      case 'perf': return <Zap className="w-4 h-4" />;
+      case 'ui': return <Palette className="w-4 h-4" />;
+      default: return <Check className="w-4 h-4" />;
     }
   };
 
-  const getColor = (type: string) => {
+  const getColorClasses = (type: string) => {
     switch(type) {
-      case 'feat': return 'bg-accent/10 border-accent/20';
-      case 'fix': return 'bg-rose-500/10 border-rose-500/20';
-      case 'perf': return 'bg-amber-500/10 border-amber-500/20';
-      case 'ui': return 'bg-purple-500/10 border-purple-500/20';
-      default: return 'bg-emerald-500/10 border-emerald-500/20';
+      case 'feat': return 'bg-amber-500 text-white shadow-amber-500/30';
+      case 'fix': return 'bg-rose-500 text-white shadow-rose-500/30';
+      case 'perf': return 'bg-cyan-500 text-white shadow-cyan-500/30';
+      case 'ui': return 'bg-purple-500 text-white shadow-purple-500/30';
+      default: return 'bg-emerald-500 text-white shadow-emerald-500/30';
     }
   };
 
   return createPortal(
     <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6 animate-fade-in">
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-md transition-all" onClick={onClose} />
-        <div className="relative bg-white dark:bg-[#0f172a] w-full max-w-sm rounded-[3rem] p-8 border border-white/20 shadow-2xl flex flex-col items-center text-center animate-slide-up overflow-hidden">
-            {/* Background Glow */}
-            <div className="absolute top-0 inset-x-0 h-40 bg-accent/20 blur-[60px] rounded-full -mt-20 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-lg transition-all" onClick={onClose} />
+        
+        <div className="relative bg-white dark:bg-[#0f172a] w-full max-w-sm rounded-[3rem] p-0 border border-white/10 shadow-2xl flex flex-col items-center animate-slide-up overflow-hidden max-h-[85vh]">
+            
+            {/* Header com Gradiente */}
+            <div className={`w-full p-8 pb-10 flex flex-col items-center justify-center relative overflow-hidden ${isUpdatePending ? 'bg-gradient-to-br from-indigo-500 to-violet-600' : 'bg-gradient-to-br from-emerald-400 to-teal-600'}`}>
+                {/* Efeitos de Fundo */}
+                <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/20 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-white dark:from-[#0f172a] to-transparent"></div>
 
-            <div className="w-24 h-24 bg-gradient-to-tr from-emerald-400 to-teal-500 rounded-[2.5rem] flex items-center justify-center text-white mb-6 relative shadow-2xl shadow-emerald-500/30 z-10">
-                <Rocket className="w-12 h-12" strokeWidth={1.5} />
-                <div className="absolute -bottom-4 bg-slate-900 text-white text-[10px] font-black px-4 py-1.5 rounded-full border-4 border-white dark:border-[#0f172a]">v{version}</div>
+                <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center text-white mb-4 relative z-10 border border-white/30 shadow-xl">
+                    <Rocket className="w-10 h-10 drop-shadow-md" strokeWidth={2} />
+                </div>
+                
+                <div className="inline-flex items-center gap-2 bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/10 mb-2 relative z-10">
+                   <Sparkles className="w-3 h-3 text-yellow-300" />
+                   <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                      {isUpdatePending ? 'Nova Versão Disponível' : 'Atualizado com Sucesso'}
+                   </span>
+                </div>
+
+                <h3 className="text-3xl font-black text-white tracking-tight relative z-10">v{version}</h3>
             </div>
             
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 relative z-10">Atualizado!</h3>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium mb-8 leading-relaxed max-w-[80%] relative z-10">
-               Sua carteira está rodando a versão mais recente com performance aprimorada.
-            </p>
-            
-            <div className="w-full space-y-3 mb-8 max-h-[35vh] overflow-y-auto no-scrollbar relative z-10">
-               {notes && notes.length > 0 ? notes.map((note, i) => (
-                 <div key={i} className="flex items-start gap-4 text-left bg-slate-50 dark:bg-white/[0.03] p-5 rounded-[1.5rem] border border-slate-100 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                    <div className={`p-2.5 rounded-2xl shrink-0 border ${getColor(note.type)}`}>
-                      {getIcon(note.type)}
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-1">{note.title}</h4>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{note.desc}</p>
-                    </div>
-                 </div>
-               )) : (
-                 <div className="text-center py-4 text-slate-400 text-xs">Melhorias gerais de sistema.</div>
-               )}
+            {/* Timeline de Mudanças */}
+            <div className="w-full px-6 -mt-4 relative z-10 flex-1 overflow-y-auto no-scrollbar pb-6">
+               <div className="space-y-0 relative">
+                 {/* Linha Vertical da Timeline */}
+                 <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-100 dark:bg-white/5"></div>
+
+                 {notes && notes.length > 0 ? notes.map((note, i) => (
+                   <div key={i} className="relative pl-12 py-3 group">
+                      {/* Ícone na Timeline */}
+                      <div className={`absolute left-0 top-3.5 w-10 h-10 rounded-2xl flex items-center justify-center z-10 shadow-lg border-2 border-white dark:border-[#0f172a] transition-transform group-hover:scale-110 ${getColorClasses(note.type)}`}>
+                        {getIcon(note.type)}
+                      </div>
+                      
+                      {/* Conteúdo */}
+                      <div className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-2xl border border-slate-100 dark:border-white/5 transition-colors hover:bg-slate-100 dark:hover:bg-white/10">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider opacity-80 ${note.type === 'feat' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600'}`}>
+                            {note.type}
+                          </span>
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">{note.title}</h4>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{note.desc}</p>
+                      </div>
+                   </div>
+                 )) : (
+                   <div className="text-center py-8 text-slate-400 text-xs">Melhorias internas de performance e estabilidade.</div>
+                 )}
+               </div>
             </div>
 
-            <button onClick={onClose} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all hover:shadow-xl relative z-10">
-                Explorar Novidades
-            </button>
+            {/* Footer com Ação */}
+            <div className="w-full p-6 pt-2 bg-white dark:bg-[#0f172a] relative z-20">
+              {isUpdatePending ? (
+                 <button onClick={onUpdate} className="w-full bg-indigo-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-xl shadow-indigo-500/20 hover:bg-indigo-600 flex items-center justify-center gap-2 animate-pulse-slow">
+                    <Download className="w-4 h-4" /> Instalar Atualização
+                 </button>
+              ) : (
+                <button onClick={onClose} className="w-full bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all hover:bg-slate-200 dark:hover:bg-white/20">
+                    Fechar
+                </button>
+              )}
+            </div>
         </div>
     </div>,
     document.body

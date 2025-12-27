@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '4.5.0';
+const APP_VERSION = '4.5.1';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -37,7 +37,6 @@ const compareVersions = (v1: string, v2: string) => {
 };
 
 const performSmartUpdate = async () => {
-  // Limpeza agressiva de caches para garantir a versão mais recente
   if ('serviceWorker' in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
     for (const registration of registrations) {
@@ -52,7 +51,6 @@ const performSmartUpdate = async () => {
         }
     } catch(e) { console.error("Cache clear error", e); }
   }
-  // Reload forçado
   window.location.reload();
 };
 
@@ -66,9 +64,13 @@ const App: React.FC = () => {
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
+  
+  // Controle de Changelog e Update
   const [showChangelog, setShowChangelog] = useState(false);
   const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
+  const [changelogVersion, setChangelogVersion] = useState(APP_VERSION);
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -128,7 +130,6 @@ const App: React.FC = () => {
     ]);
   }, []);
 
-  // Monitoramento de Novos Proventos e Atualização de Notificações
   useEffect(() => {
     if (geminiDividends.length > prevDividendsRef.current.length) {
       const newDivs = geminiDividends.filter(d => !prevDividendsRef.current.find(p => p.id === d.id));
@@ -152,21 +153,14 @@ const App: React.FC = () => {
         if (res.ok) {
           const data: VersionData = await res.json();
           if (compareVersions(data.version, APP_VERSION) > 0) {
+            // Nova atualização encontrada!
             setUpdateAvailable(true);
-            // Só adiciona notificação se não houver uma de update já
-            setNotifications(prev => {
-                if (prev.some(n => n.type === 'update')) return prev;
-                return [{
-                    id: 'update-available',
-                    title: 'Atualização Disponível',
-                    message: `A versão ${data.version} já está disponível com melhorias.`,
-                    type: 'update',
-                    timestamp: Date.now(),
-                    read: false,
-                    actionLabel: 'ATUALIZAR AGORA',
-                    onAction: performSmartUpdate
-                }, ...prev];
-            });
+            setChangelogNotes(data.notes || []);
+            setChangelogVersion(data.version);
+            
+            // Abre o modal automaticamente para mostrar o que há de novo (Proativo)
+            setShowChangelog(true);
+
             showToast('info', 'Nova atualização disponível');
           } else if (manual) {
             showToast('success', 'Você já tem a versão mais recente.');
@@ -182,31 +176,33 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleVersionControl = async () => {
       const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
-      // Se a versão atual for maior que a última vista, mostra changelog
+      
+      // Checa se acabou de atualizar (Versão Atual > Ultima Vista)
       if (compareVersions(APP_VERSION, lastSeen) > 0) {
         try {
           const res = await fetch(`./version.json?t=${Date.now()}`);
           if (res.ok) {
             const data: VersionData = await res.json();
-            if (data.version === APP_VERSION) {
-              setChangelogNotes(data.notes || []);
-              setTimeout(() => setShowChangelog(true), 1500);
-            }
+            // Mostra o changelog da versão ATUAL (Pós update)
+            setChangelogNotes(data.notes || []);
+            setChangelogVersion(APP_VERSION);
+            setTimeout(() => setShowChangelog(true), 1500);
           }
         } catch(e) {}
         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
+      } else {
+        // Se não acabou de atualizar, verifica se há uma NOVA disponível
+        checkForUpdates();
       }
-      checkForUpdates();
     };
 
     handleVersionControl();
 
-    // Smart Update Trigger: Verifica ao focar na janela
     const onVisibilityChange = () => {
         if (document.visibilityState === 'visible') checkForUpdates();
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
-    const interval = setInterval(() => checkForUpdates(), 15 * 60 * 1000); // 15 min
+    const interval = setInterval(() => checkForUpdates(), 15 * 60 * 1000);
 
     return () => {
         clearInterval(interval);
@@ -311,7 +307,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       {toast && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => updateAvailable && performSmartUpdate()}>
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => updateAvailable && setShowChangelog(true)}>
           <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : toast.type === 'info' ? 'bg-indigo-500/90 border-indigo-400 cursor-pointer' : 'bg-rose-500/90 border-rose-400'} text-white`}>
             {updateAvailable ? <DownloadCloud className="w-5 h-5 animate-bounce" /> : toast.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
             <span className="text-xs font-black uppercase tracking-wider">{toast.text}</span>
@@ -327,7 +323,7 @@ const App: React.FC = () => {
         onRefresh={() => syncAll(true)}
         isRefreshing={isRefreshing || isAiLoading}
         updateAvailable={updateAvailable}
-        onUpdateClick={performSmartUpdate}
+        onUpdateClick={() => setShowChangelog(true)}
         onNotificationClick={() => setShowNotifications(true)}
         notificationCount={notifications.length}
       />
@@ -365,8 +361,10 @@ const App: React.FC = () => {
       <ChangelogModal 
         isOpen={showChangelog} 
         onClose={() => setShowChangelog(false)} 
-        version={APP_VERSION} 
+        version={changelogVersion} 
         notes={changelogNotes}
+        isUpdatePending={updateAvailable}
+        onUpdate={performSmartUpdate}
       />
       
       <NotificationsModal 
