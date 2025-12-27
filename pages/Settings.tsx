@@ -329,40 +329,83 @@ export const Settings: React.FC<SettingsProps> = ({
               </div>
               
               {/* Seletor de Cores */}
-              <div className="space-y-4">
-                <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-                    Cores de Destaque
-                </h3>
-                <div className="grid grid-cols-4 gap-4 px-1">
-                    {ACCENT_COLORS.map(c => (
-                        <div key={c.hex} className="flex flex-col items-center gap-2">
-                           <button onClick={() => onSetAccentColor(c.hex)} className={`w-14 h-14 rounded-full ${c.class} flex items-center justify-center transition-all active:scale-90 shadow-sm relative overflow-hidden group`}>
-                               {/* Efeito de brilho interno */}
-                               <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent"></div>
-                               {accentColor === c.hex && (
-                                 <div className="absolute inset-0 ring-4 ring-white dark:ring-[#0f172a] ring-inset rounded-full animate-scale-in"></div>
-                               )}
-                               {accentColor === c.hex && <Check className="w-5 h-5 text-white relative z-10" strokeWidth={3.5} />}
+              <div className="space-y-4 pt-2">
+                  <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
+                      Personalidade
+                  </h3>
+                  <div className="grid grid-cols-4 sm:grid-cols-4 gap-3">
+                      {ACCENT_COLORS.map((c) => {
+                        const isActive = accentColor === c.hex;
+                        return (
+                           <button 
+                             key={c.hex} 
+                             onClick={() => onSetAccentColor(c.hex)}
+                             className={`group relative flex flex-col items-center gap-3 p-3 rounded-3xl transition-all duration-300 ${
+                               isActive ? 'bg-white dark:bg-[#0b1121] shadow-lg ring-1 ring-slate-100 dark:ring-white/10 scale-105 z-10' : 'hover:bg-white/50 dark:hover:bg-white/5'
+                             }`}
+                           >
+                              <div className={`w-12 h-12 rounded-2xl ${c.class} shadow-lg relative flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                 {isActive && <Check className="w-6 h-6 text-white animate-scale-in drop-shadow-md" strokeWidth={3} />}
+                                 {/* Glow effect for active */}
+                                 {isActive && (
+                                    <div className={`absolute inset-0 rounded-2xl ${c.class} blur-lg opacity-40 -z-10`}></div>
+                                 )}
+                              </div>
+                              <span className={`text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                                 isActive ? 'text-slate-900 dark:text-white' : 'text-slate-400 group-hover:text-slate-500 dark:group-hover:text-slate-300'
+                              }`}>
+                                {c.name}
+                              </span>
                            </button>
-                           <span className={`text-[8px] font-black uppercase tracking-tighter ${accentColor === c.hex ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>{c.name}</span>
-                        </div>
-                    ))}
-                </div>
+                        );
+                      })}
+                  </div>
               </div>
 
               {/* Seletor de Tema */}
               <div className="space-y-4">
-                <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-                   Tema do Sistema
-                </h3>
-                <div className="grid grid-cols-3 gap-3">
-                   {['light','dark','system'].map(m => (
-                       <button key={m} onClick={() => onSetTheme(m as ThemeType)} className={`relative overflow-hidden py-5 rounded-[1.5rem] border flex flex-col items-center justify-center gap-3 transition-all active:scale-95 ${theme === m ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent shadow-xl ring-2 ring-offset-2 ring-slate-900 dark:ring-white ring-offset-slate-50 dark:ring-offset-[#020617]' : 'bg-white dark:bg-[#0f172a] border-slate-200 dark:border-white/5 text-slate-400 hover:border-slate-300 dark:hover:border-white/20'}`}>
-                          {m === 'light' ? <Sun className="w-6 h-6" strokeWidth={2} /> : m === 'dark' ? <Moon className="w-6 h-6" strokeWidth={2} /> : <Monitor className="w-6 h-6" strokeWidth={2} />}
-                          <span className="text-[9px] font-black uppercase tracking-widest">{m === 'system' ? 'Auto' : m === 'light' ? 'Claro' : 'Escuro'}</span>
-                       </button>
-                   ))}
-                </div>
+                  <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
+                     Aparência
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4">
+                      {[
+                        { id: 'light', icon: Sun, label: 'Claro' },
+                        { id: 'dark', icon: Moon, label: 'Escuro' },
+                        { id: 'system', icon: Monitor, label: 'Auto' }
+                      ].map((mode) => {
+                        const isActive = theme === mode.id;
+                        const Icon = mode.icon;
+                        return (
+                          <button
+                            key={mode.id}
+                            onClick={() => onSetTheme(mode.id as ThemeType)}
+                            className={`group relative flex flex-col items-center justify-center gap-3 py-6 rounded-3xl border-2 transition-all duration-300 ${
+                              isActive 
+                                ? 'border-accent bg-accent/5 scale-[1.02] shadow-xl shadow-accent/10' 
+                                : 'border-transparent bg-white dark:bg-[#0b1121] hover:bg-slate-50 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            {isActive && (
+                              <div className="absolute top-3 right-3 w-5 h-5 bg-accent rounded-full flex items-center justify-center text-white shadow-sm animate-scale-in">
+                                 <Check className="w-3 h-3" strokeWidth={4} />
+                              </div>
+                            )}
+                            
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
+                              isActive ? 'bg-accent text-white shadow-lg shadow-accent/30' : 'bg-slate-100 dark:bg-white/5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200'
+                            }`}>
+                               <Icon className="w-6 h-6" strokeWidth={2} />
+                            </div>
+                            
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${
+                              isActive ? 'text-accent' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'
+                            }`}>
+                              {mode.label}
+                            </span>
+                          </button>
+                        )
+                      })}
+                  </div>
               </div>
 
               <div className="space-y-4 pt-2">
