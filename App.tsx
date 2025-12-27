@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '5.4.3';
+const APP_VERSION = '5.4.4';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -42,12 +42,10 @@ const performSmartUpdate = async () => {
   if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.getRegistration();
     if (reg && reg.waiting) {
-        // Envia mensagem ao SW para assumir o controle
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         return; 
     }
   }
-  // Fallback
   window.location.reload();
 };
 
@@ -66,7 +64,6 @@ const App: React.FC = () => {
   const [changelogVersion, setChangelogVersion] = useState(APP_VERSION);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   
-  // Controle de Sessão para o Banner de Update
   const [isUpdateDismissed, setIsUpdateDismissed] = useState(() => sessionStorage.getItem('investfiis_update_dismissed') === 'true');
   
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -107,7 +104,6 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken); }, [brapiToken]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
 
-  // Handler para dispensar update nesta sessão
   const handleDismissUpdate = () => {
       setIsUpdateDismissed(true);
       sessionStorage.setItem('investfiis_update_dismissed', 'true');
@@ -300,7 +296,7 @@ const App: React.FC = () => {
   const checkForUpdates = async (manual = false) => {
       if (manual) showToast('info', 'Buscando atualizações...');
       
-      // 1. Checagem de Service Worker Waiting (Prioritário)
+      // Checagem Principal: Existe um worker aguardando?
       if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.getRegistration();
           if (reg && reg.waiting) {
@@ -310,7 +306,7 @@ const App: React.FC = () => {
           }
       }
 
-      // 2. Checagem de Metadados JSON (Fallback)
+      // Fallback: Checagem via JSON (Apenas se não houver worker waiting)
       try {
         const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
@@ -320,18 +316,10 @@ const App: React.FC = () => {
             setChangelogNotes(data.notes || []);
             setChangelogVersion(data.version);
             
-            if (!manual) {
-                if (!isUpdateDismissed) {
-                    showToast('info', 'Nova atualização disponível');
-                    addNotification({
-                        title: 'Atualização do Sistema',
-                        message: `InvestFIIs v${data.version} está pronta. Toque para atualizar.`,
-                        type: 'update',
-                        category: 'update'
-                    });
-                }
-            } else {
-                setShowChangelog(true);
+            if (!manual && !isUpdateDismissed) {
+                 showToast('info', 'Nova atualização disponível');
+            } else if (manual) {
+                 setShowChangelog(true);
             }
           } else if (manual) {
             showToast('success', 'Você já tem a versão mais recente.');
@@ -345,10 +333,12 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // Verifica atualizações APENAS na montagem do componente (Load inicial)
     const handleVersionControl = async () => {
       const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
+      
+      // Se a versão atual é maior que a última vista, mostra o changelog
       if (compareVersions(APP_VERSION, lastSeen) > 0) {
-        // Atualização bem-sucedida detectada
         try {
           const res = await fetch(`./version.json?t=${Date.now()}`);
           if (res.ok) {

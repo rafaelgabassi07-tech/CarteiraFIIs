@@ -297,24 +297,7 @@ export const Home: React.FC<HomeProps> = ({
                     <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent mb-2 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Alocação</h3>
                  </div>
-                 
-                 {/* Mini Gráfico de Rosca */}
-                 <div className="h-14 w-14 relative shrink-0">
-                     <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie 
-                                data={topSegments.length > 0 ? topSegments : [{value: 1}]} 
-                                innerRadius={18} 
-                                outerRadius={28} 
-                                dataKey="value" 
-                                stroke="none" 
-                                isAnimationActive={false}
-                            >
-                                {topSegments.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                            </Pie>
-                        </PieChart>
-                     </ResponsiveContainer>
-                 </div>
+                 {/* Mini Gráfico de Rosca removido conforme solicitado */}
              </div>
 
              {/* Lista Top 3 Segmentos */}

@@ -1,22 +1,17 @@
 
 {
-  "version": "5.4.3",
+  "version": "5.4.4",
   "date": "2025-05-24",
   "notes": [
+    {
+      "type": "perf",
+      "title": "Correção Definitiva de Atualização (v5.4.4)",
+      "desc": "Mudança para estratégia Cache-First. O app agora para de consumir dados em segundo plano e só baixa atualizações quando houver nova versão real."
+    },
     {
       "type": "fix",
       "title": "Atualização Controlada (v5.4.3)",
       "desc": "Otimização profunda do Service Worker. O app não atualizará mais em segundo plano sem sua permissão."
-    },
-    {
-      "type": "fix",
-      "title": "Update Estável (v5.4.2)",
-      "desc": "Aprimoramento crítico no ciclo de vida da atualização para evitar reinícios automáticos indesejados."
-    },
-    {
-      "type": "ui",
-      "title": "Visual Personalizado (v5.4.1)",
-      "desc": "A Cor de Destaque agora controla todo o brilho e a atmosfera do aplicativo (Glow UI)."
     }
   ]
 }

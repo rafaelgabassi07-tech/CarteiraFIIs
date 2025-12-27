@@ -1,87 +1,95 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.4.3';
-const DYNAMIC_CACHE = 'investfiis-dynamic-v1';
+const CACHE_NAME = 'investfiis-ultra-v5.4.4';
 
-// Apenas arquivos vitais da UI entram no cache imutável de instalação.
-// O version.json foi removido daqui para evitar leituras de versão obsoleta.
+// Arquivos que formam o "App Shell" e devem ser carregados offline
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './index.js', // Se houver build steps gerando chunks, o browser vai cachear na instalação via requests
 ];
 
-// Instalação: Cache dos arquivos estáticos essenciais
+// 1. INSTALAÇÃO: Baixa apenas o essencial uma única vez.
 self.addEventListener('install', (event) => {
-  // NÃO usamos skipWaiting() aqui. O worker entra em estado "waiting"
-  // e só ativa quando o usuário clica no botão do banner.
+  // O skipWaiting foi removido propositalmente.
+  // O SW novo entra em estado 'waiting' até o usuário clicar em "Atualizar" no banner.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      // Tenta cachear, mas não falha se algum arquivo opcional faltar
+      return cache.addAll(ASSETS_TO_CACHE).catch(err => console.warn('Falha em cachear assets opcionais', err));
     })
   );
 });
 
-// Ativação: Limpeza de caches antigos
+// 2. ATIVAÇÃO: Faxina. Roda quando o usuário clica em "Atualizar" e a nova versão assume.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME && key !== DYNAMIC_CACHE) {
-            console.log('[SW] Removendo cache antigo:', key);
+          // Remove qualquer cache que não seja o da versão atual (5.4.4)
+          // Removemos também o 'dynamic-cache' antigo para evitar lixo
+          if (key !== CACHE_NAME) {
+            console.log('[SW] Limpando versão antiga:', key);
             return caches.delete(key);
           }
         })
       );
-    }).then(() => self.clients.claim()) // Assume o controle imediatamente após ativação autorizada
+    }).then(() => self.clients.claim())
   );
 });
 
-// Interceptação de Requisições
+// 3. FETCH: O Guardião da Rede
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Ignorar requisições externas (API, Analytics, etc)
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  // 2. Estratégia Network Only para version.json
-  // Garante que o app sempre verifique a versão real no servidor, sem cache.
+  // A. EXCEÇÃO: version.json SEMPRE vai para a rede.
+  // É a única forma de sabermos se há update sem baixar o app todo.
   if (url.pathname.includes('version.json')) {
     event.respondWith(
       fetch(event.request, { cache: 'no-store' }).catch(() => {
-        // Se offline, tenta cache ou retorna erro controlado
-        return caches.match(event.request);
+        // Se offline, retorna 404 ou nada, para não mostrar banner falso
+        return new Response(null, { status: 404 });
       })
     );
     return;
   }
 
-  // 3. Estratégia Stale-While-Revalidate para o restante do App
-  // Entrega o conteúdo rápido do cache, mas atualiza em background se houver internet
+  // B. IGNORAR EXTERNOS: APIs (Brapi, Google AI) não são cacheadas pelo SW.
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // C. ESTRATÉGIA CACHE-FIRST (Cache Primeiro)
+  // O App verifica o cache. Se achar, retorna IMEDIATAMENTE e NÃO vai para a rede.
+  // Isso impede downloads em segundo plano.
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          // Atualiza o cache dinâmico com a nova versão do arquivo
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
-          });
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      // Se não estiver no cache (ex: um ícone novo que o usuário nunca viu), baixa e salva.
+      return fetch(event.request).then((networkResponse) => {
+        return caches.open(CACHE_NAME).then((cache) => {
+          // Salva para o futuro, para não baixar de novo
+          cache.put(event.request, networkResponse.clone());
           return networkResponse;
-        })
-        .catch(() => {
-          // Se falhar o fetch, não faz nada (já retornou o cache se existir)
         });
-      
-      return cachedResponse || fetchPromise;
+      }).catch(() => {
+        // Fallback offline (se necessário)
+        // Se for navegação, pode retornar index.html
+        if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+        }
+      });
     })
   );
 });
 
-// Listener para mensagens do App (Acionado pelo botão "Atualizar")
+// 4. MENSAGENS: O Gatilho do Botão "Atualizar"
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting(); // Autoriza a troca de versão
+    self.skipWaiting(); // AQUI acontece a mágica da troca de versão
   }
 });
