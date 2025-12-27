@@ -141,8 +141,9 @@ const App: React.FC = () => {
         
         // Se não tivermos a referência, buscamos novamente
         if (!reg) {
-            reg = await navigator.serviceWorker.getRegistration();
-            swRegistrationRef.current = reg || null;
+            const registration = await navigator.serviceWorker.getRegistration();
+            reg = registration || null; // Fix TS Type: undefined -> null
+            swRegistrationRef.current = reg;
         }
 
         if (reg) {

@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-3 w-full">
         {showBack ? (
           <div className="flex items-center gap-4 animate-fade-in w-full">
-            <button onClick={onBack} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group">
+            <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group border border-slate-100 dark:border-white/5">
               <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" strokeWidth={2.5} />
             </button>
             <div className="flex flex-col ml-1">
@@ -75,29 +75,29 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {updateAvailable && !showBack && (
-          <button onClick={onUpdateClick} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/30 active:scale-95 transition-all animate-scale-in hover:brightness-110">
-            <Download className="w-5 h-5 animate-pulse" strokeWidth={2.5} />
+          <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-accent text-white shadow-lg shadow-accent/30 active:scale-95 transition-all animate-scale-in hover:brightness-110 border border-white/20">
+            <Download className="w-4 h-4 animate-pulse" strokeWidth={2.5} />
           </button>
         )}
 
         {onNotificationClick && !showBack && (
-          <button onClick={onNotificationClick} className="relative w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group">
-            <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" strokeWidth={2} />
-            {notificationCount > 0 && <span className="absolute top-3 right-3.5 w-2 h-2 bg-rose-500 rounded-full shadow-sm"></span>}
+          <button onClick={onNotificationClick} className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
+            <Bell className="w-4 h-4 group-hover:rotate-12 transition-transform" strokeWidth={2} />
+            {notificationCount > 0 && <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-full shadow-sm ring-2 ring-white dark:ring-[#020617]"></span>}
           </button>
         )}
 
         {onRefresh && !showBack && (
-          <button onClick={onRefresh} disabled={isRefreshing} className={`w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm ${isRefreshing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-white/10'}`}>
-             <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin text-accent' : ''}`} strokeWidth={2} />
+          <button onClick={onRefresh} disabled={isRefreshing} className={`w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm border border-slate-100 dark:border-white/5 ${isRefreshing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-white/10'}`}>
+             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-accent' : ''}`} strokeWidth={2} />
           </button>
         )}
 
         {!showBack && onSettingsClick && (
-          <button onClick={onSettingsClick} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group">
-            <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" strokeWidth={2} />
+          <button onClick={onSettingsClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
+            <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" strokeWidth={2} />
           </button>
         )}
       </div>
@@ -115,7 +115,7 @@ export const UpdateBanner: React.FC<{
 
   return (
     <div className="fixed top-24 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-sm animate-fade-in-up">
-      <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl shadow-accent/10 flex items-center justify-between gap-4">
+      <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl shadow-accent/10 flex items-center justify-between gap-4 border border-slate-200/50 dark:border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/30 shrink-0">
              <Rocket className="w-5 h-5" strokeWidth={2} />
@@ -147,7 +147,7 @@ export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string
 
   return (
     <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-6 pointer-events-none">
-      <nav className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl p-2 rounded-[1.5rem] flex items-center gap-2 shadow-2xl shadow-slate-200/50 dark:shadow-black/50 pointer-events-auto transition-all duration-300">
+      <nav className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl p-2 rounded-[1.5rem] flex items-center gap-2 shadow-2xl shadow-slate-200/50 dark:shadow-black/50 pointer-events-auto transition-all duration-300 border border-white/20 dark:border-white/5">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -194,7 +194,7 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
     <div className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-none">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm pointer-events-auto transition-opacity duration-300 animate-fade-in" onClick={onClose} />
       <div 
-        className="bg-white dark:bg-[#0b1121] w-full h-[calc(100dvh-4.5rem)] rounded-t-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto transition-transform duration-300 cubic-bezier(0.2, 0.8, 0.2, 1) animate-slide-up"
+        className="bg-white dark:bg-[#0b1121] w-full h-[calc(100dvh-4.5rem)] rounded-t-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto transition-transform duration-300 cubic-bezier(0.2, 0.8, 0.2, 1) animate-slide-up border-t border-white/20 dark:border-white/5"
         style={{ transform: `translateY(${offsetY}px)` }}
         onTouchStart={(e) => { setIsDragging(true); startY.current = e.touches[0].clientY; }}
         onTouchMove={(e) => { if(!isDragging) return; const diff = e.touches[0].clientY - startY.current; if(diff > 0) setOffsetY(diff); }}
@@ -221,9 +221,9 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
 
   return createPortal(
     <div className="fixed inset-0 z-[2000] flex flex-col bg-slate-50 dark:bg-[#020617] animate-fade-in">
-        <div className="px-6 pt-safe pb-4 bg-white dark:bg-[#0f172a] shadow-sm z-10 sticky top-0">
+        <div className="px-6 pt-safe pb-4 bg-white dark:bg-[#0f172a] shadow-sm z-10 sticky top-0 border-b border-slate-100 dark:border-white/5">
              <div className="flex items-center justify-between pt-4">
-                 <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all">
+                 <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all">
                      <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
                  </button>
                  <div className="text-center">
@@ -233,7 +233,7 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
                  <button 
                    onClick={onClear} 
                    disabled={notifications.length === 0}
-                   className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all ${notifications.length > 0 ? 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-rose-500' : 'opacity-0 pointer-events-none'}`}
+                   className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${notifications.length > 0 ? 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-rose-500' : 'opacity-0 pointer-events-none'}`}
                  >
                      <Trash2 className="w-5 h-5" />
                  </button>
