@@ -1,16 +1,16 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, SwipeableModal, ChangelogModal } from './components/Layout';
+import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, VersionData, ReleaseNote } from './types';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, VersionData, ReleaseNote, AppNotification } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '3.8.0';
+const APP_VERSION = '4.2.0';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -36,9 +36,28 @@ const compareVersions = (v1: string, v2: string) => {
   return 0;
 };
 
+const performSmartUpdate = async () => {
+  // Limpeza agressiva de caches para garantir a versão mais recente
+  if ('serviceWorker' in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (const registration of registrations) {
+      await registration.unregister();
+    }
+  }
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    for (const key of keys) {
+      await caches.delete(key);
+    }
+  }
+  // Reload forçado
+  window.location.reload();
+};
+
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#0ea5e9');
@@ -48,6 +67,7 @@ const App: React.FC = () => {
   const [showChangelog, setShowChangelog] = useState(false);
   const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
@@ -99,29 +119,62 @@ const App: React.FC = () => {
     if (type !== 'info') setTimeout(() => setToast(null), 4000);
   }, []);
 
+  const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
+    setNotifications(prev => [
+      { ...notification, id: crypto.randomUUID(), timestamp: Date.now(), read: false },
+      ...prev
+    ]);
+  }, []);
+
+  // Monitoramento de Novos Proventos e Atualização de Notificações
   useEffect(() => {
     if (geminiDividends.length > prevDividendsRef.current.length) {
       const newDivs = geminiDividends.filter(d => !prevDividendsRef.current.find(p => p.id === d.id));
       if (newDivs.length > 0) {
-        const prefs = JSON.parse(localStorage.getItem(STORAGE_KEYS.PREFS_NOTIF) || '{"payments":true}');
-        if (prefs.payments) {
-          const msg = `${newDivs.length} novos proventos detectados!`;
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("InvestFIIs - Novidade", { body: msg });
-          } else {
-            showToast('success', msg);
-          }
-        }
+        addNotification({
+          title: 'Novos Proventos',
+          message: `${newDivs.length} novos pagamentos foram identificados pela IA.`,
+          type: 'success'
+        });
       }
     }
     prevDividendsRef.current = geminiDividends;
-  }, [geminiDividends, showToast]);
+  }, [geminiDividends, addNotification]);
 
+  // Controle de Versão e Atualizações
   useEffect(() => {
-    const handleVersionControl = async () => {
+    const checkRemoteVersion = async () => {
       try {
-        const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
-        if (compareVersions(APP_VERSION, lastSeen) > 0) {
+        const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (res.ok) {
+          const data: VersionData = await res.json();
+          if (compareVersions(data.version, APP_VERSION) > 0) {
+            setUpdateAvailable(true);
+            // Só adiciona notificação se não houver uma de update já
+            setNotifications(prev => {
+                if (prev.some(n => n.type === 'update')) return prev;
+                return [{
+                    id: 'update-available',
+                    title: 'Atualização Disponível',
+                    message: `A versão ${data.version} já está disponível com melhorias.`,
+                    type: 'update',
+                    timestamp: Date.now(),
+                    read: false,
+                    actionLabel: 'ATUALIZAR AGORA',
+                    onAction: performSmartUpdate
+                }, ...prev];
+            });
+            showToast('info', 'Nova atualização disponível');
+          }
+        }
+      } catch(e) { console.error("Update Check Failed", e); }
+    };
+
+    const handleVersionControl = async () => {
+      const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
+      // Se a versão atual for maior que a última vista, mostra changelog
+      if (compareVersions(APP_VERSION, lastSeen) > 0) {
+        try {
           const res = await fetch(`./version.json?t=${Date.now()}`);
           if (res.ok) {
             const data: VersionData = await res.json();
@@ -130,35 +183,28 @@ const App: React.FC = () => {
               setTimeout(() => setShowChangelog(true), 1500);
             }
           }
-          localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
-        }
-        const checkRemote = async () => {
-          try {
-            const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
-            if (res.ok) {
-              const data: VersionData = await res.json();
-              if (compareVersions(data.version, APP_VERSION) > 0) {
-                setUpdateAvailable(true);
-                showToast('info', 'Nova atualização disponível');
-              }
-            }
-          } catch(e) {}
-        };
-        checkRemote();
-        const interval = setInterval(checkRemote, 5 * 60 * 1000);
-        return () => clearInterval(interval);
-      } catch (e) { console.error("Version Error", e); }
+        } catch(e) {}
+        localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
+      }
+      checkRemoteVersion();
     };
+
     handleVersionControl();
+
+    // Smart Update Trigger: Verifica ao focar na janela
+    const onVisibilityChange = () => {
+        if (document.visibilityState === 'visible') checkRemoteVersion();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    const interval = setInterval(checkRemoteVersion, 10 * 60 * 1000); // 10 min
+
+    return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [showToast]);
 
-  const triggerUpdate = () => {
-    if (confirm("Atualizar o aplicativo agora?")) window.location.reload();
-  };
-
   const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
-    // Regra B3: Você tem direito ao provento se fechar a "Data Com" com o ativo.
-    // Portanto, consideramos todas as transações ATÉ a data Com inclusive.
     return txs
       .filter(t => t.ticker === ticker && t.date <= dateCom)
       .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
@@ -174,7 +220,6 @@ const App: React.FC = () => {
       .filter(t => t.type === 'BUY' && t.date.startsWith(nowStr))
       .reduce((acc, t) => acc + (t.quantity * t.price), 0);
 
-    // Auditoria Cruzada: Filtragem rigorosa por Data Com
     const receipts: DividendReceipt[] = geminiDividends.map(div => {
       const qty = Math.max(0, getQuantityOnDate(div.ticker, div.dateCom, sortedTxs));
       return { ...div, quantityOwned: qty, totalReceived: qty * div.rate };
@@ -256,7 +301,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       {toast && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => updateAvailable && triggerUpdate()}>
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-sm animate-fade-in-up" onClick={() => updateAvailable && performSmartUpdate()}>
           <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl border backdrop-blur-md ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400' : toast.type === 'info' ? 'bg-indigo-500/90 border-indigo-400 cursor-pointer' : 'bg-rose-500/90 border-rose-400'} text-white`}>
             {updateAvailable ? <DownloadCloud className="w-5 h-5 animate-bounce" /> : toast.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
             <span className="text-xs font-black uppercase tracking-wider">{toast.text}</span>
@@ -272,7 +317,9 @@ const App: React.FC = () => {
         onRefresh={() => syncAll(true)}
         isRefreshing={isRefreshing || isAiLoading}
         updateAvailable={updateAvailable}
-        onUpdateClick={triggerUpdate}
+        onUpdateClick={performSmartUpdate}
+        onNotificationClick={() => setShowNotifications(true)}
+        notificationCount={notifications.length}
       />
 
       <main className="max-w-screen-md mx-auto pt-2">
@@ -310,6 +357,13 @@ const App: React.FC = () => {
         onClose={() => setShowChangelog(false)} 
         version={APP_VERSION} 
         notes={changelogNotes}
+      />
+      
+      <NotificationsModal 
+        isOpen={showNotifications} 
+        onClose={() => setShowNotifications(false)} 
+        notifications={notifications}
+        onClear={() => setNotifications([])}
       />
     </div>
   );

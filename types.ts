@@ -49,7 +49,6 @@ export interface BrapiResponse {
   results: BrapiQuote[];
 }
 
-// Novos tipos para o sistema de Update v3.3.0
 export type ReleaseNoteType = 'feat' | 'fix' | 'perf' | 'ui';
 
 export interface ReleaseNote {
@@ -62,4 +61,15 @@ export interface VersionData {
   version: string;
   date: string;
   notes: ReleaseNote[];
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'update';
+  timestamp: number;
+  read: boolean;
+  actionLabel?: string;
+  onAction?: () => void;
 }
