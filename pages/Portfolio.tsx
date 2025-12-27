@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown } from 'lucide-react';
+import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown, Briefcase } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: DividendReceipt[], totalPortfolioValue: number }> = ({ asset, index, history, totalPortfolioValue }) => {
@@ -13,7 +13,6 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
   const totalValue = currentPrice * asset.quantity;
   const totalCost = asset.averagePrice * asset.quantity;
   const gainPercent = asset.averagePrice > 0 ? ((currentPrice - asset.averagePrice) / asset.averagePrice) * 100 : 0;
-  const gainValue = totalValue - totalCost;
   const isPositive = gainPercent >= 0;
   const portfolioShare = totalPortfolioValue > 0 ? (totalValue / totalPortfolioValue) * 100 : 0;
 
@@ -125,7 +124,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
         </div>
       </div>
 
-      {/* MODAL HISTÓRICO - MANTIDO SIMPLES */}
+      {/* Modais Mantidos (Histórico e Detalhes) */}
       <SwipeableModal isOpen={showHistoryModal} onClose={() => setShowHistoryModal(false)}>
         <div className="px-6 py-2">
             <div className="flex items-center gap-3 mb-8 px-2">
@@ -161,7 +160,6 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
         </div>
       </SwipeableModal>
 
-      {/* MODAL ANÁLISE - VERSÃO TÉCNICA LIMPA */}
       <SwipeableModal isOpen={showDetailsModal} onClose={() => setShowDetailsModal(false)}>
          <div className="px-5 py-2">
             <div className="flex items-center gap-3 mb-8 px-2">
@@ -173,7 +171,6 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
             </div>
 
             <div className="space-y-6 pb-10">
-                {/* 1. DESCRIÇÃO DO ATIVO (SE HOUVER) */}
                 {asset.description && (
                     <div className="bg-slate-50 dark:bg-white/5 p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5">
                         <p className="text-xs font-medium leading-relaxed text-slate-500 dark:text-slate-400 italic">
@@ -182,7 +179,6 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                     </div>
                 )}
 
-                {/* 2. GRID DE INDICADORES TÉCNICOS */}
                 <div>
                     <h4 className="px-2 mb-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Indicadores Chave</h4>
                     <div className="grid grid-cols-2 gap-3">
@@ -214,34 +210,72 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
 export const Portfolio: React.FC<{ portfolio: AssetPosition[], dividendReceipts: DividendReceipt[] }> = ({ portfolio, dividendReceipts }) => {
   const totalValue = useMemo(() => portfolio.reduce((acc, p) => acc + ((p.currentPrice || p.averagePrice) * p.quantity), 0), [portfolio]);
 
-  const sortedPortfolio = useMemo(() => {
-      return [...portfolio].sort((a,b) => {
+  const { fiis, stocks } = useMemo(() => {
+      const sorted = [...portfolio].sort((a,b) => {
           const valA = (a.currentPrice || a.averagePrice) * a.quantity;
           const valB = (b.currentPrice || b.averagePrice) * b.quantity;
           return valB - valA;
       });
+
+      return {
+          fiis: sorted.filter(p => p.assetType === AssetType.FII),
+          stocks: sorted.filter(p => p.assetType === AssetType.STOCK)
+      };
   }, [portfolio]);
 
-  return (
-    <div className="pt-24 pb-28 px-5 max-w-lg mx-auto space-y-4">
-      {sortedPortfolio.length === 0 ? (
-        <div className="text-center py-20 animate-fade-in">
+  if (portfolio.length === 0) {
+      return (
+        <div className="pt-24 pb-28 px-5 max-w-lg mx-auto text-center py-20 animate-fade-in">
            <div className="w-20 h-20 bg-slate-100 dark:bg-white/5 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
-              <Building2 className="w-8 h-8 text-slate-300" strokeWidth={1.5} />
+              <Briefcase className="w-8 h-8 text-slate-300" strokeWidth={1.5} />
            </div>
            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Carteira Vazia</h3>
            <p className="text-slate-400 text-xs max-w-[200px] mx-auto leading-relaxed">Adicione suas ordens na aba de transações para começar.</p>
         </div>
-      ) : (
-        sortedPortfolio.map((asset, index) => (
-            <AssetCard 
-                key={asset.ticker} 
-                asset={asset} 
-                index={index} 
-                history={dividendReceipts.filter(d => d.ticker === asset.ticker).sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))}
-                totalPortfolioValue={totalValue}
-            />
-        ))
+      );
+  }
+
+  return (
+    <div className="pt-24 pb-28 px-5 max-w-lg mx-auto space-y-8">
+      
+      {/* Seção FIIs */}
+      {fiis.length > 0 && (
+          <div className="space-y-4 animate-fade-in-up">
+              <div className="flex items-center gap-3 px-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Fundos Imobiliários</span>
+                  <div className="h-[1px] flex-1 bg-slate-200 dark:bg-white/5"></div>
+                  <span className="text-[10px] font-bold text-slate-400">{fiis.length}</span>
+              </div>
+              {fiis.map((asset, index) => (
+                <AssetCard 
+                    key={asset.ticker} 
+                    asset={asset} 
+                    index={index} 
+                    history={dividendReceipts.filter(d => d.ticker === asset.ticker).sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))}
+                    totalPortfolioValue={totalValue}
+                />
+              ))}
+          </div>
+      )}
+
+      {/* Seção Ações */}
+      {stocks.length > 0 && (
+          <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+              <div className="flex items-center gap-3 px-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Ações</span>
+                  <div className="h-[1px] flex-1 bg-slate-200 dark:bg-white/5"></div>
+                  <span className="text-[10px] font-bold text-slate-400">{stocks.length}</span>
+              </div>
+              {stocks.map((asset, index) => (
+                <AssetCard 
+                    key={asset.ticker} 
+                    asset={asset} 
+                    index={index} 
+                    history={dividendReceipts.filter(d => d.ticker === asset.ticker).sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))}
+                    totalPortfolioValue={totalValue}
+                />
+              ))}
+          </div>
       )}
     </div>
   );

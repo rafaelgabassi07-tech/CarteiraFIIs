@@ -8,7 +8,8 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  // REMOVIDO: self.skipWaiting(); -> Agora esperamos o usuário clicar no botão
+  // CRÍTICO: NÃO usar self.skipWaiting() aqui.
+  // O usuário deve decidir quando atualizar clicando no botão.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -59,7 +60,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Listener para ativar a nova versão quando o usuário clicar em "Atualizar"
+// Listener para ativar a nova versão SOMENTE quando o usuário clicar em "Atualizar"
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

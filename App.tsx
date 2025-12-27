@@ -54,6 +54,7 @@ const App: React.FC = () => {
   const [availableVersion, setAvailableVersion] = useState<string | null>(null);
   const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([]);
   const [showChangelog, setShowChangelog] = useState(false);
+  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
@@ -116,26 +117,6 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.PRIVACY, String(privacyMode));
   }, [privacyMode]);
 
-  // --- LÓGICA DE ATUALIZAÇÃO ROBUSTA ---
-  const checkForUpdates = useCallback(async (manual = false) => {
-    // 1. Verificar se existe um Service Worker esperando (Atualização em background pronta)
-    if ('serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg && reg.waiting) {
-            setIsUpdateAvailable(true);
-            // Busca notas mesmo se o SW já detectou
-            fetchVersionJson(); 
-            return true;
-        }
-        if (manual && reg) {
-            await reg.update(); // Força check no servidor
-        }
-    }
-
-    // 2. Verificar JSON de versão
-    return fetchVersionJson();
-  }, []);
-
   const fetchVersionJson = async () => {
       try {
           const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -144,7 +125,7 @@ const App: React.FC = () => {
               if (compareVersions(data.version, APP_VERSION) > 0) {
                   setAvailableVersion(data.version);
                   setReleaseNotes(data.notes || []);
-                  setIsUpdateAvailable(true);
+                  setIsUpdateAvailable(true); // Garante que a UI de update apareça se JSON for mais novo
                   return true;
               }
           }
@@ -152,39 +133,82 @@ const App: React.FC = () => {
       return false;
   };
 
-  const performUpdate = () => {
+  // --- LÓGICA DE ATUALIZAÇÃO MANUAL E ESTRITA ---
+  const checkForUpdates = useCallback(async (manual = false) => {
+    // 1. Verificação de Service Worker (Instalado e Esperando)
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-            if (regs.length > 0 && regs[0].waiting) {
-                // Manda sinal para o SW pular a espera e assumir
-                regs[0].waiting.postMessage({ type: 'SKIP_WAITING' });
-            } else {
-                window.location.reload();
+        let reg = swRegistrationRef.current;
+        
+        // Se não tivermos a referência, buscamos novamente
+        if (!reg) {
+            reg = await navigator.serviceWorker.getRegistration();
+            swRegistrationRef.current = reg || null;
+        }
+
+        if (reg) {
+            if (manual) {
+                // Check forçado no servidor
+                try { await reg.update(); } catch(e){}
             }
-        });
+
+            // Se JÁ houver um SW esperando (waiting), ativamos a UI de update
+            if (reg.waiting) {
+                setIsUpdateAvailable(true);
+                // Busca metadados (notas) do JSON
+                fetchVersionJson(); 
+                return true;
+            }
+        }
+    }
+
+    // 2. Fallback JSON (para notificações visuais mesmo sem SW pronto ainda)
+    const jsonUpdated = await fetchVersionJson();
+    return jsonUpdated;
+  }, []);
+
+  const performUpdate = () => {
+    if ('serviceWorker' in navigator && swRegistrationRef.current && swRegistrationRef.current.waiting) {
+        // Envia mensagem para o SW que está ESPERANDO (waiting) para assumir (skipWaiting)
+        // Isso é o único momento que a atualização é aplicada
+        swRegistrationRef.current.waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
+        // Fallback simples se não houver SW ou erro
         window.location.reload();
     }
   };
 
   useEffect(() => {
+     // Check inicial ao carregar
      checkForUpdates();
      
-     // Listener para detectar quando o SW entra em estado de espera (Update baixado)
      if ('serviceWorker' in navigator) {
+         let refreshing = false;
+
+         // Listener: Quando o SW novo assumir o controle (após skipWaiting), recarrega a página
          navigator.serviceWorker.addEventListener('controllerchange', () => {
-             // Quando o novo SW assume, recarrega a página
-             window.location.reload();
+             if (!refreshing) {
+                 refreshing = true;
+                 window.location.reload();
+             }
          });
 
          navigator.serviceWorker.getRegistration().then(reg => {
              if (reg) {
+                 swRegistrationRef.current = reg;
+                 
+                 // Caso 1: Já existe um esperando ao abrir o app
+                 if (reg.waiting) {
+                     setIsUpdateAvailable(true);
+                     fetchVersionJson();
+                 }
+
+                 // Caso 2: Detecta nova instalação em segundo plano
                  reg.addEventListener('updatefound', () => {
                      const newWorker = reg.installing;
                      if (newWorker) {
                          newWorker.addEventListener('statechange', () => {
+                             // Quando o novo worker terminar de instalar e entrar em espera (installed/waiting)
                              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                 // Novo SW instalado e esperando. Dispara UI.
                                  setIsUpdateAvailable(true);
                                  fetchVersionJson();
                              }
@@ -195,7 +219,7 @@ const App: React.FC = () => {
          });
      }
 
-     // Changelog Check
+     // Lógica de "O que há de novo" (apenas visual, não afeta o update do código)
      const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
      if (compareVersions(APP_VERSION, lastSeen) > 0) {
          localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
