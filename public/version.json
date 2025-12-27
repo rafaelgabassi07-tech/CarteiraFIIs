@@ -1,12 +1,12 @@
 
 {
-  "version": "5.4.8",
+  "version": "5.4.5",
   "date": "2025-05-24",
   "notes": [
     {
-      "type": "fix",
-      "title": "Correção no Update",
-      "desc": "Resolvido problema que impedia a instalação da atualização e travava as configurações."
+      "type": "perf",
+      "title": "Modo Cache Imutável (v5.4.5)",
+      "desc": "O sistema de atualização agora é 100% manual. Removemos qualquer possibilidade de downloads em segundo plano que alterem o cache do app."
     }
   ]
 }
