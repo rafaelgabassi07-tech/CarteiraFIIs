@@ -37,12 +37,19 @@ const compareVersions = (v1: string, v2: string) => {
 };
 
 const performSmartUpdate = async () => {
+  // 1. Tenta notificar o SW atual para pular a espera (caso haja um waiting)
   if ('serviceWorker' in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
     for (const registration of registrations) {
-      await registration.unregister();
+       if (registration.waiting) {
+         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+       }
+       // Opcional: Desregistrar para forçar limpeza total se necessário
+       await registration.unregister();
     }
   }
+  
+  // 2. Limpa caches de dados antigos do navegador para evitar conflitos de versão
   if ('caches' in window) {
     try {
         const keys = await caches.keys();
@@ -51,7 +58,8 @@ const performSmartUpdate = async () => {
         }
     } catch(e) { console.error("Cache clear error", e); }
   }
-  // Força reload do servidor ignorando cache
+  
+  // 3. Recarrega a página para baixar os novos assets
   window.location.reload();
 };
 
