@@ -1,66 +1,109 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { DividendReceipt, AssetType, AssetFundamentals } from "../types";
+import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
 
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
   metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>;
   sources?: { web: { uri: string; title: string } }[];
+  indicators?: MarketIndicators;
 }
 
-export const fetchUnifiedMarketData = async (tickers: string[]): Promise<UnifiedMarketData> => {
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v2';
+const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 Horas de validade
+
+// Helper para garantir formato YYYY-MM-DD independente do retorno da IA
+const normalizeDate = (dateStr: any): string => {
+  if (!dateStr) return '';
+  const s = String(dateStr).trim();
+  
+  // Caso 1: Já é YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  
+  // Caso 2: DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const [d, m, y] = s.split('/');
+    return `${y}-${m}-${d}`;
+  }
+
+  // Caso 3: Tentar parsear data genérica
+  try {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+       return d.toISOString().split('T')[0];
+    }
+  } catch (e) {}
+
+  return s; // Retorna original em último caso (fallback)
+};
+
+// Helper para garantir float correto (substitui vírgula por ponto se necessário)
+const normalizeValue = (val: any): number => {
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string') {
+    return parseFloat(val.replace(',', '.').trim()) || 0;
+  }
+  return 0;
+};
+
+export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
+
+  // 1. Verificação de Cache (Performance)
+  const tickerKey = tickers.slice().sort().join('|');
+  if (!forceRefresh) {
+    try {
+        const cachedRaw = localStorage.getItem(GEMINI_CACHE_KEY);
+        if (cachedRaw) {
+            const cached = JSON.parse(cachedRaw);
+            const isFresh = (Date.now() - cached.timestamp) < CACHE_TTL;
+            const isSameAssets = cached.tickerKey === tickerKey;
+            
+            if (isFresh && isSameAssets) {
+                console.log("⚡ Usando Cache Gemini");
+                return cached.data;
+            }
+        }
+    } catch (e) {
+        console.warn("Erro ao ler cache Gemini", e);
+    }
+  }
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const tickerListString = tickers.join(', ');
   const today = new Date().toISOString().split('T')[0];
+  const portfolioStart = startDate || today; 
 
-  // Prompt Otimizado com Search Grounding
+  // Prompt Otimizado para Velocidade (Menos Tokens de Saída)
   const prompt = `
-    Data de Hoje: ${today}.
-    Investigue os seguintes ativos na B3: ${tickerListString}.
-    
-    PARA CADA ATIVO, extraia dados RECENTES usando o Google Search:
+    Hoje: ${today}. Início Carteira: ${portfolioStart}.
+    Ativos: ${tickerListString}.
 
-    1. **Dados Fundamentalistas (Latest):**
-       - Preço/Valor Patrimonial (P/VP) (Número).
-       - Preço/Lucro (P/L) (Número, null se for FII).
-       - Dividend Yield 12 Meses (DY) (Número %, ex: 10.5).
-       - Liquidez Diária Média (Texto formatado, ex: "R$ 5 M").
-       - Número de Cotistas/Acionistas (Texto formatado).
-       - Descrição curta do negócio (Max 120 chars).
-       - Segmento de atuação.
-       - Tipo: "FII" ou "ACAO".
+    TAREFA: Retornar JSON financeiro consolidado.
+    USE GOOGLE SEARCH PARA DADOS RECENTES.
+    SEJA CONCISO (Economize tokens).
 
-    2. **Proventos (Últimos 12 Meses):**
-       - Liste TODOS os dividendos e JCP com "Data Com", "Data Pagamento" e "Valor".
-       - Importante: Datas no formato YYYY-MM-DD.
+    1. Dados: P/VP, P/L, DY 12m, Liquidez, Cotistas.
+    2. Descrição: Max 15 palavras.
+    3. Sentimento: Resumido (max 10 palavras).
+    4. Notícias: 2 manchetes recentes.
+    5. Proventos: Últimos 12 meses (Data Com, Pagto, Valor).
+    6. Macro: IPCA acumulado (${portfolioStart} a ${today}).
 
-    3. **Notícias & Sentimento:**
-       - 2 notícias recentes (Título, Fonte, Data, Link).
-       - Sentimento geral (Otimista, Neutro, Pessimista) e motivo curto.
-
-    SAÍDA JSON OBRIGATÓRIA (Sem Markdown):
+    JSON OBRIGATÓRIO:
     {
+      "sys": { "ipca": 0.00, "start_ref": "YYYY-MM-DD" },
       "assets": [
         {
           "t": "TICKER",
           "s": "Segmento",
           "type": "FII/ACAO",
           "f": {
-             "pvp": 0.00,
-             "pl": 0.00,
-             "dy": 0.00,
-             "liq": "string",
-             "cot": "string",
-             "desc": "string",
-             "sent": "string",
-             "sent_why": "string",
+             "pvp": 0.00, "pl": 0.00, "dy": 0.00, "liq": "str", "cot": "str",
+             "desc": "str", "sent": "str", "sent_why": "str",
              "news": [{ "ti": "Titulo", "src": "Fonte", "dt": "Data", "url": "Link" }]
           },
-          "d": [
-            { "ty": "DIV/JCP", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": 0.00 }
-          ]
+          "d": [ { "ty": "DIV/JCP", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": 0.00 } ]
         }
       ]
     }
@@ -72,15 +115,14 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: "Você é uma API JSON estrita de dados financeiros da B3. Nunca use Markdown. Retorne apenas JSON válido.",
-        temperature: 0.1, // Reduz alucinações
+        systemInstruction: "API JSON Estrita. Responda APENAS JSON válido. Datas ISO 8601 (YYYY-MM-DD). Sem Markdown.",
+        temperature: 0.1,
       }
     });
 
     let text = response.text;
     if (!text) throw new Error("Resposta vazia da IA");
 
-    // Limpeza de Markdown caso o modelo insista em colocar ```json
     text = text.replace(/```json/g, '').replace(/```/g, '');
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -100,7 +142,11 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
             uri: chunk.web?.uri || '',
             title: chunk.web?.title || ''
           }
-        })).filter((s: any) => s.web.uri) || []
+        })).filter((s: any) => s.web.uri) || [],
+        indicators: {
+            ipca_cumulative: typeof parsed.sys?.ipca === 'number' ? parsed.sys.ipca : 0,
+            start_date_used: normalizeDate(parsed.sys?.start_ref) || portfolioStart
+        }
     };
 
     const seenDividends = new Set<string>();
@@ -110,11 +156,10 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         const ticker = asset.t?.toUpperCase().trim();
         if (!ticker) return;
 
-        // Parse Fundamentals com tratamento de segurança
         const fundamentals: AssetFundamentals = {
-            p_vp: typeof asset.f?.pvp === 'number' ? asset.f.pvp : undefined,
-            p_l: typeof asset.f?.pl === 'number' ? asset.f.pl : undefined,
-            dy_12m: typeof asset.f?.dy === 'number' ? asset.f.dy : undefined,
+            p_vp: normalizeValue(asset.f?.pvp),
+            p_l: normalizeValue(asset.f?.pl),
+            dy_12m: normalizeValue(asset.f?.dy),
             liquidity: asset.f?.liq || 'N/A',
             shareholders: asset.f?.cot || 'N/A',
             description: asset.f?.desc || '',
@@ -136,10 +181,14 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
 
         if (Array.isArray(asset.d)) {
             asset.d.forEach((div: any) => {
-                // Validação rigorosa de datas e valores
-                if (!div.dc || !div.v || isNaN(Number(div.v))) return;
+                // Normalização robusta de dados
+                const dc = normalizeDate(div.dc);
+                const dp = normalizeDate(div.dp || div.dc);
+                const val = normalizeValue(div.v);
+
+                if (!dc || !val) return;
                 
-                const uniqueKey = `${ticker}-${div.dc}-${div.v}`.replace(/\s+/g, '');
+                const uniqueKey = `${ticker}-${dc}-${val}`.replace(/\s+/g, '');
                 if (seenDividends.has(uniqueKey)) return;
                 seenDividends.add(uniqueKey);
 
@@ -149,9 +198,9 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
                     id: `DIV-${uniqueKey}`,
                     ticker,
                     type: type,
-                    dateCom: div.dc,
-                    paymentDate: div.dp || div.dc, // Fallback para data com se pagamento não existir
-                    rate: Number(div.v),
+                    dateCom: dc,
+                    paymentDate: dp, 
+                    rate: val,
                     quantityOwned: 0,
                     totalReceived: 0
                 });
@@ -159,6 +208,15 @@ export const fetchUnifiedMarketData = async (tickers: string[]): Promise<Unified
         }
       });
     }
+
+    // Salvar no Cache
+    try {
+        localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({
+            timestamp: Date.now(),
+            tickerKey: tickerKey,
+            data: result
+        }));
+    } catch (e) { console.warn("Cache Full"); }
 
     return result;
   } catch (error: any) {

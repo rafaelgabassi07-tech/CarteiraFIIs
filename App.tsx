@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal } from './components/Layout';
+import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, UpdateBanner } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '5.1.1';
+const APP_VERSION = '5.4.0';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -19,7 +19,8 @@ const STORAGE_KEYS = {
   ACCENT: 'investfiis_accent_color',
   PRIVACY: 'investfiis_privacy_mode',
   LAST_SEEN_VERSION: 'investfiis_last_version_seen',
-  PREFS_NOTIF: 'investfiis_prefs_notifications'
+  PREFS_NOTIF: 'investfiis_prefs_notifications',
+  INDICATORS: 'investfiis_v4_indicators'
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -37,16 +38,14 @@ const compareVersions = (v1: string, v2: string) => {
 };
 
 // Estratégia de Atualização "Padrão PWA"
-// Envia sinal para o SW pular a espera. O index.tsx detecta a mudança de controlador e recarrega.
 const performSmartUpdate = async () => {
   if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.getRegistration();
     if (reg && reg.waiting) {
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        return; // O reload acontecerá via evento 'controllerchange' no index.tsx
+        return; 
     }
   }
-  // Fallback se não houver SW ou não estiver esperando
   window.location.reload();
 };
 
@@ -65,6 +64,9 @@ const App: React.FC = () => {
   const [changelogNotes, setChangelogNotes] = useState<ReleaseNote[]>([]);
   const [changelogVersion, setChangelogVersion] = useState(APP_VERSION);
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  
+  // Novo estado para controlar a visibilidade do banner de atualização
+  const [isUpdateDismissed, setIsUpdateDismissed] = useState(false);
   
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
@@ -85,6 +87,15 @@ const App: React.FC = () => {
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
+  
+  // Estado para indicadores macroeconômicos (IPCA dinâmico)
+  const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => {
+      try {
+          const saved = localStorage.getItem(STORAGE_KEYS.INDICATORS);
+          return saved ? JSON.parse(saved) : { ipca: 4.5, startDate: '' };
+      } catch { return { ipca: 4.5, startDate: '' }; }
+  });
+
   const prevDividendsRef = useRef<DividendReceipt[]>(geminiDividends);
   const [sources, setSources] = useState<{ web: { uri: string; title: string } }[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -94,6 +105,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken); }, [brapiToken]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -158,7 +170,6 @@ const App: React.FC = () => {
     let totalDividendsReceived = 0;
 
     receipts.forEach(r => {
-      // Comparação direta de strings YYYY-MM-DD para evitar problemas de fuso horário
       if (r.paymentDate <= todayStr) {
         divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived;
         totalDividendsReceived += r.totalReceived;
@@ -190,7 +201,6 @@ const App: React.FC = () => {
       }
     });
 
-    // Realizado = Lucro/Prejuízo de Vendas + Dividendos já recebidos
     const totalRealizedGain = salesGain + totalDividendsReceived;
 
     const finalPortfolio = Object.values(positions)
@@ -207,9 +217,7 @@ const App: React.FC = () => {
     return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: totalRealizedGain, monthlyContribution: contribution };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate, assetsMetadata]);
 
-  // Função Aprimorada para Notificações Ricas
   const checkDailyEvents = useCallback((currentDividends: DividendReceipt[], portfolio: AssetPosition[]) => {
-      // Geração da data local para comparação
       const todayDate = new Date();
       const year = todayDate.getFullYear();
       const month = String(todayDate.getMonth() + 1).padStart(2, '0');
@@ -217,10 +225,8 @@ const App: React.FC = () => {
       const today = `${year}-${month}-${day}`;
       
       currentDividends.forEach(div => {
-         // Encontra o ativo na carteira para contexto
          const asset = portfolio.find(p => p.ticker === div.ticker);
          
-         // 1. Notificação de PAGAMENTO HOJE
          if (div.paymentDate === today && div.totalReceived > 0) {
              const yieldOnCost = asset && asset.averagePrice > 0 
                 ? ((div.rate / asset.averagePrice) * 100).toFixed(2) 
@@ -239,7 +245,6 @@ const App: React.FC = () => {
              });
          }
 
-         // 2. Notificação de DATA COM HOJE
          if (div.dateCom === today) {
              const yieldVal = asset && asset.currentPrice 
                 ? ((div.rate / asset.currentPrice) * 100).toFixed(2) 
@@ -261,9 +266,7 @@ const App: React.FC = () => {
       });
   }, [addNotification]);
 
-  // Detector de Novos Dividendos via IA e Check Diário
   useEffect(() => {
-    // 1. Detectar novos anúncios (Diff)
     if (geminiDividends.length > prevDividendsRef.current.length) {
       const newDivs = geminiDividends.filter(d => !prevDividendsRef.current.find(p => p.id === d.id));
       if (newDivs.length > 0) {
@@ -278,16 +281,13 @@ const App: React.FC = () => {
     }
     prevDividendsRef.current = geminiDividends;
     
-    // 2. Executa verificação diária rica usando os dados da carteira
     if (memoizedData.portfolio.length > 0) {
         checkDailyEvents(geminiDividends, memoizedData.portfolio);
     }
-
   }, [geminiDividends, memoizedData.portfolio, addNotification, checkDailyEvents]);
 
   const checkForUpdates = async (manual = false) => {
       if (manual) showToast('info', 'Buscando atualizações...');
-      
       try {
         const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
@@ -296,16 +296,24 @@ const App: React.FC = () => {
             setUpdateAvailable(true);
             setChangelogNotes(data.notes || []);
             setChangelogVersion(data.version);
-            setShowChangelog(true);
-            showToast('info', 'Nova atualização disponível');
             
-            addNotification({
-                title: 'Atualização do Sistema',
-                message: `InvestFIIs v${data.version} está pronta. Toque no ícone de download no topo para atualizar.`,
-                type: 'update',
-                category: 'update'
-            });
-
+            // Só exibe o banner se não for uma verificação manual (manual exibe changelog direto)
+            if (!manual) {
+                // Se o usuário já dispensou antes, não força o banner, mas mantém updateAvailable true
+                // Mas se for uma NOVA verificação de sessão, reseta o dismiss?
+                // Vamos optar por: sempre mostrar o banner quando detectado, o usuário fecha se quiser
+                setIsUpdateDismissed(false);
+                
+                showToast('info', 'Nova atualização disponível');
+                addNotification({
+                    title: 'Atualização do Sistema',
+                    message: `InvestFIIs v${data.version} está pronta. Toque para atualizar.`,
+                    type: 'update',
+                    category: 'update'
+                });
+            } else {
+                setShowChangelog(true);
+            }
           } else if (manual) {
             showToast('success', 'Você já tem a versão mais recente.');
           }
@@ -351,10 +359,29 @@ const App: React.FC = () => {
         setQuotes(prev => ({ ...prev, ...newQuotes }));
       }
       setIsAiLoading(true);
-      const aiData = await fetchUnifiedMarketData(tickers);
+      
+      // Determina a data de início da carteira (primeira transação)
+      let startDate = '';
+      if (transactions.length > 0) {
+         // Encontra a data mais antiga
+         startDate = transactions.reduce((min, t) => t.date < min ? t.date : min, transactions[0].date);
+      }
+
+      // Passa 'force' para o serviço Gemini
+      const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
+      
       setGeminiDividends(aiData.dividends);
       setAssetsMetadata(aiData.metadata);
       setSources(aiData.sources || []);
+      
+      // Atualiza indicadores macroeconômicos se a IA retornou
+      if (aiData.indicators && typeof aiData.indicators.ipca_cumulative === 'number') {
+          setMarketIndicators({
+              ipca: aiData.indicators.ipca_cumulative,
+              startDate: aiData.indicators.start_date_used
+          });
+      }
+
       if (force) showToast('success', 'Carteira Atualizada');
     } catch (e) {
       showToast('error', 'Falha na conexão');
@@ -376,6 +403,14 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Banner de Atualização Persistente mas Dispensável */}
+      <UpdateBanner 
+        isOpen={updateAvailable && !isUpdateDismissed} 
+        onDismiss={() => setIsUpdateDismissed(true)} 
+        onUpdate={() => setShowChangelog(true)} 
+        version={changelogVersion}
+      />
 
       <Header 
         title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Minha Custódia' : 'Histórico de Ordens'}
@@ -408,7 +443,15 @@ const App: React.FC = () => {
           />
         ) : (
           <div className="animate-fade-in">
-            {currentTab === 'home' && <Home {...memoizedData} sources={sources} isAiLoading={isAiLoading} />}
+            {currentTab === 'home' && (
+                <Home 
+                    {...memoizedData} 
+                    sources={sources} 
+                    isAiLoading={isAiLoading} 
+                    inflationRate={marketIndicators.ipca}
+                    portfolioStartDate={marketIndicators.startDate}
+                />
+            )}
             {currentTab === 'portfolio' && <Portfolio {...memoizedData} />}
             {currentTab === 'transactions' && (
               <Transactions 

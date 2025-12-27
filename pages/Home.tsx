@@ -11,6 +11,8 @@ interface HomeProps {
   realizedGain?: number;
   sources?: { web: { uri: string; title: string } }[];
   isAiLoading?: boolean;
+  inflationRate?: number; // IPCA Dinâmico
+  portfolioStartDate?: string;
 }
 
 const formatBRL = (val: any) => {
@@ -42,7 +44,9 @@ export const Home: React.FC<HomeProps> = ({
   dividendReceipts, 
   realizedGain = 0, 
   sources = [],
-  isAiLoading = false
+  isAiLoading = false,
+  inflationRate = 4.5, // Default apenas se não vier da IA
+  portfolioStartDate
 }) => {
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -185,11 +189,9 @@ export const Home: React.FC<HomeProps> = ({
   };
 
   const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f97316', '#f43f5e', '#64748b', '#3b82f6', '#ec4899'];
-  const inflacaoPeriodo = 4.50; // Inflação Base 12m
+  const inflacaoPeriodo = inflationRate; 
   
   // CORREÇÃO: Ganho Real agora considera (Valorização Carteira + Dividendos Recebidos + Lucro Vendas)
-  // realizedGain já contém (Dividendos + Lucro Vendas) vindo do App.tsx
-  // totalAppreciation é a valorização não realizada da carteira atual.
   const totalNominalReturn = totalAppreciation + realizedGain;
   const nominalYield = invested > 0 ? (totalNominalReturn / invested) * 100 : 0;
   const ganhoReal = nominalYield - inflacaoPeriodo;
@@ -297,7 +299,7 @@ export const Home: React.FC<HomeProps> = ({
              </div>
           </button>
 
-          {/* 4. CARD GANHO REAL */}
+          {/* 4. CARD GANHO REAL (ATUALIZADO) */}
           <button 
             onClick={() => setShowRealGainModal(true)} 
             className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg"
@@ -316,6 +318,7 @@ export const Home: React.FC<HomeProps> = ({
                 <div className="w-full h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
                     <div className={`h-full ${isAboveInflation ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: '70%' }}></div>
                 </div>
+                <p className="text-[9px] text-slate-400 mt-2 font-medium">Acima da Inflação ({inflacaoPeriodo}%)</p>
              </div>
           </button>
       </div>
@@ -409,9 +412,9 @@ export const Home: React.FC<HomeProps> = ({
                         {ganhoReal >= 0 ? '+' : ''}{ganhoReal.toFixed(2)}%
                     </div>
                     <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-slate-50 dark:bg-white/5">
-                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Acima da Inflação (4.5%)</span>
+                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Acima da Inflação ({inflacaoPeriodo}%)</span>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-6 leading-relaxed">Considera Valorização da Cota + Dividendos + Vendas, descontado o IPCA.</p>
+                    <p className="text-[10px] text-slate-400 mt-6 leading-relaxed">Considera Valorização da Cota + Dividendos + Vendas, descontado o IPCA acumulado desde {portfolioStartDate ? portfolioStartDate.split('-').reverse().slice(0,2).join('/') : 'o início'}.</p>
                 </div>
             )}
 

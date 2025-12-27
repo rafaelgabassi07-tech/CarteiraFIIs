@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap } from 'lucide-react';
 import { ReleaseNote, AppNotification } from '../types';
 
 interface HeaderProps {
@@ -64,9 +64,9 @@ export const Header: React.FC<HeaderProps> = ({
                   <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{title}</h1>
 
                   {updateAvailable && (
-                    <span className="relative flex h-2 w-2 ml-1">
+                    <span className="relative flex h-2 w-2 ml-1" onClick={onUpdateClick}>
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500 cursor-pointer"></span>
                     </span>
                   )}
               </div>
@@ -102,6 +102,39 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
     </header>
+  );
+};
+
+export const UpdateBanner: React.FC<{ 
+  isOpen: boolean; 
+  onDismiss: () => void; 
+  onUpdate: () => void; 
+  version: string 
+}> = ({ isOpen, onDismiss, onUpdate, version }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed top-24 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-sm animate-fade-in-up">
+      <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl border border-indigo-500/20 ring-1 ring-indigo-500/10 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
+             <Rocket className="w-5 h-5" strokeWidth={2} />
+          </div>
+          <div>
+            <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wide">Nova Versão {version}</h4>
+            <p className="text-[10px] font-medium text-slate-500 leading-none mt-1">Atualização disponível</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+           <button onClick={onUpdate} className="px-3 py-2 bg-indigo-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-md">
+             Atualizar
+           </button>
+           <button onClick={onDismiss} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-white active:scale-90 transition-all">
+             <X className="w-4 h-4" strokeWidth={2.5} />
+           </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

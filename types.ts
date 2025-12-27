@@ -96,3 +96,8 @@ export interface AppNotification {
   actionLabel?: string;
   onAction?: () => void;
 }
+
+export interface MarketIndicators {
+  ipca_cumulative: number;
+  start_date_used: string;
+}
