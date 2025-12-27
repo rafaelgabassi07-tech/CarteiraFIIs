@@ -115,14 +115,14 @@ export const Transactions: React.FC<TransactionsProps> = ({
     <div className="pt-24 pb-28 px-5 space-y-4 max-w-lg mx-auto">
       
       {/* Barra de Busca e Botão Novo Otimizados */}
-      <div className="sticky top-20 z-30 pt-4 pb-4 bg-slate-50/95 dark:bg-[#020617]/95 backdrop-blur-md -mx-5 px-5 transition-all">
+      <div className="sticky top-24 z-30 pt-2 pb-4 bg-slate-50/95 dark:bg-[#020617]/95 backdrop-blur-md -mx-5 px-5 transition-all">
          <div className="flex gap-3">
              <div className="relative flex-1 group">
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-accent transition-colors" />
                <input 
                  type="text" 
                  className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 pl-11 pr-4 py-3 rounded-2xl outline-none text-sm font-semibold placeholder:text-slate-400 focus:border-accent/50 focus:ring-4 focus:ring-accent/10 transition-all shadow-sm" 
-                 placeholder="Filtrar por ativo..." 
+                 placeholder="Filtrar..." 
                  value={searchTerm} 
                  onChange={(e) => setSearchTerm(e.target.value)} 
                />
@@ -136,12 +136,12 @@ export const Transactions: React.FC<TransactionsProps> = ({
          </div>
       </div>
 
-      <div className="space-y-8 animate-fade-in">
+      <div className="space-y-6 animate-fade-in">
         {sortedMonthKeys.map((monthKey, groupIdx) => {
             const group = groupedTransactions[monthKey];
             return (
                 <div key={monthKey} className="animate-fade-in-up" style={{ animationDelay: `${groupIdx * 50}ms` }}>
-                    <div className="flex items-center justify-between px-1 mb-4">
+                    <div className="flex items-center justify-between px-1 mb-3">
                         <div className="flex items-center gap-2">
                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
                            <h3 className="text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-[0.1em]">
@@ -149,18 +149,18 @@ export const Transactions: React.FC<TransactionsProps> = ({
                            </h3>
                         </div>
                         {group.totalInvested > 0 && (
-                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10">
-                                <span className="text-[10px] font-bold uppercase tracking-wider">Aporte: R$ {formatBRL(group.totalInvested)}</span>
+                            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10">
+                                <span className="text-[9px] font-bold uppercase tracking-wider">Aporte: R$ {formatBRL(group.totalInvested)}</span>
                             </div>
                         )}
                     </div>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                         {group.items.map((t) => (
-                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-[1.5rem] p-4 flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all">
-                              <div className="flex items-center gap-4">
+                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3.5 flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-sm active:scale-[0.99] transition-all">
+                              <div className="flex items-center gap-3">
                                   {/* Indicador de Tipo Compacto */}
-                                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/10' : 'bg-rose-500/5 text-rose-500 border-rose-500/10'}`}>
+                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/10' : 'bg-rose-500/5 text-rose-500 border-rose-500/10'}`}>
                                       {t.type === 'BUY' ? <TrendingUp className="w-5 h-5" strokeWidth={2.5} /> : <TrendingDown className="w-5 h-5" strokeWidth={2.5} />}
                                   </div>
                                   
@@ -168,7 +168,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                   <div>
                                     <div className="flex items-center gap-2 mb-0.5">
                                         <h4 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight leading-none">{t.ticker}</h4>
-                                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded-md uppercase">{t.date.split('-')[2]}</span>
+                                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded uppercase tracking-wider">{t.date.split('-')[2]}</span>
                                     </div>
                                     <p className={`text-[9px] font-bold uppercase tracking-[0.05em] ${t.type === 'BUY' ? 'text-emerald-600/70' : 'text-rose-600/70'}`}>
                                         {t.type === 'BUY' ? 'Compra' : 'Venda'}
@@ -176,19 +176,22 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                   </div>
                               </div>
 
-                              <div className="flex items-center gap-4">
-                                  {/* Valores Organizados e Limpos */}
+                              <div className="flex items-center gap-3">
+                                  {/* Valores Organizados */}
                                   <div className="text-right">
                                     <div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums tracking-tight mb-0.5">R$ {formatBRL(t.quantity * t.price)}</div>
-                                    <div className="text-[10px] text-slate-400 font-medium tabular-nums leading-none">
-                                        {t.quantity} <span className="text-[9px] opacity-50 mx-0.5">x</span> R$ {formatBRL(t.price)}
+                                    <div className="text-[9px] text-slate-400 font-medium tabular-nums leading-none">
+                                        {t.quantity} <span className="text-[9px] opacity-50 mx-0.5">x</span> {formatBRL(t.price)}
                                     </div>
                                   </div>
                                   
-                                  {/* Ações Discretas */}
-                                  <div className="flex gap-1 pl-3 border-l border-slate-100 dark:border-white/5">
-                                      <button onClick={() => handleEdit(t)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-accent/10 hover:text-accent transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                                      <button onClick={() => confirm('Deseja excluir esta ordem?') && onDeleteTransaction(t.id)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  {/* Divisor Vertical */}
+                                  <div className="w-[1px] h-8 bg-slate-100 dark:bg-white/5 mx-0.5"></div>
+                                  
+                                  {/* Ações Compactas */}
+                                  <div className="flex flex-col gap-1">
+                                      <button onClick={() => handleEdit(t)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-accent/10 hover:text-accent transition-colors active:scale-90"><Pencil className="w-3 h-3" /></button>
+                                      <button onClick={() => confirm('Deseja excluir esta ordem?') && onDeleteTransaction(t.id)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors active:scale-90"><Trash2 className="w-3 h-3" /></button>
                                   </div>
                               </div>
                            </div>
