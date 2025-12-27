@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.4.6';
+const CACHE_NAME = 'investfiis-ultra-v5.4.7';
 
 // Arquivos vitais. Apenas estes serão baixados na instalação.
 const ASSETS_TO_CACHE = [

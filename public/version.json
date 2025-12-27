@@ -1,17 +1,17 @@
 
 {
-  "version": "5.4.6",
+  "version": "5.4.7",
   "date": "2025-05-24",
   "notes": [
     {
       "type": "fix",
-      "title": "Correção de Loop de Atualização",
-      "desc": "Isolamos o sistema de update para prevenir notificações constantes."
+      "title": "Correção Crítica de Update",
+      "desc": "O sistema de atualização agora detecta novas versões em segundo plano instantaneamente."
     },
     {
-      "type": "perf",
-      "title": "Novo Hook de Gestão",
-      "desc": "O controle de versões agora roda em um processo separado para maior estabilidade."
+      "type": "fix",
+      "title": "Cálculo de Dividendos",
+      "desc": "Resolvido erro de formatação de valores em Reais (R$) que causava cálculos zerados."
     }
   ]
 }

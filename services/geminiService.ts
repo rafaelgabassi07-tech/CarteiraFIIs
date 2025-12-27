@@ -12,21 +12,18 @@ export interface UnifiedMarketData {
 const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v2';
 const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 Horas de validade
 
-// Helper para garantir formato YYYY-MM-DD independente do retorno da IA
+// Helper para garantir formato YYYY-MM-DD
 const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
   const s = String(dateStr).trim();
   
-  // Caso 1: Já é YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   
-  // Caso 2: DD/MM/YYYY
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
     const [d, m, y] = s.split('/');
     return `${y}-${m}-${d}`;
   }
 
-  // Caso 3: Tentar parsear data genérica
   try {
     const d = new Date(s);
     if (!isNaN(d.getTime())) {
@@ -34,14 +31,34 @@ const normalizeDate = (dateStr: any): string => {
     }
   } catch (e) {}
 
-  return s; // Retorna original em último caso (fallback)
+  return s; 
 };
 
-// Helper para garantir float correto (substitui vírgula por ponto se necessário)
+// Helper ROBUSTO para garantir float correto
+// Trata casos como: "1.200,50", "1,200.50", "R$ 10,00"
 const normalizeValue = (val: any): number => {
   if (typeof val === 'number') return val;
+  if (!val) return 0;
+  
   if (typeof val === 'string') {
-    return parseFloat(val.replace(',', '.').trim()) || 0;
+    // Remove símbolos de moeda e espaços
+    let clean = val.replace(/[R$\s]/g, '').trim();
+    
+    // Detecção de formato brasileiro (presença de vírgula no final como decimal)
+    // Ex: 1.234,56 -> Se tem vírgula nos últimos 3 caracteres, assume PT-BR
+    if (clean.includes(',') && clean.indexOf(',') > clean.length - 4) {
+        // Remove pontos de milhar
+        clean = clean.replace(/\./g, '');
+        // Troca vírgula decimal por ponto
+        clean = clean.replace(',', '.');
+    } else {
+        // Formato internacional ou misto: apenas remove vírgulas de milhar se existirem
+        // Ex: 1,234.56 -> 1234.56
+        clean = clean.replace(/,/g, '');
+    }
+    
+    const parsed = parseFloat(clean);
+    return isNaN(parsed) ? 0 : parsed;
   }
   return 0;
 };
@@ -49,7 +66,7 @@ const normalizeValue = (val: any): number => {
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length ===0) return { dividends: [], metadata: {} };
 
-  // 1. Verificação de Cache (Performance)
+  // 1. Verificação de Cache
   const tickerKey = tickers.slice().sort().join('|');
   if (!forceRefresh) {
     try {
@@ -74,15 +91,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const today = new Date().toISOString().split('T')[0];
   const portfolioStart = startDate || today; 
 
-  // Prompt Otimizado para Velocidade (Menos Tokens de Saída)
-  // REMOVIDO: Notícias (pesado)
   const prompt = `
     Hoje: ${today}. Início Carteira: ${portfolioStart}.
     Ativos: ${tickerListString}.
 
     TAREFA: Retornar JSON financeiro consolidado.
     USE GOOGLE SEARCH PARA DADOS RECENTES.
-    SEJA CONCISO (Economize tokens).
+    SEJA CONCISO.
 
     1. Dados: P/VP, P/L, DY 12m, Liquidez, Cotistas.
     2. Descrição: Max 15 palavras.
@@ -164,7 +179,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             description: asset.f?.desc || '',
             sentiment: asset.f?.sent || 'Neutro',
             sentiment_reason: asset.f?.sent_why || '',
-            news: [] // Removido por performance
+            news: []
         };
 
         result.metadata[ticker] = { 
@@ -175,7 +190,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
         if (Array.isArray(asset.d)) {
             asset.d.forEach((div: any) => {
-                // Normalização robusta de dados
                 const dc = normalizeDate(div.dc);
                 const dp = normalizeDate(div.dp || div.dc);
                 const val = normalizeValue(div.v);
@@ -203,7 +217,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       });
     }
 
-    // Salvar no Cache
     try {
         localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({
             timestamp: Date.now(),
