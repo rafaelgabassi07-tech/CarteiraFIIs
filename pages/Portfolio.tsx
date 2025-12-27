@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, PieChart, Target, ChevronDown, ChevronUp, Layers, BadgeDollarSign, Landmark, ScrollText, ChartBar, Tag, Calculator, Hash, Wallet, Users, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap } from 'lucide-react';
+import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, PieChart, Target, ChevronDown, ChevronUp, Layers, BadgeDollarSign, Landmark, ScrollText, Tag, Calculator, Hash, Wallet, Users, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: DividendReceipt[], totalPortfolioValue: number }> = ({ asset, index, history, totalPortfolioValue }) => {
@@ -113,7 +113,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                         onClick={(e) => { e.stopPropagation(); setShowDetailsModal(true); }} 
                         className="flex-1 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                      >
-                        <ChartBar className="w-4 h-4" /> Análise
+                        <BarChart3 className="w-4 h-4" /> Análise
                      </button>
                  </div>
             </div>
