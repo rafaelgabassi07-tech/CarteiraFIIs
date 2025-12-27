@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, Layers, LayoutGrid } from 'lucide-react';
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, Layers, LayoutGrid, TrendingUp } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
@@ -50,7 +50,7 @@ export const Home: React.FC<HomeProps> = ({
 
   const [allocationTab, setAllocationTab] = useState<'assets' | 'types' | 'segments'>('assets');
   const [incomeTab, setIncomeTab] = useState<'summary' | 'magic' | 'calendar'>('summary');
-  const [gainTab, setGainTab] = useState<'general' | 'benchmark'>('general');
+  const [gainTab, setGainTab] = useState<'general' | 'breakdown'>('general');
 
   // State para controle da animação do gráfico
   const [activeIndex, setActiveIndex] = useState(0);
@@ -180,10 +180,16 @@ export const Home: React.FC<HomeProps> = ({
   };
 
   const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f97316', '#f43f5e', '#64748b', '#3b82f6', '#ec4899'];
-  const inflacaoPeriodo = 4.50; 
-  const yieldCarteira = invested > 0 ? (received / invested) * 100 : 0;
-  const ganhoReal = yieldCarteira - inflacaoPeriodo;
-  const isAboveInflation = yieldCarteira > inflacaoPeriodo;
+  const inflacaoPeriodo = 4.50; // Inflação Base 12m
+  
+  // CORREÇÃO: Ganho Real agora considera (Valorização Carteira + Dividendos Recebidos + Lucro Vendas)
+  // realizedGain já contém (Dividendos + Lucro Vendas) vindo do App.tsx
+  // totalAppreciation é a valorização não realizada da carteira atual.
+  const totalNominalReturn = totalAppreciation + realizedGain;
+  const nominalYield = invested > 0 ? (totalNominalReturn / invested) * 100 : 0;
+  const ganhoReal = nominalYield - inflacaoPeriodo;
+  
+  const isAboveInflation = ganhoReal > 0;
   const isPositiveBalance = totalAppreciation >= 0;
 
   return (
@@ -389,7 +395,7 @@ export const Home: React.FC<HomeProps> = ({
                 <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><Scale className="w-5 h-5" strokeWidth={2} /></div>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Análise de Rentabilidade</h3>
             </div>
-            <ModalTabs active={gainTab} onChange={setGainTab} tabs={[{ id: 'general', label: 'Geral' }, { id: 'benchmark', label: 'Benchmark' }]} />
+            <ModalTabs active={gainTab} onChange={setGainTab} tabs={[{ id: 'general', label: 'Geral' }, { id: 'breakdown', label: 'Composição' }]} />
             
             {gainTab === 'general' && (
                 <div className="bg-white dark:bg-[#0f172a] p-10 rounded-[3rem] text-center mt-6 border border-slate-100 dark:border-white/5 shadow-sm animate-scale-in">
@@ -398,7 +404,38 @@ export const Home: React.FC<HomeProps> = ({
                         {ganhoReal >= 0 ? '+' : ''}{ganhoReal.toFixed(2)}%
                     </div>
                     <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-slate-50 dark:bg-white/5">
-                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Acima da Inflação (IPCA)</span>
+                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Acima da Inflação (4.5%)</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-6 leading-relaxed">Considera Valorização da Cota + Dividendos + Vendas, descontado o IPCA.</p>
+                </div>
+            )}
+
+            {gainTab === 'breakdown' && (
+                <div className="space-y-4 mt-4 animate-fade-in">
+                    <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><TrendingUp className="w-5 h-5" /></div>
+                             <div>
+                                 <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Valorização</h4>
+                                 <p className="text-[9px] text-slate-400">Patrimônio</p>
+                             </div>
+                         </div>
+                         <div className={`font-bold tabular-nums ${totalAppreciation >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                             {formatBRL(totalAppreciation)}
+                         </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500"><CircleDollarSign className="w-5 h-5" /></div>
+                             <div>
+                                 <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Realizado</h4>
+                                 <p className="text-[9px] text-slate-400">Proventos + Vendas</p>
+                             </div>
+                         </div>
+                         <div className="font-bold tabular-nums text-emerald-500">
+                             {formatBRL(realizedGain)}
+                         </div>
                     </div>
                 </div>
             )}

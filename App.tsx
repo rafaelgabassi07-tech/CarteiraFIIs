@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle } from 'lucide-react';
 
-const APP_VERSION = '5.0.0';
+const APP_VERSION = '5.1.0';
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
   TOKEN: 'investfiis_v4_brapi_token',
@@ -129,8 +129,7 @@ const App: React.FC = () => {
 
   const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
     setNotifications(prev => {
-      // Evita duplicatas pelo título no mesmo dia
-      if (prev.some(n => n.title === notification.title)) return prev;
+      if (prev.some(n => n.title === notification.title && (Date.now() - n.timestamp < 86400000))) return prev;
       return [
         { ...notification, id: crypto.randomUUID(), timestamp: Date.now(), read: false },
         ...prev
@@ -138,26 +137,122 @@ const App: React.FC = () => {
     });
   }, []);
 
-  // Nova Função: Verificação de Eventos Diários (Data Com, Pagamentos)
-  const checkDailyEvents = useCallback((currentDividends: DividendReceipt[]) => {
+  const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
+    return txs
+      .filter(t => t.ticker === ticker && t.date <= dateCom)
+      .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
+  }, []);
+
+  const memoizedData = useMemo(() => {
+    const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+    const nowStr = new Date().toISOString().substring(0, 7);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const contribution = transactions
+      .filter(t => t.type === 'BUY' && t.date.startsWith(nowStr))
+      .reduce((acc, t) => acc + (t.quantity * t.price), 0);
+
+    const receipts: DividendReceipt[] = geminiDividends.map(div => {
+      const qty = Math.max(0, getQuantityOnDate(div.ticker, div.dateCom, sortedTxs));
+      return { ...div, quantityOwned: qty, totalReceived: qty * div.rate };
+    }).filter(r => r.totalReceived > 0);
+
+    const divPaidMap: Record<string, number> = {};
+    let totalDividendsReceived = 0;
+
+    receipts.forEach(r => {
+      const pDate = new Date(r.paymentDate + 'T12:00:00');
+      if (pDate <= today) {
+        divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived;
+        totalDividendsReceived += r.totalReceived;
+      }
+    });
+
+    const positions: Record<string, AssetPosition> = {};
+    let salesGain = 0;
+
+    sortedTxs.forEach(t => {
+      if (!positions[t.ticker]) {
+        positions[t.ticker] = { 
+            ticker: t.ticker, 
+            quantity: 0, 
+            averagePrice: 0, 
+            assetType: t.assetType, 
+            totalDividends: divPaidMap[t.ticker] || 0,
+            segment: assetsMetadata[t.ticker]?.segment || 'Geral' 
+        };
+      }
+      const p = positions[t.ticker];
+      if (t.type === 'BUY') {
+        const cost = p.quantity * p.averagePrice;
+        p.quantity += t.quantity;
+        p.averagePrice = p.quantity > 0 ? (cost + (t.quantity * t.price)) / p.quantity : 0;
+      } else {
+        salesGain += (t.quantity * t.price) - (t.quantity * p.averagePrice);
+        p.quantity -= t.quantity;
+      }
+    });
+
+    // Realizado = Lucro/Prejuízo de Vendas + Dividendos já recebidos
+    const totalRealizedGain = salesGain + totalDividendsReceived;
+
+    const finalPortfolio = Object.values(positions)
+      .filter(p => p.quantity > 0)
+      .map(p => ({
+        ...p,
+        currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice,
+        logoUrl: quotes[p.ticker]?.logourl,
+        assetType: assetsMetadata[p.ticker]?.type || p.assetType,
+        segment: assetsMetadata[p.ticker]?.segment || p.segment,
+        ...assetsMetadata[p.ticker]?.fundamentals
+      }));
+
+    return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: totalRealizedGain, monthlyContribution: contribution };
+  }, [transactions, quotes, geminiDividends, getQuantityOnDate, assetsMetadata]);
+
+  // Função Aprimorada para Notificações Ricas
+  const checkDailyEvents = useCallback((currentDividends: DividendReceipt[], portfolio: AssetPosition[]) => {
       const today = new Date().toISOString().split('T')[0];
       
       currentDividends.forEach(div => {
-         // Evento 1: Pagamento Hoje
+         // Encontra o ativo na carteira para contexto
+         const asset = portfolio.find(p => p.ticker === div.ticker);
+         
+         // 1. Notificação de PAGAMENTO HOJE
          if (div.paymentDate === today && div.totalReceived > 0) {
+             const yieldOnCost = asset && asset.averagePrice > 0 
+                ? ((div.rate / asset.averagePrice) * 100).toFixed(2) 
+                : null;
+             
+             let msg = `Caiu na conta! ${div.ticker} pagou R$ ${div.totalReceived.toLocaleString('pt-BR', {minimumFractionDigits: 2})}.`;
+             if (yieldOnCost) {
+                 msg += ` Isso representa um retorno de ${yieldOnCost}% sobre seu custo médio neste mês.`;
+             }
+
              addNotification({
-                 title: `Pagamento: ${div.ticker}`,
-                 message: `O dia chegou! ${div.ticker} pagou R$ ${div.totalReceived.toLocaleString('pt-BR', {minimumFractionDigits: 2})} hoje.`,
+                 title: `💰 Proventos: ${div.ticker}`,
+                 message: msg,
                  type: 'success',
                  category: 'payment'
              });
          }
 
-         // Evento 2: Data Com Hoje (Aviso Importante)
+         // 2. Notificação de DATA COM HOJE
          if (div.dateCom === today) {
+             const yieldVal = asset && asset.currentPrice 
+                ? ((div.rate / asset.currentPrice) * 100).toFixed(2) 
+                : null;
+
+             let msg = `Último dia para garantir R$ ${div.rate.toFixed(4)}/cota.`;
+             if (yieldVal) {
+                 msg += ` Yield estimado do anúncio: ${yieldVal}%.`;
+             }
+             msg += " Durma posicionado para receber.";
+
              addNotification({
-                 title: `Data Com: ${div.ticker}`,
-                 message: `Hoje é a data limite para garantir os proventos de R$ ${div.rate.toFixed(4)}/cota anunciados.`,
+                 title: `📅 Data Com: ${div.ticker}`,
+                 message: msg,
                  type: 'warning',
                  category: 'datacom'
              });
@@ -165,14 +260,16 @@ const App: React.FC = () => {
       });
   }, [addNotification]);
 
-  // Detector de Novos Dividendos via IA
+  // Detector de Novos Dividendos via IA e Check Diário
   useEffect(() => {
+    // 1. Detectar novos anúncios (Diff)
     if (geminiDividends.length > prevDividendsRef.current.length) {
       const newDivs = geminiDividends.filter(d => !prevDividendsRef.current.find(p => p.id === d.id));
       if (newDivs.length > 0) {
+        const tickers = Array.from(new Set(newDivs.map(d => d.ticker))).join(', ');
         addNotification({
-          title: 'Novos Anúncios',
-          message: `${newDivs.length} novos dividendos foram rastreados pela IA recentemente.`,
+          title: 'Novos Anúncios Rastreados',
+          message: `A IA identificou ${newDivs.length} novos pagamentos para: ${tickers}. Verifique o extrato.`,
           type: 'info',
           category: 'general'
         });
@@ -180,10 +277,12 @@ const App: React.FC = () => {
     }
     prevDividendsRef.current = geminiDividends;
     
-    // Executa verificação diária sempre que os dividendos mudam/carregam
-    checkDailyEvents(geminiDividends);
+    // 2. Executa verificação diária rica usando os dados da carteira
+    if (memoizedData.portfolio.length > 0) {
+        checkDailyEvents(geminiDividends, memoizedData.portfolio);
+    }
 
-  }, [geminiDividends, addNotification, checkDailyEvents]);
+  }, [geminiDividends, memoizedData.portfolio, addNotification, checkDailyEvents]);
 
   const checkForUpdates = async (manual = false) => {
       if (manual) showToast('info', 'Buscando atualizações...');
@@ -200,8 +299,8 @@ const App: React.FC = () => {
             showToast('info', 'Nova atualização disponível');
             
             addNotification({
-                title: 'Atualização Disponível',
-                message: `A versão ${data.version} está pronta para ser instalada com novidades.`,
+                title: 'Atualização do Sistema',
+                message: `InvestFIIs v${data.version} está pronta. Toque no ícone de download no topo para atualizar.`,
                 type: 'update',
                 category: 'update'
             });
@@ -237,74 +336,6 @@ const App: React.FC = () => {
     };
     handleVersionControl();
   }, [showToast]);
-
-  const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
-    return txs
-      .filter(t => t.ticker === ticker && t.date <= dateCom)
-      .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
-  }, []);
-
-  const memoizedData = useMemo(() => {
-    const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-    const nowStr = new Date().toISOString().substring(0, 7);
-    const today = new Date();
-    today.setHours(0,0,0,0);
-
-    const contribution = transactions
-      .filter(t => t.type === 'BUY' && t.date.startsWith(nowStr))
-      .reduce((acc, t) => acc + (t.quantity * t.price), 0);
-
-    const receipts: DividendReceipt[] = geminiDividends.map(div => {
-      const qty = Math.max(0, getQuantityOnDate(div.ticker, div.dateCom, sortedTxs));
-      return { ...div, quantityOwned: qty, totalReceived: qty * div.rate };
-    }).filter(r => r.totalReceived > 0);
-
-    const divPaidMap: Record<string, number> = {};
-    receipts.forEach(r => {
-      const pDate = new Date(r.paymentDate + 'T12:00:00');
-      if (pDate <= today) {
-        divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived;
-      }
-    });
-
-    const positions: Record<string, AssetPosition> = {};
-    let gain = 0;
-    sortedTxs.forEach(t => {
-      if (!positions[t.ticker]) {
-        positions[t.ticker] = { 
-            ticker: t.ticker, 
-            quantity: 0, 
-            averagePrice: 0, 
-            assetType: t.assetType, 
-            totalDividends: divPaidMap[t.ticker] || 0,
-            segment: assetsMetadata[t.ticker]?.segment || 'Geral' 
-        };
-      }
-      const p = positions[t.ticker];
-      if (t.type === 'BUY') {
-        const cost = p.quantity * p.averagePrice;
-        p.quantity += t.quantity;
-        p.averagePrice = p.quantity > 0 ? (cost + (t.quantity * t.price)) / p.quantity : 0;
-      } else {
-        gain += (t.quantity * t.price) - (t.quantity * p.averagePrice);
-        p.quantity -= t.quantity;
-      }
-    });
-
-    const finalPortfolio = Object.values(positions)
-      .filter(p => p.quantity > 0)
-      .map(p => ({
-        ...p,
-        currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice,
-        logoUrl: quotes[p.ticker]?.logourl,
-        assetType: assetsMetadata[p.ticker]?.type || p.assetType,
-        segment: assetsMetadata[p.ticker]?.segment || p.segment,
-        // Merging fundamentals
-        ...assetsMetadata[p.ticker]?.fundamentals
-      }));
-
-    return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: gain, monthlyContribution: contribution };
-  }, [transactions, quotes, geminiDividends, getQuantityOnDate, assetsMetadata]);
 
   const syncAll = useCallback(async (force = false) => {
     const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));

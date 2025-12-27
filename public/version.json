@@ -1,22 +1,27 @@
 
 {
-  "version": "5.0.0",
-  "date": "2025-05-22",
+  "version": "5.1.0",
+  "date": "2025-05-23",
   "notes": [
     {
       "type": "feat",
-      "title": "Experiência Nativa",
-      "desc": "Implementação de apple-touch-icon e ícones maskable para que o app pareça nativo ao ser instalado (sem badge do Google no ícone)."
-    },
-    {
-      "type": "ui",
-      "title": "Logo Refinado",
-      "desc": "Atualização do logotipo vetorial para maior clareza e contraste em diferentes telas."
+      "title": "Novo Modelo de IA (Gemini 2.5 Flash)",
+      "desc": "Upgrade do motor de inteligência artificial para o modelo Flash 2.5, proporcionando maior precisão e rapidez na busca de dados fundamentalistas e proventos."
     },
     {
       "type": "fix",
-      "title": "Correção de Update",
-      "desc": "Melhoria na limpeza de cache para garantir que novas atualizações de ícones e manifest sejam aplicadas imediatamente."
+      "title": "Cálculo de Ganho Real",
+      "desc": "Correção na lógica do card 'Realizado' e 'Ganho Real'. Agora considera o Retorno Total: Valorização da Cota + Dividendos Recebidos + Lucro de Vendas."
+    },
+    {
+      "type": "feat",
+      "title": "Notificações Inteligentes",
+      "desc": "Sistema de alertas aprimorado que informa o Yield on Cost mensal exato ao detectar um pagamento, tornando as notificações financeiras mais ricas."
+    },
+    {
+      "type": "ui",
+      "title": "Modal de Rentabilidade",
+      "desc": "Nova aba de 'Composição' no modal de Ganho Real para visualizar separadamente o quanto veio de Valorização vs. Proventos."
     }
   ]
 }
