@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal } from './components/Layout';
+import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, UpdateBanner } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
@@ -10,7 +10,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle, Loader2, Info } from 'lucide-react';
 
-const APP_VERSION = '5.5.0'; // Atualização para v5.5.0 Ultra
+const APP_VERSION = '5.5.0'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -26,7 +26,6 @@ const STORAGE_KEYS = {
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-// Helper de comparação de versão local
 const compareVersions = (v1: string, v2: string) => {
   const parts1 = v1.split('.').map(Number);
   const parts2 = v2.split('.').map(Number);
@@ -50,7 +49,7 @@ const App: React.FC = () => {
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   
-  // Estados de Atualização (Restaurados no App.tsx)
+  // Estados de Atualização
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
   const [availableVersion, setAvailableVersion] = useState<string | null>(null);
   const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([]);
@@ -104,12 +103,10 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.style.setProperty('--color-accent', accentColor);
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
-    
     const hex = accentColor.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
-    
     document.documentElement.style.setProperty('--color-accent-rgb', `${r} ${g} ${b}`);
   }, [accentColor]);
 
@@ -119,30 +116,51 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.PRIVACY, String(privacyMode));
   }, [privacyMode]);
 
-  // Lógica de Atualização Restaurada
+  // --- LÓGICA DE ATUALIZAÇÃO ROBUSTA ---
   const checkForUpdates = useCallback(async (manual = false) => {
-    try {
-        const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
-        if (res.ok) {
-            const data: VersionData = await res.json();
-            if (compareVersions(data.version, APP_VERSION) > 0) {
-                setAvailableVersion(data.version);
-                setReleaseNotes(data.notes || []);
-                setIsUpdateAvailable(true);
-                return true; // Encontrou update
-            }
+    // 1. Verificar se existe um Service Worker esperando (Atualização em background pronta)
+    if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg && reg.waiting) {
+            setIsUpdateAvailable(true);
+            // Busca notas mesmo se o SW já detectou
+            fetchVersionJson(); 
+            return true;
         }
-    } catch (e) {
-        console.warn("Erro ao checar updates:", e);
+        if (manual && reg) {
+            await reg.update(); // Força check no servidor
+        }
     }
-    return false; // Não encontrou
+
+    // 2. Verificar JSON de versão
+    return fetchVersionJson();
   }, []);
+
+  const fetchVersionJson = async () => {
+      try {
+          const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
+          if (res.ok) {
+              const data: VersionData = await res.json();
+              if (compareVersions(data.version, APP_VERSION) > 0) {
+                  setAvailableVersion(data.version);
+                  setReleaseNotes(data.notes || []);
+                  setIsUpdateAvailable(true);
+                  return true;
+              }
+          }
+      } catch (e) { console.warn("Erro check version", e); }
+      return false;
+  };
 
   const performUpdate = () => {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(regs => {
-            for(let reg of regs) reg.unregister();
-            window.location.reload();
+            if (regs.length > 0 && regs[0].waiting) {
+                // Manda sinal para o SW pular a espera e assumir
+                regs[0].waiting.postMessage({ type: 'SKIP_WAITING' });
+            } else {
+                window.location.reload();
+            }
         });
     } else {
         window.location.reload();
@@ -152,16 +170,37 @@ const App: React.FC = () => {
   useEffect(() => {
      checkForUpdates();
      
-     // Check de Changelog (exibir se atualizou recentemente)
+     // Listener para detectar quando o SW entra em estado de espera (Update baixado)
+     if ('serviceWorker' in navigator) {
+         navigator.serviceWorker.addEventListener('controllerchange', () => {
+             // Quando o novo SW assume, recarrega a página
+             window.location.reload();
+         });
+
+         navigator.serviceWorker.getRegistration().then(reg => {
+             if (reg) {
+                 reg.addEventListener('updatefound', () => {
+                     const newWorker = reg.installing;
+                     if (newWorker) {
+                         newWorker.addEventListener('statechange', () => {
+                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                 // Novo SW instalado e esperando. Dispara UI.
+                                 setIsUpdateAvailable(true);
+                                 fetchVersionJson();
+                             }
+                         });
+                     }
+                 });
+             }
+         });
+     }
+
+     // Changelog Check
      const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
      if (compareVersions(APP_VERSION, lastSeen) > 0) {
          localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
          fetch(`./version.json?t=${Date.now()}`).then(r => r.json()).then(data => {
-             if (data.version === APP_VERSION) {
-                 setReleaseNotes(data.notes || []);
-                 // Opcional: mostrar changelog automaticamente
-                 // setShowChangelog(true); 
-             }
+             if (data.version === APP_VERSION) setReleaseNotes(data.notes || []);
          }).catch(() => {});
      }
   }, [checkForUpdates]);
@@ -325,9 +364,8 @@ const App: React.FC = () => {
     }
   }, [geminiDividends, memoizedData.portfolio, addNotification, checkDailyEvents]);
 
-  // Wrapper para checagem manual - Agora retorna Promise<boolean> e não mostra Toast
+  // Wrapper para checagem manual
   const handleManualUpdateCheck = async (): Promise<boolean> => {
-    // Retorna true se encontrou, false se não
     const hasUpdates = await checkForUpdates(true);
     return hasUpdates;
   };
@@ -377,6 +415,14 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
+      {/* Banner de Atualização que estava faltando */}
+      <UpdateBanner 
+        isOpen={isUpdateAvailable} 
+        onDismiss={() => setIsUpdateAvailable(false)} 
+        onUpdate={() => setShowChangelog(true)} 
+        version={availableVersion || 'Nova'} 
+      />
+
       {/* Dynamic Pill Toast */}
       {toast && (
         <div 
@@ -402,7 +448,7 @@ const App: React.FC = () => {
       )}
 
       <Header 
-        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Minha Custódia' : 'Histórico de Ordens'}
+        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'}
         showBack={showSettings}
         onBack={() => setShowSettings(false)}
         onSettingsClick={() => setShowSettings(true)}

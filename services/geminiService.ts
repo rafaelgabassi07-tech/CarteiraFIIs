@@ -35,28 +35,18 @@ const normalizeDate = (dateStr: any): string => {
 };
 
 // Helper ROBUSTO para garantir float correto
-// Trata casos como: "1.200,50", "1,200.50", "R$ 10,00"
 const normalizeValue = (val: any): number => {
   if (typeof val === 'number') return val;
   if (!val) return 0;
   
   if (typeof val === 'string') {
-    // Remove símbolos de moeda e espaços
     let clean = val.replace(/[R$\s]/g, '').trim();
-    
-    // Detecção de formato brasileiro (presença de vírgula no final como decimal)
-    // Ex: 1.234,56 -> Se tem vírgula nos últimos 3 caracteres, assume PT-BR
     if (clean.includes(',') && clean.indexOf(',') > clean.length - 4) {
-        // Remove pontos de milhar
         clean = clean.replace(/\./g, '');
-        // Troca vírgula decimal por ponto
         clean = clean.replace(',', '.');
     } else {
-        // Formato internacional ou misto: apenas remove vírgulas de milhar se existirem
-        // Ex: 1,234.56 -> 1234.56
         clean = clean.replace(/,/g, '');
     }
-    
     const parsed = parseFloat(clean);
     return isNaN(parsed) ? 0 : parsed;
   }
@@ -96,18 +86,17 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     Ativos: ${tickerListString}.
 
     TAREFA: Retornar JSON financeiro consolidado.
-    USE GOOGLE SEARCH PARA DADOS RECENTES.
-    SEJA CONCISO.
+    USE GOOGLE SEARCH PARA DADOS RECENTES E O IPCA.
 
     1. Dados: P/VP, P/L, DY 12m, Liquidez, Cotistas.
     2. Descrição: Max 15 palavras.
     3. Sentimento: Resumido (max 10 palavras).
     4. Proventos: Últimos 12 meses (Data Com, Pagto, Valor).
-    5. Macro: IPCA acumulado (${portfolioStart} a ${today}).
+    5. Macro: CALCULE o IPCA acumulado exato desde ${portfolioStart} até hoje. Se não encontrar o exato, estime com base na inflação mensal média do período.
 
     JSON OBRIGATÓRIO:
     {
-      "sys": { "ipca": 0.00, "start_ref": "YYYY-MM-DD" },
+      "sys": { "ipca": 0.00, "start_ref": "${portfolioStart}" },
       "assets": [
         {
           "t": "TICKER",

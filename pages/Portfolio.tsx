@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown } from 'lucide-react';
+import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: DividendReceipt[], totalPortfolioValue: number }> = ({ asset, index, history, totalPortfolioValue }) => {
@@ -27,7 +27,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
   return (
     <>
       <div 
-        className={`relative bg-white dark:bg-[#0f172a] rounded-[2.5rem] transition-all duration-500 animate-fade-in-up active:scale-[0.99] overflow-hidden cursor-pointer group ${isExpanded ? 'shadow-2xl shadow-slate-200/50 dark:shadow-black/50 z-10' : 'shadow-sm hover:shadow-md'}`}
+        className={`relative bg-white dark:bg-[#0f172a] rounded-[2.5rem] transition-all duration-500 animate-fade-in-up active:scale-[0.99] overflow-hidden cursor-pointer group border border-slate-200/50 dark:border-white/5 ${isExpanded ? 'shadow-2xl shadow-slate-200/50 dark:shadow-black/50 z-10' : 'shadow-sm hover:shadow-md'}`}
         style={{ animationDelay: `${index * 50}ms` }}
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -68,7 +68,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                  
                  {/* Cards Internos de Métricas */}
                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-[1.5rem] flex flex-col justify-between h-24 relative overflow-hidden">
+                    <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-[1.5rem] flex flex-col justify-between h-24 relative overflow-hidden border border-slate-100 dark:border-white/5">
                         <div className="absolute top-0 right-0 p-3 opacity-10">
                             <Target className="w-12 h-12 text-slate-900 dark:text-white" />
                         </div>
@@ -78,7 +78,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                         </div>
                     </div>
                     
-                    <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-[1.5rem] flex flex-col justify-between h-24 relative overflow-hidden">
+                    <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-[1.5rem] flex flex-col justify-between h-24 relative overflow-hidden border border-slate-100 dark:border-white/5">
                         <div className="absolute top-0 right-0 p-3 opacity-10">
                             <TrendingUp className="w-12 h-12 text-slate-900 dark:text-white" />
                         </div>
@@ -90,14 +90,14 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                  </div>
 
                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-white/5 rounded-2xl">
+                    <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5">
                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0"><DollarSign className="w-4 h-4" strokeWidth={2.5} /></div>
                        <div>
                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Yield on Cost</p>
                           <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{yoc.toFixed(2)}%</p>
                        </div>
                     </div>
-                    <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-white/5 rounded-2xl">
+                    <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5">
                        <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0"><Landmark className="w-4 h-4" strokeWidth={2.5} /></div>
                        <div>
                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Segmento</p>
@@ -109,7 +109,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                  <div className="flex gap-2 pt-1">
                      <button 
                         onClick={(e) => { e.stopPropagation(); setShowHistoryModal(true); }} 
-                        className="flex-1 py-3.5 bg-slate-100 dark:bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors active:scale-95"
+                        className="flex-1 py-3.5 bg-slate-100 dark:bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors active:scale-95 border border-slate-200 dark:border-white/5"
                      >
                         Ver Histórico
                      </button>
@@ -117,7 +117,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                         onClick={(e) => { e.stopPropagation(); setShowDetailsModal(true); }} 
                         className="flex-1 py-3.5 bg-slate-900 dark:bg-white rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] text-white dark:text-slate-900 transition-all active:scale-95 shadow-lg shadow-slate-900/20 dark:shadow-white/10 flex items-center justify-center gap-2"
                      >
-                        <Zap className="w-3 h-3 fill-current" /> Análise IA
+                        <BarChart3 className="w-3 h-3" /> Fundamentos
                      </button>
                  </div>
              </div>
@@ -140,7 +140,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                 <p className="text-center text-slate-400 text-xs py-10 font-medium">Nenhum provento registrado.</p>
               ) : (
                 history.slice(0, 12).map((h, i) => (
-                  <div key={i} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-white/5 rounded-3xl animate-fade-in-up" style={{ animationDelay: `${i * 30}ms` }}>
+                  <div key={i} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-white/5 rounded-3xl animate-fade-in-up border border-slate-100 dark:border-white/5" style={{ animationDelay: `${i * 30}ms` }}>
                     <div className="flex items-center gap-4">
                        <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-slate-400 text-xs font-black shadow-sm">
                           {h.paymentDate.split('-')[1]}
@@ -161,59 +161,44 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
         </div>
       </SwipeableModal>
 
-      {/* MODAL ANÁLISE - REDESIGN CLEAN (SEM GRADIENTE) */}
+      {/* MODAL ANÁLISE - VERSÃO TÉCNICA LIMPA */}
       <SwipeableModal isOpen={showDetailsModal} onClose={() => setShowDetailsModal(false)}>
          <div className="px-5 py-2">
             <div className="flex items-center gap-3 mb-8 px-2">
                 <div className="w-12 h-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-500"><BookOpen className="w-6 h-6" strokeWidth={2} /></div>
                 <div>
                     <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Fundamentos</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{asset.ticker} • Gemini AI</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{asset.ticker}</p>
                 </div>
             </div>
 
             <div className="space-y-6 pb-10">
-                {/* 1. SENTIMENTO DA IA (CLEAN VERSION) */}
-                <div className="bg-slate-50 dark:bg-white/5 p-6 rounded-[2.5rem] relative overflow-hidden">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                            <Zap className="w-4 h-4 fill-current" />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Veredito da IA</span>
+                {/* 1. DESCRIÇÃO DO ATIVO (SE HOUVER) */}
+                {asset.description && (
+                    <div className="bg-slate-50 dark:bg-white/5 p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5">
+                        <p className="text-xs font-medium leading-relaxed text-slate-500 dark:text-slate-400 italic">
+                            "{asset.description}"
+                        </p>
                     </div>
-                    
-                    <h4 className={`text-xl font-black tracking-tight mb-2 ${asset.sentiment === 'Otimista' ? 'text-emerald-500' : asset.sentiment === 'Pessimista' ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
-                        {asset.sentiment || 'Neutro'}
-                    </h4>
-                    
-                    <p className="text-xs font-medium leading-relaxed text-slate-500 dark:text-slate-400">
-                        {asset.sentiment_reason || 'Sem análise disponível no momento.'}
-                    </p>
+                )}
 
-                    {asset.description && (
-                        <div className="mt-5 pt-4 border-t border-slate-200 dark:border-white/5">
-                            <p className="text-[10px] font-medium text-slate-400 italic">"{asset.description}"</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* 2. GRID DE FUNDAMENTOS (CLEAN) */}
+                {/* 2. GRID DE INDICADORES TÉCNICOS */}
                 <div>
                     <h4 className="px-2 mb-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Indicadores Chave</h4>
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem]">
+                        <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
                             <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">P/VP</span>
                             <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{asset.p_vp?.toFixed(2) || '-'}</span>
                         </div>
-                        <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem]">
+                        <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
                             <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Dividend Yield</span>
                             <span className="text-lg font-black text-emerald-500 tabular-nums">{asset.dy_12m ? asset.dy_12m.toFixed(2) + '%' : '-'}</span>
                         </div>
-                        <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem]">
+                        <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
                             <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">P/L</span>
                             <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{asset.p_l?.toFixed(2) || '-'}</span>
                         </div>
-                        <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem]">
+                        <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
                             <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Liquidez</span>
                             <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{asset.liquidity || '-'}</span>
                         </div>
@@ -229,7 +214,6 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
 export const Portfolio: React.FC<{ portfolio: AssetPosition[], dividendReceipts: DividendReceipt[] }> = ({ portfolio, dividendReceipts }) => {
   const totalValue = useMemo(() => portfolio.reduce((acc, p) => acc + ((p.currentPrice || p.averagePrice) * p.quantity), 0), [portfolio]);
 
-  // Ordenação inteligente: Maior valor primeiro
   const sortedPortfolio = useMemo(() => {
       return [...portfolio].sort((a,b) => {
           const valA = (a.currentPrice || a.averagePrice) * a.quantity;

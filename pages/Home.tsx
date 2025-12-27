@@ -1,8 +1,8 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, Layers, LayoutGrid, TrendingUp, Calculator, PiggyBank, CalendarClock, GripHorizontal, BarChart3, ShieldCheck, AlertTriangle, Banknote } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, YAxis, ReferenceLine } from 'recharts';
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, CartesianGrid, YAxis } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
 interface HomeProps {
@@ -11,9 +11,9 @@ interface HomeProps {
   realizedGain?: number;
   sources?: { web: { uri: string; title: string } }[];
   isAiLoading?: boolean;
-  inflationRate?: number; // IPCA Dinâmico
+  inflationRate?: number;
   portfolioStartDate?: string;
-  accentColor?: string; // Cor recebida para gráficos
+  accentColor?: string;
 }
 
 const formatBRL = (val: any) => {
@@ -46,7 +46,7 @@ export const Home: React.FC<HomeProps> = ({
   realizedGain = 0, 
   sources = [],
   isAiLoading = false,
-  inflationRate = 4.5, // Default apenas se não vier da IA
+  inflationRate = 0, 
   portfolioStartDate,
   accentColor = '#0ea5e9'
 }) => {
@@ -57,18 +57,10 @@ export const Home: React.FC<HomeProps> = ({
   const [allocationTab, setAllocationTab] = useState<'assets' | 'types' | 'segments'>('assets');
   const [incomeTab, setIncomeTab] = useState<'summary' | 'magic' | 'calendar'>('summary');
   const [gainTab, setGainTab] = useState<'benchmark' | 'power' | 'yield'>('benchmark');
-
-  // State para controle da animação do gráfico
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Reseta o index ativo quando troca a aba do gráfico para evitar erros de renderização
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [allocationTab]);
-
-  const onPieEnter = useCallback((_: any, index: number) => {
-    setActiveIndex(index);
-  }, []);
+  useEffect(() => { setActiveIndex(0); }, [allocationTab]);
+  const onPieEnter = useCallback((_: any, index: number) => { setActiveIndex(index); }, []);
 
   const { invested, balance, totalAppreciation, appreciationPercent } = useMemo(() => {
     const res = portfolio.reduce((acc, curr) => ({
@@ -82,26 +74,45 @@ export const Home: React.FC<HomeProps> = ({
     return { ...res, totalAppreciation, appreciationPercent };
   }, [portfolio]);
 
-  const { received, upcoming, averageMonthly } = useMemo(() => {
-    // Data Local YYYY-MM-DD
-    const todayDate = new Date();
-    const year = todayDate.getFullYear();
-    const month = String(todayDate.getMonth() + 1).padStart(2, '0');
-    const day = String(todayDate.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`;
+  const { received, upcoming, averageMonthly, bestPayer } = useMemo(() => {
+    // Datas seguras
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const todayStr = today.toISOString().split('T')[0];
+
+    // Mapa para achar o maior pagador
+    const tickerTotalMap: Record<string, number> = {};
 
     const totals = dividendReceipts.reduce((acc, curr) => {
-      // Comparação direta de strings YYYY-MM-DD
-      if (curr.paymentDate <= todayStr) acc.received += curr.totalReceived;
+      let payDate = curr.paymentDate;
+      if (payDate.includes('/')) payDate = payDate.split('/').reverse().join('-');
+      
+      // Agrega por Ticker
+      tickerTotalMap[curr.ticker] = (tickerTotalMap[curr.ticker] || 0) + curr.totalReceived;
+
+      if (payDate <= todayStr) acc.received += curr.totalReceived;
       else acc.upcoming += curr.totalReceived;
       return acc;
     }, { received: 0, upcoming: 0 });
 
     const uniqueMonths = new Set(dividendReceipts.map(d => d.paymentDate.substring(0, 7))).size || 1;
-    const averageMonthly = totals.received / uniqueMonths;
+    const averageMonthly = totals.received / (uniqueMonths || 1);
 
-    return { ...totals, averageMonthly };
+    // Encontra maior pagador
+    let maxVal = 0;
+    let maxTicker = '-';
+    Object.entries(tickerTotalMap).forEach(([t, val]) => {
+        if(val > maxVal) { maxVal = val; maxTicker = t; }
+    });
+
+    return { ...totals, averageMonthly, bestPayer: { ticker: maxTicker, value: maxVal } };
   }, [dividendReceipts]);
+
+  // Yield On Cost da Carteira
+  const yieldOnCostPortfolio = useMemo(() => {
+      if (invested <= 0) return 0;
+      return (received / invested) * 100;
+  }, [received, invested]);
 
   const { assetData, typeData, segmentData, allocationSummary } = useMemo(() => {
     const assetData = portfolio.map(p => ({ 
@@ -130,10 +141,7 @@ export const Home: React.FC<HomeProps> = ({
     return { assetData, typeData, segmentData, allocationSummary: { fiiPercent, stockPercent } };
   }, [portfolio]);
 
-  // Dados filtrados para o card de alocação (Top 3 Segmentos)
-  const topSegments = useMemo(() => {
-      return segmentData.slice(0, 3);
-  }, [segmentData]);
+  const topSegments = useMemo(() => segmentData.slice(0, 3), [segmentData]);
 
   const magicNumbers = useMemo(() => {
     return portfolio.map(p => {
@@ -159,7 +167,6 @@ export const Home: React.FC<HomeProps> = ({
     }).filter(m => m !== null).sort((a,b) => (b?.progress || 0) - (a?.progress || 0));
   }, [portfolio, dividendReceipts]);
 
-  // Shape customizado para o gráfico interativo
   const renderActiveShape = (props: any) => {
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props;
     return (
@@ -170,27 +177,8 @@ export const Home: React.FC<HomeProps> = ({
         <text x={cx} y={cy + 10} dy={8} textAnchor="middle" className="text-xs font-medium fill-slate-500">
           {formatBRL(value)}
         </text>
-        <Sector
-          cx={cx}
-          cy={cy}
-          innerRadius={innerRadius}
-          outerRadius={outerRadius + 8}
-          startAngle={startAngle}
-          endAngle={endAngle}
-          fill={fill}
-          cornerRadius={6}
-        />
-        <Sector
-          cx={cx}
-          cy={cy}
-          startAngle={startAngle}
-          endAngle={endAngle}
-          innerRadius={outerRadius + 12}
-          outerRadius={outerRadius + 14}
-          fill={fill}
-          opacity={0.2}
-          cornerRadius={10}
-        />
+        <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} cornerRadius={6} />
+        <Sector cx={cx} cy={cy} startAngle={startAngle} endAngle={endAngle} innerRadius={outerRadius + 12} outerRadius={outerRadius + 14} fill={fill} opacity={0.2} cornerRadius={10} />
       </g>
     );
   };
@@ -198,61 +186,36 @@ export const Home: React.FC<HomeProps> = ({
   const COLORS = [accentColor, '#8b5cf6', '#10b981', '#f97316', '#f43f5e', '#64748b', '#3b82f6', '#ec4899'];
   
   // =========================================================================================
-  // LÓGICA DE GANHO REAL (REVISADA)
-  // Foco: IPCA vs Renda vs Patrimônio
+  // LÓGICA DE GANHO REAL (VS INFLAÇÃO)
   // =========================================================================================
   
-  const inflacaoPeriodo = inflationRate; 
-  
-  // 1. Rentabilidade Nominal Total (Valorização + Proventos + Lucro Realizado)
+  // Se a API retornar 0 (falha), usamos um fallback estimado simples baseado na data (aprox 0.4% am)
+  const estimatedIPCA = useMemo(() => {
+     if (inflationRate > 0) return inflationRate;
+     if (!portfolioStartDate) return 0;
+     
+     const start = new Date(portfolioStartDate);
+     const now = new Date();
+     const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+     return Math.max(0, months * 0.45); // Estimativa conservadora de 0.45% a.m.
+  }, [inflationRate, portfolioStartDate]);
+
+  const finalIPCA = inflationRate > 0 ? inflationRate : estimatedIPCA;
+
   const totalNominalReturn = totalAppreciation + realizedGain + received;
   const nominalYield = invested > 0 ? (totalNominalReturn / invested) * 100 : 0;
-  
-  // 2. Cálculo do Ganho Real (Nominal - Inflação)
-  const ganhoRealPercent = nominalYield - inflacaoPeriodo;
-  
-  // 3. Custo de Oportunidade da Inflação (Quanto o dinheiro perdeu de poder de compra)
-  // Valor que o investido TERIA que ser hoje para comprar a mesma coisa
-  const valorCorrigidoPeloIPCA = invested * (1 + (inflacaoPeriodo / 100));
+  const ganhoRealPercent = nominalYield - finalIPCA;
+  const valorCorrigidoPeloIPCA = invested * (1 + (finalIPCA / 100));
   const perdaInflacionaria = valorCorrigidoPeloIPCA - invested;
-  
-  // 4. Patrimônio Real (Valor Atual - Valor Corrigido)
-  // Se positivo, você enriqueceu. Se negativo, você perdeu poder de compra.
   const patrimonioRealDiff = (balance + received + realizedGain) - valorCorrigidoPeloIPCA;
   
   const isAboveInflation = ganhoRealPercent > 0;
   const isPositiveBalance = totalAppreciation >= 0;
 
-  // TAB 1: Benchmark (Comparativo Direto)
-  const benchmarkData = useMemo(() => {
-      return [
-          { name: 'Carteira', value: nominalYield, fill: nominalYield >= 0 ? '#10b981' : '#f43f5e' }, // Emerald/Rose
-          { name: 'Inflação (IPCA)', value: inflacaoPeriodo, fill: '#64748b' } // Slate
-      ];
-  }, [nominalYield, inflacaoPeriodo]);
-
-  // TAB 2: Poder de Compra (Waterfall Logic)
-  // Investido -> Correção IPCA -> Saldo Atual (Com proventos reinvestidos na teoria do patrimonio total)
-  const purchasingPowerData = useMemo(() => {
-      const totalWealth = balance + received + realizedGain;
-      return [
-          { name: 'Investido', value: invested, fill: '#64748b' }, // Slate
-          { name: 'Correção IPCA', value: valorCorrigidoPeloIPCA, fill: '#f59e0b' }, // Amber
-          { name: 'Patrimônio Total', value: totalWealth, fill: totalWealth >= valorCorrigidoPeloIPCA ? '#10b981' : '#f43f5e' } // Emerald/Rose
-      ];
-  }, [invested, valorCorrigidoPeloIPCA, balance, received, realizedGain]);
-
-  // TAB 3: Dividend Yield Real (Fisher Equation)
-  // (1 + DY Nominal) / (1 + Inflação) - 1
-  const realYieldData = useMemo(() => {
-     const nominalDY = invested > 0 ? (received / invested) * 100 : 0; // DY on Cost simples
-     const realDY = (((1 + (nominalDY/100)) / (1 + (inflacaoPeriodo/100))) - 1) * 100;
-     
-     return {
-         nominal: nominalDY,
-         real: realDY
-     };
-  }, [received, invested, inflacaoPeriodo]);
+  const benchmarkData = useMemo(() => [
+      { name: 'Carteira', value: nominalYield, fill: nominalYield >= 0 ? '#10b981' : '#f43f5e' },
+      { name: 'IPCA', value: finalIPCA, fill: '#64748b' }
+  ], [nominalYield, finalIPCA]);
 
   // =========================================================================================
 
@@ -261,10 +224,8 @@ export const Home: React.FC<HomeProps> = ({
       
       {/* 1. HERO CARD */}
       <div className="animate-fade-in-up">
-        <div className="bg-white dark:bg-[#0f172a] p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden group">
-            {/* Efeito Glow com a Accent Color */}
+        <div className="bg-white dark:bg-[#0f172a] p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-white/60 dark:border-white/5 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none group-hover:bg-accent/10 transition-colors duration-500"></div>
-            
             <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-white/5 w-fit">
@@ -288,11 +249,11 @@ export const Home: React.FC<HomeProps> = ({
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="bg-slate-50 dark:bg-white/[0.03] px-5 py-4 rounded-3xl">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Custo</p>
+                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Custo</p>
                       <p className="text-sm font-bold text-slate-700 dark:text-slate-300 tabular-nums">{formatBRL(invested)}</p>
                    </div>
                    <div className="bg-slate-50 dark:bg-white/[0.03] px-5 py-4 rounded-3xl">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Realizado</p>
+                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Realizado</p>
                       <p className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(realizedGain)}</p>
                    </div>
                 </div>
@@ -302,7 +263,7 @@ export const Home: React.FC<HomeProps> = ({
 
       {/* 2. CARD RENDA PASSIVA */}
       <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-        <button onClick={() => setShowProventosModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-lg">
+        <button onClick={() => setShowProventosModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-lg pointer-events-auto">
             <div className="flex items-start justify-between relative z-10">
                 <div>
                    <div className="flex items-center gap-3 mb-5">
@@ -328,9 +289,6 @@ export const Home: React.FC<HomeProps> = ({
                     )}
                 </div>
             </div>
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-emerald-500/5">
-                <div className="h-full bg-emerald-500 w-full opacity-0 group-hover:opacity-30 transition-all duration-700"></div>
-            </div>
         </button>
       </div>
 
@@ -338,7 +296,7 @@ export const Home: React.FC<HomeProps> = ({
           {/* 3. CARD ALOCAÇÃO */}
           <button 
             onClick={() => setShowAllocationModal(true)} 
-            className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm active:scale-[0.96] transition-all text-left flex flex-col h-full group hover:shadow-lg relative overflow-hidden"
+            className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col h-full group hover:shadow-lg relative overflow-hidden"
             style={{ animationDelay: '200ms' }}
           >
              <div className="flex justify-between items-start mb-2 w-full">
@@ -367,10 +325,10 @@ export const Home: React.FC<HomeProps> = ({
              </div>
           </button>
 
-          {/* 4. CARD GANHO REAL (ATUALIZADO PARA FOCO EM INFLAÇÃO) */}
+          {/* 4. CARD GANHO REAL */}
           <button 
             onClick={() => setShowRealGainModal(true)} 
-            className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg relative overflow-hidden"
+            className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg relative overflow-hidden"
             style={{ animationDelay: '250ms' }}
           >
              <div className="mb-4">
@@ -384,11 +342,13 @@ export const Home: React.FC<HomeProps> = ({
                     </span>
                 </div>
                 <div className="flex gap-0.5 h-1.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-white/5">
-                    {/* Barra Visual: Mostra proporção de inflação vs ganho */}
                     <div className="h-full bg-slate-300 dark:bg-slate-600" style={{ width: '40%' }}></div>
                     <div className={`h-full ${isAboveInflation ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: '60%' }}></div>
                 </div>
-                <p className="text-[9px] text-slate-400 mt-2 font-medium truncate">Rentabilidade Real (IPCA)</p>
+                {/* Data de início para contexto */}
+                <p className="text-[9px] text-slate-400 mt-2 font-medium truncate">
+                   {portfolioStartDate ? `IPCA desde ${portfolioStartDate.split('-')[1]}/${portfolioStartDate.split('-')[0]}` : 'IPCA Estimado'}
+                </p>
              </div>
           </button>
       </div>
@@ -449,7 +409,7 @@ export const Home: React.FC<HomeProps> = ({
                     <button 
                         key={item.name} 
                         onClick={() => setActiveIndex(i)}
-                        className={`w-full flex items-center justify-between p-4 rounded-3xl transition-all duration-300 animate-fade-in-up ${isActive ? 'bg-accent/5 shadow-sm scale-[1.01]' : 'bg-white dark:bg-[#0f172a]'}`}
+                        className={`w-full flex items-center justify-between p-4 rounded-3xl transition-all duration-300 animate-fade-in-up border border-slate-100 dark:border-white/5 ${isActive ? 'bg-accent/5 shadow-sm scale-[1.01]' : 'bg-white dark:bg-[#0f172a]'}`}
                         style={{ animationDelay: `${i * 50}ms` }}
                     >
                         <div className="flex items-center gap-4">
@@ -467,7 +427,7 @@ export const Home: React.FC<HomeProps> = ({
         </div>
       </SwipeableModal>
 
-      {/* MODAL GANHO REAL (REFEITO) */}
+      {/* MODAL GANHO REAL */}
       <SwipeableModal isOpen={showRealGainModal} onClose={() => setShowRealGainModal(false)}>
          <div className="px-4 py-2">
             <div className="flex items-center gap-3 px-2 mb-6 mt-2">
@@ -481,13 +441,11 @@ export const Home: React.FC<HomeProps> = ({
             <ModalTabs active={gainTab} onChange={setGainTab} tabs={[
                 { id: 'benchmark', label: 'Benchmark' }, 
                 { id: 'power', label: 'Poder de Compra' }, 
-                { id: 'yield', label: 'Renda Real' }
             ]} />
             
-            {/* TAB 1: BENCHMARK (Comparação Visual Direta) */}
             {gainTab === 'benchmark' && (
                 <div className="animate-fade-in space-y-6 mt-4">
-                    <div className="bg-white dark:bg-[#0f172a] p-8 rounded-[3rem] text-center shadow-sm relative overflow-hidden">
+                    <div className="bg-white dark:bg-[#0f172a] p-8 rounded-[3rem] text-center shadow-sm relative overflow-hidden border border-slate-100 dark:border-white/5">
                         <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Rentabilidade Real (Acima do IPCA)</p>
                         <div className={`text-6xl font-black tabular-nums tracking-tighter mb-4 ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {isAboveInflation ? '+' : ''}{ganhoRealPercent.toFixed(2)}%
@@ -497,7 +455,7 @@ export const Home: React.FC<HomeProps> = ({
                         </p>
                     </div>
 
-                    <div className="bg-slate-50 dark:bg-white/5 p-6 rounded-[2.5rem] h-64">
+                    <div className="bg-slate-50 dark:bg-white/5 p-6 rounded-[2.5rem] h-64 border border-slate-200/50 dark:border-white/5">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 text-center">Carteira vs IPCA (Acumulado)</h4>
                         <ResponsiveContainer width="100%" height="80%">
                             <BarChart data={benchmarkData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
@@ -528,17 +486,15 @@ export const Home: React.FC<HomeProps> = ({
                 </div>
             )}
 
-            {/* TAB 2: PODER DE COMPRA (Waterfall Visual) */}
             {gainTab === 'power' && (
                 <div className="space-y-6 mt-4 animate-fade-in flex flex-col">
-                    <div className="p-6 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] mb-2">
+                    <div className="p-6 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] mb-2 border border-slate-200/50 dark:border-white/5">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
                              <ShieldCheck className="w-3.5 h-3.5" />
                              Proteção Patrimonial
                         </h4>
                         
                         <div className="space-y-6">
-                             {/* Item 1: Investido */}
                              <div className="flex items-center justify-between relative z-10">
                                  <div className="flex items-center gap-3">
                                      <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-white/10 flex items-center justify-center text-slate-500 font-bold text-xs">1</div>
@@ -549,25 +505,20 @@ export const Home: React.FC<HomeProps> = ({
                                  </div>
                              </div>
 
-                             {/* Conector */}
                              <div className="pl-4 -my-2 border-l-2 border-dashed border-slate-200 dark:border-white/10 h-6 ml-4"></div>
 
-                             {/* Item 2: IPCA */}
                              <div className="flex items-center justify-between">
                                  <div className="flex items-center gap-3">
                                      <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-500 font-bold text-xs">2</div>
                                      <div>
-                                         <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase">Correção IPCA</p>
+                                         <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase">Correção IPCA ({finalIPCA.toFixed(1)}%)</p>
                                          <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(perdaInflacionaria)}</p>
                                      </div>
                                  </div>
-                                 <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">Necessário para Empatar</span>
                              </div>
 
-                             {/* Conector */}
                              <div className="pl-4 -my-2 border-l-2 border-dashed border-slate-200 dark:border-white/10 h-6 ml-4"></div>
 
-                             {/* Item 3: Saldo Atual */}
                              <div className="flex items-center justify-between">
                                  <div className="flex items-center gap-3">
                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs text-white ${patrimonioRealDiff >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}>3</div>
@@ -585,59 +536,6 @@ export const Home: React.FC<HomeProps> = ({
                         <p className="text-3xl font-black tabular-nums tracking-tighter mb-2">
                             {patrimonioRealDiff >= 0 ? '+' : ''}{formatBRL(patrimonioRealDiff)}
                         </p>
-                        <p className="text-[10px] font-medium opacity-90 max-w-[200px] mx-auto leading-tight">
-                            {patrimonioRealDiff >= 0 
-                                ? "Seu dinheiro cresceu acima da inflação. Você aumentou seu poder de compra." 
-                                : "A inflação corroeu parte do seu capital. O ganho nominal não cobriu o IPCA."}
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {/* TAB 3: RENDA REAL (Dividend Yield Real) */}
-            {gainTab === 'yield' && (
-                <div className="space-y-6 mt-4 animate-fade-in">
-                    <div className="bg-white dark:bg-[#0f172a] p-8 rounded-[3rem] text-center shadow-sm">
-                         <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-500">
-                             <Banknote className="w-7 h-7" />
-                         </div>
-                         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Sua Renda vs Inflação</h3>
-                         
-                         <div className="grid grid-cols-2 gap-6 relative">
-                             {/* Separador Vertical */}
-                             <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-slate-100 dark:bg-white/5 -translate-x-1/2"></div>
-                             
-                             <div>
-                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">DY Nominal</p>
-                                 <p className="text-xl font-bold text-slate-900 dark:text-white tabular-nums">{realYieldData.nominal.toFixed(2)}%</p>
-                             </div>
-                             <div>
-                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">DY Real</p>
-                                 <p className={`text-xl font-bold tabular-nums ${realYieldData.real > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                     {realYieldData.real.toFixed(2)}%
-                                 </p>
-                             </div>
-                         </div>
-                    </div>
-
-                    <div className="p-5 bg-slate-50 dark:bg-white/5 rounded-3xl flex gap-4 items-start">
-                         <div className="mt-1">
-                             {realYieldData.real > 0 
-                                ? <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                                : <AlertTriangle className="w-5 h-5 text-rose-500" />
-                             }
-                         </div>
-                         <div>
-                             <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-1">
-                                 {realYieldData.real > 0 ? "Renda Geradora de Riqueza" : "Perda de Poder de Compra"}
-                             </h4>
-                             <p className="text-[10px] text-slate-500 leading-relaxed">
-                                 {realYieldData.real > 0 
-                                     ? "Seus dividendos estão rendendo acima da inflação. Isso significa que você pode gastar parte da renda e ainda manter o principal protegido."
-                                     : "Seus dividendos estão abaixo da inflação. Reinvestir 100% é mandatório para não perder patrimônio a longo prazo."
-                                 }
-                             </p>
-                         </div>
                     </div>
                 </div>
             )}
@@ -655,18 +553,40 @@ export const Home: React.FC<HomeProps> = ({
            <div className="mt-6 pb-6">
                 {incomeTab === 'summary' && (
                     <div className="space-y-4 animate-fade-in">
-                        <div className="bg-white dark:bg-[#0f172a] p-8 rounded-[2.5rem] text-center shadow-sm">
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Média Mensal Estimada</p>
-                            <p className="text-5xl font-bold text-slate-900 dark:text-white tabular-nums tracking-tight">{formatBRL(averageMonthly)}</p>
+                        {/* Hero Section - Média Mensal */}
+                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-8 rounded-[2.5rem] text-center shadow-lg shadow-emerald-500/20 text-white relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-2 relative z-10">Média Mensal Estimada</p>
+                            <p className="text-5xl font-black tabular-nums tracking-tighter relative z-10">{formatBRL(averageMonthly)}</p>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] text-center shadow-sm">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Total Recebido</p>
-                                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(received)}</p>
+
+                        {/* Grid de Estatísticas Rico */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-3 opacity-10"><Banknote className="w-8 h-8 text-emerald-500" /></div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Recebido</p>
+                                <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{formatBRL(received)}</p>
                             </div>
-                            <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] text-center shadow-sm">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Futuro</p>
-                                <p className="text-xl font-bold text-accent tabular-nums">{formatBRL(upcoming)}</p>
+
+                            <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-3 opacity-10"><Sparkles className="w-8 h-8 text-accent" /></div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Futuro</p>
+                                <p className="text-lg font-black text-accent tabular-nums">{formatBRL(upcoming)}</p>
+                            </div>
+
+                            <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-3 opacity-10"><Percent className="w-8 h-8 text-indigo-500" /></div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Yield on Cost</p>
+                                <p className="text-lg font-black text-indigo-500 tabular-nums">{yieldOnCostPortfolio.toFixed(2)}%</p>
+                            </div>
+
+                            <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-3 opacity-10"><Award className="w-8 h-8 text-amber-500" /></div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Maior Pagador</p>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-black text-slate-900 dark:text-white">{bestPayer.ticker}</span>
+                                    <span className="text-[10px] font-bold text-amber-500 tabular-nums">{formatBRL(bestPayer.value)}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -674,7 +594,7 @@ export const Home: React.FC<HomeProps> = ({
 
                 {incomeTab === 'magic' && (
                     <div className="space-y-4 animate-fade-in">
-                        <div className="bg-accent/5 p-6 rounded-[2rem] mb-4">
+                        <div className="bg-accent/5 p-6 rounded-[2rem] mb-4 border border-accent/10">
                              <div className="flex gap-2 items-center text-accent mb-2">
                                 <Target className="w-5 h-5" />
                                 <span className="text-xs font-bold uppercase tracking-wide">Magic Number</span>
@@ -682,7 +602,7 @@ export const Home: React.FC<HomeProps> = ({
                              <p className="text-[11px] text-slate-500 leading-relaxed font-medium">Quantidade de cotas necessária para comprar uma nova cota apenas com os rendimentos mensais.</p>
                         </div>
                         {magicNumbers.map((m, i) => (
-                            <div key={m.ticker} className="p-6 bg-white dark:bg-[#0f172a] rounded-[2.5rem] shadow-sm animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+                            <div key={m.ticker} className="p-6 bg-white dark:bg-[#0f172a] rounded-[2.5rem] shadow-sm animate-fade-in-up border border-slate-100 dark:border-white/5" style={{ animationDelay: `${i * 50}ms` }}>
                                 <div className="flex justify-between items-center mb-5">
                                     <div className="flex items-center gap-3">
                                         <span className="font-bold text-base text-slate-900 dark:text-white">{m.ticker}</span>
@@ -714,7 +634,7 @@ export const Home: React.FC<HomeProps> = ({
                         return (
                             <div key={`${r.id}-${idx}`} className="relative pl-8 py-3 group animate-fade-in-up" style={{ animationDelay: `${idx * 30}ms` }}>
                                 <div className={`absolute left-[11px] top-7 w-4 h-4 rounded-full border-[3px] border-slate-50 dark:border-[#0b1121] z-10 ${isUpcoming ? 'bg-accent' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
-                                <div className={`p-5 rounded-[2rem] transition-all flex justify-between items-center ${isUpcoming ? 'bg-white dark:bg-[#0f172a] shadow-lg shadow-accent/5' : 'bg-white dark:bg-[#0f172a]'}`}>
+                                <div className={`p-5 rounded-[2rem] transition-all flex justify-between items-center border border-slate-100 dark:border-white/5 ${isUpcoming ? 'bg-white dark:bg-[#0f172a] shadow-lg shadow-accent/5' : 'bg-white dark:bg-[#0f172a]'}`}>
                                     <div>
                                         <div className="flex items-center gap-2 mb-1.5">
                                             <span className="font-bold text-sm text-slate-900 dark:text-white">{r.ticker}</span>
@@ -734,7 +654,6 @@ export const Home: React.FC<HomeProps> = ({
             </div>
         </div>
       </SwipeableModal>
-
     </div>
   );
 };

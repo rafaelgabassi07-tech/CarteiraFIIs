@@ -49,7 +49,7 @@
           extend: {
             fontFamily: { sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'] },
             colors: {
-              primary: { light: '#f8fafc', dark: '#020617' }, 
+              primary: { light: '#f1f5f9', dark: '#020617' }, // Mudança para Slate-100 no Light
               secondary: { light: '#ffffff', dark: '#0f172a' }, 
               // Definição mágica que permite bg-accent/20, text-accent/50, etc.
               accent: 'rgb(var(--color-accent-rgb) / <alpha-value>)', 
@@ -136,7 +136,7 @@
 }
 </script>
 </head>
-  <body class="bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 min-h-screen selection:bg-accent selection:text-white overflow-x-hidden antialiased">
+  <body class="bg-slate-100 dark:bg-[#020617] text-slate-900 dark:text-slate-100 min-h-screen selection:bg-accent selection:text-white overflow-x-hidden antialiased">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>

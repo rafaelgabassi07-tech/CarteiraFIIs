@@ -45,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
         {showBack ? (
           <div className="flex items-center gap-4 animate-fade-in w-full">
             <button onClick={onBack} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group">
-              <ChevronLeft className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" strokeWidth={2.5} />
+              <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" strokeWidth={2.5} />
             </button>
             <div className="flex flex-col ml-1">
                 <h1 className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">Ajustes</h1>
@@ -84,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {onNotificationClick && !showBack && (
           <button onClick={onNotificationClick} className="relative w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group">
-            <Bell className="w-6 h-6 group-hover:rotate-12 transition-transform" strokeWidth={2} />
+            <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" strokeWidth={2} />
             {notificationCount > 0 && <span className="absolute top-3 right-3.5 w-2 h-2 bg-rose-500 rounded-full shadow-sm"></span>}
           </button>
         )}
@@ -97,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {!showBack && onSettingsClick && (
           <button onClick={onSettingsClick} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group">
-            <Settings className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" strokeWidth={2} />
+            <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" strokeWidth={2} />
           </button>
         )}
       </div>
@@ -211,7 +211,6 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
 };
 
 export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void; notifications: AppNotification[]; onClear: () => void }> = ({ isOpen, onClose, notifications, onClear }) => {
-  
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'auto';
@@ -222,11 +221,10 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
 
   return createPortal(
     <div className="fixed inset-0 z-[2000] flex flex-col bg-slate-50 dark:bg-[#020617] animate-fade-in">
-        {/* Header Fixo */}
         <div className="px-6 pt-safe pb-4 bg-white dark:bg-[#0f172a] shadow-sm z-10 sticky top-0">
              <div className="flex items-center justify-between pt-4">
                  <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all">
-                     <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
+                     <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
                  </button>
                  <div className="text-center">
                     <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-none">Notificações</h2>
@@ -242,7 +240,6 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
              </div>
         </div>
 
-        {/* Lista Scrollável */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
              {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-[60vh] opacity-60">
@@ -321,7 +318,6 @@ export const ChangelogModal: React.FC<{
         <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl transition-all" onClick={onClose} />
         
         <div className="relative bg-white dark:bg-[#0f172a] w-full max-w-sm rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-scale-in border border-white/10">
-            {/* Header com Arte Abstrata */}
             <div className="relative h-40 bg-slate-900 overflow-hidden shrink-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-purple-600/20 mix-blend-overlay"></div>
                 <div className="absolute -right-10 -top-10 w-48 h-48 bg-accent/20 rounded-full blur-[60px]"></div>
@@ -341,15 +337,11 @@ export const ChangelogModal: React.FC<{
                 </button>
             </div>
 
-            {/* Corpo Scrollável com Timeline */}
             <div className="flex-1 overflow-y-auto max-h-[50vh] p-8 bg-white dark:bg-[#0f172a]">
                  <div className="relative pl-6 space-y-8 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-100 dark:before:bg-white/5">
                     {notes && notes.length > 0 ? notes.map((note, i) => (
                       <div key={i} className="relative animate-fade-in-up" style={{ animationDelay: `${i * 100}ms` }}>
-                          {/* Timeline Dot with Glow */}
                           <div className={`absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full border-[3px] border-white dark:border-[#0f172a] shadow-sm z-10 ${note.type === 'feat' ? 'bg-amber-500' : note.type === 'ui' ? 'bg-accent' : 'bg-emerald-500'}`}></div>
-                          
-                          {/* Content */}
                           <div>
                               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                                   <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
@@ -372,7 +364,6 @@ export const ChangelogModal: React.FC<{
                  </div>
             </div>
 
-            {/* Footer com Botão de Ação */}
             <div className="p-6 bg-white dark:bg-[#0f172a] border-t border-slate-100 dark:border-white/5 shrink-0">
                {isUpdatePending ? (
                  <button onClick={onUpdate} className="w-full bg-accent text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl shadow-accent/20 hover:shadow-2xl hover:brightness-110 flex items-center justify-center gap-3">

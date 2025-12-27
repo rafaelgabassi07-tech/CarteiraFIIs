@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.4.9';
+const CACHE_NAME = 'investfiis-ultra-v5.5.0';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -8,7 +8,7 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  // REMOVIDO: self.skipWaiting(); -> Agora esperamos o usuário clicar no botão
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -33,6 +33,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Não cachear o arquivo de versão para sempre buscar o mais recente
   if (url.pathname.includes('version.json')) {
     event.respondWith(fetch(event.request, { cache: 'no-store' }));
     return;
@@ -58,6 +59,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Listener para ativar a nova versão quando o usuário clicar em "Atualizar"
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
