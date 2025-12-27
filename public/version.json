@@ -1,17 +1,12 @@
 
 {
-  "version": "5.4.7",
+  "version": "5.4.8",
   "date": "2025-05-24",
   "notes": [
     {
       "type": "fix",
-      "title": "Correção Crítica de Update",
-      "desc": "O sistema de atualização agora detecta novas versões em segundo plano instantaneamente."
-    },
-    {
-      "type": "fix",
-      "title": "Cálculo de Dividendos",
-      "desc": "Resolvido erro de formatação de valores em Reais (R$) que causava cálculos zerados."
+      "title": "Correção no Update",
+      "desc": "Resolvido problema que impedia a instalação da atualização e travava as configurações."
     }
   ]
 }

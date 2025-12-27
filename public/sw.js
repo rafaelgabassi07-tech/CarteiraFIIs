@@ -1,26 +1,29 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.4.7';
+const CACHE_NAME = 'investfiis-ultra-v5.4.8';
 
-// Arquivos vitais. Apenas estes serão baixados na instalação.
+// Arquivos vitais.
+// REMOVIDO: './index.js' (Causava erro de 404 e travava a instalação)
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './manifest.json',
-  './index.js',
+  './manifest.json'
 ];
 
-// 1. INSTALAÇÃO: Momento único de download.
+// 1. INSTALAÇÃO
 self.addEventListener('install', (event) => {
-  // O SW entra em estado 'waiting' automaticamente após isso.
-  // NÃO usamos skipWaiting() aqui para impedir a troca automática.
+  // Força o SW novo a assumir controle imediatamente após instalar, sem esperar
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
+      // addAll é atômico: se um falhar, tudo falha. 
+      // Por isso removemos arquivos instáveis da lista.
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
 });
 
-// 2. ATIVAÇÃO: Troca de chaves. Só ocorre após o usuário autorizar.
+// 2. ATIVAÇÃO
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -31,43 +34,47 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim()) // Assume o controle imediatamente após a ativação manual
+    }).then(() => self.clients.claim())
   );
 });
 
-// 3. FETCH: Modo Leitura Estrita (Immutable)
+// 3. FETCH
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Exceção: Version Check sempre vai na rede para saber se o banner deve aparecer
+  // Exceção: Version Check sempre vai na rede
   if (url.pathname.includes('version.json')) {
     event.respondWith(fetch(event.request, { cache: 'no-store' }));
     return;
   }
 
-  // Ignora requisições externas (API, Analytics, etc)
+  // Ignora requisições externas
   if (url.origin !== self.location.origin) {
     return;
   }
 
+  // Estratégia: Stale-While-Revalidate para Assets não críticos
+  // Tenta cache, mas atualiza em background para a próxima vez
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // ESTRATÉGIA IMUTÁVEL:
-      // Se está no cache, usa o cache. PONTO FINAL.
-      // Não vai na rede conferir se mudou. Não baixa nada em background.
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Se a resposta for válida, atualiza o cache dinamicamente
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      });
 
-      // Se não está no cache (ex: um ícone novo que não existia na instalação),
-      // busca na rede apenas para exibir, MAS NÃO SALVA no cache atual.
-      // Isso impede que o cache atual seja "contaminado" com arquivos de uma nova versão.
-      return fetch(event.request);
+      // Retorna cache se existir, senão espera a rede
+      return cachedResponse || fetchPromise;
     })
   );
 });
 
-// 4. MENSAGENS: O único gatilho permitido para atualizar
+// 4. MENSAGENS
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
