@@ -1,6 +1,7 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2 } from 'lucide-react';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp } from 'lucide-react';
 import { Transaction, DividendReceipt } from '../types';
 import { ThemeType } from '../App';
 
@@ -67,7 +68,11 @@ export const Settings: React.FC<SettingsProps> = ({
     breakdown: { tx: 0, quotes: 0, divs: 0 } 
   });
 
+  // Notificações - Estados
   const [notifyDivs, setNotifyDivs] = useState(() => localStorage.getItem('investfiis_notify_divs') !== 'false');
+  const [notifyDataCom, setNotifyDataCom] = useState(() => localStorage.getItem('investfiis_notify_datacom') !== 'false');
+  const [notifyGoals, setNotifyGoals] = useState(() => localStorage.getItem('investfiis_notify_goals') !== 'false');
+  const [notifyMarket, setNotifyMarket] = useState(() => localStorage.getItem('investfiis_notify_market') === 'true'); // Padrão false
   const [notifyUpdates, setNotifyUpdates] = useState(() => localStorage.getItem('investfiis_notify_updates') !== 'false');
   
   // Estados para Conexões
@@ -84,7 +89,11 @@ export const Settings: React.FC<SettingsProps> = ({
     else document.body.classList.remove('disable-animations');
   }, [animations]);
 
+  // Persistência Notificações
   useEffect(() => { localStorage.setItem('investfiis_notify_divs', String(notifyDivs)); }, [notifyDivs]);
+  useEffect(() => { localStorage.setItem('investfiis_notify_datacom', String(notifyDataCom)); }, [notifyDataCom]);
+  useEffect(() => { localStorage.setItem('investfiis_notify_goals', String(notifyGoals)); }, [notifyGoals]);
+  useEffect(() => { localStorage.setItem('investfiis_notify_market', String(notifyMarket)); }, [notifyMarket]);
   useEffect(() => { localStorage.setItem('investfiis_notify_updates', String(notifyUpdates)); }, [notifyUpdates]);
 
   const formatBytes = (bytes: number, decimals = 1) => {
@@ -454,32 +463,44 @@ export const Settings: React.FC<SettingsProps> = ({
                              <Bell className="w-7 h-7" />
                         </div>
                         <h3 className="text-lg font-black text-amber-600 dark:text-amber-400 tracking-tight">Central de Alertas</h3>
-                        <p className="text-[10px] text-slate-500 font-medium">Veja como os alertas aparecem para você.</p>
+                        <p className="text-[10px] text-slate-500 font-medium">Configure quais eventos merecem sua atenção.</p>
                    </div>
-                   
-                   {/* Card Mock */}
-                   <div className="bg-white dark:bg-[#0b1121] p-4 rounded-2xl flex gap-3 shadow-lg transform rotate-1 scale-95 opacity-90 hover:rotate-0 hover:scale-100 transition-all duration-500 cursor-default border border-amber-500/10">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                           <Sparkles className="w-5 h-5" />
-                        </div>
-                        <div>
-                           <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-0.5">Novos Dividendos</h4>
-                           <p className="text-[10px] text-slate-500 leading-tight">Você recebeu R$ 150,00 em proventos de MXRF11.</p>
-                        </div>
-                   </div>
-                   
-                   <p className="text-center text-[9px] font-black text-amber-500/50 uppercase tracking-widest mt-4">Simulação</p>
                </div>
 
                <div className="space-y-3">
-                  <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 mb-1">Preferências</h3>
+                  <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 mb-1">Alertas Financeiros</h3>
                   <Toggle 
                     label="Novos Proventos" 
-                    description="Alertar quando a IA detectar pagamentos" 
+                    description="Quando a IA detectar pagamentos em conta" 
                     icon={BadgeDollarSignIcon} 
                     checked={notifyDivs} 
                     onChange={() => setNotifyDivs(!notifyDivs)} 
                   />
+                  <Toggle 
+                    label="Data Com" 
+                    description="Aviso no último dia para garantir proventos" 
+                    icon={Calendar} 
+                    checked={notifyDataCom} 
+                    onChange={() => setNotifyDataCom(!notifyDataCom)} 
+                  />
+                  <Toggle 
+                    label="Metas Atingidas" 
+                    description="Magic Number e marcos patrimoniais" 
+                    icon={Target} 
+                    checked={notifyGoals} 
+                    onChange={() => setNotifyGoals(!notifyGoals)} 
+                  />
+                  <Toggle 
+                    label="Variações Bruscas" 
+                    description="Alertas de volatilidade acima de 5%" 
+                    icon={TrendingUp} 
+                    checked={notifyMarket} 
+                    onChange={() => setNotifyMarket(!notifyMarket)} 
+                  />
+
+                  <div className="h-px bg-slate-200/50 dark:bg-white/5 my-2"></div>
+
+                  <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 mb-1">Sistema</h3>
                   <Toggle 
                     label="Atualizações do App" 
                     description="Novidades, melhorias e correções" 
