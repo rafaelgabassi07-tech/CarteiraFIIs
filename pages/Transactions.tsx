@@ -152,8 +152,15 @@ export const Transactions: React.FC<TransactionsProps> = ({
       {/* Modal Formulário */}
       <SwipeableModal isOpen={showForm} onClose={() => { setShowForm(false); resetForm(); }}>
         <div className="bg-slate-50 dark:bg-[#0b1121] min-h-full">
-            <div className="sticky top-0 bg-slate-50/80 dark:bg-[#0b1121]/80 backdrop-blur-xl p-6 z-20 border-b border-slate-200 dark:border-white/5">
-                <h3 className="text-2xl font-black text-center text-slate-900 dark:text-white">{editingId ? 'Editar Ordem' : 'Nova Movimentação'}</h3>
+            <div className="sticky top-0 bg-slate-50/95 dark:bg-[#0b1121]/95 backdrop-blur-xl p-6 z-20 border-b border-transparent">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-indigo-500/10 rounded-[1rem] flex items-center justify-center text-indigo-500 border border-indigo-500/20 shadow-sm">
+                        <Plus className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white">{editingId ? 'Editar Ordem' : 'Nova Movimentação'}</h3>
+                    </div>
+                </div>
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-8">
