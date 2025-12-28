@@ -1,14 +1,15 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, CartesianGrid, YAxis } from 'recharts';
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ChevronsRight } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, CartesianGrid, YAxis, Legend } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
 interface HomeProps {
   portfolio: AssetPosition[];
   dividendReceipts: DividendReceipt[];
-  realizedGain?: number;
+  salesGain?: number;
+  totalDividendsReceived?: number;
   isAiLoading?: boolean;
   inflationRate?: number;
   portfolioStartDate?: string;
@@ -27,11 +28,8 @@ const formatPercent = (val: any) => {
 
 const formatDate = (dateStr: string) => {
     if (!dateStr) return '??/??/??';
-    // Corrige fuso horário adicionando T12:00:00 para evitar dia anterior
     const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
-    if (isNaN(date.getTime())) {
-        return '??/??/??'; // Retorna um placeholder para datas inválidas
-    }
+    if (isNaN(date.getTime())) return '??/??/??';
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 };
 
@@ -52,7 +50,8 @@ const ModalTabs = ({ tabs, active, onChange }: { tabs: { id: string, label: stri
 export const Home: React.FC<HomeProps> = ({ 
   portfolio, 
   dividendReceipts, 
-  realizedGain = 0, 
+  salesGain = 0,
+  totalDividendsReceived = 0,
   isAiLoading = false,
   inflationRate = 0, 
   portfolioStartDate,
@@ -62,6 +61,7 @@ export const Home: React.FC<HomeProps> = ({
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRealGainModal, setShowRealGainModal] = useState(false);
   const [showAgendaModal, setShowAgendaModal] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
 
   const [allocationTab, setAllocationTab] = useState<'assets' | 'types' | 'segments'>('assets');
   const [incomeTab, setIncomeTab] = useState<'summary' | 'magic' | 'calendar'>('summary');
@@ -84,17 +84,19 @@ export const Home: React.FC<HomeProps> = ({
     return { ...res, totalAppreciation, appreciationPercent };
   }, [portfolio]);
 
+  const totalProfit = useMemo(() => {
+    return totalAppreciation + salesGain + totalDividendsReceived;
+  }, [totalAppreciation, salesGain, totalDividendsReceived]);
+  const isProfitPositive = totalProfit >= 0;
+
   const { received, upcoming, averageMonthly, bestPayer, chartData, nextPayments, nextDataComs } = useMemo(() => {
-    // Datas seguras
     const today = new Date();
     today.setHours(0,0,0,0);
     const todayStr = today.toISOString().split('T')[0];
 
-    // Mapa para achar o maior pagador
     const tickerTotalMap: Record<string, number> = {};
     const monthlyTotals: Record<string, number> = {};
     
-    // Arrays para a Agenda
     const upcomingPayments: DividendReceipt[] = [];
     const upcomingDataComs: DividendReceipt[] = [];
 
@@ -107,7 +109,6 @@ export const Home: React.FC<HomeProps> = ({
       
       const monthKey = payDate.substring(0, 7); // YYYY-MM
       
-      // Agrega por Ticker
       tickerTotalMap[curr.ticker] = (tickerTotalMap[curr.ticker] || 0) + curr.totalReceived;
 
       if (payDate <= todayStr) {
@@ -115,11 +116,9 @@ export const Home: React.FC<HomeProps> = ({
           monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + curr.totalReceived;
       } else {
           acc.upcoming += curr.totalReceived;
-          // Adiciona aos próximos pagamentos
           upcomingPayments.push(curr);
       }
       
-      // Verifica Data Com Futura ou Hoje
       if (dataCom >= todayStr) {
           upcomingDataComs.push(curr);
       }
@@ -130,14 +129,12 @@ export const Home: React.FC<HomeProps> = ({
     const uniqueMonths = new Set(Object.keys(monthlyTotals)).size || 1;
     const averageMonthly = totals.received / (uniqueMonths || 1);
 
-    // Encontra maior pagador
     let maxVal = 0;
     let maxTicker = '-';
     Object.entries(tickerTotalMap).forEach(([t, val]) => {
         if(val > maxVal) { maxVal = val; maxTicker = t; }
     });
 
-    // Dados para o gráfico (últimos 12 meses)
     const last12MonthsData = Object.entries(monthlyTotals)
         .sort((a,b) => a[0].localeCompare(b[0]))
         .slice(-12)
@@ -146,7 +143,6 @@ export const Home: React.FC<HomeProps> = ({
             value: value
         }));
     
-    // Ordenação da Agenda
     upcomingPayments.sort((a,b) => a.paymentDate.localeCompare(b.paymentDate));
     upcomingDataComs.sort((a,b) => a.dateCom.localeCompare(b.dateCom));
 
@@ -160,13 +156,12 @@ export const Home: React.FC<HomeProps> = ({
     };
   }, [dividendReceipts]);
 
-  // Yield On Cost da Carteira
   const yieldOnCostPortfolio = useMemo(() => {
       if (invested <= 0) return 0;
       return (received / invested) * 100;
   }, [received, invested]);
 
-  const { assetData, typeData, segmentData, allocationSummary } = useMemo(() => {
+  const { assetData, typeData, segmentData } = useMemo(() => {
     const assetData = portfolio.map(p => ({ 
       name: p.ticker, 
       value: (p.currentPrice || p.averagePrice) * p.quantity 
@@ -186,11 +181,7 @@ export const Home: React.FC<HomeProps> = ({
     const typeData = Object.entries(typesMap).map(([k, v]) => ({ name: k, value: v })).sort((a,b) => b.value - a.value);
     const segmentData = Object.entries(segmentsMap).map(([k, v]) => ({ name: k, value: v })).sort((a,b) => b.value - a.value);
 
-    const totalVal = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
-    const fiiPercent = totalVal > 0 ? ((typesMap['FIIs'] || 0) / totalVal) * 100 : 0;
-    const stockPercent = totalVal > 0 ? ((typesMap['Ações'] || 0) / totalVal) * 100 : 0;
-
-    return { assetData, typeData, segmentData, allocationSummary: { fiiPercent, stockPercent } };
+    return { assetData, typeData, segmentData };
   }, [portfolio]);
 
   const topSegments = useMemo(() => segmentData.slice(0, 3), [segmentData]);
@@ -235,70 +226,42 @@ export const Home: React.FC<HomeProps> = ({
     );
   };
 
-  // Expanded Palette to prevent repetition
   const COLORS = useMemo(() => [
-    accentColor, 
-    '#10b981', // Emerald
-    '#f59e0b', // Amber
-    '#3b82f6', // Blue
-    '#ef4444', // Red
-    '#8b5cf6', // Violet
-    '#06b6d4', // Cyan
-    '#ec4899', // Pink
-    '#84cc16', // Lime
-    '#6366f1', // Indigo
-    '#14b8a6', // Teal
-    '#f97316', // Orange
-    '#64748b', // Slate
-    '#d946ef', // Fuchsia
-    '#22c55e', // Green
+    accentColor, '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#6366f1', '#14b8a6', '#f97316', '#64748b', '#d946ef', '#22c55e',
   ], [accentColor]);
   
-  // =========================================================================================
-  // LÓGICA DE GANHO REAL (VS INFLAÇÃO)
-  // =========================================================================================
-  
-  const estimatedIPCA = useMemo(() => {
-     if (inflationRate > 0) return inflationRate;
-     if (!portfolioStartDate) return 0;
-     
-     const start = new Date(portfolioStartDate);
-     const now = new Date();
-     const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-     return Math.max(0, months * 0.45); // Estimativa conservadora de 0.45% a.m.
-  }, [inflationRate, portfolioStartDate]);
-
-  const finalIPCA = inflationRate > 0 ? inflationRate : estimatedIPCA;
-
-  // Lógica 1: Percentual (Benchmark)
-  const totalNominalReturn = totalAppreciation + realizedGain + received;
-  const nominalYield = invested > 0 ? (totalNominalReturn / invested) * 100 : 0;
+  const finalIPCA = inflationRate > 0 ? inflationRate : 0;
+  const nominalYield = invested > 0 ? (totalProfit / invested) * 100 : 0;
   const ganhoRealPercent = nominalYield - finalIPCA;
   
-  // Lógica 2: Valor Monetário (Poder de Compra)
-  // REVISADO: Compara "O quanto ganhou no total" vs "O quanto precisaria ter ganho só para empatar com a inflação"
-  const lucroNominalAbsoluto = totalNominalReturn; // (Valorização + Proventos + Vendas)
-  const custoCorrosaoInflacao = invested * (finalIPCA / 100); // (Dinheiro perdido se ficasse parado ou custo de oportunidade do IPCA)
+  const lucroNominalAbsoluto = totalProfit;
+  const custoCorrosaoInflacao = invested * (finalIPCA / 100);
   const ganhoRealValor = lucroNominalAbsoluto - custoCorrosaoInflacao;
   
   const isAboveInflation = ganhoRealPercent > 0;
-  const isPositiveBalance = totalAppreciation >= 0;
 
-  // Comparativo Visual (Barra Dupla)
   const comparisonData = useMemo(() => [
       { name: 'IPCA', value: finalIPCA, fill: '#64748b' },
       { name: 'Carteira', value: nominalYield, fill: nominalYield >= finalIPCA ? '#10b981' : '#f43f5e' }
   ], [nominalYield, finalIPCA]);
 
-  // =========================================================================================
-
   return (
-    <div className="pt-24 pb-28 px-5 space-y-6 max-w-lg mx-auto">
+    <div className="pt-24 pb-28 px-5 space-y-4 max-w-lg mx-auto">
       
       {/* 1. HERO CARD */}
-      <div className="animate-fade-in-up">
-        <div className="bg-white dark:bg-[#0f172a] p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-white/60 dark:border-white/5 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none group-hover:bg-accent/10 transition-colors duration-500"></div>
+      <div className="anim-fade-in-up is-visible">
+        <button 
+          onClick={() => setShowSummaryModal(true)}
+          className="w-full text-left bg-white dark:bg-[#0f172a] p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-white/60 dark:border-white/5 relative overflow-hidden group transition-transform duration-300 active:scale-[0.98] hover:scale-[1.02]"
+        >
+            <div 
+              className="absolute top-0 right-0 w-80 h-80 rounded-full blur-[100px] -mr-24 -mt-24 pointer-events-none group-hover:opacity-100 transition-opacity duration-500"
+              style={{ 
+                  backgroundColor: isProfitPositive ? '#10b981' : '#f43f5e',
+                  opacity: 0.1
+              }}
+            ></div>
+            
             <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-white/5 w-fit">
@@ -308,36 +271,38 @@ export const Home: React.FC<HomeProps> = ({
                    {isAiLoading && <Zap className="w-4 h-4 text-accent animate-pulse" />}
                 </div>
 
-                <div className="mb-8">
-                    <div className="text-[2.75rem] font-bold tracking-tighter text-slate-900 dark:text-white tabular-nums mb-1 leading-none">
-                        {formatBRL(balance)}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg ${isPositiveBalance ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {isPositiveBalance ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                            {formatBRL(totalAppreciation)} ({formatPercent(appreciationPercent)})
-                        </span>
-                    </div>
+                <div className="text-[2.75rem] font-bold tracking-tighter text-slate-900 dark:text-white tabular-nums mb-1 leading-none">
+                    {formatBRL(balance)}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-slate-50 dark:bg-white/[0.03] px-5 py-4 rounded-3xl">
-                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Custo</p>
+                <div className="flex items-center gap-2 mb-8">
+                    <span className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-lg ${isProfitPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        {isProfitPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                        <span>Lucro Total: {formatBRL(totalProfit)}</span>
+                    </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                   <div className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-3xl text-center">
+                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Custo Total</p>
                       <p className="text-sm font-bold text-slate-700 dark:text-slate-300 tabular-nums">{formatBRL(invested)}</p>
                    </div>
-                   <div className="bg-slate-50 dark:bg-white/[0.03] px-5 py-4 rounded-3xl">
-                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Realizado</p>
-                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(realizedGain)}</p>
+                   <div className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-3xl text-center">
+                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Valorização</p>
+                      <p className={`text-sm font-bold tabular-nums ${totalAppreciation >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}>{totalAppreciation >= 0 ? '+' : ''}{formatBRL(totalAppreciation)}</p>
+                   </div>
+                   <div className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-3xl text-center">
+                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Realizado</p>
+                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(salesGain + totalDividendsReceived)}</p>
                    </div>
                 </div>
             </div>
-        </div>
+        </button>
       </div>
 
-      {/* 2. CARD AGENDA (APRIMORADO) */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+      {/* 2. CARD AGENDA */}
+      <div className="anim-fade-in-up is-visible" style={{ animationDelay: '50ms' }}>
          <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-gradient-to-br from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/[0.05] dark:to-purple-500/[0.05] p-6 rounded-[2.5rem] border border-indigo-500/10 active:scale-[0.98] transition-all hover:shadow-xl hover:shadow-indigo-500/5 relative overflow-hidden group">
-            {/* Elemento Decorativo de Fundo */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-indigo-500/20 transition-colors"></div>
             
             <div className="flex items-center justify-between relative z-10 mb-5">
@@ -356,7 +321,6 @@ export const Home: React.FC<HomeProps> = ({
                 </div>
             </div>
             
-            {/* Badges Preview Aprimorados */}
             {(nextPayments.length > 0 || nextDataComs.length > 0) ? (
                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mask-linear-fade relative z-10">
                     {nextPayments.slice(0, 3).map((p, i) => (
@@ -381,27 +345,52 @@ export const Home: React.FC<HomeProps> = ({
       </div>
 
       {/* 3. CARD RENDA PASSIVA */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-        <button onClick={() => setShowProventosModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-lg pointer-events-auto">
-            <div className="flex items-start justify-between relative z-10">
-                <div>
-                   <div className="flex items-center gap-3 mb-5">
-                      <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:rotate-12 transition-transform"><CircleDollarSign className="w-5 h-5" strokeWidth={2} /></div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">Renda Passiva</h3>
-                   </div>
-                   <div>
-                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Total Recebido</p>
-                       <p className="text-2xl font-bold text-slate-900 dark:text-white tabular-nums tracking-tight">{formatBRL(received)}</p>
-                   </div>
+      <div className="anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
+        <button 
+          onClick={() => setShowProventosModal(true)} 
+          className="w-full text-left bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-500/[0.05] dark:to-teal-500/[0.05] p-6 rounded-[2.5rem] border border-emerald-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-emerald-500/5 pointer-events-auto"
+        >
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/20 transition-colors"></div>
+            
+            <div className="relative z-10">
+                <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-4">
+                       <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100 dark:border-emerald-500/20 group-hover:scale-110 transition-transform">
+                           <CircleDollarSign className="w-6 h-6" strokeWidth={2} />
+                       </div>
+                       <div>
+                           <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">Renda Passiva</h3>
+                           <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Histórico de Proventos</p>
+                       </div>
+                    </div>
                 </div>
-                
-                <div className="text-right flex flex-col items-end justify-between h-full">
-                    <div className="bg-slate-50 dark:bg-white/5 px-4 py-3 rounded-2xl mb-3 min-w-[100px]">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Média Mensal</span>
-                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</span>
+
+                <div className="flex gap-6">
+                    <div className="flex-1">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Total Recebido</p>
+                        <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums tracking-tighter">{formatBRL(received)}</p>
+                        
+                        <div className="mt-4 border-t border-emerald-100 dark:border-emerald-500/10 pt-3">
+                           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Média Mensal</p>
+                           <p className="text-lg font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</p>
+                        </div>
+                    </div>
+                    <div className="w-24 h-full">
+                       <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartData.slice(-6)} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                             <Bar dataKey="value" fill={accentColor} radius={4} opacity={0.6} />
+                          </BarChart>
+                       </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-emerald-100 dark:border-emerald-500/10 flex items-center justify-start gap-2">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-[#0f172a] text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wide shadow-sm border border-emerald-100 dark:border-emerald-500/20">
+                       <Award className="w-3 h-3" />
+                       <span>YOC: {formatPercent(yieldOnCostPortfolio)}</span>
                     </div>
                     {upcoming > 0 && (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-white text-[10px] font-bold uppercase tracking-wide shadow-lg shadow-accent/20">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-[#0f172a] text-accent text-[10px] font-bold uppercase tracking-wide shadow-sm border border-accent/10">
                             <Sparkles className="w-3 h-3" />
                             <span>Futuro: {formatBRL(upcoming)}</span>
                         </div>
@@ -415,7 +404,7 @@ export const Home: React.FC<HomeProps> = ({
           {/* 4. CARD ALOCAÇÃO */}
           <button 
             onClick={() => setShowAllocationModal(true)} 
-            className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col h-full group hover:shadow-lg relative overflow-hidden"
+            className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col h-full group hover:shadow-lg relative overflow-hidden"
             style={{ animationDelay: '200ms' }}
           >
              <div className="flex justify-between items-start mb-2 w-full">
@@ -447,464 +436,321 @@ export const Home: React.FC<HomeProps> = ({
           {/* 5. CARD GANHO REAL */}
           <button 
             onClick={() => setShowRealGainModal(true)} 
-            className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg relative overflow-hidden"
+            className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg relative overflow-hidden"
             style={{ animationDelay: '250ms' }}
           >
              <div className="mb-4">
-                 <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 mb-3 group-hover:scale-110 transition-transform"><Scale className="w-5 h-5" strokeWidth={2} /></div>
-                 <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Vs Inflação</h3>
+                 <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 mb-2 group-hover:scale-110 transition-transform"><Scale className="w-5 h-5" strokeWidth={2} /></div>
+                 <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Ganho Real</h3>
              </div>
              <div>
-                <div className="flex items-end gap-1 mb-2">
-                    <span className={`text-2xl font-bold tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {isAboveInflation ? '+' : ''}{ganhoRealPercent.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}%
-                    </span>
-                </div>
-                <div className="flex gap-0.5 h-1.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-white/5">
-                    <div className="h-full bg-slate-300 dark:bg-slate-600" style={{ width: '40%' }}></div>
-                    <div className={`h-full ${isAboveInflation ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: '60%' }}></div>
-                </div>
-                {/* Data de início para contexto */}
-                <p className="text-[9px] text-slate-400 mt-2 font-medium truncate">
-                   {portfolioStartDate ? `IPCA desde ${portfolioStartDate.split('-')[1]}/${portfolioStartDate.split('-')[0]}` : 'IPCA Estimado'}
-                </p>
+                <p className={`text-xl font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{isAboveInflation ? '+' : ''}{formatPercent(ganhoRealPercent)}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Acima da Inflação</p>
              </div>
           </button>
       </div>
+      
+      {/* --- MODALS --- */}
 
-      {/* MODAL AGENDA */}
-      <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
-         <div className="px-4 py-2">
-            <div className="flex items-center gap-3 px-2 mb-6 mt-2">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><CalendarDays className="w-5 h-5" strokeWidth={2} /></div>
+      <SwipeableModal isOpen={showSummaryModal} onClose={() => setShowSummaryModal(false)}>
+        <div className="px-6 py-2">
+            <div className="flex items-center gap-3 mb-8 px-2 mt-2">
+                <div className="w-12 h-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-500"><Wallet className="w-6 h-6" strokeWidth={2} /></div>
                 <div>
-                   <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Agenda</h3>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Datas Importantes</p>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Resumo Financeiro</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">A Jornada do seu Dinheiro</p>
                 </div>
             </div>
-
-            <ModalTabs active={agendaTab} onChange={setAgendaTab} tabs={[
-                { id: 'payments', label: 'Pagamentos' }, 
-                { id: 'datacom', label: 'Data Com' }, 
-            ]} />
-
-            <div className="space-y-3 pb-8 animate-fade-in">
-                {agendaTab === 'payments' ? (
-                    nextPayments.length === 0 ? (
-                        <div className="text-center py-10">
-                            <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4"><Coins className="w-6 h-6 text-slate-300" /></div>
-                            <p className="text-slate-400 text-xs font-medium">Nenhum pagamento futuro previsto.</p>
-                        </div>
-                    ) : (
-                        nextPayments.map((p, i) => (
-                            <div key={i} className="flex justify-between items-center p-4 bg-white dark:bg-[#0f172a] rounded-3xl animate-fade-in-up border border-slate-100 dark:border-white/5" style={{ animationDelay: `${i * 50}ms` }}>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex flex-col items-center justify-center text-emerald-600 font-bold shrink-0">
-                                        <span className="text-[8px] uppercase opacity-70">{formatDate(p.paymentDate).split('/')[1]}</span>
-                                        <span className="text-sm leading-none">{formatDate(p.paymentDate).split('/')[0]}</span>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-900 dark:text-white">{p.ticker}</h4>
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${p.type.includes('JCP') ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'}`}>
-                                                {p.type.includes('JCP') ? 'JCP' : 'Dividendo'}
-                                            </span>
-                                            {p.quantityOwned > 0 && <span className="text-[9px] text-slate-400 font-bold">• {p.quantityOwned} Cotas</span>}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(p.totalReceived)}</p>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tabular-nums">R$ {p.rate.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} / un</p>
-                                </div>
-                            </div>
-                        ))
-                    )
-                ) : (
-                    nextDataComs.length === 0 ? (
-                        <div className="text-center py-10">
-                            <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4"><Clock className="w-6 h-6 text-slate-300" /></div>
-                            <p className="text-slate-400 text-xs font-medium">Nenhuma data com prevista.</p>
-                        </div>
-                    ) : (
-                        nextDataComs.map((p, i) => (
-                            <div key={i} className="flex justify-between items-center p-4 bg-white dark:bg-[#0f172a] rounded-3xl animate-fade-in-up border border-slate-100 dark:border-white/5" style={{ animationDelay: `${i * 50}ms` }}>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex flex-col items-center justify-center text-amber-600 font-bold shrink-0">
-                                        <span className="text-[8px] uppercase opacity-70">{formatDate(p.dateCom).split('/')[1]}</span>
-                                        <span className="text-sm leading-none">{formatDate(p.dateCom).split('/')[0]}</span>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-900 dark:text-white">{p.ticker}</h4>
-                                        <p className="text-[10px] font-medium text-slate-500">Corte para receber:</p>
-                                        <span className={`text-[9px] font-bold uppercase ${p.type.includes('JCP') ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                             {p.type.includes('JCP') ? 'Juros s/ Capital' : 'Dividendos/Rend.'}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Valor Anunciado</p>
-                                    <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">R$ {p.rate.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</p>
-                                </div>
-                            </div>
-                        ))
-                    )
-                )}
-            </div>
-         </div>
-      </SwipeableModal>
-
-      {/* MODAL ALOCAÇÃO */}
-      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-        <div className="px-4 py-2">
-            <div className="flex items-center gap-3 px-2 mb-6 mt-2">
-                <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent"><LayoutGrid className="w-5 h-5" strokeWidth={2} /></div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Detalhamento</h3>
-            </div>
-            <ModalTabs 
-                active={allocationTab} 
-                onChange={setAllocationTab} 
-                tabs={[{ id: 'assets', label: 'Por Ativo' }, { id: 'types', label: 'Por Classe' }, { id: 'segments', label: 'Por Segmento' }]} 
-            />
-            <div className="h-72 w-full mb-6">
-                    <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie 
-                            activeIndex={activeIndex}
-                            activeShape={renderActiveShape}
-                            data={allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData} 
-                            innerRadius={75} 
-                            outerRadius={100} 
-                            paddingAngle={4} 
-                            dataKey="value" 
-                            stroke="none" 
-                            cornerRadius={8}
-                            animationDuration={1500}
-                            animationEasing="ease-out"
-                            onClick={onPieEnter}
-                        >
-                            {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </Pie>
-                    </PieChart>
-                    </ResponsiveContainer>
-            </div>
-            <div className="space-y-3 pb-8">
-                {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((item, i) => {
-                    const percent = ((item.value / (balance || 1)) * 100);
-                    const isActive = i === activeIndex;
-                    return (
-                    <button 
-                        key={item.name} 
-                        onClick={() => setActiveIndex(i)}
-                        className={`w-full flex items-center justify-between p-4 rounded-3xl transition-all duration-300 animate-fade-in-up border border-slate-100 dark:border-white/5 ${isActive ? 'bg-accent/5 shadow-sm scale-[1.01]' : 'bg-white dark:bg-[#0f172a]'}`}
-                        style={{ animationDelay: `${i * 50}ms` }}
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className={`w-3 h-3 rounded-full shadow-sm ring-2 ${isActive ? 'ring-accent/40' : 'ring-white dark:ring-[#0f172a]'}`} style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-                            <div className="text-left">
-                                <h4 className={`font-bold text-xs uppercase tracking-wide ${isActive ? 'text-accent' : 'text-slate-900 dark:text-white'}`}>{item.name}</h4>
-                                <p className="text-[10px] font-medium text-slate-400">{formatBRL(item.value)}</p>
-                            </div>
-                        </div>
-                        <span className={`text-sm font-bold tabular-nums ${isActive ? 'text-accent' : 'text-slate-900 dark:text-white'}`}>{percent.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
-                    </button>
-                    );
-                })}
+            <div className="space-y-3 pb-6">
+                <div className="flex items-center gap-4">
+                    <div className="flex-1 bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Custo de Aquisição</p>
+                        <p className="text-lg font-bold text-slate-700 dark:text-slate-300 tabular-nums">{formatBRL(invested)}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3 justify-center"><Plus className="w-4 h-4 text-slate-300" /></div>
+                <div className="flex items-center gap-4">
+                    <div className="flex-1 bg-emerald-50 dark:bg-emerald-500/5 p-4 rounded-2xl border border-emerald-100 dark:border-transparent">
+                        <p className="text-[10px] font-bold text-emerald-600/60 dark:text-emerald-300/60 uppercase tracking-widest mb-1">Ganhos com Vendas</p>
+                        <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatBRL(salesGain)}</p>
+                    </div>
+                    <div className="flex-1 bg-emerald-50 dark:bg-emerald-500/5 p-4 rounded-2xl border border-emerald-100 dark:border-transparent">
+                        <p className="text-[10px] font-bold text-emerald-600/60 dark:text-emerald-300/60 uppercase tracking-widest mb-1">Proventos</p>
+                        <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatBRL(totalDividendsReceived)}</p>
+                    </div>
+                </div>
+                 <div className="flex items-center gap-3 justify-center"><Plus className="w-4 h-4 text-slate-300" /></div>
+                 <div className="flex items-center gap-4">
+                    <div className={`flex-1 p-4 rounded-2xl border ${totalAppreciation >= 0 ? 'bg-emerald-50 dark:bg-emerald-500/5 border-emerald-100 dark:border-transparent' : 'bg-rose-50 dark:bg-rose-500/5 border-rose-100 dark:border-transparent'}`}>
+                        <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${totalAppreciation >= 0 ? 'text-emerald-600/60 dark:text-emerald-300/60' : 'text-rose-600/60 dark:text-rose-300/60'}`}>Valorização Atual</p>
+                        <p className={`text-lg font-bold tabular-nums ${totalAppreciation >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>{formatBRL(totalAppreciation)}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3 justify-center"><Equal className="w-4 h-4 text-slate-300" /></div>
+                <div className="flex items-center gap-4">
+                    <div className="flex-1 bg-white dark:bg-slate-800 p-5 rounded-3xl border-2 border-slate-900 dark:border-white shadow-lg">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Patrimônio Total</p>
+                        <p className="text-2xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">{formatBRL(balance)}</p>
+                    </div>
+                </div>
             </div>
         </div>
       </SwipeableModal>
 
-      {/* MODAL GANHO REAL (REFORMULADO) */}
+      <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
+        <div className="pb-8">
+            <div className="px-6 pt-2">
+                <div className="flex items-center gap-3 mb-4 px-2 mt-2">
+                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><CircleDollarSign className="w-6 h-6" strokeWidth={2} /></div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Renda Passiva</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Seus Proventos</p>
+                    </div>
+                </div>
+            </div>
+            <ModalTabs tabs={[{id: 'summary', label: 'Resumo'}, {id: 'magic', label: 'Magic Number'}, {id: 'calendar', label: 'Histórico'}]} active={incomeTab} onChange={setIncomeTab} />
+
+            <div className="px-5">
+                {incomeTab === 'summary' && (
+                    <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
+                        <div className="col-span-2 bg-slate-50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-transparent">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Recebido</p>
+                            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{formatBRL(received)}</p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-transparent">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Média Mensal</p>
+                            <p className="text-lg font-bold text-slate-800 dark:text-white tabular-nums">{formatBRL(averageMonthly)}</p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-transparent">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Yield on Cost</p>
+                            <p className="text-lg font-bold text-slate-800 dark:text-white tabular-nums">{formatPercent(yieldOnCostPortfolio)}</p>
+                        </div>
+                        <div className="col-span-2 bg-slate-50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-transparent flex items-center justify-between">
+                            <div>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Maior Pagador</p>
+                               <p className="text-lg font-bold text-slate-800 dark:text-white">{bestPayer.ticker}</p>
+                            </div>
+                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatBRL(bestPayer.value)}</p>
+                        </div>
+                    </div>
+                )}
+                {incomeTab === 'magic' && (
+                    <div className="space-y-3 anim-fade-in-up is-visible">
+                        {magicNumbers?.map((m, i) => m && (
+                          <div key={i} className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
+                              <div className="flex justify-between items-center mb-2">
+                                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{m.ticker}</h4>
+                                  <span className="text-xs font-bold text-accent tabular-nums">{m.progress.toFixed(0)}%</span>
+                              </div>
+                              <div className="h-2 bg-slate-100 dark:bg-white/5 rounded-full mb-2 overflow-hidden">
+                                  <div className="h-full bg-accent" style={{ width: `${m.progress}%` }}></div>
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-semibold flex justify-between">
+                                  <span>{m.currentQty} / {m.magicQty} Cotas</span>
+                                  <span>Faltam {m.missing}</span>
+                              </div>
+                          </div>
+                        ))}
+                    </div>
+                )}
+                {incomeTab === 'calendar' && (
+                    <div className="h-64 anim-fade-in-up is-visible">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
+                                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="rgba(128,128,128,0.5)" />
+                                <YAxis tickFormatter={(v) => `R$${v}`} tick={{ fontSize: 10 }} stroke="rgba(128,128,128,0.5)" />
+                                <Tooltip contentStyle={{ backgroundColor: 'rgba(2, 6, 23, 0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem', backdropFilter: 'blur(10px)' }} cursor={{ fill: 'rgba(128,128,128,0.1)' }} />
+                                <Bar dataKey="value" name="Recebido" fill={accentColor} radius={[8, 8, 8, 8]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
+            </div>
+        </div>
+      </SwipeableModal>
+
+      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
+        <div className="pb-8">
+            <div className="px-6 pt-2">
+                <div className="flex items-center gap-3 mb-4 px-2 mt-2">
+                    <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent"><PieIcon className="w-6 h-6" strokeWidth={2} /></div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Alocação</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Composição da Carteira</p>
+                    </div>
+                </div>
+            </div>
+            <ModalTabs tabs={[{id: 'assets', label: 'Ativos'}, {id: 'types', label: 'Tipos'}, {id: 'segments', label: 'Segmentos'}]} active={allocationTab} onChange={setAllocationTab} />
+            
+            <div className="px-5">
+              {[
+                { id: 'assets', data: assetData },
+                { id: 'types', data: typeData },
+                { id: 'segments', data: segmentData }
+              ].map(tab => {
+                if(tab.id !== allocationTab) return null;
+                const currentData = tab.data;
+                const total = currentData.reduce((acc, item) => acc + item.value, 0);
+
+                return (
+                  <div key={tab.id} className="anim-fade-in-up is-visible">
+                      <div className="h-48 w-full -my-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie 
+                              data={currentData} 
+                              cx="50%" 
+                              cy="50%" 
+                              innerRadius={60} 
+                              outerRadius={80} 
+                              fill="#8884d8" 
+                              paddingAngle={5} 
+                              dataKey="value" 
+                              activeIndex={activeIndex} 
+                              activeShape={renderActiveShape} 
+                              onMouseEnter={onPieEnter}
+                              cornerRadius={8}
+                            >
+                              {currentData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" fillOpacity={activeIndex === index ? 1 : 0.3} style={{ transition: 'opacity 0.3s ease' }} />)}
+                            </Pie>
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="space-y-2 mt-4">
+                        {currentData.map((item, index) => (
+                          <div key={index} onMouseEnter={() => onPieEnter(null, index)} className={`flex items-center justify-between p-3 rounded-xl transition-all ${activeIndex === index ? 'bg-slate-100 dark:bg-white/5' : ''}`}>
+                            <div className="flex items-center gap-3">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{item.name}</span>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(item.value)}</p>
+                                <p className="text-xs text-slate-400 font-medium tabular-nums">{formatPercent((item.value / total) * 100)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                  </div>
+                )
+              })}
+            </div>
+        </div>
+      </SwipeableModal>
+
       <SwipeableModal isOpen={showRealGainModal} onClose={() => setShowRealGainModal(false)}>
-         <div className="px-4 py-2">
-            <div className="flex items-center gap-3 px-2 mb-6 mt-2">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><Scale className="w-5 h-5" strokeWidth={2} /></div>
+        <div className="px-6 py-2 pb-8">
+            <div className="flex items-center gap-3 mb-4 px-2 mt-2">
+                <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500"><Scale className="w-6 h-6" strokeWidth={2} /></div>
                 <div>
-                   <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Renda vs Inflação</h3>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Proteção do Poder de Compra</p>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Poder de Compra</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rentabilidade vs. Inflação</p>
                 </div>
             </div>
             
-            <ModalTabs active={gainTab} onChange={setGainTab} tabs={[
-                { id: 'benchmark', label: 'Benchmark' }, 
-                { id: 'power', label: 'Poder de Compra' }, 
-            ]} />
+            <ModalTabs tabs={[{id: 'benchmark', label: 'Benchmark'}, {id: 'power', label: 'Poder de Compra'}]} active={gainTab} onChange={setGainTab} />
             
             {gainTab === 'benchmark' && (
-                <div className="animate-fade-in space-y-6 mt-4 pb-8">
-                    {/* Scorecard Visual */}
-                    <div className="flex items-center justify-between bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm">
-                        <div className="flex flex-col items-center flex-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Carteira</span>
-                            <span className={`text-2xl font-black ${nominalYield >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{nominalYield.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</span>
+                <div className="space-y-4 px-4 anim-fade-in-up is-visible">
+                    <div className="bg-slate-50 dark:bg-[#0f172a] p-6 rounded-3xl grid grid-cols-3 items-center text-center">
+                        <div className="space-y-1">
+                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Carteira</p>
+                           <p className={`text-2xl font-black tabular-nums ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{formatPercent(nominalYield)}</p>
                         </div>
-                        <div className="flex flex-col items-center px-4">
-                            <span className="text-xs font-black text-slate-300 dark:text-slate-600">VS</span>
-                        </div>
-                        <div className="flex flex-col items-center flex-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">IPCA</span>
-                            <span className="text-2xl font-black text-slate-700 dark:text-slate-300">{finalIPCA.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</span>
+                        <p className="font-bold text-slate-300 dark:text-slate-600">VS</p>
+                        <div className="space-y-1">
+                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">IPCA</p>
+                           <p className="text-2xl font-black text-slate-500 tabular-nums">{formatPercent(finalIPCA)}</p>
                         </div>
                     </div>
 
-                    <div className="bg-slate-50 dark:bg-white/5 p-8 rounded-[3rem] text-center border border-slate-200/50 dark:border-white/5 relative overflow-hidden">
-                        <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[60px] opacity-20 -mr-10 -mt-10 ${isAboveInflation ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 relative z-10">Retorno Real Acumulado</p>
-                        <div className={`text-6xl font-black tabular-nums tracking-tighter mb-4 relative z-10 ${isAboveInflation ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {isAboveInflation ? '+' : ''}{ganhoRealPercent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
-                        </div>
-                        <p className="text-[10px] font-medium text-slate-500 relative z-10 max-w-[200px] mx-auto leading-relaxed">
-                            {isAboveInflation 
-                                ? 'Sua carteira está preservando e multiplicando seu capital acima da inflação.' 
-                                : 'No momento, a inflação está corroendo parte do seu poder de compra.'}
-                        </p>
+                    <div className={`p-6 rounded-3xl text-center relative overflow-hidden ${isAboveInflation ? 'bg-gradient-to-br from-emerald-500/10 to-transparent' : 'bg-gradient-to-br from-rose-500/10 to-transparent'}`}>
+                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Retorno Real Acumulado</p>
+                       <p className={`text-5xl font-black tabular-nums tracking-tighter my-2 ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{isAboveInflation ? '+' : ''}{formatPercent(ganhoRealPercent)}</p>
+                       <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[250px] mx-auto">Sua carteira está {isAboveInflation ? 'preservando e multiplicando' : 'perdendo valor para'} seu capital acima da inflação.</p>
                     </div>
 
-                    {/* Gráfico de Barras Comparativo */}
-                    <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] h-56 border border-slate-100 dark:border-white/5">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={comparisonData} layout="vertical" margin={{ top: 0, right: 30, left: 30, bottom: 0 }} barCategoryGap={10}>
-                                <XAxis type="number" hide />
-                                <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} width={60} />
-                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                <Bar 
-                                    dataKey="value" 
-                                    radius={[0, 10, 10, 0]} 
-                                    barSize={24} 
-                                    background={{ fill: 'rgba(0,0,0,0.02)' }} 
-                                    label={{ position: 'right', fill: '#94a3b8', fontSize: 10, fontWeight: 'bold', formatter: (value: number) => value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} 
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <div className="bg-slate-50 dark:bg-[#0f172a] p-6 rounded-3xl space-y-4">
+                       {(comparisonData.sort((a,b) => b.value - a.value)).map(item => {
+                         const maxValue = Math.max(nominalYield, finalIPCA, 1);
+                         const barWidth = (item.value / maxValue) * 100;
+                         return (
+                            <div key={item.name}>
+                               <div className="flex items-center text-xs font-bold">
+                                   <span className="w-16 text-slate-400">{item.name}</span>
+                                   <div className="flex-1 h-3 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
+                                       <div className="h-full rounded-full" style={{ width: `${barWidth}%`, backgroundColor: item.fill, transition: 'width 0.5s ease-out' }}></div>
+                                   </div>
+                                   <span className="w-12 text-right text-slate-500 tabular-nums">{item.value.toFixed(2)}%</span>
+                               </div>
+                            </div>
+                         );
+                       })}
                     </div>
                 </div>
             )}
 
             {gainTab === 'power' && (
-                <div className="space-y-6 mt-4 pb-8 animate-fade-in flex flex-col">
-                    <div className="p-6 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] mb-2 border border-slate-200/50 dark:border-white/5">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                             <ShieldCheck className="w-3.5 h-3.5" />
-                             Lucro Nominal vs Inflação
-                        </h4>
-                        
-                        <div className="space-y-4">
-                             {/* Item 1: Lucro Bruto (Valorização + Dividendos) */}
-                             <div className="flex items-center justify-between relative z-10 bg-white dark:bg-[#0f172a] p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-white/5">
-                                 <div className="flex items-center gap-3">
-                                     <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 font-bold"><ArrowUpRight className="w-5 h-5" /></div>
-                                     <div>
-                                         <p className="text-[9px] font-bold text-slate-400 uppercase">Lucro Nominal Total</p>
-                                         <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(lucroNominalAbsoluto)}</p>
-                                     </div>
-                                 </div>
-                             </div>
-
-                             {/* Operador Visual */}
-                             <div className="flex justify-center -my-2 relative z-20">
-                                 <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 border border-white dark:border-[#0f172a]">
-                                     <Minus className="w-4 h-4" />
-                                 </div>
-                             </div>
-
-                             {/* Item 2: Custo da Inflação */}
-                             <div className="flex items-center justify-between bg-white dark:bg-[#0f172a] p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-white/5 opacity-80">
-                                 <div className="flex items-center gap-3">
-                                     <div className="w-10 h-10 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500 font-bold"><TrendingUp className="w-5 h-5" /></div>
-                                     <div>
-                                         <p className="text-[9px] font-bold text-slate-400 uppercase">Custo da Inflação (IPCA)</p>
-                                         <p className="text-sm font-bold text-rose-500 tabular-nums">{formatBRL(custoCorrosaoInflacao)}</p>
-                                     </div>
-                                 </div>
-                             </div>
-
-                             {/* Operador Visual */}
-                             <div className="flex justify-center -my-2 relative z-20">
-                                 <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 border border-white dark:border-[#0f172a]">
-                                     <Equal className="w-4 h-4" />
-                                 </div>
-                             </div>
-
-                             {/* Item 3: Resultado */}
-                             <div className={`flex items-center justify-between p-4 rounded-3xl shadow-lg border relative overflow-hidden ${ganhoRealValor >= 0 ? 'bg-emerald-500 border-emerald-400/50 text-white' : 'bg-rose-500 border-rose-400/50 text-white'}`}>
-                                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/20 rounded-full blur-2xl -mr-6 -mt-6"></div>
-                                 <div className="flex items-center gap-3 relative z-10">
-                                     <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-white font-bold backdrop-blur-sm"><Award className="w-5 h-5" /></div>
-                                     <div>
-                                         <p className="text-[9px] font-bold text-white/80 uppercase">Ganho Real Líquido</p>
-                                         <p className="text-xl font-black text-white tabular-nums tracking-tight">{ganhoRealValor >= 0 ? '+' : ''}{formatBRL(ganhoRealValor)}</p>
-                                     </div>
-                                 </div>
-                             </div>
-                        </div>
-
-                        <p className="text-[10px] text-slate-400 text-center mt-6 leading-relaxed px-4">
-                           O <span className="font-bold text-slate-500 dark:text-slate-300">Lucro Nominal</span> é tudo que você ganhou em reais (valorização + dividendos). O <span className="font-bold text-slate-500 dark:text-slate-300">Custo da Inflação</span> é quanto o seu dinheiro investido perdeu de valor de compra no período. A diferença é o seu <span className="font-bold text-slate-500 dark:text-slate-300">Ganho Real</span>.
-                        </p>
+              <div className="space-y-3 px-4 anim-fade-in-up is-visible">
+                  <div className="flex items-center gap-4">
+                      <div className="flex-1 bg-emerald-50 dark:bg-emerald-500/5 p-4 rounded-2xl border border-emerald-100 dark:border-transparent">
+                          <p className="text-[10px] font-bold text-emerald-600/60 dark:text-emerald-300/60 uppercase tracking-widest mb-1">Lucro Total</p>
+                          <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatBRL(lucroNominalAbsoluto)}</p>
+                      </div>
+                  </div>
+                  <div className="flex items-center gap-3 justify-center"><Minus className="w-4 h-4 text-slate-300" /></div>
+                  <div className="flex items-center gap-4">
+                      <div className="flex-1 bg-rose-50 dark:bg-rose-500/5 p-4 rounded-2xl border border-rose-100 dark:border-transparent">
+                          <p className="text-[10px] font-bold text-rose-600/60 dark:text-rose-300/60 uppercase tracking-widest mb-1">Custo da Inflação (IPCA)</p>
+                          <p className="text-lg font-bold text-rose-700 dark:text-rose-400 tabular-nums">{formatBRL(custoCorrosaoInflacao)}</p>
+                      </div>
+                  </div>
+                  <div className="flex items-center gap-3 justify-center"><Equal className="w-4 h-4 text-slate-300" /></div>
+                  <div className={`flex-1 p-5 rounded-3xl border-2 ${isAboveInflation ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30' : 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30'}`}>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isAboveInflation ? 'text-emerald-600/60 dark:text-emerald-300/60' : 'text-rose-600/60 dark:text-rose-300/60'}`}>Ganho Real de Poder de Compra</p>
+                      <p className={`text-2xl font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>{isAboveInflation ? '+' : ''}{formatBRL(ganhoRealValor)}</p>
+                  </div>
+              </div>
+            )}
+        </div>
+      </SwipeableModal>
+      
+      <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
+        <div className="pb-8">
+            <div className="px-6 pt-2">
+                <div className="flex items-center gap-3 mb-4 px-2 mt-2">
+                    <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500"><CalendarDays className="w-6 h-6" strokeWidth={2} /></div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Agenda</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Próximos Eventos</p>
                     </div>
                 </div>
-            )}
-         </div>
-      </SwipeableModal>
-
-      {/* MODAL PROVENTOS (REFORMULADO - NOVO RESUMO COM GRÁFICO) */}
-      <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
-        <div className="px-4 py-2">
-           <div className="flex items-center gap-3 px-2 mb-6 mt-2">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500"><CircleDollarSign className="w-5 h-5" strokeWidth={2} /></div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Proventos</h3>
-           </div>
-           <ModalTabs active={incomeTab} onChange={setIncomeTab} tabs={[{ id: 'summary', label: 'Resumo' }, { id: 'magic', label: 'Metas' }, { id: 'calendar', label: 'Extrato' }]} />
-
-           <div className="mt-4 pb-8">
-                {incomeTab === 'summary' && (
-                    <div className="space-y-4 animate-fade-in">
-                        {/* Hero Section - Split Layout */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-emerald-500 p-6 rounded-[2.2rem] text-white shadow-lg shadow-emerald-500/20 flex flex-col justify-between h-36 relative overflow-hidden">
-                                <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/20 rounded-full blur-xl"></div>
-                                <Banknote className="w-6 h-6 opacity-80" />
-                                <div>
-                                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
-                                    <p className="text-2xl font-black tabular-nums tracking-tighter">{formatBRL(received)}</p>
-                                </div>
-                            </div>
-                            <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.2rem] flex flex-col justify-between h-36 border border-slate-100 dark:border-white/5 relative overflow-hidden">
-                                <div className="absolute -right-4 -top-4 w-20 h-20 bg-slate-100 dark:bg-white/5 rounded-full blur-xl"></div>
-                                <Calendar className="w-6 h-6 text-slate-400" />
-                                <div>
-                                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Média Mensal</p>
-                                    <p className="text-2xl font-black tabular-nums tracking-tighter text-slate-900 dark:text-white">{formatBRL(averageMonthly)}</p>
-                                </div>
-                            </div>
+            </div>
+            <ModalTabs tabs={[{id: 'payments', label: 'Pagamentos'}, {id: 'datacom', label: 'Data Com'}]} active={agendaTab} onChange={setAgendaTab} />
+            <div className="px-5 space-y-3">
+                {agendaTab === 'payments' && (nextPayments.length > 0 ? nextPayments.map((p, i) => (
+                    <div key={i} className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex justify-between items-center">
+                        <div>
+                           <p className="font-bold text-slate-900 dark:text-white">{p.ticker}</p>
+                           <p className="text-[10px] font-semibold text-slate-400">{formatDate(p.paymentDate)}</p>
                         </div>
-
-                        {/* Gráfico de Evolução */}
-                        <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm">
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-2">
-                                    <TrendingUp className="w-4 h-4 text-accent" />
-                                    <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Evolução (12 Meses)</h4>
-                                </div>
-                            </div>
-                            <div className="h-48 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                                        <XAxis 
-                                            dataKey="name" 
-                                            axisLine={false} 
-                                            tickLine={false} 
-                                            tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} 
-                                            dy={10}
-                                            interval={2}
-                                        />
-                                        <YAxis 
-                                            axisLine={false} 
-                                            tickLine={false} 
-                                            tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} 
-                                            tickFormatter={(val) => `R$${val}`}
-                                        />
-                                        <Tooltip 
-                                            cursor={{fill: 'transparent'}}
-                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)', backgroundColor: 'rgba(255, 255, 255, 0.95)', padding: '8px 12px' }}
-                                            formatter={(value: number) => [<span className="text-emerald-600 font-bold">{formatBRL(value)}</span>, '']}
-                                            labelStyle={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}
-                                        />
-                                        <Bar 
-                                            dataKey="value" 
-                                            radius={[6, 6, 6, 6]} 
-                                            fill={accentColor}
-                                            barSize={16}
-                                            animationDuration={1500}
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-
-                        {/* Cards Inferiores */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Percent className="w-3 h-3" /> Yield on Cost</p>
-                                <p className="text-lg font-black text-indigo-500 tabular-nums">{yieldOnCostPortfolio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</p>
-                            </div>
-
-                            <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Trophy className="w-3 h-3 text-amber-500" /> Top Pagador</p>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-black text-slate-900 dark:text-white">{bestPayer.ticker}</span>
-                                    <span className="text-[10px] font-bold text-amber-500 tabular-nums">{formatBRL(bestPayer.value)}</span>
-                                </div>
-                            </div>
-                        </div>
+                        <p className="text-sm font-bold text-emerald-500 tabular-nums">{formatBRL(p.totalReceived)}</p>
                     </div>
-                )}
+                )) : <p className="text-center text-xs text-slate-400 py-10">Nenhum pagamento agendado.</p>)}
 
-                {incomeTab === 'magic' && (
-                    <div className="space-y-4 animate-fade-in">
-                        <div className="bg-accent/5 p-6 rounded-[2rem] mb-4 border border-accent/10">
-                             <div className="flex gap-2 items-center text-accent mb-2">
-                                <Target className="w-5 h-5" />
-                                <span className="text-xs font-bold uppercase tracking-wide">Magic Number</span>
-                             </div>
-                             <p className="text-[11px] text-slate-500 leading-relaxed font-medium">Quantidade de cotas necessária para comprar uma nova cota apenas com os rendimentos mensais.</p>
+                {agendaTab === 'datacom' && (nextDataComs.length > 0 ? nextDataComs.map((p, i) => (
+                    <div key={i} className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex justify-between items-center">
+                        <div>
+                           <p className="font-bold text-slate-900 dark:text-white">{p.ticker}</p>
+                           <p className="text-[10px] font-semibold text-slate-400">Data Limite: {formatDate(p.dateCom)}</p>
                         </div>
-                        {magicNumbers.map((m, i) => (
-                            <div key={m.ticker} className="p-6 bg-white dark:bg-[#0f172a] rounded-[2.5rem] shadow-sm animate-fade-in-up border border-slate-100 dark:border-white/5" style={{ animationDelay: `${i * 50}ms` }}>
-                                <div className="flex justify-between items-center mb-5">
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-bold text-base text-slate-900 dark:text-white">{m.ticker}</span>
-                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-lg uppercase">Faltam {m.missing}</span>
-                                    </div>
-                                    <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${m.progress >= 100 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                        {m.progress.toFixed(0)}%
-                                    </span>
-                                </div>
-                                <div className="h-3 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                    <div className={`h-full ${m.progress >= 100 ? 'bg-emerald-500' : 'bg-accent'}`} style={{ width: `${m.progress}%` }}></div>
-                                </div>
-                            </div>
-                        ))}
+                        <p className="text-sm font-bold text-amber-500 tabular-nums">{formatBRL(p.rate)}/cota</p>
                     </div>
-                )}
-
-                {incomeTab === 'calendar' && (
-                    <div className="space-y-0 relative pl-4 animate-fade-in pb-8">
-                      <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-200 dark:bg-white/5"></div>
-                      {dividendReceipts.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 20).map((r, idx) => {
-                        const todayDate = new Date();
-                        const year = todayDate.getFullYear();
-                        const month = String(todayDate.getMonth() + 1).padStart(2, '0');
-                        const day = String(todayDate.getDate()).padStart(2, '0');
-                        const todayStr = `${year}-${month}-${day}`;
-                        
-                        const isUpcoming = r.paymentDate > todayStr;
-                        return (
-                            <div key={`${r.id}-${idx}`} className="relative pl-8 py-3 group animate-fade-in-up" style={{ animationDelay: `${idx * 30}ms` }}>
-                                <div className={`absolute left-[11px] top-7 w-4 h-4 rounded-full border-[3px] border-slate-50 dark:border-[#0b1121] z-10 ${isUpcoming ? 'bg-accent' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
-                                <div className={`p-5 rounded-[2rem] transition-all flex justify-between items-center border border-slate-100 dark:border-white/5 ${isUpcoming ? 'bg-white dark:bg-[#0f172a] shadow-lg shadow-accent/5' : 'bg-white dark:bg-[#0f172a]'}`}>
-                                    <div className='flex items-center justify-between w-full'>
-                                        <div className='flex-1'>
-                                            <div className="flex items-center gap-2 mb-1.5">
-                                                <span className="font-bold text-sm text-slate-900 dark:text-white">{r.ticker}</span>
-                                                {isUpcoming && <span className="text-[9px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded uppercase tracking-wide">Futuro</span>}
-                                            </div>
-                                            <div className="flex items-center gap-2 text-[10px] text-slate-400 uppercase font-bold tracking-wide">
-                                                <span>{r.type.substring(0,3)}</span> • <span>{r.paymentDate.split('-').reverse().slice(0,2).join('/')}</span>
-                                            </div>
-                                        </div>
-                                        <span className={`font-bold text-sm tabular-nums ${isUpcoming ? 'text-accent' : 'text-slate-900 dark:text-white'}`}>{formatBRL(r.totalReceived)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                      })}
-                    </div>
-                )}
+                )) : <p className="text-center text-xs text-slate-400 py-10">Nenhuma Data Com prevista.</p>)}
             </div>
         </div>
       </SwipeableModal>
+
     </div>
   );
 };

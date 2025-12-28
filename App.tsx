@@ -238,8 +238,6 @@ const App: React.FC = () => {
       }
     });
 
-    const totalRealizedGain = salesGain + totalDividendsReceived;
-
     const finalPortfolio = Object.values(positions)
       .filter(p => p.quantity > 0)
       .map(p => ({
@@ -251,7 +249,13 @@ const App: React.FC = () => {
         ...assetsMetadata[p.ticker]?.fundamentals
       }));
 
-    return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: totalRealizedGain, monthlyContribution: contribution };
+    return { 
+      portfolio: finalPortfolio, 
+      dividendReceipts: receipts, 
+      salesGain: salesGain,
+      totalDividendsReceived: totalDividendsReceived, 
+      monthlyContribution: contribution 
+    };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate, assetsMetadata]);
 
   // --- Checagem de Eventos Diários (Proventos, DataCom) ---
@@ -452,7 +456,10 @@ const App: React.FC = () => {
           <div key={currentTab} className="anim-fade-in is-visible">
             {currentTab === 'home' && (
                 <Home 
-                    {...memoizedData} 
+                    portfolio={memoizedData.portfolio}
+                    dividendReceipts={memoizedData.dividendReceipts}
+                    salesGain={memoizedData.salesGain}
+                    totalDividendsReceived={memoizedData.totalDividendsReceived}
                     isAiLoading={isAiLoading} 
                     inflationRate={marketIndicators.ipca}
                     portfolioStartDate={marketIndicators.startDate}
