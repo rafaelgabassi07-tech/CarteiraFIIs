@@ -53,10 +53,17 @@ export const useUpdateManager = (currentAppVersion: string) => {
         const data: VersionData = await res.json();
         updateLastChecked();
         
+        // CORREÇÃO: Carrega as notas sempre, permitindo ver o changelog da versão atual
+        if (data.notes && Array.isArray(data.notes)) {
+            setReleaseNotes(data.notes);
+        }
+
         if (compareVersions(data.version, currentAppVersion) > 0) {
           setAvailableVersion(data.version);
-          setReleaseNotes(data.notes || []);
           return true;
+        } else {
+          // Garante que a versão disponível seja setada mesmo que seja igual a atual
+          setAvailableVersion(data.version);
         }
       }
     } catch (e) {
@@ -79,6 +86,12 @@ export const useUpdateManager = (currentAppVersion: string) => {
                 setShowChangelog(true);
             }
         }).catch(() => {});
+    } else {
+        // Tenta buscar as notas silenciosamente ao iniciar para popular a tela de settings
+        fetch(`./version.json?t=${Date.now()}`).then(r => r.json()).then(data => {
+            if (data.notes) setReleaseNotes(data.notes);
+            setAvailableVersion(data.version);
+        }).catch(() => {});
     }
 
     // 2. Reload Trigger
@@ -87,9 +100,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
             console.log("🔄 SW Ativado via usuário. Recarregando...");
             window.location.reload();
         } else {
-            // Se o controlador mudou sem o usuário pedir (raro agora com a correção), 
-            // podemos optar por recarregar ou apenas avisar.
-            // Para segurança, vamos logar.
             console.log("🔄 SW Atualizado em background.");
         }
     };
@@ -118,14 +128,13 @@ export const useUpdateManager = (currentAppVersion: string) => {
                 const newWorker = reg.installing;
                 if (newWorker) {
                     newWorker.addEventListener('statechange', () => {
-                        // O estado 'installed' significa que o SW terminou de baixar
-                        // e agora está esperando (waiting) para ser ativado.
-                        // É AQUI que devemos avisar o usuário.
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                             console.log("✅ Nova atualização baixada e pronta (waiting)");
-                            fetchVersionJson().then(() => {
-                                setIsUpdateAvailable(true);
-                                setShowUpdateBanner(true);
+                            fetchVersionJson().then((hasNew) => {
+                                if (hasNew) {
+                                    setIsUpdateAvailable(true);
+                                    setShowUpdateBanner(true);
+                                }
                             });
                         }
                     });
@@ -180,12 +189,10 @@ export const useUpdateManager = (currentAppVersion: string) => {
                 console.log("🚀 Enviando comando SKIP_WAITING");
                 reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
             } else {
-                 // Fallback raro se não achar o worker waiting
                  console.warn("Worker waiting não encontrado, forçando reload");
                  window.location.reload();
             }
 
-            // Fallback de segurança
             setTimeout(() => {
                 window.location.reload();
             }, 2000);
