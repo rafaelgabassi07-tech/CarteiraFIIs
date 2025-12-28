@@ -1,17 +1,12 @@
 
 {
-  "version": "5.5.6",
+  "version": "5.5.7",
   "date": "2025-05-26",
   "notes": [
     {
-      "type": "fix",
-      "title": "Correção Definitiva de Update",
-      "desc": "O app agora ignora atualizações forçadas pelo sistema em segundo plano, garantindo que você esteja no controle total."
-    },
-    {
       "type": "perf",
-      "title": "Estabilidade de Sessão",
-      "desc": "Melhoria na persistência do estado ao alternar entre aplicativos."
+      "title": "Correção de Update",
+      "desc": "Ajuste na estratégia de cache para prevenir atualizações indesejadas durante a reinicialização do app."
     }
   ]
 }
