@@ -199,7 +199,8 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                     }`}>
                         <Zap className="w-4 h-4" />
                     </div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Análise IA (Gemini 2.5)</h4>
+                    {/* FIX: Updated model name from Gemini 2.5 to just Gemini for generality. */}
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Análise IA (Gemini)</h4>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                     <strong className={`${

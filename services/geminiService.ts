@@ -104,7 +104,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", 
+      // FIX: Updated model from gemini-2.5-flash to the recommended gemini-3-flash-preview.
+      model: "gemini-3-flash-preview", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],

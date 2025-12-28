@@ -415,7 +415,6 @@ const App: React.FC = () => {
         onNotificationClick={() => setShowNotifications(true)}
         notificationCount={notifications.length}
         appVersion={APP_VERSION}
-        lastSyncTime={lastSyncTime}
       />
 
       <main className="max-w-screen-md mx-auto pt-2">

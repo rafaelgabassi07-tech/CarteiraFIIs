@@ -34,7 +34,6 @@ interface HeaderProps {
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
   appVersion?: string;
-  lastSyncTime?: Date | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -48,8 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
   notificationCount = 0,
   updateAvailable,
   onUpdateClick,
-  appVersion = '5.0.0',
-  lastSyncTime
+  appVersion = '5.0.0'
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -91,11 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
               </div>
               <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-5 pl-0.5">
-                  {isRefreshing 
-                    ? 'Sincronizando...' 
-                    : lastSyncTime 
-                    ? `Últ. Sinc: ${lastSyncTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` 
-                    : 'Conectado'}
+                  {isRefreshing ? 'Sincronizando...' : 'Conectado'}
               </span>
           </div>
         )}
