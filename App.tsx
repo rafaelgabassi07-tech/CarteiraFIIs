@@ -11,7 +11,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle, Loader2, Info } from 'lucide-react';
 
-const APP_VERSION = '5.5.2'; 
+const APP_VERSION = '5.5.3'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -252,7 +252,10 @@ const App: React.FC = () => {
      if (compareVersions(APP_VERSION, lastSeen) > 0) {
          localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
          fetch(`./version.json?t=${Date.now()}`).then(r => r.json()).then(data => {
-             if (data.version === APP_VERSION) setReleaseNotes(data.notes || []);
+             if (data.version === APP_VERSION) {
+                 setReleaseNotes(data.notes || []);
+                 setShowChangelog(true); // Exibe o Changelog automaticamente
+             }
          }).catch(() => {});
      }
   }, [checkForUpdates]);

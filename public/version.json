@@ -1,9 +1,14 @@
 
 
 {
-  "version": "5.5.2",
+  "version": "5.5.3",
   "date": "2025-05-26",
   "notes": [
+    {
+      "type": "feat",
+      "title": "Changelog Automático",
+      "desc": "Agora as notas de atualização aparecem automaticamente ao abrir o app após um update."
+    },
     {
       "type": "feat",
       "title": "Correção de Update",
@@ -13,11 +18,6 @@
       "type": "ui",
       "title": "Feedback Visual",
       "desc": "Barra de progresso de atualização agora responde instantaneamente ao toque."
-    },
-    {
-      "type": "ui",
-      "title": "Visual Proventos",
-      "desc": "Redesign completo do modal de proventos com gráficos de evolução de 12 meses."
     }
   ]
 }
