@@ -1,17 +1,17 @@
 
 {
-  "version": "5.9.0",
-  "date": "2025-05-28",
+  "version": "5.9.1",
+  "date": "2025-05-29",
   "notes": [
     {
-      "type": "feat",
-      "title": "IA 2.5 Flash",
-      "desc": "Atualização para o modelo Gemini 2.5 Flash, oferecendo análises de FIIs e Ações mais rápidas e precisas."
+      "type": "fix",
+      "title": "Animações Corrigidas",
+      "desc": "Ajuste na lógica do botão de animações fluídas que estava invertida, garantindo melhor performance."
     },
     {
       "type": "ui",
-      "title": "Carteira Dedicada",
-      "desc": "Refinamentos visuais para focar estritamente em FIIs e Ações na sua gestão."
+      "title": "Nova Agenda",
+      "desc": "Visual mais limpo e moderno para o card de Agenda de Proventos na tela inicial, com badges aprimorados."
     }
   ]
 }

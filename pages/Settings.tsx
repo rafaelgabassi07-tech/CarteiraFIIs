@@ -81,8 +81,9 @@ export const Settings: React.FC<SettingsProps> = ({
 
   useEffect(() => {
     localStorage.setItem('investfiis_animations', String(animations));
-    if (!animations) document.body.classList.add('disable-animations');
-    else document.body.classList.remove('disable-animations');
+    // Se 'animations' for FALSE (desativado), adicionamos a classe 'disable-animations'.
+    // Se for TRUE (ativado), removemos a classe.
+    document.body.classList.toggle('disable-animations', !animations);
   }, [animations]);
 
   useEffect(() => { localStorage.setItem('investfiis_notify_divs', String(notifyDivs)); }, [notifyDivs]);

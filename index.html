@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR" class="antialiased">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="app-version" content="5.9.0" />
+    <meta name="app-version" content="5.9.1" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -41,6 +40,11 @@
         
         document.documentElement.style.setProperty('--color-accent', hex);
         document.documentElement.style.setProperty('--color-accent-rgb', `${r} ${g} ${b}`);
+
+        // REGRA DE ANIMAÇÃO: Se não existir ou for !== 'false', é true (ativado).
+        // Se for 'false', adicionamos a classe que desativa as animações.
+        const animations = localStorage.getItem('investfiis_animations') !== 'false';
+        if (!animations) document.body.classList.add('disable-animations');
       })();
 
       tailwind.config = {

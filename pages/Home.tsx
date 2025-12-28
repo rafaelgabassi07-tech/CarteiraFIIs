@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight } from 'lucide-react';
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, CartesianGrid, YAxis } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
@@ -252,12 +252,16 @@ export const Home: React.FC<HomeProps> = ({
 
   const finalIPCA = inflationRate > 0 ? inflationRate : estimatedIPCA;
 
+  // Lógica 1: Percentual (Benchmark)
   const totalNominalReturn = totalAppreciation + realizedGain + received;
   const nominalYield = invested > 0 ? (totalNominalReturn / invested) * 100 : 0;
   const ganhoRealPercent = nominalYield - finalIPCA;
-  const valorCorrigidoPeloIPCA = invested * (1 + (finalIPCA / 100));
-  const perdaInflacionaria = valorCorrigidoPeloIPCA - invested;
-  const patrimonioRealDiff = (balance + received + realizedGain) - valorCorrigidoPeloIPCA;
+  
+  // Lógica 2: Valor Monetário (Poder de Compra)
+  // REVISADO: Compara "O quanto ganhou no total" vs "O quanto precisaria ter ganho só para empatar com a inflação"
+  const lucroNominalAbsoluto = totalNominalReturn; // (Valorização + Proventos + Vendas)
+  const custoCorrosaoInflacao = invested * (finalIPCA / 100); // (Dinheiro perdido se ficasse parado ou custo de oportunidade do IPCA)
+  const ganhoRealValor = lucroNominalAbsoluto - custoCorrosaoInflacao;
   
   const isAboveInflation = ganhoRealPercent > 0;
   const isPositiveBalance = totalAppreciation >= 0;
@@ -312,42 +316,48 @@ export const Home: React.FC<HomeProps> = ({
         </div>
       </div>
 
-      {/* 2. CARD AGENDA (NOVO) */}
+      {/* 2. CARD AGENDA (APRIMORADO) */}
       <div className="animate-fade-in-up" style={{ animationDelay: '50ms' }}>
-         <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-gradient-to-br from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/[0.05] dark:to-purple-500/[0.05] p-5 rounded-[2.5rem] border border-indigo-500/10 active:scale-[0.98] transition-all hover:shadow-lg relative overflow-hidden group">
-            <div className="flex items-center justify-between relative z-10">
+         <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-gradient-to-br from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/[0.05] dark:to-purple-500/[0.05] p-6 rounded-[2.5rem] border border-indigo-500/10 active:scale-[0.98] transition-all hover:shadow-xl hover:shadow-indigo-500/5 relative overflow-hidden group">
+            {/* Elemento Decorativo de Fundo */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-indigo-500/20 transition-colors"></div>
+            
+            <div className="flex items-center justify-between relative z-10 mb-5">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white dark:bg-[#0f172a] rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm group-hover:scale-110 transition-transform">
+                    <div className="w-12 h-12 bg-white dark:bg-[#0f172a] rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100 dark:border-indigo-500/20 group-hover:scale-110 transition-transform">
                         <CalendarDays className="w-6 h-6" strokeWidth={2} />
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">Agenda de Proventos</h3>
-                        <p className="text-[10px] font-semibold text-slate-400 mt-1">
+                        <p className="text-[10px] font-semibold text-slate-400 mt-0.5">
                            {nextPayments.length + nextDataComs.length > 0 
                              ? `${nextPayments.length + nextDataComs.length} Eventos Próximos` 
                              : 'Nenhum evento previsto'}
                         </p>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-[#0f172a] w-8 h-8 rounded-full flex items-center justify-center text-slate-300">
-                    <ArrowRight className="w-4 h-4" />
-                </div>
+                {/* Seta Removida */}
             </div>
-            {/* Badges Preview */}
-            {(nextPayments.length > 0 || nextDataComs.length > 0) && (
-                <div className="flex gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
-                    {nextPayments.slice(0, 2).map((p, i) => (
-                        <div key={`p-${i}`} className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase whitespace-nowrap">
-                            <Coins className="w-3 h-3" />
+            
+            {/* Badges Preview Aprimorados */}
+            {(nextPayments.length > 0 || nextDataComs.length > 0) ? (
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mask-linear-fade relative z-10">
+                    {nextPayments.slice(0, 3).map((p, i) => (
+                        <div key={`p-${i}`} className="flex items-center gap-2 bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-3 py-2 rounded-xl text-[10px] font-bold uppercase whitespace-nowrap shadow-sm">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                             <span>{p.ticker}: {formatBRL(p.totalReceived)}</span>
                         </div>
                     ))}
-                    {nextDataComs.slice(0, 1).map((d, i) => (
-                        <div key={`d-${i}`} className="flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase whitespace-nowrap">
-                            <Clock className="w-3 h-3" />
+                    {nextDataComs.slice(0, 2).map((d, i) => (
+                        <div key={`d-${i}`} className="flex items-center gap-2 bg-white dark:bg-[#0f172a] border border-amber-100 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 px-3 py-2 rounded-xl text-[10px] font-bold uppercase whitespace-nowrap shadow-sm">
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
                             <span>Data Com: {d.ticker}</span>
                         </div>
                     ))}
+                </div>
+            ) : (
+                <div className="inline-block px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-[10px] font-medium text-slate-400">
+                    Sua agenda está limpa.
                 </div>
             )}
          </button>
@@ -672,53 +682,62 @@ export const Home: React.FC<HomeProps> = ({
                     <div className="p-6 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] mb-2 border border-slate-200/50 dark:border-white/5">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
                              <ShieldCheck className="w-3.5 h-3.5" />
-                             Cálculo de Proteção
+                             Lucro Nominal vs Inflação
                         </h4>
                         
-                        <div className="space-y-6">
-                             <div className="flex items-center justify-between relative z-10">
+                        <div className="space-y-4">
+                             {/* Item 1: Lucro Bruto (Valorização + Dividendos) */}
+                             <div className="flex items-center justify-between relative z-10 bg-white dark:bg-[#0f172a] p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-white/5">
                                  <div className="flex items-center gap-3">
-                                     <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-white/10 flex items-center justify-center text-slate-500 font-bold text-xs">1</div>
+                                     <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 font-bold"><ArrowUpRight className="w-5 h-5" /></div>
                                      <div>
-                                         <p className="text-[10px] font-bold text-slate-400 uppercase">Capital Investido</p>
-                                         <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(invested)}</p>
+                                         <p className="text-[9px] font-bold text-slate-400 uppercase">Lucro Nominal Total</p>
+                                         <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(lucroNominalAbsoluto)}</p>
                                      </div>
                                  </div>
                              </div>
 
-                             <div className="pl-4 -my-2 border-l-2 border-dashed border-slate-200 dark:border-white/10 h-6 ml-4"></div>
+                             {/* Operador Visual */}
+                             <div className="flex justify-center -my-2 relative z-20">
+                                 <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 border border-white dark:border-[#0f172a]">
+                                     <Minus className="w-4 h-4" />
+                                 </div>
+                             </div>
 
-                             <div className="flex items-center justify-between">
+                             {/* Item 2: Custo da Inflação */}
+                             <div className="flex items-center justify-between bg-white dark:bg-[#0f172a] p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-white/5 opacity-80">
                                  <div className="flex items-center gap-3">
-                                     <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-500 font-bold text-xs">2</div>
+                                     <div className="w-10 h-10 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500 font-bold"><TrendingUp className="w-5 h-5" /></div>
                                      <div>
-                                         <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase">Correção IPCA</p>
-                                         <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(perdaInflacionaria)}</p>
+                                         <p className="text-[9px] font-bold text-slate-400 uppercase">Custo da Inflação (IPCA)</p>
+                                         <p className="text-sm font-bold text-rose-500 tabular-nums">{formatBRL(custoCorrosaoInflacao)}</p>
                                      </div>
                                  </div>
                              </div>
 
-                             <div className="pl-4 -my-2 border-l-2 border-dashed border-slate-200 dark:border-white/10 h-6 ml-4"></div>
+                             {/* Operador Visual */}
+                             <div className="flex justify-center -my-2 relative z-20">
+                                 <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400 border border-white dark:border-[#0f172a]">
+                                     <Equal className="w-4 h-4" />
+                                 </div>
+                             </div>
 
-                             <div className="flex items-center justify-between">
-                                 <div className="flex items-center gap-3">
-                                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs text-white ${patrimonioRealDiff >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}>3</div>
+                             {/* Item 3: Resultado */}
+                             <div className={`flex items-center justify-between p-4 rounded-3xl shadow-lg border relative overflow-hidden ${ganhoRealValor >= 0 ? 'bg-emerald-500 border-emerald-400/50 text-white' : 'bg-rose-500 border-rose-400/50 text-white'}`}>
+                                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/20 rounded-full blur-2xl -mr-6 -mt-6"></div>
+                                 <div className="flex items-center gap-3 relative z-10">
+                                     <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-white font-bold backdrop-blur-sm"><Award className="w-5 h-5" /></div>
                                      <div>
-                                         <p className="text-[10px] font-bold text-slate-400 uppercase">Patrimônio Atual</p>
-                                         <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(balance + received + realizedGain)}</p>
+                                         <p className="text-[9px] font-bold text-white/80 uppercase">Ganho Real Líquido</p>
+                                         <p className="text-xl font-black text-white tabular-nums tracking-tight">{ganhoRealValor >= 0 ? '+' : ''}{formatBRL(ganhoRealValor)}</p>
                                      </div>
                                  </div>
                              </div>
                         </div>
-                    </div>
 
-                    <div className={`p-8 rounded-[2.5rem] text-center shadow-lg relative overflow-hidden ${patrimonioRealDiff >= 0 ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-rose-500/20'}`}>
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-2 relative z-10">Resultado Real (Poder de Compra)</p>
-                        <p className="text-3xl font-black tabular-nums tracking-tighter mb-2 relative z-10">
-                            {patrimonioRealDiff >= 0 ? '+' : ''}{formatBRL(patrimonioRealDiff)}
+                        <p className="text-[10px] text-slate-400 text-center mt-6 leading-relaxed px-4">
+                           O <span className="font-bold text-slate-500 dark:text-slate-300">Lucro Nominal</span> é tudo que você ganhou em reais (valorização + dividendos). O <span className="font-bold text-slate-500 dark:text-slate-300">Custo da Inflação</span> é quanto o seu dinheiro investido perdeu de valor de compra no período. A diferença é o seu <span className="font-bold text-slate-500 dark:text-slate-300">Ganho Real</span>.
                         </p>
-                        {patrimonioRealDiff >= 0 && <span className="inline-block px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[9px] font-black uppercase tracking-widest relative z-10">Ganho Real</span>}
                     </div>
                 </div>
             )}
