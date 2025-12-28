@@ -4,11 +4,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="app-version" content="6.4.2" />
+    <meta name="app-version" content="6.4.3" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>InvestFIIs - Ultra</title>
+    
+    <!-- Script de Recuperação de Erros (Fail-Safe) -->
+    <!-- Se o bundle JS principal falhar (404), este script força a limpeza do Cache/SW e recarrega -->
+    <script>
+      window.addEventListener('error', function(e) {
+        const isScriptError = e.target && (e.target.tagName === 'SCRIPT' || e.target.nodeName === 'SCRIPT');
+        const isChunkError = e.message && (e.message.indexOf('Loading chunk') > -1 || e.message.indexOf('404') > -1);
+        
+        if (isScriptError || isChunkError) {
+          console.warn('Erro crítico de carregamento detectado. Iniciando recuperação...');
+          
+          // 1. Desregistrar Service Workers
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for (let registration of registrations) {
+                registration.unregister();
+              }
+              // 2. Limpar Caches
+              if ('caches' in window) {
+                caches.keys().then(function(names) {
+                  for (let name of names) caches.delete(name);
+                });
+              }
+              // 3. Recarregar Forçado
+              window.location.reload(true);
+            });
+          } else {
+             window.location.reload(true);
+          }
+        }
+      }, true); // Use capture para pegar erros de carregamento de resources
+    </script>
     
     <!-- PWA & Icon Tags -->
     <link rel="manifest" href="./manifest.json" />

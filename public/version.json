@@ -1,17 +1,17 @@
 
 {
-  "version": "6.4.2",
+  "version": "6.4.3",
   "date": "2025-06-16",
   "notes": [
     {
       "type": "fix",
-      "title": "Correção de Carregamento (404)",
-      "desc": "Resolvido problema que causava tela branca ou erro ao abrir o app após uma atualização."
+      "title": "Correção Crítica de Cache",
+      "desc": "Implementado sistema de auto-recuperação para resolver erros de carregamento e tela branca."
     },
     {
       "type": "feat",
-      "title": "Gemini 2.5 Flash",
-      "desc": "A IA foi ajustada para usar o modelo Gemini 2.5 Flash, conforme solicitado, para análise de FIIs e Ações."
+      "title": "Estabilidade Reforçada",
+      "desc": "Otimizações no Service Worker para garantir atualizações mais confiáveis."
     }
   ]
 }
