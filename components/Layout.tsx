@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles } from 'lucide-react';
 import { ReleaseNote, AppNotification } from '../types';
@@ -154,7 +154,7 @@ export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string
             <button 
               key={tab.id} 
               onClick={() => onTabChange(tab.id)} 
-              className={`relative flex items-center justify-center h-12 rounded-2xl transition-all duration-500 ease-out active:scale-90 ${isActive ? 'bg-accent text-white shadow-lg shadow-accent/30 px-6' : 'px-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'}`}
+              className={`relative flex items-center justify-center h-12 rounded-2xl transition-all duration-500 ease-out active:scale-95 ${isActive ? 'bg-accent text-white shadow-lg shadow-accent/30 px-6' : 'px-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'}`}
             >
                <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-110' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
                
@@ -174,30 +174,73 @@ export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string
 
 export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; children: React.ReactNode }> = ({ isOpen, onClose, children }) => {
   const [offsetY, setOffsetY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<number | null>(null);
+
+  const triggerClose = useCallback(() => {
+    const modalHeight = modalRef.current?.clientHeight || window.innerHeight;
+    setOffsetY(modalHeight);
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = window.setTimeout(() => {
+        onClose();
+    }, 300); // Match CSS transition duration
+  }, [onClose]);
 
   useEffect(() => {
     if (isOpen) {
-        document.body.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      setOffsetY(0);
     } else {
-        document.body.style.overflow = 'auto';
-        setOffsetY(0);
+      document.body.style.overflow = 'auto';
     }
-    return () => { document.body.style.overflow = 'auto'; };
+    return () => {
+      document.body.style.overflow = 'auto';
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
+  
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (modalRef.current) {
+        modalRef.current.style.transitionDuration = '0ms'; // Disable transition for direct tracking
+    }
+    startY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    const diff = e.touches[0].clientY - startY.current;
+    if (diff > 0) setOffsetY(diff);
+  };
+
+  const handleTouchEnd = () => {
+    if (modalRef.current) {
+        modalRef.current.style.removeProperty('transition-duration'); // Re-enable CSS transition
+    }
+    const modalHeight = modalRef.current?.clientHeight || window.innerHeight;
+    const closeThreshold = Math.max(120, modalHeight * 0.3);
+
+    if (offsetY > closeThreshold) {
+      triggerClose();
+    } else {
+      setOffsetY(0);
+    }
+  };
+
 
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-none">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm pointer-events-auto transition-opacity duration-300 animate-fade-in" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm pointer-events-auto transition-opacity duration-300 animate-fade-in" onClick={triggerClose} />
       <div 
-        className="bg-white dark:bg-[#0b1121] w-full h-[calc(100dvh-4.5rem)] rounded-t-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto transition-transform duration-300 cubic-bezier(0.2, 0.8, 0.2, 1) animate-slide-up border-t border-white/20 dark:border-white/5"
+        ref={modalRef}
+        className="bg-white dark:bg-[#0b1121] w-full h-[calc(100dvh-4.5rem)] rounded-t-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto animate-slide-up border-t border-white/20 dark:border-white/5 transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]"
         style={{ transform: `translateY(${offsetY}px)` }}
-        onTouchStart={(e) => { setIsDragging(true); startY.current = e.touches[0].clientY; }}
-        onTouchMove={(e) => { if(!isDragging) return; const diff = e.touches[0].clientY - startY.current; if(diff > 0) setOffsetY(diff); }}
-        onTouchEnd={() => { setIsDragging(false); if(offsetY > 120) onClose(); else setOffsetY(0); }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <div className="w-full h-10 flex items-center justify-center shrink-0 touch-none bg-transparent">
           <div className="w-10 h-1 bg-slate-200 dark:bg-white/10 rounded-full" />

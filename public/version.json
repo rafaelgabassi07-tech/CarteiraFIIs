@@ -1,12 +1,22 @@
 
 {
-  "version": "5.9.3",
-  "date": "2025-05-29",
+  "version": "6.0.0",
+  "date": "2025-05-30",
   "notes": [
     {
+      "type": "ui",
+      "title": "Experiência de Uso Aprimorada",
+      "desc": "Renovação completa das animações do aplicativo. Navegação mais fluida, transições dinâmicas e feedback tátil aprimorado para uma interação premium."
+    },
+    {
       "type": "fix",
-      "title": "Visual & Correções",
-      "desc": "Correção na paleta de cores dos gráficos para melhor distinção entre ativos. Animações fluídas otimizadas e indicador 'Live Dot' restaurado no cabeçalho."
+      "title": "Modais Responsivos",
+      "desc": "Correção nos modais deslizantes, que agora acompanham o movimento do dedo de forma precisa e fecham com uma animação suave e natural."
+    },
+    {
+      "type": "feat",
+      "title": "Foco nos Dados Relevantes",
+      "desc": "A seção de notícias foi removida para focar na gestão da carteira. Adicionamos o dia e o mês da compra nos cards do histórico de ordens."
     }
   ]
 }

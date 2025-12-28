@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
 import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown, Briefcase, ChevronUp, Layers, Hash, Info } from 'lucide-react';
@@ -26,7 +27,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
   return (
     <>
       <div 
-        className={`relative bg-white dark:bg-[#0f172a] rounded-[2rem] transition-all duration-500 animate-fade-in-up active:scale-[0.99] overflow-hidden cursor-pointer group border border-slate-200/50 dark:border-white/5 ${isExpanded ? 'shadow-2xl shadow-slate-200/50 dark:shadow-black/50 z-10 ring-1 ring-slate-200 dark:ring-white/10' : 'shadow-sm hover:shadow-md'}`}
+        className={`relative bg-white dark:bg-[#0f172a] rounded-[2rem] transition-all duration-500 animate-fade-in-up active:scale-[0.98] overflow-hidden cursor-pointer group border border-slate-200/50 dark:border-white/5 ${isExpanded ? 'shadow-2xl shadow-slate-200/50 dark:shadow-black/50 z-10 ring-1 ring-slate-200 dark:ring-white/10' : 'shadow-sm hover:shadow-md'}`}
         style={{ animationDelay: `${index * 50}ms` }}
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -59,13 +60,13 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                 <div className="font-black text-lg text-slate-900 dark:text-white tabular-nums tracking-tight">R$ {formatCurrency(totalValue)}</div>
                 <div className={`flex items-center justify-end gap-1 text-[10px] font-bold tabular-nums mt-0.5 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                    {isPositive ? <ArrowUp className="w-3 h-3" strokeWidth={3} /> : <ArrowDown className="w-3 h-3" strokeWidth={3} />}
-                   {gainPercent.toFixed(2)}%
+                   {gainPercent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                 </div>
              </div>
           </div>
 
           {/* Área Expandida (Clean Design) */}
-          <div className={`grid transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isExpanded ? 'grid-rows-[1fr] opacity-100 pt-6' : 'grid-rows-[0fr] opacity-0 pt-0'}`}>
+          <div className={`grid transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${isExpanded ? 'grid-rows-[1fr] opacity-100 pt-6' : 'grid-rows-[0fr] opacity-0 pt-0'}`}>
              <div className="min-h-0">
                  
                  {/* Linha 1: Comparativo Preço/Custo */}
@@ -88,7 +89,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                     <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-3 text-center border border-slate-100 dark:border-white/5">
                         <div className="flex justify-center mb-1 text-emerald-500"><Target className="w-4 h-4" /></div>
                         <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Yield on Cost</p>
-                        <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{yoc.toFixed(2)}%</p>
+                        <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{yoc.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</p>
                     </div>
                     <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-3 text-center border border-slate-100 dark:border-white/5">
                         <div className="flex justify-center mb-1 text-blue-500"><Activity className="w-4 h-4" /></div>
@@ -100,7 +101,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                     <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-3 text-center border border-slate-100 dark:border-white/5">
                         <div className="flex justify-center mb-1 text-amber-500"><Percent className="w-4 h-4" /></div>
                         <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Peso Carteira</p>
-                        <p className="text-xs font-black text-slate-700 dark:text-slate-200 tabular-nums">{portfolioShare.toFixed(1)}%</p>
+                        <p className="text-xs font-black text-slate-700 dark:text-slate-200 tabular-nums">{portfolioShare.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</p>
                     </div>
                  </div>
 
@@ -180,7 +181,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                         </span>
                         <span className="flex items-center gap-1.5">
                             <Target className="w-3 h-3 text-slate-300" />
-                            Valor Unitário: <strong className="text-slate-700 dark:text-slate-300">R$ {h.rate.toFixed(4)}</strong>
+                            Valor Unitário: <strong className="text-slate-700 dark:text-slate-300">R$ {h.rate.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</strong>
                         </span>
                     </div>
                   </div>
@@ -253,19 +254,19 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                         <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-[1.8rem] border border-slate-100 dark:border-white/5 text-center">
                             <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">P/VP</span>
                             <span className={`text-base font-black tabular-nums ${asset.p_vp && asset.p_vp < 1 ? 'text-emerald-500' : 'text-slate-900 dark:text-white'}`}>
-                                {asset.p_vp?.toFixed(2) || '-'}
+                                {asset.p_vp?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '-'}
                             </span>
                         </div>
                         <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-[1.8rem] border border-slate-100 dark:border-white/5 text-center">
                             <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">P/L</span>
                             <span className="text-base font-black text-slate-900 dark:text-white tabular-nums">
-                                {asset.p_l?.toFixed(1) || '-'}
+                                {asset.p_l?.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) || '-'}
                             </span>
                         </div>
                         <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-[1.8rem] border border-slate-100 dark:border-white/5 text-center">
                             <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">DY 12m</span>
                             <span className="text-base font-black text-emerald-500 tabular-nums">
-                                {asset.dy_12m ? asset.dy_12m.toFixed(1) + '%' : '-'}
+                                {asset.dy_12m ? asset.dy_12m.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%' : '-'}
                             </span>
                         </div>
                     </div>

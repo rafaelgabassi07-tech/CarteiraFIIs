@@ -15,6 +15,19 @@ const formatMonthYear = (dateStr: string) => {
   return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 };
 
+const formatDayMonth = (dateStr: string) => {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr + 'T12:00:00');
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${day}/${month}`;
+  } catch {
+    return dateStr.slice(5).split('-').reverse().join('/');
+  }
+};
+
+
 interface TransactionsProps {
   transactions: Transaction[];
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
@@ -135,7 +148,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
          </div>
       </div>
 
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6">
         {sortedMonthKeys.map((monthKey, groupIdx) => {
             const group = groupedTransactions[monthKey];
             return (
@@ -156,7 +169,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     
                     <div className="space-y-2">
                         {group.items.map((t) => (
-                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3 flex items-center justify-between shadow-sm active:scale-[0.99] transition-all border border-slate-200/50 dark:border-white/5">
+                           <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3 flex items-center justify-between shadow-sm active:scale-[0.98] transition-all border border-slate-200/50 dark:border-white/5">
                               <div className="flex items-center gap-3">
                                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
                                       {t.type === 'BUY' ? <TrendingUp className="w-4 h-4" strokeWidth={2.5} /> : <TrendingDown className="w-4 h-4" strokeWidth={2.5} />}
@@ -169,7 +182,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         </span>
                                     </div>
                                     <p className={`text-[9px] font-bold uppercase tracking-[0.05em] ${t.type === 'BUY' ? 'text-emerald-600/70' : 'text-rose-600/70'}`}>
-                                        {t.type === 'BUY' ? 'Compra' : 'Venda'}
+                                        {t.type === 'BUY' ? 'Compra' : 'Venda'} • {formatDayMonth(t.date)}
                                     </p>
                                   </div>
                               </div>

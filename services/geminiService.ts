@@ -5,7 +5,6 @@ import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from 
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
   metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>;
-  sources?: { web: { uri: string; title: string } }[];
   indicators?: MarketIndicators;
 }
 
@@ -121,14 +120,10 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     const jsonStr = jsonMatch ? jsonMatch[0] : text;
     
     const parsed = JSON.parse(jsonStr);
-    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     
     const result: UnifiedMarketData = { 
         dividends: [], 
         metadata: {},
-        sources: groundingChunks?.map((chunk: any) => ({
-          web: { uri: chunk.web?.uri || '', title: chunk.web?.title || '' }
-        })).filter((s: any) => s.web.uri) || [],
         indicators: {
             ipca_cumulative: typeof parsed.sys?.ipca === 'number' ? parsed.sys.ipca : 0,
             start_date_used: normalizeDate(parsed.sys?.start_ref) || portfolioStart
@@ -159,7 +154,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             description: asset.f?.desc || '',
             sentiment: asset.f?.sent || 'Neutro',
             sentiment_reason: asset.f?.sent_why || '',
-            news: []
           }
         };
 

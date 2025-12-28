@@ -9,7 +9,6 @@ interface HomeProps {
   portfolio: AssetPosition[];
   dividendReceipts: DividendReceipt[];
   realizedGain?: number;
-  sources?: { web: { uri: string; title: string } }[];
   isAiLoading?: boolean;
   inflationRate?: number;
   portfolioStartDate?: string;
@@ -23,7 +22,7 @@ const formatBRL = (val: any) => {
 
 const formatPercent = (val: any) => {
   const num = typeof val === 'number' ? val : 0;
-  return `${num.toFixed(2)}%`;
+  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
 const formatDate = (dateStr: string) => {
@@ -51,7 +50,6 @@ export const Home: React.FC<HomeProps> = ({
   portfolio, 
   dividendReceipts, 
   realizedGain = 0, 
-  sources = [],
   isAiLoading = false,
   inflationRate = 0, 
   portfolioStartDate,
@@ -456,7 +454,7 @@ export const Home: React.FC<HomeProps> = ({
              <div>
                 <div className="flex items-end gap-1 mb-2">
                     <span className={`text-2xl font-bold tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {isAboveInflation ? '+' : ''}{ganhoRealPercent.toFixed(1)}%
+                        {isAboveInflation ? '+' : ''}{ganhoRealPercent.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}%
                     </span>
                 </div>
                 <div className="flex gap-0.5 h-1.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-white/5">
@@ -470,20 +468,6 @@ export const Home: React.FC<HomeProps> = ({
              </div>
           </button>
       </div>
-
-      {sources.length > 0 && (
-        <div className="flex items-center justify-center gap-3 flex-wrap opacity-60 hover:opacity-100 transition-opacity py-4">
-           <div className="flex items-center gap-1.5 text-amber-500">
-             <Zap className="w-3 h-3" />
-             <span className="text-[9px] font-black uppercase tracking-widest">Fontes</span>
-           </div>
-           {sources.slice(0, 3).map((source, i) => (
-             <a key={i} href={source.web.uri} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-full bg-slate-100 dark:bg-white/5 text-[10px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors truncate max-w-[120px]">
-               {source.web.title}
-             </a>
-           ))}
-        </div>
-      )}
 
       {/* MODAL AGENDA */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
@@ -528,7 +512,7 @@ export const Home: React.FC<HomeProps> = ({
                                 </div>
                                 <div className="text-right">
                                     <p className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(p.totalReceived)}</p>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tabular-nums">R$ {p.rate.toFixed(4)} / un</p>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tabular-nums">R$ {p.rate.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} / un</p>
                                 </div>
                             </div>
                         ))
@@ -557,7 +541,7 @@ export const Home: React.FC<HomeProps> = ({
                                 </div>
                                 <div className="text-right">
                                     <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Valor Anunciado</p>
-                                    <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">R$ {p.rate.toFixed(4)}</p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">R$ {p.rate.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</p>
                                 </div>
                             </div>
                         ))
@@ -619,7 +603,7 @@ export const Home: React.FC<HomeProps> = ({
                                 <p className="text-[10px] font-medium text-slate-400">{formatBRL(item.value)}</p>
                             </div>
                         </div>
-                        <span className={`text-sm font-bold tabular-nums ${isActive ? 'text-accent' : 'text-slate-900 dark:text-white'}`}>{percent.toFixed(1)}%</span>
+                        <span className={`text-sm font-bold tabular-nums ${isActive ? 'text-accent' : 'text-slate-900 dark:text-white'}`}>{percent.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
                     </button>
                     );
                 })}
@@ -649,14 +633,14 @@ export const Home: React.FC<HomeProps> = ({
                     <div className="flex items-center justify-between bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm">
                         <div className="flex flex-col items-center flex-1">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Carteira</span>
-                            <span className={`text-2xl font-black ${nominalYield >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{nominalYield.toFixed(2)}%</span>
+                            <span className={`text-2xl font-black ${nominalYield >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{nominalYield.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</span>
                         </div>
                         <div className="flex flex-col items-center px-4">
                             <span className="text-xs font-black text-slate-300 dark:text-slate-600">VS</span>
                         </div>
                         <div className="flex flex-col items-center flex-1">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">IPCA</span>
-                            <span className="text-2xl font-black text-slate-700 dark:text-slate-300">{finalIPCA.toFixed(2)}%</span>
+                            <span className="text-2xl font-black text-slate-700 dark:text-slate-300">{finalIPCA.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</span>
                         </div>
                     </div>
 
@@ -664,7 +648,7 @@ export const Home: React.FC<HomeProps> = ({
                         <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[60px] opacity-20 -mr-10 -mt-10 ${isAboveInflation ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 relative z-10">Retorno Real Acumulado</p>
                         <div className={`text-6xl font-black tabular-nums tracking-tighter mb-4 relative z-10 ${isAboveInflation ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {isAboveInflation ? '+' : ''}{ganhoRealPercent.toFixed(2)}%
+                            {isAboveInflation ? '+' : ''}{ganhoRealPercent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                         </div>
                         <p className="text-[10px] font-medium text-slate-500 relative z-10 max-w-[200px] mx-auto leading-relaxed">
                             {isAboveInflation 
@@ -685,7 +669,7 @@ export const Home: React.FC<HomeProps> = ({
                                     radius={[0, 10, 10, 0]} 
                                     barSize={24} 
                                     background={{ fill: 'rgba(0,0,0,0.02)' }} 
-                                    label={{ position: 'right', fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
+                                    label={{ position: 'right', fill: '#94a3b8', fontSize: 10, fontWeight: 'bold', formatter: (value: number) => value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} 
                                 />
                             </BarChart>
                         </ResponsiveContainer>
@@ -840,7 +824,7 @@ export const Home: React.FC<HomeProps> = ({
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Percent className="w-3 h-3" /> Yield on Cost</p>
-                                <p className="text-lg font-black text-indigo-500 tabular-nums">{yieldOnCostPortfolio.toFixed(2)}%</p>
+                                <p className="text-lg font-black text-indigo-500 tabular-nums">{yieldOnCostPortfolio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</p>
                             </div>
 
                             <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">

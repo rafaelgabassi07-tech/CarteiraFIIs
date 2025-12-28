@@ -11,7 +11,7 @@ import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 
-const APP_VERSION = '5.9.3'; 
+const APP_VERSION = '6.0.0'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -68,7 +68,6 @@ const App: React.FC = () => {
   });
 
   const prevDividendsRef = useRef<DividendReceipt[]>(geminiDividends);
-  const [sources, setSources] = useState<{ web: { uri: string; title: string } }[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>({});
@@ -339,7 +338,6 @@ const App: React.FC = () => {
       
       setGeminiDividends(aiData.dividends);
       setAssetsMetadata(aiData.metadata);
-      setSources(aiData.sources || []);
       
       if (aiData.indicators && typeof aiData.indicators.ipca_cumulative === 'number') {
           setMarketIndicators({
@@ -425,11 +423,10 @@ const App: React.FC = () => {
             onRequestPushPermission={requestPushPermission}
           />
         ) : (
-          <div className="animate-fade-in">
+          <div key={currentTab} className="animate-cross-fade">
             {currentTab === 'home' && (
                 <Home 
                     {...memoizedData} 
-                    sources={sources} 
                     isAiLoading={isAiLoading} 
                     inflationRate={marketIndicators.ipca}
                     portfolioStartDate={marketIndicators.startDate}

@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.9.3';
+const CACHE_NAME = 'investfiis-ultra-v6.0.0';
 
 const ASSETS_TO_CACHE = [
   './',

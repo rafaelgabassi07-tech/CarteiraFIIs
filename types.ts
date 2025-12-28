@@ -14,13 +14,6 @@ export interface Transaction {
   assetType: AssetType;
 }
 
-export interface AssetNews {
-  title: string;
-  url: string;
-  source: string;
-  date: string;
-}
-
 export interface AssetFundamentals {
   p_vp?: number;
   p_l?: number;
@@ -31,7 +24,6 @@ export interface AssetFundamentals {
   market_cap?: string;
   sentiment?: 'Otimista' | 'Neutro' | 'Pessimista' | string;
   sentiment_reason?: string;
-  news?: AssetNews[];
 }
 
 export interface AssetPosition extends AssetFundamentals {
