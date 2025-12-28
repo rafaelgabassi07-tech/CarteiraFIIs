@@ -1,17 +1,17 @@
 
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, UpdateBanner } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ReleaseNote, VersionData } from './types';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { CheckCircle2, DownloadCloud, AlertCircle, Loader2, Info } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { useUpdateManager } from './hooks/useUpdateManager'; // Importação do Hook Blindado
 
-const APP_VERSION = '5.5.4'; 
+const APP_VERSION = '5.5.5'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -21,25 +21,17 @@ const STORAGE_KEYS = {
   ACCENT: 'investfiis_accent_color',
   PRIVACY: 'investfiis_privacy_mode',
   PREFS_NOTIF: 'investfiis_prefs_notifications',
-  INDICATORS: 'investfiis_v4_indicators',
-  LAST_SEEN_VERSION: 'investfiis_last_version_seen'
+  INDICATORS: 'investfiis_v4_indicators'
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const compareVersions = (v1: string, v2: string) => {
-  const parts1 = v1.split('.').map(Number);
-  const parts2 = v2.split('.').map(Number);
-  for (let i = 0; i < 3; i++) {
-    const p1 = parts1[i] || 0;
-    const p2 = parts2[i] || 0;
-    if (p1 > p2) return 1;
-    if (p1 < p2) return -1;
-  }
-  return 0;
-};
-
 const App: React.FC = () => {
+  // --- INTEGRAÇÃO DO SISTEMA DE ATUALIZAÇÃO BLINDADO ---
+  // Toda a lógica complexa vive dentro deste hook. O App apenas consome os dados.
+  const updateManager = useUpdateManager(APP_VERSION);
+  // -----------------------------------------------------
+
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -49,19 +41,6 @@ const App: React.FC = () => {
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
-  
-  // Estados de Atualização
-  const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
-  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
-  const [availableVersion, setAvailableVersion] = useState<string | null>(null);
-  const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([]);
-  const [showChangelog, setShowChangelog] = useState(false);
-  
-  // Novo estado para a barra de progresso
-  const [updateProgress, setUpdateProgress] = useState(0);
-  
-  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
-  
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -122,130 +101,6 @@ const App: React.FC = () => {
     else document.body.classList.remove('privacy-blur');
     localStorage.setItem(STORAGE_KEYS.PRIVACY, String(privacyMode));
   }, [privacyMode]);
-
-  const fetchVersionJson = async () => {
-      try {
-          const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
-          if (res.ok) {
-              const data: VersionData = await res.json();
-              if (compareVersions(data.version, APP_VERSION) > 0) {
-                  setAvailableVersion(data.version);
-                  setReleaseNotes(data.notes || []);
-                  setIsUpdateAvailable(true);
-                  if (updateProgress === 0) setShowUpdateBanner(true);
-                  return true;
-              }
-          }
-      } catch (e) { console.warn("Erro check version", e); }
-      return false;
-  };
-
-  const checkForUpdates = useCallback(async (manual = false) => {
-    if ('serviceWorker' in navigator) {
-        let reg = swRegistrationRef.current;
-        if (!reg) {
-            const registration = await navigator.serviceWorker.getRegistration();
-            reg = registration || null; 
-            swRegistrationRef.current = reg;
-        }
-
-        if (reg) {
-            if (manual) {
-                try { await reg.update(); } catch(e){}
-            }
-            // Se houver um worker esperando, o update JÁ baixou mas não aplicou
-            if (reg.waiting) {
-                setIsUpdateAvailable(true);
-                setShowUpdateBanner(true);
-                fetchVersionJson(); 
-                return true;
-            }
-        }
-    }
-    const jsonUpdated = await fetchVersionJson();
-    return jsonUpdated;
-  }, []);
-
-  const startUpdateProcess = () => {
-    if (updateProgress > 0) return;
-    
-    setUpdateProgress(1);
-
-    let progress = 1;
-    const interval = setInterval(() => {
-        const increment = Math.max(2, Math.floor(Math.random() * 20));
-        progress += increment;
-
-        if (progress >= 100) {
-            progress = 100;
-            clearInterval(interval);
-            setUpdateProgress(100);
-            
-            // SOMENTE AQUI aplicamos a atualização
-            setTimeout(() => {
-                if ('serviceWorker' in navigator && swRegistrationRef.current && swRegistrationRef.current.waiting) {
-                    swRegistrationRef.current.waiting.postMessage({ type: 'SKIP_WAITING' });
-                } else {
-                    window.location.reload();
-                }
-            }, 500);
-        } else {
-            setUpdateProgress(progress);
-        }
-    }, 50);
-  };
-
-  useEffect(() => {
-     checkForUpdates();
-     
-     if ('serviceWorker' in navigator) {
-         let refreshing = false;
-         
-         navigator.serviceWorker.addEventListener('controllerchange', () => {
-             if (!refreshing) {
-                 refreshing = true;
-                 window.location.reload();
-             }
-         });
-
-         navigator.serviceWorker.getRegistration().then(reg => {
-             if (reg) {
-                 swRegistrationRef.current = reg;
-                 
-                 if (reg.waiting) {
-                     setIsUpdateAvailable(true);
-                     setShowUpdateBanner(true);
-                     fetchVersionJson();
-                 }
-                 
-                 reg.addEventListener('updatefound', () => {
-                     const newWorker = reg.installing;
-                     if (newWorker) {
-                         newWorker.addEventListener('statechange', () => {
-                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                 // Update baixado e pronto, MAS aguardando clique
-                                 setIsUpdateAvailable(true);
-                                 setShowUpdateBanner(true);
-                                 fetchVersionJson();
-                             }
-                         });
-                     }
-                 });
-             }
-         });
-     }
-
-     const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
-     if (compareVersions(APP_VERSION, lastSeen) > 0) {
-         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
-         fetch(`./version.json?t=${Date.now()}`).then(r => r.json()).then(data => {
-             if (data.version === APP_VERSION) {
-                 setReleaseNotes(data.notes || []);
-                 setShowChangelog(true); 
-             }
-         }).catch(() => {});
-     }
-  }, [checkForUpdates]);
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     setToast({ type, text });
@@ -406,11 +261,6 @@ const App: React.FC = () => {
     }
   }, [geminiDividends, memoizedData.portfolio, addNotification, checkDailyEvents]);
 
-  const handleManualUpdateCheck = async (): Promise<boolean> => {
-    const hasUpdates = await checkForUpdates(true);
-    return hasUpdates;
-  };
-
   const syncAll = useCallback(async (force = false) => {
     const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) return;
@@ -457,16 +307,16 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       <UpdateBanner 
-        isOpen={showUpdateBanner} 
-        onDismiss={() => setShowUpdateBanner(false)} 
-        onUpdate={() => setShowChangelog(true)} 
-        version={availableVersion || 'Nova'} 
+        isOpen={updateManager.showUpdateBanner} 
+        onDismiss={() => updateManager.setShowUpdateBanner(false)} 
+        onUpdate={() => updateManager.setShowChangelog(true)} 
+        version={updateManager.availableVersion || 'Nova'} 
       />
 
       {toast && (
         <div 
           className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] animate-fade-in-up" 
-          onClick={() => isUpdateAvailable && setShowChangelog(true)}
+          onClick={() => updateManager.isUpdateAvailable && updateManager.setShowChangelog(true)}
         >
           <div className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-slate-900/90 dark:bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-900/10 transition-all cursor-pointer hover:scale-105 active:scale-95 border border-white/10 dark:border-black/5">
              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'info' ? 'bg-slate-800 dark:bg-slate-200' : toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
@@ -493,8 +343,8 @@ const App: React.FC = () => {
         onSettingsClick={() => setShowSettings(true)}
         onRefresh={() => syncAll(true)}
         isRefreshing={isRefreshing || isAiLoading}
-        updateAvailable={isUpdateAvailable}
-        onUpdateClick={() => setShowChangelog(true)}
+        updateAvailable={updateManager.isUpdateAvailable}
+        onUpdateClick={() => updateManager.setShowChangelog(true)}
         onNotificationClick={() => setShowNotifications(true)}
         notificationCount={notifications.length}
         appVersion={APP_VERSION}
@@ -511,9 +361,9 @@ const App: React.FC = () => {
             accentColor={accentColor} onSetAccentColor={setAccentColor}
             privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode}
             appVersion={APP_VERSION}
-            updateAvailable={isUpdateAvailable}
-            onCheckUpdates={handleManualUpdateCheck}
-            onShowChangelog={() => setShowChangelog(true)}
+            updateAvailable={updateManager.isUpdateAvailable}
+            onCheckUpdates={updateManager.checkForUpdates}
+            onShowChangelog={() => updateManager.setShowChangelog(true)}
           />
         ) : (
           <div className="animate-fade-in">
@@ -544,15 +394,16 @@ const App: React.FC = () => {
       {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
 
       <ChangelogModal 
-        isOpen={showChangelog} 
+        isOpen={updateManager.showChangelog} 
         onClose={() => {
-            if (updateProgress === 0) setShowChangelog(false);
+            // Só permite fechar se não estiver instalando
+            if (updateManager.updateProgress === 0) updateManager.setShowChangelog(false);
         }} 
-        version={availableVersion || APP_VERSION} 
-        notes={releaseNotes}
-        isUpdatePending={isUpdateAvailable}
-        onUpdate={startUpdateProcess}
-        progress={updateProgress}
+        version={updateManager.availableVersion || APP_VERSION} 
+        notes={updateManager.releaseNotes}
+        isUpdatePending={updateManager.isUpdateAvailable}
+        onUpdate={updateManager.startUpdateProcess}
+        progress={updateManager.updateProgress}
       />
       
       <NotificationsModal 
@@ -566,4 +417,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-

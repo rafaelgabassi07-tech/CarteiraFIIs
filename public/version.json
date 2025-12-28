@@ -1,18 +1,17 @@
 
-
 {
-  "version": "5.5.4",
+  "version": "5.5.5",
   "date": "2025-05-26",
   "notes": [
     {
-      "type": "feat",
-      "title": "Update Manual",
-      "desc": "Atualizações agora ficam estritamente aguardando sua confirmação, mesmo ao reabrir o app."
+      "type": "perf",
+      "title": "Sistema Blindado",
+      "desc": "O módulo de atualização foi isolado do núcleo do App. Futuras alterações visuais não quebrarão mais o sistema de update."
     },
     {
-      "type": "feat",
-      "title": "Changelog Automático",
-      "desc": "Agora as notas de atualização aparecem automaticamente ao abrir o app após um update."
+      "type": "fix",
+      "title": "Estabilidade do SW",
+      "desc": "Correção definitiva para ciclos de vida do Service Worker."
     }
   ]
 }
