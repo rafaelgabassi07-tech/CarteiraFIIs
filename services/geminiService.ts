@@ -21,9 +21,10 @@ const normalizeDate = (dateStr: any): string => {
   }
   try {
     const d = new Date(s);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    if (d && !isNaN(d.getTime())) return d.toISOString().split('T')[0];
   } catch (e) {}
-  return s; 
+  // Se a análise falhar, retorne uma string vazia para indicar uma data inválida.
+  return ''; 
 };
 
 const normalizeValue = (val: any): number => {

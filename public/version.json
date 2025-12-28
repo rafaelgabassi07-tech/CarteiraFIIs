@@ -1,17 +1,17 @@
 
 {
-  "version": "6.0.0",
-  "date": "2025-05-30",
+  "version": "6.0.1",
+  "date": "2025-05-31",
   "notes": [
+    {
+      "type": "fix",
+      "title": "Correção na Agenda de Proventos",
+      "desc": "Corrigido um bug que exibia 'Invalid Date' para eventos de proventos com datas de pagamento ainda não definidas."
+    },
     {
       "type": "ui",
       "title": "Experiência de Uso Aprimorada",
       "desc": "Renovação completa das animações do aplicativo. Navegação mais fluida, transições dinâmicas e feedback tátil aprimorado para uma interação premium."
-    },
-    {
-      "type": "fix",
-      "title": "Modais Responsivos",
-      "desc": "Correção nos modais deslizantes, que agora acompanham o movimento do dedo de forma precisa e fecham com uma animação suave e natural."
     },
     {
       "type": "feat",

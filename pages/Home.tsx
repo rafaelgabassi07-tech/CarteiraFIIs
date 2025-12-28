@@ -26,9 +26,12 @@ const formatPercent = (val: any) => {
 };
 
 const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-';
+    if (!dateStr) return '??/??/??';
     // Corrige fuso horário adicionando T12:00:00 para evitar dia anterior
     const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
+    if (isNaN(date.getTime())) {
+        return '??/??/??'; // Retorna um placeholder para datas inválidas
+    }
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 };
 
