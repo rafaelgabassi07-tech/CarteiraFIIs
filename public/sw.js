@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v6.6.0'; // Bump version
+const CACHE_NAME = 'investfiis-ultra-v6.6.1'; // Bump version
 
 const ASSETS_TO_CACHE = [
   './manifest.json'

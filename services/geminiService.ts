@@ -8,7 +8,7 @@ export interface UnifiedMarketData {
   indicators?: MarketIndicators;
 }
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v6.6.0'; // Version match
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v6.6.1'; // Version match
 const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 Horas
 
 const normalizeDate = (dateStr: any): string => {

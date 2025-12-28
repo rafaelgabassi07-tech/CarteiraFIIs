@@ -1,22 +1,17 @@
 
 {
-  "version": "6.6.0",
-  "date": "2025-06-26",
+  "version": "6.6.1",
+  "date": "2025-06-27",
   "notes": [
     {
-      "type": "feat",
-      "title": "Sistema de Atualização Inteligente",
-      "desc": "Implementação de BroadcastChannel para atualizações mais rápidas e seguras."
-    },
-    {
       "type": "fix",
-      "title": "Correções de Cache",
-      "desc": "Corrigido problema onde o verificador de versões utilizava dados em cache, impedindo a detecção de novos updates."
+      "title": "Correção Crítica de Update",
+      "desc": "Resolução do erro de compilação no gerenciador de atualizações (TS2339)."
     },
     {
-      "type": "perf",
-      "title": "Auto-Check em Background",
-      "desc": "O app agora verifica atualizações silenciosamente sempre que você retorna à ele."
+      "type": "feat",
+      "title": "Teste de Versão 6.6.1",
+      "desc": "Versão lançada para validar o fluxo de atualização OTA e detecção de cache."
     }
   ]
 }
