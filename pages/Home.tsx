@@ -293,7 +293,7 @@ export const Home: React.FC<HomeProps> = ({
       <div className="anim-fade-in-up is-visible">
         <button 
           onClick={() => setShowSummaryModal(true)}
-          className="w-full text-left bg-white dark:bg-[#0f172a] p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-white/60 dark:border-white/5 relative overflow-hidden group transition-transform duration-300 active:scale-[0.98] hover:scale-[1.02]"
+          className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-white/60 dark:border-white/5 relative overflow-hidden group transition-transform duration-300 active:scale-[0.98] hover:scale-[1.02]"
         >
             <div 
               className="absolute top-0 right-0 w-80 h-80 rounded-full blur-[100px] -mr-24 -mt-24 pointer-events-none group-hover:opacity-100 transition-opacity duration-500"
@@ -323,18 +323,18 @@ export const Home: React.FC<HomeProps> = ({
                     </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                   <div className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-3xl text-center">
-                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Custo Total</p>
-                      <p className="text-sm font-bold text-slate-700 dark:text-slate-300 tabular-nums">{formatBRL(invested)}</p>
+                <div className="grid grid-cols-3 gap-2">
+                   <div className="bg-slate-50 dark:bg-white/[0.03] py-3 px-1 rounded-2xl text-center flex flex-col justify-center h-full">
+                      <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 truncate w-full">Custo Total</p>
+                      <p className="text-xs font-black text-slate-700 dark:text-slate-300 tabular-nums tracking-tight">{formatBRL(invested)}</p>
                    </div>
-                   <div className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-3xl text-center">
-                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Valorização</p>
-                      <p className={`text-sm font-bold tabular-nums ${totalAppreciation >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}>{totalAppreciation >= 0 ? '+' : ''}{formatBRL(totalAppreciation)}</p>
+                   <div className="bg-slate-50 dark:bg-white/[0.03] py-3 px-1 rounded-2xl text-center flex flex-col justify-center h-full">
+                      <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 truncate w-full">Valorização</p>
+                      <p className={`text-xs font-black tabular-nums tracking-tight ${totalAppreciation >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}>{totalAppreciation >= 0 ? '+' : ''}{formatBRL(totalAppreciation)}</p>
                    </div>
-                   <div className="bg-slate-50 dark:bg-white/[0.03] p-4 rounded-3xl text-center">
-                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Realizado</p>
-                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(salesGain + totalDividendsReceived)}</p>
+                   <div className="bg-slate-50 dark:bg-white/[0.03] py-3 px-1 rounded-2xl text-center flex flex-col justify-center h-full">
+                      <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 truncate w-full">Realizado</p>
+                      <p className="text-xs font-black text-emerald-600 dark:text-emerald-500 tabular-nums tracking-tight">{formatBRL(salesGain + totalDividendsReceived)}</p>
                    </div>
                 </div>
             </div>
