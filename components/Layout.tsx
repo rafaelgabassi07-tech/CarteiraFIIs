@@ -175,7 +175,9 @@ export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string
 export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; children: React.ReactNode }> = ({ isOpen, onClose, children }) => {
   const [offsetY, setOffsetY] = useState(0);
   const startY = useRef(0);
+  const isDragging = useRef(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<number | null>(null);
 
   const triggerClose = useCallback(() => {
@@ -183,14 +185,15 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
     setOffsetY(modalHeight);
     if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     closeTimeoutRef.current = window.setTimeout(() => {
-        onClose();
-    }, 300); // Match CSS transition duration
+      onClose();
+    }, 300);
   }, [onClose]);
 
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       setOffsetY(0);
+      isDragging.current = false;
     } else {
       document.body.style.overflow = 'auto';
     }
@@ -203,23 +206,42 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
   }, [isOpen]);
 
   if (!isOpen) return null;
-  
+
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (modalRef.current) {
-        modalRef.current.style.transitionDuration = '0ms'; // Disable transition for direct tracking
-    }
     startY.current = e.touches[0].clientY;
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    const diff = e.touches[0].clientY - startY.current;
-    if (diff > 0) setOffsetY(diff);
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - startY.current;
+    const contentEl = contentRef.current;
+
+    if (!isDragging.current) {
+      if (diff > 5 && contentEl?.scrollTop === 0) {
+        isDragging.current = true;
+        if (modalRef.current) {
+          modalRef.current.style.transition = 'none';
+        }
+      } else {
+        return;
+      }
+    }
+    
+    if (isDragging.current) {
+      e.preventDefault();
+      setOffsetY(Math.max(0, diff));
+    }
   };
 
   const handleTouchEnd = () => {
+    if (!isDragging.current) return;
+    
+    isDragging.current = false;
+    
     if (modalRef.current) {
-        modalRef.current.style.removeProperty('transition-duration'); // Re-enable CSS transition
+      modalRef.current.style.removeProperty('transition');
     }
+
     const modalHeight = modalRef.current?.clientHeight || window.innerHeight;
     const closeThreshold = Math.max(120, modalHeight * 0.3);
 
@@ -229,7 +251,6 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
       setOffsetY(0);
     }
   };
-
 
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-none">
@@ -245,7 +266,7 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
         <div className="w-full h-10 flex items-center justify-center shrink-0 touch-none bg-transparent">
           <div className="w-10 h-1 bg-slate-200 dark:bg-white/10 rounded-full" />
         </div>
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-10 px-1">{children}</div>
+        <div ref={contentRef} className="flex-1 overflow-y-auto no-scrollbar pb-10 px-1">{children}</div>
       </div>
     </div>,
     document.body
