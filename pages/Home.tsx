@@ -46,6 +46,17 @@ const getMonthName = (dateStr: string) => {
     return `${months[monthIndex]} ${parts[0]}`;
 };
 
+const getShortDateLabel = (dateStr?: string) => {
+    if (!dateStr) return '(12M)';
+    const parts = dateStr.split('-');
+    if (parts.length >= 2) {
+       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+       const monthIndex = parseInt(parts[1], 10) - 1;
+       return `(Desde ${months[monthIndex]}/${parts[0]})`;
+    }
+    return '(12M)';
+};
+
 const ModalTabs = ({ tabs, active, onChange }: { tabs: { id: string, label: string }[], active: string, onChange: (id: any) => void }) => (
   <div className="flex p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl mb-6 mx-4">
     {tabs.map(tab => (
@@ -280,11 +291,12 @@ export const Home: React.FC<HomeProps> = ({
   const ganhoRealValor = lucroNominalAbsoluto - custoCorrosaoInflacao;
   
   const isAboveInflation = ganhoRealPercent > 0;
+  const dateLabel = getShortDateLabel(portfolioStartDate);
 
   const comparisonData = useMemo(() => [
-      { name: 'IPCA', value: finalIPCA, fill: '#64748b' },
+      { name: `IPCA ${dateLabel}`, value: finalIPCA, fill: '#64748b' },
       { name: 'Carteira', value: nominalYield, fill: nominalYield >= finalIPCA ? '#10b981' : '#f43f5e' }
-  ], [nominalYield, finalIPCA]);
+  ], [nominalYield, finalIPCA, dateLabel]);
 
   return (
     <div className="pt-24 pb-28 px-5 space-y-4 max-w-lg mx-auto">
@@ -752,7 +764,7 @@ export const Home: React.FC<HomeProps> = ({
                         </div>
                         <p className="font-bold text-slate-300 dark:text-slate-600">VS</p>
                         <div className="space-y-1">
-                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">IPCA</p>
+                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">IPCA {dateLabel}</p>
                            <p className="text-2xl font-black text-slate-500 tabular-nums">{formatPercent(finalIPCA)}</p>
                         </div>
                     </div>
@@ -770,7 +782,7 @@ export const Home: React.FC<HomeProps> = ({
                          return (
                             <div key={item.name}>
                                <div className="flex items-center text-xs font-bold">
-                                   <span className="w-16 text-slate-400">{item.name}</span>
+                                   <span className="w-24 text-slate-400 truncate pr-1">{item.name}</span>
                                    <div className="flex-1 h-3 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
                                        <div className="h-full rounded-full" style={{ width: `${barWidth}%`, backgroundColor: item.fill, transition: 'width 0.5s ease-out' }}></div>
                                    </div>

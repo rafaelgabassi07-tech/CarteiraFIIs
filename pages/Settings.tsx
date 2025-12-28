@@ -1,8 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink } from 'lucide-react';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote } from '../types';
 import { ThemeType } from '../App';
+import { supabase } from '../services/supabase';
 
 // Ícone auxiliar
 const BadgeDollarSignIcon = (props: any) => (
@@ -78,6 +79,29 @@ export const Settings: React.FC<SettingsProps> = ({
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const isServiceWorkerActive = 'serviceWorker' in navigator;
 
+  // Supabase Auth States
+  const [user, setUser] = useState<any>(null);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [confirmAuthPassword, setConfirmAuthPassword] = useState('');
+  
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
+  const [showConfirmAuthPassword, setShowConfirmAuthPassword] = useState(false);
+  
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   useEffect(() => {
     // Se updateAvailable for true, o status já deve refletir isso
     if (updateAvailable) setCheckStatus('available');
@@ -135,6 +159,36 @@ export const Settings: React.FC<SettingsProps> = ({
   const showMessage = (type: 'success' | 'error' | 'info', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    try {
+        if (authMode === 'signup') {
+            if (authPassword !== confirmAuthPassword) {
+                throw new Error('As senhas não coincidem.');
+            }
+            const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+            if (error) throw error;
+            showMessage('info', 'Verifique seu e-mail para confirmar!');
+        } else {
+            const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+            if (error) throw error;
+            showMessage('success', 'Login realizado com sucesso!');
+        }
+        setAuthPassword(''); 
+        setConfirmAuthPassword('');
+    } catch (err: any) {
+        showMessage('error', err.message || 'Erro na autenticação');
+    } finally {
+        setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+      await supabase.auth.signOut();
+      showMessage('info', 'Desconectado.');
   };
 
   const handleSaveToken = () => { onSaveToken(token); showMessage('success', 'Token salvo!'); };
@@ -208,7 +262,6 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleCheckUpdate = async () => {
-    // Se updateAvailable for true, clicar aqui deve abrir o changelog para instalar
     if (updateAvailable) { 
         onShowChangelog(); 
         return; 
@@ -240,18 +293,18 @@ export const Settings: React.FC<SettingsProps> = ({
   const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, colorClass }: any) => (
     <button 
       onClick={onClick} 
-      className={`w-full flex items-center justify-between p-4 bg-white dark:bg-[#0f172a] hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all border-b last:border-0 border-slate-100 dark:border-white/5 group`}
+      className={`w-full flex items-center justify-between p-4 bg-white dark:bg-[#0f172a] hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all border-b last:border-0 border-slate-100 dark:border-white/5 group gap-4`}
     >
-        <div className="flex items-center gap-4">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : colorClass || 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400'}`}>
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : colorClass || 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400'}`}>
                 <Icon className="w-5 h-5" strokeWidth={2.5} />
             </div>
-            <span className={`text-sm font-semibold ${isDestructive ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>
+            <span className={`text-sm font-semibold text-left ${isDestructive ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>
                 {label}
             </span>
         </div>
-        <div className="flex items-center gap-2">
-            {value && <span className="text-xs font-medium text-slate-400">{value}</span>}
+        <div className="flex items-center gap-2 flex-shrink-0">
+            {value && <span className="text-xs font-medium text-slate-400 whitespace-nowrap">{value}</span>}
             {hasUpdate && <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>}
             <ChevronRight className="w-4 h-4 text-slate-300" />
         </div>
@@ -298,6 +351,92 @@ export const Settings: React.FC<SettingsProps> = ({
 
       {activeSection === 'menu' ? (
         <>
+            <div className="mb-6 anim-fade-in-up is-visible">
+               <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Conta Cloud (Supabase)</h3>
+               <div className="rounded-[2rem] overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5 bg-white dark:bg-[#0f172a]">
+                  {user ? (
+                     <div className="p-6 space-y-4">
+                         <div className="flex items-center gap-4">
+                             <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500">
+                                 <User className="w-6 h-6" />
+                             </div>
+                             <div className="overflow-hidden">
+                                 <h3 className="font-bold text-slate-900 dark:text-white truncate">Conectado</h3>
+                                 <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                             </div>
+                         </div>
+                         <button onClick={handleLogout} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all">
+                             <LogOut className="w-4 h-4" /> Sair da Conta
+                         </button>
+                     </div>
+                  ) : (
+                     <div className="p-6 space-y-5">
+                         <div className="flex items-center justify-between">
+                             <h3 className="font-bold text-slate-900 dark:text-white text-sm">Login / Cadastro</h3>
+                             <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-lg">
+                                 <button onClick={() => setAuthMode('login')} className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${authMode === 'login' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}>Entrar</button>
+                                 <button onClick={() => setAuthMode('signup')} className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${authMode === 'signup' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}>Criar</button>
+                             </div>
+                         </div>
+                         
+                         <div className="space-y-3">
+                             <div className="relative">
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input 
+                                    type="email" 
+                                    placeholder="E-mail" 
+                                    className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-4 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white"
+                                    value={authEmail}
+                                    onChange={e => setAuthEmail(e.target.value)}
+                                />
+                             </div>
+                             <div className="relative">
+                                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input 
+                                    type={showAuthPassword ? 'text' : 'password'}
+                                    placeholder="Senha" 
+                                    className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-12 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white"
+                                    value={authPassword}
+                                    onChange={e => setAuthPassword(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAuthPassword(!showAuthPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors focus:outline-none"
+                                >
+                                    {showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                             </div>
+
+                             {authMode === 'signup' && (
+                                <div className="relative anim-fade-in-up is-visible">
+                                    <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input 
+                                        type={showConfirmAuthPassword ? 'text' : 'password'}
+                                        placeholder="Confirme sua senha" 
+                                        className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-12 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white"
+                                        value={confirmAuthPassword}
+                                        onChange={e => setConfirmAuthPassword(e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmAuthPassword(!showConfirmAuthPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors focus:outline-none"
+                                    >
+                                        {showConfirmAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                             )}
+                         </div>
+                         
+                         <button onClick={handleAuth} disabled={authLoading} className="w-full py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-95 transition-all">
+                             {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (authMode === 'login' ? 'Acessar Conta' : 'Criar Conta')}
+                         </button>
+                     </div>
+                  )}
+               </div>
+            </div>
+
             <Section title="Preferências">
                 <MenuItem icon={Palette} label="Aparência e Cores" onClick={() => setActiveSection('appearance')} colorClass="bg-indigo-500/10 text-indigo-500" />
                 <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Push Ativado' : ''} colorClass="bg-amber-500/10 text-amber-500" />
@@ -305,7 +444,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </Section>
 
             <Section title="Dados & Sincronização">
-                <MenuItem icon={Globe} label="Conexões & Serviços" onClick={() => setActiveSection('integrations')} value={brapiToken ? 'Configurado' : 'Pendente'} colorClass="bg-sky-500/10 text-sky-500" />
+                <MenuItem icon={Globe} label="Conexões & Serviços" onClick={() => setActiveSection('integrations')} value={brapiToken || user ? 'Configurado' : 'Pendente'} colorClass="bg-sky-500/10 text-sky-500" />
                 <MenuItem icon={Database} label="Armazenamento e Backup" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} colorClass="bg-emerald-500/10 text-emerald-500" />
             </Section>
 
@@ -321,6 +460,7 @@ export const Settings: React.FC<SettingsProps> = ({
         </>
       ) : (
         <div className="anim-fade-in is-visible pt-2">
+          {/* ... [Resto do código dos submenus mantido igual] ... */}
           <button onClick={() => setActiveSection('menu')} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-accent transition-colors mb-6 font-bold text-xs uppercase tracking-wider group px-1">
             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center group-hover:bg-accent group-hover:text-white transition-all">
                 <ArrowLeft className="w-4 h-4" strokeWidth={3} />
@@ -382,33 +522,9 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
           )}
 
-          {/* ... (Resto das seções mantidas iguais, apenas renderizando o retorno do componente Settings) ... */}
-          {activeSection === 'notifications' && (
-            <div className="space-y-4">
-               <Section title="Permissões">
-                  <div className="p-2">
-                     <Toggle 
-                        label="Notificações Push" 
-                        description="Receba avisos mesmo com o app fechado" 
-                        icon={MessageSquare} 
-                        checked={pushEnabled} 
-                        onChange={onRequestPushPermission} 
-                     />
-                  </div>
-               </Section>
-
-               <Section title="Tipos de Alerta">
-                  <div className="space-y-3 p-2">
-                    <Toggle label="Novos Proventos" description="Quando cair dinheiro na conta" icon={BadgeDollarSignIcon} checked={notifyDivs} onChange={() => setNotifyDivs(!notifyDivs)} />
-                    <Toggle label="Data Com" description="Lembrete no último dia" icon={Calendar} checked={notifyDataCom} onChange={() => setNotifyDataCom(!notifyDataCom)} />
-                    <Toggle label="Metas Atingidas" description="Magic Number e marcos" icon={Target} checked={notifyGoals} onChange={() => setNotifyGoals(!notifyGoals)} />
-                  </div>
-               </Section>
-            </div>
-          )}
-
           {activeSection === 'integrations' && (
             <div className="space-y-6">
+                
                 <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
                     <div className="flex items-center justify-between">
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Status da Sincronização</h3>

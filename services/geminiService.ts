@@ -90,13 +90,16 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const today = new Date().toISOString().split('T')[0];
   const currentYear = new Date().getFullYear();
+  
+  // Define a data de início da carteira (ou 1 de jan do ano atual se não houver)
   const portfolioStart = startDate || `${currentYear}-01-01`; 
 
-  console.log(`🤖 [Gemini] Iniciando busca profunda para: ${uniqueTickers.join(', ')}`);
+  console.log(`🤖 [Gemini] Buscando dados. Início da Carteira: ${portfolioStart}`);
 
-  // Prompt Especializado em Proventos (FIIs & Ações)
+  // Prompt Especializado em Proventos (FIIs & Ações) e IPCA Personalizado
   const prompt = `
     DATA DE HOJE: ${today}.
+    DATA INICIAL DA CARTEIRA: ${portfolioStart}.
     CONTEXTO: Aplicativo financeiro brasileiro.
     ATIVOS ALVO: ${uniqueTickers.join(', ')}.
 
@@ -105,44 +108,45 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     1. PROVENTOS (Dividendos/JCP/Rendimentos) anunciados recentemente.
        - Prioridade MÁXIMA para datas futuras (Data Com ou Pagamento futuros).
        - Busque "Aviso aos Acionistas [TICKER] ${currentYear}" ou "Relatório Gerencial [TICKER]".
-       - Para FIIs: Busque o último rendimento mensal anunciado.
-       - Para Ações: Busque dividendos ou JCP aprovados recentemente.
-    2. FUNDAMENTOS ATUAIS (P/VP, P/L, DY 12m, Valor de Mercado).
-    3. SENTIMENTO DE MERCADO (Resumo de 1 frase).
+    2. FUNDAMENTOS ATUAIS.
+    3. SENTIMENTO DE MERCADO.
+    
+    4. DADOS MACROECONÔMICOS (CRUCIAL):
+       - Calcule ou pesquise a inflação acumulada (IPCA - IBGE) do Brasil EXATAMENTE desde a DATA INICIAL DA CARTEIRA (${portfolioStart}) até a data de hoje (${today}).
+       - Se a data for recente (ex: menos de 1 mês), retorne o IPCA do mês corrente ou último disponível.
+       - O campo "sys.ipca" deve conter esse valor percentual acumulado no período específico.
 
     RETORNO OBRIGATÓRIO (JSON PURO):
     {
-      "sys": { "ipca": number, "ref_date": "${today}" },
+      "sys": { 
+        "ipca": number, // Ex: 2.5 (significa 2.5% acumulado desde ${portfolioStart})
+        "ref_date": "${today}" 
+      },
       "data": [
         {
           "t": "TICKER",
           "type": "FII" | "ACAO",
-          "segment": "Setor Exato (ex: Logística, Bancos, Híbrido)",
+          "segment": "Setor Exato",
           "fund": {
-            "pvp": number (ex: 0.98),
-            "pl": number (ex: 8.5),
-            "dy12": number (ex: 12.5),
-            "liq": "string (ex: R$ 5M/dia)",
-            "mkcap": "string (ex: R$ 1.2B)",
+            "pvp": number,
+            "pl": number,
+            "dy12": number,
+            "liq": "string",
+            "mkcap": "string",
             "sent": "Otimista/Neutro/Pessimista",
-            "reason": "Motivo curto do sentimento"
+            "reason": "Motivo curto"
           },
           "divs": [
             {
               "type": "DIVIDENDO" | "JCP" | "RENDIMENTO",
-              "datacom": "YYYY-MM-DD (Data de corte)",
-              "paydate": "YYYY-MM-DD (Data do pagamento)",
-              "val": number (Valor unitário líquido ou bruto)
+              "datacom": "YYYY-MM-DD",
+              "paydate": "YYYY-MM-DD",
+              "val": number
             }
           ]
         }
       ]
     }
-
-    REGRAS DE NEGÓCIO:
-    - Se a data de pagamento for desconhecida, use null ou string vazia, mas tente encontrar a previsão.
-    - Traga os últimos 3 pagamentos anunciados (histórico recente) + TODOS os futuros.
-    - Se não achar dados, retorne arrays vazios, não alucine valores.
   `;
 
   try {
@@ -152,15 +156,14 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       config: {
         tools: [{ googleSearch: {} }],
         // Instrução de sistema para forçar precisão matemática e formatação
-        systemInstruction: "Você é um assistente especializado em mercado financeiro B3. Sua prioridade é precisão em DATAS e VALORES monetários. Ignore notícias antigas (mais de 6 meses). Retorne apenas JSON válido RFC8259.",
-        temperature: 0.1, // Baixa criatividade para evitar alucinação de valores
+        systemInstruction: "Você é um assistente especializado em mercado financeiro B3. Sua prioridade é precisão em DATAS e VALORES monetários. O IPCA deve ser calculado com base na data de início fornecida. Retorne apenas JSON válido RFC8259.",
+        temperature: 0.1, 
       }
     });
 
     let text = response.text;
     if (!text) throw new Error("IA retornou resposta vazia");
     
-    // Higienização do JSON (Remove Markdown code blocks se existirem)
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const jsonStart = text.indexOf('{');
     const jsonEnd = text.lastIndexOf('}');
@@ -190,7 +193,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         const ticker = asset.t?.toUpperCase().trim();
         if (!ticker) return;
 
-        // 1. Processar Metadados e Fundamentos
         const type = (asset.type === 'FII' || ticker.endsWith('11')) ? AssetType.FII : AssetType.STOCK;
         
         result.metadata[ticker] = {
@@ -204,21 +206,18 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                 market_cap: asset.fund?.mkcap || '-',
                 sentiment: asset.fund?.sent || 'Neutro',
                 sentiment_reason: asset.fund?.reason || 'Análise indisponível no momento.',
-                shareholders: '-' // Dado difícil de pegar via search simples com precisão
+                shareholders: '-' 
             }
         };
 
-        // 2. Processar Proventos
         if (asset.divs && Array.isArray(asset.divs)) {
             asset.divs.forEach((d: any) => {
                 const val = normalizeValue(d.val);
                 const dc = normalizeDate(d.datacom);
                 const dp = normalizeDate(d.paydate);
 
-                // Filtro de Qualidade: Precisa ter valor e pelo menos Data Com válida
                 if (val > 0 && dc) {
                     const typeLabel = (d.type || 'DIVIDENDO').toUpperCase();
-                    // Gerar ID único baseado nos dados para evitar duplicatas na lista
                     const uniqueId = `${ticker}-${dc}-${val.toFixed(4)}`;
                     
                     result.dividends.push({
@@ -226,10 +225,10 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                         ticker: ticker,
                         type: typeLabel,
                         dateCom: dc,
-                        paymentDate: dp || dc, // Fallback para Data Com se pagamento não definido
+                        paymentDate: dp || dc, 
                         rate: val,
-                        quantityOwned: 0, // Será calculado no App.tsx
-                        totalReceived: 0, // Será calculado no App.tsx
+                        quantityOwned: 0,
+                        totalReceived: 0,
                         assetType: type
                     });
                 }
@@ -238,7 +237,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       });
     }
 
-    // Salva no cache apenas se tiver dados válidos
     if (result.metadata && Object.keys(result.metadata).length > 0) {
         localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({
             timestamp: Date.now(),
@@ -251,7 +249,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   } catch (error) {
     console.error("Gemini Critical Error:", error);
-    // Em caso de erro, tenta retornar o cache antigo mesmo vencido (fallback)
     const oldCache = localStorage.getItem(GEMINI_CACHE_KEY);
     if (oldCache) {
         return JSON.parse(oldCache).data;

@@ -5,11 +5,13 @@ import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
+import { Login } from './pages/Login';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
+import { supabase } from './services/supabase';
 
 const APP_VERSION = '6.6.1'; 
 
@@ -23,13 +25,31 @@ const STORAGE_KEYS = {
   PREFS_NOTIF: 'investfiis_prefs_notifications',
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
-  LAST_SYNC: 'investfiis_last_sync_time'
+  LAST_SYNC: 'investfiis_last_sync_time',
+  GUEST_MODE: 'investfiis_guest_mode'
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
+// Helper function to calculate quantity on date
+const getQuantityOnDate = (ticker: string, date: string, transactions: Transaction[]) => {
+  return transactions
+    .filter(t => t.ticker === ticker && t.date <= date)
+    .reduce((acc, t) => {
+      if (t.type === 'BUY') return acc + t.quantity;
+      if (t.type === 'SELL') return acc - t.quantity;
+      return acc;
+    }, 0);
+};
+
 const App: React.FC = () => {
   const updateManager = useUpdateManager(APP_VERSION);
+  
+  // Auth State
+  const [session, setSession] = useState<any>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(() => localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true');
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
 
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
@@ -90,6 +110,7 @@ const App: React.FC = () => {
       localStorage.setItem(STORAGE_KEYS.LAST_SYNC, lastSyncTime.toISOString());
     }
   }, [lastSyncTime]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.GUEST_MODE, String(isGuest)); }, [isGuest]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -119,227 +140,11 @@ const App: React.FC = () => {
     if (type !== 'info') setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // --- Lógica de Notificações (Interna + Push Nativo) ---
-  
-  const sendSystemNotification = useCallback((title: string, body: string, tag?: string) => {
-    if (!pushEnabled || !('Notification' in window)) return;
-
-    if (Notification.permission === 'granted') {
-      try {
-        const notif = new Notification(title, {
-          body,
-          icon: '/pwa-192x192.png', // Fallback se não tiver ícone específico
-          tag,
-          vibrate: [200, 100, 200]
-        } as any);
-        notif.onclick = () => {
-          window.focus();
-          notif.close();
-          setShowNotifications(true);
-        };
-      } catch (e) {
-        console.warn('Erro ao enviar notificação nativa', e);
-      }
-    }
-  }, [pushEnabled]);
-
-  const requestPushPermission = async () => {
-    if (!('Notification' in window)) {
-      showToast('error', 'Navegador não suporta notificações');
-      return;
-    }
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      setPushEnabled(true);
-      showToast('success', 'Notificações Ativadas!');
-      sendSystemNotification('InvestFIIs', 'Notificações push configuradas com sucesso.');
-    } else {
-      setPushEnabled(false);
-      showToast('info', 'Permissão negada pelo navegador');
-    }
-  };
-
-  const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
-    setNotifications(prev => {
-      // Evita duplicatas no mesmo dia
-      if (prev.some(n => n.title === notification.title && (Date.now() - n.timestamp < 86400000))) return prev;
-      
-      // Dispara o Push Nativo se ativado
-      sendSystemNotification(notification.title, notification.message, notification.category);
-      
-      return [
-        { ...notification, id: crypto.randomUUID(), timestamp: Date.now(), read: false },
-        ...prev
-      ];
-    });
-  }, [sendSystemNotification]);
-  
-  const markNotificationsAsRead = () => {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
-
-  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
-
-  const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
-    return txs
-      .filter(t => t.ticker === ticker && t.date <= dateCom)
-      .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
-  }, []);
-
-  const memoizedData = useMemo(() => {
-    const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-    const nowStr = new Date().toISOString().substring(0, 7);
-    const todayDate = new Date();
-    const year = todayDate.getFullYear();
-    const month = String(todayDate.getMonth() + 1).padStart(2, '0');
-    const day = String(todayDate.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`;
-
-    const contribution = transactions
-      .filter(t => t.type === 'BUY' && t.date.startsWith(nowStr))
-      .reduce((acc, t) => acc + (t.quantity * t.price), 0);
-
-    const receipts: DividendReceipt[] = geminiDividends.map(div => {
-      const qty = Math.max(0, getQuantityOnDate(div.ticker, div.dateCom, sortedTxs));
-      return { ...div, quantityOwned: qty, totalReceived: qty * div.rate };
-    }).filter(r => r.totalReceived > 0);
-
-    const divPaidMap: Record<string, number> = {};
-    let totalDividendsReceived = 0;
-
-    receipts.forEach(r => {
-      if (r.paymentDate <= todayStr) {
-        divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived;
-        totalDividendsReceived += r.totalReceived;
-      }
-    });
-
-    const positions: Record<string, AssetPosition> = {};
-    let salesGain = 0;
-
-    sortedTxs.forEach(t => {
-      if (!positions[t.ticker]) {
-        positions[t.ticker] = { 
-            ticker: t.ticker, 
-            quantity: 0, 
-            averagePrice: 0, 
-            assetType: t.assetType, 
-            totalDividends: divPaidMap[t.ticker] || 0,
-            segment: assetsMetadata[t.ticker]?.segment || 'Geral' 
-        };
-      }
-      const p = positions[t.ticker];
-      if (t.type === 'BUY') {
-        const cost = p.quantity * p.averagePrice;
-        p.quantity += t.quantity;
-        p.averagePrice = p.quantity > 0 ? (cost + (t.quantity * t.price)) / p.quantity : 0;
-      } else {
-        salesGain += (t.quantity * t.price) - (t.quantity * p.averagePrice);
-        p.quantity -= t.quantity;
-      }
-    });
-
-    const finalPortfolio = Object.values(positions)
-      .filter(p => p.quantity > 0)
-      .map(p => ({
-        ...p,
-        currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice,
-        logoUrl: quotes[p.ticker]?.logourl,
-        assetType: assetsMetadata[p.ticker]?.type || p.assetType,
-        segment: assetsMetadata[p.ticker]?.segment || p.segment,
-        ...assetsMetadata[p.ticker]?.fundamentals
-      }));
-
-    return { 
-      portfolio: finalPortfolio, 
-      dividendReceipts: receipts, 
-      salesGain: salesGain,
-      totalDividendsReceived: totalDividendsReceived, 
-      monthlyContribution: contribution 
-    };
-  }, [transactions, quotes, geminiDividends, getQuantityOnDate, assetsMetadata]);
-
-  // --- Checagem de Eventos Diários (Proventos, DataCom) ---
-  const checkDailyEvents = useCallback((currentDividends: DividendReceipt[], portfolio: AssetPosition[]) => {
-      const todayDate = new Date();
-      const year = todayDate.getFullYear();
-      const month = String(todayDate.getMonth() + 1).padStart(2, '0');
-      const day = String(todayDate.getDate()).padStart(2, '0');
-      const today = `${year}-${month}-${day}`;
-      
-      currentDividends.forEach(div => {
-         const asset = portfolio.find(p => p.ticker === div.ticker);
-         
-         // Evento: Pagamento Hoje
-         if (div.paymentDate === today && div.totalReceived > 0) {
-             const yieldOnCost = asset && asset.averagePrice > 0 
-                ? ((div.rate / asset.averagePrice) * 100).toFixed(2) 
-                : null;
-             
-             const isJCP = div.type.toUpperCase().includes('JCP') || div.type.toUpperCase().includes('JUROS');
-             const typeLabel = isJCP ? 'JCP (Juros s/ Capital)' : 'Dividendos';
-             
-             let msg = `${div.ticker} pagou R$ ${div.totalReceived.toLocaleString('pt-BR', {minimumFractionDigits: 2})} em ${typeLabel}.`;
-             
-             if (yieldOnCost) {
-                 msg += ` Retorno de ${yieldOnCost}% sobre seu custo médio neste pagamento.`;
-             }
-
-             addNotification({
-                 title: `💰 Caiu na Conta: ${div.ticker}`,
-                 message: msg,
-                 type: 'success',
-                 category: 'payment'
-             });
-         }
-
-         // Evento: Data Com Hoje
-         if (div.dateCom === today) {
-             const yieldVal = asset && asset.currentPrice 
-                ? ((div.rate / asset.currentPrice) * 100).toFixed(2) 
-                : null;
-
-             const isJCP = div.type.toUpperCase().includes('JCP');
-             const typeLabel = isJCP ? 'JCP' : 'Dividendos';
-
-             let msg = `Hoje é a data limite para garantir R$ ${div.rate.toFixed(4)}/cota em ${typeLabel}.`;
-             if (yieldVal) {
-                 msg += ` Yield estimado: ${yieldVal}%.`;
-             }
-             msg += " Durma posicionado hoje para receber.";
-
-             addNotification({
-                 title: `📅 Data Com: ${div.ticker}`,
-                 message: msg,
-                 type: 'warning',
-                 category: 'datacom'
-             });
-         }
-      });
-  }, [addNotification]);
-
-  useEffect(() => {
-    if (geminiDividends.length > prevDividendsRef.current.length) {
-      const newDivs = geminiDividends.filter(d => !prevDividendsRef.current.find(p => p.id === d.id));
-      if (newDivs.length > 0) {
-        const tickers = Array.from(new Set(newDivs.map(d => d.ticker))).join(', ');
-        addNotification({
-          title: 'Novos Anúncios Rastreados',
-          message: `A IA identificou ${newDivs.length} novos pagamentos para: ${tickers}. Verifique o extrato.`,
-          type: 'info',
-          category: 'general'
-        });
-      }
-    }
-    prevDividendsRef.current = geminiDividends;
+  // --- Função Central de Sincronização ---
+  const syncAll = useCallback(async (force = false, transactionsToSync?: Transaction[]) => {
+    const targetTransactions = transactionsToSync || transactions;
+    const tickers: string[] = Array.from(new Set(targetTransactions.map(t => t.ticker.toUpperCase())));
     
-    if (memoizedData.portfolio.length > 0) {
-        checkDailyEvents(geminiDividends, memoizedData.portfolio);
-    }
-  }, [geminiDividends, memoizedData.portfolio, addNotification, checkDailyEvents]);
-
-  const syncAll = useCallback(async (force = false) => {
-    const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) return;
 
     setIsRefreshing(true);
@@ -353,8 +158,8 @@ const App: React.FC = () => {
       setIsAiLoading(true);
       
       let startDate = '';
-      if (transactions.length > 0) {
-         startDate = transactions.reduce((min, t) => t.date < min ? t.date : min, transactions[0].date);
+      if (targetTransactions.length > 0) {
+         startDate = targetTransactions.reduce((min, t) => t.date < min ? t.date : min, targetTransactions[0].date);
       }
 
       const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
@@ -379,7 +184,276 @@ const App: React.FC = () => {
     }
   }, [transactions, brapiToken, showToast]);
 
-  useEffect(() => { syncAll(); }, []);
+  // --- Supabase & Auth Logic ---
+  const fetchTransactionsFromCloud = useCallback(async () => {
+    setIsCloudSyncing(true);
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*');
+
+    if (error) {
+      showToast('error', 'Erro ao baixar dados da nuvem');
+    } else if (data) {
+      const mappedTxs: Transaction[] = data.map((t: any) => ({
+        id: t.id,
+        ticker: t.ticker,
+        type: t.type,
+        quantity: t.quantity,
+        price: t.price,
+        date: t.date,
+        assetType: t.asset_type
+      }));
+      setTransactions(mappedTxs);
+      showToast('success', 'Dados sincronizados com a nuvem');
+      syncAll(false, mappedTxs);
+    }
+    setIsCloudSyncing(false);
+  }, [showToast, syncAll]);
+
+  useEffect(() => {
+    const initAuth = async () => {
+        setIsAuthLoading(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setIsAuthLoading(false);
+        
+        if (session) {
+            setIsGuest(false); // Garante que saiu do modo convidado se logou
+            fetchTransactionsFromCloud();
+        } else if (isGuest) {
+            syncAll(); // Se é convidado, carrega dados locais
+        }
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+         setIsGuest(false);
+         fetchTransactionsFromCloud();
+      } else {
+         if (!isGuest) showToast('info', 'Desconectado da nuvem');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []); // Dependência vazia intencional
+
+  // --- Secure CRUD Operations with Rollback ---
+
+  const handleAddTransaction = async (t: Omit<Transaction, 'id'>) => {
+    const newTx = { ...t, id: crypto.randomUUID() };
+    
+    // 1. Atualização Otimista
+    setTransactions(p => [...p, newTx]);
+
+    if (session) {
+      const { error } = await supabase.from('transactions').insert({
+        id: newTx.id,
+        user_id: session.user.id,
+        ticker: newTx.ticker,
+        type: newTx.type,
+        quantity: newTx.quantity,
+        price: newTx.price,
+        date: newTx.date,
+        asset_type: newTx.assetType
+      });
+
+      // 2. Rollback
+      if (error) {
+        showToast('error', 'Erro ao salvar. Verifique permissões.');
+        console.error("Supabase Error:", error);
+        setTransactions(p => p.filter(tx => tx.id !== newTx.id));
+      }
+    }
+  };
+
+  const handleUpdateTransaction = async (id: string, updated: Omit<Transaction, 'id'>) => {
+    const originalTx = transactions.find(t => t.id === id);
+    if (!originalTx) return;
+
+    setTransactions(p => p.map(t => t.id === id ? { ...updated, id } : t));
+
+    if (session) {
+      const { error } = await supabase.from('transactions').update({
+        ticker: updated.ticker,
+        type: updated.type,
+        quantity: updated.quantity,
+        price: updated.price,
+        date: updated.date,
+        asset_type: updated.assetType
+      }).eq('id', id);
+
+      if (error) {
+        showToast('error', 'Falha ao atualizar na nuvem');
+        console.error("Supabase Error:", error);
+        setTransactions(p => p.map(t => t.id === id ? originalTx : t));
+      }
+    }
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    const deletedTx = transactions.find(t => t.id === id);
+    if (!deletedTx) return;
+
+    setTransactions(p => p.filter(t => t.id !== id));
+
+    if (session) {
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      
+      if (error) {
+        showToast('error', 'Falha ao apagar na nuvem');
+        console.error("Supabase Error:", error);
+        setTransactions(p => [...p, deletedTx]);
+      }
+    }
+  };
+
+  // --- Notificações ---
+  const sendSystemNotification = useCallback((title: string, body: string, tag?: string) => {
+    if (!pushEnabled || !('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      try {
+        const notif = new Notification(title, { body, icon: '/pwa-192x192.png', tag, vibrate: [200, 100, 200] } as any);
+        notif.onclick = () => { window.focus(); notif.close(); setShowNotifications(true); };
+      } catch (e) { console.warn('Erro notificação nativa', e); }
+    }
+  }, [pushEnabled]);
+
+  const requestPushPermission = async () => {
+    if (!('Notification' in window)) { showToast('error', 'Navegador não suporta notificações'); return; }
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      setPushEnabled(true);
+      showToast('success', 'Notificações Ativadas!');
+      sendSystemNotification('InvestFIIs', 'Notificações push configuradas com sucesso.');
+    } else {
+      setPushEnabled(false);
+      showToast('info', 'Permissão negada pelo navegador');
+    }
+  };
+
+  const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
+    setNotifications(prev => {
+      if (prev.some(n => n.title === notification.title && (Date.now() - n.timestamp < 86400000))) return prev;
+      sendSystemNotification(notification.title, notification.message, notification.category);
+      return [{ ...notification, id: crypto.randomUUID(), timestamp: Date.now(), read: false }, ...prev];
+    });
+  }, [sendSystemNotification]);
+  
+  const markNotificationsAsRead = () => { setNotifications(prev => prev.map(n => ({ ...n, read: true }))); };
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+
+  const getQuantityOnDateMemo = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => getQuantityOnDate(ticker, dateCom, txs), []);
+
+  const memoizedData = useMemo(() => {
+    const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+    const nowStr = new Date().toISOString().substring(0, 7);
+    const todayDate = new Date();
+    const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
+
+    const contribution = transactions
+      .filter(t => t.type === 'BUY' && t.date.startsWith(nowStr))
+      .reduce((acc, t) => acc + (t.quantity * t.price), 0);
+
+    const receipts: DividendReceipt[] = geminiDividends.map(div => {
+      const qty = Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, sortedTxs));
+      return { ...div, quantityOwned: qty, totalReceived: qty * div.rate };
+    }).filter(r => r.totalReceived > 0);
+
+    const divPaidMap: Record<string, number> = {};
+    let totalDividendsReceived = 0;
+
+    receipts.forEach(r => {
+      if (r.paymentDate <= todayStr) {
+        divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived;
+        totalDividendsReceived += r.totalReceived;
+      }
+    });
+
+    const positions: Record<string, AssetPosition> = {};
+    let salesGain = 0;
+
+    sortedTxs.forEach(t => {
+      if (!positions[t.ticker]) {
+        positions[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: divPaidMap[t.ticker] || 0, segment: assetsMetadata[t.ticker]?.segment || 'Geral' };
+      }
+      const p = positions[t.ticker];
+      if (t.type === 'BUY') {
+        const cost = p.quantity * p.averagePrice;
+        p.quantity += t.quantity;
+        p.averagePrice = p.quantity > 0 ? (cost + (t.quantity * t.price)) / p.quantity : 0;
+      } else {
+        salesGain += (t.quantity * t.price) - (t.quantity * p.averagePrice);
+        p.quantity -= t.quantity;
+      }
+    });
+
+    const finalPortfolio = Object.values(positions)
+      .filter(p => p.quantity > 0)
+      .map(p => ({
+        ...p,
+        currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice,
+        logoUrl: quotes[p.ticker]?.logourl,
+        assetType: assetsMetadata[p.ticker]?.type || p.assetType,
+        segment: assetsMetadata[p.ticker]?.segment || p.segment,
+        ...assetsMetadata[p.ticker]?.fundamentals
+      }));
+
+    return { portfolio: finalPortfolio, dividendReceipts: receipts, salesGain: salesGain, totalDividendsReceived: totalDividendsReceived, monthlyContribution: contribution };
+  }, [transactions, quotes, geminiDividends, getQuantityOnDateMemo, assetsMetadata]);
+
+  const checkDailyEvents = useCallback((currentDividends: DividendReceipt[], portfolio: AssetPosition[]) => {
+      const todayDate = new Date();
+      const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
+      
+      currentDividends.forEach(div => {
+         const asset = portfolio.find(p => p.ticker === div.ticker);
+         if (div.paymentDate === today && div.totalReceived > 0) {
+             const isJCP = div.type.toUpperCase().includes('JCP') || div.type.toUpperCase().includes('JUROS');
+             let msg = `${div.ticker} pagou R$ ${div.totalReceived.toLocaleString('pt-BR', {minimumFractionDigits: 2})} em ${isJCP ? 'JCP' : 'Dividendos'}.`;
+             addNotification({ title: `💰 Caiu na Conta: ${div.ticker}`, message: msg, type: 'success', category: 'payment' });
+         }
+         if (div.dateCom === today) {
+             const yieldVal = asset && asset.currentPrice ? ((div.rate / asset.currentPrice) * 100).toFixed(2) : null;
+             let msg = `Hoje é a data limite para garantir R$ ${div.rate.toFixed(4)}/cota.`;
+             if (yieldVal) msg += ` Yield estimado: ${yieldVal}%.`;
+             addNotification({ title: `📅 Data Com: ${div.ticker}`, message: msg, type: 'warning', category: 'datacom' });
+         }
+      });
+  }, [addNotification]);
+
+  useEffect(() => {
+    if (geminiDividends.length > prevDividendsRef.current.length) {
+      const newDivs = geminiDividends.filter(d => !prevDividendsRef.current.find(p => p.id === d.id));
+      if (newDivs.length > 0) {
+        const tickers = Array.from(new Set(newDivs.map(d => d.ticker))).join(', ');
+        addNotification({ title: 'Novos Anúncios Rastreados', message: `A IA identificou ${newDivs.length} novos pagamentos para: ${tickers}.`, type: 'info', category: 'general' });
+      }
+    }
+    prevDividendsRef.current = geminiDividends;
+    if (memoizedData.portfolio.length > 0) checkDailyEvents(geminiDividends, memoizedData.portfolio);
+  }, [geminiDividends, memoizedData.portfolio, addNotification, checkDailyEvents]);
+
+  // Se estiver carregando auth, mostra tela de loading básica
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-100 dark:bg-[#020617] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-accent animate-spin" />
+      </div>
+    );
+  }
+
+  // Se não estiver logado E não estiver no modo convidado, mostra Login
+  if (!session && !isGuest) {
+    return (
+      <Login 
+        onLoginSuccess={() => { /* O listener do onAuthStateChange vai atualizar o session */ }} 
+        onGuestAccess={() => { setIsGuest(true); syncAll(); }} 
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
@@ -387,33 +461,21 @@ const App: React.FC = () => {
         <UpdateBanner 
           isOpen={updateManager.showUpdateBanner} 
           onDismiss={() => updateManager.setShowUpdateBanner(false)} 
-          onUpdate={() => {
-            // Apenas abre o modal, não instala ainda
-            updateManager.setShowChangelog(true);
-          }} 
+          onUpdate={() => { updateManager.setShowChangelog(true); }} 
           version={updateManager.availableVersion || 'Nova'} 
         />
       </div>
 
       {toast && (
         <div 
-          className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] anim-fade-in-up is-visible"
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] anim-fade-in-up is-visible w-auto max-w-[90%]"
           onClick={() => updateManager.isUpdateAvailable && updateManager.setShowChangelog(true)}
         >
-          <div className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-slate-900/90 dark:bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-900/10 transition-all cursor-pointer hover:scale-105 active:scale-95 border border-white/10 dark:border-black/5">
-             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'info' ? 'bg-slate-800 dark:bg-slate-200' : toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
-                 {toast.type === 'info' ? (
-                    <Loader2 className="w-4 h-4 text-white dark:text-slate-900 animate-spin" />
-                 ) : toast.type === 'success' ? (
-                    <CheckCircle2 className="w-4 h-4 text-white" />
-                 ) : (
-                    <AlertCircle className="w-4 h-4 text-white" />
-                 )}
+          <div className="flex items-center gap-3 pl-2 pr-4 py-2 rounded-full bg-slate-900/90 dark:bg-white/90 backdrop-blur-xl shadow-xl shadow-slate-900/10 transition-all cursor-pointer hover:scale-105 active:scale-95 border border-white/10 dark:border-black/5">
+             <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'info' ? 'bg-slate-800 dark:bg-slate-200' : toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                 {toast.type === 'info' ? <Loader2 className="w-3 h-3 text-white dark:text-slate-900 animate-spin" /> : toast.type === 'success' ? <CheckCircle2 className="w-3 h-3 text-white" /> : <AlertCircle className="w-3 h-3 text-white" />}
              </div>
-             
-             <span className="text-xs font-bold text-white dark:text-slate-900 tracking-wide">
-                {toast.text}
-             </span>
+             <span className="text-[10px] font-bold text-white dark:text-slate-900 tracking-wide truncate">{toast.text}</span>
           </div>
         </div>
       )}
@@ -424,7 +486,7 @@ const App: React.FC = () => {
         onBack={() => setShowSettings(false)}
         onSettingsClick={() => setShowSettings(true)}
         onRefresh={() => syncAll(true)}
-        isRefreshing={isRefreshing || isAiLoading}
+        isRefreshing={isRefreshing || isAiLoading || isCloudSyncing}
         updateAvailable={updateManager.isUpdateAvailable}
         onUpdateClick={() => updateManager.setShowChangelog(true)}
         onNotificationClick={() => { setShowNotifications(true); markNotificationsAsRead(); }}
@@ -438,7 +500,11 @@ const App: React.FC = () => {
             brapiToken={brapiToken} onSaveToken={setBrapiToken}
             transactions={transactions} onImportTransactions={setTransactions}
             geminiDividends={geminiDividends} onImportDividends={setGeminiDividends}
-            onResetApp={() => { localStorage.clear(); window.location.reload(); }}
+            onResetApp={() => { 
+                localStorage.clear(); 
+                setIsGuest(false);
+                window.location.reload(); 
+            }}
             theme={theme} onSetTheme={setTheme}
             accentColor={accentColor} onSetAccentColor={setAccentColor}
             privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode}
@@ -451,7 +517,7 @@ const App: React.FC = () => {
             pushEnabled={pushEnabled}
             onRequestPushPermission={requestPushPermission}
             lastSyncTime={lastSyncTime}
-            onSyncAll={syncAll}
+            onSyncAll={() => syncAll(false)}
           />
         ) : (
           <div key={currentTab} className="anim-fade-in is-visible">
@@ -471,9 +537,9 @@ const App: React.FC = () => {
             {currentTab === 'transactions' && (
               <Transactions 
                 transactions={transactions} 
-                onAddTransaction={(t) => setTransactions(p => [...p, { ...t, id: crypto.randomUUID() }])}
-                onUpdateTransaction={(id, updated) => setTransactions(p => p.map(t => t.id === id ? { ...updated, id } : t))}
-                onDeleteTransaction={(id) => setTransactions(p => p.filter(t => t.id !== id))}
+                onAddTransaction={handleAddTransaction}
+                onUpdateTransaction={handleUpdateTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
                 monthlyContribution={memoizedData.monthlyContribution}
               />
             )}
@@ -485,9 +551,7 @@ const App: React.FC = () => {
 
       <ChangelogModal 
         isOpen={updateManager.showChangelog} 
-        onClose={() => {
-            if (updateManager.updateProgress === 0) updateManager.setShowChangelog(false);
-        }} 
+        onClose={() => { if (updateManager.updateProgress === 0) updateManager.setShowChangelog(false); }} 
         version={updateManager.availableVersion || APP_VERSION} 
         notes={updateManager.releaseNotes}
         isUpdatePending={!updateManager.wasUpdated && updateManager.isUpdateAvailable}
