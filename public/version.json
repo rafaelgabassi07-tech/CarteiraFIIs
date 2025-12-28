@@ -1,17 +1,17 @@
 
 {
-  "version": "5.7.2",
+  "version": "5.7.3",
   "date": "2025-05-27",
   "notes": [
     {
       "type": "fix",
-      "title": "Atualização Automática",
-      "desc": "Correção crítica que impedia o app de reiniciar após o download da atualização."
+      "title": "Correção de Build",
+      "desc": "Resolução de problema de tipagem que impedia a compilação no servidor de produção."
     },
     {
-      "type": "perf",
-      "title": "Otimização de Ciclo de Vida",
-      "desc": "O sistema agora força a ativação imediata de novas versões."
+      "type": "fix",
+      "title": "Atualização Automática",
+      "desc": "Melhorias na detecção de novas versões para maior confiabilidade."
     }
   ]
 }

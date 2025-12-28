@@ -131,9 +131,11 @@ export const useUpdateManager = (currentAppVersion: string) => {
      setUpdateProgress(5);
      
      // 1. Garante que temos a referência mais atual
+     // Correção do erro TS2322: Converte undefined para null explicitamente
      let reg = swRegistrationRef.current;
      if (!reg) {
-         reg = await navigator.serviceWorker.getRegistration();
+         const found = await navigator.serviceWorker.getRegistration();
+         reg = found || null;
      }
 
      // 2. Inicia Animação de Progresso
@@ -158,7 +160,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
 
             // 4. FALLBACK DE SEGURANÇA (Reload Forçado)
             // Se o controllerchange não disparar em 1s, forçamos o reload
-            // Isso evita que o app fique travado em 100%
             setTimeout(() => {
                 console.warn("⚠️ Fallback de reload ativado");
                 window.location.reload();
