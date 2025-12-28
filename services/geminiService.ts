@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
 
@@ -7,7 +8,7 @@ export interface UnifiedMarketData {
   indicators?: MarketIndicators;
 }
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v5'; // Version bump for logic fix
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v6.4.2'; // Version bump for model change
 const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 Horas
 
 const normalizeDate = (dateStr: any): string => {
@@ -22,7 +23,6 @@ const normalizeDate = (dateStr: any): string => {
     const d = new Date(s);
     if (d && !isNaN(d.getTime())) return d.toISOString().split('T')[0];
   } catch (e) {}
-  // Se a análise falhar, retorne uma string vazia para indicar uma data inválida.
   return ''; 
 };
 
@@ -45,7 +45,6 @@ const normalizeValue = (val: any): number => {
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
-  // Agrupamento de requisição (Todos os tickers em uma única chamada)
   const tickerKey = tickers.slice().sort().join('|');
   
   if (!forceRefresh) {
@@ -55,7 +54,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             const cached = JSON.parse(cachedRaw);
             const isFresh = (Date.now() - cached.timestamp) < CACHE_TTL;
             if (isFresh && cached.tickerKey === tickerKey) {
-                console.log("⚡ Usando Cache Gemini (V5)");
+                console.log("⚡ Usando Cache Gemini (V6.4.2)");
                 return cached.data;
             }
         }
@@ -68,44 +67,46 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const portfolioStart = startDate || today; 
 
   const prompt = `
-    Referência de hoje: ${today}.
-    Para CADA um dos seguintes ativos (${tickerListString}), extraia os dados solicitados.
+    Hoje é ${today}. Analise estes ativos brasileiros: ${tickerListString}.
     
-    1.  **Dados Gerais**: Identifique o tipo ("FII" ou "ACAO") e o segmento.
-    2.  **Fundamentos**: P/VP, P/L, DY (12m), Liquidez Diária, e número de Cotistas/Acionistas.
-    3.  **Análise Rápida**: Gere um sentimento de curto prazo (Otimista, Neutro, Pessimista) e um motivo conciso.
-    4.  **Proventos (Últimos 12 meses)**: Liste TODOS os proventos (Dividendos e JCP). CRÍTICO: Pagamentos anunciados na mesma "Data Com" mas com "Data de Pagamento" diferentes DEVEM ser listados como itens separados. Não agrupe parcelas.
-    5.  **Contexto Macro**: Calcule o IPCA acumulado desde a data de início da carteira: ${portfolioStart}.
+    Tarefa:
+    1. Identifique se é "FII" ou "ACAO" e o segmento.
+    2. Fundamentos: P/VP, P/L, DY (12m), Liquidez, Cotistas.
+    3. Sentimento de Mercado: Curto/médio prazo (Otimista/Neutro/Pessimista) e motivo curto.
+    4. Proventos (Últimos 12 meses): Liste Dividendos e JCP pagos ou anunciados. Importante: "Data Com" define o direito.
+    5. IPCA Acumulado desde ${portfolioStart}.
 
-    A resposta DEVE ser um JSON válido, seguindo estritamente a estrutura abaixo:
+    Retorne APENAS JSON válido:
     {
-      "sys": { "ipca": <number>, "start_ref": "${portfolioStart}" },
+      "sys": { "ipca": number, "start_ref": "YYYY-MM-DD" },
       "assets": [
         {
-          "t": "<TICKER>",
-          "s": "<Segmento>",
+          "t": "TICKER",
+          "s": "Segmento",
           "type": "FII" | "ACAO",
-          "f": { "pvp": <number>, "pl": <number>, "dy": <number>, "liq": "<string>", "cot": "<string>", "desc": "<string>", "sent": "<string>", "sent_why": "<string>" },
-          "d": [ { "ty": "DIV" | "JCP", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": <number> } ]
+          "f": { "pvp": number, "pl": number, "dy": number, "liq": "string", "cot": "string", "desc": "string", "sent": "string", "sent_why": "string" },
+          "d": [ { "ty": "DIV"|"JCP", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": number } ]
         }
       ]
     }
   `;
 
   try {
+    // Usando Gemini 2.5 Flash conforme solicitado
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: "Você é um especialista financeiro da B3 focado em dados de mercado. Sua tarefa é extrair informações de ativos com precisão absoluta, usando o Google Search como fonte primária para dados de proventos. A resposta DEVE ser um JSON válido, sem nenhum texto adicional.",
-        temperature: 0.0,
+        systemInstruction: "Você é um API financeira estrita. Retorne apenas JSON puro. Sem markdown. Busque dados reais.",
+        temperature: 0.1,
       }
     });
 
     let text = response.text;
     if (!text) throw new Error("Resposta vazia da IA");
     
+    // Limpeza robusta de markdown caso o modelo alucine
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[0] : text;
@@ -116,62 +117,52 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         dividends: [], 
         metadata: {},
         indicators: {
-            ipca_cumulative: typeof parsed.sys?.ipca === 'number' ? parsed.sys.ipca : 0,
-            start_date_used: normalizeDate(parsed.sys?.start_ref) || portfolioStart
+            ipca_cumulative: normalizeValue(parsed.sys?.ipca),
+            start_date_used: parsed.sys?.start_ref || today
         }
     };
 
-    const seenDividends = new Set<string>();
-
-    if (parsed?.assets && Array.isArray(parsed.assets)) {
+    if (parsed.assets && Array.isArray(parsed.assets)) {
       parsed.assets.forEach((asset: any) => {
-        const ticker = asset.t?.toUpperCase().trim();
+        const ticker = asset.t?.toUpperCase();
         if (!ticker) return;
 
-        let type = AssetType.STOCK;
-        const declaredType = asset.type?.toUpperCase();
-        if (declaredType === 'FII' || ticker.endsWith('11') || ticker.endsWith('11B')) type = AssetType.FII; 
-        else if (declaredType === 'ACAO' || ticker.endsWith('3') || ticker.endsWith('4')) type = AssetType.STOCK;
-
-        result.metadata[ticker] = { 
-          segment: asset.s || "Geral", 
-          type: type,
-          fundamentals: {
-            p_vp: normalizeValue(asset.f?.pvp),
-            p_l: normalizeValue(asset.f?.pl),
-            dy_12m: normalizeValue(asset.f?.dy),
-            liquidity: asset.f?.liq || 'N/A',
-            shareholders: asset.f?.cot || 'N/A',
-            description: asset.f?.desc || '',
-            sentiment: asset.f?.sent || 'Neutro',
-            sentiment_reason: asset.f?.sent_why || '',
-          }
+        // Metadata & Fundamentals
+        result.metadata[ticker] = {
+            segment: asset.s || 'Outros',
+            type: asset.type === 'FII' ? AssetType.FII : AssetType.STOCK,
+            fundamentals: {
+                p_vp: normalizeValue(asset.f?.pvp),
+                p_l: normalizeValue(asset.f?.pl),
+                dy_12m: normalizeValue(asset.f?.dy),
+                liquidity: asset.f?.liq || '-',
+                shareholders: asset.f?.cot || '-',
+                description: asset.f?.desc || '',
+                sentiment: asset.f?.sent || 'Neutro',
+                sentiment_reason: asset.f?.sent_why || ''
+            }
         };
 
-        if (Array.isArray(asset.d)) {
-            asset.d.forEach((div: any) => {
-                const dc = normalizeDate(div.dc);
-                const dp = normalizeDate(div.dp || div.dc);
-                const val = normalizeValue(div.v);
-                const divType = div.ty?.toUpperCase() || "RENDIMENTO";
-                
-                if (!dc || !val) return;
-                
-                const uniqueKey = `${ticker}-${divType}-${dc}-${dp}-${val}`.replace(/\s+/g, '');
-                
-                if (seenDividends.has(uniqueKey)) return;
-                seenDividends.add(uniqueKey);
-                
-                result.dividends.push({
-                    id: `DIV-${uniqueKey}`,
-                    ticker,
-                    type: divType,
-                    dateCom: dc,
-                    paymentDate: dp, 
-                    rate: val,
-                    quantityOwned: 0,
-                    totalReceived: 0,
-                });
+        // Dividends
+        if (asset.d && Array.isArray(asset.d)) {
+            asset.d.forEach((d: any) => {
+                const dateCom = normalizeDate(d.dc);
+                const paymentDate = normalizeDate(d.dp);
+                const rate = normalizeValue(d.v);
+
+                if (dateCom && rate > 0) {
+                    result.dividends.push({
+                        id: `${ticker}-${dateCom}-${d.ty}-${rate}`,
+                        ticker: ticker,
+                        type: d.ty || 'DIVIDENDO',
+                        dateCom: dateCom,
+                        paymentDate: paymentDate || dateCom, // Fallback se não tiver data de pagamento
+                        rate: rate,
+                        quantityOwned: 0, // Será calculado no App.tsx
+                        totalReceived: 0,
+                        assetType: asset.type === 'FII' ? AssetType.FII : AssetType.STOCK
+                    });
+                }
             });
         }
       });
@@ -184,8 +175,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     }));
 
     return result;
-  } catch (error: any) {
-    console.error("Erro Gemini:", error);
+
+  } catch (error) {
+    console.error("Gemini Error:", error);
     return { dividends: [], metadata: {} };
   }
 };

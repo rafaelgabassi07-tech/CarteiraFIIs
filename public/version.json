@@ -1,27 +1,17 @@
 
 {
-  "version": "6.4.0",
+  "version": "6.4.2",
   "date": "2025-06-16",
   "notes": [
     {
-      "type": "feat",
-      "title": "Sistema de Atualização Robusto",
-      "desc": "O app não vai mais atualizar em segundo plano sem sua permissão. Você tem o controle total de quando instalar a nova versão."
-    },
-    {
-      "type": "feat",
-      "title": "Notificações Inteligentes",
-      "desc": "A central de notificações agora diferencia mensagens lidas e não lidas. O contador no ícone mostra apenas o que é novo."
-    },
-    {
-      "type": "perf",
-      "title": "Performance da IA Otimizada",
-      "desc": "A comunicação com o Gemini foi refinada para ser mais direta, resultando em respostas mais rápidas para cotações e proventos."
-    },
-    {
       "type": "fix",
-      "title": "Estabilidade do PWA Aprimorada",
-      "desc": "Corrigido um erro crítico no registro do Service Worker que afetava a funcionalidade offline e de instalação em alguns ambientes."
+      "title": "Correção de Carregamento (404)",
+      "desc": "Resolvido problema que causava tela branca ou erro ao abrir o app após uma atualização."
+    },
+    {
+      "type": "feat",
+      "title": "Gemini 2.5 Flash",
+      "desc": "A IA foi ajustada para usar o modelo Gemini 2.5 Flash, conforme solicitado, para análise de FIIs e Ações."
     }
   ]
 }

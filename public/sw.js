@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v6.4.0';
+const CACHE_NAME = 'investfiis-ultra-v6.4.2'; // Bump version to force update
 
 const ASSETS_TO_CACHE = [
   './',
@@ -8,9 +8,6 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  // REMOVIDO: self.skipWaiting(); 
-  // O SW agora entra em estado de espera até que o usuário autorize a atualização.
-  
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -21,7 +18,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
-      // 1. Limpeza de caches antigos
+      // 1. Limpeza rigorosa de caches antigos para evitar o erro 404
       caches.keys().then((keys) => {
         return Promise.all(
           keys.map((key) => {
@@ -31,7 +28,6 @@ self.addEventListener('activate', (event) => {
           })
         );
       }),
-      // 2. Assume controle apenas após ativação (que agora é manual)
       self.clients.claim() 
     ])
   );
@@ -40,11 +36,21 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Estratégia Network-First para version.json
-  if (url.pathname.includes('version.json')) {
+  // ESTRATÉGIA CRÍTICA: HTML deve ser Network-First
+  // Isso impede que o app tente carregar JS antigo (Erro 404) quando uma nova versão sai.
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname === '/' || url.pathname.includes('version.json')) {
     event.respondWith(
       fetch(event.request)
-        .catch(() => caches.match(event.request))
+        .then((networkResponse) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          // Fallback para cache apenas se offline
+          return caches.match(event.request);
+        })
     );
     return;
   }
@@ -53,12 +59,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-While-Revalidate para o resto
+  // Stale-While-Revalidate para ativos estáticos (CSS, JS, Imagens)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
+        // Atualiza o cache em background para a próxima vez
+        fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, networkResponse.clone());
+            });
+          }
+        }).catch(() => {}); // Ignora erros de fetch em background
+        
         return cachedResponse;
       }
+      
       return fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
@@ -72,7 +88,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Listener para receber a ordem do usuário
+// Listener para forçar atualização imediata se solicitado
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'INVESTFIIS_SKIP_WAITING') {
     self.skipWaiting();
