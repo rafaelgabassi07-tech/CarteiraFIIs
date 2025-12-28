@@ -432,8 +432,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     </p>
                     <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs">
                         <span className="font-bold text-slate-400">Modelo em Uso</span>
-                        {/* FIX: Use correct model name based on guidelines */}
-                        <span className="font-bold text-purple-500">gemini-3-flash-preview</span>
+                        <span className="font-bold text-purple-500">gemini-2.5-flash</span>
                     </div>
                     <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Novidades do Modelo</h4>

@@ -11,7 +11,7 @@ import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 
-const APP_VERSION = '6.1.0'; 
+const APP_VERSION = '6.2.0'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -373,12 +373,17 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
-      <UpdateBanner 
-        isOpen={updateManager.showUpdateBanner} 
-        onDismiss={() => updateManager.setShowUpdateBanner(false)} 
-        onUpdate={() => updateManager.setShowChangelog(true)} 
-        version={updateManager.availableVersion || 'Nova'} 
-      />
+      <div className="fixed top-24 inset-x-0 z-30 flex justify-center pointer-events-none">
+        <UpdateBanner 
+          isOpen={updateManager.showUpdateBanner} 
+          onDismiss={() => updateManager.setShowUpdateBanner(false)} 
+          onUpdate={() => {
+            updateManager.setShowUpdateBanner(false);
+            updateManager.setShowChangelog(true);
+          }} 
+          version={updateManager.availableVersion || 'Nova'} 
+        />
+      </div>
 
       {toast && (
         <div 

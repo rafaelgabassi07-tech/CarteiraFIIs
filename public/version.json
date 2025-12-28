@@ -1,22 +1,22 @@
 
 {
-  "version": "6.1.0",
-  "date": "2025-06-01",
+  "version": "6.2.0",
+  "date": "2025-06-08",
   "notes": [
     {
+      "type": "fix",
+      "title": "Fluxo de Atualização Controlado",
+      "desc": "O sistema de atualização agora aguarda sua decisão explícita para instalar uma nova versão, evitando ativações automáticas em segundo plano."
+    },
+    {
       "type": "ui",
-      "title": "Sistema de Atualização Aprimorado",
-      "desc": "A experiência de instalação de novas versões foi refinada, com animações mais fluidas e um processo mais robusto para garantir que você esteja sempre com a melhor versão do app."
+      "title": "Correções de Interface",
+      "desc": "O banner de notificação de nova versão foi centralizado e a exibição das notas de versão (changelog) foi corrigida para sempre exibir as informações corretas."
     },
     {
       "type": "perf",
-      "title": "Foco nos Dados Essenciais",
-      "desc": "A busca por proventos foi otimizada para ser mais rápida e focada. Removemos a busca por links de notícias externas para simplificar a interface e priorizar a velocidade."
-    },
-    {
-      "type": "fix",
-      "title": "Correções de Interface",
-      "desc": "Pequenos ajustes visuais e de alinhamento em diversos componentes para uma experiência mais coesa e polida."
+      "title": "Estabilidade do Service Worker",
+      "desc": "Melhorias internas no ciclo de vida do Service Worker para um processo de atualização mais estável e previsível."
     }
   ]
 }

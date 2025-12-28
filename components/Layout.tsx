@@ -127,7 +127,7 @@ export const UpdateBanner: React.FC<{
   if (!isMounted) return null;
 
   return (
-    <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-sm anim-fade-in-up ${isVisible ? 'is-visible' : ''}`}>
+    <div className={`w-[90%] max-w-sm anim-fade-in-up ${isVisible ? 'is-visible' : ''} pointer-events-auto`}>
       <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl shadow-accent/10 flex items-center justify-between gap-4 border border-slate-200/50 dark:border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/30 shrink-0">
