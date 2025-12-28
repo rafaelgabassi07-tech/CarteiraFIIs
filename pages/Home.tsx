@@ -502,7 +502,13 @@ export const Home: React.FC<HomeProps> = ({
                                 <XAxis type="number" hide />
                                 <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} width={60} />
                                 <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                <Bar dataKey="value" radius={[0, 10, 10, 0]} barSize={24} background={{ fill: 'rgba(0,0,0,0.02)', radius: [0, 10, 10, 0] }} label={{ position: 'right', fill: '#94a3b8', fontSize: 10, fontWeight: 700, formatter: (val: any) => `${val.toFixed(1)}%` }} />
+                                <Bar 
+                                    dataKey="value" 
+                                    radius={[0, 10, 10, 0]} 
+                                    barSize={24} 
+                                    background={{ fill: 'rgba(0,0,0,0.02)' }} 
+                                    label={{ position: 'right', fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
+                                />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
