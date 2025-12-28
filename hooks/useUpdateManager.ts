@@ -4,6 +4,7 @@ import { ReleaseNote, VersionData } from '../types';
 
 const STORAGE_KEYS = {
   LAST_SEEN_VERSION: 'investfiis_last_version_seen',
+  LAST_CHECK_TIME: 'investfiis_last_check_time'
 };
 
 const compareVersions = (v1: string, v2: string) => {
@@ -25,15 +26,33 @@ export const useUpdateManager = (currentAppVersion: string) => {
   const [updateProgress, setUpdateProgress] = useState(0);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [lastChecked, setLastChecked] = useState<number>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.LAST_CHECK_TIME);
+    return saved ? parseInt(saved) : Date.now();
+  });
 
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const isUserInitiatedUpdate = useRef(false);
 
+  const updateLastChecked = useCallback(() => {
+    const now = Date.now();
+    setLastChecked(now);
+    localStorage.setItem(STORAGE_KEYS.LAST_CHECK_TIME, now.toString());
+  }, []);
+
   const fetchVersionJson = useCallback(async () => {
+    if (!navigator.onLine) return false;
+
     try {
-      const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`./version.json?t=${Date.now()}&r=${Math.random()}`, { 
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' } 
+      });
+      
       if (res.ok) {
         const data: VersionData = await res.json();
+        updateLastChecked();
+        
         if (compareVersions(data.version, currentAppVersion) > 0) {
           setAvailableVersion(data.version);
           setReleaseNotes(data.notes || []);
@@ -41,15 +60,15 @@ export const useUpdateManager = (currentAppVersion: string) => {
         }
       }
     } catch (e) {
-      console.warn('Erro versão', e);
+      console.warn('Erro ao buscar versão:', e);
     }
     return false;
-  }, [currentAppVersion]);
+  }, [currentAppVersion, updateLastChecked]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    // 1. Cold Start: Mostrar notas se acabou de atualizar
+    // 1. Cold Start
     const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
     if (compareVersions(currentAppVersion, lastSeen) > 0) {
         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, currentAppVersion);
@@ -62,50 +81,63 @@ export const useUpdateManager = (currentAppVersion: string) => {
         }).catch(() => {});
     }
 
-    // 2. Listener de Mudança de Controlador (O Reload Real)
+    // 2. Reload Trigger
     const handleControllerChange = () => {
         if (isUserInitiatedUpdate.current) {
-            console.log("🔄 SW Ativado. Recarregando...");
+            console.log("🔄 SW Ativado via usuário. Recarregando...");
             window.location.reload();
+        } else {
+            // Se o controlador mudou sem o usuário pedir (raro agora com a correção), 
+            // podemos optar por recarregar ou apenas avisar.
+            // Para segurança, vamos logar.
+            console.log("🔄 SW Atualizado em background.");
         }
     };
 
     navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
 
-    // 3. Registrar e Monitorar SW
-    navigator.serviceWorker.ready.then(reg => {
-        swRegistrationRef.current = reg;
-    });
+    const initSW = async () => {
+        let reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) reg = await navigator.serviceWorker.ready;
+        
+        if (reg) {
+            swRegistrationRef.current = reg;
 
-    navigator.serviceWorker.getRegistration().then(reg => {
-        if (!reg) return;
-        swRegistrationRef.current = reg;
-
-        // Se já tem um worker esperando, avisa o usuário
-        if (reg.waiting) {
-            fetchVersionJson().then((hasNew) => {
+            // A. Já existe um worker esperando (download concluído anteriormente)
+            if (reg.waiting) {
+                console.log("⚠️ SW Waiting detectado no início");
+                const hasNew = await fetchVersionJson();
                 if (hasNew) {
                     setIsUpdateAvailable(true);
                     setShowUpdateBanner(true);
                 }
-            });
-        }
-
-        // Monitora novas instalações
-        reg.addEventListener('updatefound', () => {
-            const newWorker = reg.installing;
-            if (newWorker) {
-                newWorker.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        fetchVersionJson().then(() => {
-                            setIsUpdateAvailable(true);
-                            setShowUpdateBanner(true);
-                        });
-                    }
-                });
             }
-        });
-    });
+
+            // B. Monitorar novas instalações
+            reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                if (newWorker) {
+                    newWorker.addEventListener('statechange', () => {
+                        // O estado 'installed' significa que o SW terminou de baixar
+                        // e agora está esperando (waiting) para ser ativado.
+                        // É AQUI que devemos avisar o usuário.
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log("✅ Nova atualização baixada e pronta (waiting)");
+                            fetchVersionJson().then(() => {
+                                setIsUpdateAvailable(true);
+                                setShowUpdateBanner(true);
+                            });
+                        }
+                    });
+                }
+            });
+            
+            // Tenta buscar update silenciosamente ao iniciar
+            reg.update().catch(() => {});
+        }
+    };
+
+    initSW();
 
     return () => {
         navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
@@ -113,13 +145,12 @@ export const useUpdateManager = (currentAppVersion: string) => {
   }, [currentAppVersion, fetchVersionJson]);
 
   const manualCheck = useCallback(async () => {
-     // Atualiza o SW no servidor
+     if (!navigator.onLine) return false;
+
      if (swRegistrationRef.current) {
          try { 
              await swRegistrationRef.current.update(); 
-         } catch(e) {
-             console.warn("Falha ao atualizar SW manualmente", e);
-         }
+         } catch(e) { console.warn(e); }
      }
      return await fetchVersionJson();
   }, [fetchVersionJson]);
@@ -130,15 +161,12 @@ export const useUpdateManager = (currentAppVersion: string) => {
      
      setUpdateProgress(5);
      
-     // 1. Garante que temos a referência mais atual
-     // Correção do erro TS2322: Converte undefined para null explicitamente
      let reg = swRegistrationRef.current;
      if (!reg) {
          const found = await navigator.serviceWorker.getRegistration();
          reg = found || null;
      }
 
-     // 2. Inicia Animação de Progresso
      let p = 5;
      const timer = setInterval(() => {
         p += Math.floor(Math.random() * 15) + 5;
@@ -147,23 +175,20 @@ export const useUpdateManager = (currentAppVersion: string) => {
             clearInterval(timer);
             setUpdateProgress(100);
 
-            // 3. APLICAÇÃO DA ATUALIZAÇÃO
-            // Envia mensagem para o worker esperando
+            // ENVIA COMANDO PARA O WORKER
             if (reg && reg.waiting) {
+                console.log("🚀 Enviando comando SKIP_WAITING");
                 reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-            }
-            
-            // Tenta enviar para o installing também, caso tenha mudado de estado rápido
-            if (reg && reg.installing) {
-                reg.installing.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+            } else {
+                 // Fallback raro se não achar o worker waiting
+                 console.warn("Worker waiting não encontrado, forçando reload");
+                 window.location.reload();
             }
 
-            // 4. FALLBACK DE SEGURANÇA (Reload Forçado)
-            // Se o controllerchange não disparar em 1s, forçamos o reload
+            // Fallback de segurança
             setTimeout(() => {
-                console.warn("⚠️ Fallback de reload ativado");
                 window.location.reload();
-            }, 1000);
+            }, 2000);
 
         } else {
             setUpdateProgress(p);
@@ -178,6 +203,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
     releaseNotes,
     updateProgress,
     showChangelog,
+    lastChecked,
     setShowUpdateBanner,
     setShowChangelog,
     checkForUpdates: manualCheck,

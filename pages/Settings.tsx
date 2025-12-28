@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search } from 'lucide-react';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote } from '../types';
 import { ThemeType } from '../App';
 
@@ -28,6 +28,7 @@ interface SettingsProps {
   onCheckUpdates: () => Promise<boolean>;
   onShowChangelog: () => void;
   releaseNotes?: ReleaseNote[];
+  lastChecked?: number; // Nova prop
 }
 
 const ACCENT_COLORS = [
@@ -45,7 +46,7 @@ export const Settings: React.FC<SettingsProps> = ({
   brapiToken, onSaveToken, transactions, onImportTransactions,
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
-  appVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes
+  appVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked
 }) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates'>('menu');
   const [token, setToken] = useState(brapiToken);
@@ -53,7 +54,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isEnvToken = process.env.BRAPI_TOKEN === brapiToken && !!process.env.BRAPI_TOKEN;
   
-  const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'latest' | 'available'>('idle');
+  const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'latest' | 'available' | 'offline'>('idle');
   const [glassMode, setGlassMode] = useState(() => localStorage.getItem('investfiis_glass_mode') !== 'false');
   const [animations, setAnimations] = useState(() => localStorage.getItem('investfiis_animations') !== 'false');
   
@@ -177,6 +178,12 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleCheckUpdate = async () => {
     if (updateAvailable) { onShowChangelog(); return; }
     
+    if (!navigator.onLine) {
+        setCheckStatus('offline');
+        setTimeout(() => setCheckStatus('idle'), 3000);
+        return;
+    }
+
     // Inicia estado de animação
     setCheckStatus('checking');
     
@@ -452,7 +459,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <div className="flex flex-col items-center justify-center py-10 space-y-6">
                    {/* Logo / Status */}
                    <div className="relative">
-                        <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-accent/10 scale-110' : 'bg-slate-100 dark:bg-white/5'}`}>
+                        <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-accent/10 scale-110' : checkStatus === 'offline' ? 'bg-rose-500/10' : 'bg-slate-100 dark:bg-white/5'}`}>
                             {checkStatus === 'checking' ? (
                                 <>
                                     {/* Animação Radar/Sonar */}
@@ -464,6 +471,8 @@ export const Settings: React.FC<SettingsProps> = ({
                                 <CheckCircle2 className="w-12 h-12 text-emerald-500 animate-scale-in" />
                             ) : updateAvailable || checkStatus === 'available' ? (
                                 <Rocket className="w-12 h-12 text-amber-500 animate-bounce" />
+                            ) : checkStatus === 'offline' ? (
+                                <WifiOff className="w-12 h-12 text-rose-500" />
                             ) : (
                                 <RefreshCcw className="w-12 h-12 text-slate-400" />
                             )}
@@ -472,12 +481,20 @@ export const Settings: React.FC<SettingsProps> = ({
                    
                    <div className="text-center">
                        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-1">v{appVersion}</h2>
-                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest h-4">
-                           {checkStatus === 'checking' ? 'Buscando atualizações...' : 
-                            checkStatus === 'latest' ? 'Sistema Atualizado' :
-                            updateAvailable || checkStatus === 'available' ? 'Atualização Encontrada' : 
-                            'Versão Instalada'}
-                       </p>
+                       <div className="space-y-1">
+                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest h-4">
+                               {checkStatus === 'checking' ? 'Buscando atualizações...' : 
+                                checkStatus === 'latest' ? 'Sistema Atualizado' :
+                                checkStatus === 'offline' ? 'Sem Conexão' :
+                                updateAvailable || checkStatus === 'available' ? 'Atualização Encontrada' : 
+                                'Versão Instalada'}
+                           </p>
+                           {lastChecked && checkStatus !== 'checking' && (
+                               <p className="text-[9px] font-medium text-slate-300 dark:text-slate-600">
+                                   Última checagem: {new Date(lastChecked).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                               </p>
+                           )}
+                       </div>
                    </div>
 
                    {/* Botão Principal com Estados Animados */}
@@ -487,6 +504,7 @@ export const Settings: React.FC<SettingsProps> = ({
                      className={`relative overflow-hidden w-full max-w-xs py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-lg flex items-center justify-center gap-3 ${
                        checkStatus === 'latest' ? 'bg-emerald-500 text-white cursor-default' :
                        updateAvailable || checkStatus === 'available' ? 'bg-amber-500 text-white shadow-amber-500/20' :
+                       checkStatus === 'offline' ? 'bg-rose-500 text-white cursor-not-allowed' :
                        'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
                      }`}
                    >
@@ -501,6 +519,8 @@ export const Settings: React.FC<SettingsProps> = ({
                                <><Check className="w-4 h-4" /> TUDO OK</>
                            ) : updateAvailable || checkStatus === 'available' ? (
                                <><Download className="w-4 h-4" /> BAIXAR AGORA</>
+                           ) : checkStatus === 'offline' ? (
+                               <><WifiOff className="w-4 h-4" /> OFFLINE</>
                            ) : (
                                <><RefreshCcw className="w-4 h-4" /> VERIFICAR</>
                            )}

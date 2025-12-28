@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.7.3';
+const CACHE_NAME = 'investfiis-ultra-v5.8.1';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -8,8 +8,8 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  // Força o SW a não esperar, baixando logo os assets
-  self.skipWaiting(); 
+  // REMOVIDO: self.skipWaiting(); 
+  // O SW agora entra em estado de espera até que o usuário autorize a atualização.
   
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -31,8 +31,7 @@ self.addEventListener('activate', (event) => {
           })
         );
       }),
-      // 2. CRÍTICO: Assume o controle das páginas abertas imediatamente
-      // Sem isso, o usuário precisa recarregar a página manualmente duas vezes
+      // 2. Assume controle apenas após ativação (que agora é manual)
       self.clients.claim() 
     ])
   );
@@ -41,7 +40,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Estratégia Network-First para version.json para garantir update
+  // Estratégia Network-First para version.json
   if (url.pathname.includes('version.json')) {
     event.respondWith(
       fetch(event.request)
@@ -73,6 +72,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Listener para receber a ordem do usuário
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'INVESTFIIS_SKIP_WAITING') {
     self.skipWaiting();

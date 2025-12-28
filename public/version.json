@@ -1,17 +1,17 @@
 
 {
-  "version": "5.7.3",
+  "version": "5.8.1",
   "date": "2025-05-27",
   "notes": [
     {
       "type": "fix",
-      "title": "Correção de Build",
-      "desc": "Resolução de problema de tipagem que impedia a compilação no servidor de produção."
+      "title": "Correção de Atualização",
+      "desc": "O app não irá mais atualizar sozinho em segundo plano. Você decide quando aplicar."
     },
     {
-      "type": "fix",
-      "title": "Atualização Automática",
-      "desc": "Melhorias na detecção de novas versões para maior confiabilidade."
+      "type": "perf",
+      "title": "Fluxo de Controle",
+      "desc": "Ajuste fino no ciclo de vida do Service Worker para maior estabilidade."
     }
   ]
 }

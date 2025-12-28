@@ -11,7 +11,7 @@ import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 
-const APP_VERSION = '5.7.3'; 
+const APP_VERSION = '5.8.1'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -362,6 +362,7 @@ const App: React.FC = () => {
             onCheckUpdates={updateManager.checkForUpdates}
             onShowChangelog={() => updateManager.setShowChangelog(true)}
             releaseNotes={updateManager.releaseNotes}
+            lastChecked={updateManager.lastChecked}
           />
         ) : (
           <div className="animate-fade-in">
