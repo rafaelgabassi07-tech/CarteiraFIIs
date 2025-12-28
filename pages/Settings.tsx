@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff } from 'lucide-react';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote } from '../types';
 import { ThemeType } from '../App';
 
@@ -28,7 +28,9 @@ interface SettingsProps {
   onCheckUpdates: () => Promise<boolean>;
   onShowChangelog: () => void;
   releaseNotes?: ReleaseNote[];
-  lastChecked?: number; // Nova prop
+  lastChecked?: number; 
+  pushEnabled: boolean;
+  onRequestPushPermission: () => void;
 }
 
 const ACCENT_COLORS = [
@@ -46,7 +48,8 @@ export const Settings: React.FC<SettingsProps> = ({
   brapiToken, onSaveToken, transactions, onImportTransactions,
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
-  appVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked
+  appVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
+  pushEnabled, onRequestPushPermission
 }) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates'>('menu');
   const [token, setToken] = useState(brapiToken);
@@ -184,11 +187,9 @@ export const Settings: React.FC<SettingsProps> = ({
         return;
     }
 
-    // Inicia estado de animação
     setCheckStatus('checking');
     
-    // Mínimo tempo de animação para feedback (2s)
-    const minDelay = new Promise(resolve => setTimeout(resolve, 2000));
+    const minDelay = new Promise(resolve => setTimeout(resolve, 3000));
     const checkPromise = onCheckUpdates();
     
     const [_, hasUpdate] = await Promise.all([minDelay, checkPromise]);
@@ -248,7 +249,6 @@ export const Settings: React.FC<SettingsProps> = ({
     </div>
   );
 
-  // Cálculos de porcentagem
   const safeTotal = storageData.totalBytes > 0 ? storageData.totalBytes : 1;
   const txPercent = (storageData.breakdown.tx / safeTotal) * 100;
   const quotePercent = (storageData.breakdown.quotes / safeTotal) * 100;
@@ -267,7 +267,7 @@ export const Settings: React.FC<SettingsProps> = ({
         <>
             <Section title="Preferências">
                 <MenuItem icon={Palette} label="Aparência e Cores" onClick={() => setActiveSection('appearance')} />
-                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} />
+                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Push Ativado' : ''} />
                 <MenuItem icon={privacyMode ? EyeOff : Eye} label="Modo Privacidade" onClick={() => onSetPrivacyMode(!privacyMode)} value={privacyMode ? 'Ativado' : 'Desativado'} />
             </Section>
 
@@ -297,7 +297,6 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'appearance' && (
             <div className="space-y-6">
-              {/* Preview */}
               <div className="relative w-full overflow-hidden rounded-[2.5rem] bg-white dark:bg-[#0b1121] p-8 shadow-sm transition-colors duration-500 border border-slate-200/50 dark:border-white/5">
                   <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-20 blur-[50px] transition-colors duration-500" style={{ backgroundColor: accentColor }}></div>
                   <div className="relative z-10">
@@ -353,17 +352,23 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'notifications' && (
             <div className="space-y-4">
-               <Section title="Alertas Financeiros">
+               <Section title="Permissões">
+                  <div className="p-2">
+                     <Toggle 
+                        label="Notificações Push" 
+                        description="Receba avisos mesmo com o app fechado" 
+                        icon={MessageSquare} 
+                        checked={pushEnabled} 
+                        onChange={onRequestPushPermission} 
+                     />
+                  </div>
+               </Section>
+
+               <Section title="Tipos de Alerta">
                   <div className="space-y-3 p-2">
                     <Toggle label="Novos Proventos" description="Quando cair dinheiro na conta" icon={BadgeDollarSignIcon} checked={notifyDivs} onChange={() => setNotifyDivs(!notifyDivs)} />
                     <Toggle label="Data Com" description="Lembrete no último dia" icon={Calendar} checked={notifyDataCom} onChange={() => setNotifyDataCom(!notifyDataCom)} />
                     <Toggle label="Metas Atingidas" description="Magic Number e marcos" icon={Target} checked={notifyGoals} onChange={() => setNotifyGoals(!notifyGoals)} />
-                    <Toggle label="Variações Bruscas" description="Alta volatilidade" icon={TrendingUp} checked={notifyMarket} onChange={() => setNotifyMarket(!notifyMarket)} />
-                  </div>
-               </Section>
-               <Section title="Aplicativo">
-                  <div className="p-2">
-                    <Toggle label="Atualizações do App" description="Novidades e correções" icon={Rocket} checked={notifyUpdates} onChange={() => setNotifyUpdates(!notifyUpdates)} />
                   </div>
                </Section>
             </div>
@@ -457,12 +462,10 @@ export const Settings: React.FC<SettingsProps> = ({
           
           {activeSection === 'updates' && (
               <div className="flex flex-col items-center justify-center py-10 space-y-6">
-                   {/* Logo / Status */}
                    <div className="relative">
                         <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-accent/10 scale-110' : checkStatus === 'offline' ? 'bg-rose-500/10' : 'bg-slate-100 dark:bg-white/5'}`}>
                             {checkStatus === 'checking' ? (
                                 <>
-                                    {/* Animação Radar/Sonar */}
                                     <div className="absolute inset-0 rounded-full border-4 border-accent/20 animate-[spin_3s_linear_infinite]"></div>
                                     <div className="absolute inset-2 rounded-full border-4 border-accent/40 animate-[spin_2s_linear_infinite_reverse]"></div>
                                     <Search className="w-12 h-12 text-accent animate-pulse" />
@@ -497,24 +500,25 @@ export const Settings: React.FC<SettingsProps> = ({
                        </div>
                    </div>
 
-                   {/* Botão Principal com Estados Animados */}
+                   {/* Botão de Atualização Aprimorado (Scanner Animation) */}
                    <button 
                      onClick={handleCheckUpdate}
                      disabled={checkStatus === 'checking' || checkStatus === 'latest'}
-                     className={`relative overflow-hidden w-full max-w-xs py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-lg flex items-center justify-center gap-3 ${
+                     className={`relative overflow-hidden w-full max-w-xs py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-lg flex items-center justify-center gap-3 group ${
                        checkStatus === 'latest' ? 'bg-emerald-500 text-white cursor-default' :
                        updateAvailable || checkStatus === 'available' ? 'bg-amber-500 text-white shadow-amber-500/20' :
                        checkStatus === 'offline' ? 'bg-rose-500 text-white cursor-not-allowed' :
                        'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
                      }`}
                    >
+                       {/* Scanner Effect */}
                        {checkStatus === 'checking' && (
-                           <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                           <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent translate-x-[-100%] animate-[shimmer_1.5s_infinite]"></div>
                        )}
                        
                        <span className="relative z-10 flex items-center gap-2">
                            {checkStatus === 'checking' ? (
-                               <>AGUARDE</>
+                               <>SCANNING...</>
                            ) : checkStatus === 'latest' ? (
                                <><Check className="w-4 h-4" /> TUDO OK</>
                            ) : updateAvailable || checkStatus === 'available' ? (
@@ -522,12 +526,11 @@ export const Settings: React.FC<SettingsProps> = ({
                            ) : checkStatus === 'offline' ? (
                                <><WifiOff className="w-4 h-4" /> OFFLINE</>
                            ) : (
-                               <><RefreshCcw className="w-4 h-4" /> VERIFICAR</>
+                               <><RefreshCcw className="w-4 h-4 transition-transform group-hover:rotate-180 duration-500" /> VERIFICAR</>
                            )}
                        </span>
                    </button>
 
-                   {/* Changelog Inline Simplificado */}
                    <div className="w-full max-w-xs mt-8 border-t border-slate-200 dark:border-white/10 pt-6">
                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Notas da Versão</h4>
                        <div className="space-y-4">

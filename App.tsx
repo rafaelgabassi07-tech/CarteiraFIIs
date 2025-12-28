@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, UpdateBanner } from './components/Layout';
 import { Home } from './pages/Home';
@@ -21,7 +20,8 @@ const STORAGE_KEYS = {
   ACCENT: 'investfiis_accent_color',
   PRIVACY: 'investfiis_privacy_mode',
   PREFS_NOTIF: 'investfiis_prefs_notifications',
-  INDICATORS: 'investfiis_v4_indicators'
+  INDICATORS: 'investfiis_v4_indicators',
+  PUSH_ENABLED: 'investfiis_push_enabled'
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#0ea5e9');
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
+  const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(STORAGE_KEYS.PUSH_ENABLED) === 'true');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -75,6 +76,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken); }, [brapiToken]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled)); }, [pushEnabled]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -104,15 +106,60 @@ const App: React.FC = () => {
     if (type !== 'info') setTimeout(() => setToast(null), 3000);
   }, []);
 
+  // --- Lógica de Notificações (Interna + Push Nativo) ---
+  
+  const sendSystemNotification = useCallback((title: string, body: string, tag?: string) => {
+    if (!pushEnabled || !('Notification' in window)) return;
+
+    if (Notification.permission === 'granted') {
+      try {
+        const notif = new Notification(title, {
+          body,
+          icon: '/pwa-192x192.png', // Fallback se não tiver ícone específico
+          tag,
+          vibrate: [200, 100, 200]
+        } as any);
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+          setShowNotifications(true);
+        };
+      } catch (e) {
+        console.warn('Erro ao enviar notificação nativa', e);
+      }
+    }
+  }, [pushEnabled]);
+
+  const requestPushPermission = async () => {
+    if (!('Notification' in window)) {
+      showToast('error', 'Navegador não suporta notificações');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      setPushEnabled(true);
+      showToast('success', 'Notificações Ativadas!');
+      sendSystemNotification('InvestFIIs', 'Notificações push configuradas com sucesso.');
+    } else {
+      setPushEnabled(false);
+      showToast('info', 'Permissão negada pelo navegador');
+    }
+  };
+
   const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
     setNotifications(prev => {
+      // Evita duplicatas no mesmo dia
       if (prev.some(n => n.title === notification.title && (Date.now() - n.timestamp < 86400000))) return prev;
+      
+      // Dispara o Push Nativo se ativado
+      sendSystemNotification(notification.title, notification.message, notification.category);
+      
       return [
         { ...notification, id: crypto.randomUUID(), timestamp: Date.now(), read: false },
         ...prev
       ];
     });
-  }, []);
+  }, [sendSystemNotification]);
 
   const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
     return txs
@@ -189,6 +236,7 @@ const App: React.FC = () => {
     return { portfolio: finalPortfolio, dividendReceipts: receipts, realizedGain: totalRealizedGain, monthlyContribution: contribution };
   }, [transactions, quotes, geminiDividends, getQuantityOnDate, assetsMetadata]);
 
+  // --- Checagem de Eventos Diários (Proventos, DataCom) ---
   const checkDailyEvents = useCallback((currentDividends: DividendReceipt[], portfolio: AssetPosition[]) => {
       const todayDate = new Date();
       const year = todayDate.getFullYear();
@@ -199,34 +247,43 @@ const App: React.FC = () => {
       currentDividends.forEach(div => {
          const asset = portfolio.find(p => p.ticker === div.ticker);
          
+         // Evento: Pagamento Hoje
          if (div.paymentDate === today && div.totalReceived > 0) {
              const yieldOnCost = asset && asset.averagePrice > 0 
                 ? ((div.rate / asset.averagePrice) * 100).toFixed(2) 
                 : null;
              
-             let msg = `Caiu na conta! ${div.ticker} pagou R$ ${div.totalReceived.toLocaleString('pt-BR', {minimumFractionDigits: 2})}.`;
+             const isJCP = div.type.toUpperCase().includes('JCP') || div.type.toUpperCase().includes('JUROS');
+             const typeLabel = isJCP ? 'JCP (Juros s/ Capital)' : 'Dividendos';
+             
+             let msg = `${div.ticker} pagou R$ ${div.totalReceived.toLocaleString('pt-BR', {minimumFractionDigits: 2})} em ${typeLabel}.`;
+             
              if (yieldOnCost) {
-                 msg += ` Isso representa um retorno de ${yieldOnCost}% sobre seu custo médio neste mês.`;
+                 msg += ` Retorno de ${yieldOnCost}% sobre seu custo médio neste pagamento.`;
              }
 
              addNotification({
-                 title: `💰 Proventos: ${div.ticker}`,
+                 title: `💰 Caiu na Conta: ${div.ticker}`,
                  message: msg,
                  type: 'success',
                  category: 'payment'
              });
          }
 
+         // Evento: Data Com Hoje
          if (div.dateCom === today) {
              const yieldVal = asset && asset.currentPrice 
                 ? ((div.rate / asset.currentPrice) * 100).toFixed(2) 
                 : null;
 
-             let msg = `Último dia para garantir R$ ${div.rate.toFixed(4)}/cota.`;
+             const isJCP = div.type.toUpperCase().includes('JCP');
+             const typeLabel = isJCP ? 'JCP' : 'Dividendos';
+
+             let msg = `Hoje é a data limite para garantir R$ ${div.rate.toFixed(4)}/cota em ${typeLabel}.`;
              if (yieldVal) {
-                 msg += ` Yield estimado do anúncio: ${yieldVal}%.`;
+                 msg += ` Yield estimado: ${yieldVal}%.`;
              }
-             msg += " Durma posicionado para receber.";
+             msg += " Durma posicionado hoje para receber.";
 
              addNotification({
                  title: `📅 Data Com: ${div.ticker}`,
@@ -363,6 +420,8 @@ const App: React.FC = () => {
             onShowChangelog={() => updateManager.setShowChangelog(true)}
             releaseNotes={updateManager.releaseNotes}
             lastChecked={updateManager.lastChecked}
+            pushEnabled={pushEnabled}
+            onRequestPushPermission={requestPushPermission}
           />
         ) : (
           <div className="animate-fade-in">
