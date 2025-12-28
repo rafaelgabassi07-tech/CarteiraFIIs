@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.5.5';
+const CACHE_NAME = 'investfiis-ultra-v5.5.6';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -13,6 +13,7 @@ self.addEventListener('install', (event) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  // NÃO usamos skipWaiting() aqui. O SW deve esperar.
 });
 
 self.addEventListener('activate', (event) => {
@@ -26,7 +27,7 @@ self.addEventListener('activate', (event) => {
         })
       );
     })
-    // Removido clients.claim() intencionalmente para evitar tomada de controle agressiva
+    // NÃO usamos clients.claim() aqui. Evita tomada de controle sem reload.
   );
 });
 
@@ -62,8 +63,9 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Listener Específico: Só atualiza se receber ESTE comando exato
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  if (event.data && event.data.type === 'INVESTFIIS_SKIP_WAITING') {
     self.skipWaiting();
   }
 });

@@ -9,9 +9,9 @@ import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, App
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import { useUpdateManager } from './hooks/useUpdateManager'; // Importação do Hook Blindado
+import { useUpdateManager } from './hooks/useUpdateManager';
 
-const APP_VERSION = '5.5.5'; 
+const APP_VERSION = '5.5.6'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -27,10 +27,7 @@ const STORAGE_KEYS = {
 export type ThemeType = 'light' | 'dark' | 'system';
 
 const App: React.FC = () => {
-  // --- INTEGRAÇÃO DO SISTEMA DE ATUALIZAÇÃO BLINDADO ---
-  // Toda a lógica complexa vive dentro deste hook. O App apenas consome os dados.
   const updateManager = useUpdateManager(APP_VERSION);
-  // -----------------------------------------------------
 
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
@@ -396,7 +393,6 @@ const App: React.FC = () => {
       <ChangelogModal 
         isOpen={updateManager.showChangelog} 
         onClose={() => {
-            // Só permite fechar se não estiver instalando
             if (updateManager.updateProgress === 0) updateManager.setShowChangelog(false);
         }} 
         version={updateManager.availableVersion || APP_VERSION} 
