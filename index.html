@@ -52,33 +52,8 @@
               secondary: { light: '#ffffff', dark: '#0f172a' }, 
               accent: 'rgb(var(--color-accent-rgb) / <alpha-value>)', 
             },
-            animation: {
-              'fade-in': 'fadeIn 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards',
-              'fade-in-up': 'fadeInUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards',
-              'slide-up': 'slideUp 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards',
-              'scale-in': 'scaleIn 0.4s cubic-bezier(0.3, 1.1, 0.7, 1) forwards',
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'float': 'float 6s ease-in-out infinite',
-              'spin-slow': 'spin-slow 10s linear infinite',
-              'cross-fade': 'crossFade 0.35s cubic-bezier(0.23, 1, 0.32, 1) forwards',
-            },
-            keyframes: {
-              fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-              fadeInUp: { '0%': { opacity: '0', transform: 'translateY(15px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-              slideUp: { '0%': { transform: 'translateY(100%)' }, '100%': { transform: 'translateY(0)' } },
-              scaleIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
-              crossFade: { '0%': { opacity: '0', transform: 'scale(0.97)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
-              float: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-10px)' },
-              },
-              'spin-slow': {
-                'from': { transform: 'rotate(0deg)' },
-                'to': { transform: 'rotate(360deg)' }
-              },
-              shimmer: {
-                '100%': { transform: 'translateX(100%)' }
-              }
+            transitionTimingFunction: {
+              'out-quint': 'var(--ease-out-quint)',
             },
             fontSize: {
               xxs: ['0.625rem', '0.75rem'], 
@@ -89,6 +64,12 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --duration-fast: 150ms;
+        --duration-normal: 300ms;
+        --duration-slow: 500ms;
+        --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+      }
       body { 
         -webkit-tap-highlight-color: transparent; 
         overscroll-behavior-y: none; 
@@ -114,8 +95,42 @@
       
       .tap-active:active { transform: scale(0.96); transition: transform 0.1s; }
 
-      /* GLOW SELECTION */
       ::selection { background-color: rgb(var(--color-accent-rgb)); color: white; }
+
+      /* Animation System Refactor */
+      .anim-fade-in {
+        opacity: 0;
+        transition: opacity var(--duration-normal) var(--ease-out-quint);
+      }
+      .anim-fade-in.is-visible { opacity: 1; }
+
+      .anim-fade-in-up {
+        opacity: 0;
+        transform: translateY(15px);
+        transition: opacity var(--duration-normal) var(--ease-out-quint), transform var(--duration-normal) var(--ease-out-quint);
+      }
+      .anim-fade-in-up.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .anim-scale-in {
+        opacity: 0;
+        transform: scale(0.95);
+        transition: opacity var(--duration-normal) var(--ease-out-quint), transform var(--duration-normal) var(--ease-out-quint);
+      }
+      .anim-scale-in.is-visible {
+        opacity: 1;
+        transform: scale(1);
+      }
+      
+      .anim-slide-up {
+        transform: translateY(100%);
+        transition: transform var(--duration-slow) var(--ease-out-quint);
+      }
+      .anim-slide-up.is-visible {
+        transform: translateY(0);
+      }
 
     </style>
   <script type="importmap">
