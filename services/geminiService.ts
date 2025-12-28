@@ -77,15 +77,17 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const today = new Date().toISOString().split('T')[0];
   const portfolioStart = startDate || today; 
 
-  // Prompt otimizado para garantir FIIs e Ações estrito
+  // Prompt otimizado para garantir FIIs e Ações estrito, com simplificação
   const prompt = `
     Hoje é ${today}. Analise estes ativos: ${tickerListString}.
     
+    OBJETIVO: Classificar e extrair dados para uma carteira simples de FIIs e Ações.
+    
     Tarefas:
     1. Identifique ESTRITAMENTE se é "FII" ou "ACAO". 
-       - Se for ETF, BDR ou outro, classifique como "ACAO" para simplificação.
-       - Defina o segmento de atuação.
-    2. Fundamentos (Use 0 se não encontrar): P/VP (number), P/L (number), DY 12m (number, ex: 10.5), Liquidez (texto), Cotistas (texto).
+       - Se for ETF, BDR, Stock Internacional ou outro, classifique como "ACAO" para simplificação da interface.
+       - Defina o segmento de atuação de forma resumida.
+    2. Fundamentos (Use 0 se não encontrar): P/VP (number), P/L (number), DY 12m (number, ex: 10.5), Liquidez (texto curto), Cotistas (texto).
     3. Sentimento: Resumido (Otimista/Neutro/Pessimista) e motivo curto.
     4. Proventos (Últimos 12 meses): Liste Dividendos e JCP.
        - 'dc': Data Com (YYYY-MM-DD).

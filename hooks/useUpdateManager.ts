@@ -216,7 +216,9 @@ export const useUpdateManager = (currentAppVersion: string) => {
          try {
              await reg.update();
              // Captura novamente o worker para garantir que o TS entenda o tipo
-             const newWorker = reg.waiting;
+             // Casting explícito para evitar erro TS2339 (never)
+             const newWorker = reg.waiting as ServiceWorker | null;
+             
              if (newWorker) {
                  newWorker.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
              } else {
