@@ -8,7 +8,7 @@ export interface UnifiedMarketData {
   indicators?: MarketIndicators;
 }
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v6.4.2'; // Version bump for model change
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v6.5.0'; // Version bump for model change
 const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 Horas
 
 const normalizeDate = (dateStr: any): string => {
@@ -54,7 +54,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             const cached = JSON.parse(cachedRaw);
             const isFresh = (Date.now() - cached.timestamp) < CACHE_TTL;
             if (isFresh && cached.tickerKey === tickerKey) {
-                console.log("⚡ Usando Cache Gemini (V6.4.2)");
+                console.log("⚡ Usando Cache Gemini (V6.5.0)");
                 return cached.data;
             }
         }

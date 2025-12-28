@@ -1,17 +1,22 @@
 
 {
-  "version": "6.4.3",
-  "date": "2025-06-16",
+  "version": "6.5.0",
+  "date": "2025-06-25",
   "notes": [
     {
-      "type": "fix",
-      "title": "Correção Crítica de Cache",
-      "desc": "Implementado sistema de auto-recuperação para resolver erros de carregamento e tela branca."
+      "type": "ui",
+      "title": "Novo Painel de Renda",
+      "desc": "O card de Renda Passiva e seu modal foram completamente redesenhados com gráficos e métricas otimizadas."
     },
     {
-      "type": "feat",
-      "title": "Estabilidade Reforçada",
-      "desc": "Otimizações no Service Worker para garantir atualizações mais confiáveis."
+      "type": "ui",
+      "title": "Ergonomia Visual",
+      "desc": "Padronização do tamanho de todas as janelas deslizantes (modais) para uma experiência de navegação mais consistente."
+    },
+    {
+      "type": "perf",
+      "title": "Otimização de Renderização",
+      "desc": "Melhorias no desempenho de animações de entrada e troca de contexto."
     }
   ]
 }

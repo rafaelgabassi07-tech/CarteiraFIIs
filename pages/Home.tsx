@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ChevronsRight } from 'lucide-react';
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ChevronsRight, ListFilter } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, CartesianGrid, YAxis, Legend } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
@@ -33,6 +33,11 @@ const formatDate = (dateStr: string) => {
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 };
 
+const getMonthName = (dateStr: string) => {
+    const date = new Date(dateStr + 'T12:00:00');
+    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+};
+
 const ModalTabs = ({ tabs, active, onChange }: { tabs: { id: string, label: string }[], active: string, onChange: (id: any) => void }) => (
   <div className="flex p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl mb-6 mx-4">
     {tabs.map(tab => (
@@ -46,6 +51,19 @@ const ModalTabs = ({ tabs, active, onChange }: { tabs: { id: string, label: stri
     ))}
   </div>
 );
+
+// Custom Tooltip para o gráfico
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-slate-900 text-white text-[10px] font-bold py-1 px-2 rounded-lg shadow-xl">
+        <p>{label}</p>
+        <p className="text-emerald-400">{formatBRL(payload[0].value)}</p>
+      </div>
+    );
+  }
+  return null;
+};
 
 export const Home: React.FC<HomeProps> = ({ 
   portfolio, 
@@ -64,7 +82,7 @@ export const Home: React.FC<HomeProps> = ({
   const [showSummaryModal, setShowSummaryModal] = useState(false);
 
   const [allocationTab, setAllocationTab] = useState<'assets' | 'types' | 'segments'>('assets');
-  const [incomeTab, setIncomeTab] = useState<'summary' | 'magic' | 'calendar'>('summary');
+  const [incomeTab, setIncomeTab] = useState<'summary' | 'history' | 'magic'>('summary');
   const [gainTab, setGainTab] = useState<'benchmark' | 'power'>('benchmark');
   const [agendaTab, setAgendaTab] = useState<'payments' | 'datacom'>('payments');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -89,13 +107,14 @@ export const Home: React.FC<HomeProps> = ({
   }, [totalAppreciation, salesGain, totalDividendsReceived]);
   const isProfitPositive = totalProfit >= 0;
 
-  const { received, upcoming, averageMonthly, bestPayer, chartData, nextPayments, nextDataComs } = useMemo(() => {
+  const { received, upcoming, averageMonthly, bestPayer, chartData, nextPayments, nextDataComs, historyGrouped } = useMemo(() => {
     const today = new Date();
     today.setHours(0,0,0,0);
     const todayStr = today.toISOString().split('T')[0];
 
     const tickerTotalMap: Record<string, number> = {};
     const monthlyTotals: Record<string, number> = {};
+    const groupedHistory: Record<string, { total: number, items: DividendReceipt[] }> = {};
     
     const upcomingPayments: DividendReceipt[] = [];
     const upcomingDataComs: DividendReceipt[] = [];
@@ -109,6 +128,15 @@ export const Home: React.FC<HomeProps> = ({
       
       const monthKey = payDate.substring(0, 7); // YYYY-MM
       
+      // Lógica de Histórico Agrupado
+      if (curr.totalReceived > 0 && payDate <= todayStr) {
+          if (!groupedHistory[monthKey]) {
+              groupedHistory[monthKey] = { total: 0, items: [] };
+          }
+          groupedHistory[monthKey].items.push(curr);
+          groupedHistory[monthKey].total += curr.totalReceived;
+      }
+
       tickerTotalMap[curr.ticker] = (tickerTotalMap[curr.ticker] || 0) + curr.totalReceived;
 
       if (payDate <= todayStr) {
@@ -152,9 +180,12 @@ export const Home: React.FC<HomeProps> = ({
         bestPayer: { ticker: maxTicker, value: maxVal },
         chartData: last12MonthsData,
         nextPayments: upcomingPayments,
-        nextDataComs: upcomingDataComs
+        nextDataComs: upcomingDataComs,
+        historyGrouped: groupedHistory
     };
   }, [dividendReceipts]);
+
+  const sortedHistoryKeys = useMemo(() => Object.keys(historyGrouped).sort((a,b) => b.localeCompare(a)), [historyGrouped]);
 
   const yieldOnCostPortfolio = useMemo(() => {
       if (invested <= 0) return 0;
@@ -344,57 +375,46 @@ export const Home: React.FC<HomeProps> = ({
          </button>
       </div>
 
-      {/* 3. CARD RENDA PASSIVA */}
+      {/* 3. CARD RENDA PASSIVA COMPACTO */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
         <button 
           onClick={() => setShowProventosModal(true)} 
-          className="w-full text-left bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-500/[0.05] dark:to-teal-500/[0.05] p-6 rounded-[2.5rem] border border-emerald-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-emerald-500/5 pointer-events-auto"
+          className="w-full text-left bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-500/[0.05] dark:to-teal-500/[0.05] p-5 rounded-[2.5rem] border border-emerald-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-emerald-500/5 pointer-events-auto"
         >
             <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/20 transition-colors"></div>
             
-            <div className="relative z-10">
-                <div className="flex justify-between items-start mb-6">
-                    <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100 dark:border-emerald-500/20 group-hover:scale-110 transition-transform">
-                           <CircleDollarSign className="w-6 h-6" strokeWidth={2} />
+            <div className="relative z-10 flex flex-col gap-3">
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100 dark:border-emerald-500/20 group-hover:scale-110 transition-transform">
+                           <CircleDollarSign className="w-5 h-5" strokeWidth={2} />
                        </div>
                        <div>
-                           <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">Renda Passiva</h3>
-                           <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Histórico de Proventos</p>
+                           <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Renda Passiva</h3>
+                           <p className="text-[10px] font-semibold text-slate-400">Extrato Completo</p>
                        </div>
                     </div>
-                </div>
-
-                <div className="flex gap-6">
-                    <div className="flex-1">
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Total Recebido</p>
-                        <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums tracking-tighter">{formatBRL(received)}</p>
-                        
-                        <div className="mt-4 border-t border-emerald-100 dark:border-emerald-500/10 pt-3">
-                           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Média Mensal</p>
-                           <p className="text-lg font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</p>
-                        </div>
-                    </div>
-                    <div className="w-24 h-full">
-                       <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={chartData.slice(-6)} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                             <Bar dataKey="value" fill={accentColor} radius={4} opacity={0.6} />
-                          </BarChart>
-                       </ResponsiveContainer>
+                    <div className="text-right">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-0.5">Total</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">{formatBRL(received)}</p>
                     </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-emerald-100 dark:border-emerald-500/10 flex items-center justify-start gap-2">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-[#0f172a] text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wide shadow-sm border border-emerald-100 dark:border-emerald-500/20">
-                       <Award className="w-3 h-3" />
-                       <span>YOC: {formatPercent(yieldOnCostPortfolio)}</span>
-                    </div>
-                    {upcoming > 0 && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-[#0f172a] text-accent text-[10px] font-bold uppercase tracking-wide shadow-sm border border-accent/10">
-                            <Sparkles className="w-3 h-3" />
-                            <span>Futuro: {formatBRL(upcoming)}</span>
+                <div className="flex items-center gap-2 mt-1">
+                   <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex items-center gap-2 flex-1 justify-center">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">Média</p>
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</p>
+                   </div>
+                   <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex items-center gap-2 flex-1 justify-center">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">YOC</p>
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatPercent(yieldOnCostPortfolio)}</p>
+                   </div>
+                   {upcoming > 0 && (
+                        <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#0f172a] border border-accent/20 shadow-sm flex items-center gap-2 flex-1 justify-center">
+                            <Sparkles className="w-3 h-3 text-accent" />
+                            <p className="text-xs font-bold text-accent tabular-nums">{formatBRL(upcoming)}</p>
                         </div>
-                    )}
+                   )}
                 </div>
             </div>
         </button>
@@ -445,7 +465,7 @@ export const Home: React.FC<HomeProps> = ({
              </div>
              <div>
                 <p className={`text-xl font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{isAboveInflation ? '+' : ''}{formatPercent(ganhoRealPercent)}</p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Acima da Inflação</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Acima da Inflação</p>
              </div>
           </button>
       </div>
@@ -508,32 +528,109 @@ export const Home: React.FC<HomeProps> = ({
                     </div>
                 </div>
             </div>
-            <ModalTabs tabs={[{id: 'summary', label: 'Resumo'}, {id: 'magic', label: 'Magic Number'}, {id: 'calendar', label: 'Histórico'}]} active={incomeTab} onChange={setIncomeTab} />
+            <ModalTabs tabs={[{id: 'summary', label: 'Resumo'}, {id: 'history', label: 'Histórico'}, {id: 'magic', label: 'Magic Number'}]} active={incomeTab} onChange={setIncomeTab} />
 
             <div className="px-5">
                 {incomeTab === 'summary' && (
-                    <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
-                        <div className="col-span-2 bg-slate-50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-transparent">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Recebido</p>
-                            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{formatBRL(received)}</p>
-                        </div>
-                        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-transparent">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Média Mensal</p>
-                            <p className="text-lg font-bold text-slate-800 dark:text-white tabular-nums">{formatBRL(averageMonthly)}</p>
-                        </div>
-                        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-transparent">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Yield on Cost</p>
-                            <p className="text-lg font-bold text-slate-800 dark:text-white tabular-nums">{formatPercent(yieldOnCostPortfolio)}</p>
-                        </div>
-                        <div className="col-span-2 bg-slate-50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-transparent flex items-center justify-between">
-                            <div>
-                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Maior Pagador</p>
-                               <p className="text-lg font-bold text-slate-800 dark:text-white">{bestPayer.ticker}</p>
+                    <div className="space-y-6 anim-fade-in-up is-visible">
+                        
+                        <div className="text-center py-4 relative">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Acumulado</span>
+                            <div className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mt-1 tabular-nums">
+                                {formatBRL(received)}
                             </div>
-                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatBRL(bestPayer.value)}</p>
                         </div>
+
+                        <div className="h-40 w-full relative">
+                            <p className="absolute top-0 left-0 text-[10px] font-bold text-slate-300 dark:text-slate-600 uppercase">Últimos 6 meses</p>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData.slice(-6)}>
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
+                                    <Tooltip cursor={{ fill: 'rgba(16, 185, 129, 0.1)', radius: 8 }} content={<CustomTooltip />} />
+                                    <Bar dataKey="value" fill={accentColor} radius={[4, 4, 4, 4]} barSize={32} animationDuration={1000} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent flex flex-col justify-between">
+                                <div className="flex items-center gap-2 mb-2 text-slate-400">
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Média Mensal</span>
+                                </div>
+                                <p className="text-lg font-bold text-slate-700 dark:text-white tabular-nums">{formatBRL(averageMonthly)}</p>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent flex flex-col justify-between">
+                                <div className="flex items-center gap-2 mb-2 text-slate-400">
+                                    <Percent className="w-3.5 h-3.5" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Yield on Cost</span>
+                                </div>
+                                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatPercent(yieldOnCostPortfolio)}</p>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent flex flex-col justify-between">
+                                <div className="flex items-center gap-2 mb-2 text-slate-400">
+                                    <Trophy className="w-3.5 h-3.5" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Maior Pagador</span>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white">{bestPayer.ticker}</p>
+                                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(bestPayer.value)}</p>
+                                </div>
+                            </div>
+                            <div className="bg-accent/5 p-4 rounded-2xl border border-accent/10 flex flex-col justify-between">
+                                <div className="flex items-center gap-2 mb-2 text-accent">
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Provisão</span>
+                                </div>
+                                <p className="text-lg font-bold text-accent tabular-nums">{formatBRL(upcoming)}</p>
+                            </div>
+                        </div>
+
                     </div>
                 )}
+                
+                {incomeTab === 'history' && (
+                    <div className="space-y-6 pb-4 anim-fade-in-up is-visible">
+                        {sortedHistoryKeys.length === 0 ? (
+                             <div className="text-center py-10 opacity-50">
+                                <ListFilter className="w-10 h-10 mx-auto mb-2 text-slate-300" strokeWidth={1.5} />
+                                <p className="text-xs text-slate-400 font-medium">Nenhum histórico encontrado.</p>
+                             </div>
+                        ) : (
+                            sortedHistoryKeys.map(monthKey => (
+                                <div key={monthKey} className="relative">
+                                    <div className="flex items-center justify-between mb-3 px-2 sticky top-0 bg-white dark:bg-[#0b1121] py-2 z-10">
+                                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">{getMonthName(monthKey + '-01')}</h4>
+                                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-lg tabular-nums">
+                                            {formatBRL(historyGrouped[monthKey].total)}
+                                        </span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {historyGrouped[monthKey].items.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).map((item, i) => (
+                                            <div key={item.id + i} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/10 flex flex-col items-center justify-center shadow-sm">
+                                                        <span className="text-[9px] font-black uppercase text-slate-400">{item.paymentDate.split('-')[1]}</span>
+                                                        <span className="text-sm font-bold text-slate-900 dark:text-white leading-none">{item.paymentDate.split('-')[2]}</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-900 dark:text-white">{item.ticker}</p>
+                                                        <p className="text-[10px] font-medium text-slate-400 uppercase">{item.type.replace('DIVIDENDO', 'DIV').replace('JRS CAP PROPRIO', 'JCP')}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(item.totalReceived)}</p>
+                                                    <p className="text-[9px] font-medium text-slate-400 tabular-nums">{item.quantityOwned} un.</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
                 {incomeTab === 'magic' && (
                     <div className="space-y-3 anim-fade-in-up is-visible">
                         {magicNumbers?.map((m, i) => m && (
@@ -551,19 +648,6 @@ export const Home: React.FC<HomeProps> = ({
                               </div>
                           </div>
                         ))}
-                    </div>
-                )}
-                {incomeTab === 'calendar' && (
-                    <div className="h-64 anim-fade-in-up is-visible">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
-                                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="rgba(128,128,128,0.5)" />
-                                <YAxis tickFormatter={(v) => `R$${v}`} tick={{ fontSize: 10 }} stroke="rgba(128,128,128,0.5)" />
-                                <Tooltip contentStyle={{ backgroundColor: 'rgba(2, 6, 23, 0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem', backdropFilter: 'blur(10px)' }} cursor={{ fill: 'rgba(128,128,128,0.1)' }} />
-                                <Bar dataKey="value" name="Recebido" fill={accentColor} radius={[8, 8, 8, 8]} />
-                            </BarChart>
-                        </ResponsiveContainer>
                     </div>
                 )}
             </div>

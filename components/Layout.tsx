@@ -246,7 +246,7 @@ export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; ch
       <div className={`absolute inset-0 bg-slate-900/40 backdrop-blur-sm pointer-events-auto anim-fade-in ${isVisible ? 'is-visible' : ''}`} onClick={triggerClose} />
       <div 
         ref={modalRef}
-        className={`bg-white dark:bg-[#0b1121] w-full max-h-[calc(100dvh-4.5rem)] rounded-t-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto anim-slide-up border-t border-white/20 dark:border-white/5 ${isVisible ? 'is-visible' : ''}`}
+        className={`bg-white dark:bg-[#0b1121] w-full h-[calc(100dvh-5rem)] rounded-t-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto anim-slide-up border-t border-white/20 dark:border-white/5 ${isVisible ? 'is-visible' : ''}`}
         style={{
           transform: `translateY(${offsetY}px)`,
           transition: isDragging.current ? 'none' : 'transform var(--duration-normal) var(--ease-out-quint)'

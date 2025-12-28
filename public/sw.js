@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v6.4.3'; // Bump version
+const CACHE_NAME = 'investfiis-ultra-v6.5.0'; // Bump version
 
 // Apenas ativos estáticos essenciais (CSS, Icones, Manifest)
 // HTML NÃO deve ser cacheado na instalação para garantir que sempre busquemos a versão mais nova da rede
