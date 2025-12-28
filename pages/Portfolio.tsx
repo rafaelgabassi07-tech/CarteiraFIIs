@@ -31,6 +31,10 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
   }, [asset.totalDividends, totalCost]);
 
   const formatCurrency = (val: number) => (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  
+  const statusInvestUrl = asset.assetType === AssetType.FII
+    ? `https://statusinvest.com.br/fundos-imobiliarios/${asset.ticker}`
+    : `https://statusinvest.com.br/acoes/${asset.ticker}`;
 
   return (
     <>
@@ -165,7 +169,103 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
         </div>
       </SwipeableModal>
 
-      <SwipeableModal isOpen={showDetailsModal} onClose={() => setShowDetailsModal(false)}>{/* ... */}</SwipeableModal>
+      <SwipeableModal isOpen={showDetailsModal} onClose={() => setShowDetailsModal(false)}>
+        <div className="px-6 py-2">
+          <div className="flex items-center gap-4 mb-8 mt-2">
+              <div className="w-16 h-16 rounded-3xl flex items-center justify-center overflow-hidden shrink-0 shadow-md bg-white dark:bg-[#0f172a] border border-slate-100 dark:border-white/5">
+                  {asset.logoUrl ? (
+                      <img src={asset.logoUrl} alt={asset.ticker} className="w-12 h-12 object-contain" onError={(e) => { (e.target as any).style.display='none'; }} />
+                  ) : (
+                      <span className="text-xl font-black tracking-tighter">{asset.ticker.substring(0, 4)}</span>
+                  )}
+              </div>
+              <div>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">{asset.ticker}</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{asset.segment}</p>
+              </div>
+          </div>
+
+          {asset.sentiment && asset.sentiment_reason && (
+            <div className={`p-5 rounded-[2rem] mb-6 border ${
+              asset.sentiment === 'Otimista' ? 'bg-emerald-50/80 dark:bg-emerald-500/5 border-emerald-500/10' :
+              asset.sentiment === 'Pessimista' ? 'bg-rose-50/80 dark:bg-rose-500/5 border-rose-500/10' :
+              'bg-slate-50 dark:bg-white/5 border-slate-200/50 dark:border-white/5'
+            }`}>
+                <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      asset.sentiment === 'Otimista' ? 'bg-emerald-500/10 text-emerald-500' :
+                      asset.sentiment === 'Pessimista' ? 'bg-rose-500/10 text-rose-500' :
+                      'bg-slate-200 dark:bg-white/10 text-slate-500'
+                    }`}>
+                        <Zap className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Análise IA (Gemini 2.5)</h4>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                    <strong className={`${
+                      asset.sentiment === 'Otimista' ? 'text-emerald-600 dark:text-emerald-500' :
+                      asset.sentiment === 'Pessimista' ? 'text-rose-600 dark:text-rose-500' :
+                      'text-slate-700 dark:text-slate-200'
+                    }`}>{asset.sentiment}:</strong> {asset.sentiment_reason}
+                </p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl text-center border border-slate-100 dark:border-transparent">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">P/VP</p>
+                  <p className="text-base font-black text-slate-800 dark:text-white tabular-nums">{asset.p_vp?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '-'}</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl text-center border border-slate-100 dark:border-transparent">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">DY (12M)</p>
+                  <p className="text-base font-black text-emerald-600 dark:text-emerald-500 tabular-nums">{asset.dy_12m?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '-'}%</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl text-center border border-slate-100 dark:border-transparent">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">P/L</p>
+                  <p className="text-base font-black text-slate-800 dark:text-white tabular-nums">{asset.p_l?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '-'}</p>
+              </div>
+          </div>
+
+          <div className="space-y-3 pb-8">
+            <div className="flex justify-between items-center bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5">
+              <div className="flex items-center gap-3">
+                <Activity className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Liquidez Diária</span>
+              </div>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">{asset.liquidity || '-'}</span>
+            </div>
+            <div className="flex justify-between items-center bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5">
+              <div className="flex items-center gap-3">
+                <Users className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{asset.assetType === AssetType.FII ? 'Cotistas' : 'Acionistas'}</span>
+              </div>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">{asset.shareholders || '-'}</span>
+            </div>
+            <div className="flex justify-between items-center bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5">
+              <div className="flex items-center gap-3">
+                <Landmark className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Market Cap</span>
+              </div>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">{asset.market_cap || '-'}</span>
+            </div>
+          </div>
+          
+          {asset.description && (
+            <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-3xl mb-4">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2"><Info className="w-3 h-3" /> Sobre o Ativo</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                {asset.description}
+              </p>
+            </div>
+          )}
+
+          <a href={statusInvestUrl} target="_blank" rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 py-3 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors mt-4">
+            <ExternalLink className="w-3 h-3" />
+            Ver no Status Invest
+          </a>
+        </div>
+      </SwipeableModal>
     </>
   );
 };
