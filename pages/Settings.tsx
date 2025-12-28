@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List } from 'lucide-react';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote } from '../types';
 import { ThemeType } from '../App';
 
@@ -176,12 +176,22 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const handleCheckUpdate = async () => {
     if (updateAvailable) { onShowChangelog(); return; }
+    
+    // Inicia estado de animação
     setCheckStatus('checking');
-    const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Mínimo tempo de animação para feedback (2s)
+    const minDelay = new Promise(resolve => setTimeout(resolve, 2000));
     const checkPromise = onCheckUpdates();
+    
     const [_, hasUpdate] = await Promise.all([minDelay, checkPromise]);
-    if (hasUpdate) setCheckStatus('available');
-    else { setCheckStatus('latest'); setTimeout(() => setCheckStatus('idle'), 3000); }
+    
+    if (hasUpdate) {
+        setCheckStatus('available');
+    } else {
+        setCheckStatus('latest');
+        setTimeout(() => setCheckStatus('idle'), 3000);
+    }
   };
 
   // --- Componentes de UI Auxiliares ---
@@ -440,29 +450,61 @@ export const Settings: React.FC<SettingsProps> = ({
           
           {activeSection === 'updates' && (
               <div className="flex flex-col items-center justify-center py-10 space-y-6">
+                   {/* Logo / Status */}
                    <div className="relative">
-                        <div className="w-32 h-32 bg-accent/10 rounded-full flex items-center justify-center">
-                            <Rocket className="w-12 h-12 text-accent" />
+                        <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-accent/10 scale-110' : 'bg-slate-100 dark:bg-white/5'}`}>
+                            {checkStatus === 'checking' ? (
+                                <>
+                                    {/* Animação Radar/Sonar */}
+                                    <div className="absolute inset-0 rounded-full border-4 border-accent/20 animate-[spin_3s_linear_infinite]"></div>
+                                    <div className="absolute inset-2 rounded-full border-4 border-accent/40 animate-[spin_2s_linear_infinite_reverse]"></div>
+                                    <Search className="w-12 h-12 text-accent animate-pulse" />
+                                </>
+                            ) : checkStatus === 'latest' ? (
+                                <CheckCircle2 className="w-12 h-12 text-emerald-500 animate-scale-in" />
+                            ) : updateAvailable || checkStatus === 'available' ? (
+                                <Rocket className="w-12 h-12 text-amber-500 animate-bounce" />
+                            ) : (
+                                <RefreshCcw className="w-12 h-12 text-slate-400" />
+                            )}
                         </div>
-                        {updateAvailable && <span className="absolute top-0 right-0 w-6 h-6 bg-amber-500 rounded-full border-4 border-slate-100 dark:border-[#020617]"></span>}
                    </div>
                    
                    <div className="text-center">
                        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-1">v{appVersion}</h2>
-                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                           {updateAvailable ? 'Atualização Disponível' : 'Versão Mais Recente'}
+                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest h-4">
+                           {checkStatus === 'checking' ? 'Buscando atualizações...' : 
+                            checkStatus === 'latest' ? 'Sistema Atualizado' :
+                            updateAvailable || checkStatus === 'available' ? 'Atualização Encontrada' : 
+                            'Versão Instalada'}
                        </p>
                    </div>
 
+                   {/* Botão Principal com Estados Animados */}
                    <button 
                      onClick={handleCheckUpdate}
                      disabled={checkStatus === 'checking' || checkStatus === 'latest'}
-                     className={`px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-md flex items-center gap-2 ${
-                       updateAvailable ? 'bg-amber-500 text-white' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                     className={`relative overflow-hidden w-full max-w-xs py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-lg flex items-center justify-center gap-3 ${
+                       checkStatus === 'latest' ? 'bg-emerald-500 text-white cursor-default' :
+                       updateAvailable || checkStatus === 'available' ? 'bg-amber-500 text-white shadow-amber-500/20' :
+                       'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
                      }`}
                    >
-                       {checkStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
-                       {checkStatus === 'checking' ? 'Buscando...' : updateAvailable ? 'Atualizar Agora' : 'Verificar'}
+                       {checkStatus === 'checking' && (
+                           <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                       )}
+                       
+                       <span className="relative z-10 flex items-center gap-2">
+                           {checkStatus === 'checking' ? (
+                               <>AGUARDE</>
+                           ) : checkStatus === 'latest' ? (
+                               <><Check className="w-4 h-4" /> TUDO OK</>
+                           ) : updateAvailable || checkStatus === 'available' ? (
+                               <><Download className="w-4 h-4" /> BAIXAR AGORA</>
+                           ) : (
+                               <><RefreshCcw className="w-4 h-4" /> VERIFICAR</>
+                           )}
+                       </span>
                    </button>
 
                    {/* Changelog Inline Simplificado */}

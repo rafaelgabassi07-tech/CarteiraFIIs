@@ -1,17 +1,17 @@
 
 {
-  "version": "5.7.0",
+  "version": "5.7.2",
   "date": "2025-05-27",
   "notes": [
     {
-      "type": "ui",
-      "title": "Configurações Simplificadas",
-      "desc": "Novo visual em lista (List View), mais limpo e organizado, removendo elementos desnecessários."
+      "type": "fix",
+      "title": "Atualização Automática",
+      "desc": "Correção crítica que impedia o app de reiniciar após o download da atualização."
     },
     {
-      "type": "ui",
-      "title": "Remoção de Perfil",
-      "desc": "O card de 'Investidor' foi removido para focar nas funcionalidades de ajuste."
+      "type": "perf",
+      "title": "Otimização de Ciclo de Vida",
+      "desc": "O sistema agora força a ativação imediata de novas versões."
     }
   ]
 }

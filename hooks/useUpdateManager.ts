@@ -49,7 +49,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    // 1. Tratamento de Cold Start (Changelog)
+    // 1. Cold Start: Mostrar notas se acabou de atualizar
     const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
     if (compareVersions(currentAppVersion, lastSeen) > 0) {
         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, currentAppVersion);
@@ -62,30 +62,26 @@ export const useUpdateManager = (currentAppVersion: string) => {
         }).catch(() => {});
     }
 
-    // 2. Listener CRÍTICO de Mudança de Controlador
-    // Este evento dispara quando o SW ativo muda.
+    // 2. Listener de Mudança de Controlador (O Reload Real)
     const handleControllerChange = () => {
-        // Apenas recarrega a página se o usuário clicou no botão.
-        // Se o navegador mudou o SW por conta própria (ex: background), NÃO recarregamos.
-        // O usuário continuará vendo a versão antiga (cacheada na memória) até decidir reiniciar.
         if (isUserInitiatedUpdate.current) {
+            console.log("🔄 SW Ativado. Recarregando...");
             window.location.reload();
-        } else {
-            console.log("SW mudou em background. Mantendo sessão atual sem reload.");
-            // Opcional: Forçar a exibição do banner novamente se ele sumiu
-            setIsUpdateAvailable(true);
-            setShowUpdateBanner(true);
         }
     };
 
     navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
 
-    // 3. Monitoramento do SW
+    // 3. Registrar e Monitorar SW
+    navigator.serviceWorker.ready.then(reg => {
+        swRegistrationRef.current = reg;
+    });
+
     navigator.serviceWorker.getRegistration().then(reg => {
         if (!reg) return;
         swRegistrationRef.current = reg;
 
-        // Se já tem um SW esperando, mostra o banner
+        // Se já tem um worker esperando, avisa o usuário
         if (reg.waiting) {
             fetchVersionJson().then((hasNew) => {
                 if (hasNew) {
@@ -101,7 +97,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
             if (newWorker) {
                 newWorker.addEventListener('statechange', () => {
                     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        // Novo SW instalado e esperando. NÃO ativamos. Apenas avisamos.
                         fetchVersionJson().then(() => {
                             setIsUpdateAvailable(true);
                             setShowUpdateBanner(true);
@@ -112,51 +107,67 @@ export const useUpdateManager = (currentAppVersion: string) => {
         });
     });
 
-    // Check periódico (opcional, a cada 1 hora)
-    const interval = setInterval(() => {
-        if (swRegistrationRef.current) swRegistrationRef.current.update();
-    }, 60 * 60 * 1000);
-
     return () => {
         navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-        clearInterval(interval);
     };
   }, [currentAppVersion, fetchVersionJson]);
 
   const manualCheck = useCallback(async () => {
+     // Atualiza o SW no servidor
      if (swRegistrationRef.current) {
-         try { await swRegistrationRef.current.update(); } catch(e) {}
+         try { 
+             await swRegistrationRef.current.update(); 
+         } catch(e) {
+             console.warn("Falha ao atualizar SW manualmente", e);
+         }
      }
      return await fetchVersionJson();
   }, [fetchVersionJson]);
 
-  const startUpdateProcess = useCallback(() => {
+  const startUpdateProcess = useCallback(async () => {
      if (isUserInitiatedUpdate.current) return;
-     isUserInitiatedUpdate.current = true; // Marca a intenção do usuário
+     isUserInitiatedUpdate.current = true;
      
-     setUpdateProgress(1);
-     let p = 1;
-     // Simula progresso visual
+     setUpdateProgress(5);
+     
+     // 1. Garante que temos a referência mais atual
+     let reg = swRegistrationRef.current;
+     if (!reg) {
+         reg = await navigator.serviceWorker.getRegistration();
+     }
+
+     // 2. Inicia Animação de Progresso
+     let p = 5;
      const timer = setInterval(() => {
-        p += Math.max(2, Math.floor(Math.random() * 15));
+        p += Math.floor(Math.random() * 15) + 5;
         if (p >= 100) {
             p = 100;
             clearInterval(timer);
             setUpdateProgress(100);
 
-            // Envia o sinal para o SW
+            // 3. APLICAÇÃO DA ATUALIZAÇÃO
+            // Envia mensagem para o worker esperando
+            if (reg && reg.waiting) {
+                reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+            }
+            
+            // Tenta enviar para o installing também, caso tenha mudado de estado rápido
+            if (reg && reg.installing) {
+                reg.installing.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+            }
+
+            // 4. FALLBACK DE SEGURANÇA (Reload Forçado)
+            // Se o controllerchange não disparar em 1s, forçamos o reload
+            // Isso evita que o app fique travado em 100%
             setTimeout(() => {
-                if (swRegistrationRef.current && swRegistrationRef.current.waiting) {
-                    swRegistrationRef.current.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-                } else {
-                    // Fallback se não houver SW esperando (raro, mas possível)
-                    window.location.reload();
-                }
-            }, 500);
+                console.warn("⚠️ Fallback de reload ativado");
+                window.location.reload();
+            }, 1000);
+
         } else {
             setUpdateProgress(p);
         }
-     }, 40);
+     }, 100); 
   }, []);
 
   return {

@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.7.0';
+const CACHE_NAME = 'investfiis-ultra-v5.7.2';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -8,6 +8,9 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+  // Força o SW a não esperar, baixando logo os assets
+  self.skipWaiting(); 
+  
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -17,24 +20,32 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    })
+    Promise.all([
+      // 1. Limpeza de caches antigos
+      caches.keys().then((keys) => {
+        return Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+          })
+        );
+      }),
+      // 2. CRÍTICO: Assume o controle das páginas abertas imediatamente
+      // Sem isso, o usuário precisa recarregar a página manualmente duas vezes
+      self.clients.claim() 
+    ])
   );
 });
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Estratégia Network-First para version.json para garantir update
   if (url.pathname.includes('version.json')) {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
+      fetch(event.request)
+        .catch(() => caches.match(event.request))
     );
     return;
   }
@@ -43,6 +54,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Stale-While-Revalidate para o resto
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
