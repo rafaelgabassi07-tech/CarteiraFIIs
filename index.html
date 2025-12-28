@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR" class="antialiased">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="app-version" content="6.0.1" />
+    <meta name="app-version" content="6.1.0" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -130,6 +131,12 @@
       }
       .anim-slide-up.is-visible {
         transform: translateY(0);
+      }
+      
+      /* Animação para a barra de progresso da atualização */
+      @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
       }
 
     </style>

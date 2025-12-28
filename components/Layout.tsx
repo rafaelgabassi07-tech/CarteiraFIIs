@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles } from 'lucide-react';
-import { ReleaseNote, AppNotification } from '../types';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck } from 'lucide-react';
+import { ReleaseNote, AppNotification, ReleaseNoteType } from '../types';
 
 // Custom hook for managing enter/exit animations
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -303,6 +303,16 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
   );
 };
 
+const getNoteIconAndColor = (type: ReleaseNoteType) => {
+  switch (type) {
+    case 'feat': return { Icon: Gift, color: 'text-amber-500', bg: 'bg-amber-500/10' };
+    case 'fix': return { Icon: Check, color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
+    case 'ui': return { Icon: Palette, color: 'text-sky-500', bg: 'bg-sky-500/10' };
+    case 'perf': return { Icon: Zap, color: 'text-purple-500', bg: 'bg-purple-500/10' };
+    default: return { Icon: Star, color: 'text-slate-500', bg: 'bg-slate-100' };
+  }
+};
+
 export const ChangelogModal: React.FC<{ 
   isOpen: boolean; onClose: () => void; version: string; notes?: ReleaseNote[];
   isUpdatePending?: boolean; onUpdate?: () => void; progress?: number;
@@ -310,13 +320,78 @@ export const ChangelogModal: React.FC<{
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
   if (!isMounted) return null;
 
+  const isInstalling = progress > 0;
+
   return createPortal(
     <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6">
-        <div className={`absolute inset-0 bg-slate-900/60 backdrop-blur-xl anim-fade-in ${isVisible ? 'is-visible' : ''}`} onClick={progress > 0 ? undefined : onClose} />
+        <div className={`absolute inset-0 bg-slate-900/60 backdrop-blur-xl anim-fade-in ${isVisible ? 'is-visible' : ''}`} onClick={isInstalling ? undefined : onClose} />
         <div className={`relative bg-white dark:bg-[#0f172a] w-full max-w-sm rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden anim-scale-in border border-white/10 ${isVisible ? 'is-visible' : ''}`}>
-            <div className="relative h-40 bg-slate-900 overflow-hidden shrink-0">{/* ... */}</div>
-            <div className="flex-1 overflow-y-auto max-h-[50vh] p-8 bg-white dark:bg-[#0f172a]">{/* ... */}</div>
-            <div className="p-6 bg-white dark:bg-[#0f172a] border-t border-slate-100 dark:border-white/5 shrink-0">{/* ... */}</div>
+            {/* Header */}
+            <div className="relative h-40 bg-slate-900 dark:bg-black/50 overflow-hidden shrink-0 flex flex-col justify-center items-center p-6 text-center">
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-transparent"></div>
+                <div className="w-16 h-16 rounded-3xl bg-white/10 flex items-center justify-center text-white mb-3 backdrop-blur-sm border border-white/10">
+                    <PackageCheck className="w-8 h-8" strokeWidth={1.5} />
+                </div>
+                <h2 className="text-xl font-black text-white">Versão {version}</h2>
+                <p className="text-xs font-bold text-white/50">{isUpdatePending ? 'Pronta para Instalar' : 'Notas da Versão Atual'}</p>
+            </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto max-h-[50vh] p-8 bg-white dark:bg-[#0f172a]">
+                <div className="space-y-5">
+                    {notes?.length ? notes.map((note, i) => {
+                        const { Icon, color, bg } = getNoteIconAndColor(note.type);
+                        return (
+                          <div key={i} className="flex gap-4">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${bg} ${color}`}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-sm text-slate-800 dark:text-white leading-tight">{note.title}</h4>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{note.desc}</p>
+                            </div>
+                          </div>
+                        );
+                    }) : (
+                        <p className="text-center text-sm text-slate-400 italic">Sem notas para esta versão.</p>
+                    )}
+                </div>
+            </div>
+            {/* Footer / Action */}
+            <div className="p-6 bg-white dark:bg-[#0f172a] border-t border-slate-100 dark:border-white/5 shrink-0">
+                {isUpdatePending ? (
+                    <div className="w-full">
+                        {isInstalling && (
+                            <div className="mb-4">
+                                <div className="relative h-3 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                    <div 
+                                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-accent to-sky-400 rounded-full" 
+                                      style={{ 
+                                        width: `${progress}%`, 
+                                        transition: 'width 0.4s ease',
+                                        backgroundSize: '200% 200%',
+                                        animation: progress < 100 ? 'shimmer 2s linear infinite' : 'none'
+                                      }}>
+                                    </div>
+                                </div>
+                                <p className="text-center text-[9px] font-bold text-accent uppercase tracking-widest mt-2">
+                                    {progress < 100 ? `Instalando... ${progress}%` : 'Concluído!'}
+                                </p>
+                            </div>
+                        )}
+                        <button 
+                            onClick={onUpdate} 
+                            disabled={isInstalling}
+                            className="w-full flex items-center justify-center gap-2 py-4 bg-accent text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-accent/20 disabled:opacity-50"
+                        >
+                            {isInstalling ? 'Aguarde' : 'Instalar e Reiniciar'}
+                        </button>
+                    </div>
+                ) : (
+                    <button onClick={onClose} className="w-full py-3 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all">
+                        Fechar
+                    </button>
+                )}
+            </div>
         </div>
     </div>,
     document.body

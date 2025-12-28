@@ -56,7 +56,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             const cached = JSON.parse(cachedRaw);
             const isFresh = (Date.now() - cached.timestamp) < CACHE_TTL;
             if (isFresh && cached.tickerKey === tickerKey) {
-                console.log("⚡ Usando Cache Gemini 2.5 (V5)");
+                console.log("⚡ Usando Cache Gemini (V5)");
                 return cached.data;
             }
         }
@@ -68,7 +68,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const today = new Date().toISOString().split('T')[0];
   const portfolioStart = startDate || today; 
 
-  // Prompt otimizado para Gemini 2.5 Flash com regras estritas de parcelamento
   const prompt = `
     DATA DE HOJE: ${today}.
     LISTA DE ATIVOS: ${tickerListString}.
@@ -77,7 +76,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     
     TAREFA CRÍTICA - PROVENTOS:
     1. Liste TODOS os dividendos e JCP anunciados ou pagos nos últimos 12 meses.
-    2. ATENÇÃO: Se um ativo (ex: CMIG4, BBAS3) anunciou múltiplos pagamentos com a MESMA "Data Com", liste-os como ITENS SEPARADOS se as datas de pagamento forem diferentes.
+    2. ATENÇÃO: Se um ativo anunciou múltiplos pagamentos com a MESMA "Data Com", liste-os como ITENS SEPARADOS se as datas de pagamento forem diferentes.
     3. NÃO SOME valores de parcelas diferentes. Retorne cada parcela individualmente.
     4. PRECISÃO: Verifique se é Dividendo (Isento) ou JCP (Tributado).
 
@@ -104,12 +103,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   try {
     const response = await ai.models.generateContent({
-      // FIX: Updated model from gemini-2.5-flash to the recommended gemini-3-flash-preview.
       model: "gemini-3-flash-preview", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: "Você é um auditor financeiro rigoroso da B3. Você deve listar cada centavo de provento separadamente, jamais agrupando parcelas. Retorne estritamente em JSON válido.",
+        systemInstruction: "Você é um auditor financeiro especialista da B3. Sua missão é fornecer dados de proventos com precisão forense. Use o Google Search para encontrar os anúncios oficiais. Liste cada centavo de provento separadamente, jamais agrupando parcelas. Retorne estritamente em JSON válido, sem nenhum texto adicional.",
         temperature: 0.1,
       }
     });
@@ -168,8 +166,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                 
                 if (!dc || !val) return;
                 
-                // CRÍTICO: Chave única expandida para permitir parcelas (mesmo ticker, mesma data com, mesmo valor, mas pagamento diferente)
-                // Inclui TIPO e DATA DE PAGAMENTO na chave.
                 const uniqueKey = `${ticker}-${divType}-${dc}-${dp}-${val}`.replace(/\s+/g, '');
                 
                 if (seenDividends.has(uniqueKey)) return;
@@ -183,7 +179,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                     paymentDate: dp, 
                     rate: val,
                     quantityOwned: 0,
-                    totalReceived: 0
+                    totalReceived: 0,
                 });
             });
         }

@@ -170,37 +170,32 @@ export const useUpdateManager = (currentAppVersion: string) => {
      
      setUpdateProgress(5);
      
-     let reg = swRegistrationRef.current;
-     if (!reg) {
-         const found = await navigator.serviceWorker.getRegistration();
-         reg = found || null;
-     }
+     const reg = swRegistrationRef.current;
 
      let p = 5;
      const timer = setInterval(() => {
-        p += Math.floor(Math.random() * 15) + 5;
-        if (p >= 100) {
-            p = 100;
+        const increment = p < 70 ? (Math.random() * 10 + 5) : (Math.random() * 3 + 1);
+        p = Math.min(p + increment, 99);
+        setUpdateProgress(Math.floor(p));
+
+        if (p >= 99) {
             clearInterval(timer);
-            setUpdateProgress(100);
-
-            // ENVIA COMANDO PARA O WORKER
-            if (reg && reg.waiting) {
-                console.log("🚀 Enviando comando SKIP_WAITING");
-                reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-            } else {
-                 console.warn("Worker waiting não encontrado, forçando reload");
-                 window.location.reload();
-            }
-
             setTimeout(() => {
-                window.location.reload();
-            }, 2000);
+                setUpdateProgress(100);
 
-        } else {
-            setUpdateProgress(p);
+                if (reg && reg.waiting) {
+                    console.log("🚀 Enviando comando SKIP_WAITING");
+                    reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+                } else {
+                     console.warn("Worker waiting não encontrado, forçando reload");
+                     setTimeout(() => window.location.reload(), 500);
+                }
+                
+                // Fallback de segurança para garantir o reload
+                setTimeout(() => window.location.reload(), 2000);
+            }, 500); // Pequeno delay para o 100% ser visível
         }
-     }, 100); 
+     }, 150); 
   }, []);
 
   return {

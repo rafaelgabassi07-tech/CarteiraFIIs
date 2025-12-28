@@ -11,7 +11,7 @@ import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 
-const APP_VERSION = '6.0.1'; 
+const APP_VERSION = '6.1.0'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',

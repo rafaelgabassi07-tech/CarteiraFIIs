@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal } from 'lucide-react';
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, CartesianGrid, YAxis } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
@@ -884,16 +884,18 @@ export const Home: React.FC<HomeProps> = ({
                             <div key={`${r.id}-${idx}`} className="relative pl-8 py-3 group animate-fade-in-up" style={{ animationDelay: `${idx * 30}ms` }}>
                                 <div className={`absolute left-[11px] top-7 w-4 h-4 rounded-full border-[3px] border-slate-50 dark:border-[#0b1121] z-10 ${isUpcoming ? 'bg-accent' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
                                 <div className={`p-5 rounded-[2rem] transition-all flex justify-between items-center border border-slate-100 dark:border-white/5 ${isUpcoming ? 'bg-white dark:bg-[#0f172a] shadow-lg shadow-accent/5' : 'bg-white dark:bg-[#0f172a]'}`}>
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1.5">
-                                            <span className="font-bold text-sm text-slate-900 dark:text-white">{r.ticker}</span>
-                                            {isUpcoming && <span className="text-[9px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded uppercase tracking-wide">Futuro</span>}
+                                    <div className='flex items-center justify-between w-full'>
+                                        <div className='flex-1'>
+                                            <div className="flex items-center gap-2 mb-1.5">
+                                                <span className="font-bold text-sm text-slate-900 dark:text-white">{r.ticker}</span>
+                                                {isUpcoming && <span className="text-[9px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded uppercase tracking-wide">Futuro</span>}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-400 uppercase font-bold tracking-wide">
+                                                <span>{r.type.substring(0,3)}</span> • <span>{r.paymentDate.split('-').reverse().slice(0,2).join('/')}</span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2 text-[10px] text-slate-400 uppercase font-bold tracking-wide">
-                                            <span>{r.type.substring(0,3)}</span> • <span>{r.paymentDate.split('-').reverse().slice(0,2).join('/')}</span>
-                                        </div>
+                                        <span className={`font-bold text-sm tabular-nums ${isUpcoming ? 'text-accent' : 'text-slate-900 dark:text-white'}`}>{formatBRL(r.totalReceived)}</span>
                                     </div>
-                                    <span className={`font-bold text-sm tabular-nums ${isUpcoming ? 'text-accent' : 'text-slate-900 dark:text-white'}`}>{formatBRL(r.totalReceived)}</span>
                                 </div>
                             </div>
                         );

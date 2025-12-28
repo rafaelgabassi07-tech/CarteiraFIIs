@@ -1,22 +1,22 @@
 
 {
-  "version": "6.0.1",
-  "date": "2025-05-31",
+  "version": "6.1.0",
+  "date": "2025-06-01",
   "notes": [
     {
-      "type": "fix",
-      "title": "Correção na Agenda de Proventos",
-      "desc": "Corrigido um bug que exibia 'Invalid Date' para eventos de proventos com datas de pagamento ainda não definidas."
-    },
-    {
       "type": "ui",
-      "title": "Experiência de Uso Aprimorada",
-      "desc": "Renovação completa das animações do aplicativo. Navegação mais fluida, transições dinâmicas e feedback tátil aprimorado para uma interação premium."
+      "title": "Sistema de Atualização Aprimorado",
+      "desc": "A experiência de instalação de novas versões foi refinada, com animações mais fluidas e um processo mais robusto para garantir que você esteja sempre com a melhor versão do app."
     },
     {
-      "type": "feat",
-      "title": "Foco nos Dados Relevantes",
-      "desc": "A seção de notícias foi removida para focar na gestão da carteira. Adicionamos o dia e o mês da compra nos cards do histórico de ordens."
+      "type": "perf",
+      "title": "Foco nos Dados Essenciais",
+      "desc": "A busca por proventos foi otimizada para ser mais rápida e focada. Removemos a busca por links de notícias externas para simplificar a interface e priorizar a velocidade."
+    },
+    {
+      "type": "fix",
+      "title": "Correções de Interface",
+      "desc": "Pequenos ajustes visuais e de alinhamento em diversos componentes para uma experiência mais coesa e polida."
     }
   ]
 }
