@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { Transaction, AssetType } from '../types';
 import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign, X, Building2, BarChart3 } from 'lucide-react';
@@ -263,50 +262,50 @@ export const Transactions: React.FC<TransactionsProps> = ({
               </div>
 
               <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5 grid grid-cols-2 gap-3">
-                 <div className="space-y-1.5 col-span-2">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1"><Briefcase className="w-3 h-3" /> Ticker</label>
+                 <div className="relative col-span-2">
+                    <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     <input 
                       type="text" 
                       value={form.ticker} 
                       onChange={(e) => setForm({...form, ticker: e.target.value})} 
                       placeholder={form.assetType === AssetType.FII ? "MXRF11" : "PETR4"} 
-                      className="w-full bg-slate-50 dark:bg-black/20 px-3 py-3 rounded-xl outline-none font-bold uppercase text-base tracking-wider focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-slate-300/50 text-center" 
+                      className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-4 py-3 rounded-xl outline-none font-bold uppercase text-base tracking-wider focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-slate-300/50 text-center" 
                       required 
                     />
                  </div>
 
-                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1"><Hash className="w-3 h-3" /> Qtd</label>
+                 <div className="relative">
+                    <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     <input 
                       type="number" 
                       value={form.quantity} 
                       onChange={(e) => setForm({...form, quantity: e.target.value})} 
                       placeholder="0" 
-                      className="w-full bg-slate-50 dark:bg-black/20 px-3 py-3 rounded-xl outline-none font-bold text-center text-sm focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-slate-300/50" 
+                      className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-4 py-3 rounded-xl outline-none font-bold text-center text-sm focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-slate-300/50" 
                       required 
                     />
                  </div>
 
-                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Preço</label>
+                 <div className="relative">
+                    <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     <input 
                       type="number" 
                       step="0.01" 
                       value={form.price} 
                       onChange={(e) => setForm({...form, price: e.target.value})} 
                       placeholder="0,00" 
-                      className="w-full bg-slate-50 dark:bg-black/20 px-3 py-3 rounded-xl outline-none font-bold text-center text-sm focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-slate-300/50" 
+                      className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-4 py-3 rounded-xl outline-none font-bold text-center text-sm focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-slate-300/50" 
                       required 
                     />
                  </div>
 
-                 <div className="space-y-1.5 col-span-2">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> Data</label>
+                 <div className="relative col-span-2">
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     <input 
                       type="date" 
                       value={form.date} 
                       onChange={(e) => setForm({...form, date: e.target.value})} 
-                      className="w-full bg-slate-50 dark:bg-black/20 px-3 py-3 rounded-xl outline-none font-bold text-sm text-center focus:ring-2 focus:ring-accent/20 transition-all dark:text-white" 
+                      className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-4 py-3 rounded-xl outline-none font-bold text-sm text-center focus:ring-2 focus:ring-accent/20 transition-all dark:text-white" 
                       required 
                     />
                  </div>

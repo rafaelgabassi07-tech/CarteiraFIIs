@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, UpdateBanner } from './components/Layout';
 import { Home } from './pages/Home';
@@ -11,7 +10,7 @@ import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 
-const APP_VERSION = '6.3.0'; 
+const APP_VERSION = '6.4.0'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -173,6 +172,12 @@ const App: React.FC = () => {
       ];
     });
   }, [sendSystemNotification]);
+  
+  const markNotificationsAsRead = () => {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
 
   const getQuantityOnDate = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => {
     return txs
@@ -417,8 +422,8 @@ const App: React.FC = () => {
         isRefreshing={isRefreshing || isAiLoading}
         updateAvailable={updateManager.isUpdateAvailable}
         onUpdateClick={() => updateManager.setShowChangelog(true)}
-        onNotificationClick={() => setShowNotifications(true)}
-        notificationCount={notifications.length}
+        onNotificationClick={() => { setShowNotifications(true); markNotificationsAsRead(); }}
+        notificationCount={unreadCount}
         appVersion={APP_VERSION}
       />
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ReleaseNote, VersionData } from '../types';
 
@@ -88,13 +87,14 @@ export const useUpdateManager = (currentAppVersion: string) => {
         }).catch(() => {});
     }
 
-    // 2. Reload Trigger: Recarrega a página SOMENTE se a atualização foi iniciada pelo usuário
+    // 2. Reload Trigger: Aprimorado para ser mais rigoroso
     const handleControllerChange = () => {
         if (isUserInitiatedUpdate.current) {
             console.log("🔄 SW Ativado via usuário. Recarregando...");
             window.location.reload();
         } else {
-            console.log("🔄 SW Atualizado em background, mas aguardando recarga manual.");
+            // Esta é a salvaguarda principal: se a flag não estiver ativa, não fazemos nada.
+            console.log("🔄 SW controller mudou em background. A atualização será aplicada no próximo reload manual.");
         }
     };
 
@@ -166,6 +166,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
         console.warn("Processo de atualização já iniciado ou nenhum SW esperando.");
         return;
      }
+     // Ativa a flag CRÍTICA que permite o reload na troca de controller
      isUserInitiatedUpdate.current = true;
      
      setUpdateProgress(5);
@@ -187,8 +188,12 @@ export const useUpdateManager = (currentAppVersion: string) => {
                 console.log("🚀 Enviando comando SKIP_WAITING para o novo Service Worker.");
                 reg.waiting?.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
                 
-                // Fallback de segurança para garantir o reload caso o 'controllerchange' não dispare
-                setTimeout(() => window.location.reload(), 2000);
+                // Fallback de segurança para garantir o reload caso o 'controllerchange' não dispare por algum motivo
+                setTimeout(() => {
+                    if (isUserInitiatedUpdate.current) {
+                        window.location.reload();
+                    }
+                }, 2000);
             }, 500); // Pequeno delay para o 100% ser visível
         }
      }, 150); 

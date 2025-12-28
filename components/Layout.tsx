@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck } from 'lucide-react';
@@ -104,7 +103,11 @@ export const Header: React.FC<HeaderProps> = ({
         {onNotificationClick && !showBack && (
           <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
             <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" strokeWidth={2} />
-            {notificationCount > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full shadow-sm ring-2 ring-white dark:ring-[#020617]"></span>}
+            {notificationCount > 0 && 
+              <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 rounded-full shadow-sm ring-2 ring-white dark:ring-[#020617] text-white text-[10px] font-bold flex items-center justify-center">
+                {notificationCount}
+              </span>
+            }
           </button>
         )}
         {!showBack && onSettingsClick && (
@@ -292,8 +295,14 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
                 </div>
              ) : (
                 notifications.map((n, i) => (
-                    <div key={n.id} className={`p-5 rounded-[1.8rem] border flex gap-4 transition-all active:scale-[0.98] anim-fade-in-up shadow-sm ${isVisible ? 'is-visible' : ''}`} style={{ transitionDelay: `${i * 50}ms` }}>
+                    <div key={n.id} className={`relative p-5 rounded-[1.8rem] border flex gap-4 transition-all active:scale-[0.98] anim-fade-in-up shadow-sm bg-white dark:bg-[#0f172a] border-slate-100 dark:border-white/5 ${n.read ? 'opacity-50' : ''}`} style={{ transitionDelay: `${i * 50}ms` }}>
+                       {!n.read && <div className="w-2 h-2 rounded-full bg-accent absolute top-4 right-4 ring-4 ring-white dark:ring-[#0f172a]"></div>}
                        {/* Conteúdo do Card de Notificação... */}
+                       <div className="flex-1">
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{n.title}</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{n.message}</p>
+                          <p className="text-[10px] text-slate-400 mt-2 font-semibold">{new Date(n.timestamp).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                       </div>
                     </div>
                 ))
              )}
@@ -343,55 +352,40 @@ export const ChangelogModal: React.FC<{
                         return (
                           <div key={i} className="flex gap-4">
                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${bg} ${color}`}>
-                              <Icon className="w-4 h-4" />
+                                <Icon className="w-4 h-4" />
                             </div>
                             <div>
-                                <h4 className="font-bold text-sm text-slate-800 dark:text-white leading-tight">{note.title}</h4>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{note.desc}</p>
+                                <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight mb-1">{note.title}</h4>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{note.desc}</p>
                             </div>
                           </div>
                         );
                     }) : (
-                        <p className="text-center text-sm text-slate-400 italic">Sem notas para esta versão.</p>
+                      <p className="text-center text-xs text-slate-400 italic">Sem notas para esta versão.</p>
                     )}
                 </div>
             </div>
-            {/* Footer / Action */}
-            <div className="p-6 bg-white dark:bg-[#0f172a] border-t border-slate-100 dark:border-white/5 shrink-0">
-                {isUpdatePending ? (
-                    <div className="w-full">
-                        {isInstalling && (
-                            <div className="mb-4">
-                                <div className="relative h-3 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                    <div 
-                                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-accent to-sky-400 rounded-full" 
-                                      style={{ 
-                                        width: `${progress}%`, 
-                                        transition: 'width 0.4s ease',
-                                        backgroundSize: '200% 200%',
-                                        animation: progress < 100 ? 'shimmer 2s linear infinite' : 'none'
-                                      }}>
-                                    </div>
-                                </div>
-                                <p className="text-center text-[9px] font-bold text-accent uppercase tracking-widest mt-2">
-                                    {progress < 100 ? `Instalando... ${progress}%` : 'Concluído!'}
-                                </p>
+
+            {/* Footer com botão de ação */}
+            {isUpdatePending && (
+                <div className="p-6 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-black/20">
+                    {isInstalling ? (
+                        <div className="text-center">
+                            <p className="text-xs font-bold text-accent mb-3">Instalando... {progress}%</p>
+                            <div className="h-2 w-full bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-full bg-accent transition-all duration-300" style={{ width: `${progress}%` }}></div>
                             </div>
-                        )}
+                        </div>
+                    ) : (
                         <button 
-                            onClick={onUpdate} 
-                            disabled={isInstalling}
-                            className="w-full flex items-center justify-center gap-2 py-4 bg-accent text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-accent/20 disabled:opacity-50"
+                            onClick={onUpdate}
+                            className="w-full py-4 rounded-2xl bg-accent text-white font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-lg shadow-accent/20 flex items-center justify-center gap-2"
                         >
-                            {isInstalling ? 'Aguarde' : 'Instalar e Reiniciar'}
+                           <Download className="w-4 h-4" /> Instalar Agora
                         </button>
-                    </div>
-                ) : (
-                    <button onClick={onClose} className="w-full py-3 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all">
-                        Fechar
-                    </button>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
         </div>
     </div>,
     document.body

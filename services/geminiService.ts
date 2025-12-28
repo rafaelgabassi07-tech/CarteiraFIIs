@@ -68,33 +68,25 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const portfolioStart = startDate || today; 
 
   const prompt = `
-    DATA DE HOJE: ${today}.
-    LISTA DE ATIVOS: ${tickerListString}.
+    Referência de hoje: ${today}.
+    Para CADA um dos seguintes ativos (${tickerListString}), extraia os dados solicitados.
     
-    CONTEXTO: Carteira dedicada estritamente a FIIs (Fundos Imobiliários) e Ações Brasileiras.
-    
-    TAREFA CRÍTICA - PROVENTOS:
-    1. Liste TODOS os dividendos e JCP anunciados ou pagos nos últimos 12 meses.
-    2. ATENÇÃO: Se um ativo anunciou múltiplos pagamentos com a MESMA "Data Com", liste-os como ITENS SEPARADOS se as datas de pagamento forem diferentes.
-    3. NÃO SOME valores de parcelas diferentes. Retorne cada parcela individualmente.
-    4. PRECISÃO: Verifique se é Dividendo (Isento) ou JCP (Tributado).
+    1.  **Dados Gerais**: Identifique o tipo ("FII" ou "ACAO") e o segmento.
+    2.  **Fundamentos**: P/VP, P/L, DY (12m), Liquidez Diária, e número de Cotistas/Acionistas.
+    3.  **Análise Rápida**: Gere um sentimento de curto prazo (Otimista, Neutro, Pessimista) e um motivo conciso.
+    4.  **Proventos (Últimos 12 meses)**: Liste TODOS os proventos (Dividendos e JCP). CRÍTICO: Pagamentos anunciados na mesma "Data Com" mas com "Data de Pagamento" diferentes DEVEM ser listados como itens separados. Não agrupe parcelas.
+    5.  **Contexto Macro**: Calcule o IPCA acumulado desde a data de início da carteira: ${portfolioStart}.
 
-    TAREFA - GERAL:
-    1. CLASSIFICAÇÃO: "FII" ou "ACAO".
-    2. FUNDAMENTOS: P/VP, P/L, DY 12m, Liquidez, Cotistas/Acionistas.
-    3. SENTIMENTO: Otimista/Neutro/Pessimista (curto) e motivo.
-    4. MACRO: IPCA acumulado desde ${portfolioStart}.
-
-    JSON APENAS:
+    A resposta DEVE ser um JSON válido, seguindo estritamente a estrutura abaixo:
     {
-      "sys": { "ipca": 0.00, "start_ref": "${portfolioStart}" },
+      "sys": { "ipca": <number>, "start_ref": "${portfolioStart}" },
       "assets": [
         {
-          "t": "TICKER",
-          "s": "Segmento",
+          "t": "<TICKER>",
+          "s": "<Segmento>",
           "type": "FII" | "ACAO",
-          "f": { "pvp": 0.00, "pl": 0.00, "dy": 0.00, "liq": "str", "cot": "str", "desc": "str", "sent": "str", "sent_why": "str" },
-          "d": [ { "ty": "DIV" | "JCP", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": 0.00 } ]
+          "f": { "pvp": <number>, "pl": <number>, "dy": <number>, "liq": "<string>", "cot": "<string>", "desc": "<string>", "sent": "<string>", "sent_why": "<string>" },
+          "d": [ { "ty": "DIV" | "JCP", "dc": "YYYY-MM-DD", "dp": "YYYY-MM-DD", "v": <number> } ]
         }
       ]
     }
@@ -106,8 +98,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: "Você é um auditor financeiro especialista da B3. Sua missão é fornecer dados de proventos com precisão forense. Use o Google Search para encontrar os anúncios oficiais. Liste cada centavo de provento separadamente, jamais agrupando parcelas. Retorne estritamente em JSON válido, sem nenhum texto adicional.",
-        temperature: 0.1,
+        systemInstruction: "Você é um especialista financeiro da B3 focado em dados de mercado. Sua tarefa é extrair informações de ativos com precisão absoluta, usando o Google Search como fonte primária para dados de proventos. A resposta DEVE ser um JSON válido, sem nenhum texto adicional.",
+        temperature: 0.0,
       }
     });
 
