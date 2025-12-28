@@ -23,7 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSettingsClick, 
   showBack, 
   onBack,
-  onRefresh, // Mantido na interface para compatibilidade, mas não renderizado
+  onRefresh, 
   isRefreshing,
   onNotificationClick,
   notificationCount = 0,
@@ -40,60 +40,63 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-300 ${isScrolled ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2' : 'bg-transparent pt-4'}`}>
+    <header className={`fixed top-0 left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-300 ${isScrolled ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5' : 'bg-transparent pt-4 border-b border-transparent'}`}>
       <div className="flex items-center gap-3 w-full">
         {showBack ? (
-          <div className="flex items-center gap-4 animate-fade-in w-full">
-            <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group border border-slate-100 dark:border-white/5">
+          <div className="flex items-center gap-3 animate-fade-in w-full">
+            <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group border border-slate-100 dark:border-white/5">
               <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" strokeWidth={2.5} />
             </button>
             <div className="flex flex-col ml-1">
-                <h1 className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">Ajustes</h1>
+                <h1 className="text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight">Ajustes</h1>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">InvestFIIs v{appVersion}</span>
             </div>
           </div>
         ) : (
           <div className="flex flex-col animate-fade-in">
               <div className="flex items-center gap-2.5">
-                  {/* Ponto Pulsante agora usa Accent */}
+                  {/* PONTO PULSANTE (LIVE DOT) - RESTAURADO */}
                   <div className="relative flex h-2.5 w-2.5 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent ring-2 ring-white dark:ring-[#020617]"></span>
                   </div>
 
-                  <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{title}</h1>
+                  <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{title}</h1>
 
                   {updateAvailable && (
-                    <span className="relative flex h-2 w-2 ml-1" onClick={onUpdateClick}>
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-accent cursor-pointer"></span>
-                    </span>
+                    <button 
+                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 cursor-pointer active:scale-95 transition-transform" 
+                        onClick={onUpdateClick}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+                      <span className="text-[8px] font-bold text-accent uppercase">Upd</span>
+                    </button>
                   )}
               </div>
-              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-0.5">Visão em Tempo Real</span>
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-5 pl-0.5">
+                  {isRefreshing ? 'Sincronizando...' : 'Conectado'}
+              </span>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         {updateAvailable && !showBack && (
-          <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-accent text-white shadow-lg shadow-accent/30 active:scale-95 transition-all animate-scale-in hover:brightness-110 border border-white/20">
+          <button onClick={onUpdateClick} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/30 active:scale-95 transition-all animate-scale-in hover:brightness-110 border border-white/20">
             <Download className="w-4 h-4 animate-pulse" strokeWidth={2.5} />
           </button>
         )}
 
-        {/* Botão de Refresh removido conforme solicitação */}
-
         {onNotificationClick && !showBack && (
-          <button onClick={onNotificationClick} className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
-            <Bell className="w-4 h-4 group-hover:rotate-12 transition-transform" strokeWidth={2} />
-            {notificationCount > 0 && <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-full shadow-sm ring-2 ring-white dark:ring-[#020617]"></span>}
+          <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
+            <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" strokeWidth={2} />
+            {notificationCount > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full shadow-sm ring-2 ring-white dark:ring-[#020617]"></span>}
           </button>
         )}
 
         {!showBack && onSettingsClick && (
-          <button onClick={onSettingsClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
-            <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" strokeWidth={2} />
+          <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
+            <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" strokeWidth={2} />
           </button>
         )}
       </div>

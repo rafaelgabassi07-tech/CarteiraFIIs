@@ -234,7 +234,24 @@ export const Home: React.FC<HomeProps> = ({
     );
   };
 
-  const COLORS = [accentColor, '#8b5cf6', '#10b981', '#f97316', '#f43f5e', '#64748b', '#3b82f6', '#ec4899'];
+  // Expanded Palette to prevent repetition
+  const COLORS = useMemo(() => [
+    accentColor, 
+    '#10b981', // Emerald
+    '#f59e0b', // Amber
+    '#3b82f6', // Blue
+    '#ef4444', // Red
+    '#8b5cf6', // Violet
+    '#06b6d4', // Cyan
+    '#ec4899', // Pink
+    '#84cc16', // Lime
+    '#6366f1', // Indigo
+    '#14b8a6', // Teal
+    '#f97316', // Orange
+    '#64748b', // Slate
+    '#d946ef', // Fuchsia
+    '#22c55e', // Green
+  ], [accentColor]);
   
   // =========================================================================================
   // LÓGICA DE GANHO REAL (VS INFLAÇÃO)
@@ -336,7 +353,6 @@ export const Home: React.FC<HomeProps> = ({
                         </p>
                     </div>
                 </div>
-                {/* Seta Removida */}
             </div>
             
             {/* Badges Preview Aprimorados */}

@@ -59,6 +59,8 @@ export const Settings: React.FC<SettingsProps> = ({
   
   const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'latest' | 'available' | 'offline'>('idle');
   const [glassMode, setGlassMode] = useState(() => localStorage.getItem('investfiis_glass_mode') !== 'false');
+  
+  // Lógica corrigida para animações: Se o item não existir ou for !== 'false', é true.
   const [animations, setAnimations] = useState(() => localStorage.getItem('investfiis_animations') !== 'false');
   
   const [storageData, setStorageData] = useState({ 
@@ -81,8 +83,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   useEffect(() => {
     localStorage.setItem('investfiis_animations', String(animations));
-    // Se 'animations' for FALSE (desativado), adicionamos a classe 'disable-animations'.
-    // Se for TRUE (ativado), removemos a classe.
+    // Se animations=true, REMOVE a classe disable-animations. Se false, ADICIONA.
     document.body.classList.toggle('disable-animations', !animations);
   }, [animations]);
 

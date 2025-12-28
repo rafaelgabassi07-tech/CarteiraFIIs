@@ -1,17 +1,12 @@
 
 {
-  "version": "5.9.1",
+  "version": "5.9.3",
   "date": "2025-05-29",
   "notes": [
     {
       "type": "fix",
-      "title": "Animações Corrigidas",
-      "desc": "Ajuste na lógica do botão de animações fluídas que estava invertida, garantindo melhor performance."
-    },
-    {
-      "type": "ui",
-      "title": "Nova Agenda",
-      "desc": "Visual mais limpo e moderno para o card de Agenda de Proventos na tela inicial, com badges aprimorados."
+      "title": "Visual & Correções",
+      "desc": "Correção na paleta de cores dos gráficos para melhor distinção entre ativos. Animações fluídas otimizadas e indicador 'Live Dot' restaurado no cabeçalho."
     }
   ]
 }
