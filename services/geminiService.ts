@@ -77,12 +77,14 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const today = new Date().toISOString().split('T')[0];
   const portfolioStart = startDate || today; 
 
-  // Prompt otimizado para garantir JSON numérico
+  // Prompt otimizado para garantir FIIs e Ações estrito
   const prompt = `
     Hoje é ${today}. Analise estes ativos: ${tickerListString}.
     
     Tarefas:
-    1. Identifique se é "FII" ou "ACAO" e o segmento.
+    1. Identifique ESTRITAMENTE se é "FII" ou "ACAO". 
+       - Se for ETF, BDR ou outro, classifique como "ACAO" para simplificação.
+       - Defina o segmento de atuação.
     2. Fundamentos (Use 0 se não encontrar): P/VP (number), P/L (number), DY 12m (number, ex: 10.5), Liquidez (texto), Cotistas (texto).
     3. Sentimento: Resumido (Otimista/Neutro/Pessimista) e motivo curto.
     4. Proventos (Últimos 12 meses): Liste Dividendos e JCP.
@@ -113,7 +115,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       config: {
         tools: [{ googleSearch: {} }],
         // Forçamos o modelo a agir como um parser de dados estrito
-        systemInstruction: "Você é um backend financeiro que retorna JSON estrito. Valores monetários e porcentagens devem ser NUMBERS (ex: 10.50), nunca strings.",
+        systemInstruction: "Você é um backend financeiro para um app dedicado EXCLUSIVAMENTE a FIIs e Ações. Retorne JSON estrito. Valores monetários devem ser NUMBERS.",
         temperature: 0.1,
       }
     });

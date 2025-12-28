@@ -213,10 +213,16 @@ export const useUpdateManager = (currentAppVersion: string) => {
      } else {
          // Caminho Raro: Usuário mandou atualizar mas o worker não estava 'waiting'
          // Força update e torce pra ser rápido, ou recarrega direto
-         await reg.update();
-         if (reg.waiting) {
-             reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-         } else {
+         try {
+             await reg.update();
+             // Captura novamente o worker para garantir que o TS entenda o tipo
+             const newWorker = reg.waiting;
+             if (newWorker) {
+                 newWorker.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+             } else {
+                 window.location.reload();
+             }
+         } catch (e) {
              window.location.reload();
          }
      }
