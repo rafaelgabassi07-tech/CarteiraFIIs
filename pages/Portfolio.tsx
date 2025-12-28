@@ -77,10 +77,10 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
 
           {/* Área Expandida com `max-height` */}
           <div 
-            className="overflow-hidden transition-[max-height,opacity,padding] duration-500 ease-out-quint"
-            style={{ maxHeight: isExpanded ? `${contentHeight}px` : '0px', opacity: isExpanded ? 1 : 0, paddingTop: isExpanded ? '1rem' : '0' }}
+            className="overflow-hidden transition-[max-height,opacity] duration-500 ease-out-quint"
+            style={{ maxHeight: isExpanded ? `${contentHeight}px` : '0px', opacity: isExpanded ? 1 : 0 }}
           >
-             <div ref={contentRef}>
+             <div ref={contentRef} className="pt-4">
                  <div className="flex gap-4 mb-4 relative pt-4 border-t border-slate-100 dark:border-white/5">
                      <div className="absolute left-1/2 top-4 bottom-0 w-[1px] bg-slate-100 dark:bg-white/5 -ml-[0.5px]"></div>
                      <div className="flex-1 text-center">
