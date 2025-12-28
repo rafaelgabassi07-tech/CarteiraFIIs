@@ -31,6 +31,7 @@ interface SettingsProps {
   lastChecked?: number; 
   pushEnabled: boolean;
   onRequestPushPermission: () => void;
+  lastSyncTime?: Date | null;
 }
 
 const ACCENT_COLORS = [
@@ -49,7 +50,7 @@ export const Settings: React.FC<SettingsProps> = ({
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
   appVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
-  pushEnabled, onRequestPushPermission
+  pushEnabled, onRequestPushPermission, lastSyncTime
 }) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates'>('menu');
   const [token, setToken] = useState(brapiToken);
@@ -219,7 +220,7 @@ export const Settings: React.FC<SettingsProps> = ({
   );
 
   const Section = ({ title, children }: any) => (
-    <div className="mb-6 animate-fade-in-up">
+    <div className="mb-6 anim-fade-in-up is-visible">
         {title && <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</h3>}
         <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5">
             {children}
@@ -250,7 +251,7 @@ export const Settings: React.FC<SettingsProps> = ({
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
       {message && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3.5 rounded-2xl flex items-center gap-3 shadow-2xl z-[60] text-[10px] font-black uppercase tracking-widest text-white transition-all transform animate-fade-in-up ${message.type === 'success' ? 'bg-emerald-500' : message.type === 'info' ? 'bg-indigo-500' : 'bg-rose-500'}`}>
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3.5 rounded-2xl flex items-center gap-3 shadow-2xl z-[60] text-[10px] font-black uppercase tracking-widest text-white transition-all transform anim-fade-in-up is-visible ${message.type === 'success' ? 'bg-emerald-500' : message.type === 'info' ? 'bg-indigo-500' : 'bg-rose-500'}`}>
           {message.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : message.type === 'info' ? <Info className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
           {message.text}
         </div>
@@ -280,7 +281,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
         </>
       ) : (
-        <div className="animate-fade-in pt-2">
+        <div className="anim-fade-in is-visible pt-2">
           <button onClick={() => setActiveSection('menu')} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-accent transition-colors mb-6 font-bold text-xs uppercase tracking-wider group px-1">
             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center group-hover:bg-accent group-hover:text-white transition-all">
                 <ArrowLeft className="w-4 h-4" strokeWidth={3} />
@@ -368,7 +369,46 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'integrations' && (
             <div className="space-y-6">
-               <Section title="Brapi.dev (Cotações)">
+               <Section title="Status da Sincronização">
+                 <div className="bg-white dark:bg-[#0f172a] p-4 space-y-3">
+                    <p className="text-xs text-slate-400 px-1">Verifique a saúde e a última atualização das fontes de dados.</p>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-sky-500/10 text-sky-500"><Cloud className="w-4 h-4" /></div>
+                            <div>
+                               <p className="text-sm font-bold text-slate-900 dark:text-white">Brapi.dev</p>
+                               <p className="text-[10px] font-medium text-slate-400">Cotações</p>
+                            </div>
+                        </div>
+                        {lastSyncTime ? (
+                            <div className="flex items-center gap-2 text-emerald-500">
+                                <span className="text-xs font-bold">{lastSyncTime.toLocaleString('pt-BR')}</span>
+                                <CheckCircle2 className="w-4 h-4" />
+                            </div>
+                        ) : (
+                            <span className="text-xs font-bold text-slate-400">Pendente</span>
+                        )}
+                    </div>
+                     <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/10 text-purple-500"><Sparkles className="w-4 h-4" /></div>
+                            <div>
+                               <p className="text-sm font-bold text-slate-900 dark:text-white">Google Gemini</p>
+                               <p className="text-[10px] font-medium text-slate-400">Análise IA</p>
+                            </div>
+                        </div>
+                        {lastSyncTime ? (
+                            <div className="flex items-center gap-2 text-emerald-500">
+                                <span className="text-xs font-bold">{lastSyncTime.toLocaleString('pt-BR')}</span>
+                                <CheckCircle2 className="w-4 h-4" />
+                            </div>
+                        ) : (
+                             <span className="text-xs font-bold text-slate-400">Pendente</span>
+                        )}
+                    </div>
+                 </div>
+               </Section>
+               <Section title="Configuração Brapi.dev">
                   <div className="p-4 bg-white dark:bg-[#0f172a]">
                       <div className="relative mb-4">
                           <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -384,14 +424,6 @@ export const Settings: React.FC<SettingsProps> = ({
                       </div>
                   </div>
                </Section>
-
-               <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-5 rounded-[2rem] border border-indigo-500/10 flex items-center gap-4">
-                   <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20"><Sparkles className="w-6 h-6" /></div>
-                   <div>
-                       <h4 className="font-bold text-slate-900 dark:text-white">Google Gemini</h4>
-                       <p className="text-xs text-slate-500">Inteligência Artificial Ativa</p>
-                   </div>
-               </div>
             </div>
           )}
 
@@ -463,7 +495,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                     <Search className="w-12 h-12 text-accent animate-pulse" />
                                 </>
                             ) : checkStatus === 'latest' ? (
-                                <CheckCircle2 className="w-12 h-12 text-emerald-500 animate-scale-in" />
+                                <CheckCircle2 className="w-12 h-12 text-emerald-500 anim-scale-in is-visible" />
                             ) : updateAvailable || checkStatus === 'available' ? (
                                 <Rocket className="w-12 h-12 text-amber-500 animate-bounce" />
                             ) : checkStatus === 'offline' ? (

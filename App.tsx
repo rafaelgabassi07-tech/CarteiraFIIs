@@ -22,7 +22,8 @@ const STORAGE_KEYS = {
   PRIVACY: 'investfiis_privacy_mode',
   PREFS_NOTIF: 'investfiis_prefs_notifications',
   INDICATORS: 'investfiis_v4_indicators',
-  PUSH_ENABLED: 'investfiis_push_enabled'
+  PUSH_ENABLED: 'investfiis_push_enabled',
+  LAST_SYNC: 'investfiis_last_sync_time'
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -67,6 +68,13 @@ const App: React.FC = () => {
       } catch { return { ipca: 4.5, startDate: '' }; }
   });
 
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.LAST_SYNC);
+      return saved ? new Date(saved) : null;
+    } catch { return null; }
+  });
+
   const prevDividendsRef = useRef<DividendReceipt[]>(geminiDividends);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -77,6 +85,11 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken); }, [brapiToken]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled)); }, [pushEnabled]);
+  useEffect(() => { 
+    if (lastSyncTime) {
+      localStorage.setItem(STORAGE_KEYS.LAST_SYNC, lastSyncTime.toISOString());
+    }
+  }, [lastSyncTime]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -345,7 +358,8 @@ const App: React.FC = () => {
               startDate: aiData.indicators.start_date_used
           });
       }
-
+      
+      setLastSyncTime(new Date());
       if (force) showToast('success', 'Carteira Sincronizada');
     } catch (e) {
       showToast('error', 'Sem conexão');
@@ -368,7 +382,7 @@ const App: React.FC = () => {
 
       {toast && (
         <div 
-          className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] animate-fade-in-up" 
+          className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] anim-fade-in-up is-visible"
           onClick={() => updateManager.isUpdateAvailable && updateManager.setShowChangelog(true)}
         >
           <div className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-slate-900/90 dark:bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-900/10 transition-all cursor-pointer hover:scale-105 active:scale-95 border border-white/10 dark:border-black/5">
@@ -401,6 +415,7 @@ const App: React.FC = () => {
         onNotificationClick={() => setShowNotifications(true)}
         notificationCount={notifications.length}
         appVersion={APP_VERSION}
+        lastSyncTime={lastSyncTime}
       />
 
       <main className="max-w-screen-md mx-auto pt-2">
@@ -421,9 +436,10 @@ const App: React.FC = () => {
             lastChecked={updateManager.lastChecked}
             pushEnabled={pushEnabled}
             onRequestPushPermission={requestPushPermission}
+            lastSyncTime={lastSyncTime}
           />
         ) : (
-          <div key={currentTab} className="animate-cross-fade">
+          <div key={currentTab} className="anim-fade-in is-visible">
             {currentTab === 'home' && (
                 <Home 
                     {...memoizedData} 

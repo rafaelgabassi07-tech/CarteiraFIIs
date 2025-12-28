@@ -34,6 +34,7 @@ interface HeaderProps {
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
   appVersion?: string;
+  lastSyncTime?: Date | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -47,7 +48,8 @@ export const Header: React.FC<HeaderProps> = ({
   notificationCount = 0,
   updateAvailable,
   onUpdateClick,
-  appVersion = '5.0.0'
+  appVersion = '5.0.0',
+  lastSyncTime
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -61,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header className={`fixed top-0 left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-300 ${isScrolled ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5' : 'bg-transparent pt-4 border-b border-transparent'}`}>
       <div className="flex items-center gap-3 w-full">
         {showBack ? (
-          <div className="flex items-center gap-3 w-full">
+          <div className="flex items-center gap-3 w-full anim-fade-in-up is-visible">
             <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group border border-slate-100 dark:border-white/5">
               <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" strokeWidth={2.5} />
             </button>
@@ -71,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col">
+          <div className="flex flex-col anim-fade-in-up is-visible">
               <div className="flex items-center gap-2.5">
                   <div className="relative flex h-2.5 w-2.5 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
@@ -89,7 +91,11 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
               </div>
               <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-5 pl-0.5">
-                  {isRefreshing ? 'Sincronizando...' : 'Conectado'}
+                  {isRefreshing 
+                    ? 'Sincronizando...' 
+                    : lastSyncTime 
+                    ? `Últ. Sinc: ${lastSyncTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` 
+                    : 'Conectado'}
               </span>
           </div>
         )}
@@ -284,15 +290,15 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
              {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-[60vh] opacity-60">
-                   <div className="w-24 h-24 bg-slate-200 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 animate-float">
+                   <div className="w-24 h-24 bg-slate-200 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 anim-fade-in is-visible">
                       <Inbox className="w-10 h-10 text-slate-400" strokeWidth={1.5} />
                    </div>
-                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Tudo Limpo</h3>
-                   <p className="text-sm text-slate-500 dark:text-slate-400 text-center max-w-[250px]">Você não tem novas notificações.</p>
+                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>Tudo Limpo</h3>
+                   <p className="text-sm text-slate-500 dark:text-slate-400 text-center max-w-[250px] anim-fade-in-up is-visible" style={{ animationDelay: '200ms' }}>Você não tem novas notificações.</p>
                 </div>
              ) : (
                 notifications.map((n, i) => (
-                    <div key={n.id} className={`p-5 rounded-[1.8rem] border flex gap-4 transition-all active:scale-[0.98] anim-fade-in-up ${isVisible ? 'is-visible' : ''} shadow-sm`} style={{ transitionDelay: `${i * 50}ms` }}>
+                    <div key={n.id} className={`p-5 rounded-[1.8rem] border flex gap-4 transition-all active:scale-[0.98] anim-fade-in-up shadow-sm ${isVisible ? 'is-visible' : ''}`} style={{ transitionDelay: `${i * 50}ms` }}>
                        {/* Conteúdo do Card de Notificação... */}
                     </div>
                 ))
