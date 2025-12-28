@@ -1,18 +1,18 @@
 
-const CACHE_NAME = 'investfiis-ultra-v6.6.1'; // Bump version
+const CACHE_NAME = 'investfiis-core-v6.6.1'; // Incrementado
 
-const ASSETS_TO_CACHE = [
+// Arquivos vitais que devem estar disponíveis offline imediatamente
+const PRECACHE_ASSETS = [
+  './',
+  './index.html',
   './manifest.json'
 ];
 
-// Broadcast Channel para comunicação moderna com o cliente
-const channel = new BroadcastChannel('investfiis_sw_updates');
-
 self.addEventListener('install', (event) => {
-  // Manual skipWaiting only
+  // Instalação: Cacheia o essencial imediatamente
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(PRECACHE_ASSETS);
     })
   );
 });
@@ -20,80 +20,65 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
+      // 1. Limpa caches antigos
       caches.keys().then((keys) => {
         return Promise.all(
           keys.map((key) => {
             if (key !== CACHE_NAME) {
-              // Limpa caches antigos
               return caches.delete(key);
             }
           })
         );
       }),
+      // 2. Toma controle dos clientes imediatamente para garantir que a versão nova rode
       self.clients.claim()
-    ]).then(() => {
-        channel.postMessage({ type: 'SW_ACTIVATED' });
-    })
+    ])
   );
 });
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. VERSION CHECK: NETWORK ONLY (CRÍTICO)
-  // O arquivo version.json NUNCA deve ser cacheado.
+  // A) Version.json: SEMPRE Network (para saber se tem notas de release novas)
   if (url.pathname.includes('version.json')) {
       event.respondWith(
-          fetch(event.request, { cache: 'no-store' }).catch(() => new Response(JSON.stringify({ error: 'offline' })))
+          fetch(event.request, { cache: 'no-store' }).catch(() => {
+              // Se offline, tenta retornar um json vazio ou cacheado se existir, mas idealmente falha
+              return new Response(JSON.stringify({ version: 'offline' }));
+          })
       );
       return;
   }
 
-  // 2. NAVEGAÇÃO: NETWORK ONLY COM FALLBACK CACHE
-  if (event.request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname === '/') {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          return caches.match(event.request);
-        })
-    );
-    return;
+  // B) Navegação (HTML): Network First (para garantir conteúdo fresco), Fallback Cache
+  if (event.request.mode === 'navigate') {
+      event.respondWith(
+          fetch(event.request)
+            .catch(() => caches.match('./index.html'))
+      );
+      return;
   }
 
-  // 3. ATIVOS EXTERNOS
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  // 4. Stale-While-Revalidate para outros arquivos
+  // C) Assets Estáticos (JS, CSS, Imagens): Stale-While-Revalidate
+  // Serve do cache rápido, mas atualiza o cache em background para a próxima vez
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Atualiza cache em background
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse.clone());
-            });
-          }
-        }).catch(() => {});
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+           const responseToCache = networkResponse.clone();
+           caches.open(CACHE_NAME).then((cache) => {
+               cache.put(event.request, responseToCache);
+           });
         }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
         return networkResponse;
-      });
+      }).catch(() => {}); // Erros de fetch em background são ignorados
+
+      return cachedResponse || fetchPromise;
     })
   );
 });
 
+// Listener para forçar a atualização quando o usuário clica no botão
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'INVESTFIIS_SKIP_WAITING') {
     self.skipWaiting();

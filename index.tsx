@@ -8,25 +8,8 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-// Registro Básico com estratégia de atualização rigorosa
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    // Constrói a URL absoluta para o service worker para evitar problemas de origem
-    // em ambientes de desenvolvimento encapsulados, como o que causou o erro.
-    const swUrl = new URL('sw.js', window.location.href).href;
-
-    // updateViaCache: 'none' força o browser a checar o servidor pelo sw.js
-    // em vez de usar o cache HTTP, garantindo que nossas regras de ciclo de vida
-    // sejam aplicadas imediatamente.
-    navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' })
-      .then(registration => {
-        console.log('SW Registrado:', registration.scope);
-      })
-      .catch(err => {
-        console.error('Falha no SW:', err);
-      });
-  });
-}
+// O registro do Service Worker agora é gerenciado pelo hook useUpdateManager dentro do App.tsx
+// Isso garante que a UI reaja corretamente aos estados do ciclo de vida do SW.
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
