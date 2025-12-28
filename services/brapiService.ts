@@ -23,6 +23,7 @@ export const getQuotes = async (tickers: string[], token: string, force = false)
   const results: BrapiQuote[] = [];
   const toFetch: string[] = [];
 
+  // Verifica cache individualmente
   uniqueTickers.forEach(t => {
     if (!force && cache[t] && (now - cache[t].timestamp < CACHE_DURATION)) {
       results.push(cache[t].data);
@@ -34,11 +35,11 @@ export const getQuotes = async (tickers: string[], token: string, force = false)
   if (!toFetch.length) return { quotes: results };
 
   try {
-    // REQUISIÇÃO 1:1 SOLICITADA
-    // Mapeia cada ticker para uma promessa de fetch individual
+    // REQUISIÇÃO 1:1 ESTRITA (One Request Per Asset)
+    // O usuário solicitou explicitamente que a Brapi faça uma requisição por ativo.
+    // Usamos Promise.all para paralelizar, mas cada URL é única por ticker.
     const promises = toFetch.map(async (ticker) => {
       try {
-        // Chamada individual para UM ativo apenas por URL
         const url = `${BASE_URL}/quote/${ticker}?token=${token}&range=1d&interval=1d`;
         const res = await fetch(url);
         
@@ -55,7 +56,6 @@ export const getQuotes = async (tickers: string[], token: string, force = false)
       return null;
     });
 
-    // Executa as chamadas individuais em paralelo para performance
     const fetchedResults = await Promise.all(promises);
 
     fetchedResults.forEach(item => {
@@ -68,6 +68,6 @@ export const getQuotes = async (tickers: string[], token: string, force = false)
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
     return { quotes: results };
   } catch (e) {
-    return { quotes: results, error: "Erro na Brapi" };
+    return { quotes: results, error: "Erro na conexão com Brapi" };
   }
 };

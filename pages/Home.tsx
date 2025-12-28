@@ -1,8 +1,7 @@
 
-
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy } from 'lucide-react';
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, CartesianGrid, YAxis } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
@@ -25,6 +24,13 @@ const formatBRL = (val: any) => {
 const formatPercent = (val: any) => {
   const num = typeof val === 'number' ? val : 0;
   return `${num.toFixed(2)}%`;
+};
+
+const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-';
+    // Corrige fuso horário adicionando T12:00:00 para evitar dia anterior
+    const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 };
 
 const ModalTabs = ({ tabs, active, onChange }: { tabs: { id: string, label: string }[], active: string, onChange: (id: any) => void }) => (
@@ -54,10 +60,12 @@ export const Home: React.FC<HomeProps> = ({
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRealGainModal, setShowRealGainModal] = useState(false);
+  const [showAgendaModal, setShowAgendaModal] = useState(false);
 
   const [allocationTab, setAllocationTab] = useState<'assets' | 'types' | 'segments'>('assets');
   const [incomeTab, setIncomeTab] = useState<'summary' | 'magic' | 'calendar'>('summary');
   const [gainTab, setGainTab] = useState<'benchmark' | 'power'>('benchmark');
+  const [agendaTab, setAgendaTab] = useState<'payments' | 'datacom'>('payments');
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => { setActiveIndex(0); }, [allocationTab]);
@@ -75,7 +83,7 @@ export const Home: React.FC<HomeProps> = ({
     return { ...res, totalAppreciation, appreciationPercent };
   }, [portfolio]);
 
-  const { received, upcoming, averageMonthly, bestPayer, chartData } = useMemo(() => {
+  const { received, upcoming, averageMonthly, bestPayer, chartData, nextPayments, nextDataComs } = useMemo(() => {
     // Datas seguras
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -84,10 +92,17 @@ export const Home: React.FC<HomeProps> = ({
     // Mapa para achar o maior pagador
     const tickerTotalMap: Record<string, number> = {};
     const monthlyTotals: Record<string, number> = {};
+    
+    // Arrays para a Agenda
+    const upcomingPayments: DividendReceipt[] = [];
+    const upcomingDataComs: DividendReceipt[] = [];
 
     const totals = dividendReceipts.reduce((acc, curr) => {
       let payDate = curr.paymentDate;
       if (payDate.includes('/')) payDate = payDate.split('/').reverse().join('-');
+      
+      let dataCom = curr.dateCom;
+      if (dataCom.includes('/')) dataCom = dataCom.split('/').reverse().join('-');
       
       const monthKey = payDate.substring(0, 7); // YYYY-MM
       
@@ -99,7 +114,15 @@ export const Home: React.FC<HomeProps> = ({
           monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + curr.totalReceived;
       } else {
           acc.upcoming += curr.totalReceived;
+          // Adiciona aos próximos pagamentos
+          upcomingPayments.push(curr);
       }
+      
+      // Verifica Data Com Futura ou Hoje
+      if (dataCom >= todayStr) {
+          upcomingDataComs.push(curr);
+      }
+
       return acc;
     }, { received: 0, upcoming: 0 });
 
@@ -121,12 +144,18 @@ export const Home: React.FC<HomeProps> = ({
             name: key.split('-')[1] + '/' + key.split('-')[0].substring(2),
             value: value
         }));
+    
+    // Ordenação da Agenda
+    upcomingPayments.sort((a,b) => a.paymentDate.localeCompare(b.paymentDate));
+    upcomingDataComs.sort((a,b) => a.dateCom.localeCompare(b.dateCom));
 
     return { 
         ...totals, 
         averageMonthly, 
         bestPayer: { ticker: maxTicker, value: maxVal },
-        chartData: last12MonthsData
+        chartData: last12MonthsData,
+        nextPayments: upcomingPayments,
+        nextDataComs: upcomingDataComs
     };
   }, [dividendReceipts]);
 
@@ -283,7 +312,48 @@ export const Home: React.FC<HomeProps> = ({
         </div>
       </div>
 
-      {/* 2. CARD RENDA PASSIVA */}
+      {/* 2. CARD AGENDA (NOVO) */}
+      <div className="animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+         <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-gradient-to-br from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/[0.05] dark:to-purple-500/[0.05] p-5 rounded-[2.5rem] border border-indigo-500/10 active:scale-[0.98] transition-all hover:shadow-lg relative overflow-hidden group">
+            <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white dark:bg-[#0f172a] rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm group-hover:scale-110 transition-transform">
+                        <CalendarDays className="w-6 h-6" strokeWidth={2} />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">Agenda de Proventos</h3>
+                        <p className="text-[10px] font-semibold text-slate-400 mt-1">
+                           {nextPayments.length + nextDataComs.length > 0 
+                             ? `${nextPayments.length + nextDataComs.length} Eventos Próximos` 
+                             : 'Nenhum evento previsto'}
+                        </p>
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-[#0f172a] w-8 h-8 rounded-full flex items-center justify-center text-slate-300">
+                    <ArrowRight className="w-4 h-4" />
+                </div>
+            </div>
+            {/* Badges Preview */}
+            {(nextPayments.length > 0 || nextDataComs.length > 0) && (
+                <div className="flex gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
+                    {nextPayments.slice(0, 2).map((p, i) => (
+                        <div key={`p-${i}`} className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase whitespace-nowrap">
+                            <Coins className="w-3 h-3" />
+                            <span>{p.ticker}: {formatBRL(p.totalReceived)}</span>
+                        </div>
+                    ))}
+                    {nextDataComs.slice(0, 1).map((d, i) => (
+                        <div key={`d-${i}`} className="flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase whitespace-nowrap">
+                            <Clock className="w-3 h-3" />
+                            <span>Data Com: {d.ticker}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+         </button>
+      </div>
+
+      {/* 3. CARD RENDA PASSIVA */}
       <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
         <button onClick={() => setShowProventosModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-lg pointer-events-auto">
             <div className="flex items-start justify-between relative z-10">
@@ -315,7 +385,7 @@ export const Home: React.FC<HomeProps> = ({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-          {/* 3. CARD ALOCAÇÃO */}
+          {/* 4. CARD ALOCAÇÃO */}
           <button 
             onClick={() => setShowAllocationModal(true)} 
             className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col h-full group hover:shadow-lg relative overflow-hidden"
@@ -347,7 +417,7 @@ export const Home: React.FC<HomeProps> = ({
              </div>
           </button>
 
-          {/* 4. CARD GANHO REAL */}
+          {/* 5. CARD GANHO REAL */}
           <button 
             onClick={() => setShowRealGainModal(true)} 
             className="animate-fade-in-up bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg relative overflow-hidden"
@@ -388,6 +458,88 @@ export const Home: React.FC<HomeProps> = ({
            ))}
         </div>
       )}
+
+      {/* MODAL AGENDA */}
+      <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
+         <div className="px-4 py-2">
+            <div className="flex items-center gap-3 px-2 mb-6 mt-2">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><CalendarDays className="w-5 h-5" strokeWidth={2} /></div>
+                <div>
+                   <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Agenda</h3>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Datas Importantes</p>
+                </div>
+            </div>
+
+            <ModalTabs active={agendaTab} onChange={setAgendaTab} tabs={[
+                { id: 'payments', label: 'Pagamentos' }, 
+                { id: 'datacom', label: 'Data Com' }, 
+            ]} />
+
+            <div className="space-y-3 pb-8 animate-fade-in">
+                {agendaTab === 'payments' ? (
+                    nextPayments.length === 0 ? (
+                        <div className="text-center py-10">
+                            <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4"><Coins className="w-6 h-6 text-slate-300" /></div>
+                            <p className="text-slate-400 text-xs font-medium">Nenhum pagamento futuro previsto.</p>
+                        </div>
+                    ) : (
+                        nextPayments.map((p, i) => (
+                            <div key={i} className="flex justify-between items-center p-4 bg-white dark:bg-[#0f172a] rounded-3xl animate-fade-in-up border border-slate-100 dark:border-white/5" style={{ animationDelay: `${i * 50}ms` }}>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex flex-col items-center justify-center text-emerald-600 font-bold shrink-0">
+                                        <span className="text-[8px] uppercase opacity-70">{formatDate(p.paymentDate).split('/')[1]}</span>
+                                        <span className="text-sm leading-none">{formatDate(p.paymentDate).split('/')[0]}</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-900 dark:text-white">{p.ticker}</h4>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${p.type.includes('JCP') ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'}`}>
+                                                {p.type.includes('JCP') ? 'JCP' : 'Dividendo'}
+                                            </span>
+                                            {p.quantityOwned > 0 && <span className="text-[9px] text-slate-400 font-bold">• {p.quantityOwned} Cotas</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(p.totalReceived)}</p>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tabular-nums">R$ {p.rate.toFixed(4)} / un</p>
+                                </div>
+                            </div>
+                        ))
+                    )
+                ) : (
+                    nextDataComs.length === 0 ? (
+                        <div className="text-center py-10">
+                            <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4"><Clock className="w-6 h-6 text-slate-300" /></div>
+                            <p className="text-slate-400 text-xs font-medium">Nenhuma data com prevista.</p>
+                        </div>
+                    ) : (
+                        nextDataComs.map((p, i) => (
+                            <div key={i} className="flex justify-between items-center p-4 bg-white dark:bg-[#0f172a] rounded-3xl animate-fade-in-up border border-slate-100 dark:border-white/5" style={{ animationDelay: `${i * 50}ms` }}>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex flex-col items-center justify-center text-amber-600 font-bold shrink-0">
+                                        <span className="text-[8px] uppercase opacity-70">{formatDate(p.dateCom).split('/')[1]}</span>
+                                        <span className="text-sm leading-none">{formatDate(p.dateCom).split('/')[0]}</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-900 dark:text-white">{p.ticker}</h4>
+                                        <p className="text-[10px] font-medium text-slate-500">Corte para receber:</p>
+                                        <span className={`text-[9px] font-bold uppercase ${p.type.includes('JCP') ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                             {p.type.includes('JCP') ? 'Juros s/ Capital' : 'Dividendos/Rend.'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Valor Anunciado</p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">R$ {p.rate.toFixed(4)}</p>
+                                </div>
+                            </div>
+                        ))
+                    )
+                )}
+            </div>
+         </div>
+      </SwipeableModal>
 
       {/* MODAL ALOCAÇÃO */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>

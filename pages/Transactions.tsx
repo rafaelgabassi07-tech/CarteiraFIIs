@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { Transaction, AssetType } from '../types';
-import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign, X } from 'lucide-react';
+import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign, X, Building2, BarChart3 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 const formatBRL = (val: number | undefined | null) => {
@@ -114,7 +114,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
   return (
     <div className="pt-24 pb-28 px-5 space-y-4 max-w-lg mx-auto">
       
-      {/* Barra de Busca e Botão Novo Otimizados - Sem Bordas */}
       <div className="sticky top-24 z-30 pt-2 pb-4 bg-slate-100/95 dark:bg-[#020617]/95 backdrop-blur-md -mx-5 px-5 transition-all">
          <div className="flex gap-3">
              <div className="relative flex-1 group">
@@ -122,7 +121,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                <input 
                  type="text" 
                  className="w-full bg-white dark:bg-white/5 pl-11 pr-4 py-3 rounded-2xl outline-none text-sm font-semibold placeholder:text-slate-400 focus:ring-4 focus:ring-accent/10 transition-all shadow-sm border border-slate-200/50 dark:border-white/5" 
-                 placeholder="Filtrar..." 
+                 placeholder="Filtrar FIIs ou Ações..." 
                  value={searchTerm} 
                  onChange={(e) => setSearchTerm(e.target.value)} 
                />
@@ -159,16 +158,15 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         {group.items.map((t) => (
                            <div key={t.id} className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3 flex items-center justify-between shadow-sm active:scale-[0.99] transition-all border border-slate-200/50 dark:border-white/5">
                               <div className="flex items-center gap-3">
-                                  {/* Indicador de Tipo Compacto - Sem Borda */}
                                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
                                       {t.type === 'BUY' ? <TrendingUp className="w-4 h-4" strokeWidth={2.5} /> : <TrendingDown className="w-4 h-4" strokeWidth={2.5} />}
                                   </div>
-                                  
-                                  {/* Info Ativo Refinado */}
                                   <div>
                                     <div className="flex items-center gap-2 mb-0.5">
                                         <h4 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight leading-none">{t.ticker}</h4>
-                                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded uppercase tracking-wider">{t.date.split('-')[2]}</span>
+                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${t.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-600' : 'bg-blue-500/10 text-blue-600'}`}>
+                                            {t.assetType === AssetType.FII ? 'FII' : 'Ação'}
+                                        </span>
                                     </div>
                                     <p className={`text-[9px] font-bold uppercase tracking-[0.05em] ${t.type === 'BUY' ? 'text-emerald-600/70' : 'text-rose-600/70'}`}>
                                         {t.type === 'BUY' ? 'Compra' : 'Venda'}
@@ -177,7 +175,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
                               </div>
 
                               <div className="flex items-center gap-3">
-                                  {/* Valores Organizados */}
                                   <div className="text-right">
                                     <div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums tracking-tight mb-0.5">R$ {formatBRL(t.quantity * t.price)}</div>
                                     <div className="text-[9px] text-slate-400 font-medium tabular-nums leading-none">
@@ -185,7 +182,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     </div>
                                   </div>
                                   
-                                  {/* Ações Compactas */}
                                   <div className="flex flex-col gap-1">
                                       <button onClick={() => handleEdit(t)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-accent/10 hover:text-accent transition-colors active:scale-90"><Pencil className="w-3 h-3" /></button>
                                       <button onClick={() => confirm('Deseja excluir esta ordem?') && onDeleteTransaction(t.id)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors active:scale-90"><Trash2 className="w-3 h-3" /></button>
@@ -215,7 +211,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     <div className="w-10 h-10 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500"><Plus className="w-5 h-5" strokeWidth={2.5} /></div>
                     <div>
                         <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-tight">{editingId ? 'Editar' : 'Nova Ordem'}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Movimentação</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">FIIs & Ações</p>
                     </div>
                 </div>
                 {editingId && (
@@ -227,40 +223,45 @@ export const Transactions: React.FC<TransactionsProps> = ({
             
             <form onSubmit={handleSubmit} className="space-y-4">
               
-              {/* Toggle Compacto */}
+              {/* Seleção do Tipo de Ativo (FII vs Ação) */}
+              <div className="flex gap-3">
+                 <button 
+                   type="button" 
+                   onClick={() => setForm({...form, assetType: AssetType.FII})} 
+                   className={`flex-1 p-3 rounded-2xl border transition-all flex flex-col items-center gap-1 ${form.assetType === AssetType.FII ? 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20 text-orange-600' : 'bg-white dark:bg-[#0f172a] border-slate-100 dark:border-white/5 text-slate-400'}`}
+                 >
+                    <Building2 className="w-5 h-5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Fundo Imob.</span>
+                 </button>
+                 <button 
+                   type="button" 
+                   onClick={() => setForm({...form, assetType: AssetType.STOCK})} 
+                   className={`flex-1 p-3 rounded-2xl border transition-all flex flex-col items-center gap-1 ${form.assetType === AssetType.STOCK ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 text-blue-600' : 'bg-white dark:bg-[#0f172a] border-slate-100 dark:border-white/5 text-slate-400'}`}
+                 >
+                    <BarChart3 className="w-5 h-5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Ação</span>
+                 </button>
+              </div>
+
+              {/* Compra/Venda */}
               <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
                  <button type="button" onClick={() => setForm({...form, type: 'BUY'})} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${form.type === 'BUY' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Compra</button>
                  <button type="button" onClick={() => setForm({...form, type: 'SELL'})} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${form.type === 'SELL' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Venda</button>
               </div>
 
-              {/* Grid de Inputs Compacto */}
               <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/5 grid grid-cols-2 gap-3">
-                 
-                 {/* Linha 1: Ticker e Data */}
-                 <div className="space-y-1.5">
+                 <div className="space-y-1.5 col-span-2">
                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1"><Briefcase className="w-3 h-3" /> Ticker</label>
                     <input 
                       type="text" 
                       value={form.ticker} 
                       onChange={(e) => setForm({...form, ticker: e.target.value})} 
-                      placeholder="XXXX11" 
-                      className="w-full bg-slate-50 dark:bg-black/20 px-3 py-3 rounded-xl outline-none font-bold uppercase text-sm tracking-wider focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-slate-300/50 text-center" 
+                      placeholder={form.assetType === AssetType.FII ? "MXRF11" : "PETR4"} 
+                      className="w-full bg-slate-50 dark:bg-black/20 px-3 py-3 rounded-xl outline-none font-bold uppercase text-base tracking-wider focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-slate-300/50 text-center" 
                       required 
                     />
                  </div>
 
-                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> Data</label>
-                    <input 
-                      type="date" 
-                      value={form.date} 
-                      onChange={(e) => setForm({...form, date: e.target.value})} 
-                      className="w-full bg-slate-50 dark:bg-black/20 px-3 py-3 rounded-xl outline-none font-bold text-sm text-center focus:ring-2 focus:ring-accent/20 transition-all dark:text-white" 
-                      required 
-                    />
-                 </div>
-                 
-                 {/* Linha 2: Quantidade e Preço */}
                  <div className="space-y-1.5">
                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1"><Hash className="w-3 h-3" /> Qtd</label>
                     <input 
@@ -285,10 +286,21 @@ export const Transactions: React.FC<TransactionsProps> = ({
                       required 
                     />
                  </div>
+
+                 <div className="space-y-1.5 col-span-2">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> Data</label>
+                    <input 
+                      type="date" 
+                      value={form.date} 
+                      onChange={(e) => setForm({...form, date: e.target.value})} 
+                      className="w-full bg-slate-50 dark:bg-black/20 px-3 py-3 rounded-xl outline-none font-bold text-sm text-center focus:ring-2 focus:ring-accent/20 transition-all dark:text-white" 
+                      required 
+                    />
+                 </div>
               </div>
 
               <button type="submit" className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-xl font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl hover:shadow-2xl">
-                {editingId ? 'Salvar Alterações' : 'Confirmar'}
+                {editingId ? 'Salvar Alterações' : 'Confirmar Ordem'}
               </button>
             </form>
         </div>

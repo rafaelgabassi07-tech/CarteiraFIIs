@@ -33,14 +33,11 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
         <div className="p-6">
           <div className="flex items-center justify-between">
              <div className="flex items-center gap-4">
-                {/* Logo ou Monograma Ultra Clean */}
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-all duration-300 ${isExpanded ? 'scale-110' : ''} ${asset.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-600' : 'bg-blue-500/10 text-blue-600'}`}>
                     {asset.logoUrl ? (
                         <img src={asset.logoUrl} alt={asset.ticker} className="w-8 h-8 object-contain" onError={(e) => { (e.target as any).style.display='none'; }} />
                     ) : (
-                        <span className="text-xs font-black tracking-tighter">
-                            {asset.ticker.substring(0, 4)}
-                        </span>
+                        asset.assetType === AssetType.FII ? <Building2 className="w-6 h-6" /> : <BarChart3 className="w-6 h-6" />
                     )}
                 </div>
                 <div>
@@ -61,11 +58,8 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
              </div>
           </div>
 
-          {/* Área Expandida com Design Clean */}
           <div className={`grid transition-all duration-500 ease-out overflow-hidden ${isExpanded ? 'grid-rows-[1fr] opacity-100 pt-6' : 'grid-rows-[0fr] opacity-0 pt-0'}`}>
              <div className="min-h-0 space-y-4">
-                 
-                 {/* Cards Internos de Métricas */}
                  <div className="grid grid-cols-2 gap-3">
                     <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-[1.5rem] flex flex-col justify-between h-24 relative overflow-hidden border border-slate-100 dark:border-white/5">
                         <div className="absolute top-0 right-0 p-3 opacity-10">
@@ -124,7 +118,6 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
         </div>
       </div>
 
-      {/* Modais Mantidos (Histórico e Detalhes) */}
       <SwipeableModal isOpen={showHistoryModal} onClose={() => setShowHistoryModal(false)}>
         <div className="px-6 py-2">
             <div className="flex items-center gap-3 mb-8 px-2">

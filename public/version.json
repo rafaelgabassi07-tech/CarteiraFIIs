@@ -1,17 +1,17 @@
 
 {
-  "version": "5.8.1",
-  "date": "2025-05-27",
+  "version": "5.9.0",
+  "date": "2025-05-28",
   "notes": [
     {
-      "type": "fix",
-      "title": "Correção de Atualização",
-      "desc": "O app não irá mais atualizar sozinho em segundo plano. Você decide quando aplicar."
+      "type": "feat",
+      "title": "IA 2.5 Flash",
+      "desc": "Atualização para o modelo Gemini 2.5 Flash, oferecendo análises de FIIs e Ações mais rápidas e precisas."
     },
     {
-      "type": "perf",
-      "title": "Fluxo de Controle",
-      "desc": "Ajuste fino no ciclo de vida do Service Worker para maior estabilidade."
+      "type": "ui",
+      "title": "Carteira Dedicada",
+      "desc": "Refinamentos visuais para focar estritamente em FIIs e Ações na sua gestão."
     }
   ]
 }
