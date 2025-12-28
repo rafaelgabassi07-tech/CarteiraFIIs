@@ -60,9 +60,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'latest' | 'available' | 'offline'>('idle');
   const [glassMode, setGlassMode] = useState(() => localStorage.getItem('investfiis_glass_mode') !== 'false');
   
-  // Lógica corrigida para animações: Se o item não existir ou for !== 'false', é true.
-  const [animations, setAnimations] = useState(() => localStorage.getItem('investfiis_animations') !== 'false');
-  
   const [storageData, setStorageData] = useState({ 
     totalBytes: 0,
     breakdown: { tx: 0, quotes: 0, divs: 0 } 
@@ -80,12 +77,6 @@ export const Settings: React.FC<SettingsProps> = ({
     localStorage.setItem('investfiis_glass_mode', String(glassMode));
     document.documentElement.classList.toggle('glass-effect', glassMode);
   }, [glassMode]);
-
-  useEffect(() => {
-    localStorage.setItem('investfiis_animations', String(animations));
-    // Se animations=true, REMOVE a classe disable-animations. Se false, ADICIONA.
-    document.body.classList.toggle('disable-animations', !animations);
-  }, [animations]);
 
   useEffect(() => { localStorage.setItem('investfiis_notify_divs', String(notifyDivs)); }, [notifyDivs]);
   useEffect(() => { localStorage.setItem('investfiis_notify_datacom', String(notifyDataCom)); }, [notifyDataCom]);
@@ -347,7 +338,6 @@ export const Settings: React.FC<SettingsProps> = ({
               <div className="space-y-3">
                  <h3 className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Interface</h3>
                  <Toggle label="Efeito Glassmorphism" icon={Layers} checked={glassMode} onChange={() => setGlassMode(!glassMode)} />
-                 <Toggle label="Animações Fluídas" icon={Gauge} checked={animations} onChange={() => setAnimations(!animations)} />
               </div>
             </div>
           )}

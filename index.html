@@ -37,9 +37,6 @@
         
         document.documentElement.style.setProperty('--color-accent', hex);
         document.documentElement.style.setProperty('--color-accent-rgb', `${r} ${g} ${b}`);
-
-        const animations = localStorage.getItem('investfiis_animations') !== 'false';
-        if (!animations) document.body.classList.add('disable-animations');
         
         const glassMode = localStorage.getItem('investfiis_glass_mode') !== 'false';
         if (glassMode) document.documentElement.classList.add('glass-effect');
@@ -56,19 +53,19 @@
               accent: 'rgb(var(--color-accent-rgb) / <alpha-value>)', 
             },
             animation: {
-              'fade-in': 'fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
-              'fade-in-up': 'fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
-              'slide-up': 'slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
-              'scale-in': 'scaleIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+              'fade-in': 'fadeIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+              'fade-in-up': 'fadeInUp 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards',
+              'slide-up': 'slideUp 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards',
+              'scale-in': 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'float': 'float 6s ease-in-out infinite',
               'spin-slow': 'spin-slow 10s linear infinite',
             },
             keyframes: {
               fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-              fadeInUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+              fadeInUp: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
               slideUp: { '0%': { transform: 'translateY(100%)' }, '100%': { transform: 'translateY(0)' } },
-              scaleIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+              scaleIn: { '0%': { opacity: '0', transform: 'scale(0.92)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
               float: {
                 '0%, 100%': { transform: 'translateY(0)' },
                 '50%': { transform: 'translateY(-10px)' },
@@ -117,35 +114,6 @@
 
       /* GLOW SELECTION */
       ::selection { background-color: rgb(var(--color-accent-rgb)); color: white; }
-
-      /* --- CRITICAL: DISABLE ANIMATIONS LOGIC --- */
-      body.disable-animations *, 
-      body.disable-animations *::before, 
-      body.disable-animations *::after {
-        animation: none !important;
-        transition-duration: 0s !important;
-      }
-
-      /* Force final state for keyframe animations when disabled */
-      body.disable-animations .animate-fade-in,
-      body.disable-animations .animate-fade-in-up,
-      body.disable-animations .animate-slide-up,
-      body.disable-animations .animate-scale-in {
-         opacity: 1 !important;
-         transform: none !important;
-      }
-      
-      /* Specific resets for infinite animations */
-      body.disable-animations .animate-spin,
-      body.disable-animations .animate-ping,
-      body.disable-animations .animate-pulse,
-      body.disable-animations .animate-bounce,
-      body.disable-animations .animate-float,
-      body.disable-animations .animate-spin-slow {
-          animation: none !important;
-          opacity: 1 !important;
-          transform: none !important;
-      }
 
     </style>
   <script type="importmap">
