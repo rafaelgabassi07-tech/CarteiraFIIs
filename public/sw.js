@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-ultra-v5.5.7';
+const CACHE_NAME = 'investfiis-ultra-v5.7.0';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -8,7 +8,6 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  // O SW instala, mas fica em 'waiting' até receber o comando ou todos os clientes fecharem.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -17,7 +16,6 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  // Limpa caches antigos, mas NÃO toma controle (clients.claim removido).
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
@@ -34,7 +32,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Version.json sempre network-first para detecção rápida
   if (url.pathname.includes('version.json')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
@@ -46,8 +43,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-While-Revalidate para ativos (mais seguro para UX) ou Cache-First?
-  // Mantemos Cache-First para performance e consistência da versão.
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -66,7 +61,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// A única forma de pular o 'waiting' programaticamente é via este comando.
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'INVESTFIIS_SKIP_WAITING') {
     self.skipWaiting();

@@ -1,12 +1,17 @@
 
 {
-  "version": "5.5.7",
-  "date": "2025-05-26",
+  "version": "5.7.0",
+  "date": "2025-05-27",
   "notes": [
     {
-      "type": "perf",
-      "title": "Correção de Update",
-      "desc": "Ajuste na estratégia de cache para prevenir atualizações indesejadas durante a reinicialização do app."
+      "type": "ui",
+      "title": "Configurações Simplificadas",
+      "desc": "Novo visual em lista (List View), mais limpo e organizado, removendo elementos desnecessários."
+    },
+    {
+      "type": "ui",
+      "title": "Remoção de Perfil",
+      "desc": "O card de 'Investidor' foi removido para focar nas funcionalidades de ajuste."
     }
   ]
 }

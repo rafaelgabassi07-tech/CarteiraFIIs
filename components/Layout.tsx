@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles } from 'lucide-react';
@@ -24,7 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSettingsClick, 
   showBack, 
   onBack,
-  onRefresh,
+  onRefresh, // Mantido na interface para compatibilidade, mas não renderizado
   isRefreshing,
   onNotificationClick,
   notificationCount = 0,
@@ -83,16 +82,12 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
+        {/* Botão de Refresh removido conforme solicitação */}
+
         {onNotificationClick && !showBack && (
           <button onClick={onNotificationClick} className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
             <Bell className="w-4 h-4 group-hover:rotate-12 transition-transform" strokeWidth={2} />
             {notificationCount > 0 && <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-full shadow-sm ring-2 ring-white dark:ring-[#020617]"></span>}
-          </button>
-        )}
-
-        {onRefresh && !showBack && (
-          <button onClick={onRefresh} disabled={isRefreshing} className={`w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm border border-slate-100 dark:border-white/5 ${isRefreshing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-white/10'}`}>
-             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-accent' : ''}`} strokeWidth={2} />
           </button>
         )}
 
@@ -406,4 +401,3 @@ export const ChangelogModal: React.FC<{
     document.body
   );
 };
-
