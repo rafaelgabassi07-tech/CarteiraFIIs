@@ -9,7 +9,7 @@ export interface UnifiedMarketData {
   indicators?: MarketIndicators;
 }
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v4'; // Version bump for cache
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v5'; // Version bump for logic fix
 const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 Horas
 
 const normalizeDate = (dateStr: any): string => {
@@ -56,7 +56,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             const cached = JSON.parse(cachedRaw);
             const isFresh = (Date.now() - cached.timestamp) < CACHE_TTL;
             if (isFresh && cached.tickerKey === tickerKey) {
-                console.log("⚡ Usando Cache Gemini 2.5");
+                console.log("⚡ Usando Cache Gemini 2.5 (V5)");
                 return cached.data;
             }
         }
@@ -68,20 +68,24 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const today = new Date().toISOString().split('T')[0];
   const portfolioStart = startDate || today; 
 
-  // Prompt otimizado para Gemini 2.5 Flash
+  // Prompt otimizado para Gemini 2.5 Flash com regras estritas de parcelamento
   const prompt = `
     DATA DE HOJE: ${today}.
     LISTA DE ATIVOS: ${tickerListString}.
     
     CONTEXTO: Carteira dedicada estritamente a FIIs (Fundos Imobiliários) e Ações Brasileiras.
     
-    TAREFA: Retorne um JSON com dados financeiros consolidados.
-    
+    TAREFA CRÍTICA - PROVENTOS:
+    1. Liste TODOS os dividendos e JCP anunciados ou pagos nos últimos 12 meses.
+    2. ATENÇÃO: Se um ativo (ex: CMIG4, BBAS3) anunciou múltiplos pagamentos com a MESMA "Data Com", liste-os como ITENS SEPARADOS se as datas de pagamento forem diferentes.
+    3. NÃO SOME valores de parcelas diferentes. Retorne cada parcela individualmente.
+    4. PRECISÃO: Verifique se é Dividendo (Isento) ou JCP (Tributado).
+
+    TAREFA - GERAL:
     1. CLASSIFICAÇÃO: "FII" ou "ACAO".
     2. FUNDAMENTOS: P/VP, P/L, DY 12m, Liquidez, Cotistas/Acionistas.
     3. SENTIMENTO: Otimista/Neutro/Pessimista (curto) e motivo.
-    4. PROVENTOS: Todos os dividendos/JCP anunciados ou pagos nos últimos 12 meses (Data Com e Pagamento).
-    5. MACRO: IPCA acumulado desde ${portfolioStart}.
+    4. MACRO: IPCA acumulado desde ${portfolioStart}.
 
     JSON APENAS:
     {
@@ -99,13 +103,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   `;
 
   try {
-    // Atualizado para gemini-2.5-flash
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: "Você é um especialista em mercado financeiro (B3). Responda estritamente em JSON válido, sem blocos de código markdown.",
+        systemInstruction: "Você é um auditor financeiro rigoroso da B3. Você deve listar cada centavo de provento separadamente, jamais agrupando parcelas. Retorne estritamente em JSON válido.",
         temperature: 0.1,
       }
     });
@@ -113,10 +116,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     let text = response.text;
     if (!text) throw new Error("Resposta vazia da IA");
     
-    // Limpeza robusta de markdown
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-    // Tenta extrair JSON se houver texto ao redor
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[0] : text;
     
@@ -143,7 +143,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         if (!ticker) return;
 
         let type = AssetType.STOCK;
-        // Inferência de tipo robusta
         const declaredType = asset.type?.toUpperCase();
         if (declaredType === 'FII' || ticker.endsWith('11') || ticker.endsWith('11B')) type = AssetType.FII; 
         else if (declaredType === 'ACAO' || ticker.endsWith('3') || ticker.endsWith('4')) type = AssetType.STOCK;
@@ -169,17 +168,21 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                 const dc = normalizeDate(div.dc);
                 const dp = normalizeDate(div.dp || div.dc);
                 const val = normalizeValue(div.v);
+                const divType = div.ty?.toUpperCase() || "RENDIMENTO";
+                
                 if (!dc || !val) return;
                 
-                // ID único para evitar duplicatas
-                const uniqueKey = `${ticker}-${dc}-${val}`.replace(/\s+/g, '');
+                // CRÍTICO: Chave única expandida para permitir parcelas (mesmo ticker, mesma data com, mesmo valor, mas pagamento diferente)
+                // Inclui TIPO e DATA DE PAGAMENTO na chave.
+                const uniqueKey = `${ticker}-${divType}-${dc}-${dp}-${val}`.replace(/\s+/g, '');
+                
                 if (seenDividends.has(uniqueKey)) return;
                 seenDividends.add(uniqueKey);
                 
                 result.dividends.push({
                     id: `DIV-${uniqueKey}`,
                     ticker,
-                    type: div.ty?.toUpperCase() || "RENDIMENTO",
+                    type: divType,
                     dateCom: dc,
                     paymentDate: dp, 
                     rate: val,
@@ -200,7 +203,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     return result;
   } catch (error: any) {
     console.error("Erro Gemini:", error);
-    // Retorna vazio em caso de erro para não quebrar a UI
     return { dividends: [], metadata: {} };
   }
 };
