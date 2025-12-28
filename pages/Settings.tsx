@@ -79,6 +79,11 @@ export const Settings: React.FC<SettingsProps> = ({
   const isServiceWorkerActive = 'serviceWorker' in navigator;
 
   useEffect(() => {
+    // Se updateAvailable for true, o status já deve refletir isso
+    if (updateAvailable) setCheckStatus('available');
+  }, [updateAvailable]);
+
+  useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
@@ -203,7 +208,11 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleCheckUpdate = async () => {
-    if (updateAvailable) { onShowChangelog(); return; }
+    // Se updateAvailable for true, clicar aqui deve abrir o changelog para instalar
+    if (updateAvailable) { 
+        onShowChangelog(); 
+        return; 
+    }
     
     if (!navigator.onLine) {
         setCheckStatus('offline');
@@ -301,7 +310,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </Section>
 
             <Section title="Sistema">
-                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} colorClass="bg-purple-500/10 text-purple-500" />
+                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={updateAvailable ? 'Disponível' : `v${appVersion}`} colorClass="bg-purple-500/10 text-purple-500" />
                 <MenuItem icon={ShieldAlert} label="Resetar Aplicativo" onClick={() => setActiveSection('system')} isDestructive />
             </Section>
 
@@ -622,7 +631,7 @@ export const Settings: React.FC<SettingsProps> = ({
                            ) : checkStatus === 'latest' ? (
                                <><Check className="w-4 h-4" /> TUDO OK</>
                            ) : updateAvailable || checkStatus === 'available' ? (
-                               <><Download className="w-4 h-4" /> BAIXAR AGORA</>
+                               <><Download className="w-4 h-4" /> INSTALAR AGORA</>
                            ) : checkStatus === 'offline' ? (
                                <><WifiOff className="w-4 h-4" /> OFFLINE</>
                            ) : (

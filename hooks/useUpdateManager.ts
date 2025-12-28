@@ -4,10 +4,13 @@ import { ReleaseNote, VersionData } from '../types';
 
 const STORAGE_KEYS = {
   LAST_SEEN_VERSION: 'investfiis_last_version_seen',
-  LAST_CHECK_TIME: 'investfiis_last_check_time'
+  LAST_CHECK_TIME: 'investfiis_last_check_time',
+  PENDING_VERSION: 'investfiis_pending_update_version', // Nova chave para persistência
+  PENDING_NOTES: 'investfiis_pending_notes'
 };
 
 const compareVersions = (v1: string, v2: string) => {
+  if (!v1 || !v2) return 0;
   const parts1 = v1.split('.').map(Number);
   const parts2 = v2.split('.').map(Number);
   for (let i = 0; i < 3; i++) {
@@ -21,8 +24,16 @@ const compareVersions = (v1: string, v2: string) => {
 
 export const useUpdateManager = (currentAppVersion: string) => {
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
-  const [availableVersion, setAvailableVersion] = useState<string | null>(null);
-  const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([]);
+  const [availableVersion, setAvailableVersion] = useState<string | null>(() => {
+    return localStorage.getItem(STORAGE_KEYS.PENDING_VERSION) || null;
+  });
+  const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>(() => {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEYS.PENDING_NOTES);
+        return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  
   const [updateProgress, setUpdateProgress] = useState(0);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
@@ -33,7 +44,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
   });
 
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
-  // TRAVA DE SEGURANÇA: Garante que o reload só ocorra se o usuário pediu
   const isUserInitiatedUpdate = useRef(false);
 
   const updateLastChecked = useCallback(() => {
@@ -56,12 +66,21 @@ export const useUpdateManager = (currentAppVersion: string) => {
         updateLastChecked();
         
         if (data.version && typeof data.version === 'string') {
-            if (compareVersions(data.version, currentAppVersion) > 0) {
+            const hasNewVersion = compareVersions(data.version, currentAppVersion) > 0;
+            
+            if (hasNewVersion) {
               setAvailableVersion(data.version);
               setReleaseNotes(data.notes || []);
+              
+              // Persistência: Salva que existe uma versão nova detectada
+              localStorage.setItem(STORAGE_KEYS.PENDING_VERSION, data.version);
+              localStorage.setItem(STORAGE_KEYS.PENDING_NOTES, JSON.stringify(data.notes || []));
               return true;
             } 
             else if (data.version === currentAppVersion) {
+               // Limpa pendências se já estamos na versão certa
+               localStorage.removeItem(STORAGE_KEYS.PENDING_VERSION);
+               localStorage.removeItem(STORAGE_KEYS.PENDING_NOTES);
                setReleaseNotes(data.notes || []);
             }
         }
@@ -75,100 +94,96 @@ export const useUpdateManager = (currentAppVersion: string) => {
   useEffect(() => {
     const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
     
+    // Lógica de "Acabei de atualizar"
     if (compareVersions(currentAppVersion, lastSeen) > 0) {
         setWasUpdated(true);
         localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, currentAppVersion);
-        fetchVersionJson().then(() => {
-             setShowChangelog(true);
-        });
-    } else {
-        fetchVersionJson();
+        // Limpa pendências antigas
+        localStorage.removeItem(STORAGE_KEYS.PENDING_VERSION);
+        fetchVersionJson().then(() => setShowChangelog(true));
     }
 
     if (!('serviceWorker' in navigator)) return;
 
     const channel = new BroadcastChannel('investfiis_sw_updates');
     
+    // Escuta evento de ativação do SW
     channel.onmessage = (event) => {
         if (event.data.type === 'SW_ACTIVATED') {
-            // SEGURANÇA: Só recarrega se a flag de usuário estiver true
             if (isUserInitiatedUpdate.current) {
                 window.location.reload();
-            } else {
-                console.log("SW ativado em background, aguardando comando do usuário para reload.");
             }
         }
     };
 
+    // Fallback de segurança para recarregar
     const handleControllerChange = () => {
-        // SEGURANÇA: Só recarrega se a flag de usuário estiver true
         if (isUserInitiatedUpdate.current) {
             window.location.reload();
         }
     };
     navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
 
-    const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-            const now = Date.now();
-            const last = parseInt(localStorage.getItem(STORAGE_KEYS.LAST_CHECK_TIME) || '0');
-            // Verifica a cada 1 hora apenas para não incomodar
-            if (now - last > 60 * 60 * 1000) {
-                 fetchVersionJson().then(hasNew => {
-                    if (hasNew) {
-                        setIsUpdateAvailable(true);
-                        setShowUpdateBanner(true);
-                    }
-                });
-            }
-        }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     const initSW = async () => {
         const reg = await navigator.serviceWorker.ready;
         swRegistrationRef.current = reg;
 
+        // CHECK CRÍTICO: Se já existe um worker esperando (baixado em background ou sessão anterior)
         if (reg.waiting) {
+            console.log("SW Waiting detectado na inicialização.");
+            setIsUpdateAvailable(true);
+            setShowUpdateBanner(true);
+            // Tenta buscar o JSON só pra ter o número da versão e notas, mas o update já é garantido
+            fetchVersionJson(); 
+        } else {
+            // Se não tem waiting, verifica se tem version nova no servidor
             const hasNew = await fetchVersionJson();
             if (hasNew) {
-                setIsUpdateAvailable(true);
-                setShowUpdateBanner(true);
+                // Se o JSON diz que tem novo, forçamos o SW a checar
+                reg.update(); 
             }
         }
 
+        // Monitora novas instalações enquanto o app está aberto
         reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
             if (newWorker) {
                 newWorker.addEventListener('statechange', () => {
                     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        fetchVersionJson().then((hasNew) => {
-                            if (hasNew) {
-                                setIsUpdateAvailable(true);
-                                setShowUpdateBanner(true);
-                            }
-                        });
+                        // Novo update baixado e pronto para instalar
+                        setIsUpdateAvailable(true);
+                        setShowUpdateBanner(true);
+                        fetchVersionJson(); // Atualiza textos
                     }
                 });
             }
         });
-        
-        // REMOVIDO: update() automático de 5s. 
-        // O app agora só verifica atualização quando o usuário abre o app (visibilityChange)
-        // ou clica manualmente em verificar.
     };
 
     initSW();
 
+    // Verificação periódica apenas se a aba ficar aberta muito tempo
+    const interval = setInterval(() => {
+        if (navigator.onLine && swRegistrationRef.current) {
+            swRegistrationRef.current.update();
+        }
+    }, 60 * 60 * 1000); // 1 hora
+
     return () => {
         navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
         channel.close();
+        clearInterval(interval);
     };
   }, [currentAppVersion, fetchVersionJson]);
 
   const manualCheck = useCallback(async () => {
      if (!navigator.onLine) return false;
+
+     // Se já tem um waiting, não precisa checar, já é true
+     if (swRegistrationRef.current?.waiting) {
+         setIsUpdateAvailable(true);
+         return true;
+     }
 
      if (swRegistrationRef.current) {
          try { 
@@ -189,33 +204,28 @@ export const useUpdateManager = (currentAppVersion: string) => {
      setUpdateProgress(5);
      
      const reg = swRegistrationRef.current;
+     const waitingWorker = reg.waiting;
 
-     // Se não tem SW esperando, força check
-     if (!reg.waiting) {
-        await reg.update();
+     if (waitingWorker) {
+         // Caminho Feliz: Já temos o worker esperando
+         waitingWorker.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+         setUpdateProgress(50);
+     } else {
+         // Caminho Raro: Usuário mandou atualizar mas o worker não estava 'waiting'
+         // Força update e torce pra ser rápido, ou recarrega direto
+         await reg.update();
+         if (reg.waiting) {
+             reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+         } else {
+             window.location.reload();
+         }
      }
      
-     let p = 5;
+     // Simulação visual de progresso enquanto o SW assume o controle
+     let p = 50;
      const timer = setInterval(() => {
-        const increment = p < 70 ? (Math.random() * 10 + 5) : (Math.random() * 3 + 1);
-        p = Math.min(p + increment, 99);
-        setUpdateProgress(Math.floor(p));
-
-        // Se chegou ao fim ou se já tem um worker esperando
-        if (p >= 99 || reg.waiting) {
-            clearInterval(timer);
-            setUpdateProgress(100);
-            
-            setTimeout(() => {
-                if (reg.waiting) {
-                    // Envia sinal para o SW se destruir e assumir o controle
-                    reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-                } else {
-                    // Fallback se não houver worker esperando mas usuário mandou atualizar
-                    window.location.reload();
-                }
-            }, 500);
-        }
+        p = Math.min(p + 15, 99);
+        setUpdateProgress(p);
      }, 100); 
   }, []);
 
