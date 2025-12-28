@@ -11,7 +11,7 @@ import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 
-const APP_VERSION = '6.2.0'; 
+const APP_VERSION = '6.3.0'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -441,6 +441,7 @@ const App: React.FC = () => {
             pushEnabled={pushEnabled}
             onRequestPushPermission={requestPushPermission}
             lastSyncTime={lastSyncTime}
+            onSyncAll={syncAll}
           />
         ) : (
           <div key={currentTab} className="anim-fade-in is-visible">

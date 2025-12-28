@@ -1,22 +1,22 @@
 
 {
-  "version": "6.2.0",
-  "date": "2025-06-08",
+  "version": "6.3.0",
+  "date": "2025-06-09",
   "notes": [
     {
-      "type": "fix",
-      "title": "Fluxo de Atualização Controlado",
-      "desc": "O sistema de atualização agora aguarda sua decisão explícita para instalar uma nova versão, evitando ativações automáticas em segundo plano."
+      "type": "feat",
+      "title": "Meta 'Magic Number' Adicionada",
+      "desc": "Calcule a quantidade de cotas necessárias para comprar uma nova cota apenas com os rendimentos mensais de cada ativo."
     },
     {
       "type": "ui",
-      "title": "Correções de Interface",
-      "desc": "O banner de notificação de nova versão foi centralizado e a exibição das notas de versão (changelog) foi corrigida para sempre exibir as informações corretas."
+      "title": "Análise de Poder de Compra",
+      "desc": "A seção 'Vs Inflação' agora detalha o seu ganho real, comparando o lucro nominal com o custo da inflação no período."
     },
     {
       "type": "perf",
-      "title": "Estabilidade do Service Worker",
-      "desc": "Melhorias internas no ciclo de vida do Service Worker para um processo de atualização mais estável e previsível."
+      "title": "Otimizações Gerais",
+      "desc": "Melhorias de performance e correções de bugs para uma experiência mais fluida e estável."
     }
   ]
 }

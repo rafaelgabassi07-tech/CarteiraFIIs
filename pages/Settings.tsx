@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote } from '../types';
@@ -32,6 +31,7 @@ interface SettingsProps {
   pushEnabled: boolean;
   onRequestPushPermission: () => void;
   lastSyncTime?: Date | null;
+  onSyncAll: (force: boolean) => Promise<void>;
 }
 
 const ACCENT_COLORS = [
@@ -50,7 +50,7 @@ export const Settings: React.FC<SettingsProps> = ({
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
   appVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
-  pushEnabled, onRequestPushPermission, lastSyncTime
+  pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll
 }) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates'>('menu');
   const [token, setToken] = useState(brapiToken);
@@ -72,7 +72,21 @@ export const Settings: React.FC<SettingsProps> = ({
   const [notifyMarket, setNotifyMarket] = useState(() => localStorage.getItem('investfiis_notify_market') === 'true');
   const [notifyUpdates, setNotifyUpdates] = useState(() => localStorage.getItem('investfiis_notify_updates') !== 'false');
   
-  const [brapiStatus, setBrapiStatus] = useState<'idle' | 'checking' | 'ok' | 'error'>('idle');
+  const [brapiStatus, setBrapiStatus] = useState<'idle' | 'checking' | 'ok' | 'error'>(brapiToken ? 'ok' : 'idle');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const isServiceWorkerActive = 'serviceWorker' in navigator;
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('investfiis_glass_mode', String(glassMode));
@@ -142,7 +156,16 @@ export const Settings: React.FC<SettingsProps> = ({
         setBrapiStatus('error');
         showMessage('error', 'Falha de rede.');
     }
-    setTimeout(() => setBrapiStatus('idle'), 3000);
+    setTimeout(() => {
+        if(brapiToken) setBrapiStatus('ok');
+        else setBrapiStatus('idle');
+    }, 3000);
+  };
+  
+  const handleForceSync = async () => {
+    setIsSyncing(true);
+    await onSyncAll(true);
+    setIsSyncing(false);
   };
 
   const handleClearQuoteCache = () => { localStorage.removeItem('investfiis_v3_quote_cache'); calculateStorage(); showMessage('success', 'Cache limpo.'); };
@@ -375,75 +398,106 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'integrations' && (
             <div className="space-y-6">
-                {/* CARD BRAPI */}
-                <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
-                    <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center"><Cloud className="w-6 h-6" /></div>
-                            <div>
-                                <h3 className="font-bold text-slate-900 dark:text-white">Brapi.dev</h3>
-                                <p className="text-xs text-slate-500">Cotações de Ativos</p>
-                            </div>
-                        </div>
-                        <a href="https://brapi.dev/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent transition-colors"><ExternalLink className="w-4 h-4" /></a>
+                <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Status da Sincronização</h3>
+                        <button onClick={handleForceSync} disabled={isSyncing} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent active:scale-90 transition-all">
+                            <RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                        </button>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        Fornecedor de cotações em tempo real para o mercado de ações e fundos imobiliários brasileiros.
-                    </p>
-                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs">
-                        <span className="font-bold text-slate-400">Última Sinc.</span>
+                     <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs">
+                        <span className="font-bold text-slate-400">Última Atualização</span>
                         {lastSyncTime ? (
                             <div className="flex items-center gap-2 text-emerald-500 font-bold">
-                                <span>{lastSyncTime.toLocaleString('pt-BR')}</span>
+                                <span>{lastSyncTime.toLocaleTimeString('pt-BR')}</span>
                                 <CheckCircle2 className="w-4 h-4" />
                             </div>
                         ) : (
                             <span className="font-bold text-slate-400">Pendente</span>
                         )}
                     </div>
-                    <div>
-                        <div className="relative mb-2">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input type="password" value={isEnvToken ? '****************' : token} onChange={(e) => setToken(e.target.value)} disabled={isEnvToken} placeholder="Seu Token" className="w-full bg-slate-50 dark:bg-black/20 rounded-xl py-3 pl-11 pr-4 text-xs font-mono outline-none focus:ring-2 focus:ring-accent/50 transition-all" />
-                        </div>
-                        <div className="flex gap-2">
-                            {!isEnvToken && ( <button onClick={handleSaveToken} className="flex-1 bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Salvar</button> )}
-                            <button onClick={handleTestBrapi} className="flex-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2">
-                                {brapiStatus === 'checking' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Testar Conexão'}
-                            </button>
-                        </div>
-                    </div>
                 </div>
 
-                {/* CARD GEMINI */}
-                <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
-                    <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center"><Sparkles className="w-6 h-6" /></div>
-                            <div>
-                                <h3 className="font-bold text-slate-900 dark:text-white">Google Gemini</h3>
-                                <p className="text-xs text-slate-500">Análise e Inteligência</p>
+                <Section title="Serviços Conectados">
+                    <div className="bg-white dark:bg-[#0f172a] p-6 space-y-4 border-b border-slate-100 dark:border-white/5">
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center"><Cloud className="w-6 h-6" /></div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 dark:text-white">Brapi.dev <span className="text-xs font-medium text-slate-400">(Cotações)</span></h3>
+                                    <div className="flex items-center gap-1.5 text-xs font-bold mt-1">
+                                        <span className={`w-2 h-2 rounded-full ${brapiStatus === 'ok' ? 'bg-emerald-500' : brapiStatus === 'error' ? 'bg-rose-500' : 'bg-slate-400'}`}></span>
+                                        <span className={`${brapiStatus === 'ok' ? 'text-emerald-500' : brapiStatus === 'error' ? 'text-rose-500' : 'text-slate-400'}`}>
+                                            {brapiStatus === 'ok' ? 'Conectado' : brapiStatus === 'checking' ? 'Testando...' : brapiStatus === 'error' ? 'Falha' : 'Pendente'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="https://brapi.dev/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent transition-colors"><ExternalLink className="w-4 h-4" /></a>
+                        </div>
+                        <div>
+                            <div className="relative mb-2">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input type="password" value={isEnvToken ? '**************** (Definido no Ambiente)' : token} onChange={(e) => setToken(e.target.value)} disabled={isEnvToken} placeholder="Seu Token de Acesso" className="w-full bg-slate-50 dark:bg-black/20 rounded-xl py-3 pl-11 pr-4 text-xs font-mono outline-none focus:ring-2 focus:ring-accent/50 transition-all disabled:opacity-70" />
+                            </div>
+                            <div className="flex gap-2">
+                                {!isEnvToken && ( <button onClick={handleSaveToken} className="flex-1 bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Salvar</button> )}
+                                <button onClick={handleTestBrapi} className="flex-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2">
+                                    {brapiStatus === 'checking' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Testar'}
+                                </button>
                             </div>
                         </div>
-                        <a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent transition-colors"><ExternalLink className="w-4 h-4" /></a>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        Inteligência artificial para análise de fundamentos, proventos, sentimento de mercado e indicadores macroeconômicos.
-                    </p>
-                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs">
-                        <span className="font-bold text-slate-400">Modelo em Uso</span>
-                        <span className="font-bold text-purple-500">gemini-2.5-flash</span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Novidades do Modelo</h4>
-                        <div className="flex items-start gap-2">
-                            <Zap className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
-                            <p className="text-xs text-slate-600 dark:text-slate-300">
-                                Gemini 2.5 Flash agora com busca em tempo real via Google Search para dados fundamentalistas e de proventos mais precisos e atualizados.
-                            </p>
+                    <div className="bg-white dark:bg-[#0f172a] p-6 space-y-4">
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center"><Sparkles className="w-6 h-6" /></div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 dark:text-white">Google Gemini <span className="text-xs font-medium text-slate-400">(IA)</span></h3>
+                                    <div className="flex items-center gap-1.5 text-xs font-bold mt-1 text-emerald-500">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                        <span>Operacional</span>
+                                    </div>
+                                </div>
+                            </div>
+                             <a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent transition-colors"><ExternalLink className="w-4 h-4" /></a>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl space-y-3">
+                           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recursos Ativados pela IA</h4>
+                           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-slate-600 dark:text-slate-300 font-medium">
+                               <span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Fundamentos</span>
+                               <span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Sentimento</span>
+                               <span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Proventos</span>
+                               <span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Macroeconomia</span>
+                           </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs">
+                           <span className="font-bold text-slate-400">Modelo em Uso</span>
+                           <span className="font-bold text-purple-500">gemini-2.5-flash</span>
                         </div>
                     </div>
-                </div>
+                </Section>
+                
+                <Section title="Diagnóstico">
+                    <div className="bg-white dark:bg-[#0f172a] p-4 space-y-3">
+                       <div className="flex items-center justify-between p-2 rounded-lg">
+                           <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Wifi className="w-4 h-4" /> Conexão com a Internet</span>
+                           <span className={`text-xs font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Online' : 'Offline'}</span>
+                       </div>
+                       <div className="flex items-center justify-between p-2 rounded-lg">
+                           <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Smartphone className="w-4 h-4" /> Service Worker (PWA)</span>
+                           <span className={`text-xs font-bold ${isServiceWorkerActive ? 'text-emerald-500' : 'text-rose-500'}`}>{isServiceWorkerActive ? 'Ativo' : 'Inativo'}</span>
+                       </div>
+                       <div className="flex items-center justify-between p-2 rounded-lg">
+                           <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Server className="w-4 h-4" /> API de Cotações</span>
+                           <span className={`text-xs font-bold ${brapiStatus === 'ok' ? 'text-emerald-500' : 'text-slate-400'}`}>{brapiStatus === 'ok' ? 'Operacional' : 'Indisponível'}</span>
+                       </div>
+                       <div className="flex items-center justify-between p-2 rounded-lg">
+                           <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Cpu className="w-4 h-4" /> API de Inteligência</span>
+                           <span className="text-xs font-bold text-emerald-500">Operacional</span>
+                       </div>
+                    </div>
+                </Section>
             </div>
           )}
 

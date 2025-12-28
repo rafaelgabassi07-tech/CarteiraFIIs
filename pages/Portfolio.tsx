@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
 import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown, Briefcase, ChevronUp, Layers, Hash, Info } from 'lucide-react';
@@ -199,7 +198,6 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
                     }`}>
                         <Zap className="w-4 h-4" />
                     </div>
-                    {/* FIX: Updated model name from Gemini 2.5 to just Gemini for generality. */}
                     <h4 className="text-sm font-bold text-slate-900 dark:text-white">Análise IA (Gemini)</h4>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
