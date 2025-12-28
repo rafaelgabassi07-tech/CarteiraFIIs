@@ -1,23 +1,18 @@
 
 
 {
-  "version": "5.5.3",
+  "version": "5.5.4",
   "date": "2025-05-26",
   "notes": [
     {
       "type": "feat",
-      "title": "Changelog Automático",
-      "desc": "Agora as notas de atualização aparecem automaticamente ao abrir o app após um update."
+      "title": "Update Manual",
+      "desc": "Atualizações agora ficam estritamente aguardando sua confirmação, mesmo ao reabrir o app."
     },
     {
       "type": "feat",
-      "title": "Correção de Update",
-      "desc": "Resolvido problema onde o app atualizava sozinho ao recarregar a página."
-    },
-    {
-      "type": "ui",
-      "title": "Feedback Visual",
-      "desc": "Barra de progresso de atualização agora responde instantaneamente ao toque."
+      "title": "Changelog Automático",
+      "desc": "Agora as notas de atualização aparecem automaticamente ao abrir o app após um update."
     }
   ]
 }

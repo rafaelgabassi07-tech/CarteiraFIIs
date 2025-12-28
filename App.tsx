@@ -11,7 +11,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle, Loader2, Info } from 'lucide-react';
 
-const APP_VERSION = '5.5.3'; 
+const APP_VERSION = '5.5.4'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -128,12 +128,10 @@ const App: React.FC = () => {
           const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
           if (res.ok) {
               const data: VersionData = await res.json();
-              // Se a versão do JSON for maior que a do App OU se tivermos um SW esperando
               if (compareVersions(data.version, APP_VERSION) > 0) {
                   setAvailableVersion(data.version);
                   setReleaseNotes(data.notes || []);
                   setIsUpdateAvailable(true);
-                  // Só exibe o banner se ainda não estiver atualizando
                   if (updateProgress === 0) setShowUpdateBanner(true);
                   return true;
               }
@@ -142,7 +140,6 @@ const App: React.FC = () => {
       return false;
   };
 
-  // --- LÓGICA DE ATUALIZAÇÃO MANUAL E ESTRITA ---
   const checkForUpdates = useCallback(async (manual = false) => {
     if ('serviceWorker' in navigator) {
         let reg = swRegistrationRef.current;
@@ -156,7 +153,7 @@ const App: React.FC = () => {
             if (manual) {
                 try { await reg.update(); } catch(e){}
             }
-            // Se houver um worker esperando, significa que o download já ocorreu em background
+            // Se houver um worker esperando, o update JÁ baixou mas não aplicou
             if (reg.waiting) {
                 setIsUpdateAvailable(true);
                 setShowUpdateBanner(true);
@@ -169,17 +166,13 @@ const App: React.FC = () => {
     return jsonUpdated;
   }, []);
 
-  // Lógica de Atualização com Animação
   const startUpdateProcess = () => {
     if (updateProgress > 0) return;
     
-    // Inicia imediatamente para feedback visual instantâneo
     setUpdateProgress(1);
 
-    // Inicia animação visual
     let progress = 1;
     const interval = setInterval(() => {
-        // Incremento aleatório para parecer "download real"
         const increment = Math.max(2, Math.floor(Math.random() * 20));
         progress += increment;
 
@@ -188,20 +181,18 @@ const App: React.FC = () => {
             clearInterval(interval);
             setUpdateProgress(100);
             
-            // Aplica a atualização após completar a barra
+            // SOMENTE AQUI aplicamos a atualização
             setTimeout(() => {
                 if ('serviceWorker' in navigator && swRegistrationRef.current && swRegistrationRef.current.waiting) {
-                    // Envia sinal para o SW trocar a versão
                     swRegistrationRef.current.waiting.postMessage({ type: 'SKIP_WAITING' });
                 } else {
-                    // Fallback se não encontrar o SW (ex: dev mode)
                     window.location.reload();
                 }
             }, 500);
         } else {
             setUpdateProgress(progress);
         }
-    }, 50); // Velocidade do "Download" mais rápida para melhor UX
+    }, 50);
   };
 
   useEffect(() => {
@@ -210,7 +201,6 @@ const App: React.FC = () => {
      if ('serviceWorker' in navigator) {
          let refreshing = false;
          
-         // Quando o SW novo assume (após o SKIP_WAITING), a página recarrega
          navigator.serviceWorker.addEventListener('controllerchange', () => {
              if (!refreshing) {
                  refreshing = true;
@@ -222,20 +212,18 @@ const App: React.FC = () => {
              if (reg) {
                  swRegistrationRef.current = reg;
                  
-                 // Se já entrou com update pendente
                  if (reg.waiting) {
                      setIsUpdateAvailable(true);
                      setShowUpdateBanner(true);
                      fetchVersionJson();
                  }
                  
-                 // Detecta quando um novo SW é encontrado no servidor
                  reg.addEventListener('updatefound', () => {
                      const newWorker = reg.installing;
                      if (newWorker) {
                          newWorker.addEventListener('statechange', () => {
-                             // Quando termina de baixar e instala (entra em 'installed'/'waiting')
                              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                 // Update baixado e pronto, MAS aguardando clique
                                  setIsUpdateAvailable(true);
                                  setShowUpdateBanner(true);
                                  fetchVersionJson();
@@ -247,14 +235,13 @@ const App: React.FC = () => {
          });
      }
 
-     // Lógica de Changelog (Notas de Versão)
      const lastSeen = localStorage.getItem(STORAGE_KEYS.LAST_SEEN_VERSION) || '0.0.0';
      if (compareVersions(APP_VERSION, lastSeen) > 0) {
          localStorage.setItem(STORAGE_KEYS.LAST_SEEN_VERSION, APP_VERSION);
          fetch(`./version.json?t=${Date.now()}`).then(r => r.json()).then(data => {
              if (data.version === APP_VERSION) {
                  setReleaseNotes(data.notes || []);
-                 setShowChangelog(true); // Exibe o Changelog automaticamente
+                 setShowChangelog(true); 
              }
          }).catch(() => {});
      }
@@ -419,7 +406,6 @@ const App: React.FC = () => {
     }
   }, [geminiDividends, memoizedData.portfolio, addNotification, checkDailyEvents]);
 
-  // Wrapper para checagem manual
   const handleManualUpdateCheck = async (): Promise<boolean> => {
     const hasUpdates = await checkForUpdates(true);
     return hasUpdates;
@@ -470,7 +456,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
-      {/* Banner de Atualização que estava faltando */}
       <UpdateBanner 
         isOpen={showUpdateBanner} 
         onDismiss={() => setShowUpdateBanner(false)} 
@@ -478,7 +463,6 @@ const App: React.FC = () => {
         version={availableVersion || 'Nova'} 
       />
 
-      {/* Dynamic Pill Toast */}
       {toast && (
         <div 
           className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] animate-fade-in-up" 
@@ -562,7 +546,6 @@ const App: React.FC = () => {
       <ChangelogModal 
         isOpen={showChangelog} 
         onClose={() => {
-            // Só permite fechar se não estiver atualizando
             if (updateProgress === 0) setShowChangelog(false);
         }} 
         version={availableVersion || APP_VERSION} 

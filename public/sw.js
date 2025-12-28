@@ -1,6 +1,6 @@
 
 
-const CACHE_NAME = 'investfiis-ultra-v5.5.3';
+const CACHE_NAME = 'investfiis-ultra-v5.5.4';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -9,8 +9,8 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  // CRÍTICO: NÃO usar self.skipWaiting() aqui.
-  // O usuário deve decidir quando atualizar clicando no botão.
+  // CRÍTICO: O SW entra em estado de 'waiting' após instalar.
+  // NÃO chamamos skipWaiting() aqui para não furar a fila.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -28,7 +28,11 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim())
+    })
+    // REMOVIDO: .then(() => self.clients.claim())
+    // Motivo: clients.claim() forçava o novo SW a assumir o controle de abas abertas 
+    // imediatamente após ativar. Ao remover, garantimos que ele só assuma
+    // quando a página for recarregada pelo usuário (via botão de atualização).
   );
 });
 
@@ -47,9 +51,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ESTRATÉGIA CACHE-FIRST RÍGIDA PARA APP SHELL
-  // Se estiver no cache, retorna do cache e NÃO vai na rede atualizar em background.
-  // Isso impede que o index.html mude "sozinho" no próximo reload sem o novo SW estar ativo.
+  // Cache-First para arquivos estáticos
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -68,7 +70,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Listener para ativar a nova versão SOMENTE quando o usuário clicar em "Atualizar"
+// Listener para ativar a nova versão SOMENTE quando o usuário clicar em "Atualizar" no App.tsx
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
