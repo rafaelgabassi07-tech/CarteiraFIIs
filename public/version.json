@@ -1,28 +1,23 @@
 
 
 {
-  "version": "5.5.1",
+  "version": "5.5.2",
   "date": "2025-05-26",
   "notes": [
     {
       "type": "feat",
-      "title": "Experiência de Atualização",
-      "desc": "Novo sistema de atualização com feedback visual em tempo real e barra de progresso."
+      "title": "Correção de Update",
+      "desc": "Resolvido problema onde o app atualizava sozinho ao recarregar a página."
+    },
+    {
+      "type": "ui",
+      "title": "Feedback Visual",
+      "desc": "Barra de progresso de atualização agora responde instantaneamente ao toque."
     },
     {
       "type": "ui",
       "title": "Visual Proventos",
       "desc": "Redesign completo do modal de proventos com gráficos de evolução de 12 meses."
-    },
-    {
-      "type": "ui",
-      "title": "Benchmark de Inflação",
-      "desc": "Novo comparativo visual entre a rentabilidade da sua carteira e o IPCA acumulado."
-    },
-    {
-      "type": "feat",
-      "title": "Central de Alertas",
-      "desc": "Controle granular de notificações para dividendos, data com e metas financeiras."
     }
   ]
 }

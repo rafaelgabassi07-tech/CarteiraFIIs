@@ -1,6 +1,6 @@
 
 
-const CACHE_NAME = 'investfiis-ultra-v5.5.1';
+const CACHE_NAME = 'investfiis-ultra-v5.5.2';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -35,9 +35,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Não cachear o arquivo de versão para sempre buscar o mais recente
+  // Não cachear o arquivo de versão para sempre buscar o mais recente na rede
   if (url.pathname.includes('version.json')) {
-    event.respondWith(fetch(event.request, { cache: 'no-store' }));
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
     return;
   }
 
@@ -45,9 +47,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // ESTRATÉGIA CACHE-FIRST RÍGIDA PARA APP SHELL
+  // Se estiver no cache, retorna do cache e NÃO vai na rede atualizar em background.
+  // Isso impede que o index.html mude "sozinho" no próximo reload sem o novo SW estar ativo.
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -56,7 +64,6 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       });
-      return cachedResponse || fetchPromise;
     })
   );
 });

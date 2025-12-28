@@ -11,7 +11,7 @@ import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, DownloadCloud, AlertCircle, Loader2, Info } from 'lucide-react';
 
-const APP_VERSION = '5.5.1'; 
+const APP_VERSION = '5.5.2'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -172,12 +172,15 @@ const App: React.FC = () => {
   // Lógica de Atualização com Animação
   const startUpdateProcess = () => {
     if (updateProgress > 0) return;
+    
+    // Inicia imediatamente para feedback visual instantâneo
+    setUpdateProgress(1);
 
     // Inicia animação visual
-    let progress = 0;
+    let progress = 1;
     const interval = setInterval(() => {
         // Incremento aleatório para parecer "download real"
-        const increment = Math.max(1, Math.floor(Math.random() * 15));
+        const increment = Math.max(2, Math.floor(Math.random() * 20));
         progress += increment;
 
         if (progress >= 100) {
@@ -191,14 +194,14 @@ const App: React.FC = () => {
                     // Envia sinal para o SW trocar a versão
                     swRegistrationRef.current.waiting.postMessage({ type: 'SKIP_WAITING' });
                 } else {
-                    // Fallback se não encontrar o SW
+                    // Fallback se não encontrar o SW (ex: dev mode)
                     window.location.reload();
                 }
-            }, 800);
+            }, 500);
         } else {
             setUpdateProgress(progress);
         }
-    }, 100); // Velocidade do "Download"
+    }, 50); // Velocidade do "Download" mais rápida para melhor UX
   };
 
   useEffect(() => {
