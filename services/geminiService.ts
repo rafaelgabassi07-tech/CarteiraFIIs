@@ -8,34 +8,46 @@ export interface UnifiedMarketData {
   indicators?: MarketIndicators;
 }
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v6.5.0'; // Version bump for model change
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v6.6.0'; // Version match
 const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 Horas
 
 const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
   const s = String(dateStr).trim();
+  // Format YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Format DD/MM/YYYY
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
     const [d, m, y] = s.split('/');
     return `${y}-${m}-${d}`;
   }
-  try {
-    const d = new Date(s);
-    if (d && !isNaN(d.getTime())) return d.toISOString().split('T')[0];
-  } catch (e) {}
   return ''; 
 };
 
 const normalizeValue = (val: any): number => {
   if (typeof val === 'number') return val;
   if (!val) return 0;
+  
   if (typeof val === 'string') {
+    // Remove currency symbols and extra spaces
     let clean = val.replace(/[R$\s]/g, '').trim();
-    if (clean.includes(',') && clean.indexOf(',') > clean.length - 4) {
-        clean = clean.replace(/\./g, '').replace(',', '.');
-    } else {
-        clean = clean.replace(/,/g, '');
+    
+    // Check for Brazilian format (1.000,00) vs US format (1,000.00 or 1000.00)
+    // If it has a comma at the end (last 3 chars), it's likely a decimal separator in BR
+    if (clean.includes(',') && !clean.includes('.')) {
+        // Only commas (e.g., 10,50) -> Replace comma with dot
+        clean = clean.replace(',', '.');
+    } else if (clean.includes('.') && clean.includes(',')) {
+        // Mixed (e.g. 1.000,50 or 1,000.50)
+        if (clean.indexOf(',') > clean.indexOf('.')) {
+            // 1.000,50 -> Remove dot, replace comma
+            clean = clean.replace(/\./g, '').replace(',', '.');
+        } else {
+            // 1,000.50 -> Remove comma
+            clean = clean.replace(/,/g, '');
+        }
     }
+    
     const parsed = parseFloat(clean);
     return isNaN(parsed) ? 0 : parsed;
   }
@@ -54,7 +66,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             const cached = JSON.parse(cachedRaw);
             const isFresh = (Date.now() - cached.timestamp) < CACHE_TTL;
             if (isFresh && cached.tickerKey === tickerKey) {
-                console.log("⚡ Usando Cache Gemini (V6.5.0)");
+                console.log("⚡ Usando Cache Gemini");
                 return cached.data;
             }
         }
@@ -66,17 +78,21 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const today = new Date().toISOString().split('T')[0];
   const portfolioStart = startDate || today; 
 
+  // Prompt otimizado para garantir JSON numérico
   const prompt = `
-    Hoje é ${today}. Analise estes ativos brasileiros: ${tickerListString}.
+    Hoje é ${today}. Analise estes ativos: ${tickerListString}.
     
-    Tarefa:
+    Tarefas:
     1. Identifique se é "FII" ou "ACAO" e o segmento.
-    2. Fundamentos: P/VP, P/L, DY (12m), Liquidez, Cotistas.
-    3. Sentimento de Mercado: Curto/médio prazo (Otimista/Neutro/Pessimista) e motivo curto.
-    4. Proventos (Últimos 12 meses): Liste Dividendos e JCP pagos ou anunciados. Importante: "Data Com" define o direito.
-    5. IPCA Acumulado desde ${portfolioStart}.
+    2. Fundamentos (Use 0 se não encontrar): P/VP (number), P/L (number), DY 12m (number, ex: 10.5), Liquidez (texto), Cotistas (texto).
+    3. Sentimento: Resumido (Otimista/Neutro/Pessimista) e motivo curto.
+    4. Proventos (Últimos 12 meses): Liste Dividendos e JCP.
+       - 'dc': Data Com (YYYY-MM-DD).
+       - 'dp': Data Pagamento (YYYY-MM-DD).
+       - 'v': Valor líquido (number).
+    5. IPCA Acumulado desde ${portfolioStart} (number).
 
-    Retorne APENAS JSON válido:
+    Retorne APENAS este JSON (sem markdown):
     {
       "sys": { "ipca": number, "start_ref": "YYYY-MM-DD" },
       "assets": [
@@ -92,13 +108,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   `;
 
   try {
-    // Usando Gemini 2.5 Flash conforme solicitado
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash", 
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: "Você é um API financeira estrita. Retorne apenas JSON puro. Sem markdown. Busque dados reais.",
+        // Forçamos o modelo a agir como um parser de dados estrito
+        systemInstruction: "Você é um backend financeiro que retorna JSON estrito. Valores monetários e porcentagens devem ser NUMBERS (ex: 10.50), nunca strings.",
         temperature: 0.1,
       }
     });
@@ -106,12 +122,17 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     let text = response.text;
     if (!text) throw new Error("Resposta vazia da IA");
     
-    // Limpeza robusta de markdown caso o modelo alucine
+    // Limpeza robusta
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const jsonStr = jsonMatch ? jsonMatch[0] : text;
     
-    const parsed = JSON.parse(jsonStr);
+    // Tenta encontrar o objeto JSON se houver texto extra
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start !== -1 && end !== -1) {
+        text = text.substring(start, end + 1);
+    }
+
+    const parsed = JSON.parse(text);
     
     const result: UnifiedMarketData = { 
         dividends: [], 
@@ -129,7 +150,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
         // Metadata & Fundamentals
         result.metadata[ticker] = {
-            segment: asset.s || 'Outros',
+            segment: asset.s || 'Geral',
             type: asset.type === 'FII' ? AssetType.FII : AssetType.STOCK,
             fundamentals: {
                 p_vp: normalizeValue(asset.f?.pvp),
@@ -156,9 +177,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                         ticker: ticker,
                         type: d.ty || 'DIVIDENDO',
                         dateCom: dateCom,
-                        paymentDate: paymentDate || dateCom, // Fallback se não tiver data de pagamento
+                        paymentDate: paymentDate || dateCom,
                         rate: rate,
-                        quantityOwned: 0, // Será calculado no App.tsx
+                        quantityOwned: 0, 
                         totalReceived: 0,
                         assetType: asset.type === 'FII' ? AssetType.FII : AssetType.STOCK
                     });
@@ -177,7 +198,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     return result;
 
   } catch (error) {
-    console.error("Gemini Error:", error);
+    console.error("Gemini Parse Error:", error);
+    // Retorna vazio para não quebrar a UI
     return { dividends: [], metadata: {} };
   }
 };

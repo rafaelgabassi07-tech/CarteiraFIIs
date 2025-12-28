@@ -1,22 +1,22 @@
 
 {
-  "version": "6.5.0",
-  "date": "2025-06-25",
+  "version": "6.6.0",
+  "date": "2025-06-26",
   "notes": [
     {
-      "type": "ui",
-      "title": "Novo Painel de Renda",
-      "desc": "O card de Renda Passiva e seu modal foram completamente redesenhados com gráficos e métricas otimizadas."
+      "type": "feat",
+      "title": "Sistema de Atualização Inteligente",
+      "desc": "Implementação de BroadcastChannel para atualizações mais rápidas e seguras."
     },
     {
-      "type": "ui",
-      "title": "Ergonomia Visual",
-      "desc": "Padronização do tamanho de todas as janelas deslizantes (modais) para uma experiência de navegação mais consistente."
+      "type": "fix",
+      "title": "Correções de Cache",
+      "desc": "Corrigido problema onde o verificador de versões utilizava dados em cache, impedindo a detecção de novos updates."
     },
     {
       "type": "perf",
-      "title": "Otimização de Renderização",
-      "desc": "Melhorias no desempenho de animações de entrada e troca de contexto."
+      "title": "Auto-Check em Background",
+      "desc": "O app agora verifica atualizações silenciosamente sempre que você retorna à ele."
     }
   ]
 }

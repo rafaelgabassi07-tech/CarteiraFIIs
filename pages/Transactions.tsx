@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { Transaction, AssetType } from '../types';
 import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign, X, Building2, BarChart3 } from 'lucide-react';
@@ -10,20 +11,18 @@ const formatBRL = (val: number | undefined | null) => {
 
 const formatMonthYear = (dateStr: string) => {
   if (!dateStr) return '';
-  const date = new Date(dateStr + 'T12:00:00');
-  return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const parts = dateStr.split('-');
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  if (parts.length < 2) return dateStr;
+  const monthIndex = parseInt(parts[1], 10) - 1;
+  return `${months[monthIndex]} ${parts[0]}`;
 };
 
 const formatDayMonth = (dateStr: string) => {
   if (!dateStr) return '';
-  try {
-    const date = new Date(dateStr + 'T12:00:00');
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    return `${day}/${month}`;
-  } catch {
-    return dateStr.slice(5).split('-').reverse().join('/');
-  }
+  const parts = dateStr.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}`;
+  return dateStr;
 };
 
 
@@ -86,11 +85,15 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => { 
     e.preventDefault(); 
+    // Handle both comma and dot for price/quantity input
+    const cleanQty = form.quantity.toString().replace(',', '.');
+    const cleanPrice = form.price.toString().replace(',', '.');
+
     const data = { 
       ticker: form.ticker.toUpperCase().trim(), 
       type: form.type, 
-      quantity: Number(form.quantity), 
-      price: Number(form.price), 
+      quantity: Number(cleanQty), 
+      price: Number(cleanPrice), 
       date: form.date, 
       assetType: form.assetType 
     }; 
@@ -156,7 +159,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         <div className="flex items-center gap-2">
                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
                            <h3 className="text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-[0.1em]">
-                              {formatMonthYear(monthKey + '-01')}
+                              {formatMonthYear(monthKey)}
                            </h3>
                         </div>
                         {group.totalInvested > 0 && (
@@ -277,10 +280,11 @@ export const Transactions: React.FC<TransactionsProps> = ({
                  <div className="relative">
                     <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     <input 
-                      type="number" 
+                      type="text" 
+                      inputMode="decimal"
                       value={form.quantity} 
                       onChange={(e) => setForm({...form, quantity: e.target.value})} 
-                      placeholder="0" 
+                      placeholder="Qtd." 
                       className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-4 py-3 rounded-xl outline-none font-bold text-center text-sm focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-slate-300/50" 
                       required 
                     />
@@ -289,11 +293,11 @@ export const Transactions: React.FC<TransactionsProps> = ({
                  <div className="relative">
                     <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     <input 
-                      type="number" 
-                      step="0.01" 
+                      type="text" 
+                      inputMode="decimal"
                       value={form.price} 
                       onChange={(e) => setForm({...form, price: e.target.value})} 
-                      placeholder="0,00" 
+                      placeholder="Preço" 
                       className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-4 py-3 rounded-xl outline-none font-bold text-center text-sm focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-slate-300/50" 
                       required 
                     />

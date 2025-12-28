@@ -26,16 +26,24 @@ const formatPercent = (val: any) => {
   return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
+// Safe date formatter that doesn't use Date object to avoid timezone shifts
 const formatDate = (dateStr: string) => {
     if (!dateStr) return '??/??/??';
-    const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
-    if (isNaN(date.getTime())) return '??/??/??';
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    // Expecting YYYY-MM-DD
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0].substring(2)}`; // DD/MM/YY
+    }
+    return dateStr;
 };
 
 const getMonthName = (dateStr: string) => {
-    const date = new Date(dateStr + 'T12:00:00');
-    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    // Manually parse YYYY-MM to avoid TZ issues
+    const parts = dateStr.split('-');
+    if (parts.length < 2) return dateStr;
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    return `${months[monthIndex]} ${parts[0]}`;
 };
 
 const ModalTabs = ({ tabs, active, onChange }: { tabs: { id: string, label: string }[], active: string, onChange: (id: any) => void }) => (
@@ -52,13 +60,12 @@ const ModalTabs = ({ tabs, active, onChange }: { tabs: { id: string, label: stri
   </div>
 );
 
-// Custom Tooltip para o gráfico
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-slate-900 text-white text-[10px] font-bold py-1 px-2 rounded-lg shadow-xl">
-        <p>{label}</p>
-        <p className="text-emerald-400">{formatBRL(payload[0].value)}</p>
+      <div className="bg-slate-900 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50">
+        <p className="mb-1 opacity-70">{label}</p>
+        <p className="text-emerald-400 text-sm">{formatBRL(payload[0].value)}</p>
       </div>
     );
   }
@@ -120,6 +127,7 @@ export const Home: React.FC<HomeProps> = ({
     const upcomingDataComs: DividendReceipt[] = [];
 
     const totals = dividendReceipts.reduce((acc, curr) => {
+      // Normalize dates to YYYY-MM-DD
       let payDate = curr.paymentDate;
       if (payDate.includes('/')) payDate = payDate.split('/').reverse().join('-');
       
@@ -128,7 +136,6 @@ export const Home: React.FC<HomeProps> = ({
       
       const monthKey = payDate.substring(0, 7); // YYYY-MM
       
-      // Lógica de Histórico Agrupado
       if (curr.totalReceived > 0 && payDate <= todayStr) {
           if (!groupedHistory[monthKey]) {
               groupedHistory[monthKey] = { total: 0, items: [] };
@@ -228,6 +235,9 @@ export const Home: React.FC<HomeProps> = ({
         if (rate <= 0) return null;
 
         const magicQty = Math.ceil(p.currentPrice / rate);
+        // Safety check for infinity or NaN
+        if (!isFinite(magicQty) || magicQty <= 0) return null;
+        
         const progress = Math.min(100, (p.quantity / magicQty) * 100);
         
         return {
@@ -355,13 +365,13 @@ export const Home: React.FC<HomeProps> = ({
             {(nextPayments.length > 0 || nextDataComs.length > 0) ? (
                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mask-linear-fade relative z-10">
                     {nextPayments.slice(0, 3).map((p, i) => (
-                        <div key={`p-${i}`} className="flex items-center gap-2 bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-3 py-2 rounded-xl text-[10px] font-bold uppercase whitespace-nowrap shadow-sm">
+                        <div key={`p-${i}`} className="flex items-center gap-2 bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-3 py-2 rounded-xl text-[10px] font-bold uppercase whitespace-nowrap shadow-sm min-w-max">
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                             <span>{p.ticker}: {formatBRL(p.totalReceived)}</span>
                         </div>
                     ))}
                     {nextDataComs.slice(0, 2).map((d, i) => (
-                        <div key={`d-${i}`} className="flex items-center gap-2 bg-white dark:bg-[#0f172a] border border-amber-100 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 px-3 py-2 rounded-xl text-[10px] font-bold uppercase whitespace-nowrap shadow-sm">
+                        <div key={`d-${i}`} className="flex items-center gap-2 bg-white dark:bg-[#0f172a] border border-amber-100 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 px-3 py-2 rounded-xl text-[10px] font-bold uppercase whitespace-nowrap shadow-sm min-w-max">
                             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
                             <span>Data Com: {d.ticker}</span>
                         </div>
@@ -383,7 +393,7 @@ export const Home: React.FC<HomeProps> = ({
         >
             <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/20 transition-colors"></div>
             
-            <div className="relative z-10 flex flex-col gap-3">
+            <div className="relative z-10 flex flex-col gap-4">
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                        <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100 dark:border-emerald-500/20 group-hover:scale-110 transition-transform">
@@ -400,21 +410,15 @@ export const Home: React.FC<HomeProps> = ({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 mt-1">
-                   <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex items-center gap-2 flex-1 justify-center">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase">Média</p>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                   <div className="px-3 py-2 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex flex-col items-center justify-center">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Média</p>
                       <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</p>
                    </div>
-                   <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex items-center gap-2 flex-1 justify-center">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase">YOC</p>
+                   <div className="px-3 py-2 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex flex-col items-center justify-center">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Yield on Cost</p>
                       <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatPercent(yieldOnCostPortfolio)}</p>
                    </div>
-                   {upcoming > 0 && (
-                        <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#0f172a] border border-accent/20 shadow-sm flex items-center gap-2 flex-1 justify-center">
-                            <Sparkles className="w-3 h-3 text-accent" />
-                            <p className="text-xs font-bold text-accent tabular-nums">{formatBRL(upcoming)}</p>
-                        </div>
-                   )}
                 </div>
             </div>
         </button>
@@ -427,14 +431,14 @@ export const Home: React.FC<HomeProps> = ({
             className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col h-full group hover:shadow-lg relative overflow-hidden"
             style={{ animationDelay: '200ms' }}
           >
-             <div className="flex justify-between items-start mb-2 w-full">
+             <div className="flex justify-between items-start mb-4 w-full">
                  <div>
                     <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent mb-2 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Alocação</h3>
                  </div>
              </div>
 
-             <div className="w-full mt-auto space-y-1.5">
+             <div className="w-full mt-auto space-y-2">
                  {topSegments.length > 0 ? topSegments.map((seg, i) => {
                      const totalVal = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0);
                      const percent = totalVal > 0 ? (seg.value / totalVal) * 100 : 0;
@@ -465,7 +469,7 @@ export const Home: React.FC<HomeProps> = ({
              </div>
              <div>
                 <p className={`text-xl font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{isAboveInflation ? '+' : ''}{formatPercent(ganhoRealPercent)}</p>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Acima da Inflação</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Acima da Inflação</p>
              </div>
           </button>
       </div>
@@ -633,7 +637,7 @@ export const Home: React.FC<HomeProps> = ({
 
                 {incomeTab === 'magic' && (
                     <div className="space-y-3 anim-fade-in-up is-visible">
-                        {magicNumbers?.map((m, i) => m && (
+                        {magicNumbers?.length > 0 ? magicNumbers.map((m, i) => m && (
                           <div key={i} className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
                               <div className="flex justify-between items-center mb-2">
                                   <h4 className="text-sm font-bold text-slate-900 dark:text-white">{m.ticker}</h4>
@@ -647,7 +651,12 @@ export const Home: React.FC<HomeProps> = ({
                                   <span>Faltam {m.missing}</span>
                               </div>
                           </div>
-                        ))}
+                        )) : (
+                            <div className="text-center py-10 opacity-50">
+                                <Sparkles className="w-10 h-10 mx-auto mb-2 text-slate-300" strokeWidth={1.5} />
+                                <p className="text-xs text-slate-400 font-medium">Sem dados de proventos suficientes.</p>
+                             </div>
+                        )}
                     </div>
                 )}
             </div>

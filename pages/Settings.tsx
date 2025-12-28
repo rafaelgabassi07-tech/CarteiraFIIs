@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote } from '../types';
@@ -227,14 +228,14 @@ export const Settings: React.FC<SettingsProps> = ({
 
   // --- Componentes de UI Auxiliares ---
 
-  const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate }: any) => (
+  const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, colorClass }: any) => (
     <button 
       onClick={onClick} 
       className={`w-full flex items-center justify-between p-4 bg-white dark:bg-[#0f172a] hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all border-b last:border-0 border-slate-100 dark:border-white/5 group`}
     >
         <div className="flex items-center gap-4">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 group-hover:bg-accent group-hover:text-white'}`}>
-                <Icon className="w-4 h-4" strokeWidth={2.5} />
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : colorClass || 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400'}`}>
+                <Icon className="w-5 h-5" strokeWidth={2.5} />
             </div>
             <span className={`text-sm font-semibold ${isDestructive ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>
                 {label}
@@ -289,18 +290,18 @@ export const Settings: React.FC<SettingsProps> = ({
       {activeSection === 'menu' ? (
         <>
             <Section title="Preferências">
-                <MenuItem icon={Palette} label="Aparência e Cores" onClick={() => setActiveSection('appearance')} />
-                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Push Ativado' : ''} />
-                <MenuItem icon={privacyMode ? EyeOff : Eye} label="Modo Privacidade" onClick={() => onSetPrivacyMode(!privacyMode)} value={privacyMode ? 'Ativado' : 'Desativado'} />
+                <MenuItem icon={Palette} label="Aparência e Cores" onClick={() => setActiveSection('appearance')} colorClass="bg-indigo-500/10 text-indigo-500" />
+                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Push Ativado' : ''} colorClass="bg-amber-500/10 text-amber-500" />
+                <MenuItem icon={privacyMode ? EyeOff : Eye} label="Modo Privacidade" onClick={() => onSetPrivacyMode(!privacyMode)} value={privacyMode ? 'Ativado' : 'Desativado'} colorClass="bg-slate-500/10 text-slate-500" />
             </Section>
 
             <Section title="Dados & Sincronização">
-                <MenuItem icon={Globe} label="Conexões & Serviços" onClick={() => setActiveSection('integrations')} value={brapiToken ? 'Configurado' : 'Pendente'} />
-                <MenuItem icon={Database} label="Armazenamento e Backup" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} />
+                <MenuItem icon={Globe} label="Conexões & Serviços" onClick={() => setActiveSection('integrations')} value={brapiToken ? 'Configurado' : 'Pendente'} colorClass="bg-sky-500/10 text-sky-500" />
+                <MenuItem icon={Database} label="Armazenamento e Backup" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} colorClass="bg-emerald-500/10 text-emerald-500" />
             </Section>
 
             <Section title="Sistema">
-                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} />
+                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} colorClass="bg-purple-500/10 text-purple-500" />
                 <MenuItem icon={ShieldAlert} label="Resetar Aplicativo" onClick={() => setActiveSection('system')} isDestructive />
             </Section>
 
@@ -372,6 +373,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
           )}
 
+          {/* ... (Resto das seções mantidas iguais, apenas renderizando o retorno do componente Settings) ... */}
           {activeSection === 'notifications' && (
             <div className="space-y-4">
                <Section title="Permissões">

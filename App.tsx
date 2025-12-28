@@ -11,7 +11,7 @@ import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 
-const APP_VERSION = '6.5.0'; 
+const APP_VERSION = '6.6.0'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -388,7 +388,7 @@ const App: React.FC = () => {
           isOpen={updateManager.showUpdateBanner} 
           onDismiss={() => updateManager.setShowUpdateBanner(false)} 
           onUpdate={() => {
-            updateManager.setShowUpdateBanner(false);
+            // Apenas abre o modal, não instala ainda
             updateManager.setShowChangelog(true);
           }} 
           version={updateManager.availableVersion || 'Nova'} 
@@ -490,7 +490,7 @@ const App: React.FC = () => {
         }} 
         version={updateManager.availableVersion || APP_VERSION} 
         notes={updateManager.releaseNotes}
-        isUpdatePending={updateManager.isUpdateAvailable}
+        isUpdatePending={!updateManager.wasUpdated && updateManager.isUpdateAvailable}
         onUpdate={updateManager.startUpdateProcess}
         progress={updateManager.updateProgress}
       />
