@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
               </div>
               <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-5 pl-0.5">
-                  {isRefreshing ? 'Sincronizando...' : 'Conectado'}
+                  {isRefreshing ? 'Sincronizando...' : 'FIIs & Ações'}
               </span>
           </div>
         )}

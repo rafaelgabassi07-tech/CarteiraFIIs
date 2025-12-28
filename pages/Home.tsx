@@ -307,7 +307,7 @@ export const Home: React.FC<HomeProps> = ({
                 <div className="flex items-center justify-between mb-2">
                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-white/5 w-fit">
                       <Wallet className="w-3.5 h-3.5 text-slate-400" strokeWidth={2} />
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Patrimônio</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total (FIIs + Ações)</span>
                    </div>
                    {isAiLoading && <Zap className="w-4 h-4 text-accent animate-pulse" />}
                 </div>

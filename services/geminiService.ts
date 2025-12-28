@@ -33,7 +33,6 @@ const normalizeValue = (val: any): number => {
     let clean = val.replace(/[R$\s]/g, '').trim();
     
     // Check for Brazilian format (1.000,00) vs US format (1,000.00 or 1000.00)
-    // If it has a comma at the end (last 3 chars), it's likely a decimal separator in BR
     if (clean.includes(',') && !clean.includes('.')) {
         // Only commas (e.g., 10,50) -> Replace comma with dot
         clean = clean.replace(',', '.');

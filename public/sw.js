@@ -9,9 +9,7 @@ const ASSETS_TO_CACHE = [
 const channel = new BroadcastChannel('investfiis_sw_updates');
 
 self.addEventListener('install', (event) => {
-  // Apenas faz o skipWaiting se receber comando explicito OU se for uma instalação inicial
-  // Removemos o self.skipWaiting() automático daqui para evitar recarregamentos bruscos
-  // sem o consentimento do usuário.
+  // Manual skipWaiting only
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -26,7 +24,7 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           keys.map((key) => {
             if (key !== CACHE_NAME) {
-              console.log('[SW] Clearing old cache:', key);
+              // Limpa caches antigos
               return caches.delete(key);
             }
           })
@@ -34,7 +32,6 @@ self.addEventListener('activate', (event) => {
       }),
       self.clients.claim()
     ]).then(() => {
-        // Notifica o cliente que o novo SW tomou controle
         channel.postMessage({ type: 'SW_ACTIVATED' });
     })
   );
@@ -44,16 +41,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // 1. VERSION CHECK: NETWORK ONLY (CRÍTICO)
-  // O arquivo version.json NUNCA deve ser cacheado pelo SW, pois ele é a fonte da verdade para updates.
+  // O arquivo version.json NUNCA deve ser cacheado.
   if (url.pathname.includes('version.json')) {
       event.respondWith(
-          fetch(event.request).catch(() => new Response(JSON.stringify({ error: 'offline' })))
+          fetch(event.request, { cache: 'no-store' }).catch(() => new Response(JSON.stringify({ error: 'offline' })))
       );
       return;
   }
 
   // 2. NAVEGAÇÃO: NETWORK ONLY COM FALLBACK CACHE
-  // Evita servir index.html velho.
   if (event.request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname === '/') {
     event.respondWith(
       fetch(event.request)
@@ -73,6 +69,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
+        // Atualiza cache em background
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             caches.open(CACHE_NAME).then((cache) => {
