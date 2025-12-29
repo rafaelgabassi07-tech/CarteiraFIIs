@@ -12,7 +12,7 @@ import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.0.5'; 
+const APP_VERSION = '7.0.6'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'investfiis-core-v7.0.5'; // Incrementado para garantir atualização
+const CACHE_NAME = 'investfiis-core-v7.0.6'; // Incrementado para garantir atualização
 
 // Arquivos vitais que devem estar disponíveis offline imediatamente
 const PRECACHE_ASSETS = [
@@ -8,12 +8,13 @@ const PRECACHE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  // A remoção de self.skipWaiting() aqui é a mudança CRÍTICA.
+  // O novo Service Worker irá instalar mas aguardará para ativar
+  // até que todas as abas antigas do app sejam fechadas.
+  // Isso previne o recarregamento forçado durante o uso.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
-    }).then(() => {
-      // Força a ativação do novo Service Worker imediatamente.
-      return self.skipWaiting();
     })
   );
 });
