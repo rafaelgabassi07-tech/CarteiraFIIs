@@ -22,12 +22,6 @@ interface SettingsProps {
   privacyMode: boolean;
   onSetPrivacyMode: (enabled: boolean) => void;
   appVersion: string;
-  availableVersion?: string | null;
-  updateAvailable: boolean;
-  onCheckUpdates: () => Promise<boolean>;
-  onShowChangelog: () => void;
-  releaseNotes?: ReleaseNote[];
-  lastChecked?: number | null;
   pushEnabled: boolean;
   onRequestPushPermission: () => void;
   lastSyncTime?: Date | null;
@@ -38,15 +32,12 @@ export const Settings: React.FC<SettingsProps> = ({
   transactions, onImportTransactions,
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
-  appVersion, availableVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
-  pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll
+  appVersion, pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll
 }) => {
-  const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates' | 'about' | 'security' | 'privacy'>('menu');
+  const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'about' | 'security' | 'privacy'>('menu');
   const [message, setMessage] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileToRestore, setFileToRestore] = useState<File | null>(null);
-  
-  const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'latest' | 'available' | 'offline'>('idle');
   
   // Visual Preferences
   const [glassMode, setGlassMode] = useState(() => localStorage.getItem('investfiis_glass_mode') !== 'false');
@@ -87,10 +78,6 @@ export const Settings: React.FC<SettingsProps> = ({
   // Modal States
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
-  
-  // State for Updates screen animation
-  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
-  const notesContainerRef = useRef<HTMLDivElement>(null);
 
   // Scroll Reset Effect
   useEffect(() => {
@@ -106,10 +93,6 @@ export const Settings: React.FC<SettingsProps> = ({
     });
     return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (updateAvailable) setCheckStatus('available');
-  }, [updateAvailable]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -261,15 +244,6 @@ export const Settings: React.FC<SettingsProps> = ({
     reader.readAsText(fileToRestore);
   };
 
-  const handleCheckUpdate = async () => {
-    if (updateAvailable) { onShowChangelog(); return; }
-    if (!navigator.onLine) { setCheckStatus('offline'); setTimeout(() => setCheckStatus('idle'), 3000); return; }
-    setCheckStatus('checking');
-    const [_, hasUpdate] = await Promise.all([new Promise(r => setTimeout(r, 2000)), onCheckUpdates()]);
-    if (hasUpdate) setCheckStatus('available');
-    else { setCheckStatus('latest'); setTimeout(() => setCheckStatus('idle'), 3000); }
-  };
-
   // Security Functions
   const handleEnablePin = () => {
     setShowPinSetup(true);
@@ -344,26 +318,9 @@ export const Settings: React.FC<SettingsProps> = ({
         case 'integrations': return 'Conexões e Serviços';
         case 'data': return 'Alocação e Backup';
         case 'system': return 'Sistema';
-        case 'updates': return 'Atualizações';
         case 'about': return 'Sobre o App';
         case 'security': return 'Segurança';
         default: return 'Ajustes';
-    }
-  };
-
-  const handleScroll = () => {
-    if (notesContainerRef.current) {
-      setIsHeaderCompact(notesContainerRef.current.scrollTop > 20);
-    }
-  };
-
-  const getNoteIconAndColor = (type: ReleaseNoteType) => {
-    switch (type) {
-      case 'feat': return { Icon: Sparkles, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10' };
-      case 'fix': return { Icon: Check, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' };
-      case 'ui': return { Icon: Palette, color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-500/10' };
-      case 'perf': return { Icon: Zap, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' };
-      default: return { Icon: Star, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-white/10' };
     }
   };
 
@@ -453,8 +410,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </Section>
 
             <Section title="Sistema">
-                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} colorClass="bg-purple-500/10 text-purple-500" />
-                <MenuItem icon={Info} label="Sobre o APP" onClick={() => setActiveSection('about')} colorClass="bg-slate-500/10 text-slate-500" />
+                <MenuItem icon={Info} label="Sobre o APP" onClick={() => setActiveSection('about')} value={`v${appVersion}`} colorClass="bg-slate-500/10 text-slate-500" />
                 <MenuItem icon={ShieldAlert} label="Resetar Aplicativo" onClick={() => setActiveSection('system')} isDestructive />
             </Section>
             
@@ -708,74 +664,6 @@ export const Settings: React.FC<SettingsProps> = ({
                       </div>
                   </Section>
               </div>
-          )}
-          
-          {activeSection === 'updates' && (
-             <div className="h-[calc(100vh-16rem)] -my-2 flex flex-col bg-gradient-to-b from-[#0b1121] to-[#020617] rounded-3xl overflow-hidden shadow-2xl">
-                {/* --- Animated Header --- */}
-                <div className={`relative z-10 text-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'pt-4 pb-4 backdrop-blur-md bg-black/20 border-b border-white/5' : 'pt-12 pb-6'}`}>
-                    <div className={`relative mx-auto transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'w-16 h-16 mb-2' : 'w-24 h-24 mb-4'}`}>
-                        <div className={`w-full h-full rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-white/5 scale-110' : updateAvailable ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                            {checkStatus === 'checking' ? (
-                                <div className="absolute inset-0 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
-                            ) : updateAvailable ? (
-                                <Rocket className="w-1/2 h-1/2 animate-bounce" strokeWidth={1.5} />
-                            ) : (
-                                <CheckCircle2 className="w-1/2 h-1/2" strokeWidth={1.5} />
-                            )}
-                        </div>
-                        {checkStatus === 'checking' && <div className="absolute inset-0 rounded-full animate-ping bg-indigo-500/10"></div>}
-                    </div>
-                    
-                    <h2 className={`font-black text-white tracking-tighter transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'text-xl' : 'text-3xl'}`}>
-                        {updateAvailable ? 'Nova Versão' : 'Tudo em Dia'}
-                    </h2>
-                    
-                    <div className={`overflow-hidden transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'max-h-0 opacity-0' : 'max-h-12 opacity-100'}`}>
-                        <p className="text-sm font-medium text-slate-400 mt-1 mb-4">
-                            {updateAvailable ? `A versão ${availableVersion || ''} está disponível.` : `Você está rodando a v${appVersion}`}
-                        </p>
-                    </div>
-
-                    <button 
-                        onClick={handleCheckUpdate}
-                        disabled={checkStatus === 'checking'}
-                        className={`group relative overflow-hidden px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all shadow-xl hover:shadow-2xl active:scale-95 flex items-center gap-2 mx-auto duration-500 ease-out-quint ${isHeaderCompact ? 'scale-90' : 'scale-100'} ${
-                            updateAvailable 
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30' 
-                            : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-indigo-500/30'
-                        }`}
-                    >
-                        <span className="relative z-10 flex items-center gap-2">
-                            {checkStatus === 'checking' ? <>Buscando...</> : updateAvailable ? <><Download className="w-4 h-4" /> Atualizar</> : <><RefreshCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" /> Verificar</>}
-                        </span>
-                        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
-                    </button>
-                </div>
-                
-                {/* --- Scrollable Notes --- */}
-                {(releaseNotes && releaseNotes.length > 0) && (
-                    <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-3 p-4">
-                       <h3 className={`text-xs font-bold text-slate-400 uppercase tracking-widest transition-all duration-300 ${isHeaderCompact ? 'opacity-100 mt-2' : 'opacity-0 h-0 pointer-events-none'}`}>
-                         Notas da v{availableVersion || appVersion}
-                       </h3>
-                       {releaseNotes.map((note, i) => {
-                          const { Icon, color, bg } = getNoteIconAndColor(note.type);
-                          return (
-                            <div key={i} className="flex gap-4 items-start p-4 bg-white/5 rounded-2xl border border-white/5">
-                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${bg} ${color}`}>
-                                    <Icon className="w-4 h-4" strokeWidth={2.5} />
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-bold text-white leading-tight mb-1">{note.title}</h4>
-                                    <p className="text-xs text-slate-400 leading-relaxed font-medium">{note.desc}</p>
-                                </div>
-                            </div>
-                          );
-                       })}
-                    </div>
-                )}
-             </div>
           )}
         </div>
       )}

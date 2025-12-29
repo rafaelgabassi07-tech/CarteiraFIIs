@@ -1,4 +1,4 @@
-const CACHE_NAME = 'investfiis-core-v7.0.4'; // Incrementado para garantir atualização
+const CACHE_NAME = 'investfiis-core-v7.0.5'; // Incrementado para garantir atualização
 
 // Arquivos vitais que devem estar disponíveis offline imediatamente
 const PRECACHE_ASSETS = [
@@ -11,6 +11,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
+    }).then(() => {
+      // Força a ativação do novo Service Worker imediatamente.
+      return self.skipWaiting();
     })
   );
 });
@@ -40,21 +43,6 @@ self.addEventListener('fetch', (event) => {
   // Ignorar esquemas não suportados (chrome-extension, data, file, etc)
   if (!url.protocol.startsWith('http')) {
       return; 
-  }
-
-  // A) Version.json: CRÍTICO - NUNCA CACHEAR
-  if (url.pathname.includes('version.json')) {
-      event.respondWith(
-          fetch(event.request, { 
-              cache: 'no-store',
-              headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
-          }).catch(() => {
-              return new Response(JSON.stringify({ error: 'offline' }), { 
-                  headers: { 'Content-Type': 'application/json' } 
-              });
-          })
-      );
-      return;
   }
   
   // B) Navegação (HTML): Network First
@@ -154,10 +142,4 @@ self.addEventListener('notificationclick', function(event) {
       }
     })
   );
-});
-
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'INVESTFIIS_SKIP_WAITING') {
-    self.skipWaiting();
-  }
 });

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck, AlertCircle, Sparkle, PartyPopper, Loader2, CloudOff, Cloud, Wifi, Lock, Fingerprint, Delete, ShieldCheck, AlertTriangle } from 'lucide-react';
-import { ReleaseNote, AppNotification, ReleaseNoteType } from '../types';
+import { AppNotification } from '../types';
 
 // Custom hook for managing enter/exit animations
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -66,8 +66,6 @@ interface HeaderProps {
   isRefreshing?: boolean;
   onNotificationClick?: () => void;
   notificationCount?: number;
-  updateAvailable?: boolean;
-  onUpdateClick?: () => void;
   appVersion?: string;
   bannerVisible?: boolean;
 }
@@ -81,8 +79,6 @@ export const Header: React.FC<HeaderProps> = ({
   isRefreshing,
   onNotificationClick,
   notificationCount = 0,
-  updateAvailable,
-  onUpdateClick,
   appVersion = '5.0.0',
   bannerVisible = false
 }) => {
@@ -123,15 +119,6 @@ export const Header: React.FC<HeaderProps> = ({
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent ring-2 ring-white dark:ring-[#020617]"></span>
                   </div>
                   <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{title}</h1>
-                  {updateAvailable && (
-                    <button 
-                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 cursor-pointer active:scale-95 transition-transform" 
-                        onClick={onUpdateClick}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-                      <span className="text-[8px] font-bold text-accent uppercase">Upd</span>
-                    </button>
-                  )}
               </div>
               <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-5 pl-0.5">
                   {isRefreshing ? 'Sincronizando...' : 'FIIs & Ações'}
@@ -141,11 +128,6 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-2.5">
-        {updateAvailable && !showBack && (
-          <button onClick={onUpdateClick} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/30 active:scale-95 transition-all border border-white/20">
-            <Download className="w-4 h-4 animate-pulse" strokeWidth={2.5} />
-          </button>
-        )}
         {onNotificationClick && !showBack && (
           <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
             <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" strokeWidth={2} />
@@ -317,114 +299,6 @@ export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void
                     </div>
                 ))
              )}
-        </div>
-    </div>,
-    document.body
-  );
-};
-
-const getNoteIconAndColor = (type: ReleaseNoteType) => {
-  switch (type) {
-    case 'feat': return { Icon: Sparkles, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10' };
-    case 'fix': return { Icon: Check, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' };
-    case 'ui': return { Icon: Palette, color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-500/10' };
-    case 'perf': return { Icon: Zap, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' };
-    default: return { Icon: Star, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-white/10' };
-  }
-};
-
-export const ChangelogModal: React.FC<{ 
-  isOpen: boolean; onClose: () => void; version: string; notes?: ReleaseNote[];
-  isUpdatePending?: boolean; onUpdate?: () => void; isUpdating?: boolean; progress?: number;
-}> = ({ isOpen, onClose, version, notes, isUpdatePending, onUpdate, isUpdating, progress = 0 }) => {
-  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
-  if (!isMounted) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6">
-        <div className={`absolute inset-0 bg-slate-900/40 backdrop-blur-md anim-fade-in ${isVisible ? 'is-visible' : ''}`} onClick={onClose} />
-        
-        <div className={`relative bg-white dark:bg-[#0f172a] w-full max-w-[20rem] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden anim-scale-in border border-white/20 dark:border-white/5 ${isVisible ? 'is-visible' : ''}`}>
-            {/* Minimal Header */}
-            <div className="pt-8 px-6 pb-2 text-center relative overflow-hidden">
-                <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full blur-[60px] opacity-40 ${isUpdatePending ? 'bg-indigo-500' : 'bg-emerald-500'}`}></div>
-                <div className="relative z-10 flex flex-col items-center">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-sm ${isUpdatePending ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
-                        {isUpdatePending ? <Gift className="w-7 h-7" strokeWidth={1.5} /> : <Sparkles className="w-7 h-7" strokeWidth={1.5} />}
-                    </div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">v{version}</h2>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                        {isUpdatePending ? 'Nova Atualização' : 'O que há de novo'}
-                    </p>
-                </div>
-            </div>
-            
-            {/* Content List */}
-            <div className="flex-1 overflow-y-auto max-h-[40vh] p-6 space-y-5">
-                {notes?.length ? notes.map((note, i) => {
-                    const { Icon, color, bg } = getNoteIconAndColor(note.type);
-                    return (
-                      <div key={i} className="flex gap-4 items-start group">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${bg} ${color}`}>
-                            <Icon className="w-4 h-4" strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight mb-1">{note.title}</h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{note.desc}</p>
-                        </div>
-                      </div>
-                    );
-                }) : (
-                  <div className="text-center py-4 opacity-50">
-                      <p className="text-xs text-slate-400 italic">Melhorias internas e correções de bugs.</p>
-                  </div>
-                )}
-            </div>
-
-            {/* Footer Actions */}
-            <div className="p-6 pt-2 bg-gradient-to-t from-white via-white to-transparent dark:from-[#0f172a] dark:via-[#0f172a] dark:to-transparent">
-                {isUpdatePending ? (
-                    isUpdating ? (
-                        <div className="w-full text-center py-3">
-                            <div className="w-full bg-slate-100 dark:bg-white/10 rounded-full h-2 overflow-hidden mb-2 relative">
-                                <div 
-                                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-300 ease-linear" 
-                                    style={{ width: `${progress}%` }}
-                                ></div>
-                                <div 
-                                  className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite]"
-                                  style={{ animationName: 'shimmer', animationDuration: '2s', animationIterationCount: 'infinite' }}
-                                ></div>
-                            </div>
-                            <p className="text-xs font-bold text-slate-400">Instalando... {Math.round(progress)}%</p>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-3">
-                            <button 
-                                onClick={onUpdate}
-                                disabled={isUpdating}
-                                className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
-                            >
-                               <Download className="w-4 h-4" /> Instalar e Reiniciar
-                            </button>
-                            <button 
-                                onClick={onClose}
-                                disabled={isUpdating}
-                                className="w-full py-3.5 rounded-2xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all"
-                            >
-                                Depois
-                            </button>
-                        </div>
-                    )
-                ) : (
-                    <button 
-                        onClick={onClose}
-                        className="w-full py-3.5 rounded-2xl bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all hover:bg-slate-200 dark:hover:bg-white/20"
-                    >
-                        Fechar
-                    </button>
-                )}
-            </div>
         </div>
     </div>,
     document.body
