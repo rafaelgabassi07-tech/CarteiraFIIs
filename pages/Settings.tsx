@@ -27,7 +27,7 @@ interface SettingsProps {
   onCheckUpdates: () => Promise<boolean>;
   onShowChangelog: () => void;
   releaseNotes?: ReleaseNote[];
-  lastChecked?: number; 
+  lastChecked?: number | null;
   pushEnabled: boolean;
   onRequestPushPermission: () => void;
   lastSyncTime?: Date | null;

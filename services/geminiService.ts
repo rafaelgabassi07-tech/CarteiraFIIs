@@ -169,7 +169,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         },
     });
     
-    const parsedJson = JSON.parse(response.text);
+    const text = response.text;
+    if (!text) {
+        throw new Error("A resposta da API Gemini está vazia ou malformada.");
+    }
+    const parsedJson = JSON.parse(text);
 
     const metadata: any = {};
     const dividends: any[] = [];
