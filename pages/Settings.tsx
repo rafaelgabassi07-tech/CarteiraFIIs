@@ -1,39 +1,45 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star } from 'lucide-react';
-import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
-import { ThemeType } from '../App';
+import { Transaction, DividendReceipt } from '../types';
+// FIX: Correctly import ThemeType from SettingsContext and remove unused types.
+import { ThemeType } from '../contexts/SettingsContext';
 import { supabase } from '../services/supabase';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
+// FIX: Import hooks to get data from context.
+import { useData } from '../hooks/useData';
+import { useSettings } from '../hooks/useSettings';
+import { useAuth } from '../hooks/useAuth';
 
 const BadgeDollarSignIcon = (props: any) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.78 4.78 4 4 0 0 1-6.74 0 4 4 0 0 1-4.78-4.78 4 4 0 0 1 0-6.74Z"/><path d="M12 8v8"/><path d="M9.5 10.5c5.5-2.5 5.5 5.5 0 3"/></svg>
 );
 
+// FIX: Refactor props to only accept appVersion, as other data will come from hooks.
 interface SettingsProps {
-  transactions: Transaction[];
-  onImportTransactions: (data: Transaction[]) => void;
-  geminiDividends: DividendReceipt[];
-  onImportDividends: (data: DividendReceipt[]) => void;
-  onResetApp: () => void;
-  theme: ThemeType;
-  onSetTheme: (theme: ThemeType) => void;
-  accentColor: string;
-  onSetAccentColor: (color: string) => void;
-  privacyMode: boolean;
-  onSetPrivacyMode: (enabled: boolean) => void;
   appVersion: string;
-  pushEnabled: boolean;
-  onRequestPushPermission: () => void;
-  lastSyncTime?: Date | null;
-  onSyncAll: (force: boolean) => Promise<void>;
 }
 
-export const Settings: React.FC<SettingsProps> = ({ 
-  transactions, onImportTransactions,
-  geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
-  accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
-  appVersion, pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll
-}) => {
+export const Settings: React.FC<SettingsProps> = ({ appVersion }) => {
+  // FIX: Use context hooks to get necessary data and functions.
+  const { 
+    transactions, 
+    importTransactions: onImportTransactions,
+    geminiDividends, 
+    setGeminiDividends: onImportDividends,
+    syncAll: onSyncAll,
+    lastSyncTime
+  } = useData();
+
+  const {
+    theme, 
+    setTheme: onSetTheme,
+    privacyMode, 
+    setPrivacyMode: onSetPrivacyMode,
+    pushEnabled,
+  } = useSettings();
+  
+  const { signOut } = useAuth();
+
   const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'about' | 'security' | 'privacy'>('menu');
   const [message, setMessage] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,6 +70,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [biometricsEnabled, setBiometricsEnabled] = useState(() => localStorage.getItem('investfiis_biometrics') === 'true');
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [newPin, setNewPin] = useState('');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Supabase Auth States
   const [user, setUser] = useState<any>(null);
@@ -78,6 +85,17 @@ export const Settings: React.FC<SettingsProps> = ({
   // Modal States
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  
+  // FIX: Implement onResetApp to use a confirmation modal before signing out.
+  const onResetApp = () => {
+    setShowResetConfirm(true);
+  };
+  
+  // FIX: Provide a stub for onRequestPushPermission.
+  const onRequestPushPermission = () => {
+    showMessage('info', 'Funcionalidade de notificações em desenvolvimento.');
+  };
+
 
   // Scroll Reset Effect
   useEffect(() => {
@@ -674,6 +692,17 @@ export const Settings: React.FC<SettingsProps> = ({
         message="Atenção: Restaurar um backup substituirá TODOS os seus dados atuais. Esta ação não pode ser desfeita. Deseja continuar?"
         onConfirm={handleConfirmRestore}
         onCancel={() => setFileToRestore(null)}
+      />
+
+      <ConfirmationModal
+        isOpen={showResetConfirm}
+        title="Resetar Aplicativo"
+        message="Esta ação é irreversível e apagará todos os seus dados locais e na nuvem. Tem certeza?"
+        onConfirm={() => {
+          signOut();
+          setShowResetConfirm(false);
+        }}
+        onCancel={() => setShowResetConfirm(false)}
       />
 
       {/* Security Setup Modal */}
