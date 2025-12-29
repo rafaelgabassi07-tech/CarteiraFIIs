@@ -11,7 +11,7 @@ import { useAuth } from './hooks/useAuth';
 import { useNotifications } from './hooks/useNotifications';
 import { useData } from './hooks/useData';
 
-const APP_VERSION = '7.0.7';
+const APP_VERSION = '7.0.8';
 
 const AppContent: React.FC = () => {
   const { session, isGuest, isLocked, savedPasscode, isBiometricsEnabled, setIsLocked, isAuthLoading } = useAuth();

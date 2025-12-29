@@ -39,7 +39,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) setIsGuest(false);
+      if (session) {
+        setIsGuest(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -54,10 +56,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signOut = async () => {
+    // A lógica de limpeza de estado agora é tratada pelo DataContext
+    // que reage à mudança de sessão para nula.
     await supabase.auth.signOut();
-    localStorage.clear();
     setIsGuest(false);
-    window.location.reload();
   };
 
   const value = {

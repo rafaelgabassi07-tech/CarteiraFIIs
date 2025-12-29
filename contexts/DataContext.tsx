@@ -65,6 +65,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
@@ -87,8 +88,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (aiData.error === 'quota_exceeded') showToast('info', 'IA em pausa (Cota). Usando cache.');
       else if (force) showToast('success', 'Carteira Sincronizada');
       
-      setGeminiDividends(aiData.dividends);
-      setAssetsMetadata(aiData.metadata);
+      if (aiData.dividends) setGeminiDividends(aiData.dividends);
+      if (aiData.metadata) setAssetsMetadata(aiData.metadata);
       if (aiData.indicators?.ipca_cumulative) setMarketIndicators({ ipca: aiData.indicators.ipca_cumulative, startDate: aiData.indicators.start_date_used });
       setLastSyncTime(new Date());
     } catch (e) { if (force) showToast('error', 'Sem conexão'); } 
@@ -96,8 +97,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [transactions, showToast]);
 
   const fetchTransactionsFromCloud = useCallback(async () => {
+    if (!session) return;
     setIsCloudSyncing(true);
-    const { data, error } = await supabase.from('transactions').select('*');
+    const { data, error } = await supabase.from('transactions').select('*').eq('user_id', session.user.id);
     if (error) { showToast('error', 'Erro ao buscar dados da nuvem.'); } 
     else if (data) {
       const cloudTxs: Transaction[] = data.map((t: any) => ({ id: t.id, ticker: t.ticker, type: t.type, quantity: t.quantity, price: t.price, date: t.date, assetType: t.asset_type }));
@@ -105,7 +107,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await syncAll(false, cloudTxs);
     }
     setIsCloudSyncing(false);
-  }, [showToast, syncAll]);
+  }, [session, showToast, syncAll]);
 
   const migrateGuestDataToCloud = useCallback(async (user_id: string) => {
     const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]') as Transaction[];
@@ -117,23 +119,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) { showToast('error', 'Erro ao migrar dados.'); }
     else { showToast('success', 'Dados locais salvos na nuvem!'); }
   }, [showToast]);
-  
-  const stableSyncFuncs = useRef({ fetchTransactionsFromCloud, migrateGuestDataToCloud, syncAll });
-  useEffect(() => { stableSyncFuncs.current = { fetchTransactionsFromCloud, migrateGuestDataToCloud, syncAll }; }, [fetchTransactionsFromCloud, migrateGuestDataToCloud, syncAll]);
 
   useEffect(() => {
-    if (!session) { setCloudStatus(localStorage.getItem('investfiis_guest_mode') === 'true' ? 'disconnected' : 'hidden'); if (localStorage.getItem('investfiis_guest_mode') === 'true') stableSyncFuncs.current.syncAll(false); return; }
+    if (session && !initialLoadComplete) {
+      setInitialLoadComplete(true); // Previne re-execução em refresh de token
+      const wasGuest = localStorage.getItem('investfiis_guest_mode') === 'true';
+      if (wasGuest) {
+        migrateGuestDataToCloud(session.user.id).then(() => syncAll(true));
+      } else {
+        fetchTransactionsFromCloud();
+      }
+      setCloudStatus('connected');
+      setTimeout(() => setCloudStatus('hidden'), 4000);
+    } else if (!session) {
+      // Reset no logout
+      setTransactions([]);
+      setQuotes({});
+      setGeminiDividends([]);
+      setInitialLoadComplete(false);
+      setCloudStatus(localStorage.getItem('investfiis_guest_mode') === 'true' ? 'disconnected' : 'hidden');
+    }
+  }, [session, initialLoadComplete, fetchTransactionsFromCloud, migrateGuestDataToCloud, syncAll]);
 
-    const wasGuest = localStorage.getItem('investfiis_guest_mode') === 'true';
-    if (wasGuest) { stableSyncFuncs.current.migrateGuestDataToCloud(session.user.id).then(() => stableSyncFuncs.current.syncAll(true)); }
-    else { stableSyncFuncs.current.fetchTransactionsFromCloud(); }
-    setCloudStatus('connected');
-    setTimeout(() => setCloudStatus('hidden'), 3000);
-
+  useEffect(() => {
+    if (!session) return;
     const channel = supabase.channel('transactions-realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${session.user.id}` }, (payload) => {
         const mapRecord = (r: any): Transaction => ({ id: r.id, ticker: r.ticker, type: r.type, quantity: r.quantity, price: r.price, date: r.date, assetType: r.asset_type });
         setTransactions(currentTxs => {
-            if (payload.eventType === 'INSERT') return [...currentTxs, mapRecord(payload.new)];
+            if (payload.eventType === 'INSERT') {
+              // Previne "eco" do realtime, não adiciona se já existe
+              if (currentTxs.some(t => t.id === payload.new.id)) return currentTxs;
+              return [...currentTxs, mapRecord(payload.new)];
+            }
             if (payload.eventType === 'UPDATE') return currentTxs.map(t => t.id === payload.new.id ? mapRecord(payload.new) : t);
             if (payload.eventType === 'DELETE') return currentTxs.filter(t => t.id !== payload.old.id);
             return currentTxs;
