@@ -25,6 +25,10 @@ const formatDayMonth = (dateStr: string) => {
   return dateStr;
 };
 
+// Tipos explícitos para as linhas da lista virtualizada
+type HeaderRow = { type: 'header'; monthKey: string; totalInvested: number };
+type ItemRow = { type: 'item'; data: Transaction };
+type FlatTransactionRow = HeaderRow | ItemRow;
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -61,7 +65,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
       if (t.type === 'BUY') groups[monthKey].totalInvested += (t.price * t.quantity);
     });
     const sortedMonthKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
-    const flatList: any[] = [];
+    const flatList: FlatTransactionRow[] = [];
     sortedMonthKeys.forEach(monthKey => {
       flatList.push({ type: 'header', monthKey, totalInvested: groups[monthKey].totalInvested });
       groups[monthKey].items.forEach(item => flatList.push({ type: 'item', data: item }));
