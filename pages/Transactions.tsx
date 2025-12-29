@@ -83,16 +83,17 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
           {item.totalInvested > 0 && (<div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"><span className="text-[9px] font-bold uppercase tracking-wider">Aporte: R$ {formatBRL(item.totalInvested)}</span></div>)}
         </div>
       );
-    }
-    const t = item.data;
-    return (
-      <div style={style} className="px-1 py-1">
-        <div className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3 flex items-center justify-between shadow-sm active:scale-[0.98] transition-all border border-slate-200/50 dark:border-white/5 h-full">
-          <div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>{t.type === 'BUY' ? <TrendingUp className="w-4 h-4" strokeWidth={2.5} /> : <TrendingDown className="w-4 h-4" strokeWidth={2.5} />}</div><div><div className="flex items-center gap-2 mb-0.5"><h4 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight leading-none">{t.ticker}</h4><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${t.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-600' : 'bg-blue-500/10 text-blue-600'}`}>{t.assetType === AssetType.FII ? 'FII' : 'Ação'}</span></div><p className={`text-[9px] font-bold uppercase tracking-[0.05em] ${t.type === 'BUY' ? 'text-emerald-600/70' : 'text-rose-600/70'}`}>{t.type === 'BUY' ? 'Compra' : 'Venda'} • {formatDayMonth(t.date)}</p></div></div>
-          <div className="flex items-center gap-3"><div className="text-right"><div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums tracking-tight mb-0.5">R$ {formatBRL(t.quantity * t.price)}</div><div className="text-[9px] text-slate-400 font-medium tabular-nums leading-none">{t.quantity} <span className="text-[9px] opacity-50 mx-0.5">x</span> {formatBRL(t.price)}</div></div><div className="flex flex-col gap-1"><button onClick={() => handleEdit(t)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-accent/10 hover:text-accent transition-colors active:scale-90"><Pencil className="w-3 h-3" /></button><button onClick={() => onRequestDeleteConfirmation(t.id)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors active:scale-90"><Trash2 className="w-3 h-3" /></button></div></div>
+    } else {
+      const t = item.data;
+      return (
+        <div style={style} className="px-1 py-1">
+          <div className="group bg-white dark:bg-[#0f172a] rounded-2xl p-3 flex items-center justify-between shadow-sm active:scale-[0.98] transition-all border border-slate-200/50 dark:border-white/5 h-full">
+            <div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${t.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>{t.type === 'BUY' ? <TrendingUp className="w-4 h-4" strokeWidth={2.5} /> : <TrendingDown className="w-4 h-4" strokeWidth={2.5} />}</div><div><div className="flex items-center gap-2 mb-0.5"><h4 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight leading-none">{t.ticker}</h4><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${t.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-600' : 'bg-blue-500/10 text-blue-600'}`}>{t.assetType === AssetType.FII ? 'FII' : 'Ação'}</span></div><p className={`text-[9px] font-bold uppercase tracking-[0.05em] ${t.type === 'BUY' ? 'text-emerald-600/70' : 'text-rose-600/70'}`}>{t.type === 'BUY' ? 'Compra' : 'Venda'} • {formatDayMonth(t.date)}</p></div></div>
+            <div className="flex items-center gap-3"><div className="text-right"><div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums tracking-tight mb-0.5">R$ {formatBRL(t.quantity * t.price)}</div><div className="text-[9px] text-slate-400 font-medium tabular-nums leading-none">{t.quantity} <span className="text-[9px] opacity-50 mx-0.5">x</span> {formatBRL(t.price)}</div></div><div className="flex flex-col gap-1"><button onClick={() => handleEdit(t)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-accent/10 hover:text-accent transition-colors active:scale-90"><Pencil className="w-3 h-3" /></button><button onClick={() => onRequestDeleteConfirmation(t.id)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors active:scale-90"><Trash2 className="w-3 h-3" /></button></div></div>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   };
 
   return (
