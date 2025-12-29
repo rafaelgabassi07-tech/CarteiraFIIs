@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="app-version" content="6.6.1" />
+    <meta name="app-version" content="7.0.1" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -73,6 +73,11 @@
         
         const glassMode = localStorage.getItem('investfiis_glass_mode') !== 'false';
         if (glassMode) document.documentElement.classList.add('glass-effect');
+
+        // Blur Intensity
+        const blurMap = { low: '4px', medium: '8px', high: '16px' };
+        const blurSetting = localStorage.getItem('investfiis_blur_intensity') || 'medium';
+        document.documentElement.style.setProperty('--blur-amount', blurMap[blurSetting] || '8px');
       })();
 
       tailwind.config = {
@@ -102,6 +107,7 @@
         --duration-normal: 300ms;
         --duration-slow: 500ms;
         --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+        --blur-amount: 8px; /* Default */
       }
       body { 
         -webkit-tap-highlight-color: transparent; 
@@ -121,7 +127,7 @@
       *:focus { outline: none !important; }
 
       .privacy-blur .tabular-nums {
-        filter: blur(6px);
+        filter: blur(var(--blur-amount));
         transition: filter 0.2s ease;
       }
       .privacy-blur .tabular-nums:hover { filter: blur(0); }

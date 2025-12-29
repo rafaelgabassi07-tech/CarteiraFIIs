@@ -1,17 +1,22 @@
 
 {
-  "version": "6.6.1",
-  "date": "2025-06-27",
+  "version": "7.0.1",
+  "date": "2025-06-29",
   "notes": [
     {
       "type": "fix",
-      "title": "Correção Crítica de Update",
-      "desc": "Resolução do erro de compilação no gerenciador de atualizações (TS2339)."
+      "title": "Correção de Notificações",
+      "desc": "A seção de configuração de alertas foi restaurada e agora funciona corretamente."
     },
     {
-      "type": "feat",
-      "title": "Teste de Versão 6.6.1",
-      "desc": "Versão lançada para validar o fluxo de atualização OTA e detecção de cache."
+      "type": "fix",
+      "title": "Sistema de Update",
+      "desc": "Resolvido problema que impedia a visualização das notas de atualização se o app já estivesse na versão mais recente."
+    },
+    {
+      "type": "ui",
+      "title": "Notas de Versão",
+      "desc": "Agora é possível visualizar este changelog a qualquer momento através do menu de Ajustes."
     }
   ]
 }

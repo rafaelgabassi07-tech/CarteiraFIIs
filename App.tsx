@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, UpdateBanner } from './components/Layout';
+import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, UpdateBanner, CloudStatusBanner, LockScreen } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
@@ -13,7 +12,7 @@ import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 
-const APP_VERSION = '6.6.1'; 
+const APP_VERSION = '7.0.4'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -26,7 +25,9 @@ const STORAGE_KEYS = {
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
   LAST_SYNC: 'investfiis_last_sync_time',
-  GUEST_MODE: 'investfiis_guest_mode'
+  GUEST_MODE: 'investfiis_guest_mode',
+  PASSCODE: 'investfiis_passcode',
+  BIOMETRICS: 'investfiis_biometrics'
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -50,6 +51,12 @@ const App: React.FC = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true');
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden'>('hidden');
+
+  // Lock Screen State
+  const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem(STORAGE_KEYS.PASSCODE));
+  const savedPasscode = localStorage.getItem(STORAGE_KEYS.PASSCODE);
+  const isBiometricsEnabled = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) === 'true';
 
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
@@ -164,6 +171,12 @@ const App: React.FC = () => {
 
       const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
       
+      if (aiData.error === 'quota_exceeded') {
+          showToast('info', 'IA em pausa (Cota). Usando cache.');
+      } else if (force) {
+          showToast('success', 'Carteira Sincronizada');
+      }
+
       setGeminiDividends(aiData.dividends);
       setAssetsMetadata(aiData.metadata);
       
@@ -175,14 +188,36 @@ const App: React.FC = () => {
       }
       
       setLastSyncTime(new Date());
-      if (force) showToast('success', 'Carteira Sincronizada');
+      
     } catch (e) {
-      showToast('error', 'Sem conexão');
+      // Erro silencioso em auto-sync para não atrapalhar UX
+      if(force) showToast('error', 'Sem conexão');
     } finally {
       setIsRefreshing(false);
       setIsAiLoading(false);
     }
   }, [transactions, brapiToken, showToast]);
+
+  // --- Background Refresh Logic (Visibility Change) ---
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Quando o usuário volta para o app (foreground)
+      if (document.visibilityState === 'visible') {
+        // Se a última sincronização foi há mais de 1 hora, tenta sincronizar suavemente
+        const last = localStorage.getItem(STORAGE_KEYS.LAST_SYNC);
+        if (last) {
+            const diff = Date.now() - new Date(last).getTime();
+            if (diff > 60 * 60 * 1000) {
+                console.log("🔄 Retorno ao app: Atualizando dados em background...");
+                syncAll(false);
+            }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [syncAll]);
 
   // --- Supabase & Auth Logic ---
   const fetchTransactionsFromCloud = useCallback(async () => {
@@ -211,34 +246,33 @@ const App: React.FC = () => {
   }, [showToast, syncAll]);
 
   useEffect(() => {
-    const initAuth = async () => {
-        setIsAuthLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
+    // Inicia ouvindo as mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         setSession(session);
-        setIsAuthLoading(false);
-        
+        setIsAuthLoading(false); // <-- PONTO CHAVE: Só para de carregar DEPOIS do primeiro evento
+
         if (session) {
-            setIsGuest(false); // Garante que saiu do modo convidado se logou
+            setIsGuest(false);
+            setCloudStatus('connected');
+            setTimeout(() => setCloudStatus('hidden'), 2500);
             fetchTransactionsFromCloud();
         } else if (isGuest) {
-            syncAll(); // Se é convidado, carrega dados locais
+            setCloudStatus('disconnected');
+            syncAll();
+        } else {
+            setCloudStatus('hidden');
         }
-    };
-
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) {
-         setIsGuest(false);
-         fetchTransactionsFromCloud();
-      } else {
-         if (!isGuest) showToast('info', 'Desconectado da nuvem');
-      }
     });
 
     return () => subscription.unsubscribe();
-  }, []); // Dependência vazia intencional
+  }, [fetchTransactionsFromCloud, isGuest, syncAll]); // Dependências relevantes
+
+  // Atualiza o banner se entrar no modo convidado explicitamente
+  useEffect(() => {
+      if (isGuest && !session) {
+          setCloudStatus('disconnected');
+      }
+  }, [isGuest, session]);
 
   // --- Secure CRUD Operations with Rollback ---
 
@@ -310,13 +344,63 @@ const App: React.FC = () => {
     }
   };
 
+  const handleImportTransactions = async (importedTxs: Transaction[]) => {
+    if (!Array.isArray(importedTxs)) return;
+
+    setTransactions(importedTxs);
+
+    if (session) {
+        setIsCloudSyncing(true);
+        showToast('info', 'Sincronizando backup na nuvem...');
+        
+        try {
+            // Estratégia de Restauração: Limpar e Inserir
+            // 1. Remove dados atuais do usuário para evitar duplicatas ou estados inconsistentes com o backup
+            await supabase.from('transactions').delete().eq('user_id', session.user.id);
+            
+            // 2. Prepara dados para inserção
+            const sbData = importedTxs.map(t => ({
+                id: t.id, // Preserva IDs originais para consistência
+                user_id: session.user.id,
+                ticker: t.ticker,
+                type: t.type,
+                quantity: t.quantity,
+                price: t.price,
+                date: t.date,
+                asset_type: t.assetType
+            }));
+            
+            if (sbData.length > 0) {
+                const { error } = await supabase.from('transactions').insert(sbData);
+                if (error) throw error;
+            }
+            
+            showToast('success', 'Backup restaurado e sincronizado!');
+        } catch (e) {
+            console.error("Erro na importação:", e);
+            showToast('error', 'Erro ao salvar na nuvem. Dados locais atualizados.');
+        } finally {
+            setIsCloudSyncing(false);
+        }
+    } else {
+        showToast('success', 'Backup restaurado localmente.');
+    }
+  };
+
   // --- Notificações ---
   const sendSystemNotification = useCallback((title: string, body: string, tag?: string) => {
     if (!pushEnabled || !('Notification' in window)) return;
     if (Notification.permission === 'granted') {
       try {
-        const notif = new Notification(title, { body, icon: '/pwa-192x192.png', tag, vibrate: [200, 100, 200] } as any);
-        notif.onclick = () => { window.focus(); notif.close(); setShowNotifications(true); };
+        // Tenta usar o Service Worker para notificação (mais robusto)
+        navigator.serviceWorker.ready.then(registration => {
+            registration.showNotification(title, {
+                body,
+                icon: '/pwa-192x192.png',
+                tag,
+                vibrate: [200, 100, 200]
+            } as any);
+        });
       } catch (e) { console.warn('Erro notificação nativa', e); }
     }
   }, [pushEnabled]);
@@ -445,11 +529,22 @@ const App: React.FC = () => {
     );
   }
 
-  // Se não estiver logado E não estiver no modo convidado, mostra Login
+  // --- Lock Screen Check ---
+  if (isLocked && savedPasscode) {
+    return (
+      <LockScreen 
+        isOpen={true} 
+        correctPin={savedPasscode}
+        onUnlock={() => setIsLocked(false)}
+        isBiometricsEnabled={isBiometricsEnabled}
+      />
+    );
+  }
+
   if (!session && !isGuest) {
     return (
       <Login 
-        onLoginSuccess={() => { /* O listener do onAuthStateChange vai atualizar o session */ }} 
+        onLoginSuccess={() => { }} 
         onGuestAccess={() => { setIsGuest(true); syncAll(); }} 
       />
     );
@@ -465,6 +560,8 @@ const App: React.FC = () => {
           version={updateManager.availableVersion || 'Nova'} 
         />
       </div>
+
+      <CloudStatusBanner status={cloudStatus} />
 
       {toast && (
         <div 
@@ -492,13 +589,14 @@ const App: React.FC = () => {
         onNotificationClick={() => { setShowNotifications(true); markNotificationsAsRead(); }}
         notificationCount={unreadCount}
         appVersion={APP_VERSION}
+        bannerVisible={cloudStatus !== 'hidden'}
       />
 
-      <main className="max-w-screen-md mx-auto pt-2">
+      <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
         {showSettings ? (
           <Settings 
             brapiToken={brapiToken} onSaveToken={setBrapiToken}
-            transactions={transactions} onImportTransactions={setTransactions}
+            transactions={transactions} onImportTransactions={handleImportTransactions}
             geminiDividends={geminiDividends} onImportDividends={setGeminiDividends}
             onResetApp={() => { 
                 localStorage.clear(); 
@@ -509,6 +607,7 @@ const App: React.FC = () => {
             accentColor={accentColor} onSetAccentColor={setAccentColor}
             privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode}
             appVersion={APP_VERSION}
+            availableVersion={updateManager.availableVersion} 
             updateAvailable={updateManager.isUpdateAvailable}
             onCheckUpdates={updateManager.checkForUpdates}
             onShowChangelog={() => updateManager.setShowChangelog(true)}

@@ -1,11 +1,10 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck } from 'lucide-react';
-import { Transaction, DividendReceipt, ReleaseNote } from '../types';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star } from 'lucide-react';
+import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
 import { ThemeType } from '../App';
 import { supabase } from '../services/supabase';
+import { SwipeableModal } from '../components/Layout';
 
-// Ícone auxiliar
 const BadgeDollarSignIcon = (props: any) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.78 4.78 4 4 0 0 1-6.74 0 4 4 0 0 1-4.78-4.78 4 4 0 0 1 0-6.74Z"/><path d="M12 8v8"/><path d="M9.5 10.5c5.5-2.5 5.5 5.5 0 3"/></svg>
 );
@@ -25,6 +24,7 @@ interface SettingsProps {
   privacyMode: boolean;
   onSetPrivacyMode: (enabled: boolean) => void;
   appVersion: string;
+  availableVersion?: string | null;
   updateAvailable: boolean;
   onCheckUpdates: () => Promise<boolean>;
   onShowChangelog: () => void;
@@ -36,33 +36,25 @@ interface SettingsProps {
   onSyncAll: (force: boolean) => Promise<void>;
 }
 
-const ACCENT_COLORS = [
-  { name: 'Sky', hex: '#0ea5e9', class: 'bg-sky-500' },
-  { name: 'Emerald', hex: '#10b981', class: 'bg-emerald-500' },
-  { name: 'Violet', hex: '#8b5cf6', class: 'bg-violet-500' },
-  { name: 'Amber', hex: '#f59e0b', class: 'bg-amber-500' },
-  { name: 'Crimson', hex: '#e11d48', class: 'bg-rose-500' },
-  { name: 'Gold', hex: '#d4af37', class: 'bg-[#d4af37]' },
-  { name: 'Slate', hex: '#475569', class: 'bg-slate-500' },
-  { name: 'Midnight', hex: '#020617', class: 'bg-slate-900' },
-];
-
 export const Settings: React.FC<SettingsProps> = ({ 
   brapiToken, onSaveToken, transactions, onImportTransactions,
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
-  appVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
+  appVersion, availableVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
   pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll
 }) => {
-  const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates'>('menu');
+  const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates' | 'about' | 'security' | 'privacy'>('menu');
   const [token, setToken] = useState(brapiToken);
   const [message, setMessage] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isEnvToken = process.env.BRAPI_TOKEN === brapiToken && !!process.env.BRAPI_TOKEN;
   
   const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'latest' | 'available' | 'offline'>('idle');
-  const [glassMode, setGlassMode] = useState(() => localStorage.getItem('investfiis_glass_mode') !== 'false');
   
+  // Visual Preferences
+  const [glassMode, setGlassMode] = useState(() => localStorage.getItem('investfiis_glass_mode') !== 'false');
+  const [blurIntensity, setBlurIntensity] = useState<'low' | 'medium' | 'high'>(() => (localStorage.getItem('investfiis_blur_intensity') as any) || 'medium');
+
   const [storageData, setStorageData] = useState({ 
     totalBytes: 0,
     breakdown: { tx: 0, quotes: 0, divs: 0 } 
@@ -79,23 +71,39 @@ export const Settings: React.FC<SettingsProps> = ({
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const isServiceWorkerActive = 'serviceWorker' in navigator;
 
+  // Security State
+  const [passcode, setPasscode] = useState<string | null>(() => localStorage.getItem('investfiis_passcode'));
+  const [biometricsEnabled, setBiometricsEnabled] = useState(() => localStorage.getItem('investfiis_biometrics') === 'true');
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [newPin, setNewPin] = useState('');
+
   // Supabase Auth States
   const [user, setUser] = useState<any>(null);
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [confirmAuthPassword, setConfirmAuthPassword] = useState('');
-  
   const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [showConfirmAuthPassword, setShowConfirmAuthPassword] = useState(false);
-  
   const [authLoading, setAuthLoading] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+
+  // Modal States
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  
+  // State for Updates screen animation
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
+  const notesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll Reset Effect
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeSection]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
@@ -103,7 +111,6 @@ export const Settings: React.FC<SettingsProps> = ({
   }, []);
 
   useEffect(() => {
-    // Se updateAvailable for true, o status já deve refletir isso
     if (updateAvailable) setCheckStatus('available');
   }, [updateAvailable]);
 
@@ -118,10 +125,17 @@ export const Settings: React.FC<SettingsProps> = ({
     };
   }, []);
 
+  // Visual Effects Logic
   useEffect(() => {
     localStorage.setItem('investfiis_glass_mode', String(glassMode));
     document.documentElement.classList.toggle('glass-effect', glassMode);
   }, [glassMode]);
+
+  useEffect(() => {
+    localStorage.setItem('investfiis_blur_intensity', blurIntensity);
+    const blurMap = { low: '4px', medium: '8px', high: '16px' };
+    document.documentElement.style.setProperty('--blur-amount', blurMap[blurIntensity]);
+  }, [blurIntensity]);
 
   useEffect(() => { localStorage.setItem('investfiis_notify_divs', String(notifyDivs)); }, [notifyDivs]);
   useEffect(() => { localStorage.setItem('investfiis_notify_datacom', String(notifyDataCom)); }, [notifyDataCom]);
@@ -143,14 +157,13 @@ export const Settings: React.FC<SettingsProps> = ({
         const item = localStorage.getItem(key);
         return item ? new Blob([item]).size : 0;
     };
-    const txSize = getKeySize('investfiis_v4_transactions');
-    const quoteSize = getKeySize('investfiis_v3_quote_cache');
-    const divSize = getKeySize('investfiis_v4_div_cache');
-    const total = txSize + quoteSize + divSize;
-
     setStorageData({
-        totalBytes: total,
-        breakdown: { tx: txSize, quotes: quoteSize, divs: divSize }
+        totalBytes: getKeySize('investfiis_v4_transactions') + getKeySize('investfiis_v3_quote_cache') + getKeySize('investfiis_v4_div_cache'),
+        breakdown: { 
+            tx: getKeySize('investfiis_v4_transactions'), 
+            quotes: getKeySize('investfiis_v3_quote_cache'), 
+            divs: getKeySize('investfiis_v4_div_cache') 
+        }
     });
   };
 
@@ -166,9 +179,7 @@ export const Settings: React.FC<SettingsProps> = ({
     setAuthLoading(true);
     try {
         if (authMode === 'signup') {
-            if (authPassword !== confirmAuthPassword) {
-                throw new Error('As senhas não coincidem.');
-            }
+            if (authPassword !== confirmAuthPassword) throw new Error('As senhas não coincidem.');
             const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
             if (error) throw error;
             showMessage('info', 'Verifique seu e-mail para confirmar!');
@@ -177,8 +188,7 @@ export const Settings: React.FC<SettingsProps> = ({
             if (error) throw error;
             showMessage('success', 'Login realizado com sucesso!');
         }
-        setAuthPassword(''); 
-        setConfirmAuthPassword('');
+        setAuthPassword(''); setConfirmAuthPassword('');
     } catch (err: any) {
         showMessage('error', err.message || 'Erro na autenticação');
     } finally {
@@ -186,54 +196,27 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const handleLogout = async () => {
-      await supabase.auth.signOut();
-      showMessage('info', 'Desconectado.');
-  };
-
+  const handleLogout = async () => { await supabase.auth.signOut(); showMessage('info', 'Desconectado.'); };
   const handleSaveToken = () => { onSaveToken(token); showMessage('success', 'Token salvo!'); };
   
   const handleTestBrapi = async () => {
-    if (!token && !isEnvToken) {
-        showMessage('error', 'Token não inserido.');
-        setBrapiStatus('error');
-        setTimeout(() => setBrapiStatus('idle'), 2000);
-        return;
-    }
+    if (!token && !isEnvToken) { showMessage('error', 'Token não inserido.'); setBrapiStatus('error'); setTimeout(() => setBrapiStatus('idle'), 2000); return; }
     setBrapiStatus('checking');
     try {
-        const testTicker = 'PETR4';
         const t = isEnvToken ? process.env.BRAPI_TOKEN : token;
-        const res = await fetch(`https://brapi.dev/api/quote/${testTicker}?token=${t}&range=1d&interval=1d`);
-        if (res.ok) {
-            setBrapiStatus('ok');
-            showMessage('success', 'Conexão Brapi.dev estabelecida!');
-        } else {
-            setBrapiStatus('error');
-            showMessage('error', 'Token inválido ou expirado.');
-        }
-    } catch (e) {
-        setBrapiStatus('error');
-        showMessage('error', 'Falha de rede.');
-    }
-    setTimeout(() => {
-        if(brapiToken) setBrapiStatus('ok');
-        else setBrapiStatus('idle');
-    }, 3000);
+        const res = await fetch(`https://brapi.dev/api/quote/PETR4?token=${t}&range=1d&interval=1d`);
+        if (res.ok) { setBrapiStatus('ok'); showMessage('success', 'Conexão estabelecida!'); } 
+        else { setBrapiStatus('error'); showMessage('error', 'Token inválido.'); }
+    } catch (e) { setBrapiStatus('error'); showMessage('error', 'Falha de rede.'); }
+    setTimeout(() => { if(brapiToken) setBrapiStatus('ok'); else setBrapiStatus('idle'); }, 3000);
   };
   
-  const handleForceSync = async () => {
-    setIsSyncing(true);
-    await onSyncAll(true);
-    setIsSyncing(false);
-  };
-
+  const handleForceSync = async () => { setIsSyncing(true); await onSyncAll(true); setIsSyncing(false); };
   const handleClearQuoteCache = () => { localStorage.removeItem('investfiis_v3_quote_cache'); calculateStorage(); showMessage('success', 'Cache limpo.'); };
   const handleClearDivCache = () => { localStorage.removeItem('investfiis_v4_div_cache'); onImportDividends([]); calculateStorage(); showMessage('success', 'Dados de IA limpos.'); };
 
   const handleExport = () => {
-    const backup = { transactions, geminiDividends, brapiToken: !isEnvToken ? brapiToken : undefined, version: appVersion, exportDate: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ transactions, geminiDividends, brapiToken: !isEnvToken ? brapiToken : undefined, version: appVersion, exportDate: new Date().toISOString() }, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `backup_invest_${new Date().toISOString().split('T')[0]}.json`;
@@ -245,63 +228,130 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!window.confirm('ATENÇÃO: Importar substituirá seus dados. Continuar?')) { e.target.value = ''; return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
         const json = JSON.parse(ev.target?.result as string);
-        if (json.transactions) {
-           onImportTransactions(json.transactions);
-           if(json.geminiDividends) onImportDividends(json.geminiDividends);
-           if(json.brapiToken) onSaveToken(json.brapiToken);
-           showMessage('success', 'Restaurado com sucesso.');
-        }
-      } catch { showMessage('error', 'Arquivo inválido.'); }
+        if (json.transactions) { onImportTransactions(json.transactions); if(json.geminiDividends) onImportDividends(json.geminiDividends); if(json.brapiToken) onSaveToken(json.brapiToken); } 
+        else { showMessage('error', 'Arquivo inválido.'); }
+      } catch { showMessage('error', 'Erro ao ler arquivo.'); }
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
   const handleCheckUpdate = async () => {
-    if (updateAvailable) { 
-        onShowChangelog(); 
-        return; 
-    }
-    
-    if (!navigator.onLine) {
-        setCheckStatus('offline');
-        setTimeout(() => setCheckStatus('idle'), 3000);
-        return;
-    }
-
+    if (updateAvailable) { onShowChangelog(); return; }
+    if (!navigator.onLine) { setCheckStatus('offline'); setTimeout(() => setCheckStatus('idle'), 3000); return; }
     setCheckStatus('checking');
-    
-    const minDelay = new Promise(resolve => setTimeout(resolve, 3000));
-    const checkPromise = onCheckUpdates();
-    
-    const [_, hasUpdate] = await Promise.all([minDelay, checkPromise]);
-    
-    if (hasUpdate) {
-        setCheckStatus('available');
-    } else {
-        setCheckStatus('latest');
-        setTimeout(() => setCheckStatus('idle'), 3000);
+    const [_, hasUpdate] = await Promise.all([new Promise(r => setTimeout(r, 2000)), onCheckUpdates()]);
+    if (hasUpdate) setCheckStatus('available');
+    else { setCheckStatus('latest'); setTimeout(() => setCheckStatus('idle'), 3000); }
+  };
+
+  // Security Functions
+  const handleEnablePin = () => {
+    setShowPinSetup(true);
+    setNewPin('');
+  };
+
+  const handleSavePin = (pin: string) => {
+    if (pin.length === 4) {
+      localStorage.setItem('investfiis_passcode', pin);
+      setPasscode(pin);
+      setShowPinSetup(false);
+      showMessage('success', 'PIN configurado com sucesso!');
     }
   };
 
-  // --- Componentes de UI Auxiliares ---
+  const handleDisableSecurity = () => {
+    if (window.confirm('Tem certeza que deseja remover o bloqueio do app?')) {
+      localStorage.removeItem('investfiis_passcode');
+      localStorage.removeItem('investfiis_biometrics');
+      setPasscode(null);
+      setBiometricsEnabled(false);
+      showMessage('info', 'Segurança desativada.');
+    }
+  };
+
+  const handleToggleBiometrics = async () => {
+      if (biometricsEnabled) {
+          localStorage.setItem('investfiis_biometrics', 'false');
+          setBiometricsEnabled(false);
+          return;
+      }
+
+      if (window.PublicKeyCredential) {
+          try {
+              showMessage('info', 'Autentique para ativar...');
+              const challenge = new Uint8Array(32);
+              window.crypto.getRandomValues(challenge);
+              
+              await navigator.credentials.create({
+                  publicKey: {
+                      challenge,
+                      rp: { name: "InvestFIIs" },
+                      user: {
+                          id: new Uint8Array(16),
+                          name: "user",
+                          displayName: "User"
+                      },
+                      pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+                      authenticatorSelection: { authenticatorAttachment: "platform" },
+                      timeout: 60000,
+                      attestation: "direct"
+                  }
+              });
+              
+              localStorage.setItem('investfiis_biometrics', 'true');
+              setBiometricsEnabled(true);
+              showMessage('success', 'Biometria/PIN do celular ativado!');
+          } catch (e) {
+              console.error(e);
+              showMessage('error', 'Falha ao ativar biometria. Verifique se seu dispositivo suporta.');
+          }
+      } else {
+          showMessage('error', 'Dispositivo não suporta autenticação web.');
+      }
+  };
+
+  const getSectionTitle = (section: string) => {
+    switch(section) {
+        case 'notifications': return 'Notificações';
+        case 'appearance': return 'Aparência';
+        case 'privacy': return 'Privacidade';
+        case 'integrations': return 'Conexões API';
+        case 'data': return 'Alocação e Backup';
+        case 'system': return 'Sistema';
+        case 'updates': return 'Atualizações';
+        case 'about': return 'Sobre o App';
+        case 'security': return 'Segurança';
+        default: return 'Ajustes';
+    }
+  };
+
+  const handleScroll = () => {
+    if (notesContainerRef.current) {
+      setIsHeaderCompact(notesContainerRef.current.scrollTop > 20);
+    }
+  };
+
+  const getNoteIconAndColor = (type: ReleaseNoteType) => {
+    switch (type) {
+      case 'feat': return { Icon: Sparkles, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10' };
+      case 'fix': return { Icon: Check, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' };
+      case 'ui': return { Icon: Palette, color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-500/10' };
+      case 'perf': return { Icon: Zap, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' };
+      default: return { Icon: Star, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-white/10' };
+    }
+  };
 
   const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, colorClass }: any) => (
-    <button 
-      onClick={onClick} 
-      className={`w-full flex items-center justify-between p-4 bg-white dark:bg-[#0f172a] hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all border-b last:border-0 border-slate-100 dark:border-white/5 group gap-4`}
-    >
+    <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-[#0f172a] hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all border-b last:border-0 border-slate-100 dark:border-white/5 group gap-4`}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : colorClass || 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400'}`}>
-                <Icon className="w-5 h-5" strokeWidth={2.5} />
-            </div>
-            <span className={`text-sm font-semibold text-left ${isDestructive ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>
-                {label}
-            </span>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : colorClass || 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400'}`}><Icon className="w-5 h-5" strokeWidth={2.5} /></div>
+            <span className={`text-sm font-semibold text-left ${isDestructive ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>{label}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
             {value && <span className="text-xs font-medium text-slate-400 whitespace-nowrap">{value}</span>}
@@ -314,9 +364,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const Section = ({ title, children }: any) => (
     <div className="mb-6 anim-fade-in-up is-visible">
         {title && <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</h3>}
-        <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5">
-            {children}
-        </div>
+        <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5">{children}</div>
     </div>
   );
 
@@ -335,39 +383,26 @@ export const Settings: React.FC<SettingsProps> = ({
     </div>
   );
 
-  const safeTotal = storageData.totalBytes > 0 ? storageData.totalBytes : 1;
-  const txPercent = (storageData.breakdown.tx / safeTotal) * 100;
-  const quotePercent = (storageData.breakdown.quotes / safeTotal) * 100;
-  const divPercent = (storageData.breakdown.divs / safeTotal) * 100;
+  const txPercent = (storageData.breakdown.tx / (storageData.totalBytes || 1)) * 100;
+  const quotePercent = (storageData.breakdown.quotes / (storageData.totalBytes || 1)) * 100;
+  const divPercent = (storageData.breakdown.divs / (storageData.totalBytes || 1)) * 100;
 
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-      {message && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3.5 rounded-2xl flex items-center gap-3 shadow-2xl z-[60] text-[10px] font-black uppercase tracking-widest text-white transition-all transform anim-fade-in-up is-visible ${message.type === 'success' ? 'bg-emerald-500' : message.type === 'info' ? 'bg-indigo-500' : 'bg-rose-500'}`}>
-          {message.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : message.type === 'info' ? <Info className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-          {message.text}
-        </div>
-      )}
+      {message && <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3.5 rounded-2xl flex items-center gap-3 shadow-2xl z-[60] text-[10px] font-black uppercase tracking-widest text-white transition-all transform anim-fade-in-up is-visible ${message.type === 'success' ? 'bg-emerald-500' : message.type === 'info' ? 'bg-indigo-500' : 'bg-rose-500'}`}>{message.text}</div>}
 
       {activeSection === 'menu' ? (
         <>
             <div className="mb-6 anim-fade-in-up is-visible">
-               <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Conta Cloud (Supabase)</h3>
+               <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Conta Cloud</h3>
                <div className="rounded-[2rem] overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5 bg-white dark:bg-[#0f172a]">
                   {user ? (
                      <div className="p-6 space-y-4">
                          <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500">
-                                 <User className="w-6 h-6" />
-                             </div>
-                             <div className="overflow-hidden">
-                                 <h3 className="font-bold text-slate-900 dark:text-white truncate">Conectado</h3>
-                                 <p className="text-xs text-slate-500 truncate">{user.email}</p>
-                             </div>
+                             <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><User className="w-6 h-6" /></div>
+                             <div className="overflow-hidden"><h3 className="font-bold text-slate-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-slate-500 truncate">{user.email}</p></div>
                          </div>
-                         <button onClick={handleLogout} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all">
-                             <LogOut className="w-4 h-4" /> Sair da Conta
-                         </button>
+                         <button onClick={handleLogout} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
                      </div>
                   ) : (
                      <div className="p-6 space-y-5">
@@ -378,298 +413,299 @@ export const Settings: React.FC<SettingsProps> = ({
                                  <button onClick={() => setAuthMode('signup')} className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${authMode === 'signup' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}>Criar</button>
                              </div>
                          </div>
-                         
                          <div className="space-y-3">
-                             <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input 
-                                    type="email" 
-                                    placeholder="E-mail" 
-                                    className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-4 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white"
-                                    value={authEmail}
-                                    onChange={e => setAuthEmail(e.target.value)}
-                                />
-                             </div>
-                             <div className="relative">
-                                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input 
-                                    type={showAuthPassword ? 'text' : 'password'}
-                                    placeholder="Senha" 
-                                    className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-12 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white"
-                                    value={authPassword}
-                                    onChange={e => setAuthPassword(e.target.value)}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAuthPassword(!showAuthPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors focus:outline-none"
-                                >
-                                    {showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                             </div>
-
-                             {authMode === 'signup' && (
-                                <div className="relative anim-fade-in-up is-visible">
-                                    <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <input 
-                                        type={showConfirmAuthPassword ? 'text' : 'password'}
-                                        placeholder="Confirme sua senha" 
-                                        className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-12 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white"
-                                        value={confirmAuthPassword}
-                                        onChange={e => setConfirmAuthPassword(e.target.value)}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowConfirmAuthPassword(!showConfirmAuthPassword)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors focus:outline-none"
-                                    >
-                                        {showConfirmAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </button>
-                                </div>
-                             )}
+                             <div className="relative"><Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input type="email" placeholder="E-mail" className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-4 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white" value={authEmail} onChange={e => setAuthEmail(e.target.value)} /></div>
+                             <div className="relative"><Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input type={showAuthPassword ? 'text' : 'password'} placeholder="Senha" className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-12 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white" value={authPassword} onChange={e => setAuthPassword(e.target.value)} /><button type="button" onClick={() => setShowAuthPassword(!showAuthPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">{showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div>
+                             {authMode === 'signup' && (<div className="relative anim-fade-in-up is-visible"><ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input type={showConfirmAuthPassword ? 'text' : 'password'} placeholder="Confirme senha" className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-12 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white" value={confirmAuthPassword} onChange={e => setConfirmAuthPassword(e.target.value)} /><button type="button" onClick={() => setShowConfirmAuthPassword(!showConfirmAuthPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">{showConfirmAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div>)}
                          </div>
-                         
-                         <button onClick={handleAuth} disabled={authLoading} className="w-full py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-95 transition-all">
-                             {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (authMode === 'login' ? 'Acessar Conta' : 'Criar Conta')}
-                         </button>
+                         <button onClick={handleAuth} disabled={authLoading} className="w-full py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-95 transition-all">{authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (authMode === 'login' ? 'Acessar Conta' : 'Criar Conta')}</button>
                      </div>
                   )}
                </div>
             </div>
 
             <Section title="Preferências">
-                <MenuItem icon={Palette} label="Aparência e Cores" onClick={() => setActiveSection('appearance')} colorClass="bg-indigo-500/10 text-indigo-500" />
-                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Push Ativado' : ''} colorClass="bg-amber-500/10 text-amber-500" />
-                <MenuItem icon={privacyMode ? EyeOff : Eye} label="Modo Privacidade" onClick={() => onSetPrivacyMode(!privacyMode)} value={privacyMode ? 'Ativado' : 'Desativado'} colorClass="bg-slate-500/10 text-slate-500" />
+                <MenuItem icon={Palette} label="Aparência" onClick={() => setActiveSection('appearance')} colorClass="bg-indigo-500/10 text-indigo-500" />
+                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Ativado' : ''} colorClass="bg-amber-500/10 text-amber-500" />
+                <MenuItem icon={privacyMode ? EyeOff : Eye} label="Privacidade" onClick={() => setActiveSection('privacy')} value={privacyMode ? 'Ativado' : 'Público'} colorClass="bg-slate-500/10 text-slate-500" />
+                <MenuItem icon={ShieldCheck} label="Segurança" onClick={() => setActiveSection('security')} value={passcode ? 'Protegido' : 'Desativado'} colorClass="bg-emerald-500/10 text-emerald-500" />
             </Section>
 
             <Section title="Dados & Sincronização">
-                <MenuItem icon={Globe} label="Conexões & Serviços" onClick={() => setActiveSection('integrations')} value={brapiToken || user ? 'Configurado' : 'Pendente'} colorClass="bg-sky-500/10 text-sky-500" />
-                <MenuItem icon={Database} label="Armazenamento e Backup" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} colorClass="bg-emerald-500/10 text-emerald-500" />
+                <MenuItem icon={Globe} label="Conexões API" onClick={() => setActiveSection('integrations')} value={brapiToken || user ? 'Configurado' : 'Pendente'} colorClass="bg-sky-500/10 text-sky-500" />
+                <MenuItem icon={Database} label="Alocação e Backup" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} colorClass="bg-emerald-500/10 text-emerald-500" />
             </Section>
 
             <Section title="Sistema">
-                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={updateAvailable ? 'Disponível' : `v${appVersion}`} colorClass="bg-purple-500/10 text-purple-500" />
+                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} colorClass="bg-purple-500/10 text-purple-500" />
+                <MenuItem icon={Info} label="Sobre o APP" onClick={() => setActiveSection('about')} colorClass="bg-slate-500/10 text-slate-500" />
                 <MenuItem icon={ShieldAlert} label="Resetar Aplicativo" onClick={() => setActiveSection('system')} isDestructive />
             </Section>
-
-            <div className="text-center mt-8 opacity-40">
-                <p className="text-[10px] font-bold uppercase tracking-widest">InvestFIIs Ultra</p>
-                <p className="text-[9px]">Versão {appVersion}</p>
-            </div>
+            
+            <div className="text-center mt-8 opacity-40"><p className="text-[10px] font-bold uppercase tracking-widest">InvestFIIs Ultra</p><p className="text-[9px]">Versão {appVersion}</p></div>
         </>
       ) : (
         <div className="anim-fade-in is-visible pt-2">
-          {/* ... [Resto do código dos submenus mantido igual] ... */}
-          <button onClick={() => setActiveSection('menu')} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-accent transition-colors mb-6 font-bold text-xs uppercase tracking-wider group px-1">
-            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center group-hover:bg-accent group-hover:text-white transition-all">
-                <ArrowLeft className="w-4 h-4" strokeWidth={3} />
-            </div>
-            <span>Voltar</span>
-          </button>
+          <div className="flex items-center gap-3 mb-6 px-1">
+              <button 
+                onClick={() => setActiveSection('menu')} 
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-all active:scale-95"
+              >
+                  <ArrowLeft className="w-4 h-4" strokeWidth={3} />
+              </button>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                  {getSectionTitle(activeSection)}
+              </h2>
+          </div>
+          
+          {activeSection === 'security' && (
+              <div className="space-y-6">
+                   <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-6 rounded-[2.5rem] border border-emerald-500/20 text-center relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                        <ShieldCheck className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Proteção do App</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Adicione uma camada extra de segurança ao abrir o InvestFIIs.</p>
+                        
+                        {!passcode ? (
+                            <button 
+                                onClick={handleEnablePin}
+                                className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                            >
+                                Ativar Bloqueio
+                            </button>
+                        ) : (
+                            <div className="flex flex-col gap-2">
+                                <div className="px-4 py-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4" /> Protegido com PIN
+                                </div>
+                                <button onClick={handleDisableSecurity} className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-2 hover:underline">Remover Proteção</button>
+                            </div>
+                        )}
+                   </div>
+
+                   {passcode && (
+                       <Section title="Métodos de Desbloqueio">
+                           <Toggle 
+                               label="Biometria / FaceID" 
+                               description="Usar impressão digital ou reconhecimento facial do dispositivo" 
+                               icon={Fingerprint} 
+                               checked={biometricsEnabled} 
+                               onChange={handleToggleBiometrics} 
+                            />
+                       </Section>
+                   )}
+              </div>
+          )}
 
           {activeSection === 'appearance' && (
-            <div className="space-y-6">
-              <div className="relative w-full overflow-hidden rounded-[2.5rem] bg-white dark:bg-[#0b1121] p-8 shadow-sm transition-colors duration-500 border border-slate-200/50 dark:border-white/5">
-                  <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-20 blur-[50px] transition-colors duration-500" style={{ backgroundColor: accentColor }}></div>
-                  <div className="relative z-10">
-                      <div className="mb-6 flex items-center justify-between">
-                           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-white/5 w-fit">
-                              <Wallet className="w-3.5 h-3.5 text-slate-400" strokeWidth={2} />
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Patrimônio</span>
-                           </div>
-                      </div>
-                      <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">R$ 15.420,00</div>
-                  </div>
-              </div>
-              
-              <Section title="Cor de Destaque">
-                  <div className="p-4 bg-white dark:bg-[#0f172a] grid grid-cols-4 gap-3">
-                      {ACCENT_COLORS.map((c) => (
-                           <button 
-                             key={c.hex} 
-                             onClick={() => onSetAccentColor(c.hex)}
-                             className={`group relative flex flex-col items-center justify-center p-2 rounded-2xl transition-all ${accentColor === c.hex ? 'bg-slate-100 dark:bg-white/10' : ''}`}
-                           >
-                              <div className={`w-10 h-10 rounded-full ${c.class} shadow-sm relative flex items-center justify-center transition-transform group-hover:scale-110`}>
-                                 {accentColor === c.hex && <Check className="w-5 h-5 text-white" strokeWidth={3} />}
-                              </div>
-                              <span className="text-[9px] font-bold uppercase tracking-wider mt-2 text-slate-500">{c.name}</span>
-                           </button>
-                      ))}
-                  </div>
-              </Section>
-
-              <Section title="Tema">
-                  <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-white/5 bg-white dark:bg-[#0f172a]">
-                      {[
-                        { id: 'light', icon: Sun, label: 'Claro' },
-                        { id: 'dark', icon: Moon, label: 'Escuro' },
-                        { id: 'system', icon: Monitor, label: 'Auto' }
-                      ].map((mode) => (
-                          <button key={mode.id} onClick={() => onSetTheme(mode.id as ThemeType)} className={`flex flex-col items-center justify-center py-4 gap-2 transition-all ${theme === mode.id ? 'text-accent bg-accent/5' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'}`}>
-                              <mode.icon className="w-5 h-5" strokeWidth={2.5} />
+            <div className="space-y-8">
+              <div>
+                  <h3 className="px-4 mb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tema do Sistema</h3>
+                  <div className="bg-slate-100 dark:bg-white/5 p-1 rounded-[1.5rem] flex items-center">
+                      {[{ id: 'light', icon: Sun, label: 'Claro' }, { id: 'dark', icon: Moon, label: 'Escuro' }, { id: 'system', icon: Monitor, label: 'Auto' }].map((mode) => (
+                          <button 
+                            key={mode.id} 
+                            onClick={() => onSetTheme(mode.id as ThemeType)} 
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[1.2rem] transition-all duration-300 ${theme === mode.id ? 'bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white shadow-sm scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                          >
+                              <mode.icon className="w-4 h-4" strokeWidth={2.5} />
                               <span className="text-[10px] font-bold uppercase tracking-wider">{mode.label}</span>
                           </button>
                       ))}
                   </div>
-              </Section>
-
-              <div className="space-y-3">
-                 <h3 className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Interface</h3>
-                 <Toggle label="Efeito Glassmorphism" icon={Layers} checked={glassMode} onChange={() => setGlassMode(!glassMode)} />
               </div>
+
+              <Section title="Efeitos & Acessibilidade">
+                  <Toggle label="Efeito Glassmorphism" description="Transparência e desfoque nos elementos" icon={Layers} checked={glassMode} onChange={() => setGlassMode(!glassMode)} />
+              </Section>
             </div>
           )}
 
-          {activeSection === 'integrations' && (
+          {activeSection === 'privacy' && (
             <div className="space-y-6">
-                
-                <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Status da Sincronização</h3>
-                        <button onClick={handleForceSync} disabled={isSyncing} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent active:scale-90 transition-all">
-                            <RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                        </button>
-                    </div>
-                     <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs">
-                        <span className="font-bold text-slate-400">Última Atualização</span>
-                        {lastSyncTime ? (
-                            <div className="flex items-center gap-2 text-emerald-500 font-bold">
-                                <span>{lastSyncTime.toLocaleTimeString('pt-BR')}</span>
-                                <CheckCircle2 className="w-4 h-4" />
-                            </div>
-                        ) : (
-                            <span className="font-bold text-slate-400">Pendente</span>
-                        )}
+                <div className="bg-gradient-to-br from-slate-500/10 to-slate-700/10 p-6 rounded-[2.5rem] border border-slate-500/20 text-center relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                    {privacyMode ? <EyeOff className="w-10 h-10 text-slate-500 mx-auto mb-3" /> : <Eye className="w-10 h-10 text-slate-500 mx-auto mb-3" />}
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Configurações de Privacidade</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Oculta valores sensíveis da tela para evitar olhares curiosos em público.</p>
+                    <button 
+                        onClick={() => onSetPrivacyMode(!privacyMode)}
+                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-rose-500 text-white' : 'bg-slate-700 text-white'}`}
+                    >
+                        {privacyMode ? 'Desativar Agora' : 'Ativar Modo Privacidade'}
+                    </button>
+                </div>
+
+                <Section title="Estilo do Desfoque">
+                  <div className="p-4 bg-white dark:bg-[#0f172a] space-y-3">
+                      <div className="flex items-center gap-3 mb-2">
+                          <div className="p-2 bg-slate-100 dark:bg-white/10 rounded-lg text-slate-500"><Aperture className="w-4 h-4" /></div>
+                          <div>
+                              <span className="text-sm font-semibold block text-slate-900 dark:text-white">Intensidade do Blur</span>
+                              <p className="text-[10px] text-slate-400 font-medium">Ajuste o quão ilegível os dados ficam</p>
+                          </div>
+                      </div>
+                      <div className="flex bg-slate-50 dark:bg-white/5 p-1 rounded-xl">
+                          {['low', 'medium', 'high'].map((level) => (
+                              <button
+                                key={level}
+                                onClick={() => setBlurIntensity(level as any)}
+                                className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${blurIntensity === level ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
+                              >
+                                {level === 'low' ? 'Suave' : level === 'medium' ? 'Médio' : 'Forte'}
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+              </Section>
+            </div>
+          )}
+
+          {activeSection === 'about' && (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-12 py-10">
+                <div className="text-center relative">
+                    <div className="absolute inset-0 bg-accent blur-[80px] opacity-20 rounded-full"></div>
+                    <div className="relative z-10">
+                        <div className="w-24 h-24 bg-white dark:bg-white/5 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl ring-1 ring-slate-900/5 dark:ring-white/10">
+                            <Wallet className="w-10 h-10 text-slate-900 dark:text-white" strokeWidth={1.5} />
+                        </div>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">InvestFIIs</h2>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-white/5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">v{appVersion} Pro</span>
+                        </div>
                     </div>
                 </div>
 
-                <Section title="Serviços Conectados">
-                    <div className="bg-white dark:bg-[#0f172a] p-6 space-y-4 border-b border-slate-100 dark:border-white/5">
-                        <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center"><Cloud className="w-6 h-6" /></div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 dark:text-white">Brapi.dev <span className="text-xs font-medium text-slate-400">(Cotações)</span></h3>
-                                    <div className="flex items-center gap-1.5 text-xs font-bold mt-1">
-                                        <span className={`w-2 h-2 rounded-full ${brapiStatus === 'ok' ? 'bg-emerald-500' : brapiStatus === 'error' ? 'bg-rose-500' : 'bg-slate-400'}`}></span>
-                                        <span className={`${brapiStatus === 'ok' ? 'text-emerald-500' : brapiStatus === 'error' ? 'text-rose-500' : 'text-slate-400'}`}>
-                                            {brapiStatus === 'ok' ? 'Conectado' : brapiStatus === 'checking' ? 'Testando...' : brapiStatus === 'error' ? 'Falha' : 'Pendente'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <a href="https://brapi.dev/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent transition-colors"><ExternalLink className="w-4 h-4" /></a>
-                        </div>
-                        <div>
-                            <div className="relative mb-2">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input type="password" value={isEnvToken ? '**************** (Definido no Ambiente)' : token} onChange={(e) => setToken(e.target.value)} disabled={isEnvToken} placeholder="Seu Token de Acesso" className="w-full bg-slate-50 dark:bg-black/20 rounded-xl py-3 pl-11 pr-4 text-xs font-mono outline-none focus:ring-2 focus:ring-accent/50 transition-all disabled:opacity-70" />
-                            </div>
-                            <div className="flex gap-2">
-                                {!isEnvToken && ( <button onClick={handleSaveToken} className="flex-1 bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Salvar</button> )}
-                                <button onClick={handleTestBrapi} className="flex-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2">
-                                    {brapiStatus === 'checking' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Testar'}
-                                </button>
-                            </div>
-                        </div>
+                <div className="space-y-6 w-full max-w-xs text-center">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                        Feito com paixão para simplificar sua jornada de investimentos. Focado em privacidade, performance e elegância.
+                    </p>
+                    
+                    <div className="flex justify-center gap-8 pt-4 border-t border-slate-200 dark:border-white/5 w-3/4 mx-auto">
+                        <button onClick={() => setShowTerms(true)} className="text-[10px] font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest transition-colors">Termos</button>
+                        <button onClick={() => setShowPrivacy(true)} className="text-[10px] font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest transition-colors">Privacidade</button>
                     </div>
-                    <div className="bg-white dark:bg-[#0f172a] p-6 space-y-4">
-                        <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center"><Sparkles className="w-6 h-6" /></div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 dark:text-white">Google Gemini <span className="text-xs font-medium text-slate-400">(IA)</span></h3>
-                                    <div className="flex items-center gap-1.5 text-xs font-bold mt-1 text-emerald-500">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                        <span>Operacional</span>
-                                    </div>
-                                </div>
-                            </div>
-                             <a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent transition-colors"><ExternalLink className="w-4 h-4" /></a>
-                        </div>
-                        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl space-y-3">
-                           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recursos Ativados pela IA</h4>
-                           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-slate-600 dark:text-slate-300 font-medium">
-                               <span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Fundamentos</span>
-                               <span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Sentimento</span>
-                               <span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Proventos</span>
-                               <span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Macroeconomia</span>
-                           </div>
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs">
-                           <span className="font-bold text-slate-400">Modelo em Uso</span>
-                           <span className="font-bold text-purple-500">gemini-2.5-flash</span>
-                        </div>
-                    </div>
-                </Section>
+                </div>
                 
-                <Section title="Diagnóstico">
-                    <div className="bg-white dark:bg-[#0f172a] p-4 space-y-3">
-                       <div className="flex items-center justify-between p-2 rounded-lg">
-                           <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Wifi className="w-4 h-4" /> Conexão com a Internet</span>
-                           <span className={`text-xs font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Online' : 'Offline'}</span>
-                       </div>
-                       <div className="flex items-center justify-between p-2 rounded-lg">
-                           <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Smartphone className="w-4 h-4" /> Service Worker (PWA)</span>
-                           <span className={`text-xs font-bold ${isServiceWorkerActive ? 'text-emerald-500' : 'text-rose-500'}`}>{isServiceWorkerActive ? 'Ativo' : 'Inativo'}</span>
-                       </div>
-                       <div className="flex items-center justify-between p-2 rounded-lg">
-                           <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Server className="w-4 h-4" /> API de Cotações</span>
-                           <span className={`text-xs font-bold ${brapiStatus === 'ok' ? 'text-emerald-500' : 'text-slate-400'}`}>{brapiStatus === 'ok' ? 'Operacional' : 'Indisponível'}</span>
-                       </div>
-                       <div className="flex items-center justify-between p-2 rounded-lg">
-                           <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Cpu className="w-4 h-4" /> API de Inteligência</span>
-                           <span className="text-xs font-bold text-emerald-500">Operacional</span>
-                       </div>
+                <div className="text-[9px] text-slate-300 dark:text-slate-600 font-mono">
+                    Build 2025.06.29 • Secure Enclave
+                </div>
+            </div>
+          )}
+
+          {activeSection === 'notifications' && (
+            <div className="space-y-6">
+                <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 rounded-[2.5rem] border border-amber-500/20 text-center relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                    <Bell className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Push Notifications</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Receba alertas em tempo real sobre dividendos e eventos da carteira.</p>
+                    <button 
+                        onClick={onRequestPushPermission}
+                        disabled={pushEnabled}
+                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${pushEnabled ? 'bg-emerald-500 text-white cursor-default' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
+                    >
+                        {pushEnabled ? 'Ativado ✓' : 'Ativar Notificações'}
+                    </button>
+                </div>
+
+                <div className="mb-6 anim-fade-in-up is-visible">
+                    <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Alertas Específicos</h3>
+                    <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5 space-y-3 p-3 bg-white dark:bg-[#0f172a]">
+                        <Toggle label="Pagamentos Recebidos" description="Quando o dinheiro cair na conta" icon={BadgeDollarSignIcon} checked={notifyDivs} onChange={() => setNotifyDivs(!notifyDivs)} />
+                        <Toggle label="Data Com" description="Avisar no último dia para garantir proventos" icon={Calendar} checked={notifyDataCom} onChange={() => setNotifyDataCom(!notifyDataCom)} />
+                        <Toggle label="Metas Atingidas" description="Magic Number e objetivos de renda" icon={Target} checked={notifyGoals} onChange={() => setNotifyGoals(!notifyGoals)} />
+                        <Toggle label="Atualizações do App" description="Novas versões e melhorias" icon={Rocket} checked={notifyUpdates} onChange={() => setNotifyUpdates(!notifyUpdates)} />
                     </div>
-                </Section>
+                </div>
             </div>
           )}
 
           {activeSection === 'data' && (
              <div className="space-y-6">
-                 <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-slate-900 dark:text-white">Armazenamento</h3>
-                        <span className="text-xs font-mono text-slate-400">{formatBytes(storageData.totalBytes)}</span>
+                 <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 flex items-center gap-6">
+                    <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
+                        <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                            <path className="text-slate-100 dark:text-white/5" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
+                            <path className="text-indigo-500" strokeDasharray={`${txPercent}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                            <path className="text-sky-500" strokeDasharray={`${quotePercent}, 100`} strokeDashoffset={`-${txPercent}`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <Database className="w-5 h-5 text-slate-400 mb-1" strokeWidth={1.5} />
+                        </div>
                     </div>
-                    
-                    <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden flex mb-4">
-                        <div style={{ width: `${txPercent}%` }} className="h-full bg-indigo-500" />
-                        <div style={{ width: `${quotePercent}%` }} className="h-full bg-sky-500" />
-                        <div style={{ width: `${divPercent}%` }} className="h-full bg-purple-500" />
-                    </div>
-
-                    <div className="flex justify-between text-[9px] font-bold uppercase text-slate-400">
-                        <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div> Pessoal</span>
-                        <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-sky-500"></div> Cache</span>
-                        <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> IA</span>
+                    <div className="flex-1">
+                        <h3 className="font-bold text-slate-900 dark:text-white mb-1">Armazenamento</h3>
+                        <p className="text-xs font-mono text-slate-400 mb-3">{formatBytes(storageData.totalBytes)} usados</p>
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                                <div className="w-2 h-2 rounded-full bg-indigo-500"></div> Transações
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                                <div className="w-2 h-2 rounded-full bg-sky-500"></div> Cache de Cotações
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                                <div className="w-2 h-2 rounded-full bg-purple-500"></div> Dados de IA
+                            </div>
+                        </div>
                     </div>
                  </div>
 
-                 <Section title="Cache Local">
-                    <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-4 border-b border-slate-100 dark:border-white/5 bg-white dark:bg-[#0f172a] active:bg-slate-50 dark:active:bg-white/5">
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Cotações</span>
-                        <span className="text-xs text-slate-400">{formatBytes(storageData.breakdown.quotes)}</span>
-                    </button>
-                    <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-4 bg-white dark:bg-[#0f172a] active:bg-slate-50 dark:active:bg-white/5">
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Dados IA</span>
-                        <span className="text-xs text-slate-400">{formatBytes(storageData.breakdown.divs)}</span>
-                    </button>
-                 </Section>
-
                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={handleExport} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all text-xs font-bold uppercase tracking-wider">
-                        <Download className="w-4 h-4" /> Backup
+                    <button onClick={handleExport} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-4 rounded-3xl flex flex-col items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+                        <Download className="w-6 h-6" strokeWidth={1.5} />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Backup</span>
                     </button>
-                    <button onClick={handleImportClick} className="bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white py-4 rounded-2xl flex items-center justify-center gap-2 border border-slate-200/50 dark:border-white/5 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider">
-                        <Upload className="w-4 h-4" /> Restaurar
+                    <button onClick={handleImportClick} className="bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white p-4 rounded-3xl flex flex-col items-center justify-center gap-2 border border-slate-200/50 dark:border-white/5 active:scale-95 transition-all">
+                        <Upload className="w-6 h-6" strokeWidth={1.5} />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Restaurar</span>
                     </button>
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                  </div>
+
+                 <Section title="Gerenciamento de Cache">
+                    <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-4 border-b border-slate-100 dark:border-white/5 bg-white dark:bg-[#0f172a] active:bg-slate-50 dark:active:bg-white/5">
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Cotações</span>
+                        <span className="text-xs text-slate-400 bg-slate-100 dark:bg-white/10 px-2 py-1 rounded-md">{formatBytes(storageData.breakdown.quotes)}</span>
+                    </button>
+                    <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-4 bg-white dark:bg-[#0f172a] active:bg-slate-50 dark:active:bg-white/5">
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Dados IA</span>
+                        <span className="text-xs text-slate-400 bg-slate-100 dark:bg-white/10 px-2 py-1 rounded-md">{formatBytes(storageData.breakdown.divs)}</span>
+                    </button>
+                 </Section>
              </div>
+          )}
+
+          {activeSection === 'integrations' && (
+            <div className="space-y-6">
+                <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Status da Sincronização</h3><button onClick={handleForceSync} disabled={isSyncing} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent active:scale-90 transition-all"><RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /></button></div>
+                     <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs"><span className="font-bold text-slate-400">Última Atualização</span>{lastSyncTime ? (<div className="flex items-center gap-2 text-emerald-500 font-bold"><span>{lastSyncTime.toLocaleTimeString('pt-BR')}</span><CheckCircle2 className="w-4 h-4" /></div>) : (<span className="font-bold text-slate-400">Pendente</span>)}</div>
+                </div>
+                <Section title="Serviços Conectados">
+                    <div className="bg-white dark:bg-[#0f172a] p-6 space-y-4 border-b border-slate-100 dark:border-white/5">
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center"><Cloud className="w-6 h-6" /></div><div><h3 className="font-bold text-slate-900 dark:text-white">Brapi.dev <span className="text-xs font-medium text-slate-400">(Cotações)</span></h3><div className="flex items-center gap-1.5 text-xs font-bold mt-1"><span className={`w-2 h-2 rounded-full ${brapiStatus === 'ok' ? 'bg-emerald-500' : brapiStatus === 'error' ? 'bg-rose-500' : 'bg-slate-400'}`}></span><span className={`${brapiStatus === 'ok' ? 'text-emerald-500' : brapiStatus === 'error' ? 'text-rose-500' : 'text-slate-400'}`}>{brapiStatus === 'ok' ? 'Conectado' : brapiStatus === 'checking' ? 'Testando...' : brapiStatus === 'error' ? 'Falha' : 'Pendente'}</span></div></div></div>
+                            <a href="https://brapi.dev/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent transition-colors"><ExternalLink className="w-4 h-4" /></a>
+                        </div>
+                        <div><div className="relative mb-2"><Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input type="password" value={isEnvToken ? '**************** (Definido no Ambiente)' : token} onChange={(e) => setToken(e.target.value)} disabled={isEnvToken} placeholder="Seu Token de Acesso" className="w-full bg-slate-50 dark:bg-black/20 rounded-xl py-3 pl-11 pr-4 text-xs font-mono outline-none focus:ring-2 focus:ring-accent/50 transition-all disabled:opacity-70" /></div><div className="flex gap-2">{!isEnvToken && ( <button onClick={handleSaveToken} className="flex-1 bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Salvar</button> )}<button onClick={handleTestBrapi} className="flex-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2">{brapiStatus === 'checking' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Testar'}</button></div></div>
+                    </div>
+                    <div className="bg-white dark:bg-[#0f172a] p-6 space-y-4">
+                        <div className="flex justify-between items-start"><div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center"><Sparkles className="w-6 h-6" /></div><div><h3 className="font-bold text-slate-900 dark:text-white">Google Gemini <span className="text-xs font-medium text-slate-400">(IA)</span></h3><div className="flex items-center gap-1.5 text-xs font-bold mt-1 text-emerald-500"><span className="w-2 h-2 rounded-full bg-emerald-500"></span><span>Operacional</span></div></div></div><a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent transition-colors"><ExternalLink className="w-4 h-4" /></a></div>
+                        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl space-y-3"><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recursos Ativados pela IA</h4><div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-slate-600 dark:text-slate-300 font-medium"><span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Fundamentos</span><span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Sentimento</span><span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Proventos</span><span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Macroeconomia</span></div></div>
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs"><span className="font-bold text-slate-400">Modelo em Uso</span><span className="font-bold text-purple-500">gemini-2.5-flash</span></div>
+                    </div>
+                </Section>
+                <Section title="Diagnóstico">
+                    <div className="bg-white dark:bg-[#0f172a] p-4 space-y-3">
+                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Wifi className="w-4 h-4" /> Conexão com a Internet</span><span className={`text-xs font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Online' : 'Offline'}</span></div>
+                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Smartphone className="w-4 h-4" /> Service Worker (PWA)</span><span className={`text-xs font-bold ${isServiceWorkerActive ? 'text-emerald-500' : 'text-rose-500'}`}>{isServiceWorkerActive ? 'Ativo' : 'Inativo'}</span></div>
+                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Server className="w-4 h-4" /> API de Cotações</span><span className={`text-xs font-bold ${brapiStatus === 'ok' ? 'text-emerald-500' : 'text-slate-400'}`}>{brapiStatus === 'ok' ? 'Operacional' : 'Indisponível'}</span></div>
+                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Cpu className="w-4 h-4" /> API de Inteligência</span><span className="text-xs font-bold text-emerald-500">Operacional</span></div>
+                    </div>
+                </Section>
+            </div>
           )}
 
           {activeSection === 'system' && (
@@ -686,94 +722,117 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
           
           {activeSection === 'updates' && (
-              <div className="flex flex-col items-center justify-center py-10 space-y-6">
-                   <div className="relative">
-                        <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-accent/10 scale-110' : checkStatus === 'offline' ? 'bg-rose-500/10' : 'bg-slate-100 dark:bg-white/5'}`}>
+             <div className="h-[calc(100vh-16rem)] -my-2 flex flex-col bg-gradient-to-b from-[#0b1121] to-[#020617] rounded-3xl overflow-hidden shadow-2xl">
+                {/* --- Animated Header --- */}
+                <div className={`relative z-10 text-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'pt-4 pb-4 backdrop-blur-md bg-black/20 border-b border-white/5' : 'pt-12 pb-6'}`}>
+                    <div className={`relative mx-auto transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'w-16 h-16 mb-2' : 'w-24 h-24 mb-4'}`}>
+                        <div className={`w-full h-full rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-white/5 scale-110' : updateAvailable ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                             {checkStatus === 'checking' ? (
-                                <>
-                                    <div className="absolute inset-0 rounded-full border-4 border-accent/20 animate-[spin_3s_linear_infinite]"></div>
-                                    <div className="absolute inset-2 rounded-full border-4 border-accent/40 animate-[spin_2s_linear_infinite_reverse]"></div>
-                                    <Search className="w-12 h-12 text-accent animate-pulse" />
-                                </>
-                            ) : checkStatus === 'latest' ? (
-                                <CheckCircle2 className="w-12 h-12 text-emerald-500 anim-scale-in is-visible" />
-                            ) : updateAvailable || checkStatus === 'available' ? (
-                                <Rocket className="w-12 h-12 text-amber-500 animate-bounce" />
-                            ) : checkStatus === 'offline' ? (
-                                <WifiOff className="w-12 h-12 text-rose-500" />
+                                <div className="absolute inset-0 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
+                            ) : updateAvailable ? (
+                                <Rocket className="w-1/2 h-1/2 animate-bounce" strokeWidth={1.5} />
                             ) : (
-                                <RefreshCcw className="w-12 h-12 text-slate-400" />
+                                <CheckCircle2 className="w-1/2 h-1/2" strokeWidth={1.5} />
                             )}
                         </div>
-                   </div>
-                   
-                   <div className="text-center">
-                       <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-1">v{appVersion}</h2>
-                       <div className="space-y-1">
-                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest h-4">
-                               {checkStatus === 'checking' ? 'Buscando atualizações...' : 
-                                checkStatus === 'latest' ? 'Sistema Atualizado' :
-                                checkStatus === 'offline' ? 'Sem Conexão' :
-                                updateAvailable || checkStatus === 'available' ? 'Atualização Encontrada' : 
-                                'Versão Instalada'}
-                           </p>
-                           {lastChecked && checkStatus !== 'checking' && (
-                               <p className="text-[9px] font-medium text-slate-300 dark:text-slate-600">
-                                   Última checagem: {new Date(lastChecked).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                               </p>
-                           )}
-                       </div>
-                   </div>
+                        {checkStatus === 'checking' && <div className="absolute inset-0 rounded-full animate-ping bg-indigo-500/10"></div>}
+                    </div>
+                    
+                    <h2 className={`font-black text-white tracking-tighter transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'text-xl' : 'text-3xl'}`}>
+                        {updateAvailable ? 'Nova Versão' : 'Tudo em Dia'}
+                    </h2>
+                    
+                    <div className={`overflow-hidden transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'max-h-0 opacity-0' : 'max-h-12 opacity-100'}`}>
+                        <p className="text-sm font-medium text-slate-400 mt-1 mb-4">
+                            {updateAvailable ? `A versão ${availableVersion || ''} está disponível.` : `Você está rodando a v${appVersion}`}
+                        </p>
+                    </div>
 
-                   {/* Botão de Atualização Aprimorado (Scanner Animation) */}
-                   <button 
-                     onClick={handleCheckUpdate}
-                     disabled={checkStatus === 'checking' || checkStatus === 'latest'}
-                     className={`relative overflow-hidden w-full max-w-xs py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-lg flex items-center justify-center gap-3 group ${
-                       checkStatus === 'latest' ? 'bg-emerald-500 text-white cursor-default' :
-                       updateAvailable || checkStatus === 'available' ? 'bg-amber-500 text-white shadow-amber-500/20' :
-                       checkStatus === 'offline' ? 'bg-rose-500 text-white cursor-not-allowed' :
-                       'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                     }`}
-                   >
-                       {/* Scanner Effect */}
-                       {checkStatus === 'checking' && (
-                           <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent translate-x-[-100%] animate-[shimmer_1.5s_infinite]"></div>
-                       )}
-                       
-                       <span className="relative z-10 flex items-center gap-2">
-                           {checkStatus === 'checking' ? (
-                               <>SCANNING...</>
-                           ) : checkStatus === 'latest' ? (
-                               <><Check className="w-4 h-4" /> TUDO OK</>
-                           ) : updateAvailable || checkStatus === 'available' ? (
-                               <><Download className="w-4 h-4" /> INSTALAR AGORA</>
-                           ) : checkStatus === 'offline' ? (
-                               <><WifiOff className="w-4 h-4" /> OFFLINE</>
-                           ) : (
-                               <><RefreshCcw className="w-4 h-4 transition-transform group-hover:rotate-180 duration-500" /> VERIFICAR</>
-                           )}
-                       </span>
-                   </button>
-
-                   <div className="w-full max-w-xs mt-8 border-t border-slate-200 dark:border-white/10 pt-6">
-                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Notas da Versão</h4>
-                       <div className="space-y-4">
-                          {releaseNotes && releaseNotes.length > 0 ? releaseNotes.map((note, i) => (
-                              <div key={i} className="flex gap-3">
-                                  <div className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${note.type === 'feat' ? 'bg-amber-500' : 'bg-accent'}`}></div>
-                                  <div>
-                                      <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight mb-0.5">{note.title}</p>
-                                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{note.desc}</p>
-                                  </div>
-                              </div>
-                          )) : <p className="text-center text-xs text-slate-400 italic">Sem notas.</p>}
-                       </div>
-                   </div>
-              </div>
+                    <button 
+                        onClick={handleCheckUpdate}
+                        disabled={checkStatus === 'checking'}
+                        className={`group relative overflow-hidden px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all shadow-xl hover:shadow-2xl active:scale-95 flex items-center gap-2 mx-auto duration-500 ease-out-quint ${isHeaderCompact ? 'scale-90' : 'scale-100'} ${
+                            updateAvailable 
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30' 
+                            : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-indigo-500/30'
+                        }`}
+                    >
+                        <span className="relative z-10 flex items-center gap-2">
+                            {checkStatus === 'checking' ? <>Buscando...</> : updateAvailable ? <><Download className="w-4 h-4" /> Atualizar</> : <><RefreshCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" /> Verificar</>}
+                        </span>
+                        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                    </button>
+                </div>
+                
+                {/* --- Scrollable Notes --- */}
+                {(releaseNotes && releaseNotes.length > 0) && (
+                    <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-3 p-4">
+                       <h3 className={`text-xs font-bold text-slate-400 uppercase tracking-widest transition-all duration-300 ${isHeaderCompact ? 'opacity-100 mt-2' : 'opacity-0 h-0 pointer-events-none'}`}>
+                         Notas da v{availableVersion || appVersion}
+                       </h3>
+                       {releaseNotes.map((note, i) => {
+                          const { Icon, color, bg } = getNoteIconAndColor(note.type);
+                          return (
+                            <div key={i} className="flex gap-4 items-start p-4 bg-white/5 rounded-2xl border border-white/5">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${bg} ${color}`}>
+                                    <Icon className="w-4 h-4" strokeWidth={2.5} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-white leading-tight mb-1">{note.title}</h4>
+                                    <p className="text-xs text-slate-400 leading-relaxed font-medium">{note.desc}</p>
+                                </div>
+                            </div>
+                          );
+                       })}
+                    </div>
+                )}
+             </div>
           )}
         </div>
       )}
+
+      {/* Security Setup Modal */}
+      <SwipeableModal isOpen={showPinSetup} onClose={() => setShowPinSetup(false)}>
+        <div className="px-6 py-4">
+             <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                    <KeyRound className="w-8 h-8 text-slate-400" strokeWidth={1.5} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Definir PIN</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[200px] mx-auto">Crie uma senha de 4 dígitos para proteger seu acesso.</p>
+             </div>
+             
+             <div className="flex justify-center gap-4 mb-8">
+                 {[0, 1, 2, 3].map(i => (
+                     <div key={i} className={`w-4 h-4 rounded-full border-2 border-slate-200 dark:border-white/20 ${newPin.length > i ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent'}`} />
+                 ))}
+             </div>
+             
+             <div className="grid grid-cols-3 gap-4 max-w-[280px] mx-auto">
+                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(num => (
+                     <button 
+                        key={num} 
+                        onClick={() => {
+                            if (newPin.length < 4) {
+                                const val = newPin + num;
+                                setNewPin(val);
+                                if (val.length === 4) handleSavePin(val);
+                            }
+                        }}
+                        className={`w-16 h-16 rounded-2xl bg-slate-50 dark:bg-white/5 text-xl font-bold flex items-center justify-center active:scale-90 transition-transform ${num === 0 ? 'col-start-2' : ''}`}
+                     >
+                         {num}
+                     </button>
+                 ))}
+                 <button 
+                    onClick={() => setNewPin(prev => prev.slice(0, -1))}
+                    className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center active:scale-90 transition-transform col-start-3 row-start-4"
+                 >
+                     <Trash2 className="w-6 h-6 text-rose-500" />
+                 </button>
+             </div>
+        </div>
+      </SwipeableModal>
     </div>
   );
 };

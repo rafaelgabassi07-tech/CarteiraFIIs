@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-core-v6.6.1'; // Ensure this matches package.json
+const CACHE_NAME = 'investfiis-core-v7.0.4'; // Incrementado para garantir atualização
 
 // Arquivos vitais que devem estar disponíveis offline imediatamente
 const PRECACHE_ASSETS = [
@@ -9,8 +9,7 @@ const PRECACHE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  // Instalação: Cacheia o essencial imediatamente
-  // NÃO usamos skipWaiting() aqui automaticamente para evitar atualização forçada sem aviso
+  self.skipWaiting(); // Força atualização imediata do SW
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
@@ -39,16 +38,19 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+  
+  // Ignorar esquemas não suportados (chrome-extension, data, file, etc)
+  if (!url.protocol.startsWith('http')) {
+      return; 
+  }
 
   // A) Version.json: CRÍTICO - NUNCA CACHEAR
-  // Adiciona cabeçalhos anti-cache na requisição de rede
   if (url.pathname.includes('version.json')) {
       event.respondWith(
           fetch(event.request, { 
               cache: 'no-store',
               headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
           }).catch(() => {
-              // Retorna erro 404 ou JSON vazio se offline, mas nunca cache antigo
               return new Response(JSON.stringify({ error: 'offline' }), { 
                   headers: { 'Content-Type': 'application/json' } 
               });
@@ -70,17 +72,82 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Cacheia apenas sucessos válidos
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-           const responseToCache = networkResponse.clone();
-           caches.open(CACHE_NAME).then((cache) => {
-               cache.put(event.request, responseToCache);
-           });
+        // Cacheia apenas sucessos válidos e garante que o esquema é http/https
+        if (networkResponse && networkResponse.status === 200) {
+           // Verifica se é um request básico ou CORS (para imagens/fontes externas)
+           if (networkResponse.type === 'basic' || networkResponse.type === 'cors') {
+               const responseToCache = networkResponse.clone();
+               caches.open(CACHE_NAME).then((cache) => {
+                   try {
+                       if (event.request.url.startsWith('http')) {
+                           cache.put(event.request, responseToCache);
+                       }
+                   } catch (err) {
+                       // Silencia erros de escrita de cache
+                   }
+               });
+           }
         }
         return networkResponse;
       }).catch(() => {});
 
       return cachedResponse || fetchPromise;
+    })
+  );
+});
+
+// --- PUSH NOTIFICATIONS (Background Support) ---
+
+self.addEventListener('push', function(event) {
+  // Tenta ler os dados enviados pelo servidor (payload JSON)
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: 'InvestFIIs', message: event.data.text() };
+    }
+  } else {
+    data = { title: 'InvestFIIs', message: 'Nova atualização na sua carteira.' };
+  }
+
+  const options = {
+    body: data.message,
+    icon: '/pwa-192x192.png', // Certifique-se que este ícone existe
+    badge: '/pwa-192x192.png', // Ícone pequeno para a barra de status (Android)
+    vibrate: [100, 50, 100],
+    data: {
+      url: data.url || '/' // URL para abrir ao clicar
+    },
+    actions: [
+      { action: 'open_app', title: 'Ver Carteira' }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+
+  // URL para abrir
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Se o app já estiver aberto, foca nele
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Se não, abre uma nova janela
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
     })
   );
 });

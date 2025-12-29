@@ -18,30 +18,38 @@ export const useUpdateManager = (currentAppVersion: string) => {
   const [lastChecked, setLastChecked] = useState<number>(Date.now());
   
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
-  const isUserUpdateRef = useRef(false); // Ref para controlar se o reload foi solicitado pelo usuário
+  const isUserUpdateRef = useRef(false);
 
   // 1. Busca Metadados (JSON)
   const fetchVersionMetadata = useCallback(async () => {
     try {
-      // Adiciona timestamp para evitar cache do navegador na requisição fetch
-      const res = await fetch(`./version.json?t=${Date.now()}`, { 
+      // Adiciona timestamp e random para evitar cache agressivo de CDNs ou browsers
+      const res = await fetch(`./version.json?t=${Date.now()}&r=${Math.random()}`, { 
         cache: 'no-store',
-        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+        headers: { 
+            'Pragma': 'no-cache', 
+            'Cache-Control': 'no-cache, no-store, must-revalidate' 
+        }
       });
       
       if (res.ok) {
         const data: VersionData = await res.json();
-        setAvailableVersion(data.version);
+        
+        // SEMPRE atualiza as notas, independente da versão
+        // Isso corrige o bug onde as notas sumiam se o app já estivesse atualizado
         setReleaseNotes(data.notes || []);
-        return data;
+        
+        // Verifica se a versão do JSON é diferente da atual
+        if (data.version !== currentAppVersion) {
+            setAvailableVersion(data.version);
+            return data;
+        }
       }
     } catch (error) {
       console.warn('Falha ao buscar metadados da versão:', error);
-      // Fallback visual caso o JSON falhe
-      setReleaseNotes([{ type: 'fix', title: 'Melhorias de Desempenho', desc: 'Atualização de estabilidade e correções internas.' }]);
     }
     return null;
-  }, []);
+  }, [currentAppVersion]);
 
   // 2. Inicialização e Registro do Service Worker
   useEffect(() => {
@@ -49,17 +57,19 @@ export const useUpdateManager = (currentAppVersion: string) => {
     const lastVersion = localStorage.getItem('investfiis_version');
     if (lastVersion && lastVersion !== currentAppVersion) {
         setWasUpdated(true);
-        // Só mostramos o changelog se realmente mudou a versão
+        // Busca as notas para exibir no modal de Changelog pós-update
         fetchVersionMetadata().then(() => setShowChangelog(true));
+    } else {
+        // Se não houve update recente, busca notas apenas para popular a tela de Configurações
+        fetchVersionMetadata();
     }
+    
     localStorage.setItem('investfiis_version', currentAppVersion);
 
     if (!('serviceWorker' in navigator)) return;
 
     // Handler para quando a atualização de fato ocorre
     const handleControllerChange = () => {
-        // CRÍTICO: Só recarrega a página se o usuário clicou em "Atualizar"
-        // Isso previne loops de reload se o navegador atualizar o SW em background
         if (isUserUpdateRef.current) {
             window.location.reload();
         }
@@ -72,25 +82,23 @@ export const useUpdateManager = (currentAppVersion: string) => {
             const reg = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
             swRegistrationRef.current = reg;
 
-            // Função auxiliar para processar update encontrado
             const handleUpdateFound = async () => {
-                await fetchVersionMetadata(); // Garante que temos as notas ANTES de avisar
-                setIsUpdateAvailable(true);
-                setShowUpdateBanner(true);
+                const meta = await fetchVersionMetadata(); 
+                if (meta || reg.waiting) {
+                    setIsUpdateAvailable(true);
+                    setShowUpdateBanner(true);
+                }
             };
 
-            // A) Já existe um worker esperando? (Update baixado anteriormente)
             if (reg.waiting) {
                 console.log('SW: Update waiting detected on load');
                 handleUpdateFound();
             }
 
-            // B) Monitorar novas instalações
             reg.addEventListener('updatefound', () => {
                 const newWorker = reg.installing;
                 if (newWorker) {
                     newWorker.addEventListener('statechange', () => {
-                        // Se chegou em 'installed' e já existe um controlador atual, é um update
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                             console.log('SW: New update installed and waiting');
                             handleUpdateFound();
@@ -99,9 +107,9 @@ export const useUpdateManager = (currentAppVersion: string) => {
                 }
             });
 
-            // Checagem periódica suave (a cada 1 hora)
             setInterval(() => {
                 reg.update();
+                fetchVersionMetadata(); // Também verifica o JSON periodicamente
             }, 60 * 60 * 1000);
 
         } catch (err) {
@@ -120,21 +128,24 @@ export const useUpdateManager = (currentAppVersion: string) => {
   const checkForUpdates = useCallback(async () => {
      setLastChecked(Date.now());
      
-     if (!swRegistrationRef.current) {
-         const meta = await fetchVersionMetadata();
-         return meta ? meta.version !== currentAppVersion : false;
+     // 1. Checagem rápida via JSON (Metadados)
+     const meta = await fetchVersionMetadata();
+     if (meta && meta.version !== currentAppVersion) {
+         setIsUpdateAvailable(true);
+         return true;
      }
 
-     try {
-         await swRegistrationRef.current.update();
-         
-         if (swRegistrationRef.current.waiting) {
-             await fetchVersionMetadata();
-             setIsUpdateAvailable(true);
-             return true;
+     // 2. Checagem profunda via Service Worker
+     if (swRegistrationRef.current) {
+         try {
+             await swRegistrationRef.current.update();
+             if (swRegistrationRef.current.waiting || swRegistrationRef.current.installing) {
+                 setIsUpdateAvailable(true);
+                 return true;
+             }
+         } catch (e) {
+             console.warn("Erro na checagem manual do SW:", e);
          }
-     } catch (e) {
-         console.warn("Erro na checagem manual:", e);
      }
      
      return false;
@@ -143,16 +154,15 @@ export const useUpdateManager = (currentAppVersion: string) => {
   // 4. Aplicar Atualização
   const startUpdateProcess = useCallback(() => {
      const reg = swRegistrationRef.current;
+     
      if (!reg || !reg.waiting) {
          window.location.reload();
          return;
      }
 
-     // MARCA A REF: Agora sim permitimos o reload automático no controllerchange
      isUserUpdateRef.current = true;
      setUpdateProgress(10);
      
-     // Envia sinal para o SW pular a espera
      reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
      
      let p = 10;
@@ -162,7 +172,10 @@ export const useUpdateManager = (currentAppVersion: string) => {
          setUpdateProgress(p);
      }, 200);
 
-     setTimeout(() => clearInterval(interval), 5000); 
+     setTimeout(() => {
+         clearInterval(interval);
+         window.location.reload();
+     }, 4000); 
   }, []);
 
   return {
