@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star } from 'lucide-react';
-import { Transaction, DividendReceipt } from '../types';
-// FIX: Correctly import ThemeType from SettingsContext and remove unused types.
+// FIX: Unused types removed. Data is now managed by hooks.
 import { ThemeType } from '../contexts/SettingsContext';
 import { supabase } from '../services/supabase';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';

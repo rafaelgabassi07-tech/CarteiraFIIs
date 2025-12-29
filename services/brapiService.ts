@@ -1,7 +1,7 @@
 import { BrapiQuote } from '../types';
 
-// A chave de API agora é lida do ambiente do Vite, injetado no momento da compilação.
-const BRAPI_TOKEN = process.env.BRAPI_TOKEN;
+// A chave de API agora é lida do ambiente do Vite, seguindo o padrão VITE_.
+const BRAPI_TOKEN = import.meta.env.VITE_BRAPI_TOKEN;
 
 /**
  * Busca cotações de ativos diretamente da API da Brapi.
@@ -13,7 +13,7 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
     return { quotes: [] };
   }
   if (!BRAPI_TOKEN) {
-    const errorMsg = "Chave da API Brapi (BRAPI_TOKEN) não configurada.";
+    const errorMsg = "Chave da API Brapi (VITE_BRAPI_TOKEN) não configurada.";
     console.error(errorMsg);
     return { quotes: [], error: errorMsg };
   }
