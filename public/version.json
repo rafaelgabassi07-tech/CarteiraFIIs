@@ -1,21 +1,21 @@
 {
-  "version": "7.0.2",
-  "date": "2025-07-01",
+  "version": "7.0.4",
+  "date": "2025-07-02",
   "notes": [
     {
-      "type": "feat",
-      "title": "Backup e Restauração Aprimorados",
-      "desc": "Sistema de backup mais seguro e intuitivo com confirmação e validação de arquivos."
+      "type": "fix",
+      "title": "Correção de Compilação",
+      "desc": "Resolvidos erros de tipo e dependências instáveis que impediam a compilação em ambientes de produção."
+    },
+    {
+      "type": "perf",
+      "title": "Estabilidade do Service Worker",
+      "desc": "Ajustado o ciclo de vida do Service Worker para prevenir recarregamentos inesperados e garantir uma atualização mais suave."
     },
     {
       "type": "ui",
-      "title": "Agenda de Proventos Unificada",
-      "desc": "Pagamentos e 'Datas Com' agora são exibidos em uma única linha do tempo cronológica para maior clareza."
-    },
-    {
-      "type": "fix",
-      "title": "Estabilidade da Home",
-      "desc": "Corrigido um erro crítico que causava o travamento do aplicativo ao iniciar."
+      "title": "Melhorias de Tipagem Interna",
+      "desc": "Reforçada a segurança de tipos em componentes-chave para prevenir erros implícitos e melhorar a robustez do código."
     }
   ]
 }

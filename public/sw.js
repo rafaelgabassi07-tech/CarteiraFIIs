@@ -1,4 +1,3 @@
-
 const CACHE_NAME = 'investfiis-core-v7.0.4'; // Incrementado para garantir atualização
 
 // Arquivos vitais que devem estar disponíveis offline imediatamente
@@ -9,7 +8,6 @@ const PRECACHE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Força atualização imediata do SW
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
