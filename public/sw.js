@@ -1,4 +1,4 @@
-const CACHE_NAME = 'investfiis-core-v7.0.8'; // Incrementado para garantir atualização
+const CACHE_NAME = 'investfiis-core-v7.0.9'; // Incrementado para garantir atualização
 
 // Arquivos vitais que devem estar disponíveis offline imediatamente
 const PRECACHE_ASSETS = [
