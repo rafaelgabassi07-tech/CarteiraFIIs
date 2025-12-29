@@ -3,15 +3,13 @@ import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Dat
 import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
 import { ThemeType } from '../App';
 import { supabase } from '../services/supabase';
-import { SwipeableModal } from '../components/Layout';
+import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 
 const BadgeDollarSignIcon = (props: any) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.78 4.78 4 4 0 0 1-6.74 0 4 4 0 0 1-4.78-4.78 4 4 0 0 1 0-6.74Z"/><path d="M12 8v8"/><path d="M9.5 10.5c5.5-2.5 5.5 5.5 0 3"/></svg>
 );
 
 interface SettingsProps {
-  brapiToken: string;
-  onSaveToken: (token: string) => void;
   transactions: Transaction[];
   onImportTransactions: (data: Transaction[]) => void;
   geminiDividends: DividendReceipt[];
@@ -37,17 +35,16 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ 
-  brapiToken, onSaveToken, transactions, onImportTransactions,
+  transactions, onImportTransactions,
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
   appVersion, availableVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
   pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll
 }) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates' | 'about' | 'security' | 'privacy'>('menu');
-  const [token, setToken] = useState(brapiToken);
   const [message, setMessage] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isEnvToken = process.env.BRAPI_TOKEN === brapiToken && !!process.env.BRAPI_TOKEN;
+  const [fileToRestore, setFileToRestore] = useState<File | null>(null);
   
   const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'latest' | 'available' | 'offline'>('idle');
   
@@ -66,7 +63,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [notifyMarket, setNotifyMarket] = useState(() => localStorage.getItem('investfiis_notify_market') === 'true');
   const [notifyUpdates, setNotifyUpdates] = useState(() => localStorage.getItem('investfiis_notify_updates') !== 'false');
   
-  const [brapiStatus, setBrapiStatus] = useState<'idle' | 'checking' | 'ok' | 'error'>(brapiToken ? 'ok' : 'idle');
+  const [backendStatus, setBackendStatus] = useState<'idle' | 'checking' | 'ok' | 'error'>('idle');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const isServiceWorkerActive = 'serviceWorker' in navigator;
@@ -197,18 +194,21 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleLogout = async () => { await supabase.auth.signOut(); showMessage('info', 'Desconectado.'); };
-  const handleSaveToken = () => { onSaveToken(token); showMessage('success', 'Token salvo!'); };
   
-  const handleTestBrapi = async () => {
-    if (!token && !isEnvToken) { showMessage('error', 'Token não inserido.'); setBrapiStatus('error'); setTimeout(() => setBrapiStatus('idle'), 2000); return; }
-    setBrapiStatus('checking');
+  const handleTestBackend = async () => {
+    setBackendStatus('checking');
     try {
-        const t = isEnvToken ? process.env.BRAPI_TOKEN : token;
-        const res = await fetch(`https://brapi.dev/api/quote/PETR4?token=${t}&range=1d&interval=1d`);
-        if (res.ok) { setBrapiStatus('ok'); showMessage('success', 'Conexão estabelecida!'); } 
-        else { setBrapiStatus('error'); showMessage('error', 'Token inválido.'); }
-    } catch (e) { setBrapiStatus('error'); showMessage('error', 'Falha de rede.'); }
-    setTimeout(() => { if(brapiToken) setBrapiStatus('ok'); else setBrapiStatus('idle'); }, 3000);
+        const { error } = await supabase.functions.invoke('market-data-proxy', {
+            body: { type: 'test' }
+        });
+        if (error) throw error;
+        setBackendStatus('ok');
+        showMessage('success', 'Serviços de backend operacionais!');
+    } catch (e) {
+        setBackendStatus('error');
+        showMessage('error', 'Falha na comunicação com o servidor.');
+    }
+    setTimeout(() => setBackendStatus('idle'), 3000);
   };
   
   const handleForceSync = async () => { setIsSyncing(true); await onSyncAll(true); setIsSyncing(false); };
@@ -216,7 +216,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleClearDivCache = () => { localStorage.removeItem('investfiis_v4_div_cache'); onImportDividends([]); calculateStorage(); showMessage('success', 'Dados de IA limpos.'); };
 
   const handleExport = () => {
-    const blob = new Blob([JSON.stringify({ transactions, geminiDividends, brapiToken: !isEnvToken ? brapiToken : undefined, version: appVersion, exportDate: new Date().toISOString() }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ transactions, geminiDividends, version: appVersion, exportDate: new Date().toISOString() }, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `backup_invest_${new Date().toISOString().split('T')[0]}.json`;
@@ -225,20 +225,40 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleImportClick = () => fileInputRef.current?.click();
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    if (!window.confirm('ATENÇÃO: Importar substituirá seus dados. Continuar?')) { e.target.value = ''; return; }
+    if (file) {
+      setFileToRestore(file);
+    }
+    e.target.value = '';
+  };
+
+  const handleConfirmRestore = () => {
+    if (!fileToRestore) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
         const json = JSON.parse(ev.target?.result as string);
-        if (json.transactions) { onImportTransactions(json.transactions); if(json.geminiDividends) onImportDividends(json.geminiDividends); if(json.brapiToken) onSaveToken(json.brapiToken); } 
-        else { showMessage('error', 'Arquivo inválido.'); }
-      } catch { showMessage('error', 'Erro ao ler arquivo.'); }
+        if (typeof json !== 'object' || json === null || !Array.isArray(json.transactions)) {
+          showMessage('error', 'Arquivo de backup inválido ou corrompido.');
+          return;
+        }
+        onImportTransactions(json.transactions);
+        if (json.geminiDividends && Array.isArray(json.geminiDividends)) {
+          onImportDividends(json.geminiDividends);
+        }
+      } catch {
+        showMessage('error', 'Erro ao processar o arquivo de backup.');
+      } finally {
+        setFileToRestore(null);
+      }
     };
-    reader.readAsText(file);
-    e.target.value = '';
+    reader.onerror = () => {
+       showMessage('error', 'Não foi possível ler o arquivo.');
+       setFileToRestore(null);
+    };
+    reader.readAsText(fileToRestore);
   };
 
   const handleCheckUpdate = async () => {
@@ -321,7 +341,7 @@ export const Settings: React.FC<SettingsProps> = ({
         case 'notifications': return 'Notificações';
         case 'appearance': return 'Aparência';
         case 'privacy': return 'Privacidade';
-        case 'integrations': return 'Conexões API';
+        case 'integrations': return 'Conexões e Serviços';
         case 'data': return 'Alocação e Backup';
         case 'system': return 'Sistema';
         case 'updates': return 'Atualizações';
@@ -383,10 +403,6 @@ export const Settings: React.FC<SettingsProps> = ({
     </div>
   );
 
-  const txPercent = (storageData.breakdown.tx / (storageData.totalBytes || 1)) * 100;
-  const quotePercent = (storageData.breakdown.quotes / (storageData.totalBytes || 1)) * 100;
-  const divPercent = (storageData.breakdown.divs / (storageData.totalBytes || 1)) * 100;
-
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
       {message && <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3.5 rounded-2xl flex items-center gap-3 shadow-2xl z-[60] text-[10px] font-black uppercase tracking-widest text-white transition-all transform anim-fade-in-up is-visible ${message.type === 'success' ? 'bg-emerald-500' : message.type === 'info' ? 'bg-indigo-500' : 'bg-rose-500'}`}>{message.text}</div>}
@@ -432,7 +448,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </Section>
 
             <Section title="Dados & Sincronização">
-                <MenuItem icon={Globe} label="Conexões API" onClick={() => setActiveSection('integrations')} value={brapiToken || user ? 'Configurado' : 'Pendente'} colorClass="bg-sky-500/10 text-sky-500" />
+                <MenuItem icon={Globe} label="Conexões e Serviços" onClick={() => setActiveSection('integrations')} value={user ? 'Online' : 'Offline'} colorClass="bg-sky-500/10 text-sky-500" />
                 <MenuItem icon={Database} label="Alocação e Backup" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} colorClass="bg-emerald-500/10 text-emerald-500" />
             </Section>
 
@@ -624,55 +640,35 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'data' && (
              <div className="space-y-6">
-                 <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 flex items-center gap-6">
-                    <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
-                        <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                            <path className="text-slate-100 dark:text-white/5" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
-                            <path className="text-indigo-500" strokeDasharray={`${txPercent}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-                            <path className="text-sky-500" strokeDasharray={`${quotePercent}, 100`} strokeDashoffset={`-${txPercent}`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <Database className="w-5 h-5 text-slate-400 mb-1" strokeWidth={1.5} />
-                        </div>
+                <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-6 rounded-[2.5rem] border border-indigo-500/20 text-center relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                    <Database className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Backup & Restauração</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 max-w-[250px] mx-auto">Salve uma cópia de segurança dos seus dados ou restaure um backup anterior.</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button onClick={handleExport} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-4 rounded-3xl flex flex-col items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+                            <Download className="w-5 h-5" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Exportar</span>
+                        </button>
+                        <button onClick={handleImportClick} className="bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white p-4 rounded-3xl flex flex-col items-center justify-center gap-2 border border-slate-200/50 dark:border-white/5 active:scale-95 transition-all">
+                            <Upload className="w-5 h-5" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Importar</span>
+                        </button>
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                     </div>
-                    <div className="flex-1">
-                        <h3 className="font-bold text-slate-900 dark:text-white mb-1">Armazenamento</h3>
-                        <p className="text-xs font-mono text-slate-400 mb-3">{formatBytes(storageData.totalBytes)} usados</p>
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
-                                <div className="w-2 h-2 rounded-full bg-indigo-500"></div> Transações
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
-                                <div className="w-2 h-2 rounded-full bg-sky-500"></div> Cache de Cotações
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
-                                <div className="w-2 h-2 rounded-full bg-purple-500"></div> Dados de IA
-                            </div>
-                        </div>
-                    </div>
-                 </div>
-
-                 <div className="grid grid-cols-2 gap-3">
-                    <button onClick={handleExport} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-4 rounded-3xl flex flex-col items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
-                        <Download className="w-6 h-6" strokeWidth={1.5} />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Backup</span>
-                    </button>
-                    <button onClick={handleImportClick} className="bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white p-4 rounded-3xl flex flex-col items-center justify-center gap-2 border border-slate-200/50 dark:border-white/5 active:scale-95 transition-all">
-                        <Upload className="w-6 h-6" strokeWidth={1.5} />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Restaurar</span>
-                    </button>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                 </div>
+                </div>
 
                  <Section title="Gerenciamento de Cache">
-                    <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-4 border-b border-slate-100 dark:border-white/5 bg-white dark:bg-[#0f172a] active:bg-slate-50 dark:active:bg-white/5">
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Cotações</span>
-                        <span className="text-xs text-slate-400 bg-slate-100 dark:bg-white/10 px-2 py-1 rounded-md">{formatBytes(storageData.breakdown.quotes)}</span>
-                    </button>
-                    <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-4 bg-white dark:bg-[#0f172a] active:bg-slate-50 dark:active:bg-white/5">
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Dados IA</span>
-                        <span className="text-xs text-slate-400 bg-slate-100 dark:bg-white/10 px-2 py-1 rounded-md">{formatBytes(storageData.breakdown.divs)}</span>
-                    </button>
+                    <div className="bg-white dark:bg-[#0f172a] p-4 space-y-2">
+                        <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5">
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Cache de Cotações</span>
+                            <span className="text-xs text-slate-400 font-mono">{formatBytes(storageData.breakdown.quotes)}</span>
+                        </button>
+                        <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5">
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Dados de IA (Gemini)</span>
+                            <span className="text-xs text-slate-400 font-mono">{formatBytes(storageData.breakdown.divs)}</span>
+                        </button>
+                    </div>
                  </Section>
              </div>
           )}
@@ -683,26 +679,19 @@ export const Settings: React.FC<SettingsProps> = ({
                     <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Status da Sincronização</h3><button onClick={handleForceSync} disabled={isSyncing} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent active:scale-90 transition-all"><RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /></button></div>
                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs"><span className="font-bold text-slate-400">Última Atualização</span>{lastSyncTime ? (<div className="flex items-center gap-2 text-emerald-500 font-bold"><span>{lastSyncTime.toLocaleTimeString('pt-BR')}</span><CheckCircle2 className="w-4 h-4" /></div>) : (<span className="font-bold text-slate-400">Pendente</span>)}</div>
                 </div>
-                <Section title="Serviços Conectados">
-                    <div className="bg-white dark:bg-[#0f172a] p-6 space-y-4 border-b border-slate-100 dark:border-white/5">
-                        <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center"><Cloud className="w-6 h-6" /></div><div><h3 className="font-bold text-slate-900 dark:text-white">Brapi.dev <span className="text-xs font-medium text-slate-400">(Cotações)</span></h3><div className="flex items-center gap-1.5 text-xs font-bold mt-1"><span className={`w-2 h-2 rounded-full ${brapiStatus === 'ok' ? 'bg-emerald-500' : brapiStatus === 'error' ? 'bg-rose-500' : 'bg-slate-400'}`}></span><span className={`${brapiStatus === 'ok' ? 'text-emerald-500' : brapiStatus === 'error' ? 'text-rose-500' : 'text-slate-400'}`}>{brapiStatus === 'ok' ? 'Conectado' : brapiStatus === 'checking' ? 'Testando...' : brapiStatus === 'error' ? 'Falha' : 'Pendente'}</span></div></div></div>
-                            <a href="https://brapi.dev/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent transition-colors"><ExternalLink className="w-4 h-4" /></a>
-                        </div>
-                        <div><div className="relative mb-2"><Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input type="password" value={isEnvToken ? '**************** (Definido no Ambiente)' : token} onChange={(e) => setToken(e.target.value)} disabled={isEnvToken} placeholder="Seu Token de Acesso" className="w-full bg-slate-50 dark:bg-black/20 rounded-xl py-3 pl-11 pr-4 text-xs font-mono outline-none focus:ring-2 focus:ring-accent/50 transition-all disabled:opacity-70" /></div><div className="flex gap-2">{!isEnvToken && ( <button onClick={handleSaveToken} className="flex-1 bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Salvar</button> )}<button onClick={handleTestBrapi} className="flex-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2">{brapiStatus === 'checking' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Testar'}</button></div></div>
-                    </div>
+                <Section title="Serviços de Backend (Edge Functions)">
                     <div className="bg-white dark:bg-[#0f172a] p-6 space-y-4">
-                        <div className="flex justify-between items-start"><div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center"><Sparkles className="w-6 h-6" /></div><div><h3 className="font-bold text-slate-900 dark:text-white">Google Gemini <span className="text-xs font-medium text-slate-400">(IA)</span></h3><div className="flex items-center gap-1.5 text-xs font-bold mt-1 text-emerald-500"><span className="w-2 h-2 rounded-full bg-emerald-500"></span><span>Operacional</span></div></div></div><a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent transition-colors"><ExternalLink className="w-4 h-4" /></a></div>
-                        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl space-y-3"><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recursos Ativados pela IA</h4><div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-slate-600 dark:text-slate-300 font-medium"><span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Fundamentos</span><span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Sentimento</span><span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Proventos</span><span className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Macroeconomia</span></div></div>
-                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs"><span className="font-bold text-slate-400">Modelo em Uso</span><span className="font-bold text-purple-500">gemini-2.5-flash</span></div>
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center"><Server className="w-6 h-6" /></div><div><h3 className="font-bold text-slate-900 dark:text-white">Proxy de Dados</h3><div className="flex items-center gap-1.5 text-xs font-bold mt-1"><span className={`w-2 h-2 rounded-full ${backendStatus === 'ok' ? 'bg-emerald-500' : backendStatus === 'error' ? 'bg-rose-500' : 'bg-slate-400'}`}></span><span className={`${backendStatus === 'ok' ? 'text-emerald-500' : backendStatus === 'error' ? 'text-rose-500' : 'text-slate-400'}`}>{backendStatus === 'ok' ? 'Operacional' : backendStatus === 'checking' ? 'Testando...' : backendStatus === 'error' ? 'Falha' : 'Não verificado'}</span></div></div></div>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">As chaves de API agora são gerenciadas de forma segura no servidor.</p>
+                        <button onClick={handleTestBackend} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2">{backendStatus === 'checking' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Testar Conexão'}</button>
                     </div>
                 </Section>
-                <Section title="Diagnóstico">
+                <Section title="Diagnóstico do App">
                     <div className="bg-white dark:bg-[#0f172a] p-4 space-y-3">
                        <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Wifi className="w-4 h-4" /> Conexão com a Internet</span><span className={`text-xs font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Online' : 'Offline'}</span></div>
                        <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Smartphone className="w-4 h-4" /> Service Worker (PWA)</span><span className={`text-xs font-bold ${isServiceWorkerActive ? 'text-emerald-500' : 'text-rose-500'}`}>{isServiceWorkerActive ? 'Ativo' : 'Inativo'}</span></div>
-                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Server className="w-4 h-4" /> API de Cotações</span><span className={`text-xs font-bold ${brapiStatus === 'ok' ? 'text-emerald-500' : 'text-slate-400'}`}>{brapiStatus === 'ok' ? 'Operacional' : 'Indisponível'}</span></div>
-                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Cpu className="w-4 h-4" /> API de Inteligência</span><span className="text-xs font-bold text-emerald-500">Operacional</span></div>
                     </div>
                 </Section>
             </div>
@@ -760,7 +749,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <span className="relative z-10 flex items-center gap-2">
                             {checkStatus === 'checking' ? <>Buscando...</> : updateAvailable ? <><Download className="w-4 h-4" /> Atualizar</> : <><RefreshCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" /> Verificar</>}
                         </span>
-                        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
                     </button>
                 </div>
                 
@@ -790,6 +779,14 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!fileToRestore}
+        title="Restaurar Backup"
+        message="Atenção: Restaurar um backup substituirá TODOS os seus dados atuais. Esta ação não pode ser desfeita. Deseja continuar?"
+        onConfirm={handleConfirmRestore}
+        onCancel={() => setFileToRestore(null)}
+      />
 
       {/* Security Setup Modal */}
       <SwipeableModal isOpen={showPinSetup} onClose={() => setShowPinSetup(false)}>

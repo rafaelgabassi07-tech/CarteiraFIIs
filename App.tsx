@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, UpdateBanner, CloudStatusBanner, LockScreen } from './components/Layout';
+import { Header, BottomNav, SwipeableModal, ChangelogModal, NotificationsModal, CloudStatusBanner, LockScreen, ConfirmationModal } from './components/Layout';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
@@ -11,12 +11,12 @@ import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
+import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.0.4'; 
+const APP_VERSION = '7.0.2'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
-  TOKEN: 'investfiis_v4_brapi_token',
   DIVS: 'investfiis_v4_div_cache',
   THEME: 'investfiis_theme',
   ACCENT: 'investfiis_accent_color',
@@ -43,17 +43,29 @@ const getQuantityOnDate = (ticker: string, date: string, transactions: Transacti
     }, 0);
 };
 
+// Helper to prepare a transaction object for Supabase, mapping camelCase to snake_case
+// and removing the original camelCase key to prevent column mismatch errors.
+const cleanTxForSupabase = (tx: Omit<Transaction, 'id'> | Transaction) => {
+  const { assetType, ...restOfTx } = tx;
+  return {
+    ...restOfTx,
+    asset_type: assetType,
+  };
+};
+
+const MemoizedHome = React.memo(Home);
+const MemoizedPortfolio = React.memo(Portfolio);
+const MemoizedTransactions = React.memo(Transactions);
+
 const App: React.FC = () => {
   const updateManager = useUpdateManager(APP_VERSION);
   
-  // Auth State
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true');
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
-  const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden'>('hidden');
+  const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
 
-  // Lock Screen State
   const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem(STORAGE_KEYS.PASSCODE));
   const savedPasscode = localStorage.getItem(STORAGE_KEYS.PASSCODE);
   const isBiometricsEnabled = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) === 'true';
@@ -69,39 +81,15 @@ const App: React.FC = () => {
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.TXS);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-  
-  const [brapiToken, setBrapiToken] = useState(() => 
-    localStorage.getItem(STORAGE_KEYS.TOKEN) || process.env.BRAPI_TOKEN || '');
 
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
+  
+  const [transactions, setTransactions] = useState<Transaction[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.TXS); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
-  const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.DIVS);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.5, startDate: '' }; } catch { return { ipca: 4.5, startDate: '' }; } });
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.LAST_SYNC); return s ? new Date(s) : null; } catch { return null; } });
   
-  const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => {
-      try {
-          const saved = localStorage.getItem(STORAGE_KEYS.INDICATORS);
-          return saved ? JSON.parse(saved) : { ipca: 4.5, startDate: '' };
-      } catch { return { ipca: 4.5, startDate: '' }; }
-  });
-
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.LAST_SYNC);
-      return saved ? new Date(saved) : null;
-    } catch { return null; }
-  });
-
   const prevDividendsRef = useRef<DividendReceipt[]>(geminiDividends);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -109,14 +97,9 @@ const App: React.FC = () => {
 
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.TOKEN, brapiToken); }, [brapiToken]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled)); }, [pushEnabled]);
-  useEffect(() => { 
-    if (lastSyncTime) {
-      localStorage.setItem(STORAGE_KEYS.LAST_SYNC, lastSyncTime.toISOString());
-    }
-  }, [lastSyncTime]);
+  useEffect(() => { if (lastSyncTime) localStorage.setItem(STORAGE_KEYS.LAST_SYNC, lastSyncTime.toISOString()); }, [lastSyncTime]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.GUEST_MODE, String(isGuest)); }, [isGuest]);
 
   useEffect(() => {
@@ -137,8 +120,7 @@ const App: React.FC = () => {
   }, [accentColor]);
 
   useEffect(() => {
-    if (privacyMode) document.body.classList.add('privacy-blur');
-    else document.body.classList.remove('privacy-blur');
+    document.body.classList.toggle('privacy-blur', privacyMode);
     localStorage.setItem(STORAGE_KEYS.PRIVACY, String(privacyMode));
   }, [privacyMode]);
 
@@ -147,157 +129,143 @@ const App: React.FC = () => {
     if (type !== 'info') setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // --- Função Central de Sincronização ---
-  const syncAll = useCallback(async (force = false, transactionsToSync?: Transaction[]) => {
-    const targetTransactions = transactionsToSync || transactions;
-    const tickers: string[] = Array.from(new Set(targetTransactions.map(t => t.ticker.toUpperCase())));
-    
-    if (tickers.length === 0) return;
-
+  const syncAll = useCallback(async (force = false, transactionsToSync: Transaction[] = transactions) => {
+    const tickers = Array.from(new Set(transactionsToSync.map(t => t.ticker.toUpperCase())));
+    if (tickers.length === 0) {
+      setQuotes({});
+      setGeminiDividends([]);
+      setAssetsMetadata({});
+      return;
+    }
     setIsRefreshing(true);
     try {
-      if (brapiToken) {
-        const priceRes = await getQuotes(tickers, brapiToken, force);
-        const newQuotes: Record<string, BrapiQuote> = {};
-        priceRes.quotes.forEach(q => newQuotes[q.symbol] = q);
-        setQuotes(prev => ({ ...prev, ...newQuotes }));
-      }
-      setIsAiLoading(true);
+      const { quotes: newQuotesData } = await getQuotes(tickers);
+      setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc, q) => ({...acc, [q.symbol]: q }), {})}));
       
-      let startDate = '';
-      if (targetTransactions.length > 0) {
-         startDate = targetTransactions.reduce((min, t) => t.date < min ? t.date : min, targetTransactions[0].date);
-      }
-
+      setIsAiLoading(true);
+      const startDate = transactionsToSync.length > 0 ? transactionsToSync.reduce((min, t) => t.date < min ? t.date : min, transactionsToSync[0].date) : '';
       const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
       
-      if (aiData.error === 'quota_exceeded') {
-          showToast('info', 'IA em pausa (Cota). Usando cache.');
-      } else if (force) {
-          showToast('success', 'Carteira Sincronizada');
-      }
-
+      if (aiData.error === 'quota_exceeded') showToast('info', 'IA em pausa (Cota). Usando cache.');
+      else if (force) showToast('success', 'Carteira Sincronizada');
+      
       setGeminiDividends(aiData.dividends);
       setAssetsMetadata(aiData.metadata);
-      
-      if (aiData.indicators && typeof aiData.indicators.ipca_cumulative === 'number') {
-          setMarketIndicators({
-              ipca: aiData.indicators.ipca_cumulative,
-              startDate: aiData.indicators.start_date_used
-          });
-      }
-      
+      if (aiData.indicators?.ipca_cumulative) setMarketIndicators({ ipca: aiData.indicators.ipca_cumulative, startDate: aiData.indicators.start_date_used });
       setLastSyncTime(new Date());
-      
-    } catch (e) {
-      // Erro silencioso em auto-sync para não atrapalhar UX
-      if(force) showToast('error', 'Sem conexão');
-    } finally {
-      setIsRefreshing(false);
-      setIsAiLoading(false);
+    } catch (e) { if (force) showToast('error', 'Sem conexão'); } 
+    finally { setIsRefreshing(false); setIsAiLoading(false); }
+  }, [transactions, showToast]);
+
+  const migrateGuestDataToCloud = useCallback(async (user_id: string) => {
+    const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]') as Transaction[];
+    if (localTxs.length === 0) return;
+    setCloudStatus('syncing');
+    showToast('info', 'Migrando dados locais para a nuvem...');
+    const dataToInsert = localTxs.map(tx => {
+        const { id, ...rest } = tx;
+        const record = cleanTxForSupabase(rest);
+        return { ...record, user_id, id };
+    });
+    const { error } = await supabase.from('transactions').insert(dataToInsert);
+    if (error) {
+      console.error("Supabase migration error:", error);
+      showToast('error', 'Erro ao migrar dados.');
+    } else {
+      showToast('success', 'Dados locais salvos na nuvem!');
     }
-  }, [transactions, brapiToken, showToast]);
+  }, [showToast]);
 
-  // --- Background Refresh Logic (Visibility Change) ---
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Quando o usuário volta para o app (foreground)
-      if (document.visibilityState === 'visible') {
-        // Se a última sincronização foi há mais de 1 hora, tenta sincronizar suavemente
-        const last = localStorage.getItem(STORAGE_KEYS.LAST_SYNC);
-        if (last) {
-            const diff = Date.now() - new Date(last).getTime();
-            if (diff > 60 * 60 * 1000) {
-                console.log("🔄 Retorno ao app: Atualizando dados em background...");
-                syncAll(false);
-            }
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [syncAll]);
-
-  // --- Supabase & Auth Logic ---
   const fetchTransactionsFromCloud = useCallback(async () => {
     setIsCloudSyncing(true);
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*');
-
+    const { data, error } = await supabase.from('transactions').select('*');
     if (error) {
-      showToast('error', 'Erro ao baixar dados da nuvem');
+      console.error("Supabase fetch error:", error);
+      showToast('error', 'Erro ao buscar dados da nuvem.');
     } else if (data) {
-      const mappedTxs: Transaction[] = data.map((t: any) => ({
-        id: t.id,
-        ticker: t.ticker,
-        type: t.type,
-        quantity: t.quantity,
-        price: t.price,
-        date: t.date,
-        assetType: t.asset_type
-      }));
-      setTransactions(mappedTxs);
-      showToast('success', 'Dados sincronizados com a nuvem');
-      syncAll(false, mappedTxs);
+      const cloudTxs: Transaction[] = data.map((t: any) => ({ id: t.id, ticker: t.ticker, type: t.type, quantity: t.quantity, price: t.price, date: t.date, assetType: t.asset_type }));
+      setTransactions(cloudTxs);
+      await syncAll(false, cloudTxs);
     }
     setIsCloudSyncing(false);
   }, [showToast, syncAll]);
+  
+  const stableSyncFunctions = useRef({ migrateGuestDataToCloud, fetchTransactionsFromCloud, syncAll });
+  useEffect(() => {
+    stableSyncFunctions.current = { migrateGuestDataToCloud, fetchTransactionsFromCloud, syncAll };
+  }, [migrateGuestDataToCloud, fetchTransactionsFromCloud, syncAll]);
 
   useEffect(() => {
-    // Inicia ouvindo as mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setSession(session);
-        setIsAuthLoading(false); // <-- PONTO CHAVE: Só para de carregar DEPOIS do primeiro evento
+    let previousSession: Session | null = null;
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      previousSession = initialSession;
+      setSession(initialSession);
+      setIsAuthLoading(false);
+      if (!initialSession && localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true') {
+        setCloudStatus('disconnected');
+        stableSyncFunctions.current.syncAll(false);
+      }
+    });
 
-        if (session) {
-            setIsGuest(false);
-            setCloudStatus('connected');
-            setTimeout(() => setCloudStatus('hidden'), 2500);
-            fetchTransactionsFromCloud();
-        } else if (isGuest) {
-            setCloudStatus('disconnected');
-            syncAll();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+      const wasGuest = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
+      const isNewLogin = !!currentSession && !previousSession;
+      const isLogout = !currentSession && !!previousSession;
+      
+      setSession(currentSession);
+      previousSession = currentSession;
+
+      if (isNewLogin) {
+        setIsGuest(false);
+        if (wasGuest) {
+          await stableSyncFunctions.current.migrateGuestDataToCloud(currentSession.user.id);
+          await stableSyncFunctions.current.syncAll(false); // Sync metadata for migrated assets
+          setCloudStatus('connected');
         } else {
-            setCloudStatus('hidden');
+          await stableSyncFunctions.current.fetchTransactionsFromCloud();
+          setCloudStatus('connected');
         }
+        setTimeout(() => setCloudStatus('hidden'), 3000);
+      } else if (isLogout) {
+        setTransactions([]);
+        setQuotes({});
+        setGeminiDividends([]);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchTransactionsFromCloud, isGuest, syncAll]); // Dependências relevantes
+  }, []);
 
-  // Atualiza o banner se entrar no modo convidado explicitamente
   useEffect(() => {
-      if (isGuest && !session) {
-          setCloudStatus('disconnected');
-      }
-  }, [isGuest, session]);
-
-  // --- Secure CRUD Operations with Rollback ---
+    if (!session) return;
+    const channel = supabase
+      .channel('transactions-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${session.user.id}` }, (payload) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload;
+        const mapRecord = (r: any): Transaction => ({ id: r.id, ticker: r.ticker, type: r.type, quantity: r.quantity, price: r.price, date: r.date, assetType: r.asset_type });
+        setTransactions(currentTxs => {
+            if (eventType === 'INSERT') {
+              if (currentTxs.some(t => t.id === newRecord.id)) return currentTxs;
+              return [...currentTxs, mapRecord(newRecord)];
+            }
+            if (eventType === 'UPDATE') return currentTxs.map(t => t.id === newRecord.id ? mapRecord(newRecord) : t);
+            if (eventType === 'DELETE') return currentTxs.filter(t => t.id !== oldRecord.id);
+            return currentTxs;
+        });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session]);
 
   const handleAddTransaction = async (t: Omit<Transaction, 'id'>) => {
     const newTx = { ...t, id: crypto.randomUUID() };
-    
-    // 1. Atualização Otimista
     setTransactions(p => [...p, newTx]);
-
     if (session) {
-      const { error } = await supabase.from('transactions').insert({
-        id: newTx.id,
-        user_id: session.user.id,
-        ticker: newTx.ticker,
-        type: newTx.type,
-        quantity: newTx.quantity,
-        price: newTx.price,
-        date: newTx.date,
-        asset_type: newTx.assetType
-      });
-
-      // 2. Rollback
+      const record = cleanTxForSupabase(newTx);
+      const { error } = await supabase.from('transactions').insert({ ...record, user_id: session.user.id });
       if (error) {
-        showToast('error', 'Erro ao salvar. Verifique permissões.');
-        console.error("Supabase Error:", error);
+        console.error("Supabase insert error:", error);
+        showToast('error', 'Erro ao salvar.');
         setTransactions(p => p.filter(tx => tx.id !== newTx.id));
       }
     }
@@ -305,23 +273,13 @@ const App: React.FC = () => {
 
   const handleUpdateTransaction = async (id: string, updated: Omit<Transaction, 'id'>) => {
     const originalTx = transactions.find(t => t.id === id);
-    if (!originalTx) return;
-
     setTransactions(p => p.map(t => t.id === id ? { ...updated, id } : t));
-
-    if (session) {
-      const { error } = await supabase.from('transactions').update({
-        ticker: updated.ticker,
-        type: updated.type,
-        quantity: updated.quantity,
-        price: updated.price,
-        date: updated.date,
-        asset_type: updated.assetType
-      }).eq('id', id);
-
+    if (session && originalTx) {
+      const record = cleanTxForSupabase(updated);
+      const { error } = await supabase.from('transactions').update(record).match({ id });
       if (error) {
-        showToast('error', 'Falha ao atualizar na nuvem');
-        console.error("Supabase Error:", error);
+        console.error("Supabase update error:", error);
+        showToast('error', 'Falha ao atualizar.');
         setTransactions(p => p.map(t => t.id === id ? originalTx : t));
       }
     }
@@ -329,56 +287,50 @@ const App: React.FC = () => {
 
   const handleDeleteTransaction = async (id: string) => {
     const deletedTx = transactions.find(t => t.id === id);
-    if (!deletedTx) return;
-
     setTransactions(p => p.filter(t => t.id !== id));
-
-    if (session) {
-      const { error } = await supabase.from('transactions').delete().eq('id', id);
-      
+    if (session && deletedTx) {
+      const { error } = await supabase.from('transactions').delete().match({ id });
       if (error) {
-        showToast('error', 'Falha ao apagar na nuvem');
-        console.error("Supabase Error:", error);
+        console.error("Supabase delete error:", error);
+        showToast('error', 'Falha ao apagar.');
         setTransactions(p => [...p, deletedTx]);
       }
     }
   };
 
+  const onRequestDeleteConfirmation = (id: string) => {
+    const txToDelete = transactions.find(t => t.id === id);
+    if (!txToDelete) return;
+    setConfirmModal({
+        isOpen: true,
+        title: 'Confirmar Exclusão',
+        message: `Deseja realmente apagar a ordem de ${txToDelete.type === 'BUY' ? 'compra' : 'venda'} de ${txToDelete.ticker}? Esta ação não pode ser desfeita.`,
+        onConfirm: () => { handleDeleteTransaction(id); setConfirmModal(null); }
+    });
+  };
+
   const handleImportTransactions = async (importedTxs: Transaction[]) => {
     if (!Array.isArray(importedTxs)) return;
-
+    const originalTxs = transactions;
     setTransactions(importedTxs);
-
     if (session) {
         setIsCloudSyncing(true);
-        showToast('info', 'Sincronizando backup na nuvem...');
-        
+        showToast('info', 'Sincronizando backup...');
         try {
-            // Estratégia de Restauração: Limpar e Inserir
-            // 1. Remove dados atuais do usuário para evitar duplicatas ou estados inconsistentes com o backup
             await supabase.from('transactions').delete().eq('user_id', session.user.id);
-            
-            // 2. Prepara dados para inserção
-            const sbData = importedTxs.map(t => ({
-                id: t.id, // Preserva IDs originais para consistência
-                user_id: session.user.id,
-                ticker: t.ticker,
-                type: t.type,
-                quantity: t.quantity,
-                price: t.price,
-                date: t.date,
-                asset_type: t.assetType
-            }));
-            
+            const sbData = importedTxs.map(t => {
+                const record = cleanTxForSupabase(t);
+                return { ...record, user_id: session.user.id };
+            });
             if (sbData.length > 0) {
-                const { error } = await supabase.from('transactions').insert(sbData);
-                if (error) throw error;
+              const { error } = await supabase.from('transactions').insert(sbData);
+              if (error) throw error;
             }
-            
-            showToast('success', 'Backup restaurado e sincronizado!');
-        } catch (e) {
-            console.error("Erro na importação:", e);
-            showToast('error', 'Erro ao salvar na nuvem. Dados locais atualizados.');
+            showToast('success', 'Backup restaurado!');
+        } catch (e: any) {
+            console.error("Supabase import error:", e);
+            showToast('error', 'Erro na nuvem. Restaurando dados.');
+            setTransactions(originalTxs);
         } finally {
             setIsCloudSyncing(false);
         }
@@ -387,38 +339,20 @@ const App: React.FC = () => {
     }
   };
 
-  // --- Notificações ---
   const sendSystemNotification = useCallback((title: string, body: string, tag?: string) => {
-    if (!pushEnabled || !('Notification' in window)) return;
-    if (Notification.permission === 'granted') {
-      try {
-        // Tenta usar o Service Worker para notificação (mais robusto)
-        navigator.serviceWorker.ready.then(registration => {
-            registration.showNotification(title, {
-                body,
-                icon: '/pwa-192x192.png',
-                tag,
-                vibrate: [200, 100, 200]
-            } as any);
-        });
-      } catch (e) { console.warn('Erro notificação nativa', e); }
-    }
+    if (!pushEnabled || !('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(reg => reg.showNotification(title, { body, icon: './icon.svg', tag, vibrate: [200,100,200] } as any));
   }, [pushEnabled]);
 
   const requestPushPermission = async () => {
     if (!('Notification' in window)) { showToast('error', 'Navegador não suporta notificações'); return; }
     const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      setPushEnabled(true);
-      showToast('success', 'Notificações Ativadas!');
-      sendSystemNotification('InvestFIIs', 'Notificações push configuradas com sucesso.');
-    } else {
-      setPushEnabled(false);
-      showToast('info', 'Permissão negada pelo navegador');
-    }
+    setPushEnabled(permission === 'granted');
+    showToast(permission === 'granted' ? 'success' : 'info', permission === 'granted' ? 'Notificações Ativadas!' : 'Permissão negada.');
+    if(permission === 'granted') sendSystemNotification('InvestFIIs', 'Notificações configuradas com sucesso.');
   };
 
-  const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
+  const addNotification = useCallback((notification: Omit<AppNotification, 'id'|'timestamp'|'read'>) => {
     setNotifications(prev => {
       if (prev.some(n => n.title === notification.title && (Date.now() - n.timestamp < 86400000))) return prev;
       sendSystemNotification(notification.title, notification.message, notification.category);
@@ -426,244 +360,82 @@ const App: React.FC = () => {
     });
   }, [sendSystemNotification]);
   
-  const markNotificationsAsRead = () => { setNotifications(prev => prev.map(n => ({ ...n, read: true }))); };
+  const markNotificationsAsRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
 
   const getQuantityOnDateMemo = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => getQuantityOnDate(ticker, dateCom, txs), []);
 
+  const summaryData = useMemo(() => {
+    let totalSalesGain = 0;
+    const assetTracker: Record<string, { quantity: number; totalCost: number }> = {};
+    const sortedTxs = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    for (const t of sortedTxs) {
+        if (!assetTracker[t.ticker]) {
+            assetTracker[t.ticker] = { quantity: 0, totalCost: 0 };
+        }
+        const asset = assetTracker[t.ticker];
+        if (t.type === 'BUY') {
+            asset.quantity += t.quantity;
+            asset.totalCost += t.quantity * t.price;
+        } else { // SELL
+            if (asset.quantity > 0) {
+                const averageCost = asset.totalCost / asset.quantity;
+                const costOfSoldAssets = t.quantity * averageCost;
+                const saleValue = t.quantity * t.price;
+                totalSalesGain += saleValue - costOfSoldAssets;
+                asset.totalCost = Math.max(0, asset.totalCost - costOfSoldAssets);
+                asset.quantity = Math.max(0, asset.quantity - t.quantity);
+            }
+        }
+    }
+    return { salesGain: totalSalesGain };
+  }, [transactions]);
+
   const memoizedData = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-    const nowStr = new Date().toISOString().substring(0, 7);
-    const todayDate = new Date();
-    const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
-
-    const contribution = transactions
-      .filter(t => t.type === 'BUY' && t.date.startsWith(nowStr))
-      .reduce((acc, t) => acc + (t.quantity * t.price), 0);
-
-    const receipts: DividendReceipt[] = geminiDividends.map(div => {
-      const qty = Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, sortedTxs));
-      return { ...div, quantityOwned: qty, totalReceived: qty * div.rate };
-    }).filter(r => r.totalReceived > 0);
-
+    const todayStr = new Date().toISOString().split('T')[0];
+    const receipts = geminiDividends.map(div => ({...div, quantityOwned: Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, sortedTxs)), totalReceived: Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, sortedTxs)) * div.rate})).filter(r => r.totalReceived > 0);
     const divPaidMap: Record<string, number> = {};
     let totalDividendsReceived = 0;
-
-    receipts.forEach(r => {
-      if (r.paymentDate <= todayStr) {
-        divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived;
-        totalDividendsReceived += r.totalReceived;
-      }
-    });
-
+    receipts.forEach(r => { if (r.paymentDate <= todayStr) { divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived; totalDividendsReceived += r.totalReceived; } });
     const positions: Record<string, AssetPosition> = {};
-    let salesGain = 0;
-
     sortedTxs.forEach(t => {
-      if (!positions[t.ticker]) {
-        positions[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: divPaidMap[t.ticker] || 0, segment: assetsMetadata[t.ticker]?.segment || 'Geral' };
-      }
+      if (!positions[t.ticker]) positions[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType, totalDividends: divPaidMap[t.ticker] || 0, segment: assetsMetadata[t.ticker]?.segment || 'Geral' };
       const p = positions[t.ticker];
-      if (t.type === 'BUY') {
-        const cost = p.quantity * p.averagePrice;
-        p.quantity += t.quantity;
-        p.averagePrice = p.quantity > 0 ? (cost + (t.quantity * t.price)) / p.quantity : 0;
-      } else {
-        salesGain += (t.quantity * t.price) - (t.quantity * p.averagePrice);
-        p.quantity -= t.quantity;
-      }
+      if (t.type === 'BUY') { p.averagePrice = (p.quantity * p.averagePrice + t.quantity * t.price) / (p.quantity + t.quantity); p.quantity += t.quantity; } 
+      else { p.quantity -= t.quantity; }
     });
-
-    const finalPortfolio = Object.values(positions)
-      .filter(p => p.quantity > 0)
-      .map(p => ({
-        ...p,
-        currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice,
-        logoUrl: quotes[p.ticker]?.logourl,
-        assetType: assetsMetadata[p.ticker]?.type || p.assetType,
-        segment: assetsMetadata[p.ticker]?.segment || p.segment,
-        ...assetsMetadata[p.ticker]?.fundamentals
-      }));
-
-    return { portfolio: finalPortfolio, dividendReceipts: receipts, salesGain: salesGain, totalDividendsReceived: totalDividendsReceived, monthlyContribution: contribution };
+    const finalPortfolio = Object.values(positions).filter(p => p.quantity > 0.0001).map(p => ({ ...p, currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice, logoUrl: quotes[p.ticker]?.logourl, assetType: assetsMetadata[p.ticker]?.type || p.assetType, segment: assetsMetadata[p.ticker]?.segment || p.segment, ...assetsMetadata[p.ticker]?.fundamentals }));
+    const invested = finalPortfolio.reduce((acc, p) => acc + (p.averagePrice * p.quantity), 0);
+    const balance = finalPortfolio.reduce((acc, p) => acc + ((p.currentPrice || p.averagePrice) * p.quantity), 0);
+    return { portfolio: finalPortfolio, dividendReceipts: receipts, totalDividendsReceived, invested, balance };
   }, [transactions, quotes, geminiDividends, getQuantityOnDateMemo, assetsMetadata]);
 
-  const checkDailyEvents = useCallback((currentDividends: DividendReceipt[], portfolio: AssetPosition[]) => {
-      const todayDate = new Date();
-      const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
-      
-      currentDividends.forEach(div => {
-         const asset = portfolio.find(p => p.ticker === div.ticker);
-         if (div.paymentDate === today && div.totalReceived > 0) {
-             const isJCP = div.type.toUpperCase().includes('JCP') || div.type.toUpperCase().includes('JUROS');
-             let msg = `${div.ticker} pagou R$ ${div.totalReceived.toLocaleString('pt-BR', {minimumFractionDigits: 2})} em ${isJCP ? 'JCP' : 'Dividendos'}.`;
-             addNotification({ title: `💰 Caiu na Conta: ${div.ticker}`, message: msg, type: 'success', category: 'payment' });
-         }
-         if (div.dateCom === today) {
-             const yieldVal = asset && asset.currentPrice ? ((div.rate / asset.currentPrice) * 100).toFixed(2) : null;
-             let msg = `Hoje é a data limite para garantir R$ ${div.rate.toFixed(4)}/cota.`;
-             if (yieldVal) msg += ` Yield estimado: ${yieldVal}%.`;
-             addNotification({ title: `📅 Data Com: ${div.ticker}`, message: msg, type: 'warning', category: 'datacom' });
-         }
-      });
-  }, [addNotification]);
-
-  useEffect(() => {
-    if (geminiDividends.length > prevDividendsRef.current.length) {
-      const newDivs = geminiDividends.filter(d => !prevDividendsRef.current.find(p => p.id === d.id));
-      if (newDivs.length > 0) {
-        const tickers = Array.from(new Set(newDivs.map(d => d.ticker))).join(', ');
-        addNotification({ title: 'Novos Anúncios Rastreados', message: `A IA identificou ${newDivs.length} novos pagamentos para: ${tickers}.`, type: 'info', category: 'general' });
-      }
-    }
-    prevDividendsRef.current = geminiDividends;
-    if (memoizedData.portfolio.length > 0) checkDailyEvents(geminiDividends, memoizedData.portfolio);
-  }, [geminiDividends, memoizedData.portfolio, addNotification, checkDailyEvents]);
-
-  // Se estiver carregando auth, mostra tela de loading básica
-  if (isAuthLoading) {
-    return (
-      <div className="min-h-screen bg-slate-100 dark:bg-[#020617] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-accent animate-spin" />
-      </div>
-    );
-  }
-
-  // --- Lock Screen Check ---
-  if (isLocked && savedPasscode) {
-    return (
-      <LockScreen 
-        isOpen={true} 
-        correctPin={savedPasscode}
-        onUnlock={() => setIsLocked(false)}
-        isBiometricsEnabled={isBiometricsEnabled}
-      />
-    );
-  }
-
-  if (!session && !isGuest) {
-    return (
-      <Login 
-        onLoginSuccess={() => { }} 
-        onGuestAccess={() => { setIsGuest(true); syncAll(); }} 
-      />
-    );
-  }
+  if (isAuthLoading) return <div className="min-h-screen bg-slate-100 dark:bg-[#020617] flex items-center justify-center"><Loader2 className="w-8 h-8 text-accent animate-spin" /></div>;
+  if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
+  if (!session && !isGuest) return <Login onGuestAccess={() => setIsGuest(true)} />;
 
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
-      <div className="fixed top-24 inset-x-0 z-30 flex justify-center pointer-events-none">
-        <UpdateBanner 
-          isOpen={updateManager.showUpdateBanner} 
-          onDismiss={() => updateManager.setShowUpdateBanner(false)} 
-          onUpdate={() => { updateManager.setShowChangelog(true); }} 
-          version={updateManager.availableVersion || 'Nova'} 
-        />
-      </div>
-
       <CloudStatusBanner status={cloudStatus} />
-
-      {toast && (
-        <div 
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] anim-fade-in-up is-visible w-auto max-w-[90%]"
-          onClick={() => updateManager.isUpdateAvailable && updateManager.setShowChangelog(true)}
-        >
-          <div className="flex items-center gap-3 pl-2 pr-4 py-2 rounded-full bg-slate-900/90 dark:bg-white/90 backdrop-blur-xl shadow-xl shadow-slate-900/10 transition-all cursor-pointer hover:scale-105 active:scale-95 border border-white/10 dark:border-black/5">
-             <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'info' ? 'bg-slate-800 dark:bg-slate-200' : toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
-                 {toast.type === 'info' ? <Loader2 className="w-3 h-3 text-white dark:text-slate-900 animate-spin" /> : toast.type === 'success' ? <CheckCircle2 className="w-3 h-3 text-white" /> : <AlertCircle className="w-3 h-3 text-white" />}
-             </div>
-             <span className="text-[10px] font-bold text-white dark:text-slate-900 tracking-wide truncate">{toast.text}</span>
-          </div>
-        </div>
-      )}
-
-      <Header 
-        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'}
-        showBack={showSettings}
-        onBack={() => setShowSettings(false)}
-        onSettingsClick={() => setShowSettings(true)}
-        onRefresh={() => syncAll(true)}
-        isRefreshing={isRefreshing || isAiLoading || isCloudSyncing}
-        updateAvailable={updateManager.isUpdateAvailable}
-        onUpdateClick={() => updateManager.setShowChangelog(true)}
-        onNotificationClick={() => { setShowNotifications(true); markNotificationsAsRead(); }}
-        notificationCount={unreadCount}
-        appVersion={APP_VERSION}
-        bannerVisible={cloudStatus !== 'hidden'}
-      />
-
+      {toast && ( <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] anim-fade-in-up is-visible w-auto max-w-[90%]"> <div className="flex items-center gap-3 pl-2 pr-4 py-2 rounded-full bg-slate-900/90 dark:bg-white/90 backdrop-blur-xl shadow-xl"> <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'info' ? 'bg-slate-800 dark:bg-slate-200' : toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>{toast.type === 'info' ? <Loader2 className="w-3 h-3 text-white dark:text-slate-900 animate-spin" /> : toast.type === 'success' ? <CheckCircle2 className="w-3 h-3 text-white" /> : <AlertCircle className="w-3 h-3 text-white" />}</div> <span className="text-[10px] font-bold text-white dark:text-slate-900 tracking-wide truncate">{toast.text}</span> </div> </div> )}
+      <Header title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} onRefresh={() => syncAll(true)} isRefreshing={isRefreshing || isAiLoading || isCloudSyncing} updateAvailable={updateManager.isUpdateAvailable} onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => { setShowNotifications(true); markNotificationsAsRead(); }} notificationCount={unreadCount} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} />
       <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
         {showSettings ? (
-          <Settings 
-            brapiToken={brapiToken} onSaveToken={setBrapiToken}
-            transactions={transactions} onImportTransactions={handleImportTransactions}
-            geminiDividends={geminiDividends} onImportDividends={setGeminiDividends}
-            onResetApp={() => { 
-                localStorage.clear(); 
-                setIsGuest(false);
-                window.location.reload(); 
-            }}
-            theme={theme} onSetTheme={setTheme}
-            accentColor={accentColor} onSetAccentColor={setAccentColor}
-            privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode}
-            appVersion={APP_VERSION}
-            availableVersion={updateManager.availableVersion} 
-            updateAvailable={updateManager.isUpdateAvailable}
-            onCheckUpdates={updateManager.checkForUpdates}
-            onShowChangelog={() => updateManager.setShowChangelog(true)}
-            releaseNotes={updateManager.releaseNotes}
-            lastChecked={updateManager.lastChecked}
-            pushEnabled={pushEnabled}
-            onRequestPushPermission={requestPushPermission}
-            lastSyncTime={lastSyncTime}
-            onSyncAll={() => syncAll(false)}
-          />
+          <Settings transactions={transactions} onImportTransactions={handleImportTransactions} geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); setIsGuest(false); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} availableVersion={updateManager.availableVersion} updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} lastSyncTime={lastSyncTime} onSyncAll={() => syncAll(false)} />
         ) : (
           <div key={currentTab} className="anim-fade-in is-visible">
-            {currentTab === 'home' && (
-                <Home 
-                    portfolio={memoizedData.portfolio}
-                    dividendReceipts={memoizedData.dividendReceipts}
-                    salesGain={memoizedData.salesGain}
-                    totalDividendsReceived={memoizedData.totalDividendsReceived}
-                    isAiLoading={isAiLoading} 
-                    inflationRate={marketIndicators.ipca}
-                    portfolioStartDate={marketIndicators.startDate}
-                    accentColor={accentColor}
-                />
-            )}
-            {currentTab === 'portfolio' && <Portfolio {...memoizedData} />}
-            {currentTab === 'transactions' && (
-              <Transactions 
-                transactions={transactions} 
-                onAddTransaction={handleAddTransaction}
-                onUpdateTransaction={handleUpdateTransaction}
-                onDeleteTransaction={handleDeleteTransaction}
-                monthlyContribution={memoizedData.monthlyContribution}
-              />
-            )}
+            {currentTab === 'home' && <MemoizedHome {...memoizedData} salesGain={summaryData.salesGain} totalAppreciation={memoizedData.balance - memoizedData.invested} isAiLoading={isAiLoading} inflationRate={marketIndicators.ipca} portfolioStartDate={marketIndicators.startDate} accentColor={accentColor} />}
+            {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedData} />}
+            {currentTab === 'transactions' && ( <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={onRequestDeleteConfirmation} /> )}
           </div>
         )}
       </main>
-
       {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
-
-      <ChangelogModal 
-        isOpen={updateManager.showChangelog} 
-        onClose={() => { if (updateManager.updateProgress === 0) updateManager.setShowChangelog(false); }} 
-        version={updateManager.availableVersion || APP_VERSION} 
-        notes={updateManager.releaseNotes}
-        isUpdatePending={!updateManager.wasUpdated && updateManager.isUpdateAvailable}
-        onUpdate={updateManager.startUpdateProcess}
-        progress={updateManager.updateProgress}
-      />
-      
-      <NotificationsModal 
-        isOpen={showNotifications} 
-        onClose={() => setShowNotifications(false)} 
-        notifications={notifications}
-        onClear={() => setNotifications([])}
-      />
+      <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => !updateManager.isUpdating && updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={!updateManager.wasUpdated && updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
+      <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={() => setNotifications([])} />
+      {confirmModal?.isOpen && ( <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} /> )}
     </div>
   );
 };

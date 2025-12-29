@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck, AlertCircle, Sparkle, PartyPopper, Loader2, CloudOff, Cloud, Wifi, Lock, Fingerprint, Delete, ShieldCheck } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck, AlertCircle, Sparkle, PartyPopper, Loader2, CloudOff, Cloud, Wifi, Lock, Fingerprint, Delete, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { ReleaseNote, AppNotification, ReleaseNoteType } from '../types';
 
 // Custom hook for managing enter/exit animations
@@ -12,7 +11,6 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
   useEffect(() => {
     if (isOpen) {
       setIsMounted(true);
-      // Small delay to ensure DOM is ready for transition
       requestAnimationFrame(() => setIsVisible(true));
     } else {
       setIsVisible(false);
@@ -24,9 +22,10 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
   return { isMounted, isVisible };
 };
 
-export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' | 'hidden' }> = ({ status }) => {
+export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' | 'hidden' | 'syncing' }> = ({ status }) => {
   const isHidden = status === 'hidden';
   const isConnected = status === 'connected';
+  const isSyncing = status === 'syncing';
 
   return (
     <div 
@@ -38,7 +37,12 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
           : 'bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-md text-slate-500 dark:text-slate-400 border-b border-slate-200/50 dark:border-white/5'
       }`}
     >
-      {isConnected ? (
+      {isSyncing ? (
+        <>
+          <Loader2 className="w-3 h-3 animate-spin" />
+          <span>Migrando dados...</span>
+        </>
+      ) : isConnected ? (
         <>
           <Cloud className="w-3 h-3 animate-bounce" />
           <span>Sincronizado com a Nuvem</span>
@@ -159,40 +163,6 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
     </header>
-  );
-};
-
-export const UpdateBanner: React.FC<{ 
-  isOpen: boolean; 
-  onDismiss: () => void; 
-  onUpdate: () => void; 
-  version: string 
-}> = ({ isOpen, onDismiss, onUpdate, version }) => {
-  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 300);
-  if (!isMounted) return null;
-
-  return (
-    <div className={`w-[90%] max-w-sm anim-fade-in-up ${isVisible ? 'is-visible' : ''} pointer-events-auto`}>
-      <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl p-4 rounded-3xl shadow-2xl shadow-accent/10 flex items-center justify-between gap-4 border border-slate-200/50 dark:border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/30 shrink-0">
-             <Rocket className="w-5 h-5" strokeWidth={2} />
-          </div>
-          <div>
-            <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wide">Nova Versão {version}</h4>
-            <p className="text-[10px] font-medium text-slate-500 leading-none mt-1">Atualização disponível</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-           <button onClick={onUpdate} className="px-3 py-2 bg-accent text-white rounded-xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-md">
-             Ver
-           </button>
-           <button onClick={onDismiss} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-white active:scale-90 transition-all">
-             <X className="w-4 h-4" strokeWidth={2.5} />
-           </button>
-        </div>
-      </div>
-    </div>
   );
 };
 
@@ -365,16 +335,14 @@ const getNoteIconAndColor = (type: ReleaseNoteType) => {
 
 export const ChangelogModal: React.FC<{ 
   isOpen: boolean; onClose: () => void; version: string; notes?: ReleaseNote[];
-  isUpdatePending?: boolean; onUpdate?: () => void; progress?: number;
-}> = ({ isOpen, onClose, version, notes, isUpdatePending, onUpdate, progress = 0 }) => {
+  isUpdatePending?: boolean; onUpdate?: () => void; isUpdating?: boolean; progress?: number;
+}> = ({ isOpen, onClose, version, notes, isUpdatePending, onUpdate, isUpdating, progress = 0 }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
   if (!isMounted) return null;
 
-  const isInstalling = progress > 0;
-
   return createPortal(
     <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6">
-        <div className={`absolute inset-0 bg-slate-900/40 backdrop-blur-md anim-fade-in ${isVisible ? 'is-visible' : ''}`} onClick={isInstalling ? undefined : onClose} />
+        <div className={`absolute inset-0 bg-slate-900/40 backdrop-blur-md anim-fade-in ${isVisible ? 'is-visible' : ''}`} onClick={onClose} />
         
         <div className={`relative bg-white dark:bg-[#0f172a] w-full max-w-[20rem] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden anim-scale-in border border-white/20 dark:border-white/5 ${isVisible ? 'is-visible' : ''}`}>
             {/* Minimal Header */}
@@ -416,28 +384,32 @@ export const ChangelogModal: React.FC<{
             {/* Footer Actions */}
             <div className="p-6 pt-2 bg-gradient-to-t from-white via-white to-transparent dark:from-[#0f172a] dark:via-[#0f172a] dark:to-transparent">
                 {isUpdatePending ? (
-                    isInstalling ? (
-                        <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-4 border border-slate-100 dark:border-white/5 relative overflow-hidden">
-                             {/* Animated Progress Bar Background */}
-                            <div className="absolute inset-0 bg-indigo-500/5 h-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
-                            
-                            <div className="relative z-10 flex justify-between items-center">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-500 flex items-center gap-2">
-                                  <Loader2 className="w-3 h-3 animate-spin" /> Instalando...
-                                </span>
-                                <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">{progress}%</span>
+                    isUpdating ? (
+                        <div className="w-full text-center py-3">
+                            <div className="w-full bg-slate-100 dark:bg-white/10 rounded-full h-2 overflow-hidden mb-2 relative">
+                                <div 
+                                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-300 ease-linear" 
+                                    style={{ width: `${progress}%` }}
+                                ></div>
+                                <div 
+                                  className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite]"
+                                  style={{ animationName: 'shimmer', animationDuration: '2s', animationIterationCount: 'infinite' }}
+                                ></div>
                             </div>
+                            <p className="text-xs font-bold text-slate-400">Instalando... {Math.round(progress)}%</p>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-3">
                             <button 
                                 onClick={onUpdate}
+                                disabled={isUpdating}
                                 className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
                             >
-                               <Download className="w-4 h-4" /> Atualizar Agora
+                               <Download className="w-4 h-4" /> Instalar e Reiniciar
                             </button>
                             <button 
                                 onClick={onClose}
+                                disabled={isUpdating}
                                 className="w-full py-3.5 rounded-2xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all"
                             >
                                 Depois
@@ -468,7 +440,6 @@ export const LockScreen: React.FC<{
     const [inputPin, setInputPin] = useState('');
     const [error, setError] = useState(false);
     
-    // Efeito para biometria automática ao abrir
     useEffect(() => {
         if (isOpen && isBiometricsEnabled) {
             handleBiometric();
@@ -477,12 +448,9 @@ export const LockScreen: React.FC<{
 
     const handleBiometric = async () => {
         try {
-            // Em um app real com backend, usaríamos uma challenge real.
-            // Para "client-side PWA", usamos uma credencial salva no dispositivo.
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
             
-            // Tenta obter credencial (trigger de FaceID/TouchID/DevicePIN)
             await navigator.credentials.get({
                 publicKey: {
                     challenge,
@@ -585,4 +553,53 @@ export const LockScreen: React.FC<{
         </div>,
         document.body
     );
+};
+
+export const ConfirmationModal: React.FC<{
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, title, message, onConfirm, onCancel }) => {
+  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
+
+  if (!isMounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6">
+      <div
+        className={`absolute inset-0 bg-slate-900/40 backdrop-blur-md anim-fade-in ${isVisible ? 'is-visible' : ''}`}
+        onClick={onCancel}
+      />
+      <div
+        className={`relative bg-white dark:bg-[#0f172a] w-full max-w-[22rem] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden anim-scale-in border border-white/20 dark:border-white/5 ${isVisible ? 'is-visible' : ''}`}
+      >
+        <div className="p-8 text-center">
+          <div className="w-16 h-16 bg-rose-50 dark:bg-rose-500/10 rounded-3xl flex items-center justify-center mx-auto mb-5">
+            <AlertTriangle className="w-8 h-8 text-rose-500" strokeWidth={1.5} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{title}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+            {message}
+          </p>
+        </div>
+        <div className="p-5 bg-slate-50 dark:bg-black/20 grid grid-cols-2 gap-3">
+          <button
+            onClick={onCancel}
+            className="py-3.5 rounded-2xl bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="py-3.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all shadow-lg shadow-rose-500/20"
+          >
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 };

@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-core-v7.0.4'; // Incrementado para garantir atualização
+const CACHE_NAME = 'investfiis-core-v7.0.2'; // Incrementado para garantir atualização
 
 // Arquivos vitais que devem estar disponíveis offline imediatamente
 const PRECACHE_ASSETS = [
@@ -58,7 +58,7 @@ self.addEventListener('fetch', (event) => {
       );
       return;
   }
-
+  
   // B) Navegação (HTML): Network First
   if (event.request.mode === 'navigate') {
       event.respondWith(
@@ -68,7 +68,13 @@ self.addEventListener('fetch', (event) => {
       return;
   }
 
-  // C) Assets Estáticos: Stale-While-Revalidate
+  // C) Somente cachear requisições GET. Ignorar POST, PUT, DELETE, etc.
+  if (event.request.method !== 'GET') {
+    // Deixa a requisição passar direto para a rede, sem cache.
+    return;
+  }
+
+  // D) Assets Estáticos (GET): Stale-While-Revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {

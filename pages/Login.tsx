@@ -1,14 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Wallet, Eye, EyeOff, Sparkles, TrendingUp, ChevronRight } from 'lucide-react';
 
 interface LoginProps {
-  onLoginSuccess: () => void;
   onGuestAccess: () => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onGuestAccess }) => {
+export const Login: React.FC<LoginProps> = ({ onGuestAccess }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,7 +59,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onGuestAccess }) =
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        onLoginSuccess();
+        // onLoginSuccess é gerenciado pelo onAuthStateChange no App.tsx
       }
     } catch (err: any) {
       setError(err.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : err.message);
@@ -242,7 +240,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onGuestAccess }) =
             </button>
             
             <p className="text-[10px] font-medium text-slate-600">
-                &copy; 2025 InvestFIIs • v7.0.3 • Secure by Supabase
+                &copy; 2025 InvestFIIs • v7.0.2 • Secure by Supabase
             </p>
         </div>
 

@@ -1,10 +1,9 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
 import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown, Briefcase, ChevronUp, Layers, Hash, Info } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
-const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: DividendReceipt[], totalPortfolioValue: number }> = ({ asset, index, history, totalPortfolioValue }) => {
+const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history: DividendReceipt[], totalPortfolioValue: number }> = ({ asset, index, history, totalPortfolioValue }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -48,7 +47,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
              <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-all duration-300 ${isExpanded ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 scale-110' : asset.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-600' : 'bg-blue-500/10 text-blue-600'}`}>
                     {asset.logoUrl ? (
-                        <img src={asset.logoUrl} alt={asset.ticker} className="w-7 h-7 object-contain" onError={(e) => { (e.target as any).style.display='none'; }} />
+                        <img loading="lazy" src={asset.logoUrl} alt={asset.ticker} className="w-7 h-7 object-contain" onError={(e) => { (e.target as any).style.display='none'; }} />
                     ) : (
                         <span className="text-xs font-black tracking-tighter">{asset.ticker.substring(0, 4)}</span>
                     )}
@@ -174,7 +173,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
           <div className="flex items-center gap-4 mb-8 mt-2">
               <div className="w-16 h-16 rounded-3xl flex items-center justify-center overflow-hidden shrink-0 shadow-md bg-white dark:bg-[#0f172a] border border-slate-100 dark:border-white/5">
                   {asset.logoUrl ? (
-                      <img src={asset.logoUrl} alt={asset.ticker} className="w-12 h-12 object-contain" onError={(e) => { (e.target as any).style.display='none'; }} />
+                      <img loading="lazy" src={asset.logoUrl} alt={asset.ticker} className="w-12 h-12 object-contain" onError={(e) => { (e.target as any).style.display='none'; }} />
                   ) : (
                       <span className="text-xl font-black tracking-tighter">{asset.ticker.substring(0, 4)}</span>
                   )}
@@ -269,8 +268,9 @@ const AssetCard: React.FC<{ asset: AssetPosition, index: number, history: Divide
     </>
   );
 };
+const AssetCard = React.memo(AssetCardInternal);
 
-export const Portfolio: React.FC<{ portfolio: AssetPosition[], dividendReceipts: DividendReceipt[] }> = ({ portfolio, dividendReceipts }) => {
+const PortfolioComponent: React.FC<{ portfolio: AssetPosition[], dividendReceipts: DividendReceipt[] }> = ({ portfolio, dividendReceipts }) => {
   const totalValue = useMemo(() => portfolio.reduce((acc, p) => acc + ((p.currentPrice || p.averagePrice) * p.quantity), 0), [portfolio]);
 
   const { fiis, stocks } = useMemo(() => {
@@ -316,3 +316,5 @@ export const Portfolio: React.FC<{ portfolio: AssetPosition[], dividendReceipts:
     </div>
   );
 };
+
+export const Portfolio = React.memo(PortfolioComponent);

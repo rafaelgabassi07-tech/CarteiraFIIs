@@ -1,45 +1,24 @@
-
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ReleaseNote, VersionData } from '../types';
 
 export const useUpdateManager = (currentAppVersion: string) => {
-  // Estados de UI
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
-  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
-  const [updateProgress, setUpdateProgress] = useState(0);
-  
-  // Dados da Nova Versão
   const [availableVersion, setAvailableVersion] = useState<string | null>(null);
   const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([]);
-  
-  // Estados Internos
   const [wasUpdated, setWasUpdated] = useState(false);
-  const [lastChecked, setLastChecked] = useState<number>(Date.now());
-  
-  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
-  const isUserUpdateRef = useRef(false);
+  const [lastChecked, setLastChecked] = useState<number | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState(0);
 
-  // 1. Busca Metadados (JSON)
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+
   const fetchVersionMetadata = useCallback(async () => {
     try {
-      // Adiciona timestamp e random para evitar cache agressivo de CDNs ou browsers
-      const res = await fetch(`./version.json?t=${Date.now()}&r=${Math.random()}`, { 
-        cache: 'no-store',
-        headers: { 
-            'Pragma': 'no-cache', 
-            'Cache-Control': 'no-cache, no-store, must-revalidate' 
-        }
-      });
-      
+      const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data: VersionData = await res.json();
-        
-        // SEMPRE atualiza as notas, independente da versão
-        // Isso corrige o bug onde as notas sumiam se o app já estivesse atualizado
         setReleaseNotes(data.notes || []);
-        
-        // Verifica se a versão do JSON é diferente da atual
         if (data.version !== currentAppVersion) {
             setAvailableVersion(data.version);
             return data;
@@ -51,145 +30,103 @@ export const useUpdateManager = (currentAppVersion: string) => {
     return null;
   }, [currentAppVersion]);
 
-  // 2. Inicialização e Registro do Service Worker
+  // Effect for SW registration and update listening
   useEffect(() => {
-    // Lógica de "Acabei de atualizar"
+    if ('serviceWorker' in navigator) {
+      const onUpdate = (registration: ServiceWorkerRegistration) => {
+        if (registration.waiting) {
+          setWaitingWorker(registration.waiting);
+          fetchVersionMetadata().then(() => {
+            setIsUpdateAvailable(true);
+          });
+        }
+      };
+
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => {
+          reg.update();
+          
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  onUpdate(reg);
+                }
+              });
+            }
+          });
+        })
+        .catch(error => console.error('Service Worker registration failed:', error));
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          window.location.reload();
+          refreshing = true;
+        }
+      });
+    }
+  }, [fetchVersionMetadata]);
+
+  // Effect for checking if the app was just updated on load
+  useEffect(() => {
     const lastVersion = localStorage.getItem('investfiis_version');
     if (lastVersion && lastVersion !== currentAppVersion) {
-        setWasUpdated(true);
-        // Busca as notas para exibir no modal de Changelog pós-update
-        fetchVersionMetadata().then(() => setShowChangelog(true));
-    } else {
-        // Se não houve update recente, busca notas apenas para popular a tela de Configurações
-        fetchVersionMetadata();
+      setWasUpdated(true);
+      fetchVersionMetadata().then((meta) => {
+        setReleaseNotes(meta?.notes || []);
+        setShowChangelog(true);
+      });
     }
-    
     localStorage.setItem('investfiis_version', currentAppVersion);
-
-    if (!('serviceWorker' in navigator)) return;
-
-    // Handler para quando a atualização de fato ocorre
-    const handleControllerChange = () => {
-        if (isUserUpdateRef.current) {
-            window.location.reload();
-        }
-    };
-
-    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-
-    const registerSW = async () => {
-        try {
-            const reg = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
-            swRegistrationRef.current = reg;
-
-            const handleUpdateFound = async () => {
-                const meta = await fetchVersionMetadata(); 
-                if (meta || reg.waiting) {
-                    setIsUpdateAvailable(true);
-                    setShowUpdateBanner(true);
-                }
-            };
-
-            if (reg.waiting) {
-                console.log('SW: Update waiting detected on load');
-                handleUpdateFound();
-            }
-
-            reg.addEventListener('updatefound', () => {
-                const newWorker = reg.installing;
-                if (newWorker) {
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('SW: New update installed and waiting');
-                            handleUpdateFound();
-                        }
-                    });
-                }
-            });
-
-            setInterval(() => {
-                reg.update();
-                fetchVersionMetadata(); // Também verifica o JSON periodicamente
-            }, 60 * 60 * 1000);
-
-        } catch (err) {
-            console.error('SW: Registration failed', err);
-        }
-    };
-
-    registerSW();
-
-    return () => {
-        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-    };
   }, [currentAppVersion, fetchVersionMetadata]);
 
-  // 3. Checagem Manual
   const checkForUpdates = useCallback(async () => {
      setLastChecked(Date.now());
-     
-     // 1. Checagem rápida via JSON (Metadados)
-     const meta = await fetchVersionMetadata();
-     if (meta && meta.version !== currentAppVersion) {
-         setIsUpdateAvailable(true);
-         return true;
-     }
-
-     // 2. Checagem profunda via Service Worker
-     if (swRegistrationRef.current) {
-         try {
-             await swRegistrationRef.current.update();
-             if (swRegistrationRef.current.waiting || swRegistrationRef.current.installing) {
-                 setIsUpdateAvailable(true);
-                 return true;
-             }
-         } catch (e) {
-             console.warn("Erro na checagem manual do SW:", e);
+     if ('serviceWorker' in navigator) {
+       const reg = await navigator.serviceWorker.getRegistration();
+       if (reg) {
+         await reg.update();
+         if (reg.waiting) {
+             setIsUpdateAvailable(true);
+             setWaitingWorker(reg.waiting);
+             return true;
          }
+       }
      }
-     
-     return false;
+     const meta = await fetchVersionMetadata();
+     const hasUpdate = meta?.version !== currentAppVersion;
+     if (hasUpdate) {
+         setIsUpdateAvailable(true);
+     }
+     return hasUpdate;
   }, [currentAppVersion, fetchVersionMetadata]);
-
-  // 4. Aplicar Atualização
+  
   const startUpdateProcess = useCallback(() => {
-     const reg = swRegistrationRef.current;
-     
-     if (!reg || !reg.waiting) {
-         window.location.reload();
-         return;
-     }
+    setIsUpdating(true);
+    setUpdateProgress(30);
 
-     isUserUpdateRef.current = true;
-     setUpdateProgress(10);
-     
-     reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-     
-     let p = 10;
-     const interval = setInterval(() => {
-         p += 20;
-         if (p > 90) p = 90;
-         setUpdateProgress(p);
-     }, 200);
-
-     setTimeout(() => {
-         clearInterval(interval);
-         window.location.reload();
-     }, 4000); 
-  }, []);
+    if (waitingWorker) {
+      setUpdateProgress(70);
+      waitingWorker.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+    } else {
+      setUpdateProgress(100);
+      window.location.reload();
+    }
+  }, [waitingWorker]);
 
   return {
     isUpdateAvailable,
-    showUpdateBanner,
-    setShowUpdateBanner,
     availableVersion,
     releaseNotes,
-    updateProgress,
     showChangelog,
     setShowChangelog,
     wasUpdated,
     lastChecked,
     checkForUpdates,
-    startUpdateProcess
+    startUpdateProcess,
+    isUpdating,
+    updateProgress,
   };
 };
