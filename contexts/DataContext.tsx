@@ -52,7 +52,7 @@ const STORAGE_KEYS = {
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session } = useAuth();
-  const { showToast, setConfirmModal } = useNotifications();
+  const { showToast, setConfirmModal, addSyncToast } = useNotifications();
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.TXS); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
@@ -147,17 +147,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const mapRecord = (r: any): Transaction => ({ id: r.id, ticker: r.ticker, type: r.type, quantity: r.quantity, price: r.price, date: r.date, assetType: r.asset_type });
         setTransactions(currentTxs => {
             if (payload.eventType === 'INSERT') {
-              // Previne "eco" do realtime, não adiciona se já existe
               if (currentTxs.some(t => t.id === payload.new.id)) return currentTxs;
+              addSyncToast(`Nova ordem para ${payload.new.ticker} sincronizada.`, 'add');
               return [...currentTxs, mapRecord(payload.new)];
             }
-            if (payload.eventType === 'UPDATE') return currentTxs.map(t => t.id === payload.new.id ? mapRecord(payload.new) : t);
-            if (payload.eventType === 'DELETE') return currentTxs.filter(t => t.id !== payload.old.id);
+            if (payload.eventType === 'UPDATE') {
+              addSyncToast(`Ordem de ${payload.new.ticker} atualizada.`, 'update');
+              return currentTxs.map(t => t.id === payload.new.id ? mapRecord(payload.new) : t);
+            }
+            if (payload.eventType === 'DELETE') {
+              addSyncToast(`Ordem de ${payload.old.ticker} removida da nuvem.`, 'delete');
+              return currentTxs.filter(t => t.id !== payload.old.id);
+            }
             return currentTxs;
         });
       }).subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [session]);
+  }, [session, addSyncToast]);
 
   const addTransaction = async (t: Omit<Transaction, 'id'>) => {
     const newTx = { ...t, id: crypto.randomUUID() };
