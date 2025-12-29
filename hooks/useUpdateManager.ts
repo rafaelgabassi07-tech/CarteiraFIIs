@@ -1,6 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ReleaseNote, VersionData } from '../types';
 
+const isNewerVersion = (newVersion: string, oldVersion: string) => {
+  const newParts = newVersion.split('.').map(Number);
+  const oldParts = oldVersion.split('.').map(Number);
+  for (let i = 0; i < newParts.length; i++) {
+    const newPart = newParts[i];
+    const oldPart = oldParts[i] || 0;
+    if (newPart > oldPart) {
+      return true;
+    }
+    if (newPart < oldPart) {
+      return false;
+    }
+  }
+  return false;
+};
+
 export const useUpdateManager = (currentAppVersion: string) => {
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
@@ -19,7 +35,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
       if (res.ok) {
         const data: VersionData = await res.json();
         setReleaseNotes(data.notes || []);
-        if (data.version !== currentAppVersion) {
+        if (isNewerVersion(data.version, currentAppVersion)) {
             setAvailableVersion(data.version);
             return data;
         }
@@ -72,7 +88,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
   // Effect for checking if the app was just updated on load
   useEffect(() => {
     const lastVersion = localStorage.getItem('investfiis_version');
-    if (lastVersion && lastVersion !== currentAppVersion) {
+    if (lastVersion && isNewerVersion(currentAppVersion, lastVersion)) {
       setWasUpdated(true);
       fetchVersionMetadata().then((meta) => {
         setReleaseNotes(meta?.notes || []);
@@ -96,7 +112,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
        }
      }
      const meta = await fetchVersionMetadata();
-     const hasUpdate = meta?.version !== currentAppVersion;
+     const hasUpdate = !!meta && isNewerVersion(meta.version, currentAppVersion);
      if (hasUpdate) {
          setIsUpdateAvailable(true);
      }

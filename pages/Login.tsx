@@ -240,7 +240,7 @@ export const Login: React.FC<LoginProps> = ({ onGuestAccess }) => {
             </button>
             
             <p className="text-[10px] font-medium text-slate-600">
-                &copy; 2025 InvestFIIs • v7.0.2 • Secure by Supabase
+                &copy; 2025 InvestFIIs • v7.0.4 • Secure by Supabase
             </p>
         </div>
 

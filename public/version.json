@@ -1,22 +1,21 @@
-
 {
-  "version": "7.0.1",
-  "date": "2025-06-29",
+  "version": "7.0.2",
+  "date": "2025-07-01",
   "notes": [
     {
-      "type": "fix",
-      "title": "Correção de Notificações",
-      "desc": "A seção de configuração de alertas foi restaurada e agora funciona corretamente."
-    },
-    {
-      "type": "fix",
-      "title": "Sistema de Update",
-      "desc": "Resolvido problema que impedia a visualização das notas de atualização se o app já estivesse na versão mais recente."
+      "type": "feat",
+      "title": "Backup e Restauração Aprimorados",
+      "desc": "Sistema de backup mais seguro e intuitivo com confirmação e validação de arquivos."
     },
     {
       "type": "ui",
-      "title": "Notas de Versão",
-      "desc": "Agora é possível visualizar este changelog a qualquer momento através do menu de Ajustes."
+      "title": "Agenda de Proventos Unificada",
+      "desc": "Pagamentos e 'Datas Com' agora são exibidos em uma única linha do tempo cronológica para maior clareza."
+    },
+    {
+      "type": "fix",
+      "title": "Estabilidade da Home",
+      "desc": "Corrigido um erro crítico que causava o travamento do aplicativo ao iniciar."
     }
   ]
 }

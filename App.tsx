@@ -13,7 +13,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.0.2'; 
+const APP_VERSION = '7.0.4'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
