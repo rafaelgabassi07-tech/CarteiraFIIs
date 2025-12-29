@@ -211,7 +211,7 @@ export const Login: React.FC = () => {
                 <ChevronRight className="w-3 h-3 text-slate-500 group-hover:text-white transition-colors" />
             </button>
             <p className="text-[10px] font-medium text-slate-600">
-                &copy; 2025 InvestFIIs • v7.0.7 • Secure by Supabase
+                &copy; 2025 InvestFIIs • v7.0.8 • Secure by Supabase
             </p>
         </div>
       </div>
