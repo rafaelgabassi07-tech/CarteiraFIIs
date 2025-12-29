@@ -138,13 +138,13 @@ export const Settings: React.FC<SettingsProps> = ({ appVersion }) => {
 
     // Gemini API Test
     try {
-        const cooldown = localStorage.getItem('investfiis_quota_cooldown');
-        if (cooldown && Date.now() < parseInt(cooldown)) {
+        const aiData = await fetchUnifiedMarketData(['MXRF11'], undefined, false);
+        if (aiData.error === 'quota_exceeded') {
             setApiStatuses(prev => ({ ...prev, gemini: 'quota_exceeded' }));
+        } else if (aiData.error) {
+            throw new Error(aiData.error);
         } else {
-            const aiData = await fetchUnifiedMarketData(['MXRF11'], undefined, false);
-            if (aiData.error && aiData.error !== 'quota_exceeded') throw new Error(aiData.error);
-            setApiStatuses(prev => ({ ...prev, gemini: aiData.error === 'quota_exceeded' ? 'quota_exceeded' : 'ok' }));
+            setApiStatuses(prev => ({ ...prev, gemini: 'ok' }));
         }
     } catch(e) {
         setApiStatuses(prev => ({ ...prev, gemini: 'error' }));

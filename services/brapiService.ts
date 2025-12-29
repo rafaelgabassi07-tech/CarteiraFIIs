@@ -4,7 +4,7 @@ import { BrapiQuote } from '../types';
 const BRAPI_TOKEN = import.meta.env.VITE_BRAPI_TOKEN;
 
 /**
- * Busca cotações de ativos diretamente da API da Brapi.
+ * Busca cotações de ativos da API da Brapi fazendo requisições individuais por ativo.
  * @param tickers - Array de tickers para buscar.
  * @returns Um objeto com as cotações e um possível erro.
  */
@@ -19,28 +19,43 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
   }
 
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
-  const tickersString = uniqueTickers.join(',');
 
-  try {
-    const url = `https://brapi.dev/api/quote/${tickersString}?token=${BRAPI_TOKEN}&range=1d&interval=1d`;
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`A API da Brapi respondeu com o status ${response.status}`);
+  // Cria um array de promises de fetch, uma para cada ticker.
+  const promises = uniqueTickers.map(ticker => {
+    const url = `https://brapi.dev/api/quote/${ticker}?token=${BRAPI_TOKEN}&range=1d&interval=1d`;
+    return fetch(url)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API Brapi respondeu com status ${response.status} para ${ticker}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.error) {
+          throw new Error(`Erro da API Brapi para ${ticker}: ${data.error}`);
+        }
+        // A estrutura para um único ticker é { "results": [{...}] }
+        return data.results && data.results[0] ? data.results[0] : null;
+      });
+  });
+
+  // Utiliza Promise.allSettled para aguardar todas as requisições, mesmo que algumas falhem.
+  const results = await Promise.allSettled(promises);
+
+  const successfulQuotes: BrapiQuote[] = [];
+  let hasErrors = false;
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled' && result.value) {
+      successfulQuotes.push(result.value);
+    } else if (result.status === 'rejected') {
+      hasErrors = true;
+      console.error(`Erro ao buscar cotação para ${uniqueTickers[index]}:`, result.reason?.message);
     }
+  });
 
-    const data = await response.json();
-    
-    // A API da Brapi pode retornar um objeto de erro dentro de uma resposta 200 OK.
-    if (data.error) {
-      throw new Error(data.error);
-    }
-    
-    // A estrutura da Brapi para múltiplos tickers é { "results": [...] }
-    return { quotes: data.results || [] };
-
-  } catch (e: any) {
-    console.error("Erro ao chamar a API da Brapi:", e.message);
-    return { quotes: [], error: "Erro de conexão com o servidor de cotações." };
-  }
+  return { 
+    quotes: successfulQuotes, 
+    error: hasErrors ? "Algumas cotações não puderam ser carregadas." : undefined 
+  };
 };
