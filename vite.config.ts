@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: '/',
+    base: './',
     plugins: [react()],
     server: {
       host: '0.0.0.0', // Permite acesso externo (essencial para Google AI Studio/IDX previews)
