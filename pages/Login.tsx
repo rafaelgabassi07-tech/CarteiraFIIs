@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Wallet, Eye, EyeOff, Sparkles, TrendingUp, ChevronRight } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
 
-export const Login: React.FC = () => {
-  const { setAsGuest } = useAuth();
+interface LoginProps {
+  onGuestAccess: () => void;
+}
+
+export const Login: React.FC<LoginProps> = ({ onGuestAccess }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,6 +19,7 @@ export const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Efeito de paralisia suave no background (opcional, visual only)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   
   useEffect(() => {
@@ -56,6 +59,7 @@ export const Login: React.FC = () => {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        // onLoginSuccess é gerenciado pelo onAuthStateChange no App.tsx
       }
     } catch (err: any) {
       setError(err.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : err.message);
@@ -66,7 +70,13 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-[#020617] relative overflow-hidden font-sans selection:bg-indigo-500/30">
+      
+      {/* --- Background Effects --- */}
+      
+      {/* Grid Pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b20_1px,transparent_1px),linear-gradient(to_bottom,#1e293b20_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+      
+      {/* Animated Blobs */}
       <div 
         className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none transition-transform duration-1000 ease-out"
         style={{ transform: `translate(${mousePos.x * -1}px, ${mousePos.y * -1}px)` }}
@@ -75,7 +85,11 @@ export const Login: React.FC = () => {
         className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-emerald-600/10 rounded-full blur-[120px] pointer-events-none transition-transform duration-1000 ease-out"
         style={{ transform: `translate(${mousePos.x}px, ${mousePos.y}px)` }}
       />
+
+      {/* --- Main Content --- */}
       <div className="w-full max-w-[400px] relative z-10 flex flex-col gap-6">
+        
+        {/* Header Branding */}
         <div className="text-center anim-fade-in-up is-visible">
           <div className="inline-flex items-center justify-center relative mb-6 group cursor-default">
             <div className="absolute inset-0 bg-indigo-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
@@ -89,8 +103,12 @@ export const Login: React.FC = () => {
           <h1 className="text-3xl font-black text-white tracking-tight mb-2">InvestFIIs</h1>
           <p className="text-sm text-slate-400 font-medium tracking-wide">Gestão inteligente de patrimônio</p>
         </div>
+
+        {/* Login Card */}
         <div className="bg-slate-900/60 backdrop-blur-xl rounded-[2.5rem] border border-white/10 p-1 shadow-2xl anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
+          
           <div className="bg-[#0b1121]/50 rounded-[2.25rem] p-6 sm:p-8 border border-white/5">
+            {/* Toggle Switch */}
             <div className="relative flex bg-black/20 p-1 rounded-2xl mb-8">
                 <div 
                     className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-slate-800 rounded-xl shadow-sm transition-all duration-300 ease-out-quint border border-white/5"
@@ -109,7 +127,9 @@ export const Login: React.FC = () => {
                     Criar Conta
                 </button>
             </div>
+
             <form onSubmit={handleAuth} className="space-y-4">
+                {/* Feedback Messages */}
                 {error && (
                 <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold flex items-start gap-3 anim-fade-in is-visible">
                     <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
@@ -123,6 +143,8 @@ export const Login: React.FC = () => {
                     <span>{message}</span>
                 </div>
                 )}
+
+                {/* Inputs */}
                 <div className="space-y-4">
                     <div className="group relative">
                         <div className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-focus-within:bg-indigo-500/20 group-focus-within:text-indigo-400 transition-all duration-300">
@@ -137,6 +159,7 @@ export const Login: React.FC = () => {
                             required
                         />
                     </div>
+
                     <div className="group relative">
                          <div className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-focus-within:bg-indigo-500/20 group-focus-within:text-indigo-400 transition-all duration-300">
                             <Lock className="w-5 h-5" />
@@ -158,6 +181,7 @@ export const Login: React.FC = () => {
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                     </div>
+
                     {isSignUp && (
                         <div className="group relative anim-fade-in-up is-visible">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-focus-within:bg-indigo-500/20 group-focus-within:text-indigo-400 transition-all duration-300">
@@ -182,6 +206,7 @@ export const Login: React.FC = () => {
                         </div>
                     )}
                 </div>
+
                 <div className="pt-2">
                     <button
                         type="submit"
@@ -196,24 +221,29 @@ export const Login: React.FC = () => {
                                 </>
                             )}
                         </span>
+                        {/* Shine Effect */}
                         <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-slate-200/50 to-transparent z-0"></div>
                     </button>
                 </div>
             </form>
           </div>
         </div>
+
+        {/* Footer Actions */}
         <div className="text-center space-y-6 anim-fade-in-up is-visible" style={{ animationDelay: '200ms' }}>
             <button 
-                onClick={setAsGuest}
+                onClick={onGuestAccess}
                 className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-95"
             >
                 <span className="text-xs font-bold text-slate-300 group-hover:text-white uppercase tracking-wider transition-colors">Modo Convidado</span>
                 <ChevronRight className="w-3 h-3 text-slate-500 group-hover:text-white transition-colors" />
             </button>
+            
             <p className="text-[10px] font-medium text-slate-600">
-                &copy; 2025 InvestFIIs • v7.0.9 • Secure by Supabase
+                &copy; 2025 InvestFIIs • v7.0.4 • Secure by Supabase
             </p>
         </div>
+
       </div>
     </div>
   );

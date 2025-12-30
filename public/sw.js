@@ -1,4 +1,5 @@
-const CACHE_NAME = 'investfiis-core-v7.0.9'; // Incrementado para garantir atualização
+
+const CACHE_NAME = 'investfiis-core-v7.0.4'; // Incrementado para garantir atualização
 
 // Arquivos vitais que devem estar disponíveis offline imediatamente
 const PRECACHE_ASSETS = [
@@ -8,10 +9,7 @@ const PRECACHE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  // A remoção de self.skipWaiting() aqui é a mudança CRÍTICA.
-  // O novo Service Worker irá instalar mas aguardará para ativar
-  // até que todas as abas antigas do app sejam fechadas.
-  // Isso previne o recarregamento forçado durante o uso.
+  self.skipWaiting(); // Força atualização imediata do SW
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
@@ -44,6 +42,21 @@ self.addEventListener('fetch', (event) => {
   // Ignorar esquemas não suportados (chrome-extension, data, file, etc)
   if (!url.protocol.startsWith('http')) {
       return; 
+  }
+
+  // A) Version.json: CRÍTICO - NUNCA CACHEAR
+  if (url.pathname.includes('version.json')) {
+      event.respondWith(
+          fetch(event.request, { 
+              cache: 'no-store',
+              headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+          }).catch(() => {
+              return new Response(JSON.stringify({ error: 'offline' }), { 
+                  headers: { 'Content-Type': 'application/json' } 
+              });
+          })
+      );
+      return;
   }
   
   // B) Navegação (HTML): Network First
@@ -143,4 +156,10 @@ self.addEventListener('notificationclick', function(event) {
       }
     })
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'INVESTFIIS_SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

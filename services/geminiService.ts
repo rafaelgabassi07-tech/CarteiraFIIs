@@ -143,16 +143,16 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   console.log(`🤖 [Gemini API] Buscando dados da IA diretamente...`);
 
-  // FIX: Use process.env.API_KEY per Gemini SDK guidelines.
+  // FIX: Use process.env.API_KEY directly as per guidelines.
   if (!process.env.API_KEY) {
-      const errorMsg = "Chave da API Gemini (VITE_API_KEY) não configurada.";
+      const errorMsg = "Chave da API Gemini (API_KEY) não configurada.";
       console.error(errorMsg);
       return { dividends: [], metadata: {}, error: errorMsg };
   }
 
   try {
     // 3. Chamada direta para a API Gemini
-    // FIX: Use process.env.API_KEY per Gemini SDK guidelines.
+    // FIX: Use process.env.API_KEY directly as per guidelines.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const today = new Date().toISOString().split('T')[0];
     const portfolioStart = startDate || `${new Date().getFullYear()}-01-01`;
@@ -160,8 +160,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     const prompt = `Analise os ativos ${uniqueTickers.join(', ')}. Forneça seus fundamentos, dividendos recentes e futuros, e o IPCA acumulado de ${portfolioStart} até ${today}.`;
 
     const response = await ai.models.generateContent({
-        // FIX: Updated model to gemini-3-flash-preview as per guidelines for this task type.
-        model: "gemini-3-flash-preview",
+        model: "gemini-3-pro-preview",
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -170,11 +169,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         },
     });
     
-    const text = response.text;
-    if (!text) {
-        throw new Error("A resposta da API Gemini está vazia ou malformada.");
-    }
-    const parsedJson = JSON.parse(text);
+    const parsedJson = JSON.parse(response.text);
 
     const metadata: any = {};
     const dividends: any[] = [];

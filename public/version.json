@@ -1,0 +1,21 @@
+{
+  "version": "7.0.2",
+  "date": "2025-07-01",
+  "notes": [
+    {
+      "type": "feat",
+      "title": "Backup e Restauração Aprimorados",
+      "desc": "Sistema de backup mais seguro e intuitivo com confirmação e validação de arquivos."
+    },
+    {
+      "type": "ui",
+      "title": "Agenda de Proventos Unificada",
+      "desc": "Pagamentos e 'Datas Com' agora são exibidos em uma única linha do tempo cronológica para maior clareza."
+    },
+    {
+      "type": "fix",
+      "title": "Estabilidade da Home",
+      "desc": "Corrigido um erro crítico que causava o travamento do aplicativo ao iniciar."
+    }
+  ]
+}

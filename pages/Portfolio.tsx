@@ -2,7 +2,6 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
 import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown, Briefcase, ChevronUp, Layers, Hash, Info } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { useData } from '../hooks/useData';
 
 const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history: DividendReceipt[], totalPortfolioValue: number }> = ({ asset, index, history, totalPortfolioValue }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -15,7 +14,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
     if (contentRef.current) {
       setContentHeight(contentRef.current.scrollHeight);
     }
-  }, [isExpanded, asset]);
+  }, [isExpanded, asset]); // Recalculate on expand or if asset data changes
   
   const currentPrice = asset.currentPrice || asset.averagePrice;
   const totalValue = currentPrice * asset.quantity;
@@ -43,6 +42,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="p-4">
+          {/* Header do Card (Sempre visível) */}
           <div className="flex items-center justify-between">
              <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-all duration-300 ${isExpanded ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 scale-110' : asset.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-600' : 'bg-blue-500/10 text-blue-600'}`}>
@@ -74,6 +74,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
              </div>
           </div>
 
+          {/* Área Expandida com `max-height` */}
           <div 
             className="overflow-hidden transition-[max-height,opacity] duration-500 ease-out-quint"
             style={{ maxHeight: isExpanded ? `${contentHeight}px` : '0px', opacity: isExpanded ? 1 : 0 }}
@@ -269,8 +270,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
 };
 const AssetCard = React.memo(AssetCardInternal);
 
-const PortfolioComponent: React.FC = () => {
-  const { portfolio, dividendReceipts } = useData();
+const PortfolioComponent: React.FC<{ portfolio: AssetPosition[], dividendReceipts: DividendReceipt[] }> = ({ portfolio, dividendReceipts }) => {
   const totalValue = useMemo(() => portfolio.reduce((acc, p) => acc + ((p.currentPrice || p.averagePrice) * p.quantity), 0), [portfolio]);
 
   const { fiis, stocks } = useMemo(() => {

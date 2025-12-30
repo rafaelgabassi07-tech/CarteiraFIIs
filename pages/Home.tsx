@@ -4,8 +4,20 @@ import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, S
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 import { VariableSizeList as List } from 'react-window';
-import { useData } from '../hooks/useData';
-import { useSettings } from '../hooks/useSettings';
+
+interface HomeProps {
+  portfolio: AssetPosition[];
+  dividendReceipts: DividendReceipt[];
+  salesGain: number;
+  totalDividendsReceived: number;
+  isAiLoading?: boolean;
+  inflationRate?: number;
+  portfolioStartDate?: string;
+  accentColor?: string;
+  invested: number;
+  balance: number;
+  totalAppreciation: number;
+}
 
 const formatBRL = (val: any) => {
   const num = typeof val === 'number' ? val : 0;
@@ -15,6 +27,13 @@ const formatBRL = (val: any) => {
 const formatPercent = (val: any) => {
   const num = typeof val === 'number' ? val : 0;
   return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+};
+
+const formatDate = (dateStr: string) => {
+    if (!dateStr) return '??/??/??';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dateStr;
 };
 
 const getMonthName = (dateStr: string) => {
@@ -39,8 +58,10 @@ const getShortDateLabel = (dateStr?: string) => {
 const getRelativeDateInfo = (dateStr: string) => {
     if (!dateStr) return { label: 'N/A', isUrgent: false, color: 'text-slate-400' };
     const eventDate = new Date(dateStr + 'T00:00:00');
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
   
@@ -65,10 +86,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-const HomeComponent: React.FC = () => {
-  const { portfolio, dividendReceipts, salesGain, totalDividendsReceived, isAiLoading, marketIndicators, invested, balance, totalAppreciation } = useData();
-  const { accentColor } = useSettings();
-
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate = 0, portfolioStartDate, accentColor = '#0ea5e9', invested, balance, totalAppreciation, }) => {
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRealGainModal, setShowRealGainModal] = useState(false);
   const [showAgendaModal, setShowAgendaModal] = useState(false);
@@ -108,9 +126,8 @@ const HomeComponent: React.FC = () => {
 
     const allUpcomingEvents: any[] = [];
     dividendReceipts.forEach(receipt => {
-      const { type, ...restOfReceipt } = receipt;
-      if (receipt.paymentDate >= todayStr) allUpcomingEvents.push({ type: 'payment', date: receipt.paymentDate, ...restOfReceipt });
-      if (receipt.dateCom >= todayStr) allUpcomingEvents.push({ type: 'datacom', date: receipt.dateCom, ...restOfReceipt });
+      if (receipt.paymentDate >= todayStr) allUpcomingEvents.push({ type: 'payment', date: receipt.paymentDate, ...receipt });
+      if (receipt.dateCom >= todayStr) allUpcomingEvents.push({ type: 'datacom', date: receipt.dateCom, ...receipt });
     });
     allUpcomingEvents.sort((a, b) => a.date.localeCompare(b.date));
     const uniqueUpcomingEvents = allUpcomingEvents.reduce((acc: any[], current) => {
@@ -136,6 +153,7 @@ const HomeComponent: React.FC = () => {
   }, [dividendReceipts]);
 
   const sortedHistoryKeys = useMemo(() => Object.keys(historyGrouped).sort((a,b) => b.localeCompare(a)), [historyGrouped]);
+  // FIX: Use `as const` on `type` property to allow for proper type narrowing in the render function. This resolves multiple property access errors.
   const flatHistory = useMemo(() => sortedHistoryKeys.flatMap(monthKey => [{ type: 'header' as const, month: monthKey, total: historyGrouped[monthKey].total }, ...historyGrouped[monthKey].items.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).map(item => ({ type: 'item' as const, data: item }))]), [sortedHistoryKeys, historyGrouped]);
   const getItemSize = (index: number) => flatHistory[index].type === 'header' ? 48 : 96;
 
@@ -152,14 +170,14 @@ const HomeComponent: React.FC = () => {
   const magicNumbers = useMemo(() => portfolio.map(p => { const lastDiv = [...dividendReceipts].filter(d => d.ticker === p.ticker).sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))[0]; if (!lastDiv || !p.currentPrice || lastDiv.rate <= 0) return null; const magicQty = Math.ceil(p.currentPrice / lastDiv.rate); if (!isFinite(magicQty) || magicQty <= 0) return null; return { ticker: p.ticker, currentQty: p.quantity, magicQty, progress: Math.min(100, (p.quantity / magicQty) * 100), missing: Math.max(0, magicQty - p.quantity), rate: lastDiv.rate }; }).filter(m => m !== null).sort((a,b) => (b?.progress || 0) - (a?.progress || 0)), [portfolio, dividendReceipts]);
   const renderActiveShape = (props: any) => { const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props; return ( <g> <text x={cx} y={cy - 10} dy={0} textAnchor="middle" className="text-sm font-bold dark:fill-white fill-slate-900" style={{ fontSize: '16px' }}> {payload.name} </text> <text x={cx} y={cy + 10} dy={8} textAnchor="middle" className="text-xs font-medium fill-slate-500"> {formatBRL(value)} </text> <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} cornerRadius={6} /> <Sector cx={cx} cy={cy} startAngle={startAngle} endAngle={endAngle} innerRadius={outerRadius + 12} outerRadius={outerRadius + 14} fill={fill} opacity={0.2} cornerRadius={10} /> </g> ); };
   const COLORS = useMemo(() => [accentColor, '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#6366f1', '#14b8a6', '#f97316', '#64748b', '#d946ef', '#22c55e'], [accentColor]);
-  const finalIPCA = marketIndicators.ipca > 0 ? marketIndicators.ipca : 0;
+  const finalIPCA = inflationRate > 0 ? inflationRate : 0;
   const nominalYield = invested > 0 ? (totalProfit / invested) * 100 : 0;
   const ganhoRealPercent = nominalYield - finalIPCA;
   const lucroNominalAbsoluto = totalProfit;
   const custoCorrosaoInflacao = invested * (finalIPCA / 100);
   const ganhoRealValor = lucroNominalAbsoluto - custoCorrosaoInflacao;
   const isAboveInflation = ganhoRealPercent > 0;
-  const dateLabel = getShortDateLabel(marketIndicators.startDate);
+  const dateLabel = getShortDateLabel(portfolioStartDate);
   const comparisonData = useMemo(() => [{ name: `IPCA ${dateLabel}`, value: finalIPCA, fill: '#64748b' }, { name: 'Carteira', value: nominalYield, fill: nominalYield >= finalIPCA ? '#10b981' : '#f43f5e' }], [nominalYield, finalIPCA, dateLabel]);
 
   return (
