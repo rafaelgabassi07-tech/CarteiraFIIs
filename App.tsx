@@ -74,7 +74,7 @@ const App: React.FC = () => {
   
   const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(() => localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true');
+  const [isGuest, setIsGuest] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
 
@@ -237,31 +237,31 @@ const App: React.FC = () => {
         
         if (!mounted) return;
 
-        if (error) {
-            console.error("Auth init error:", error);
-            // Fallback to guest mode or login if auth fails
-            setSession(null);
-        } else {
-            setSession(initialSession);
-        }
-        
-        setIsAuthLoading(false);
+        // Determine initial state
+        const isGuestMode = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
         
         if (initialSession) {
+          setSession(initialSession);
+          setIsGuest(false);
           fetchTransactionsFromCloud();
           setCloudStatus('connected');
           setTimeout(() => setCloudStatus('hidden'), 3000);
-        } else if (localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true') {
-          setCloudStatus('disconnected');
-          // Only sync if we have local transactions
-          const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
-          if (localTxs.length > 0) {
-             syncMarketData(false, localTxs);
+        } else {
+          setSession(null);
+          setIsGuest(isGuestMode);
+          if (isGuestMode) {
+              setCloudStatus('disconnected');
+              // Sync market if guest has data
+              const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
+              if (localTxs.length > 0) {
+                  syncMarketData(false, localTxs);
+              }
           }
         }
       } catch (e) {
           console.error("Critical app init error:", e);
-          setIsAuthLoading(false);
+      } finally {
+          if (mounted) setIsAuthLoading(false);
       }
     };
 

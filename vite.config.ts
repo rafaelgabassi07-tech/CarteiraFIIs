@@ -7,18 +7,12 @@ export default defineConfig(({ mode }) => {
     base: './',
     plugins: [react()],
     server: {
-      host: '0.0.0.0',
+      host: '0.0.0.0', // Permite acesso externo (necessário para containers)
       port: 5173,
-      cors: {
-        origin: '*',
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-        credentials: true
-      },
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-      },
-      allowedHosts: true
+      cors: true, // Habilita CORS permissivo padrão
+      hmr: {
+        overlay: false // Desabilita overlay de erro em tela cheia para não bloquear a UI em erros menores
+      }
     },
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY),
