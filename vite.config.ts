@@ -6,6 +6,9 @@ export default defineConfig(({ mode }) => {
   return {
     base: './',
     plugins: [react()],
+    optimizeDeps: {
+      include: ['react-window']
+    },
     server: {
       host: '0.0.0.0', // Permite acesso externo (essencial para Google AI Studio/IDX previews)
       port: 5173,
