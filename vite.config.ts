@@ -14,6 +14,22 @@ export default defineConfig(({ mode }) => {
         overlay: false // Desabilita overlay de erro em tela cheia para não bloquear a UI em erros menores
       }
     },
+    build: {
+      chunkSizeWarningLimit: 1600,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('recharts')) return 'recharts';
+              if (id.includes('lucide-react')) return 'lucide';
+              if (id.includes('@supabase')) return 'supabase';
+              if (id.includes('@google/genai')) return 'genai';
+              return 'vendor';
+            }
+          }
+        }
+      }
+    },
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY),
       'process.env.BRAPI_TOKEN': JSON.stringify(env.BRAPI_TOKEN)
