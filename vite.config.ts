@@ -7,11 +7,11 @@ export default defineConfig(({ mode }) => {
     base: '/',
     plugins: [react()],
     server: {
-      host: '0.0.0.0', // Permite acesso externo (necessário para containers)
+      host: '0.0.0.0', // Permite acesso externo (essencial para Google AI Studio/IDX previews)
       port: 5173,
-      cors: true, // Habilita CORS permissivo padrão
+      cors: true,
       hmr: {
-        overlay: false // Desabilita overlay de erro em tela cheia para não bloquear a UI em erros menores
+        overlay: false
       }
     },
     build: {
