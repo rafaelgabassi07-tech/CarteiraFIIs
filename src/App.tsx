@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, LockScreen, ConfirmationModal } from './components/Layout';
-import { Home } from './pages/Home';
-import { Portfolio } from './pages/Portfolio';
-import { Transactions } from './pages/Transactions';
-import { Settings } from './pages/Settings';
-import { Login } from './pages/Login';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals } from './types';
-import { getQuotes } from './services/brapiService';
-import { fetchUnifiedMarketData } from './services/geminiService';
+import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, LockScreen, ConfirmationModal } from '../components/Layout';
+import { Home } from '../pages/Home';
+import { Portfolio } from '../pages/Portfolio';
+import { Transactions } from '../pages/Transactions';
+import { Settings } from '../pages/Settings';
+import { Login } from '../pages/Login';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals } from '../types';
+import { getQuotes } from '../services/brapiService';
+import { fetchUnifiedMarketData } from '../services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import { useUpdateManager } from './hooks/useUpdateManager';
-import { supabase } from './services/supabase';
-import { Session } from '@supabase/supabase-js';
+import { useUpdateManager } from '../hooks/useUpdateManager';
+import { supabase } from '../services/supabase';
+import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
 const APP_VERSION = '7.1.0'; 
 
@@ -45,16 +45,14 @@ const getQuantityOnDate = (ticker: string, date: string, transactions: Transacti
 
 // --- Supabase Helpers ---
 
-// Prepara transação local (camelCase) para o Banco de Dados (snake_case)
 const cleanTxForSupabase = (tx: Transaction | Omit<Transaction, 'id'>) => {
   const { assetType, ...restOfTx } = tx;
   return {
     ...restOfTx,
-    asset_type: assetType, // Mapeia camelCase para snake_case
+    asset_type: assetType, 
   };
 };
 
-// Mapeia registro do Banco de Dados (snake_case) para transação local (camelCase)
 const mapSupabaseToTx = (record: any): Transaction => {
   return {
     id: record.id,
@@ -63,7 +61,7 @@ const mapSupabaseToTx = (record: any): Transaction => {
     quantity: record.quantity,
     price: record.price,
     date: record.date,
-    assetType: record.asset_type || AssetType.FII, // Fallback se vier nulo do BD antigo
+    assetType: record.asset_type || AssetType.FII, 
   };
 };
 
@@ -146,25 +144,23 @@ const App: React.FC = () => {
 
   // --- Funções de Sincronização ---
 
-  // 1. Sincronização de Mercado (Brapi + Gemini)
   const syncMarketData = useCallback(async (force: boolean = false, txsToUse: Transaction[] = transactions) => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) {
-      setQuotes({});
-      setGeminiDividends([]);
-      setAssetsMetadata({});
+      if (Object.keys(quotes).length > 0) setQuotes({});
       return;
     }
     
     setIsRefreshing(true);
     try {
       const { quotes: newQuotesData } = await getQuotes(tickers);
-      setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc, q) => ({...acc, [q.symbol]: q }), {})}));
+      if (newQuotesData.length > 0) {
+        setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
+      }
       
       setIsAiLoading(true);
       const startDate = txsToUse.length > 0 ? txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date) : '';
       
-      // Busca dados unificados (dividendos + meta + indicadores)
       const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
       
       if (aiData.error === 'quota_exceeded') showToast('info', 'IA em pausa (Cota). Usando cache.');
@@ -182,9 +178,8 @@ const App: React.FC = () => {
       setIsRefreshing(false); 
       setIsAiLoading(false); 
     }
-  }, [transactions, showToast]);
+  }, [transactions, showToast, quotes]);
 
-  // 2. Busca Nuvem -> App (Supabase Select)
   const fetchTransactionsFromCloud = useCallback(async () => {
     setIsCloudSyncing(true);
     try {
@@ -194,8 +189,9 @@ const App: React.FC = () => {
       if (data) {
         const cloudTxs: Transaction[] = data.map(mapSupabaseToTx);
         setTransactions(cloudTxs);
-        // Dispara sync de mercado após atualizar transações
-        syncMarketData(false, cloudTxs);
+        if (cloudTxs.length > 0) {
+            syncMarketData(false, cloudTxs);
+        }
       }
     } catch (err: any) {
       console.error("Supabase fetch error:", err);
@@ -205,7 +201,6 @@ const App: React.FC = () => {
     }
   }, [showToast, syncMarketData]);
 
-  // 3. Migração Convidado -> Nuvem (Supabase Insert)
   const migrateGuestDataToCloud = useCallback(async (user_id: string) => {
     const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]') as Transaction[];
     if (localTxs.length === 0) return;
@@ -213,22 +208,20 @@ const App: React.FC = () => {
     setCloudStatus('syncing');
     showToast('info', 'Migrando dados locais para a nuvem...');
     
-    const dataToInsert = localTxs.map(tx => {
-        const { id, ...rest } = tx;
-        // Gera novo ID para evitar conflitos de UUID local vs server se necessário, 
-        // ou mantém o UUID local se for válido. Aqui mantemos para consistência.
-        const record = cleanTxForSupabase(rest);
-        return { ...record, user_id, id };
-    });
+    try {
+        const dataToInsert = localTxs.map(tx => {
+            const { id, ...rest } = tx;
+            const record = cleanTxForSupabase(rest);
+            return { ...record, user_id, id };
+        });
 
-    const { error } = await supabase.from('transactions').insert(dataToInsert);
-    if (error) {
+        const { error } = await supabase.from('transactions').insert(dataToInsert);
+        if (error) throw error;
+        
+        showToast('success', 'Dados locais salvos na nuvem!');
+    } catch (error) {
       console.error("Supabase migration error:", error);
       showToast('error', 'Erro ao migrar dados.');
-    } else {
-      showToast('success', 'Dados locais salvos na nuvem!');
-      // Limpa storage local de transações para evitar duplicidade lógica, 
-      // agora a fonte da verdade é o estado do App sincronizado com Supabase
     }
   }, [showToast]);
 
@@ -238,30 +231,40 @@ const App: React.FC = () => {
     let mounted = true;
 
     const initApp = async () => {
-      // 1. Pega sessão atual
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      
-      if (!mounted) return;
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
 
-      setSession(initialSession);
-      setIsAuthLoading(false);
-      
-      if (initialSession) {
-        // Usuário Logado: Busca dados da nuvem
-        fetchTransactionsFromCloud();
-        setCloudStatus('connected');
-        setTimeout(() => setCloudStatus('hidden'), 3000);
-      } else if (localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true') {
-        // Convidado: Usa dados locais e sincroniza mercado
-        setCloudStatus('disconnected');
-        syncMarketData(false); // Usa transações do estado inicial (localStorage)
+        const isGuestMode = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
+        
+        if (initialSession) {
+          setSession(initialSession);
+          setIsGuest(false);
+          fetchTransactionsFromCloud();
+          setCloudStatus('connected');
+          setTimeout(() => setCloudStatus('hidden'), 3000);
+        } else {
+          setSession(null);
+          setIsGuest(isGuestMode);
+          if (isGuestMode) {
+              setCloudStatus('disconnected');
+              const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
+              if (localTxs.length > 0) {
+                  syncMarketData(false, localTxs);
+              }
+          }
+        }
+      } catch (e) {
+          console.error("Critical app init error:", e);
+      } finally {
+          if (mounted) setIsAuthLoading(false);
       }
     };
 
     initApp();
 
-    // 2. Listener de Mudanças de Auth
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, currentSession: Session | null) => {
       if (!mounted) return;
       
       const previousSessionId = session?.user?.id;
@@ -269,7 +272,6 @@ const App: React.FC = () => {
       
       setSession(currentSession);
 
-      // Login detectado (sessão mudou de nula para existente ou usuário trocou)
       if (currentSessionId && currentSessionId !== previousSessionId) {
         setIsGuest(false);
         const wasGuest = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
@@ -282,7 +284,6 @@ const App: React.FC = () => {
         setCloudStatus('connected');
         setTimeout(() => setCloudStatus('hidden'), 3000);
       } 
-      // Logout detectado
       else if (!currentSessionId && previousSessionId) {
         setTransactions([]);
         setQuotes({});
@@ -296,7 +297,7 @@ const App: React.FC = () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []); // Executa apenas uma vez no mount, dependências internas controladas por refs/callbacks se necessário
+  }, []);
 
   // --- Realtime Subscription (Supabase) ---
   useEffect(() => {
@@ -304,7 +305,7 @@ const App: React.FC = () => {
     
     const channel = supabase
       .channel('transactions-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${session.user.id}` }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${session.user.id}` }, (payload: any) => {
         const { eventType, new: newRecord, old: oldRecord } = payload;
         
         setTransactions(currentTxs => {
@@ -330,7 +331,7 @@ const App: React.FC = () => {
 
   const handleAddTransaction = async (t: Omit<Transaction, 'id'>) => {
     const newTx = { ...t, id: crypto.randomUUID() };
-    setTransactions(p => [...p, newTx]); // Optimistic UI
+    setTransactions(p => [...p, newTx]); 
     
     if (session) {
       const record = cleanTxForSupabase(newTx);
@@ -338,7 +339,7 @@ const App: React.FC = () => {
       if (error) {
         console.error("Supabase insert error:", error);
         showToast('error', 'Erro ao salvar na nuvem.');
-        setTransactions(p => p.filter(tx => tx.id !== newTx.id)); // Reverte
+        setTransactions(p => p.filter(tx => tx.id !== newTx.id)); 
       }
     }
   };
@@ -347,7 +348,7 @@ const App: React.FC = () => {
     const originalTx = transactions.find(t => t.id === id);
     const updatedTx = { ...updated, id };
     
-    setTransactions(p => p.map(t => t.id === id ? updatedTx : t)); // Optimistic UI
+    setTransactions(p => p.map(t => t.id === id ? updatedTx : t)); 
 
     if (session && originalTx) {
       const record = cleanTxForSupabase(updated);
@@ -355,21 +356,21 @@ const App: React.FC = () => {
       if (error) {
         console.error("Supabase update error:", error);
         showToast('error', 'Falha ao atualizar na nuvem.');
-        setTransactions(p => p.map(t => t.id === id ? originalTx : t)); // Reverte
+        setTransactions(p => p.map(t => t.id === id ? originalTx : t)); 
       }
     }
   };
 
   const handleDeleteTransaction = async (id: string) => {
     const deletedTx = transactions.find(t => t.id === id);
-    setTransactions(p => p.filter(t => t.id !== id)); // Optimistic UI
+    setTransactions(p => p.filter(t => t.id !== id)); 
 
     if (session && deletedTx) {
       const { error } = await supabase.from('transactions').delete().match({ id });
       if (error) {
         console.error("Supabase delete error:", error);
         showToast('error', 'Falha ao apagar na nuvem.');
-        setTransactions(p => [...p, deletedTx]); // Reverte
+        setTransactions(p => [...p, deletedTx]); 
       }
     }
   };
@@ -426,7 +427,6 @@ const App: React.FC = () => {
   const summaryData = useMemo(() => {
     let totalSalesGain = 0;
     const assetTracker: Record<string, { quantity: number; totalCost: number }> = {};
-    // Ordena por data para cálculo correto de preço médio e lucro
     const sortedTxs = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     for (const t of sortedTxs) {
@@ -454,7 +454,6 @@ const App: React.FC = () => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     const todayStr = new Date().toISOString().split('T')[0];
     
-    // Calcula recibos com base na quantidade possuída na Data Com
     const receipts = geminiDividends.map(div => ({
         ...div, 
         quantityOwned: Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, sortedTxs)), 
@@ -495,7 +494,7 @@ const App: React.FC = () => {
     });
     
     const finalPortfolio = Object.values(positions)
-        .filter(p => p.quantity > 0.0001) // Filtra posições zeradas
+        .filter(p => p.quantity > 0.0001) 
         .map(p => ({ 
             ...p, 
             currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice, 
