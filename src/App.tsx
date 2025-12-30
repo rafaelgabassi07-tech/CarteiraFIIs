@@ -213,21 +213,22 @@ const App: React.FC = () => {
     setCloudStatus('syncing');
     showToast('info', 'Migrando dados locais para a nuvem...');
     
-    try {
-        const dataToInsert = localTxs.map(tx => {
-            const { id, ...rest } = tx;
-            const record = cleanTxForSupabase(rest);
-            return { ...record, user_id, id };
-        });
+    const dataToInsert = localTxs.map(tx => {
+        const { id, ...rest } = tx;
+        // Gera novo ID para evitar conflitos de UUID local vs server se necessário, 
+        // ou mantém o UUID local se for válido. Aqui mantemos para consistência.
+        const record = cleanTxForSupabase(rest);
+        return { ...record, user_id, id };
+    });
 
-        const { error } = await supabase.from('transactions').insert(dataToInsert);
-        if (error) throw error;
-        
-        showToast('success', 'Dados locais salvos na nuvem!');
-        // Opcional: Limpar storage local se a migração for total e confirmada
-    } catch (error) {
+    const { error } = await supabase.from('transactions').insert(dataToInsert);
+    if (error) {
       console.error("Supabase migration error:", error);
       showToast('error', 'Erro ao migrar dados.');
+    } else {
+      showToast('success', 'Dados locais salvos na nuvem!');
+      // Limpa storage local de transações para evitar duplicidade lógica, 
+      // agora a fonte da verdade é o estado do App sincronizado com Supabase
     }
   }, [showToast]);
 

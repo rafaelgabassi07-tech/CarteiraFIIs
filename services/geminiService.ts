@@ -20,7 +20,7 @@ const getAiCacheTTL = () => {
     return isWeekend ? (48 * 60 * 60 * 1000) : (4 * 60 * 60 * 1000);
 };
 
-// --- Funções Auxiliares de Parsing (movidas da Edge Function) ---
+// --- Funções Auxiliares de Parsing ---
 const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
   const s = String(dateStr).trim();
@@ -50,7 +50,7 @@ const normalizeValue = (val: any): number => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
-// --- Esquema de Resposta para a Gemini (movido da Edge Function) ---
+// --- Esquema de Resposta para a Gemini ---
 const unifiedDataSchema = {
   type: Type.OBJECT,
   properties: {
@@ -141,10 +141,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     } catch (e) { console.warn("Cache Warning", e); }
   }
 
-  console.log(`🤖 [Gemini API] Buscando dados da IA diretamente...`);
+  console.log(`🤖 [Gemini API] Buscando dados da IA diretamente para: ${uniqueTickers.join(', ')}`);
 
-  // FIX: Use process.env.API_KEY directly as per guidelines.
-  if (!process.env.API_KEY) {
+  const apiKey = process.env.API_KEY;
+
+  if (!apiKey) {
       const errorMsg = "Chave da API Gemini (API_KEY) não configurada.";
       console.error(errorMsg);
       return { dividends: [], metadata: {}, error: errorMsg };
@@ -152,12 +153,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   try {
     // 3. Chamada direta para a API Gemini
-    // FIX: Use process.env.API_KEY directly as per guidelines.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    const ai = new GoogleGenAI({ apiKey: apiKey as string });
     const today = new Date().toISOString().split('T')[0];
     const portfolioStart = startDate || `${new Date().getFullYear()}-01-01`;
 
-    const prompt = `Analise os ativos ${uniqueTickers.join(', ')}. Forneça seus fundamentos, dividendos recentes e futuros, e o IPCA acumulado de ${portfolioStart} até ${today}.`;
+    const prompt = `Analise os ativos ${uniqueTickers.join(', ')}. Forneça seus fundamentos, dividendos recentes e futuros (apenas confirmados), e o IPCA acumulado de ${portfolioStart} até ${today}. Retorne JSON puro.`;
 
     const response = await ai.models.generateContent({
         model: "gemini-3-pro-preview",
@@ -169,7 +169,20 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         },
     });
     
-    const parsedJson = JSON.parse(response.text);
+    // Tratamento robusto do JSON
+    let parsedJson: any;
+    try {
+      if (response.text) {
+          // Remove potential markdown fences if model hallucinates them despite mimeType
+          const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+          parsedJson = JSON.parse(cleanText);
+      } else {
+          throw new Error("Resposta vazia da IA");
+      }
+    } catch (parseError) {
+      console.error("Erro ao fazer parse do JSON da Gemini:", parseError);
+      throw new Error("Falha no processamento da resposta da IA");
+    }
 
     const metadata: any = {};
     const dividends: any[] = [];
