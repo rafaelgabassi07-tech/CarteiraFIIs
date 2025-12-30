@@ -153,7 +153,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   try {
     // 3. Chamada direta para a API Gemini
     // FIX: Use process.env.API_KEY directly as per guidelines.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     const today = new Date().toISOString().split('T')[0];
     const portfolioStart = startDate || `${new Date().getFullYear()}-01-01`;
 

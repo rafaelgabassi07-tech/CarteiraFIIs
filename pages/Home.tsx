@@ -126,8 +126,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
     const allUpcomingEvents: any[] = [];
     dividendReceipts.forEach(receipt => {
-      if (receipt.paymentDate >= todayStr) allUpcomingEvents.push({ type: 'payment', date: receipt.paymentDate, ...receipt });
-      if (receipt.dateCom >= todayStr) allUpcomingEvents.push({ type: 'datacom', date: receipt.dateCom, ...receipt });
+      if (receipt.paymentDate >= todayStr) allUpcomingEvents.push({ ...receipt, type: 'payment', date: receipt.paymentDate });
+      if (receipt.dateCom >= todayStr) allUpcomingEvents.push({ ...receipt, type: 'datacom', date: receipt.dateCom });
     });
     allUpcomingEvents.sort((a, b) => a.date.localeCompare(b.date));
     const uniqueUpcomingEvents = allUpcomingEvents.reduce((acc: any[], current) => {
