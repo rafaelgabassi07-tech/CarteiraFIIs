@@ -906,11 +906,11 @@ export const Settings: React.FC<SettingsProps> = ({
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Receba alertas em tempo real sobre dividendos e eventos da carteira.</p>
                     <button 
                         onClick={onRequestPushPermission}
-                        disabled={pushEnabled}
-                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${pushEnabled ? 'bg-emerald-500 text-white cursor-default' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
+                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${pushEnabled ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
                     >
                         {pushEnabled ? 'Ativado ✓' : 'Ativar Notificações'}
                     </button>
+                    {pushEnabled && <p className="text-[9px] text-slate-400 mt-2 font-medium">Toque novamente para desativar</p>}
                 </div>
 
                 <div className="mb-6 anim-fade-in-up is-visible">

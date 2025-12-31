@@ -605,6 +605,14 @@ const App: React.FC = () => {
 
   const requestPushPermission = async () => {
     if (!('Notification' in window)) { showToast('error', 'Navegador não suporta notificações'); return; }
+    
+    // Permitir desativar se já estiver ativado
+    if (pushEnabled) {
+        setPushEnabled(false);
+        showToast('info', 'Notificações desativadas.');
+        return;
+    }
+
     const permission = await Notification.requestPermission();
     setPushEnabled(permission === 'granted');
     showToast(permission === 'granted' ? 'success' : 'info', permission === 'granted' ? 'Notificações Ativadas!' : 'Permissão negada.');
