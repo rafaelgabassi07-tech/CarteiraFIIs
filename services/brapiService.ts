@@ -14,12 +14,16 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
     return { quotes: [] };
   }
   if (!BRAPI_TOKEN) {
-    const errorMsg = "Chave da API Brapi (BRAPI_TOKEN) não configurada.";
+    const errorMsg = "Chave da API Brapi (BRAPI_TOKEN) não configurada no .env";
     console.error(errorMsg);
+    // Retorna vazio mas loga erro crítico para o desenvolvedor
     return { quotes: [], error: errorMsg };
   }
 
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
+  
+  // Log de diagnóstico
+  console.log(`📈 [Brapi Service] Buscando cotações para ${uniqueTickers.length} ativos...`);
 
   try {
     // Cria um array de Promises, uma para cada ticker
@@ -28,14 +32,14 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
       try {
         const response = await fetch(url);
         if (!response.ok) {
-           console.warn(`Falha ao buscar ${ticker}: ${response.status}`);
+           console.warn(`⚠️ [Brapi] Falha ao buscar ${ticker}: HTTP ${response.status}`);
            return null;
         }
         const data = await response.json();
         // A Brapi retorna { results: [...] } mesmo para single quote
         return data.results && data.results.length > 0 ? data.results[0] : null;
       } catch (err) {
-        console.warn(`Erro de rede ao buscar ${ticker}`, err);
+        console.warn(`❌ [Brapi] Erro de rede ao buscar ${ticker}`, err);
         return null;
       }
     });
@@ -45,6 +49,8 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
 
     // Filtra nulos (falhas)
     const validQuotes = results.filter((q): q is BrapiQuote => q !== null);
+    
+    console.log(`✅ [Brapi Service] Sucesso: ${validQuotes.length}/${uniqueTickers.length} cotações obtidas.`);
 
     return { quotes: validQuotes };
 

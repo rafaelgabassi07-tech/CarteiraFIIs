@@ -10,7 +10,7 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.0_proxy'; // Chave de cache mantida
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.1_proxy'; // Chave de cache atualizada
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; // Chave para o Circuit Breaker
 
 const getAiCacheTTL = () => {
@@ -66,8 +66,8 @@ const unifiedDataSchema = {
         type: Type.OBJECT,
         properties: {
           t: { type: Type.STRING, description: "Ticker do ativo" },
-          type: { type: Type.STRING, description: "FII ou ACAO" },
-          segment: { type: Type.STRING, description: "Segmento de atuação" },
+          type: { type: Type.STRING, description: "CLASSIFICACAO EXATA: 'FII' ou 'ACAO'" },
+          segment: { type: Type.STRING, description: "Segmento de atuação (ex: Logística, Papel, Bancário, Elétrico)" },
           fund: {
             type: Type.OBJECT,
             properties: {
@@ -154,10 +154,16 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     const today = new Date().toISOString().split('T')[0];
     const portfolioStart = startDate || `${new Date().getFullYear()}-01-01`;
 
-    const prompt = `Analise os ativos ${uniqueTickers.join(', ')}. Forneça seus fundamentos, dividendos recentes e futuros (apenas confirmados), e o IPCA acumulado de ${portfolioStart} até ${today}. Retorne JSON puro seguindo o schema.`;
+    const prompt = `Analise os ativos ${uniqueTickers.join(', ')}.
+    
+    1. Para CADA ATIVO, retorne os fundamentos (P/VP, DY, etc) e classifique OBRIGATORIAMENTE se é 'FII' ou 'ACAO' no campo 'type'.
+    2. Retorne TODOS os dividendos/JCP anunciados ou pagos desde ${portfolioStart} até hoje, e também os FUTUROS confirmados (Agenda). Não omita pagamentos recentes.
+    3. Calcule o IPCA acumulado de ${portfolioStart} até ${today} para o campo 'sys.ipca'.
+    
+    Responda APENAS com JSON puro seguindo o schema.`;
 
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash", // MODELO ALTERADO PARA 2.5 FLASH
+        model: "gemini-2.5-flash", 
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -187,7 +193,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       for (const asset of parsedJson.data) {
           const ticker = asset.t.toUpperCase();
           metadata[ticker] = {
-              type: asset.type === 'FII' ? 'FII' : 'ACAO',
+              type: asset.type === 'FII' ? 'FII' : 'ACAO', // Normalização forçada
               segment: asset.segment,
               fundamentals: {
                   p_vp: normalizeValue(asset.fund.pvp),

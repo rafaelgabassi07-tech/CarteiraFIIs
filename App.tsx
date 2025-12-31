@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.2.4'; 
+const APP_VERSION = '7.2.5'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -143,6 +143,17 @@ const App: React.FC = () => {
     if (type !== 'info') setTimeout(() => setToast(null), 3000);
   }, []);
 
+  // --- Verificação de Tokens ---
+  useEffect(() => {
+    // Verifica se os tokens estão presentes no ambiente
+    if (!process.env.BRAPI_TOKEN) {
+      setTimeout(() => showToast('error', 'Token BRAPI não configurado!'), 2000);
+    }
+    if (!process.env.API_KEY) {
+      setTimeout(() => showToast('error', 'Token Gemini (IA) não configurado!'), 3000);
+    }
+  }, [showToast]);
+
   // --- Funções de Sincronização ---
 
   const syncMarketData = useCallback(async (force: boolean = false, txsToUse: Transaction[] = transactions) => {
@@ -157,25 +168,32 @@ const App: React.FC = () => {
 
     try {
       // BRAPI
-      const { quotes: newQuotesData } = await getQuotes(tickers);
-      if (newQuotesData.length > 0) {
-        setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
+      // Garante que só chama se tiver tickers e token
+      if (process.env.BRAPI_TOKEN) {
+          const { quotes: newQuotesData } = await getQuotes(tickers);
+          if (newQuotesData.length > 0) {
+            setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
+          }
       }
       
       if (appLoading) setLoadingProgress(prev => Math.max(prev, 60)); 
 
       // GEMINI (IA)
-      setIsAiLoading(true);
-      const startDate = txsToUse.length > 0 ? txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date) : '';
+      if (process.env.API_KEY) {
+          setIsAiLoading(true);
+          const startDate = txsToUse.length > 0 ? txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date) : '';
+          
+          const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
+          
+          if (aiData.error === 'quota_exceeded') showToast('info', 'IA em pausa (Cota). Usando cache.');
+          else if (force) showToast('success', 'Carteira Sincronizada');
+          else if (aiData.error) console.warn("Erro Gemini:", aiData.error);
+          
+          if (aiData.dividends.length > 0) setGeminiDividends(aiData.dividends);
+          if (Object.keys(aiData.metadata).length > 0) setAssetsMetadata(aiData.metadata);
+          if (aiData.indicators?.ipca_cumulative) setMarketIndicators({ ipca: aiData.indicators.ipca_cumulative, startDate: aiData.indicators.start_date_used });
+      }
       
-      const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
-      
-      if (aiData.error === 'quota_exceeded') showToast('info', 'IA em pausa (Cota). Usando cache.');
-      else if (force) showToast('success', 'Carteira Sincronizada');
-      
-      setGeminiDividends(aiData.dividends);
-      setAssetsMetadata(aiData.metadata);
-      if (aiData.indicators?.ipca_cumulative) setMarketIndicators({ ipca: aiData.indicators.ipca_cumulative, startDate: aiData.indicators.start_date_used });
       setLastSyncTime(new Date());
       
       if (appLoading) setLoadingProgress(prev => Math.max(prev, 90)); 
@@ -200,7 +218,6 @@ const App: React.FC = () => {
       let query = supabase.from('transactions').select('*');
       
       // FILTRO CRÍTICO: Garante que só buscamos dados do usuário logado se a sessão existir
-      // Isso resolve problemas onde RLS pode estar permissivo ou falhando
       if (session?.user?.id) {
           query = query.eq('user_id', session.user.id);
       }
@@ -244,7 +261,6 @@ const App: React.FC = () => {
 
   const handleSyncAll = useCallback(async (force: boolean) => {
     if (session) {
-        // Usa a função centralizada que gerencia o banner
         await fetchTransactionsFromCloud();
     }
   }, [fetchTransactionsFromCloud, session]);
@@ -275,8 +291,6 @@ const App: React.FC = () => {
         // Usuário logado ou restaurado
         if (!previousSessionId) {
             setLoadingProgress(15);
-            // Inicia o sync que gerencia o próprio status
-            // Pequeno delay para garantir que o estado 'session' atualizou
             setTimeout(() => fetchTransactionsFromCloud(), 100);
         }
       } 
@@ -289,7 +303,6 @@ const App: React.FC = () => {
       }
 
       if (appLoading) {
-          // Finaliza loading se já temos uma decisão de sessão (sim ou não)
           setLoadingProgress(100);
           setTimeout(() => {
               if (mounted) {
@@ -319,7 +332,6 @@ const App: React.FC = () => {
             if (eventType === 'INSERT') {
               if (currentTxs.some(t => t.id === newRecord.id)) return currentTxs;
               const newTx = mapSupabaseToTx(newRecord);
-              // Dispara atualização de mercado se for um ticker novo
               if (!currentTxs.some(t => t.ticker === newTx.ticker)) {
                  setTimeout(() => syncMarketData(false, [...currentTxs, newTx]), 500);
               }
@@ -436,7 +448,6 @@ const App: React.FC = () => {
         setCloudStatus('disconnected');
     } finally {
         setIsCloudSyncing(false);
-        // O fetchTransactionsFromCloud já gerencia o status para 'connected'/'hidden' em caso de sucesso
     }
   };
 
@@ -604,6 +615,8 @@ const App: React.FC = () => {
                           inflationRate={marketIndicators.ipca} 
                           portfolioStartDate={marketIndicators.startDate} 
                           accentColor={accentColor} 
+                          invested={memoizedData.invested}
+                          balance={memoizedData.balance}
                       />
                   )}
                   {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedData} />}
