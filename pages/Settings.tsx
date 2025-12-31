@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star, ArrowRightLeft } from 'lucide-react';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star, ArrowRightLeft, Clock, BarChart3, Signal, Network } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
 import { ThemeType } from '../App';
 import { supabase } from '../services/supabase';
@@ -298,6 +298,28 @@ export const Settings: React.FC<SettingsProps> = ({
       }
   };
 
+  // Helper for Market Status
+  const getMarketStatus = () => {
+    const now = new Date();
+    const utcDay = now.getUTCDay(); // 0 = Domingo, 6 = Sábado
+    const utcHour = now.getUTCHours();
+    
+    // Horário de Brasília é UTC-3 (aproximado, ignorando horário de verão que não temos mais)
+    const brHour = (utcHour - 3 + 24) % 24;
+    
+    const isWeekend = utcDay === 0 || utcDay === 6;
+    
+    if (isWeekend) return { label: 'Fechado (FDS)', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-white/10', icon: Moon };
+    
+    // Mercado B3 aproximado: 10:00 - 17:00 (Pregão) | 17:00 - 18:00 (After)
+    if (brHour >= 10 && brHour < 17) return { label: 'Pregão Aberto', color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: Activity };
+    if (brHour >= 17 && brHour < 18) return { label: 'After-market', color: 'text-amber-500', bg: 'bg-amber-500/10', icon: Clock };
+    
+    return { label: 'Fechado', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-white/10', icon: Moon };
+  };
+
+  const marketStatus = getMarketStatus();
+
   // Diagnostics Logic
   const addLog = (text: string, type: 'info' | 'success' | 'error' | 'warn' = 'info') => {
     setDiagState(prev => ({
@@ -507,25 +529,139 @@ export const Settings: React.FC<SettingsProps> = ({
           
           {activeSection === 'integrations' && (
             <div className="space-y-6">
-                <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Status da Sincronização</h3><button onClick={handleForceSync} disabled={isSyncing} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent active:scale-90 transition-all"><RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /></button></div>
-                     <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs"><span className="font-bold text-slate-400">Última Atualização</span>{lastSyncTime ? (<div className="flex items-center gap-2 text-emerald-500 font-bold"><span>{lastSyncTime.toLocaleTimeString('pt-BR')}</span><CheckCircle2 className="w-4 h-4" /></div>) : (<span className="font-bold text-slate-400">Pendente</span>)}</div>
+                {/* Connection Status Hero */}
+                <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-sky-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                    
+                    <div className="flex items-center justify-between mb-4 relative z-10">
+                       <div className="flex items-center gap-3">
+                           <div className="relative">
+                               <div className="w-12 h-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-500"><Cloud className="w-6 h-6" strokeWidth={2} /></div>
+                               <div className="absolute -bottom-1 -right-1 bg-white dark:bg-[#0f172a] p-0.5 rounded-full">
+                                   <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+                               </div>
+                           </div>
+                           <div>
+                               <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">Cloud Sync</h3>
+                               <p className={`text-[10px] font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Conectado' : 'Offline'}</p>
+                           </div>
+                       </div>
+                       <button 
+                           onClick={handleForceSync} 
+                           disabled={isSyncing || !isOnline} 
+                           className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 hover:text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-500/20 active:scale-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                       >
+                           <RotateCcw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                       </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 relative z-10">
+                        <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Última Sincronização</p>
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums">
+                                {lastSyncTime ? lastSyncTime.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : 'Pendente'}
+                            </p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Itens Sincronizados</p>
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums">{transactions.length} ordens</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Market Status B3 */}
+                <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${marketStatus.bg} ${marketStatus.color}`}>
+                            <marketStatus.icon className="w-6 h-6" strokeWidth={2} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Status da Bolsa (B3)</h3>
+                            <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${marketStatus.color}`}>{marketStatus.label}</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs font-black text-slate-300 dark:text-slate-600 tabular-nums">{new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</p>
+                    </div>
                 </div>
                 
-                <Section title="Ferramentas">
-                    <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-white dark:bg-[#0f172a] rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all group">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center"><Activity className="w-5 h-5" /></div>
-                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Diagnóstico Profundo</span>
+                {/* Services Grid */}
+                <Section title="Saúde dos Serviços">
+                    <div className="grid grid-cols-1 gap-2 p-2 bg-white dark:bg-[#0f172a]">
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg"><Database className="w-4 h-4" /></div>
+                                <div>
+                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Supabase</p>
+                                    <p className="text-[9px] text-slate-400 font-medium">Banco de Dados & Auth</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Online</span>
+                            </div>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
-                    </button>
+
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg"><BarChart3 className="w-4 h-4" /></div>
+                                <div>
+                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Brapi API</p>
+                                    <p className="text-[9px] text-slate-400 font-medium">Cotações em Tempo Real</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">Operacional</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><Sparkles className="w-4 h-4" /></div>
+                                <div>
+                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Google Gemini</p>
+                                    <p className="text-[9px] text-slate-400 font-medium">Inteligência Artificial</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase">v2.5 Flash</span>
+                            </div>
+                        </div>
+                    </div>
                 </Section>
 
-                <Section title="Diagnóstico do App">
+                {/* Advanced Diagnostics */}
+                <Section title="Diagnóstico Avançado">
                     <div className="bg-white dark:bg-[#0f172a] p-4 space-y-3">
-                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Wifi className="w-4 h-4" /> Conexão com a Internet</span><span className={`text-xs font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Online' : 'Offline'}</span></div>
-                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Smartphone className="w-4 h-4" /> Service Worker (PWA)</span><span className={`text-xs font-bold ${isServiceWorkerActive ? 'text-emerald-500' : 'text-rose-500'}`}>{isServiceWorkerActive ? 'Ativo' : 'Inativo'}</span></div>
+                       <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200/50 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
+                                <div className="text-left">
+                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200 block">Diagnóstico Profundo</span>
+                                    <span className="text-[9px] text-slate-400">Teste de latência e integridade</span>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
+                        </button>
+
+                       <div className="grid grid-cols-2 gap-3">
+                           <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                               <div className="flex items-center gap-2 mb-1 text-slate-400">
+                                   <Signal className="w-3.5 h-3.5" />
+                                   <span className="text-[9px] font-bold uppercase tracking-wider">Rede</span>
+                               </div>
+                               <p className={`text-xs font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Online' : 'Offline'}</p>
+                           </div>
+                           <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                               <div className="flex items-center gap-2 mb-1 text-slate-400">
+                                   <Smartphone className="w-3.5 h-3.5" />
+                                   <span className="text-[9px] font-bold uppercase tracking-wider">PWA</span>
+                               </div>
+                               <p className={`text-xs font-bold ${isServiceWorkerActive ? 'text-emerald-500' : 'text-slate-500'}`}>{isServiceWorkerActive ? 'Ativo' : 'Inativo'}</p>
+                           </div>
+                       </div>
                     </div>
                 </Section>
             </div>
