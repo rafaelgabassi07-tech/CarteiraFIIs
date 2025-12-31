@@ -158,7 +158,6 @@ export const Header: React.FC<HeaderProps> = ({
         )}
         {!showBack && onSettingsClick && (
           <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
-            {/* FIX: Complete component JSX */}
             <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform" strokeWidth={2} />
           </button>
         )}
@@ -166,8 +165,6 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-
-// --- START: Added missing components ---
 
 interface SwipeableModalProps {
   isOpen: boolean;
@@ -183,6 +180,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   const isDragging = useRef(false);
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    // Só permite arrastar se estiver no topo do scroll
     if (modalRef.current && modalRef.current.scrollTop === 0) {
       startY.current = e.touches[0].clientY;
       isDragging.current = true;
@@ -195,17 +193,28 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     if (!isDragging.current || !modalRef.current) return;
     const y = e.touches[0].clientY;
     const deltaY = y - startY.current;
-    if (deltaY > 0) { // Only allow dragging down
+    
+    // Só permite arrastar para baixo
+    if (deltaY > 0) { 
+      // Se tiver conteúdo scrollável e o usuário estiver scrollando para baixo, não arraste o modal
+      if (modalRef.current.scrollTop > 0) {
+          isDragging.current = false;
+          return;
+      }
+      e.preventDefault(); // Evita scroll da página de fundo
       currentY.current = deltaY;
-      modalRef.current.style.transform = `translateY(${deltaY}px)`;
+      // Resistência elástica simples
+      const dragValue = deltaY * 0.8;
+      modalRef.current.style.transform = `translateY(${dragValue}px)`;
     }
   };
 
   const handleTouchEnd = () => {
     if (!isDragging.current || !modalRef.current) return;
     isDragging.current = false;
-    modalRef.current.style.transition = 'transform 0.3s ease-out-quint';
-    if (currentY.current > 100) { // Threshold to close
+    modalRef.current.style.transition = 'transform 0.5s cubic-bezier(0.23, 1, 0.32, 1)'; // ease-out-quint
+    
+    if (currentY.current > 120) { // Threshold de fechamento
       onClose();
     } else {
       modalRef.current.style.transform = 'translateY(0)';
@@ -222,7 +231,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       onClick={onClose}
     >
       <div 
-        className={`absolute inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm transition-opacity ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm transition-opacity ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       ></div>
       <div
         ref={modalRef}
@@ -230,11 +239,15 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-3xl max-h-[90dvh] overflow-y-auto overscroll-contain transition-transform duration-500 ease-out-quint transform ${
+        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] max-h-[85dvh] w-full overflow-y-auto overscroll-contain transition-transform duration-500 ease-out-quint transform shadow-2xl pb-safe ${
           isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
-        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto my-3 cursor-grab"></div>
+        {/* Sticky Handle Bar - Sempre visível no topo do modal */}
+        <div className="sticky top-0 z-50 flex justify-center pt-3 pb-1 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md">
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full cursor-grab active:cursor-grabbing hover:bg-slate-400 dark:hover:bg-slate-600 transition-colors"></div>
+        </div>
+        
         {children}
       </div>
     </div>,
@@ -385,7 +398,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({
           })}
         </div>
         {isUpdatePending && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-[#0b1121]/80 backdrop-blur-lg border-t border-slate-200/50 dark:border-white/5">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-[#0b1121]/80 backdrop-blur-lg border-t border-slate-200/50 dark:border-white/5 pb-safe">
              <div className="max-w-lg mx-auto">
               <button 
                 onClick={onUpdate} 
@@ -578,5 +591,3 @@ export const LockScreen: React.FC<LockScreenProps> = ({ isOpen, correctPin, onUn
     document.body
   );
 };
-
-// --- END: Added missing components ---

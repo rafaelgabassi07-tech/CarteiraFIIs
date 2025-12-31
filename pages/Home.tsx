@@ -62,7 +62,7 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
     today.setHours(0,0,0,0); // Zera hora para comparação justa
 
     const isToday = eventDate.getTime() === today.getTime();
-    const isPast = eventDate < today;
+    // const isPast = eventDate < today; 
     const isFuture = eventDate > today;
     
     // 1. DATA COM (Sempre um Alerta/Prazo) -> AMBER
@@ -83,7 +83,7 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
          return {
             bg: 'bg-indigo-50 dark:bg-indigo-500/10',
             text: 'text-indigo-600 dark:text-indigo-400',
-            border: 'border-indigo-200 dark:border-indigo-500/30',
+            border: 'border-indigo-200 dark:border-indigo-500/30 border-dashed', // Borda tracejada para indicar futuro
             dot: 'bg-indigo-500',
             pulse: false,
             icon: Hourglass,

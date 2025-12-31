@@ -148,10 +148,11 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
               ) : (
                 history.map((h, i) => {
                   const todayStr = new Date().toISOString().split('T')[0];
+                  // Lógica Rigorosa: Futuro vs Pago
                   const isFuture = h.paymentDate > todayStr;
                   const isPaid = !isFuture;
 
-                  // Lógica de Cores baseada no STATUS (Pago vs Futuro)
+                  // Cores e Bordas Diferenciadas
                   const statusColor = isPaid 
                       ? 'text-emerald-600 dark:text-emerald-500' // Pago = Verde
                       : 'text-indigo-600 dark:text-indigo-400'; // Futuro = Azul
@@ -159,9 +160,14 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
                   const typeBoxClass = isPaid
                       ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500'
                       : 'bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400';
+                  
+                  // Borda Tracejada se for Futuro
+                  const borderClass = isFuture 
+                      ? 'border-indigo-200 dark:border-indigo-500/30 border-dashed bg-indigo-50/30 dark:bg-indigo-500/5' 
+                      : 'border-slate-100 dark:border-white/5 bg-white dark:bg-[#0f172a]';
 
                   return (
-                    <div key={i} className={`group relative bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border shadow-sm transition-all ${isFuture ? 'border-indigo-100 dark:border-indigo-500/20' : 'border-slate-100 dark:border-white/5'}`} style={{ animationDelay: `${i * 30}ms` }}>
+                    <div key={i} className={`group relative p-5 rounded-[2rem] border shadow-sm transition-all ${borderClass}`} style={{ animationDelay: `${i * 30}ms` }}>
                       <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center gap-3">
                             <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl font-bold shrink-0 ${typeBoxClass}`}>
@@ -171,7 +177,11 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
                             <div>
                                 <div className="flex items-center gap-1.5 mb-0.5">
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-wide">{h.type.replace('JRS CAP PROPRIO', 'JCP')}</span>
-                                    {isFuture && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-indigo-50 dark:bg-indigo-500/20 text-indigo-500 uppercase tracking-wider">Agendado</span>}
+                                    {isFuture ? (
+                                       <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-indigo-50 dark:bg-indigo-500/20 text-indigo-500 uppercase tracking-wider flex items-center gap-1"><Clock className="w-3 h-3"/> Agendado</span>
+                                    ) : (
+                                       <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-50 dark:bg-emerald-500/20 text-emerald-500 uppercase tracking-wider flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Pago</span>
+                                    )}
                                 </div>
                                 <p className={`text-sm font-bold ${isPaid ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>
                                     {isPaid ? 'Pagamento Realizado' : 'Pagamento Previsto'}
