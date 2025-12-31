@@ -31,23 +31,29 @@ const STORAGE_KEYS = {
 export type ThemeType = 'light' | 'dark' | 'system';
 
 // Helper function to calculate quantity on date (CORRIGIDA para Fracionário e Espaços)
-const getQuantityOnDate = (ticker: string, date: string, transactions: Transaction[]) => {
-  if (!date) return 0; // Sem data com, não há como calcular direito
+const getQuantityOnDate = (ticker: string, dateCom: string, paymentDate: string, transactions: Transaction[]) => {
+  // Estratégia de Data: Data Com > Data Pagamento > Retorna 0
+  // Isso evita zerar cotas se a IA não retornar a Data Com exata
+  const cutoffDate = dateCom || paymentDate;
+  if (!cutoffDate) return 0;
   
-  const cleanTicker = ticker.trim().toUpperCase();
+  // Normalizador Inteligente: Remove 'F' final se parecer fracionário
+  // Ex: converte PETR4F -> PETR4 e compara com PETR4
+  const normalize = (t: string) => {
+      const clean = t.trim().toUpperCase();
+      // Tickers B3 geralmente tem 5+ chars (4 letras + numero). Se tiver F no final, remove.
+      if (clean.endsWith('F') && clean.length >= 5 && /\d/.test(clean)) {
+          return clean.slice(0, -1);
+      }
+      return clean;
+  };
+
+  const targetTicker = normalize(ticker);
   
   return transactions
     .filter(t => {
-       const txTicker = t.ticker.trim().toUpperCase();
-       
-       // Lógica Robusta:
-       // 1. Match exato (PETR4 === PETR4)
-       // 2. Match Fracionário (PETR4F === PETR4) - Remove o 'F' final se o ticker base não tiver
-       const isMatch = txTicker === cleanTicker || 
-                       (txTicker.length === cleanTicker.length + 1 && txTicker.endsWith('F') && txTicker.startsWith(cleanTicker));
-       
-       // A transação deve ter ocorrido NA ou ANTES da Data Com
-       return isMatch && t.date <= date;
+       const txTicker = normalize(t.ticker);
+       return txTicker === targetTicker && t.date <= cutoffDate;
     })
     .reduce((acc, t) => {
       if (t.type === 'BUY') return acc + t.quantity;
@@ -469,7 +475,7 @@ const App: React.FC = () => {
   const markNotificationsAsRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
   
-  const getQuantityOnDateMemo = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => getQuantityOnDate(ticker, dateCom, txs), []);
+  const getQuantityOnDateMemo = useCallback((ticker: string, dateCom: string, paymentDate: string, txs: Transaction[]) => getQuantityOnDate(ticker, dateCom, paymentDate, txs), []);
 
   const summaryData = useMemo(() => {
     let totalSalesGain = 0;
@@ -501,11 +507,15 @@ const App: React.FC = () => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     const todayStr = new Date().toISOString().split('T')[0];
     
-    const receipts = geminiDividends.map(div => ({
-        ...div, 
-        quantityOwned: Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, sortedTxs)), 
-        totalReceived: Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, sortedTxs)) * div.rate
-    })).filter(r => r.totalReceived > 0);
+    const receipts = geminiDividends.map(div => {
+        // Cálculo de quantidade com fallback de data
+        const qty = Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, div.paymentDate, sortedTxs));
+        return {
+            ...div, 
+            quantityOwned: qty, 
+            totalReceived: qty * div.rate
+        };
+    }).filter(r => r.totalReceived > 0);
     
     const divPaidMap: Record<string, number> = {};
     let totalDividendsReceived = 0;
