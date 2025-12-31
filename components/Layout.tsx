@@ -322,35 +322,36 @@ const navItems = [
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none flex flex-col justify-end">
-      {/* Gradient fade to ensure text readability behind the floating dock */}
-      <div className="h-12 w-full bg-gradient-to-t from-[#020617] to-transparent opacity-80 pointer-events-none absolute bottom-0 left-0 right-0"></div>
-      
-      <div className="max-w-md mx-auto w-full px-6 pb-6 pt-2 pointer-events-auto">
-        <nav className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl border border-slate-200/50 dark:border-white/10 shadow-2xl shadow-slate-200/20 dark:shadow-black/50 rounded-[2.5rem] p-2 flex justify-between items-center relative">
-          {navItems.map(item => {
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onTabChange(item.id)}
-                className={`relative flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-[2rem] transition-all duration-300 group ${
-                  isActive ? 'bg-slate-100 dark:bg-white/10 shadow-sm' : 'hover:bg-slate-50 dark:hover:bg-white/5'
-                }`}
-              >
-                <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'text-accent' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}>
-                    <item.icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />
-                </div>
-                {isActive && (
-                    <span className="text-[9px] font-black text-slate-700 dark:text-white uppercase tracking-wider scale-100 opacity-100 transition-all leading-none -mt-1">
-                        {item.label}
-                    </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+    <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center pointer-events-none pb-safe">
+      <nav className="pointer-events-auto bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl border border-slate-200/50 dark:border-white/10 shadow-2xl shadow-slate-200/20 dark:shadow-black/50 p-1.5 rounded-full flex items-center gap-1.5 transition-all duration-300 hover:scale-[1.02]">
+        {navItems.map(item => {
+          const isActive = currentTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onTabChange(item.id)}
+              className={`
+                relative flex items-center justify-center h-12 rounded-full transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
+                ${isActive 
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 pl-5 pr-6 shadow-lg shadow-slate-900/20 dark:shadow-white/20' 
+                  : 'bg-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 w-12'
+                }
+              `}
+            >
+              <item.icon 
+                className="w-5 h-5 shrink-0" 
+                strokeWidth={2.5} 
+              />
+              <div className={`
+                overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
+                ${isActive ? 'max-w-[200px] opacity-100 ml-2' : 'max-w-0 opacity-0 ml-0'}
+              `}>
+                <span className="text-sm font-bold whitespace-nowrap">{item.label}</span>
+              </div>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 };
