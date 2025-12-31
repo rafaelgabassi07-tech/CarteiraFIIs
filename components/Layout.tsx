@@ -47,12 +47,7 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
           <Cloud className="w-3 h-3 animate-bounce" />
           <span>Sincronizado com a Nuvem</span>
         </>
-      ) : (
-        <>
-          <CloudOff className="w-3 h-3" />
-          <span>Modo Convidado (Offline)</span>
-        </>
-      )}
+      ) : null}
     </div>
   );
 };

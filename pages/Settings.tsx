@@ -54,7 +54,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const [storageData, setStorageData] = useState({ 
     totalBytes: 0,
-    breakdown: { tx: 0, quotes: 0, divs: 0 } 
+    breakdown: { quotes: 0, divs: 0 } 
   });
 
   const [notifyDivs, setNotifyDivs] = useState(() => localStorage.getItem('investfiis_notify_divs') !== 'false');
@@ -174,42 +174,19 @@ export const Settings: React.FC<SettingsProps> = ({
         return item ? new Blob([item]).size : 0;
     };
     setStorageData({
-        totalBytes: getKeySize('investfiis_v4_transactions') + getKeySize('investfiis_v3_quote_cache') + getKeySize('investfiis_v4_div_cache'),
+        totalBytes: getKeySize('investfiis_v3_quote_cache') + getKeySize('investfiis_v4_div_cache'),
         breakdown: { 
-            tx: getKeySize('investfiis_v4_transactions'), 
             quotes: getKeySize('investfiis_v3_quote_cache'), 
             divs: getKeySize('investfiis_v4_div_cache') 
         }
     });
   };
 
-  useEffect(() => { calculateStorage(); }, [transactions, geminiDividends, activeSection, message]);
+  useEffect(() => { calculateStorage(); }, [geminiDividends, activeSection, message]);
 
   const showMessage = (type: 'success' | 'error' | 'info', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
-  };
-
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    try {
-        if (authMode === 'signup') {
-            if (authPassword !== confirmAuthPassword) throw new Error('As senhas não coincidem.');
-            const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
-            if (error) throw error;
-            showMessage('info', 'Verifique seu e-mail para confirmar!');
-        } else {
-            const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
-            if (error) throw error;
-            showMessage('success', 'Login realizado com sucesso!');
-        }
-        setAuthPassword(''); setConfirmAuthPassword('');
-    } catch (err: any) {
-        showMessage('error', err.message || 'Erro na autenticação');
-    } finally {
-        setAuthLoading(false);
-    }
   };
 
   const handleLogout = async () => { await supabase.auth.signOut(); showMessage('info', 'Desconectado.'); };
@@ -358,12 +335,6 @@ export const Settings: React.FC<SettingsProps> = ({
         return;
     }
 
-    if (!user) {
-        addLog('Usuário não autenticado (Modo Convidado). Nuvem inativa.', 'warn');
-        setDiagState(prev => ({ ...prev, step: 'done' }));
-        return;
-    }
-
     try {
         // 1. Teste de Latência
         addLog('Testando latência de rede...');
@@ -497,31 +468,13 @@ export const Settings: React.FC<SettingsProps> = ({
             <div className="mb-6 anim-fade-in-up is-visible">
                <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Conta Cloud</h3>
                <div className="rounded-[2rem] overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5 bg-white dark:bg-[#0f172a]">
-                  {user ? (
-                     <div className="p-6 space-y-4">
-                         <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><User className="w-6 h-6" /></div>
-                             <div className="overflow-hidden"><h3 className="font-bold text-slate-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-slate-500 truncate">{user.email}</p></div>
-                         </div>
-                         <button onClick={handleLogout} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
+                 <div className="p-6 space-y-4">
+                     <div className="flex items-center gap-4">
+                         <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><User className="w-6 h-6" /></div>
+                         <div className="overflow-hidden"><h3 className="font-bold text-slate-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-slate-500 truncate">{user ? user.email : 'Carregando...'}</p></div>
                      </div>
-                  ) : (
-                     <div className="p-6 space-y-5">
-                         <div className="flex items-center justify-between">
-                             <h3 className="font-bold text-slate-900 dark:text-white text-sm">Login / Cadastro</h3>
-                             <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-lg">
-                                 <button onClick={() => setAuthMode('login')} className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${authMode === 'login' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}>Entrar</button>
-                                 <button onClick={() => setAuthMode('signup')} className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${authMode === 'signup' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}>Criar</button>
-                             </div>
-                         </div>
-                         <div className="space-y-3">
-                             <div className="relative"><Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input type="email" placeholder="E-mail" className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-4 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white" value={authEmail} onChange={e => setAuthEmail(e.target.value)} /></div>
-                             <div className="relative"><Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input type={showAuthPassword ? 'text' : 'password'} placeholder="Senha" className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-12 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white" value={authPassword} onChange={e => setAuthPassword(e.target.value)} /><button type="button" onClick={() => setShowAuthPassword(!showAuthPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">{showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div>
-                             {authMode === 'signup' && (<div className="relative anim-fade-in-up is-visible"><ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input type={showConfirmAuthPassword ? 'text' : 'password'} placeholder="Confirme senha" className="w-full bg-slate-50 dark:bg-black/20 pl-11 pr-12 py-3.5 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/20 transition-all border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white" value={confirmAuthPassword} onChange={e => setConfirmAuthPassword(e.target.value)} /><button type="button" onClick={() => setShowConfirmAuthPassword(!showConfirmAuthPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">{showConfirmAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div>)}
-                         </div>
-                         <button onClick={handleAuth} disabled={authLoading} className="w-full py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-95 transition-all">{authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (authMode === 'login' ? 'Acessar Conta' : 'Criar Conta')}</button>
-                     </div>
-                  )}
+                     <button onClick={handleLogout} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
+                 </div>
                </div>
             </div>
 
@@ -533,8 +486,8 @@ export const Settings: React.FC<SettingsProps> = ({
             </Section>
 
             <Section title="Dados & Sincronização">
-                <MenuItem icon={Globe} label="Conexões e Serviços" onClick={() => setActiveSection('integrations')} value={user ? 'Online' : 'Offline'} colorClass="bg-sky-500/10 text-sky-500" />
-                <MenuItem icon={Database} label="Alocação e Backup" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} colorClass="bg-emerald-500/10 text-emerald-500" />
+                <MenuItem icon={Globe} label="Conexões e Serviços" onClick={() => setActiveSection('integrations')} value="Online" colorClass="bg-sky-500/10 text-sky-500" />
+                <MenuItem icon={Database} label="Backup e IA Cache" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} colorClass="bg-emerald-500/10 text-emerald-500" />
             </Section>
 
             <Section title="Sistema">
@@ -716,7 +669,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
                 
                 <div className="text-[9px] text-slate-300 dark:text-slate-600 font-mono">
-                    Build 2025.06.29 • Secure Enclave
+                    Build 2025.06.29 • Cloud Only
                 </div>
             </div>
           )}

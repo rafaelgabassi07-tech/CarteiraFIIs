@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
-import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Wallet, Eye, EyeOff, Sparkles, TrendingUp, ChevronRight } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Wallet, Eye, EyeOff, Sparkles, TrendingUp } from 'lucide-react';
 
-interface LoginProps {
-  onGuestAccess: () => void;
-}
-
-export const Login: React.FC<LoginProps> = ({ onGuestAccess }) => {
+export const Login: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,7 +15,7 @@ export const Login: React.FC<LoginProps> = ({ onGuestAccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Efeito de paralisia suave no background (opcional, visual only)
+  // Efeito de paralisia suave no background
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   
   useEffect(() => {
@@ -59,7 +55,7 @@ export const Login: React.FC<LoginProps> = ({ onGuestAccess }) => {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // onLoginSuccess é gerenciado pelo onAuthStateChange no App.tsx
+        // O redirecionamento é automático via listener no App.tsx
       }
     } catch (err: any) {
       setError(err.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : err.message);
@@ -70,8 +66,6 @@ export const Login: React.FC<LoginProps> = ({ onGuestAccess }) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-[#020617] relative overflow-hidden font-sans selection:bg-indigo-500/30">
-      
-      {/* --- Background Effects --- */}
       
       {/* Grid Pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b20_1px,transparent_1px),linear-gradient(to_bottom,#1e293b20_1px,transparent_1px)] bg-[size:24px_24px]"></div>
@@ -101,7 +95,7 @@ export const Login: React.FC<LoginProps> = ({ onGuestAccess }) => {
             </div>
           </div>
           <h1 className="text-3xl font-black text-white tracking-tight mb-2">InvestFIIs</h1>
-          <p className="text-sm text-slate-400 font-medium tracking-wide">Gestão inteligente de patrimônio</p>
+          <p className="text-sm text-slate-400 font-medium tracking-wide">Cloud Only • FIIs & Ações</p>
         </div>
 
         {/* Login Card */}
@@ -229,18 +223,10 @@ export const Login: React.FC<LoginProps> = ({ onGuestAccess }) => {
           </div>
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer Info */}
         <div className="text-center space-y-6 anim-fade-in-up is-visible" style={{ animationDelay: '200ms' }}>
-            <button 
-                onClick={onGuestAccess}
-                className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-95"
-            >
-                <span className="text-xs font-bold text-slate-300 group-hover:text-white uppercase tracking-wider transition-colors">Modo Convidado</span>
-                <ChevronRight className="w-3 h-3 text-slate-500 group-hover:text-white transition-colors" />
-            </button>
-            
             <p className="text-[10px] font-medium text-slate-600">
-                &copy; 2025 InvestFIIs • v7.0.4 • Secure by Supabase
+                &copy; 2025 InvestFIIs • Cloud Native
             </p>
         </div>
 

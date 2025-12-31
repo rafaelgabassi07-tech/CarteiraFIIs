@@ -14,10 +14,10 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.1.5'; 
+const APP_VERSION = '7.2.0'; 
 
 const STORAGE_KEYS = {
-  TXS: 'investfiis_v4_transactions',
+  // TXS removido pois agora é cloud-only
   DIVS: 'investfiis_v4_div_cache',
   THEME: 'investfiis_theme',
   ACCENT: 'investfiis_accent_color',
@@ -25,8 +25,6 @@ const STORAGE_KEYS = {
   PREFS_NOTIF: 'investfiis_prefs_notifications',
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
-  LAST_SYNC: 'investfiis_last_sync_time',
-  GUEST_MODE: 'investfiis_guest_mode',
   PASSCODE: 'investfiis_passcode',
   BIOMETRICS: 'investfiis_biometrics'
 };
@@ -75,13 +73,13 @@ const App: React.FC = () => {
   
   // Estado de controle do SplashScreen
   const [appLoading, setAppLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0); // Novo estado para progresso real
+  const [loadingProgress, setLoadingProgress] = useState(0); 
 
   const [session, setSession] = useState<Session | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(() => localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true');
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
-  const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
+  
+  // Como não há mais modo convidado, o status da nuvem é sempre 'connected' se logado
+  const cloudStatus = session ? 'connected' : 'hidden';
 
   // Ref para evitar stale closures no listener de auth
   const sessionRef = useRef<Session | null>(null);
@@ -104,23 +102,24 @@ const App: React.FC = () => {
 
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
   
-  const [transactions, setTransactions] = useState<Transaction[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.TXS); return s ? JSON.parse(s) : []; } catch { return []; } });
+  // Transactions agora iniciam vazias. Sem fallback local.
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
   const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.5, startDate: '' }; } catch { return { ipca: 4.5, startDate: '' }; } });
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.LAST_SYNC); return s ? new Date(s) : null; } catch { return null; } });
+  
+  // Last sync time is mostly for UI now, data is realtime
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(new Date());
   
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>({});
 
-  // --- Efeitos de Persistência Local ---
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions)); }, [transactions]);
+  // --- Efeitos de Persistência Local (Apenas Cache de UI/IA, NUNCA Transações) ---
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled)); }, [pushEnabled]);
-  useEffect(() => { if (lastSyncTime) localStorage.setItem(STORAGE_KEYS.LAST_SYNC, lastSyncTime.toISOString()); }, [lastSyncTime]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.GUEST_MODE, String(isGuest)); }, [isGuest]);
 
   // --- Tema e Variáveis CSS ---
   useEffect(() => {
@@ -160,7 +159,6 @@ const App: React.FC = () => {
     }
     
     setIsRefreshing(true);
-    // Atualiza progresso se estiver no boot inicial
     if (appLoading) setLoadingProgress(prev => Math.max(prev, 30));
 
     try {
@@ -199,7 +197,7 @@ const App: React.FC = () => {
 
   const fetchTransactionsFromCloud = useCallback(async () => {
     setIsCloudSyncing(true);
-    if (appLoading) setLoadingProgress(prev => Math.max(prev, 15)); // Iniciando busca
+    if (appLoading) setLoadingProgress(prev => Math.max(prev, 15)); 
     try {
       const { data, error } = await supabase.from('transactions').select('*');
       if (error) throw error;
@@ -208,10 +206,9 @@ const App: React.FC = () => {
         const cloudTxs: Transaction[] = data.map(mapSupabaseToTx);
         setTransactions(cloudTxs);
         
-        if (appLoading) setLoadingProgress(prev => Math.max(prev, 25)); // Dados recebidos
+        if (appLoading) setLoadingProgress(prev => Math.max(prev, 25)); 
 
         if (cloudTxs.length > 0) {
-            // Sincroniza dados de mercado usando as transações recuperadas
             await syncMarketData(false, cloudTxs);
         }
       }
@@ -226,117 +223,53 @@ const App: React.FC = () => {
   }, [showToast, syncMarketData, appLoading]);
 
   const handleSyncAll = useCallback(async (force: boolean) => {
-    if (force && !isGuest && session) {
+    if (session) {
         await fetchTransactionsFromCloud();
-    } else {
-        await syncMarketData(force);
     }
-  }, [fetchTransactionsFromCloud, syncMarketData, isGuest, session]);
-
-  const migrateGuestDataToCloud = useCallback(async (user_id: string) => {
-    const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]') as Transaction[];
-    if (localTxs.length === 0) return;
-    
-    setCloudStatus('syncing');
-    showToast('info', 'Migrando dados locais para a nuvem...');
-    
-    try {
-        const dataToInsert = localTxs.map(tx => {
-            const { id, ...rest } = tx;
-            const record = cleanTxForSupabase(rest);
-            return { ...record, user_id, id };
-        });
-
-        const { error } = await supabase.from('transactions').insert(dataToInsert);
-        if (error) throw error;
-        
-        showToast('success', 'Dados locais salvos na nuvem!');
-    } catch (error) {
-      console.error("Supabase migration error:", error);
-      showToast('error', 'Erro ao migrar dados.');
-    }
-  }, [showToast]);
+  }, [fetchTransactionsFromCloud, session]);
 
   // --- Auth & Startup Logic ---
 
   useEffect(() => {
     let mounted = true;
-    
-    // Inicia a barra de progresso visualmente
     setLoadingProgress(5);
 
-    // Timeout de segurança para garantir que o usuário entre mesmo se a auth falhar silenciosamente
     const timeout = setTimeout(() => {
       if (mounted && appLoading) {
-        console.warn("Init timeout, forcing entry");
+        console.warn("Init timeout");
         setAppLoading(false);
-        setIsAuthLoading(false);
       }
-    }, 10000);
+    }, 15000);
 
-    // Listener de Auth Principal - Fonte da Verdade
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, currentSession: Session | null) => {
       if (!mounted) return;
       
-      const previousSession = sessionRef.current;
-      const previousSessionId = previousSession?.user?.id;
+      const previousSessionId = sessionRef.current?.user?.id;
       const currentSessionId = currentSession?.user?.id;
       
-      // Atualiza ref e estado
       sessionRef.current = currentSession;
       setSession(currentSession);
 
-      // Evento de Inicialização ou Login
       if (currentSessionId) {
+        // Usuário logado ou restaurado
         if (!previousSessionId) {
-            // Usuário acabou de entrar ou sessão foi restaurada
             setLoadingProgress(15);
-            setIsGuest(false);
-            
-            // Verifica se precisa migrar dados de convidado
-            const wasGuest = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
-            if (wasGuest) {
-              await migrateGuestDataToCloud(currentSessionId);
-            }
-            
-            // Busca dados
             await fetchTransactionsFromCloud();
-            setCloudStatus('connected');
-            setTimeout(() => setCloudStatus('hidden'), 3000);
         }
       } 
-      // Evento de Logout
-      else if (!currentSessionId && previousSessionId) {
+      else {
+        // Usuário deslogado ou sem sessão
         setTransactions([]);
         setQuotes({});
         setGeminiDividends([]);
-        setIsGuest(false);
-        setCloudStatus('hidden');
-      } 
-      // Sem Sessão (Visitante/Convidado) na inicialização
-      else if (!currentSessionId && event === 'INITIAL_SESSION') {
-         const isGuestMode = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
-         if (isGuestMode) {
-            setSession(null);
-            setIsGuest(true);
-            setCloudStatus('disconnected');
-            const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
-            setLoadingProgress(25);
-            if (localTxs.length > 0) {
-                setTransactions(localTxs);
-                await syncMarketData(false, localTxs);
-            }
-         }
       }
 
-      // Finaliza carregamento se for evento inicial ou mudança de estado
       if (appLoading) {
+          // Finaliza loading se já temos uma decisão de sessão (sim ou não)
           setLoadingProgress(100);
-          // Pequeno delay para a animação da barra terminar
           setTimeout(() => {
               if (mounted) {
                   setAppLoading(false);
-                  setIsAuthLoading(false);
               }
           }, 600);
       }
@@ -347,7 +280,7 @@ const App: React.FC = () => {
       clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, []); // Executa apenas uma vez no mount
+  }, []); 
 
   // --- Realtime Subscription (Supabase) ---
   useEffect(() => {
@@ -361,7 +294,13 @@ const App: React.FC = () => {
         setTransactions(currentTxs => {
             if (eventType === 'INSERT') {
               if (currentTxs.some(t => t.id === newRecord.id)) return currentTxs;
-              return [...currentTxs, mapSupabaseToTx(newRecord)];
+              const newTx = mapSupabaseToTx(newRecord);
+              // Dispara atualização de mercado se for um ticker novo
+              if (!currentTxs.some(t => t.ticker === newTx.ticker)) {
+                 // Pequeno delay para evitar travar a UI durante a animação
+                 setTimeout(() => syncMarketData(false, [...currentTxs, newTx]), 500);
+              }
+              return [...currentTxs, newTx];
             }
             if (eventType === 'UPDATE') {
                 return currentTxs.map(t => t.id === newRecord.id ? mapSupabaseToTx(newRecord) : t);
@@ -375,53 +314,69 @@ const App: React.FC = () => {
       .subscribe();
       
     return () => { supabase.removeChannel(channel); };
-  }, [session]);
+  }, [session, syncMarketData]);
 
-  // --- Handlers de Transação ---
+  // --- Handlers de Transação (Cloud Only) ---
 
   const handleAddTransaction = async (t: Omit<Transaction, 'id'>) => {
-    const newTx = { ...t, id: crypto.randomUUID() };
-    setTransactions(p => [...p, newTx]); 
+    if (!session) return;
     
-    if (session) {
-      const record = cleanTxForSupabase(newTx);
-      const { error } = await supabase.from('transactions').insert({ ...record, user_id: session.user.id });
-      if (error) {
+    // Otimistic UI: Adiciona localmente enquanto envia, mas se falhar, remove.
+    // Na verdade, como pediu cloud-only, vamos apenas enviar e esperar o realtime ou retorno
+    // Mas para UX rápida, mantemos optimistic update com rollback em erro.
+    const tempId = crypto.randomUUID();
+    const newTx = { ...t, id: tempId };
+    
+    // Optimistic
+    setTransactions(p => [...p, newTx]);
+
+    const record = cleanTxForSupabase(newTx);
+    // Removemos o ID gerado no front para deixar o Supabase gerar (ou usamos UUID v4)
+    // O ideal no Supabase é deixar ele gerar ou mandar um UUID válido. Vamos mandar o UUID.
+    const { error } = await supabase.from('transactions').insert({ ...record, id: tempId, user_id: session.user.id });
+    
+    if (error) {
         console.error("Supabase insert error:", error);
         showToast('error', 'Erro ao salvar na nuvem.');
-        setTransactions(p => p.filter(tx => tx.id !== newTx.id)); 
-      }
+        setTransactions(p => p.filter(tx => tx.id !== tempId)); // Rollback
+    } else {
+        showToast('success', 'Ordem salva na nuvem');
     }
   };
 
   const handleUpdateTransaction = async (id: string, updated: Omit<Transaction, 'id'>) => {
+    if (!session) return;
+    
     const originalTx = transactions.find(t => t.id === id);
     const updatedTx = { ...updated, id };
     
     setTransactions(p => p.map(t => t.id === id ? updatedTx : t)); 
 
-    if (session && originalTx) {
-      const record = cleanTxForSupabase(updated);
-      const { error } = await supabase.from('transactions').update(record).match({ id });
-      if (error) {
+    const record = cleanTxForSupabase(updated);
+    const { error } = await supabase.from('transactions').update(record).match({ id });
+    
+    if (error) {
         console.error("Supabase update error:", error);
         showToast('error', 'Falha ao atualizar na nuvem.');
-        setTransactions(p => p.map(t => t.id === id ? originalTx : t)); 
-      }
+        setTransactions(p => p.map(t => t.id === id ? originalTx! : t)); // Rollback
+    } else {
+        showToast('success', 'Ordem atualizada');
     }
   };
 
   const handleDeleteTransaction = async (id: string) => {
+    if (!session) return;
+
     const deletedTx = transactions.find(t => t.id === id);
     setTransactions(p => p.filter(t => t.id !== id)); 
 
-    if (session && deletedTx) {
-      const { error } = await supabase.from('transactions').delete().match({ id });
-      if (error) {
+    const { error } = await supabase.from('transactions').delete().match({ id });
+    if (error) {
         console.error("Supabase delete error:", error);
         showToast('error', 'Falha ao apagar na nuvem.');
-        setTransactions(p => [...p, deletedTx]); 
-      }
+        setTransactions(p => [...p, deletedTx!]); // Rollback
+    } else {
+        showToast('success', 'Ordem removida');
     }
   };
 
@@ -431,39 +386,41 @@ const App: React.FC = () => {
     setConfirmModal({
         isOpen: true,
         title: 'Confirmar Exclusão',
-        message: `Deseja realmente apagar a ordem de ${txToDelete.type === 'BUY' ? 'compra' : 'venda'} de ${txToDelete.ticker}? Esta ação não pode ser desfeita.`,
+        message: `Deseja realmente apagar a ordem de ${txToDelete.type === 'BUY' ? 'compra' : 'venda'} de ${txToDelete.ticker}? Esta ação será sincronizada em todos os dispositivos.`,
         onConfirm: () => { handleDeleteTransaction(id); setConfirmModal(null); }
     });
   };
 
   const handleImportTransactions = async (importedTxs: Transaction[]) => {
-    if (!Array.isArray(importedTxs)) return;
-    const originalTxs = transactions;
-    setTransactions(importedTxs);
+    if (!Array.isArray(importedTxs) || !session) return;
     
-    if (session) {
-        setIsCloudSyncing(true);
-        showToast('info', 'Sincronizando backup...');
-        try {
-            await supabase.from('transactions').delete().eq('user_id', session.user.id);
-            const sbData = importedTxs.map(t => {
-                const record = cleanTxForSupabase(t);
-                return { ...record, user_id: session.user.id };
-            });
-            if (sbData.length > 0) {
-              const { error } = await supabase.from('transactions').insert(sbData);
-              if (error) throw error;
-            }
-            showToast('success', 'Backup restaurado na nuvem!');
-        } catch (e: any) {
-            console.error("Supabase import error:", e);
-            showToast('error', 'Erro na nuvem. Restaurando estado anterior.');
-            setTransactions(originalTxs);
-        } finally {
-            setIsCloudSyncing(false);
+    setIsCloudSyncing(true);
+    showToast('info', 'Substituindo dados na nuvem...');
+    
+    try {
+        // Remove tudo do usuário atual
+        await supabase.from('transactions').delete().eq('user_id', session.user.id);
+        
+        // Insere novos
+        const sbData = importedTxs.map(t => {
+            const record = cleanTxForSupabase(t);
+            // Garante IDs novos ou preserva se forem válidos UUIDs
+            return { ...record, user_id: session.user.id, id: t.id || crypto.randomUUID() };
+        });
+        
+        if (sbData.length > 0) {
+            const { error } = await supabase.from('transactions').insert(sbData);
+            if (error) throw error;
         }
-    } else {
-        showToast('success', 'Backup restaurado localmente.');
+        
+        // Fetch fresh data
+        await fetchTransactionsFromCloud();
+        showToast('success', 'Backup restaurado na nuvem!');
+    } catch (e: any) {
+        console.error("Supabase import error:", e);
+        showToast('error', 'Erro ao restaurar backup na nuvem.');
+    } finally {
+        setIsCloudSyncing(false);
     }
   };
 
@@ -567,11 +524,13 @@ const App: React.FC = () => {
     showToast(permission === 'granted' ? 'success' : 'info', permission === 'granted' ? 'Notificações Ativadas!' : 'Permissão negada.');
   };
 
-  // Se o app estiver carregando (SplashScreen), renderiza o SplashScreen
-  // Ele ficará visível sobre o conteúdo até que `appLoading` seja falso.
-  // Nota: Continuamos renderizando o app por baixo para que ele monte e busque dados.
+  if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
   
-  const content = (
+  // Se não estiver logado e o app já tentou carregar a sessão, mostra o login
+  // O SplashScreen cobre tudo até appLoading ser false
+  if (!session && !appLoading) return <Login />;
+
+  return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       
@@ -588,8 +547,8 @@ const App: React.FC = () => {
         </div> 
       )}
 
-      {/* Só mostra header e conteúdo se a autenticação estiver resolvida OU se for guest, e depois do splash começar a sair */}
-      {(!isAuthLoading || isGuest) && (
+      {/* Só mostra conteúdo se tiver sessão confirmada e app não estiver carregando */}
+      {session && !appLoading && (
         <>
             <Header 
               title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} 
@@ -606,12 +565,12 @@ const App: React.FC = () => {
               bannerVisible={cloudStatus !== 'hidden'} 
             />
             
-            <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
+            <main className="max-w-screen-md mx-auto pt-2 mt-0 transition-all duration-500">
               {showSettings ? (
                 <Settings 
                   transactions={transactions} onImportTransactions={handleImportTransactions} 
                   geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} 
-                  onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); setIsGuest(false); window.location.reload(); }} 
+                  onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); window.location.reload(); }} 
                   theme={theme} onSetTheme={setTheme} 
                   accentColor={accentColor} onSetAccentColor={setAccentColor} 
                   privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} 
@@ -632,6 +591,9 @@ const App: React.FC = () => {
                           inflationRate={marketIndicators.ipca} 
                           portfolioStartDate={marketIndicators.startDate} 
                           accentColor={accentColor} 
+                          invested={memoizedData.invested}
+                          balance={memoizedData.balance}
+                          totalAppreciation={memoizedData.balance - memoizedData.invested}
                       />
                   )}
                   {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedData} />}
@@ -656,15 +618,6 @@ const App: React.FC = () => {
       {confirmModal?.isOpen && ( <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} /> )}
     </div>
   );
-
-  // Se estiver bloqueado (PIN), mostra LockScreen independente do resto
-  if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
-  
-  // Se não estiver logado nem for guest, e não estiver carregando Auth, mostra Login
-  // Mas se appLoading for true, mostra o SplashScreen (que está dentro de 'content')
-  if (!appLoading && !session && !isGuest) return <Login onGuestAccess={() => setIsGuest(true)} />;
-
-  return content;
 };
 
 export default App;
