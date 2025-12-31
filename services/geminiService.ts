@@ -118,14 +118,16 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
        - PARA FIIs: Retorne 0 ou null. P/L não se aplica a FIIs (usa-se P/FFO, mas não vamos coletar agora). NÃO INVENTE P/L PARA FII.
     3. **DY (Dividend Yield 12m):** Yield anualizado.
 
-    REGRAS DE PROVENTOS:
-    1. **TIPO:** Diferencie com precisão:
-       - "JCP" (Juros sobre Capital Próprio - incide IR).
-       - "DIVIDENDO" (Isento).
-       - "RENDIMENTO" (FIIs).
-    2. **JANELA:** Últimos 90 dias + Futuros.
-    3. **DATA COM:** Se não tiver data com exata, ignore o provento.
-    4. **FORMATO DATA:** Use sempre YYYY-MM-DD.
+    REGRAS DE PROVENTOS (ALTA PRECISÃO):
+    1. **DATA COM (RECORD DATE):** É o dado MAIS IMPORTANTE. Busque a 'Data Com' exata. Sem Data Com = Sem Direito.
+    2. **TIPO:** 
+       - "JCP": Juros sobre Capital Próprio.
+       - "DIVIDENDO": Lucro isento.
+       - "RENDIMENTO": FIIs.
+    3. **JANELA:** Inclua anúncios recentes (últimos 4 meses) e PROJEÇÕES/ANÚNCIOS FUTUROS confirmados.
+    4. **DATA PAGAMENTO:** Se não houver data definida, estime ou use a Data Com + 15 dias.
+    5. **VALOR:** Valor líquido unitário (se possível) ou bruto.
+    6. **FORMATO DATA:** Use sempre YYYY-MM-DD.
 
     OUTPUT JSON (RFC 8259):
     {
