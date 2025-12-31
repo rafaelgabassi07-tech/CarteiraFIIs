@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Wallet, TrendingUp, ShieldCheck, Sparkles } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 
 interface SplashScreenProps {
   finishLoading: boolean;
@@ -9,109 +9,119 @@ interface SplashScreenProps {
 export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realProgress }) => {
   const [shouldRender, setShouldRender] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [loadingText, setLoadingText] = useState('Iniciando...');
   const [displayProgress, setDisplayProgress] = useState(0);
 
+  // Interpolação suave do progresso visual
   useEffect(() => {
-    setDisplayProgress(prev => Math.max(prev, realProgress));
+    const update = () => {
+        setDisplayProgress(prev => {
+            const diff = realProgress - prev;
+            if (diff <= 0) return prev;
+            // Avança 10% da diferença restante a cada tick para suavidade
+            return prev + (diff * 0.1); 
+        });
+    };
+    const timer = setInterval(update, 20);
+    return () => clearInterval(timer);
   }, [realProgress]);
 
-  useEffect(() => {
-    if (realProgress < 15) setLoadingText('Autenticando...');
-    else if (realProgress < 40) setLoadingText('Sincronizando nuvem...');
-    else if (realProgress < 70) setLoadingText('Atualizando cotações...');
-    else if (realProgress < 90) setLoadingText('Processando Inteligência...');
-    else setLoadingText('Bem-vindo');
-  }, [realProgress]);
-
+  // Garante 100% e inicia saída
   useEffect(() => {
     if (finishLoading) {
       setDisplayProgress(100);
-      
       const timeout = setTimeout(() => {
         setIsFadingOut(true);
         const removeTimeout = setTimeout(() => {
           setShouldRender(false);
-        }, 800); // Tempo da animação de saída um pouco maior para suavidade
+        }, 1200); // Tempo da transição de saída
         return () => clearTimeout(removeTimeout);
-      }, 400);
+      }, 800);
       return () => clearTimeout(timeout);
     }
   }, [finishLoading]);
 
   if (!shouldRender) return null;
 
+  const radius = 46;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (displayProgress / 100) * circumference;
+
   return (
     <div 
-      className={`fixed inset-0 z-[9999] bg-[#020617] flex flex-col items-center justify-center overflow-hidden transition-all duration-700 ease-out-quint ${
-        isFadingOut ? 'opacity-0 scale-110 pointer-events-none blur-sm' : 'opacity-100 scale-100'
+      className={`fixed inset-0 z-[9999] bg-[#000000] flex flex-col items-center justify-center overflow-hidden transition-all duration-1000 ease-out-quint ${
+        isFadingOut ? 'opacity-0 scale-105 pointer-events-none blur-lg' : 'opacity-100 scale-100 blur-0'
       }`}
     >
-      {/* Background Grid Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b20_1px,transparent_1px),linear-gradient(to_bottom,#1e293b20_1px,transparent_1px)] bg-[size:32px_32px] opacity-20"></div>
-      
-      {/* Animated Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-indigo-600/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '4s' }} />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-emerald-600/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '5s', animationDelay: '1s' }} />
-      
-      {/* Central Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/5 rounded-full blur-[80px]"></div>
+      {/* Background Ambience */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[60vh] bg-gradient-to-b from-indigo-950/20 via-transparent to-transparent pointer-events-none opacity-50" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_0%,transparent_60%)] pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col items-center w-full max-w-[320px]">
+      {/* Main Content */}
+      <div className="relative z-10 flex flex-col items-center">
         
-        {/* Premium Icon Container */}
-        <div className="relative mb-10 group">
-          <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity duration-700"></div>
-          <div className="relative w-28 h-28 bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-xl border border-white/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl ring-1 ring-white/5">
-            <Wallet className="w-12 h-12 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" strokeWidth={1.2} />
+        {/* Minimalist Logo Container with Ring Loader */}
+        <div className="relative mb-12">
+            {/* Inner Glow */}
+            <div className={`absolute inset-0 bg-indigo-500 blur-[50px] rounded-full transition-opacity duration-1000 ${finishLoading ? 'opacity-30' : 'opacity-10'}`}></div>
             
-            {/* Notification Dot / Status */}
-            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center border-[4px] border-[#020617] shadow-lg">
-               {finishLoading ? <Sparkles className="w-5 h-5 text-white animate-pulse" strokeWidth={2} /> : <TrendingUp className="w-5 h-5 text-white" strokeWidth={2} />}
+            <div className="relative w-24 h-24 rounded-full flex items-center justify-center">
+                {/* Glass Background */}
+                <div className="absolute inset-2 bg-white/[0.03] backdrop-blur-md rounded-full border border-white/5 shadow-2xl"></div>
+
+                {/* Icon */}
+                <Wallet 
+                    className={`relative w-8 h-8 text-white transition-all duration-1000 ${finishLoading ? 'scale-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.6)]' : 'opacity-80'}`} 
+                    strokeWidth={1.2} 
+                />
+                
+                {/* SVG Progress Ring */}
+                <svg className="absolute inset-0 w-full h-full -rotate-90 drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]" viewBox="0 0 100 100">
+                  {/* Track */}
+                  <circle
+                    className="text-white/5"
+                    strokeWidth="1.5"
+                    stroke="currentColor"
+                    fill="transparent"
+                    r={radius}
+                    cx="50"
+                    cy="50"
+                  />
+                  {/* Indicator */}
+                  <circle
+                    className="text-indigo-500 transition-all duration-100 ease-linear"
+                    strokeWidth="1.5"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="transparent"
+                    r={radius}
+                    cx="50"
+                    cy="50"
+                  />
+                </svg>
             </div>
-          </div>
         </div>
 
-        {/* Brand Typography */}
-        <div className="text-center mb-12 space-y-2">
-            <h1 className="text-4xl font-black text-white tracking-tighter drop-shadow-xl bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">
-                InvestFIIs
+        {/* Elegant Typography */}
+        <div className="text-center space-y-5">
+            <h1 className="text-2xl font-light text-white tracking-[0.25em] font-sans antialiased opacity-90">
+                INVEST<strong className="font-semibold text-white">FIIs</strong>
             </h1>
-            <div className="flex items-center justify-center gap-2">
-                <div className="h-[1px] w-4 bg-indigo-500/50"></div>
-                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.3em]">
-                    Wealth Intelligence
-                </p>
-                <div className="h-[1px] w-4 bg-indigo-500/50"></div>
-            </div>
-        </div>
-
-        {/* Minimalist Loader */}
-        <div className="w-full px-8">
-            <div className="flex justify-between items-end mb-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{loadingText}</span>
-                <span className="text-xs font-mono font-bold text-white tabular-nums">{Math.round(displayProgress)}%</span>
-            </div>
             
-            <div className="h-1.5 w-full bg-slate-800/50 rounded-full overflow-hidden border border-white/5 relative">
-                {/* Progress Bar */}
-                <div 
-                    className="h-full bg-gradient-to-r from-indigo-500 via-violet-500 to-emerald-500 rounded-full transition-all duration-500 ease-out relative shadow-[0_0_10px_rgba(99,102,241,0.5)]"
-                    style={{ width: `${displayProgress}%` }}
-                >
-                    {/* Shimmer Effect inside bar */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-[shimmer_1.5s_infinite]"></div>
-                </div>
+            <div className="flex items-center justify-center gap-4 opacity-60">
+                <div className="h-[1px] w-6 bg-gradient-to-r from-transparent to-white/30"></div>
+                <span className="text-[9px] font-medium text-slate-300 uppercase tracking-[0.4em] min-w-[80px] text-center transition-all duration-500">
+                    {finishLoading ? 'Bem-vindo' : 'Carregando'}
+                </span>
+                <div className="h-[1px] w-6 bg-gradient-to-l from-transparent to-white/30"></div>
             </div>
         </div>
       </div>
 
-      {/* Footer Badge */}
-      <div className="absolute bottom-10 flex flex-col items-center gap-2 opacity-50">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 backdrop-blur-sm">
-            <ShieldCheck className="w-3 h-3 text-emerald-500" />
-            <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Ambiente Seguro</span>
-        </div>
+      {/* Subtle Footer */}
+      <div className="absolute bottom-12 opacity-20">
+        <p className="text-[8px] font-mono text-slate-400 uppercase tracking-widest">Secure Environment</p>
       </div>
     </div>
   );
