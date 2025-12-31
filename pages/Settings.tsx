@@ -601,17 +601,17 @@ export const Settings: React.FC<SettingsProps> = ({
                         <button 
                             onClick={handleForceMarketUpdate}
                             disabled={isMarketUpdating}
-                            className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] shadow-xl hover:shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 relative overflow-hidden group"
+                            className="w-full h-10 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden group"
                         >
                              {isMarketUpdating ? (
                                 <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  <Loader2 className="w-3 h-3 animate-spin" />
                                   <span>Atualizando...</span>
                                 </>
                              ) : (
                                 <>
-                                  <RefreshCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-700" />
-                                  <span>Forçar Atualização de Mercado</span>
+                                  <RefreshCcw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-700" />
+                                  <span>Forçar Atualização</span>
                                 </>
                              )}
                              {/* Shine Effect */}
