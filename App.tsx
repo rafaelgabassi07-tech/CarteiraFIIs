@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.2.6'; 
+const APP_VERSION = '7.2.8'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -25,7 +25,8 @@ const STORAGE_KEYS = {
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
   PASSCODE: 'investfiis_passcode',
-  BIOMETRICS: 'investfiis_biometrics'
+  BIOMETRICS: 'investfiis_biometrics',
+  NOTIF_HISTORY: 'investfiis_notification_history_v2' // Chave para persistir notificações
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
@@ -50,6 +51,8 @@ const getQuantityOnDate = (ticker: string, dateCom: string, paymentDate: string,
 
   const targetTicker = normalize(ticker);
   
+  // A lógica "t.date <= cutoffDate" garante que a compra deve ter sido feita
+  // ATÉ o dia da Data Com (inclusive). Se comprou depois, não entra na soma.
   return transactions
     .filter(t => {
        const txTicker = normalize(t.ticker);
@@ -116,7 +119,14 @@ const App: React.FC = () => {
   const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(STORAGE_KEYS.PUSH_ENABLED) === 'true');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  
+  // Inicializa notificações com histórico salvo
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+      try {
+          const saved = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY);
+          return saved ? JSON.parse(saved) : [];
+      } catch { return []; }
+  });
 
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
   
@@ -136,6 +146,8 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled)); }, [pushEnabled]);
+  // Persiste notificações ao mudar
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.NOTIF_HISTORY, JSON.stringify(notifications.slice(0, 50))); }, [notifications]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -163,6 +175,76 @@ const App: React.FC = () => {
     setToast({ type, text });
     if (type !== 'info') setTimeout(() => setToast(null), 3000);
   }, []);
+
+  // --- MOTOR DE NOTIFICAÇÕES (NOVO) ---
+  useEffect(() => {
+    if (!session || geminiDividends.length === 0 || transactions.length === 0) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Preferências do Usuário
+    const notifyDivs = localStorage.getItem('investfiis_notify_divs') !== 'false';
+    const notifyDataCom = localStorage.getItem('investfiis_notify_datacom') !== 'false';
+    
+    const newNotifications: AppNotification[] = [];
+
+    geminiDividends.forEach(div => {
+        // 1. Notificação de Pagamento (Hoje)
+        if (div.paymentDate === today && notifyDivs) {
+             const qty = getQuantityOnDate(div.ticker, div.dateCom, div.paymentDate, transactions);
+             if (qty > 0) {
+                 const total = qty * div.rate;
+                 const id = `PAY-${div.ticker}-${today}`;
+                 // Evita duplicatas
+                 if (!notifications.some(n => n.id === id)) {
+                     const notif: AppNotification = {
+                         id,
+                         title: `💰 ${div.ticker} Pagou!`,
+                         message: `Caiu na conta: R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}. (${div.type})`,
+                         type: 'success',
+                         category: 'payment',
+                         timestamp: Date.now(),
+                         read: false
+                     };
+                     newNotifications.push(notif);
+                     
+                     // Push do Navegador
+                     if (pushEnabled && document.hidden) {
+                         new Notification(notif.title, { body: notif.message, icon: '/vite.svg' });
+                     }
+                 }
+             }
+        }
+
+        // 2. Notificação de Data Com (Hoje - Alerta de Oportunidade)
+        if (div.dateCom === today && notifyDataCom) {
+             const id = `DATACOM-${div.ticker}-${today}`;
+             if (!notifications.some(n => n.id === id)) {
+                 const notif: AppNotification = {
+                     id,
+                     title: `📅 Data Com: ${div.ticker}`,
+                     message: `Hoje é o último dia para garantir R$ ${div.rate.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/cota.`,
+                     type: 'warning',
+                     category: 'datacom',
+                     timestamp: Date.now(),
+                     read: false
+                 };
+                 newNotifications.push(notif);
+
+                 if (pushEnabled && document.hidden) {
+                    new Notification(notif.title, { body: notif.message, icon: '/vite.svg' });
+                }
+             }
+        }
+    });
+
+    if (newNotifications.length > 0) {
+        setNotifications(prev => [...newNotifications, ...prev]);
+        showToast('info', `${newNotifications.length} novas notificações.`);
+    }
+
+  }, [geminiDividends, transactions, session, pushEnabled, showToast]);
+
 
   // --- Verificação de Tokens ---
   useEffect(() => {
@@ -229,7 +311,7 @@ const App: React.FC = () => {
   }, [transactions, showToast, quotes, appLoading]);
 
   // Função Principal de Sync com Controle de Banner
-  const fetchTransactionsFromCloud = useCallback(async () => {
+  const fetchTransactionsFromCloud = useCallback(async (force = false) => {
     setIsCloudSyncing(true);
     setCloudStatus('syncing');
 
@@ -257,9 +339,9 @@ const App: React.FC = () => {
         
         if (appLoading) setLoadingProgress(prev => Math.max(prev, 25)); 
 
-        // Dispara atualização de mercado em background, sem bloquear o status da nuvem
+        // Dispara atualização de mercado em background, respeitando o FORCE
         if (cloudTxs.length > 0) {
-            syncMarketData(false, cloudTxs);
+            syncMarketData(force, cloudTxs);
         }
       } else {
          setCloudStatus('connected');
@@ -282,7 +364,7 @@ const App: React.FC = () => {
 
   const handleSyncAll = useCallback(async (force: boolean) => {
     if (session) {
-        await fetchTransactionsFromCloud();
+        await fetchTransactionsFromCloud(force);
     }
   }, [fetchTransactionsFromCloud, session]);
 
@@ -312,7 +394,7 @@ const App: React.FC = () => {
         // Usuário logado ou restaurado
         if (!previousSessionId) {
             setLoadingProgress(15);
-            setTimeout(() => fetchTransactionsFromCloud(), 100);
+            setTimeout(() => fetchTransactionsFromCloud(false), 100);
         }
       } 
       else {
@@ -320,6 +402,7 @@ const App: React.FC = () => {
         setTransactions([]);
         setQuotes({});
         setGeminiDividends([]);
+        setNotifications([]); // Limpa notificações ao deslogar
         setCloudStatus('hidden');
       }
 
@@ -461,7 +544,7 @@ const App: React.FC = () => {
             if (error) throw error;
         }
         
-        await fetchTransactionsFromCloud();
+        await fetchTransactionsFromCloud(true);
         showToast('success', 'Backup restaurado na nuvem!');
     } catch (e: any) {
         console.error("Supabase import error:", e);
@@ -508,7 +591,7 @@ const App: React.FC = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     
     const receipts = geminiDividends.map(div => {
-        // Cálculo de quantidade com fallback de data
+        // Cálculo de quantidade com fallback de data e normalização de ticker
         const qty = Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, div.paymentDate, sortedTxs));
         return {
             ...div, 
@@ -627,7 +710,8 @@ const App: React.FC = () => {
                   updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
                   onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} 
                   lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} 
-                  lastSyncTime={lastSyncTime} onSyncAll={handleSyncAll} 
+                  lastSyncTime={lastSyncTime} onSyncAll={handleSyncAll}
+                  currentVersionDate={updateManager.currentVersionDate} 
                 />
               ) : (
                 <div key={currentTab} className="anim-fade-in is-visible">

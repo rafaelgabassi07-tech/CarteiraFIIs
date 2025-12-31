@@ -21,9 +21,10 @@ export const useUpdateManager = (currentAppVersion: string) => {
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
   const [availableVersion, setAvailableVersion] = useState<string | null>(null);
+  const [currentVersionDate, setCurrentVersionDate] = useState<string | null>(null);
   const [releaseNotes, setReleaseNotes] = useState<ReleaseNote[]>([]);
   const [wasUpdated, setWasUpdated] = useState(false);
-  const [lastChecked, setLastChecked] = useState<number | null>(null);
+  const [lastChecked, setLastChecked] = useState<number | null>(Date.now());
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
 
@@ -35,6 +36,8 @@ export const useUpdateManager = (currentAppVersion: string) => {
       if (res.ok) {
         const data: VersionData = await res.json();
         setReleaseNotes(data.notes || []);
+        if (data.date) setCurrentVersionDate(data.date);
+        
         if (isNewerVersion(data.version, currentAppVersion)) {
             setAvailableVersion(data.version);
             return data;
@@ -83,6 +86,9 @@ export const useUpdateManager = (currentAppVersion: string) => {
         }
       });
     }
+    
+    // Busca inicial de metadados para popular a data da versão
+    fetchVersionMetadata();
   }, [fetchVersionMetadata]);
 
   // Effect for checking if the app was just updated on load
@@ -135,6 +141,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
   return {
     isUpdateAvailable,
     availableVersion,
+    currentVersionDate,
     releaseNotes,
     showChangelog,
     setShowChangelog,
