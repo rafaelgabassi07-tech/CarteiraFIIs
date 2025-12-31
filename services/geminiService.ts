@@ -8,7 +8,7 @@ export interface UnifiedMarketData {
   error?: string; // Flag para indicar erro de cota na UI
 }
 
-// A chave de API agora é lida do ambiente do Vite, injetado no momento da compilação.
+// A chave de API agora é lida do ambiente do Vite.
 
 const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.0_proxy'; // Chave de cache mantida
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; // Chave para o Circuit Breaker
@@ -102,10 +102,7 @@ const unifiedDataSchema = {
 
 /**
  * Busca dados unificados de mercado (dividendos, fundamentos) diretamente da API do Google Gemini.
- * @param tickers - Array de tickers para buscar.
- * @param startDate - Data inicial para o cálculo do IPCA.
- * @param forceRefresh - Se verdadeiro, ignora o cache do cliente.
- * @returns Um objeto contendo os dados de mercado.
+ * Utiliza o modelo gemini-2.5-flash para eficiência.
  */
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
@@ -152,15 +149,15 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   }
 
   try {
-    // 3. Chamada direta para a API Gemini
+    // 3. Chamada direta para a API Gemini (gemini-2.5-flash)
     const ai = new GoogleGenAI({ apiKey: apiKey as string });
     const today = new Date().toISOString().split('T')[0];
     const portfolioStart = startDate || `${new Date().getFullYear()}-01-01`;
 
-    const prompt = `Analise os ativos ${uniqueTickers.join(', ')}. Forneça seus fundamentos, dividendos recentes e futuros (apenas confirmados), e o IPCA acumulado de ${portfolioStart} até ${today}. Retorne JSON puro.`;
+    const prompt = `Analise os ativos ${uniqueTickers.join(', ')}. Forneça seus fundamentos, dividendos recentes e futuros (apenas confirmados), e o IPCA acumulado de ${portfolioStart} até ${today}. Retorne JSON puro seguindo o schema.`;
 
     const response = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
+        model: "gemini-2.5-flash", // MODELO ALTERADO PARA 2.5 FLASH
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -173,7 +170,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     let parsedJson: any;
     try {
       if (response.text) {
-          // Remove potential markdown fences if model hallucinates them despite mimeType
           const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
           parsedJson = JSON.parse(cleanText);
       } else {
@@ -247,14 +243,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         localStorage.setItem(QUOTA_COOLDOWN_KEY, (Date.now() + 5 * 60 * 1000).toString());
     }
     
-    // Fallback para o cache antigo em caso de qualquer erro
     const oldCache = localStorage.getItem(GEMINI_CACHE_KEY);
     if (oldCache) {
         const parsed = JSON.parse(oldCache);
         return { ...parsed.data, error: isQuotaError ? 'quota_exceeded' : undefined };
     }
     
-    // Retorno final se não houver cache
     return { dividends: [], metadata: {}, error: error.message };
   }
 };

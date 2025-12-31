@@ -3,60 +3,43 @@ import { Wallet, TrendingUp, ShieldCheck } from 'lucide-react';
 
 interface SplashScreenProps {
   finishLoading: boolean;
+  realProgress: number; // Nova prop para progresso real
 }
 
-export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading }) => {
+export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realProgress }) => {
   const [shouldRender, setShouldRender] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [loadingText, setLoadingText] = useState('Sincronizando...');
-  const [progress, setProgress] = useState(0);
+  const [loadingText, setLoadingText] = useState('Iniciando...');
+  
+  // O progresso visual agora segue o progresso real, mas com uma transição suave via CSS
+  const [displayProgress, setDisplayProgress] = useState(0);
 
   useEffect(() => {
-    // Simula o progresso visual da barra
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 90) return prev;
-        // Acelera no começo, desacelera no fim
-        const increment = Math.max(1, (90 - prev) / 10);
-        return prev + increment;
-      });
-    }, 150);
-
-    return () => clearInterval(interval);
-  }, []);
+    // Atualiza o progresso visual baseado no real, garantindo que não retroceda
+    setDisplayProgress(prev => Math.max(prev, realProgress));
+  }, [realProgress]);
 
   useEffect(() => {
-    const texts = [
-      'Sincronizando carteira...',
-      'Verificando proventos...',
-      'Atualizando cotações...',
-      'Analisando mercado...',
-      'Quase lá...'
-    ];
-    let i = 0;
-    const textInterval = setInterval(() => {
-      setLoadingText(texts[i % texts.length]);
-      i++;
-    }, 800);
-
-    return () => clearInterval(textInterval);
-  }, []);
+    // Textos dinâmicos baseados na porcentagem real aproximada
+    if (realProgress < 20) setLoadingText('Autenticando...');
+    else if (realProgress < 40) setLoadingText('Buscando carteira...');
+    else if (realProgress < 70) setLoadingText('Atualizando cotações (BRAPI)...');
+    else if (realProgress < 90) setLoadingText('Processando Inteligência (Gemini)...');
+    else setLoadingText('Finalizando...');
+  }, [realProgress]);
 
   useEffect(() => {
     if (finishLoading) {
-      setProgress(100);
+      setDisplayProgress(100);
       setLoadingText('Pronto');
       
-      // Delay minúsculo (100ms) apenas para garantir que o usuário veja 100%
-      // e então inicia o fade out imediatamente.
       const timeout = setTimeout(() => {
         setIsFadingOut(true);
-        // Tempo da animação de saída (CSS duration)
         const removeTimeout = setTimeout(() => {
           setShouldRender(false);
-        }, 600);
+        }, 600); // Tempo da animação de saída
         return () => clearTimeout(removeTimeout);
-      }, 100);
+      }, 300); // Pequeno delay para ver o 100%
       return () => clearTimeout(timeout);
     }
   }, [finishLoading]);
@@ -96,14 +79,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading }) => 
             <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden relative">
                 <div 
                     className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 rounded-full transition-all duration-300 ease-out relative"
-                    style={{ width: `${progress}%` }}
+                    style={{ width: `${displayProgress}%` }}
                 >
                     <div className="absolute inset-0 bg-white/30 animate-[shimmer_2s_infinite]"></div>
                 </div>
             </div>
             <div className="flex justify-between items-center text-[10px] font-medium font-mono h-4">
                 <span className="text-slate-400 animate-pulse">{loadingText}</span>
-                <span className="text-emerald-500 tabular-nums">{Math.round(progress)}%</span>
+                <span className="text-emerald-500 tabular-nums">{Math.round(displayProgress)}%</span>
             </div>
         </div>
       </div>

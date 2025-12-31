@@ -75,6 +75,7 @@ const App: React.FC = () => {
   
   // Estado de controle do SplashScreen
   const [appLoading, setAppLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0); // Novo estado para progresso real
 
   const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -156,12 +157,19 @@ const App: React.FC = () => {
     }
     
     setIsRefreshing(true);
+    // Atualiza progresso se estiver no boot inicial
+    if (appLoading) setLoadingProgress(prev => Math.max(prev, 30));
+
     try {
+      // BRAPI
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
       }
       
+      if (appLoading) setLoadingProgress(prev => Math.max(prev, 60)); // Quotes completas
+
+      // GEMINI (IA)
       setIsAiLoading(true);
       const startDate = txsToUse.length > 0 ? txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date) : '';
       
@@ -174,6 +182,8 @@ const App: React.FC = () => {
       setAssetsMetadata(aiData.metadata);
       if (aiData.indicators?.ipca_cumulative) setMarketIndicators({ ipca: aiData.indicators.ipca_cumulative, startDate: aiData.indicators.start_date_used });
       setLastSyncTime(new Date());
+      
+      if (appLoading) setLoadingProgress(prev => Math.max(prev, 90)); // IA Completa
 
     } catch (e) { 
       if (force) showToast('error', 'Sem conexão'); 
@@ -182,10 +192,11 @@ const App: React.FC = () => {
       setIsRefreshing(false); 
       setIsAiLoading(false); 
     }
-  }, [transactions, showToast, quotes]);
+  }, [transactions, showToast, quotes, appLoading]);
 
   const fetchTransactionsFromCloud = useCallback(async () => {
     setIsCloudSyncing(true);
+    if (appLoading) setLoadingProgress(prev => Math.max(prev, 15)); // Iniciando busca
     try {
       const { data, error } = await supabase.from('transactions').select('*');
       if (error) throw error;
@@ -193,9 +204,12 @@ const App: React.FC = () => {
       if (data) {
         const cloudTxs: Transaction[] = data.map(mapSupabaseToTx);
         setTransactions(cloudTxs);
+        
+        if (appLoading) setLoadingProgress(prev => Math.max(prev, 25)); // Dados recebidos
+
         if (cloudTxs.length > 0) {
-            // Não bloqueia a UI aqui, sync acontece em background ou via promise no init
-            syncMarketData(false, cloudTxs);
+            // Sincroniza dados de mercado usando as transações recuperadas
+            await syncMarketData(false, cloudTxs);
         }
       }
       return true;
@@ -206,7 +220,7 @@ const App: React.FC = () => {
     } finally {
       setIsCloudSyncing(false);
     }
-  }, [showToast, syncMarketData]);
+  }, [showToast, syncMarketData, appLoading]);
 
   const migrateGuestDataToCloud = useCallback(async (user_id: string) => {
     const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]') as Transaction[];
@@ -238,32 +252,37 @@ const App: React.FC = () => {
     let mounted = true;
 
     const initApp = async () => {
-      // Lógica de Inicialização Baseada em Dados (Sem Timer Artificial)
+      // 1. Inicialização: Define progresso inicial
+      setLoadingProgress(5); 
+
       const appInitialization = async () => {
         try {
-          // 1. Checa sessão
+          // Checa sessão
           const { data: { session: initialSession }, error } = await supabase.auth.getSession();
           if (!mounted) return;
+
+          setLoadingProgress(10); // Sessão verificada
 
           const isGuestMode = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
           
           if (initialSession) {
             setSession(initialSession);
             setIsGuest(false);
-            // 2. Se logado, AGUARDA (await) os dados virem da nuvem antes de liberar
+            // 2. Se logado, busca da nuvem (inclui syncMarketData internamente)
             await fetchTransactionsFromCloud();
             setCloudStatus('connected');
             setTimeout(() => setCloudStatus('hidden'), 3000);
           } else {
             setSession(null);
             setIsGuest(isGuestMode);
-            // 3. Se convidado, carrega dados locais imediatamente
+            // 3. Se convidado, carrega dados locais
             if (isGuestMode) {
                 setCloudStatus('disconnected');
                 const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
+                setLoadingProgress(25); // Dados locais lidos
                 if (localTxs.length > 0) {
                    setTransactions(localTxs);
-                   syncMarketData(false, localTxs);
+                   await syncMarketData(false, localTxs);
                 }
             }
           }
@@ -274,22 +293,23 @@ const App: React.FC = () => {
         }
       };
 
-      // Executa a inicialização e fecha o loading imediatamente após
       await appInitialization();
       
       if (mounted) {
-        setAppLoading(false); // Remove SplashScreen imediatamente após o carregamento dos dados
+        setLoadingProgress(100); // Finaliza
+        // Pequeno delay para permitir que o usuário veja 100% no splash antes de desmontar
+        setTimeout(() => setAppLoading(false), 500); 
       }
     };
 
-    // Timeout de segurança caso o Supabase demore demais (10s) para não travar o usuário
+    // Timeout de segurança
     const timeout = setTimeout(() => {
       if (mounted && appLoading) {
         console.warn("Init timeout, forcing entry");
         setAppLoading(false);
         setIsAuthLoading(false);
       }
-    }, 10000);
+    }, 15000); // Aumentado para 15s pois agora temos requests reais
 
     initApp().then(() => clearTimeout(timeout));
 
@@ -553,7 +573,7 @@ const App: React.FC = () => {
   
   const content = (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
-      <SplashScreen finishLoading={!appLoading} />
+      <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       
       <CloudStatusBanner status={cloudStatus} />
       
