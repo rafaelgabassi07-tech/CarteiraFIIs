@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck, AlertCircle, Sparkle, PartyPopper, Loader2, CloudOff, Cloud, Wifi, Lock, Fingerprint, Delete, ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck, AlertCircle, Sparkle, PartyPopper, Loader2, CloudOff, Cloud, Wifi, Lock, Fingerprint, Delete, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { ReleaseNote, AppNotification, ReleaseNoteType } from '../types';
 
 // Custom hook for managing enter/exit animations
@@ -29,30 +29,25 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
 
   return (
     <div 
-      className={`fixed top-0 left-0 right-0 min-h-[3.5rem] pt-safe pb-1 z-[100] flex items-center justify-center gap-2.5 px-4 text-xs font-black uppercase tracking-[0.15em] transition-all duration-500 ease-out-quint shadow-md transform ${
+      className={`fixed top-0 left-0 right-0 h-8 z-[60] flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all duration-700 ease-out-quint shadow-sm ${
         isHidden ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
       } ${
         isConnected 
-          ? 'bg-[#10b981] text-white' // Emerald-500 Solid
-          : 'bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-xl text-slate-500 dark:text-slate-400 border-b border-slate-200/50 dark:border-white/5'
+          ? 'bg-emerald-500 text-white' 
+          : 'bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-md text-slate-500 dark:text-slate-400 border-b border-slate-200/50 dark:border-white/5'
       }`}
     >
       {isSyncing ? (
         <>
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span>Sincronizando...</span>
+          <Loader2 className="w-3 h-3 animate-spin" />
+          <span>Migrando dados...</span>
         </>
       ) : isConnected ? (
-        <div className="flex items-center gap-2 animate-pulse">
-          <Cloud className="w-4 h-4" strokeWidth={2.5} />
+        <>
+          <Cloud className="w-3 h-3 animate-bounce" />
           <span>Sincronizado com a Nuvem</span>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2">
-           <CloudOff className="w-4 h-4" />
-           <span>Offline</span>
-        </div>
-      )}
+        </>
+      ) : null}
     </div>
   );
 };
@@ -97,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header 
       className={`fixed left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint ${
-        bannerVisible ? 'top-6' : 'top-0'
+        bannerVisible ? 'top-8' : 'top-0'
       } ${
         isScrolled 
           ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5' 
