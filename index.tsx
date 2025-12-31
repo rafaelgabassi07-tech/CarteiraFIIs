@@ -3,14 +3,12 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
-// Limpeza de segurança para garantir que versões antigas do SW não travem o app
+// EMERGENCIA: Desregistrar qualquer Service Worker ativo para limpar o cache corrompido
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(function(registrations) {
     for(let registration of registrations) {
-      // Se o SW estiver aguardando ou não estiver ativo corretamente, força update
-      if (registration.waiting) {
-        registration.update();
-      }
+      console.log('Unregistering SW to fix preview:', registration);
+      registration.unregister();
     }
   });
 }
