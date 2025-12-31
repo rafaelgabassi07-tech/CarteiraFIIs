@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown, Briefcase, ChevronUp, Layers, Hash, Info } from 'lucide-react';
+import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown, Briefcase, ChevronUp, Layers, Hash, Info, Hourglass } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history: DividendReceipt[], totalPortfolioValue: number }> = ({ asset, index, history, totalPortfolioValue }) => {
@@ -147,30 +147,39 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
                 </div>
               ) : (
                 history.map((h, i) => {
-                  // Lógica de Cor para Tipos de Proventos
-                  const isJCP = h.type === 'JCP';
-                  const isRendimento = h.type === 'RENDIMENTO';
-                  const colorClass = isJCP 
-                      ? 'text-sky-600 dark:text-sky-400' 
-                      : isRendimento 
-                        ? 'text-indigo-600 dark:text-indigo-400'
-                        : 'text-emerald-600 dark:text-emerald-500';
+                  const today = new Date().toISOString().split('T')[0];
+                  const isFuture = h.paymentDate > today;
+                  
+                  // Lógica de Cor Ajustada
+                  let colorClass = 'text-slate-600 dark:text-slate-400';
+                  let statusText = 'Confirmado';
+                  
+                  if (isFuture) {
+                      colorClass = 'text-indigo-600 dark:text-indigo-400';
+                      statusText = 'Agendado';
+                  } else if (h.type === 'JCP') {
+                      colorClass = 'text-sky-600 dark:text-sky-400';
+                      statusText = 'Pago (JCP)';
+                  } else {
+                      colorClass = 'text-emerald-600 dark:text-emerald-500';
+                      statusText = 'Pago';
+                  }
 
                   return (
                     <div key={i} className="group relative bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm" style={{ animationDelay: `${i * 30}ms` }}>
                       <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center gap-3">
-                            <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 font-bold shrink-0">
+                            <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl font-bold shrink-0 ${isFuture ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>
                                 <span className="text-[9px] uppercase leading-none mb-0.5">{h.paymentDate.split('-')[1]}</span>
-                                <span className="text-xs leading-none text-slate-900 dark:text-white">{h.paymentDate.split('-')[2]}</span>
+                                <span className={`text-xs leading-none ${isFuture ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-900 dark:text-white'}`}>{h.paymentDate.split('-')[2]}</span>
                             </div>
                             <div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-0.5">{h.type} <span className="text-slate-300 dark:text-slate-600">•</span> {h.paymentDate.split('-')[0]}</p>
-                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Pagamento Realizado</p>
+                                <p className={`text-sm font-bold ${isFuture ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-200'}`}>{statusText}</p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Total Recebido</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">{isFuture ? 'Previsão' : 'Total Recebido'}</p>
                             <p className={`text-base font-black tabular-nums ${colorClass}`}>R$ {formatCurrency(h.totalReceived)}</p>
                           </div>
                       </div>

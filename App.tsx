@@ -85,6 +85,21 @@ const mapSupabaseToTx = (record: any): Transaction => {
   };
 };
 
+// --- Helpers para Proventos no Supabase ---
+
+const mapSupabaseToDiv = (record: any): DividendReceipt => {
+    return {
+        id: record.id,
+        ticker: record.ticker,
+        type: record.type,
+        dateCom: record.date_com,
+        paymentDate: record.payment_date,
+        rate: Number(record.rate),
+        quantityOwned: 0, // Calculado em tempo de execução
+        totalReceived: 0  // Calculado em tempo de execução
+    };
+};
+
 const MemoizedHome = React.memo(Home);
 const MemoizedPortfolio = React.memo(Portfolio);
 const MemoizedTransactions = React.memo(Transactions);
@@ -261,6 +276,61 @@ const App: React.FC = () => {
     }
   }, [showToast]);
 
+  // Função para salvar proventos no Supabase
+  const saveDividendsToCloud = useCallback(async (dividends: DividendReceipt[]) => {
+      if (!session || dividends.length === 0) return;
+      try {
+          const payload = dividends.map(d => ({
+              user_id: session.user.id,
+              ticker: d.ticker,
+              type: d.type,
+              date_com: d.dateCom,
+              payment_date: d.paymentDate,
+              rate: d.rate
+          }));
+          
+          // Upsert para evitar duplicatas (requer constraint unique no banco)
+          const { error } = await supabase.from('dividend_events').upsert(payload, { 
+              onConflict: 'user_id, ticker, type, payment_date, rate',
+              ignoreDuplicates: true 
+          });
+          
+          if (error) {
+              if (error.code !== '42P01') { // Ignora erro se tabela não existir
+                  console.warn("Erro ao salvar proventos na nuvem:", error);
+              }
+          } else {
+              console.log(`✅ ${dividends.length} proventos sincronizados com a nuvem.`);
+          }
+      } catch (e) {
+          console.warn("Falha silenciosa no sync de proventos:", e);
+      }
+  }, [session]);
+
+  // Função para buscar proventos da nuvem
+  const fetchDividendsFromCloud = useCallback(async () => {
+      if (!session) return;
+      try {
+          const { data, error } = await supabase.from('dividend_events').select('*').eq('user_id', session.user.id);
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+              const cloudDivs = data.map(mapSupabaseToDiv);
+              setGeminiDividends(current => {
+                  // Merge: Mantém atuais, adiciona novos da nuvem se não existirem
+                  const uniqueMap = new Map();
+                  [...current, ...cloudDivs].forEach(d => {
+                      const key = `${d.ticker}-${d.paymentDate}-${d.type}`;
+                      uniqueMap.set(key, d);
+                  });
+                  return Array.from(uniqueMap.values());
+              });
+          }
+      } catch (e: any) {
+          if (e.code !== '42P01') console.warn("Não foi possível buscar histórico de proventos:", e.message);
+      }
+  }, [session]);
+
   const syncMarketData = useCallback(async (force: boolean = false, txsToUse: Transaction[] = transactions) => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) {
@@ -288,14 +358,13 @@ const App: React.FC = () => {
           const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
           
           if (aiData.error === 'quota_exceeded') showToast('info', 'IA em pausa (Cota). Usando cache.');
-          else if (force) {
-             // Sincronização Forçada (Manual) - Usa a barra de topo verde
-             setCloudStatus('connected');
-             setTimeout(() => setCloudStatus('hidden'), 3000);
-          }
+          else if (force) showToast('success', 'Carteira Sincronizada');
           else if (aiData.error) console.warn("Erro Gemini:", aiData.error);
           
-          if (aiData.dividends.length > 0) setGeminiDividends(aiData.dividends);
+          if (aiData.dividends.length > 0) {
+              setGeminiDividends(aiData.dividends);
+              saveDividendsToCloud(aiData.dividends); // Salva histórico na nuvem
+          }
           if (Object.keys(aiData.metadata).length > 0) setAssetsMetadata(aiData.metadata);
           if (aiData.indicators?.ipca_cumulative) setMarketIndicators({ ipca: aiData.indicators.ipca_cumulative, startDate: aiData.indicators.start_date_used });
       }
@@ -310,7 +379,7 @@ const App: React.FC = () => {
       setIsRefreshing(false); 
       setIsAiLoading(false); 
     }
-  }, [transactions, showToast, quotes, appLoading]);
+  }, [transactions, showToast, quotes, appLoading, saveDividendsToCloud]);
 
   const fetchTransactionsFromCloud = useCallback(async (force = false) => {
     setIsCloudSyncing(true);
@@ -334,6 +403,10 @@ const App: React.FC = () => {
         setCloudStatus('connected');
         setTimeout(() => setCloudStatus('hidden'), 3000);
         if (appLoading) setLoadingProgress(prev => Math.max(prev, 25)); 
+        
+        // Carrega também o histórico de proventos
+        await fetchDividendsFromCloud();
+
         if (cloudTxs.length > 0) {
             syncMarketData(force, cloudTxs);
         }
@@ -352,7 +425,7 @@ const App: React.FC = () => {
     } finally {
       setIsCloudSyncing(false);
     }
-  }, [showToast, syncMarketData, appLoading, session]);
+  }, [showToast, syncMarketData, appLoading, session, fetchDividendsFromCloud]);
 
   const handleSyncAll = useCallback(async (force: boolean) => {
     if (session) {
@@ -443,9 +516,7 @@ const App: React.FC = () => {
         showToast('error', 'Erro ao salvar na nuvem.');
         setTransactions(p => p.filter(tx => tx.id !== tempId)); 
     } else {
-        // Success: Trigger the "Green Bar" notification
-        setCloudStatus('connected');
-        setTimeout(() => setCloudStatus('hidden'), 3000);
+        showToast('success', 'Ordem salva na nuvem');
     }
   };
 
@@ -460,9 +531,7 @@ const App: React.FC = () => {
         showToast('error', 'Falha ao atualizar na nuvem.');
         setTransactions(p => p.map(t => t.id === id ? originalTx! : t)); 
     } else {
-        // Success: Trigger the "Green Bar" notification
-        setCloudStatus('connected');
-        setTimeout(() => setCloudStatus('hidden'), 3000);
+        showToast('success', 'Ordem atualizada');
     }
   };
 
@@ -475,9 +544,7 @@ const App: React.FC = () => {
         showToast('error', 'Falha ao apagar na nuvem.');
         setTransactions(p => [...p, deletedTx!]); 
     } else {
-        // Success: Trigger the "Green Bar" notification
-        setCloudStatus('connected');
-        setTimeout(() => setCloudStatus('hidden'), 3000);
+        showToast('success', 'Ordem removida');
     }
   };
 
@@ -508,7 +575,7 @@ const App: React.FC = () => {
             if (error) throw error;
         }
         await fetchTransactionsFromCloud(true);
-        // Backup restore also triggers the connected state implicitly via fetchTransactionsFromCloud
+        showToast('success', 'Backup restaurado!');
     } catch (e: any) {
         console.error("Supabase import error:", e);
         showToast('error', 'Erro ao restaurar backup.');
