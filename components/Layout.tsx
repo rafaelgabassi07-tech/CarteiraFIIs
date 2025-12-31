@@ -29,7 +29,7 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
 
   return (
     <div 
-      className={`fixed top-0 left-0 right-0 pt-safe pb-1.5 z-[100] flex items-center justify-center gap-2 px-4 text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-500 ease-out-quint shadow-sm transform ${
+      className={`fixed top-0 left-0 right-0 pt-safe pb-3 z-[100] flex items-center justify-center gap-2 px-4 text-[11px] font-black uppercase tracking-[0.15em] transition-all duration-500 ease-out-quint shadow-sm transform ${
         isHidden ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
       } ${
         isConnected 
@@ -97,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header 
       className={`fixed left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint ${
-        bannerVisible ? 'top-4' : 'top-0'
+        bannerVisible ? 'top-8' : 'top-0'
       } ${
         isScrolled 
           ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5' 
