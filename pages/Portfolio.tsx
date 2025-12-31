@@ -14,7 +14,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
     if (contentRef.current) {
       setContentHeight(contentRef.current.scrollHeight);
     }
-  }, [isExpanded, asset]); // Recalculate on expand or if asset data changes
+  }, [isExpanded, asset]); 
   
   const currentPrice = asset.currentPrice || asset.averagePrice;
   const totalValue = currentPrice * asset.quantity;
@@ -42,9 +42,10 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="p-4">
-          {/* Header do Card (Sempre visível) */}
-          <div className="flex items-center justify-between">
-             <div className="flex items-center gap-3">
+          {/* Header do Card (Novo Layout Grid para evitar sobreposição) */}
+          <div className="flex items-center justify-between gap-4">
+             {/* Lado Esquerdo: Info do Ativo */}
+             <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-all duration-300 ${isExpanded ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 scale-110' : asset.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-600' : 'bg-blue-500/10 text-blue-600'}`}>
                     {asset.logoUrl ? (
                         <img loading="lazy" src={asset.logoUrl} alt={asset.ticker} className="w-7 h-7 object-contain" onError={(e) => { (e.target as any).style.display='none'; }} />
@@ -52,27 +53,30 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
                         <span className="text-xs font-black tracking-tighter">{asset.ticker.substring(0, 4)}</span>
                     )}
                 </div>
-                <div>
-                  <h4 className="font-black text-base text-slate-900 dark:text-white tracking-tight leading-none">{asset.ticker}</h4>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1">
+                <div className="min-w-0">
+                  <h4 className="font-black text-base text-slate-900 dark:text-white tracking-tight leading-none truncate">{asset.ticker}</h4>
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1 truncate">
                     <span>{asset.quantity} Cotas</span>
                     {asset.segment && (
                         <>
                             <span className="opacity-50">•</span>
-                            <span className="truncate max-w-[120px]">{asset.segment}</span>
+                            <span className="truncate">{asset.segment}</span>
                         </>
                     )}
                   </div>
                 </div>
              </div>
-             <div className="text-right">
+
+             {/* Lado Direito: Valores (Alinhado à direita, sem encolher) */}
+             <div className="text-right shrink-0">
                 <div className="font-black text-base text-slate-900 dark:text-white tabular-nums tracking-tight">R$ {formatCurrency(totalValue)}</div>
-                <div className={`flex items-center justify-end gap-1 text-xs font-bold tabular-nums ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                   {isPositive ? <ArrowUp className="w-3 h-3" strokeWidth={3} /> : <ArrowDown className="w-3 h-3" strokeWidth={3} />}
-                   <span>{isPositive ? '+' : ''}{formatCurrency(gainValue)}</span>
-                   <span className="opacity-60 text-[10px] font-semibold ml-0.5">
-                     ({gainPercent.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%)
-                   </span>
+                <div className="flex justify-end mt-0.5">
+                    <div className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-lg tabular-nums ${isPositive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                       <span>{isPositive ? '+' : ''}{formatCurrency(gainValue)}</span>
+                       <span className="opacity-60 font-semibold ml-0.5">
+                         ({gainPercent.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%)
+                       </span>
+                    </div>
                 </div>
              </div>
           </div>

@@ -10,15 +10,15 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.2_grounded'; // Nova chave para forçar refresh com a nova lógica
-const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; // Chave para o Circuit Breaker
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.5_auditor_pro'; // Cache versionado
+const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 const getAiCacheTTL = () => {
     const now = new Date();
     const day = now.getDay();
     const isWeekend = day === 0 || day === 6;
-    // Cache mais curto durante a semana para pegar anúncios recentes, mais longo no FDS
-    return isWeekend ? (24 * 60 * 60 * 1000) : (6 * 60 * 60 * 1000);
+    // Cache de 4 horas durante semana, 24h fim de semana
+    return isWeekend ? (24 * 60 * 60 * 1000) : (4 * 60 * 60 * 1000);
 };
 
 // --- Funções Auxiliares de Parsing ---
@@ -26,6 +26,7 @@ const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
   const s = String(dateStr).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  
   const brMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
   if (brMatch) {
     const day = brMatch[1].padStart(2, '0');
@@ -51,10 +52,6 @@ const normalizeValue = (val: any): number => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
-/**
- * Busca dados unificados de mercado (dividendos, fundamentos) diretamente da API do Google Gemini.
- * Utiliza o modelo gemini-2.5-flash COM Google Search para garantir dados atualizados e precisos.
- */
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
@@ -62,10 +59,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const tickerKey = uniqueTickers.slice().sort().join('|');
   const CACHE_TTL = getAiCacheTTL();
 
-  // 1. Verificação do Circuit Breaker (Cota Excedida Recentemente)
   const cooldown = localStorage.getItem(QUOTA_COOLDOWN_KEY);
   if (cooldown && Date.now() < parseInt(cooldown)) {
-      console.warn("🚫 [Gemini] Circuit Breaker Ativo (Cota Excedida). Usando Cache.");
+      console.warn("🚫 [Gemini] Circuit Breaker Ativo. Usando Cache.");
       const oldCache = localStorage.getItem(GEMINI_CACHE_KEY);
       if (oldCache) {
           const parsed = JSON.parse(oldCache);
@@ -74,7 +70,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       return { dividends: [], metadata: {}, error: 'quota_exceeded' };
   }
   
-  // 2. Verificação de Cache Padrão no Cliente
   if (!forceRefresh) {
     try {
         const cachedRaw = localStorage.getItem(GEMINI_CACHE_KEY);
@@ -82,83 +77,90 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             const cached = JSON.parse(cachedRaw);
             const isFresh = (Date.now() - cached.timestamp) < CACHE_TTL;
             if (isFresh && cached.tickerKey === tickerKey) {
-                console.log("⚡ [Gemini] Usando Cache Inteligente do Cliente");
+                console.log("⚡ [Gemini] Usando Cache Inteligente");
                 return cached.data;
             }
         }
     } catch (e) { console.warn("Cache Warning", e); }
   }
 
-  console.log(`🤖 [Gemini API] Iniciando pesquisa profunda na Web para: ${uniqueTickers.join(', ')}`);
-
   const apiKey = process.env.API_KEY;
-
-  if (!apiKey) {
-      const errorMsg = "Chave da API Gemini (API_KEY) não configurada.";
-      console.error(errorMsg);
-      return { dividends: [], metadata: {}, error: errorMsg };
-  }
+  if (!apiKey) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
 
   try {
-    // 3. Chamada direta para a API Gemini (gemini-2.5-flash) com Google Search
     const ai = new GoogleGenAI({ apiKey: apiKey as string });
-    const today = new Date().toISOString().split('T')[0];
-    const portfolioStart = startDate || `${new Date().getFullYear()}-01-01`;
+    const todayISO = new Date().toISOString().split('T')[0];
+    
+    // Prompt OTIMIZADO para Auditoria de Proventos e Data Com
+    const prompt = `
+    ATUE COMO: Auditor de Governança Corporativa e Dividendos (B3).
+    DATA DE REFERÊNCIA: ${todayISO}.
+    
+    TAREFA: Realizar uma busca forense sobre proventos (Dividendos, JCP, Rendimentos) para os ativos: ${uniqueTickers.join(', ')}.
 
-    const prompt = `Atue como um analista de dados financeiros de alta precisão. Sua tarefa é buscar dados ATUALIZADOS na web para os ativos: ${uniqueTickers.join(', ')}.
+    ESTRATÉGIA DE BUSCA (Google Search):
+    Para CADA ativo, você deve encontrar o documento "Aviso aos Acionistas" ou "Fato Relevante" mais recente.
+    Busque especificamente:
+    1. "[TICKER] data com dividendos 2024 2025 oficial"
+    2. "[TICKER] aviso aos acionistas proventos valor por ação"
+    3. "[TICKER] statusinvest proventos historico"
     
-    INSTRUÇÕES CRÍTICAS DE PESQUISA:
-    1. Use o Google Search para encontrar os "Avisos aos Acionistas" e comunicados de proventos mais recentes (StatusInvest, FundsExplorer, RI das empresas).
-    2. ATENÇÃO MÁXIMA AO JCP (Juros Sobre Capital Próprio): Muitos ativos anunciam JCP e Dividendos separadamente. Você DEVE capturar ambos. Não ignore JCP.
-    3. Verifique a "Data Com", "Data Pagamento" e "Valor Líquido/Bruto" (use o líquido se possível para FIIs, bruto para Ações se não especificado, mas padronize o valor que cai na conta).
+    REGRAS DE EXTRAÇÃO DE DADOS (CRÍTICO):
+    1. **DATA COM (RECORD DATE):** É a data MANDATÓRIA. É o dia limite para ter a ação e receber o provento. Se não achar a Data Com exata, não registre o dividendo.
+    2. **DATA PAGAMENTO:** Se já foi definido, preencha. Se for "A definir", deixe null/vazio.
+    3. **VALOR PRECISO:**
+       - FIIs: Sempre valor LÍQUIDO (isento).
+       - Ações (JCP): O valor anunciado é geralmente BRUTO. Se encontrar o bruto, registre-o e marque o tipo como "JCP". O app descontará o IR. Se achar o líquido, marque como "DIVIDENDO".
+    4. **JANELA:** Busque proventos com "Data Com" nos últimos 90 dias e TODOS os futuros anunciados.
     
-    RETORNO ESPERADO (JSON Rígido):
-    Você deve responder APENAS um objeto JSON válido, sem markdown (sem \`\`\`json), contendo:
+    FUNDAMENTOS:
+    - P/VP, DY (12m), Setor (Segmento de atuação exato).
+
+    OUTPUT JSON (RFC 8259):
     {
-      "sys": { "ipca": numero (ex: 4.51) },
+      "sys": { "ipca": number },
       "data": [
         {
           "t": "TICKER",
-          "type": "FII" ou "ACAO",
-          "segment": "Segmento",
+          "type": "FII" | "ACAO",
+          "segment": "Setor Exato",
           "fund": {
-             "pvp": numero,
-             "pl": numero,
-             "dy": numero (yield 12m),
+             "pvp": number,
+             "pl": number,
+             "dy": number,
              "liq": "string",
              "cotistas": "string",
-             "desc": "string",
+             "desc": "Resumo curto",
              "mcap": "string",
-             "sent": "Otimista/Neutro/Pessimista",
-             "sent_r": "Justificativa"
+             "sent": "Neutro", 
+             "sent_r": "Resumo"
           },
           "divs": [
-             { "com": "YYYY-MM-DD", "pag": "YYYY-MM-DD", "val": numero, "tipo": "DIVIDENDO" }
+             { 
+               "com": "YYYY-MM-DD", 
+               "pag": "YYYY-MM-DD", 
+               "val": number, 
+               "tipo": "DIVIDENDO" | "JCP" | "RENDIMENTO" 
+             }
           ]
         }
       ]
     }
-    
-    Se houver discrepância, priorize fontes oficiais B3/RI. Responda APENAS o JSON.`;
+    `;
 
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash", 
         contents: prompt,
         config: {
-            // ATIVA O GOOGLE SEARCH PARA DADOS REAIS
             tools: [{googleSearch: {}}],
-            // REMOVIDO: responseMimeType e responseSchema pois geram erro 400 com googleSearch
-            temperature: 0.1, // Baixa temperatura para maior precisão factual
+            temperature: 0.1, 
         },
     });
     
-    // Tratamento robusto do JSON (Limpeza de Markdown)
     let parsedJson: any;
     try {
       if (response.text) {
-          // Remove blocos de código markdown se a IA os adicionar, mesmo com o prompt pedindo para não
           let cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-          // Remove possíveis textos antes ou depois do JSON
           const firstBrace = cleanText.indexOf('{');
           const lastBrace = cleanText.lastIndexOf('}');
           if (firstBrace !== -1 && lastBrace !== -1) {
@@ -169,9 +171,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           throw new Error("Resposta vazia da IA");
       }
     } catch (parseError) {
-      console.error("Erro ao fazer parse do JSON da Gemini:", parseError);
-      console.log("Raw Text:", response.text);
-      throw new Error("Falha no processamento da resposta da IA (Formato inválido)");
+      console.error("Erro Parse JSON:", parseError);
+      throw new Error("Falha formato IA");
     }
 
     const metadata: any = {};
@@ -179,13 +180,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     
     if (parsedJson.data) {
       for (const asset of parsedJson.data) {
-          // Normalização Crítica: Remove espaços e garante uppercase
           const ticker = asset.t ? asset.t.trim().toUpperCase() : '';
-          
           if (!ticker) continue;
 
           metadata[ticker] = {
-              type: asset.type === 'FII' ? 'FII' : 'ACAO', // Normalização forçada
+              type: asset.type === 'FII' ? 'FII' : 'ACAO',
               segment: asset.segment,
               fundamentals: {
                   p_vp: normalizeValue(asset.fund.pvp),
@@ -200,14 +199,14 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
               },
           };
           
-          if (asset.divs) {
+          if (asset.divs && Array.isArray(asset.divs)) {
             for (const div of asset.divs) {
                 const normalizedDateCom = normalizeDate(div.com);
-                // Só adiciona se tiver Data Com válida para evitar erro de cálculo
+                // Filtro Rígido: Provento precisa ter Data Com válida
                 if (normalizedDateCom) {
                     dividends.push({
                         ticker: ticker,
-                        type: div.tipo || 'PROVENTO', // Fallback se vier vazio
+                        type: div.tipo ? div.tipo.toUpperCase() : 'PROVENTO', 
                         dateCom: normalizedDateCom,
                         paymentDate: normalizeDate(div.pag),
                         rate: normalizeValue(div.val),
@@ -218,14 +217,15 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }
     }
     
-    const indicators = {
-      ipca_cumulative: normalizeValue(parsedJson.sys?.ipca),
-      start_date_used: portfolioStart,
+    const data = { 
+        dividends, 
+        metadata, 
+        indicators: {
+            ipca_cumulative: normalizeValue(parsedJson.sys?.ipca),
+            start_date_used: startDate || ''
+        }
     };
     
-    const data = { dividends, metadata, indicators };
-    
-    // 4. Sucesso: Salva os dados no cache do cliente
     if (data.metadata && Object.keys(data.metadata).length > 0) {
         localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({
             timestamp: Date.now(),
@@ -237,20 +237,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     return data;
 
   } catch (error: any) {
-    console.error("Erro na chamada direta ao Gemini:", error.message);
-    
-    const isQuotaError = error.message && (error.message.toLowerCase().includes('quota') || error.message.includes('429'));
-    if (isQuotaError) {
-        console.error("⚠️ [Gemini] Cota Excedida. Ativando Circuit Breaker (5 min).");
-        localStorage.setItem(QUOTA_COOLDOWN_KEY, (Date.now() + 5 * 60 * 1000).toString());
-    }
-    
+    console.error("Erro Gemini:", error.message);
     const oldCache = localStorage.getItem(GEMINI_CACHE_KEY);
     if (oldCache) {
         const parsed = JSON.parse(oldCache);
-        return { ...parsed.data, error: isQuotaError ? 'quota_exceeded' : undefined };
+        return { ...parsed.data, error: 'api_error_fallback' };
     }
-    
     return { dividends: [], metadata: {}, error: error.message };
   }
 };

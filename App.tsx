@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.2.8'; 
+const APP_VERSION = '7.3.0'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -26,23 +26,22 @@ const STORAGE_KEYS = {
   PUSH_ENABLED: 'investfiis_push_enabled',
   PASSCODE: 'investfiis_passcode',
   BIOMETRICS: 'investfiis_biometrics',
-  NOTIF_HISTORY: 'investfiis_notification_history_v2' // Chave para persistir notificações
+  NOTIF_HISTORY: 'investfiis_notification_history_v2' 
 };
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-// Helper function to calculate quantity on date (CORRIGIDA para Fracionário e Espaços)
+// Lógica Cronológica Estrita:
+// A quantidade de cotas elegíveis para um dividendo é baseada na posição do usuário
+// no FECHAMENTO do dia da Data Com (Record Date).
 const getQuantityOnDate = (ticker: string, dateCom: string, paymentDate: string, transactions: Transaction[]) => {
-  // Estratégia de Data: Data Com > Data Pagamento > Retorna 0
-  // Isso evita zerar cotas se a IA não retornar a Data Com exata
+  // Se não houver data com, usamos pagamento como fallback (menos preciso, mas evita zerar)
   const cutoffDate = dateCom || paymentDate;
   if (!cutoffDate) return 0;
   
-  // Normalizador Inteligente: Remove 'F' final se parecer fracionário
-  // Ex: converte PETR4F -> PETR4 e compara com PETR4
   const normalize = (t: string) => {
       const clean = t.trim().toUpperCase();
-      // Tickers B3 geralmente tem 5+ chars (4 letras + numero). Se tiver F no final, remove.
+      // Remove 'F' final (fracionário) para agrupar corretamente
       if (clean.endsWith('F') && clean.length >= 5 && /\d/.test(clean)) {
           return clean.slice(0, -1);
       }
@@ -51,11 +50,10 @@ const getQuantityOnDate = (ticker: string, dateCom: string, paymentDate: string,
 
   const targetTicker = normalize(ticker);
   
-  // A lógica "t.date <= cutoffDate" garante que a compra deve ter sido feita
-  // ATÉ o dia da Data Com (inclusive). Se comprou depois, não entra na soma.
   return transactions
     .filter(t => {
        const txTicker = normalize(t.ticker);
+       // A transação conta se foi feita ANTES ou NO DIA da Data Com.
        return txTicker === targetTicker && t.date <= cutoffDate;
     })
     .reduce((acc, t) => {
@@ -94,7 +92,6 @@ const MemoizedTransactions = React.memo(Transactions);
 const App: React.FC = () => {
   const updateManager = useUpdateManager(APP_VERSION);
   
-  // Estado de controle do SplashScreen
   const [appLoading, setAppLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0); 
 
@@ -102,7 +99,6 @@ const App: React.FC = () => {
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
 
-  // Ref para evitar stale closures no listener de auth
   const sessionRef = useRef<Session | null>(null);
 
   const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem(STORAGE_KEYS.PASSCODE));
@@ -120,7 +116,6 @@ const App: React.FC = () => {
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   
-  // Inicializa notificações com histórico salvo
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
       try {
           const saved = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY);
@@ -130,7 +125,6 @@ const App: React.FC = () => {
 
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
   
-  // Transactions agora iniciam vazias. Sem fallback local.
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
@@ -146,7 +140,6 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled)); }, [pushEnabled]);
-  // Persiste notificações ao mudar
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.NOTIF_HISTORY, JSON.stringify(notifications.slice(0, 50))); }, [notifications]);
 
   useEffect(() => {
@@ -176,26 +169,21 @@ const App: React.FC = () => {
     if (type !== 'info') setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // --- MOTOR DE NOTIFICAÇÕES (NOVO) ---
   useEffect(() => {
     if (!session || geminiDividends.length === 0 || transactions.length === 0) return;
 
     const today = new Date().toISOString().split('T')[0];
-    
-    // Preferências do Usuário
     const notifyDivs = localStorage.getItem('investfiis_notify_divs') !== 'false';
     const notifyDataCom = localStorage.getItem('investfiis_notify_datacom') !== 'false';
     
     const newNotifications: AppNotification[] = [];
 
     geminiDividends.forEach(div => {
-        // 1. Notificação de Pagamento (Hoje)
         if (div.paymentDate === today && notifyDivs) {
              const qty = getQuantityOnDate(div.ticker, div.dateCom, div.paymentDate, transactions);
              if (qty > 0) {
                  const total = qty * div.rate;
                  const id = `PAY-${div.ticker}-${today}`;
-                 // Evita duplicatas
                  if (!notifications.some(n => n.id === id)) {
                      const notif: AppNotification = {
                          id,
@@ -207,8 +195,6 @@ const App: React.FC = () => {
                          read: false
                      };
                      newNotifications.push(notif);
-                     
-                     // Push do Navegador
                      if (pushEnabled && document.hidden) {
                          new Notification(notif.title, { body: notif.message, icon: '/vite.svg' });
                      }
@@ -216,7 +202,6 @@ const App: React.FC = () => {
              }
         }
 
-        // 2. Notificação de Data Com (Hoje - Alerta de Oportunidade)
         if (div.dateCom === today && notifyDataCom) {
              const id = `DATACOM-${div.ticker}-${today}`;
              if (!notifications.some(n => n.id === id)) {
@@ -245,10 +230,7 @@ const App: React.FC = () => {
 
   }, [geminiDividends, transactions, session, pushEnabled, showToast]);
 
-
-  // --- Verificação de Tokens ---
   useEffect(() => {
-    // Verifica se os tokens estão presentes no ambiente
     if (!process.env.BRAPI_TOKEN) {
       setTimeout(() => showToast('error', 'Token BRAPI não configurado!'), 2000);
     }
@@ -256,8 +238,6 @@ const App: React.FC = () => {
       setTimeout(() => showToast('error', 'Token Gemini (IA) não configurado!'), 3000);
     }
   }, [showToast]);
-
-  // --- Funções de Sincronização ---
 
   const syncMarketData = useCallback(async (force: boolean = false, txsToUse: Transaction[] = transactions) => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
@@ -270,8 +250,6 @@ const App: React.FC = () => {
     if (appLoading) setLoadingProgress(prev => Math.max(prev, 30));
 
     try {
-      // BRAPI
-      // Garante que só chama se tiver tickers e token
       if (process.env.BRAPI_TOKEN) {
           const { quotes: newQuotesData } = await getQuotes(tickers);
           if (newQuotesData.length > 0) {
@@ -281,7 +259,6 @@ const App: React.FC = () => {
       
       if (appLoading) setLoadingProgress(prev => Math.max(prev, 60)); 
 
-      // GEMINI (IA)
       if (process.env.API_KEY) {
           setIsAiLoading(true);
           const startDate = txsToUse.length > 0 ? txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date) : '';
@@ -298,7 +275,6 @@ const App: React.FC = () => {
       }
       
       setLastSyncTime(new Date());
-      
       if (appLoading) setLoadingProgress(prev => Math.max(prev, 90)); 
 
     } catch (e) { 
@@ -310,7 +286,6 @@ const App: React.FC = () => {
     }
   }, [transactions, showToast, quotes, appLoading]);
 
-  // Função Principal de Sync com Controle de Banner
   const fetchTransactionsFromCloud = useCallback(async (force = false) => {
     setIsCloudSyncing(true);
     setCloudStatus('syncing');
@@ -319,8 +294,6 @@ const App: React.FC = () => {
     
     try {
       let query = supabase.from('transactions').select('*');
-      
-      // FILTRO CRÍTICO: Garante que só buscamos dados do usuário logado se a sessão existir
       if (session?.user?.id) {
           query = query.eq('user_id', session.user.id);
       }
@@ -332,14 +305,9 @@ const App: React.FC = () => {
       if (data) {
         const cloudTxs: Transaction[] = data.map(mapSupabaseToTx);
         setTransactions(cloudTxs);
-        
-        // Sucesso: Mostra "Conectado" imediatamente e agenda para esconder
         setCloudStatus('connected');
         setTimeout(() => setCloudStatus('hidden'), 3000);
-        
         if (appLoading) setLoadingProgress(prev => Math.max(prev, 25)); 
-
-        // Dispara atualização de mercado em background, respeitando o FORCE
         if (cloudTxs.length > 0) {
             syncMarketData(force, cloudTxs);
         }
@@ -352,11 +320,9 @@ const App: React.FC = () => {
     } catch (err: any) {
       console.error("Supabase fetch error:", err);
       showToast('error', 'Erro ao buscar dados da nuvem.');
-      // Erro: Esconde o banner ou mostra desconectado
       setCloudStatus('disconnected');
       setTimeout(() => setCloudStatus('hidden'), 3000);
       return false;
-
     } finally {
       setIsCloudSyncing(false);
     }
@@ -367,8 +333,6 @@ const App: React.FC = () => {
         await fetchTransactionsFromCloud(force);
     }
   }, [fetchTransactionsFromCloud, session]);
-
-  // --- Auth & Startup Logic ---
 
   useEffect(() => {
     let mounted = true;
@@ -383,26 +347,17 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, currentSession: Session | null) => {
       if (!mounted) return;
-      
-      const previousSessionId = sessionRef.current?.user?.id;
-      const currentSessionId = currentSession?.user?.id;
-      
       sessionRef.current = currentSession;
       setSession(currentSession);
 
-      if (currentSessionId) {
-        // Usuário logado ou restaurado
-        if (!previousSessionId) {
-            setLoadingProgress(15);
-            setTimeout(() => fetchTransactionsFromCloud(false), 100);
-        }
-      } 
-      else {
-        // Usuário deslogado ou sem sessão
+      if (currentSession?.user?.id) {
+        setLoadingProgress(15);
+        setTimeout(() => fetchTransactionsFromCloud(false), 100);
+      } else {
         setTransactions([]);
         setQuotes({});
         setGeminiDividends([]);
-        setNotifications([]); // Limpa notificações ao deslogar
+        setNotifications([]);
         setCloudStatus('hidden');
       }
 
@@ -423,15 +378,12 @@ const App: React.FC = () => {
     };
   }, []); 
 
-  // --- Realtime Subscription (Supabase) ---
   useEffect(() => {
     if (!session) return;
-    
     const channel = supabase
       .channel('transactions-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${session.user.id}` }, (payload: any) => {
         const { eventType, new: newRecord, old: oldRecord } = payload;
-        
         setTransactions(currentTxs => {
             if (eventType === 'INSERT') {
               if (currentTxs.some(t => t.id === newRecord.id)) return currentTxs;
@@ -451,27 +403,19 @@ const App: React.FC = () => {
         });
       })
       .subscribe();
-      
     return () => { supabase.removeChannel(channel); };
   }, [session, syncMarketData]);
 
-  // --- Handlers de Transação (Cloud Only) ---
-
   const handleAddTransaction = async (t: Omit<Transaction, 'id'>) => {
     if (!session) return;
-    
     const tempId = crypto.randomUUID();
     const newTx = { ...t, id: tempId };
-    
     setTransactions(p => [...p, newTx]);
-
     const record = cleanTxForSupabase(newTx);
     const { error } = await supabase.from('transactions').insert({ ...record, id: tempId, user_id: session.user.id });
-    
     if (error) {
-        console.error("Supabase insert error:", error);
         showToast('error', 'Erro ao salvar na nuvem.');
-        setTransactions(p => p.filter(tx => tx.id !== tempId)); // Rollback
+        setTransactions(p => p.filter(tx => tx.id !== tempId)); 
     } else {
         showToast('success', 'Ordem salva na nuvem');
     }
@@ -479,19 +423,14 @@ const App: React.FC = () => {
 
   const handleUpdateTransaction = async (id: string, updated: Omit<Transaction, 'id'>) => {
     if (!session) return;
-    
     const originalTx = transactions.find(t => t.id === id);
     const updatedTx = { ...updated, id };
-    
     setTransactions(p => p.map(t => t.id === id ? updatedTx : t)); 
-
     const record = cleanTxForSupabase(updated);
     const { error } = await supabase.from('transactions').update(record).match({ id });
-    
     if (error) {
-        console.error("Supabase update error:", error);
         showToast('error', 'Falha ao atualizar na nuvem.');
-        setTransactions(p => p.map(t => t.id === id ? originalTx! : t)); // Rollback
+        setTransactions(p => p.map(t => t.id === id ? originalTx! : t)); 
     } else {
         showToast('success', 'Ordem atualizada');
     }
@@ -499,15 +438,12 @@ const App: React.FC = () => {
 
   const handleDeleteTransaction = async (id: string) => {
     if (!session) return;
-
     const deletedTx = transactions.find(t => t.id === id);
     setTransactions(p => p.filter(t => t.id !== id)); 
-
     const { error } = await supabase.from('transactions').delete().match({ id });
     if (error) {
-        console.error("Supabase delete error:", error);
         showToast('error', 'Falha ao apagar na nuvem.');
-        setTransactions(p => [...p, deletedTx!]); // Rollback
+        setTransactions(p => [...p, deletedTx!]); 
     } else {
         showToast('success', 'Ordem removida');
     }
@@ -519,36 +455,31 @@ const App: React.FC = () => {
     setConfirmModal({
         isOpen: true,
         title: 'Confirmar Exclusão',
-        message: `Deseja realmente apagar a ordem de ${txToDelete.type === 'BUY' ? 'compra' : 'venda'} de ${txToDelete.ticker}? Esta ação será sincronizada em todos os dispositivos.`,
+        message: `Deseja realmente apagar a ordem de ${txToDelete.type === 'BUY' ? 'compra' : 'venda'} de ${txToDelete.ticker}?`,
         onConfirm: () => { handleDeleteTransaction(id); setConfirmModal(null); }
     });
   };
 
   const handleImportTransactions = async (importedTxs: Transaction[]) => {
     if (!Array.isArray(importedTxs) || !session) return;
-    
     setIsCloudSyncing(true);
     setCloudStatus('syncing');
     showToast('info', 'Substituindo dados na nuvem...');
-    
     try {
         await supabase.from('transactions').delete().eq('user_id', session.user.id);
-        
         const sbData = importedTxs.map(t => {
             const record = cleanTxForSupabase(t);
             return { ...record, user_id: session.user.id, id: t.id || crypto.randomUUID() };
         });
-        
         if (sbData.length > 0) {
             const { error } = await supabase.from('transactions').insert(sbData);
             if (error) throw error;
         }
-        
         await fetchTransactionsFromCloud(true);
-        showToast('success', 'Backup restaurado na nuvem!');
+        showToast('success', 'Backup restaurado!');
     } catch (e: any) {
         console.error("Supabase import error:", e);
-        showToast('error', 'Erro ao restaurar backup na nuvem.');
+        showToast('error', 'Erro ao restaurar backup.');
         setCloudStatus('disconnected');
     } finally {
         setIsCloudSyncing(false);
@@ -564,15 +495,13 @@ const App: React.FC = () => {
     let totalSalesGain = 0;
     const assetTracker: Record<string, { quantity: number; totalCost: number }> = {};
     const sortedTxs = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
     for (const t of sortedTxs) {
         if (!assetTracker[t.ticker]) assetTracker[t.ticker] = { quantity: 0, totalCost: 0 };
         const asset = assetTracker[t.ticker];
-        
         if (t.type === 'BUY') {
             asset.quantity += t.quantity;
             asset.totalCost += t.quantity * t.price;
-        } else { // SELL
+        } else {
             if (asset.quantity > 0) {
                 const averageCost = asset.totalCost / asset.quantity;
                 const costOfSoldAssets = t.quantity * averageCost;
@@ -589,20 +518,14 @@ const App: React.FC = () => {
   const memoizedData = useMemo(() => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     const todayStr = new Date().toISOString().split('T')[0];
-    
     const receipts = geminiDividends.map(div => {
-        // Cálculo de quantidade com fallback de data e normalização de ticker
+        // Usa a função de quantidade corrigida (Cronológica)
         const qty = Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, div.paymentDate, sortedTxs));
-        return {
-            ...div, 
-            quantityOwned: qty, 
-            totalReceived: qty * div.rate
-        };
+        return { ...div, quantityOwned: qty, totalReceived: qty * div.rate };
     }).filter(r => r.totalReceived > 0);
     
     const divPaidMap: Record<string, number> = {};
     let totalDividendsReceived = 0;
-    
     receipts.forEach(r => { 
         if (r.paymentDate <= todayStr) { 
             divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived; 
@@ -611,7 +534,6 @@ const App: React.FC = () => {
     });
     
     const positions: Record<string, AssetPosition> = {};
-    
     sortedTxs.forEach(t => {
       if (!positions[t.ticker]) {
           positions[t.ticker] = { 
@@ -624,7 +546,6 @@ const App: React.FC = () => {
           };
       }
       const p = positions[t.ticker];
-      
       if (t.type === 'BUY') { 
           p.averagePrice = (p.quantity * p.averagePrice + t.quantity * t.price) / (p.quantity + t.quantity); 
           p.quantity += t.quantity; 
@@ -664,9 +585,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
-      
       <CloudStatusBanner status={cloudStatus} />
-      
       {toast && ( 
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] anim-fade-in-up is-visible w-auto max-w-[90%]"> 
             <div className="flex items-center gap-3 pl-2 pr-4 py-2 rounded-full bg-slate-900/90 dark:bg-white/90 backdrop-blur-xl shadow-xl"> 
@@ -678,7 +597,6 @@ const App: React.FC = () => {
         </div> 
       )}
 
-      {/* Só mostra conteúdo se tiver sessão confirmada e app não estiver carregando */}
       {session && !appLoading && (
         <>
             <Header 
@@ -695,7 +613,6 @@ const App: React.FC = () => {
               appVersion={APP_VERSION} 
               bannerVisible={cloudStatus !== 'hidden'} 
             />
-            
             <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
               {showSettings ? (
                 <Settings 
@@ -740,7 +657,6 @@ const App: React.FC = () => {
                 </div>
               )}
             </main>
-            
             {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
         </>
       )}
