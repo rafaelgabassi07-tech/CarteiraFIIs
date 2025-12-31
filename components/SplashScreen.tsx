@@ -13,7 +13,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
 
   // Lógica de "Handover" (Passagem de bastão da tela estática para a React)
   useEffect(() => {
-    // 1. Bloqueia scroll
+    // 1. Bloqueia scroll enquanto carrega
     document.body.style.overflow = 'hidden';
 
     // 2. Remove a tela estática IMEDIATAMENTE pois este componente é visualmente idêntico
@@ -26,7 +26,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
 
     // Cleanup: Libera scroll ao desmontar
     return () => {
-        document.body.style.overflow = '';
+        document.body.style.overflow = 'auto';
     };
   }, []);
 
@@ -53,7 +53,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         setIsFadingOut(true);
         const removeTimeout = setTimeout(() => {
           setShouldRender(false);
-          document.body.style.overflow = ''; 
+          document.body.style.overflow = 'auto'; // Força liberação do scroll
         }, 700); // Tempo da transição CSS
         return () => clearTimeout(removeTimeout);
       }, 500);
