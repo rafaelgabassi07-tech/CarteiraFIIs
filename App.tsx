@@ -197,7 +197,16 @@ const App: React.FC = () => {
     if (appLoading) setLoadingProgress(prev => Math.max(prev, 15)); 
     
     try {
-      const { data, error } = await supabase.from('transactions').select('*');
+      let query = supabase.from('transactions').select('*');
+      
+      // FILTRO CRÍTICO: Garante que só buscamos dados do usuário logado se a sessão existir
+      // Isso resolve problemas onde RLS pode estar permissivo ou falhando
+      if (session?.user?.id) {
+          query = query.eq('user_id', session.user.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
       
       if (data) {
@@ -231,7 +240,7 @@ const App: React.FC = () => {
     } finally {
       setIsCloudSyncing(false);
     }
-  }, [showToast, syncMarketData, appLoading]);
+  }, [showToast, syncMarketData, appLoading, session]);
 
   const handleSyncAll = useCallback(async (force: boolean) => {
     if (session) {
@@ -267,7 +276,8 @@ const App: React.FC = () => {
         if (!previousSessionId) {
             setLoadingProgress(15);
             // Inicia o sync que gerencia o próprio status
-            await fetchTransactionsFromCloud();
+            // Pequeno delay para garantir que o estado 'session' atualizou
+            setTimeout(() => fetchTransactionsFromCloud(), 100);
         }
       } 
       else {
