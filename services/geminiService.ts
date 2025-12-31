@@ -10,14 +10,15 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.1_proxy'; // Chave de cache atualizada
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.2_grounded'; // Nova chave para forçar refresh com a nova lógica
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; // Chave para o Circuit Breaker
 
 const getAiCacheTTL = () => {
     const now = new Date();
     const day = now.getDay();
     const isWeekend = day === 0 || day === 6;
-    return isWeekend ? (48 * 60 * 60 * 1000) : (4 * 60 * 60 * 1000);
+    // Cache mais curto durante a semana para pegar anúncios recentes, mais longo no FDS
+    return isWeekend ? (24 * 60 * 60 * 1000) : (6 * 60 * 60 * 1000);
 };
 
 // --- Funções Auxiliares de Parsing ---
@@ -67,19 +68,19 @@ const unifiedDataSchema = {
         properties: {
           t: { type: Type.STRING, description: "Ticker do ativo" },
           type: { type: Type.STRING, description: "CLASSIFICACAO EXATA: 'FII' ou 'ACAO'" },
-          segment: { type: Type.STRING, description: "Segmento de atuação (ex: Logística, Papel, Bancário, Elétrico)" },
+          segment: { type: Type.STRING, description: "Segmento de atuação" },
           fund: {
             type: Type.OBJECT,
             properties: {
               pvp: { type: Type.NUMBER, description: "P/VP do ativo" },
               pl: { type: Type.NUMBER, description: "P/L do ativo. Nulo para FIIs." },
-              dy: { type: Type.NUMBER, description: "Dividend Yield dos últimos 12 meses (ex: 11.2 para 11.2%)" },
-              liq: { type: Type.STRING, description: "Liquidez média diária (ex: 'R$ 10,5 mi')" },
-              cotistas: { type: Type.STRING, description: "Número de cotistas/acionistas (ex: '1,1 mi')" },
-              desc: { type: Type.STRING, description: "Breve descrição do ativo (até 250 chars)." },
-              mcap: { type: Type.STRING, description: "Market Cap (ex: 'R$ 2,5 bi')" },
+              dy: { type: Type.NUMBER, description: "Dividend Yield dos últimos 12 meses" },
+              liq: { type: Type.STRING, description: "Liquidez média diária" },
+              cotistas: { type: Type.STRING, description: "Número de cotistas/acionistas" },
+              desc: { type: Type.STRING, description: "Breve descrição do ativo." },
+              mcap: { type: Type.STRING, description: "Market Cap" },
               sent: { type: Type.STRING, description: "Sentimento (Otimista, Neutro, Pessimista)" },
-              sent_r: { type: Type.STRING, description: "Justificativa curta para o sentimento." }
+              sent_r: { type: Type.STRING, description: "Justificativa curta baseada em notícias recentes." }
             }
           },
           divs: {
@@ -89,8 +90,8 @@ const unifiedDataSchema = {
               properties: {
                 com: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
                 pag: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
-                val: { type: Type.NUMBER, description: "Valor por cota" },
-                tipo: { type: Type.STRING, description: "Tipo (DIVIDENDO, JCP, etc.)" }
+                val: { type: Type.NUMBER, description: "Valor exato por cota" },
+                tipo: { type: Type.STRING, description: "Tipo exato: 'DIVIDENDO', 'JCP', 'RENDIMENTO'" }
               }
             }
           }
@@ -102,7 +103,7 @@ const unifiedDataSchema = {
 
 /**
  * Busca dados unificados de mercado (dividendos, fundamentos) diretamente da API do Google Gemini.
- * Utiliza o modelo gemini-2.5-flash para eficiência.
+ * Utiliza o modelo gemini-2.5-flash COM Google Search para garantir dados atualizados e precisos.
  */
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
@@ -138,7 +139,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     } catch (e) { console.warn("Cache Warning", e); }
   }
 
-  console.log(`🤖 [Gemini API] Buscando dados da IA diretamente para: ${uniqueTickers.join(', ')}`);
+  console.log(`🤖 [Gemini API] Iniciando pesquisa profunda na Web para: ${uniqueTickers.join(', ')}`);
 
   const apiKey = process.env.API_KEY;
 
@@ -149,26 +150,36 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   }
 
   try {
-    // 3. Chamada direta para a API Gemini (gemini-2.5-flash)
+    // 3. Chamada direta para a API Gemini (gemini-2.5-flash) com Google Search
     const ai = new GoogleGenAI({ apiKey: apiKey as string });
     const today = new Date().toISOString().split('T')[0];
     const portfolioStart = startDate || `${new Date().getFullYear()}-01-01`;
 
-    const prompt = `Analise os ativos ${uniqueTickers.join(', ')}.
+    const prompt = `Atue como um analista de dados financeiros de alta precisão. Sua tarefa é buscar dados ATUALIZADOS na web para os ativos: ${uniqueTickers.join(', ')}.
     
-    1. Para CADA ATIVO, retorne os fundamentos (P/VP, DY, etc) e classifique OBRIGATORIAMENTE se é 'FII' ou 'ACAO' no campo 'type'.
-    2. Retorne TODOS os dividendos/JCP anunciados ou pagos desde ${portfolioStart} até hoje, e também os FUTUROS confirmados (Agenda). Não omita pagamentos recentes.
-    3. Calcule o IPCA acumulado de ${portfolioStart} até ${today} para o campo 'sys.ipca'.
+    INSTRUÇÕES CRÍTICAS DE PESQUISA:
+    1. Use o Google Search para encontrar os "Avisos aos Acionistas" e comunicados de proventos mais recentes (StatusInvest, FundsExplorer, RI das empresas).
+    2. ATENÇÃO MÁXIMA AO JCP (Juros Sobre Capital Próprio): Muitos ativos anunciam JCP e Dividendos separadamente. Você DEVE capturar ambos. Não ignore JCP.
+    3. Verifique a "Data Com", "Data Pagamento" e "Valor Líquido/Bruto" (use o líquido se possível para FIIs, bruto para Ações se não especificado, mas padronize o valor que cai na conta).
     
-    Responda APENAS com JSON puro seguindo o schema.`;
+    RETORNO ESPERADO (JSON Rígido):
+    Para cada ativo:
+    - Fundamentos: P/VP, DY (últimos 12m), Liquidez, etc. Classifique corretamente 'FII' ou 'ACAO'.
+    - Dividendos/Proventos: Liste TODOS os eventos (Dividendos, JCP, Rendimentos) com Data Com >= ${portfolioStart}. Inclua pagamentos FUTUROS (agendados).
+    - Sistema: Calcule o IPCA acumulado de ${portfolioStart} até hoje.
+    
+    Se houver discrepância de valores em diferentes fontes, priorize a fonte oficial da B3 ou RI da empresa encontrada na busca.
+    Responda APENAS com o JSON preenchido, sem texto adicional.`;
 
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash", 
         contents: prompt,
         config: {
+            // ATIVA O GOOGLE SEARCH PARA DADOS REAIS
+            tools: [{googleSearch: {}}],
             responseMimeType: "application/json",
             responseSchema: unifiedDataSchema,
-            temperature: 0.1,
+            temperature: 0.1, // Baixa temperatura para maior precisão factual
         },
     });
     
@@ -219,7 +230,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                 if (normalizedDateCom) {
                     dividends.push({
                         ticker: ticker,
-                        type: div.tipo,
+                        type: div.tipo || 'PROVENTO', // Fallback se vier vazio
                         dateCom: normalizedDateCom,
                         paymentDate: normalizeDate(div.pag),
                         rate: normalizeValue(div.val),
