@@ -191,7 +191,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     
     if (parsedJson.data) {
       for (const asset of parsedJson.data) {
-          const ticker = asset.t.toUpperCase();
+          // Normalização Crítica: Remove espaços e garante uppercase
+          const ticker = asset.t ? asset.t.trim().toUpperCase() : '';
+          
+          if (!ticker) continue;
+
           metadata[ticker] = {
               type: asset.type === 'FII' ? 'FII' : 'ACAO', // Normalização forçada
               segment: asset.segment,
@@ -210,13 +214,17 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           
           if (asset.divs) {
             for (const div of asset.divs) {
-                dividends.push({
-                    ticker: ticker,
-                    type: div.tipo,
-                    dateCom: normalizeDate(div.com),
-                    paymentDate: normalizeDate(div.pag),
-                    rate: normalizeValue(div.val),
-                });
+                const normalizedDateCom = normalizeDate(div.com);
+                // Só adiciona se tiver Data Com válida para evitar erro de cálculo
+                if (normalizedDateCom) {
+                    dividends.push({
+                        ticker: ticker,
+                        type: div.tipo,
+                        dateCom: normalizedDateCom,
+                        paymentDate: normalizeDate(div.pag),
+                        rate: normalizeValue(div.val),
+                    });
+                }
             }
           }
       }

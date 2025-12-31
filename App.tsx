@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.2.5'; 
+const APP_VERSION = '7.2.6'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -30,10 +30,25 @@ const STORAGE_KEYS = {
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-// Helper function to calculate quantity on date
+// Helper function to calculate quantity on date (CORRIGIDA para Fracionário e Espaços)
 const getQuantityOnDate = (ticker: string, date: string, transactions: Transaction[]) => {
+  if (!date) return 0; // Sem data com, não há como calcular direito
+  
+  const cleanTicker = ticker.trim().toUpperCase();
+  
   return transactions
-    .filter(t => t.ticker === ticker && t.date <= date)
+    .filter(t => {
+       const txTicker = t.ticker.trim().toUpperCase();
+       
+       // Lógica Robusta:
+       // 1. Match exato (PETR4 === PETR4)
+       // 2. Match Fracionário (PETR4F === PETR4) - Remove o 'F' final se o ticker base não tiver
+       const isMatch = txTicker === cleanTicker || 
+                       (txTicker.length === cleanTicker.length + 1 && txTicker.endsWith('F') && txTicker.startsWith(cleanTicker));
+       
+       // A transação deve ter ocorrido NA ou ANTES da Data Com
+       return isMatch && t.date <= date;
+    })
     .reduce((acc, t) => {
       if (t.type === 'BUY') return acc + t.quantity;
       if (t.type === 'SELL') return acc - t.quantity;
