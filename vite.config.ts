@@ -7,10 +7,10 @@ export default defineConfig(({ mode }) => {
     base: './',
     plugins: [react()],
     optimizeDeps: {
-      include: ['react-window']
+      include: ['react', 'react-dom', 'react-window', 'recharts', 'lucide-react', '@google/genai', '@supabase/supabase-js']
     },
     server: {
-      host: '0.0.0.0', // Permite acesso externo (essencial para Google AI Studio/IDX previews)
+      host: '0.0.0.0',
       port: 5173,
       cors: true,
       hmr: {
@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
               if (id.includes('lucide-react')) return 'lucide';
               if (id.includes('@supabase')) return 'supabase';
               if (id.includes('@google/genai')) return 'genai';
+              if (id.includes('react-window')) return 'react-window';
               return 'vendor';
             }
           }
