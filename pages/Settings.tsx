@@ -65,7 +65,10 @@ export const Settings: React.FC<SettingsProps> = ({
   const [notifyMarket, setNotifyMarket] = useState(() => localStorage.getItem('investfiis_notify_market') === 'true');
   const [notifyUpdates, setNotifyUpdates] = useState(() => localStorage.getItem('investfiis_notify_updates') !== 'false');
   
+  // Settings States
+  const [dataSaver, setDataSaver] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isMarketUpdating, setIsMarketUpdating] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const isServiceWorkerActive = 'serviceWorker' in navigator;
 
@@ -173,7 +176,30 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const handleLogout = async () => { await supabase.auth.signOut(); showMessage('info', 'Desconectado.'); };
   
-  const handleForceSync = async () => { setIsSyncing(true); await onSyncAll(true); setIsSyncing(false); };
+  const handleForceSync = async () => { 
+      setIsSyncing(true); 
+      try {
+        await onSyncAll(false); // Sync normal do cloud
+        showMessage('success', 'Nuvem sincronizada.');
+      } catch (e) {
+        showMessage('error', 'Erro ao sincronizar nuvem.');
+      } finally {
+        setIsSyncing(false); 
+      }
+  };
+
+  const handleForceMarketUpdate = async () => {
+      setIsMarketUpdating(true);
+      try {
+          await onSyncAll(true); // Force = true limpa caches de mercado/IA
+          showMessage('success', 'Dados de mercado atualizados!');
+      } catch (e) {
+          showMessage('error', 'Falha ao atualizar mercado.');
+      } finally {
+          setIsMarketUpdating(false);
+      }
+  };
+
   const handleClearQuoteCache = () => { localStorage.removeItem('investfiis_v3_quote_cache'); calculateStorage(); showMessage('success', 'Cache limpo.'); };
   const handleClearDivCache = () => { localStorage.removeItem('investfiis_v4_div_cache'); onImportDividends([]); calculateStorage(); showMessage('success', 'Dados de IA limpos.'); };
 
@@ -529,63 +555,93 @@ export const Settings: React.FC<SettingsProps> = ({
           
           {activeSection === 'integrations' && (
             <div className="space-y-6">
-                {/* Connection Status Hero */}
-                <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-sky-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                
+                {/* Central de Controle de Mercado (NOVO) */}
+                <div className="bg-gradient-to-br from-indigo-500/5 via-violet-500/5 to-transparent p-6 rounded-[2.5rem] border border-indigo-500/10 shadow-xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] -mr-24 -mt-24 pointer-events-none"></div>
                     
-                    <div className="flex items-center justify-between mb-4 relative z-10">
-                       <div className="flex items-center gap-3">
-                           <div className="relative">
-                               <div className="w-12 h-12 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-500"><Cloud className="w-6 h-6" strokeWidth={2} /></div>
-                               <div className="absolute -bottom-1 -right-1 bg-white dark:bg-[#0f172a] p-0.5 rounded-full">
-                                   <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                               </div>
-                           </div>
-                           <div>
-                               <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">Cloud Sync</h3>
-                               <p className={`text-[10px] font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Conectado' : 'Offline'}</p>
-                           </div>
-                       </div>
-                       <button 
-                           onClick={handleForceSync} 
-                           disabled={isSyncing || !isOnline} 
-                           className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 hover:text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-500/20 active:scale-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-                       >
-                           <RotateCcw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-                       </button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3 relative z-10">
-                        <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Última Sincronização</p>
-                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums">
-                                {lastSyncTime ? lastSyncTime.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : 'Pendente'}
-                            </p>
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-14 h-14 bg-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                                <Activity className="w-7 h-7" strokeWidth={1.5} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">Central de Mercado</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Gestão de Cotações e IA</p>
+                            </div>
                         </div>
-                        <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Itens Sincronizados</p>
-                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums">{transactions.length} ordens</p>
+
+                        <button 
+                            onClick={handleForceMarketUpdate}
+                            disabled={isMarketUpdating}
+                            className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] shadow-xl hover:shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 relative overflow-hidden group"
+                        >
+                             {isMarketUpdating ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  <span>Atualizando...</span>
+                                </>
+                             ) : (
+                                <>
+                                  <RefreshCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-700" />
+                                  <span>Forçar Atualização de Mercado</span>
+                                </>
+                             )}
+                             {/* Shine Effect */}
+                             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
+                        </button>
+                        
+                        <div className="grid grid-cols-2 gap-3 mt-4">
+                            <div className="bg-white/50 dark:bg-black/20 p-3 rounded-2xl border border-indigo-100 dark:border-white/5 backdrop-blur-sm">
+                                <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mb-1">Última Checagem</p>
+                                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums flex items-center gap-1.5">
+                                    <Clock className="w-3 h-3 text-slate-400" />
+                                    {lastSyncTime ? lastSyncTime.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--'}
+                                </p>
+                            </div>
+                            <div className="bg-white/50 dark:bg-black/20 p-3 rounded-2xl border border-indigo-100 dark:border-white/5 backdrop-blur-sm">
+                                <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mb-1">Status da API</p>
+                                <p className="text-xs font-bold text-emerald-500 tabular-nums flex items-center gap-1.5">
+                                    <Signal className="w-3 h-3" />
+                                    Online
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Market Status B3 */}
-                <div className="bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${marketStatus.bg} ${marketStatus.color}`}>
-                            <marketStatus.icon className="w-6 h-6" strokeWidth={2} />
+                {/* Status da Nuvem e Bolsa */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none group-hover:bg-sky-500/10 transition-colors"></div>
+                        <div className="relative z-10">
+                            <div className="w-10 h-10 bg-sky-500/10 text-sky-500 rounded-xl flex items-center justify-center mb-2"><Cloud className="w-5 h-5" /></div>
+                            <p className="text-xs font-bold text-slate-900 dark:text-white">Cloud Sync</p>
+                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-1 flex items-center gap-1.5 ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+                                {isOnline ? 'Conectado' : 'Offline'}
+                            </p>
                         </div>
-                        <div>
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Status da Bolsa (B3)</h3>
-                            <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${marketStatus.color}`}>{marketStatus.label}</p>
-                        </div>
+                        {isOnline && (
+                             <button onClick={handleForceSync} disabled={isSyncing} className="absolute bottom-3 right-3 p-2 bg-slate-50 dark:bg-white/5 rounded-full text-slate-400 hover:text-sky-500 transition-colors">
+                                 <RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                             </button>
+                        )}
                     </div>
-                    <div className="text-right">
-                        <p className="text-xs font-black text-slate-300 dark:text-slate-600 tabular-nums">{new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</p>
+
+                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
+                        <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none transition-colors ${marketStatus.bg}`}></div>
+                        <div className="relative z-10">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${marketStatus.bg} ${marketStatus.color}`}><marketStatus.icon className="w-5 h-5" /></div>
+                            <p className="text-xs font-bold text-slate-900 dark:text-white">B3 (Bolsa)</p>
+                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${marketStatus.color}`}>
+                                {marketStatus.label}
+                            </p>
+                        </div>
                     </div>
                 </div>
                 
-                {/* Services Grid */}
+                {/* Services Health List */}
                 <Section title="Saúde dos Serviços">
                     <div className="grid grid-cols-1 gap-2 p-2 bg-white dark:bg-[#0f172a]">
                         <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
@@ -593,12 +649,11 @@ export const Settings: React.FC<SettingsProps> = ({
                                 <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg"><Database className="w-4 h-4" /></div>
                                 <div>
                                     <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Supabase</p>
-                                    <p className="text-[9px] text-slate-400 font-medium">Banco de Dados & Auth</p>
+                                    <p className="text-[9px] text-slate-400 font-medium">Banco de Dados</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Online</span>
+                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Operacional</span>
                             </div>
                         </div>
 
@@ -607,12 +662,11 @@ export const Settings: React.FC<SettingsProps> = ({
                                 <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg"><BarChart3 className="w-4 h-4" /></div>
                                 <div>
                                     <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Brapi API</p>
-                                    <p className="text-[9px] text-slate-400 font-medium">Cotações em Tempo Real</p>
+                                    <p className="text-[9px] text-slate-400 font-medium">Cotações (15min delay)</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20">
-                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">Operacional</span>
+                                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">Online</span>
                             </div>
                         </div>
 
@@ -620,50 +674,42 @@ export const Settings: React.FC<SettingsProps> = ({
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><Sparkles className="w-4 h-4" /></div>
                                 <div>
-                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Google Gemini</p>
-                                    <p className="text-[9px] text-slate-400 font-medium">Inteligência Artificial</p>
+                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Gemini AI</p>
+                                    <p className="text-[9px] text-slate-400 font-medium">Proventos & Análise</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
                                 <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase">v2.5 Flash</span>
                             </div>
                         </div>
                     </div>
                 </Section>
 
-                {/* Advanced Diagnostics */}
-                <Section title="Diagnóstico Avançado">
-                    <div className="bg-white dark:bg-[#0f172a] p-4 space-y-3">
-                       <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200/50 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
-                                <div className="text-left">
-                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200 block">Diagnóstico Profundo</span>
-                                    <span className="text-[9px] text-slate-400">Teste de latência e integridade</span>
-                                </div>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
-                        </button>
-
-                       <div className="grid grid-cols-2 gap-3">
-                           <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                               <div className="flex items-center gap-2 mb-1 text-slate-400">
-                                   <Signal className="w-3.5 h-3.5" />
-                                   <span className="text-[9px] font-bold uppercase tracking-wider">Rede</span>
-                               </div>
-                               <p className={`text-xs font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Online' : 'Offline'}</p>
-                           </div>
-                           <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                               <div className="flex items-center gap-2 mb-1 text-slate-400">
-                                   <Smartphone className="w-3.5 h-3.5" />
-                                   <span className="text-[9px] font-bold uppercase tracking-wider">PWA</span>
-                               </div>
-                               <p className={`text-xs font-bold ${isServiceWorkerActive ? 'text-emerald-500' : 'text-slate-500'}`}>{isServiceWorkerActive ? 'Ativo' : 'Inativo'}</p>
-                           </div>
-                       </div>
+                <Section title="Rede e Dados">
+                    <div className="p-1 bg-white dark:bg-[#0f172a]">
+                        <Toggle 
+                           label="Modo Economia de Dados" 
+                           description="Reduz atualizações automáticas em redes móveis" 
+                           icon={WifiOff} 
+                           checked={dataSaver} 
+                           onChange={() => setDataSaver(!dataSaver)} 
+                        />
                     </div>
                 </Section>
+
+                {/* Advanced Diagnostics Button */}
+                <div className="pt-2">
+                     <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200/50 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
+                            <div className="text-left">
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 block">Diagnóstico Avançado</span>
+                                <span className="text-[9px] text-slate-400">Teste de latência e integridade</span>
+                            </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                </div>
             </div>
           )}
 
