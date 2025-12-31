@@ -6,7 +6,7 @@ import { supabase } from '../services/supabase';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 
 const BadgeDollarSignIcon = (props: any) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1-6.74 0 4 4 0 0 1-4.78 4.78 4 4 0 0 1-6.74 0 4 4 0 0 1-4.78-4.78 4 4 0 0 1 0-6.74Z"/><path d="M12 8v8"/><path d="M9.5 10.5c5.5-2.5 5.5 5.5 0 3"/></svg>
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1-6.74 0 4 4 0 0 1-4.78-4.78 4 4 0 0 1 0-6.74Z"/><path d="M12 8v8"/><path d="M9.5 10.5c5.5-2.5 5.5 5.5 0 3"/></svg>
 );
 
 interface SettingsProps {
@@ -953,7 +953,7 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
           
           {activeSection === 'updates' && (
-             <div className="h-[calc(100vh-11rem)] -my-2 flex flex-col bg-gradient-to-b from-[#0b1121] to-[#020617] rounded-3xl overflow-hidden shadow-2xl">
+             <div className="h-[calc(100dvh-140px)] -mt-2 flex flex-col bg-gradient-to-b from-[#0b1121] to-[#020617] rounded-3xl overflow-hidden shadow-2xl border border-white/5">
                 {/* --- Animated Header --- */}
                 <div className={`relative z-10 text-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'pt-4 pb-4 backdrop-blur-md bg-black/20 border-b border-white/5' : 'pt-10 pb-6'}`}>
                     <div className={`relative mx-auto transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'w-16 h-16 mb-2' : 'w-24 h-24 mb-4'}`}>
@@ -998,7 +998,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
                 
                 {/* --- Scrollable Content --- */}
-                <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-5 p-4 pb-20">
+                <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-5 p-4 pb-20 overscroll-contain">
                    
                    {/* Technical Details Grid */}
                    <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
