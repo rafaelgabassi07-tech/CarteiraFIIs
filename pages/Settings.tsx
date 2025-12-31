@@ -950,7 +950,7 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
           
           {activeSection === 'updates' && (
-             <div className="h-[calc(100vh-16rem)] -my-2 flex flex-col bg-gradient-to-b from-[#0b1121] to-[#020617] rounded-3xl overflow-hidden shadow-2xl">
+             <div className="h-[calc(100vh-11rem)] -my-2 flex flex-col bg-gradient-to-b from-[#0b1121] to-[#020617] rounded-3xl overflow-hidden shadow-2xl">
                 {/* --- Animated Header --- */}
                 <div className={`relative z-10 text-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'pt-4 pb-4 backdrop-blur-md bg-black/20 border-b border-white/5' : 'pt-10 pb-6'}`}>
                     <div className={`relative mx-auto transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'w-16 h-16 mb-2' : 'w-24 h-24 mb-4'}`}>
@@ -995,7 +995,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
                 
                 {/* --- Scrollable Content --- */}
-                <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-5 p-4">
+                <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-5 p-4 pb-20">
                    
                    {/* Technical Details Grid */}
                    <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
