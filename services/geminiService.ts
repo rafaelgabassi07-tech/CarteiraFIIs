@@ -10,7 +10,7 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.7_ipca_fix'; // Cache versionado e limpo
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.8_fixes'; // Cache versionado e limpo
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 const getAiCacheTTL = () => {
@@ -25,9 +25,12 @@ const getAiCacheTTL = () => {
 const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
   const s = String(dateStr).trim();
+  
+  // Se já for YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   
-  const brMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  // Tenta converter DD/MM/YYYY
+  const brMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
   if (brMatch) {
     const day = brMatch[1].padStart(2, '0');
     const month = brMatch[2].padStart(2, '0');
@@ -35,7 +38,7 @@ const normalizeDate = (dateStr: any): string => {
     if (year.length === 2) year = `20${year}`;
     return `${year}-${month}-${day}`;
   }
-  return '';
+  return ''; // Data inválida
 };
 
 const normalizeValue = (val: any): number => {
@@ -122,6 +125,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
        - "RENDIMENTO" (FIIs).
     2. **JANELA:** Últimos 90 dias + Futuros.
     3. **DATA COM:** Se não tiver data com exata, ignore o provento.
+    4. **FORMATO DATA:** Use sempre YYYY-MM-DD.
 
     OUTPUT JSON (RFC 8259):
     {
@@ -209,13 +213,14 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           if (asset.divs && Array.isArray(asset.divs)) {
             for (const div of asset.divs) {
                 const normalizedDateCom = normalizeDate(div.com);
+                const normalizedDatePag = normalizeDate(div.pag);
                 // Filtro Rígido: Provento precisa ter Data Com válida
                 if (normalizedDateCom) {
                     dividends.push({
                         ticker: ticker,
                         type: div.tipo ? div.tipo.toUpperCase() : 'DIVIDENDO', 
                         dateCom: normalizedDateCom,
-                        paymentDate: normalizeDate(div.pag),
+                        paymentDate: normalizedDatePag || normalizedDateCom, // Fallback se sem data pag
                         rate: normalizeValue(div.val),
                     });
                 }

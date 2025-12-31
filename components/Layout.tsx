@@ -239,7 +239,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] max-h-[85dvh] w-full overflow-y-auto overscroll-contain transition-transform duration-500 ease-out-quint transform shadow-2xl pb-safe ${
+        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] max-h-[85dvh] min-h-[50vh] w-full overflow-y-auto overscroll-contain transition-transform duration-500 ease-out-quint transform shadow-2xl pb-safe ${
           isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
@@ -323,7 +323,7 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
     <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center pointer-events-none pb-safe">
-      <nav className="pointer-events-auto bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl border border-slate-200/50 dark:border-white/10 shadow-2xl shadow-slate-200/20 dark:shadow-black/50 p-1.5 rounded-full flex items-center gap-1.5 transition-all duration-300 hover:scale-[1.02]">
+      <nav className="pointer-events-auto bg-[#0f172a] shadow-2xl shadow-black/50 p-2 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-2xl">
         {navItems.map(item => {
           const isActive = currentTab === item.id;
           return (
@@ -331,15 +331,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
               key={item.id}
               onClick={() => onTabChange(item.id)}
               className={`
-                relative flex items-center justify-center h-12 rounded-full transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
+                relative flex items-center justify-center h-12 rounded-full transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
                 ${isActive 
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 pl-5 pr-6 shadow-lg shadow-slate-900/20 dark:shadow-white/20' 
-                  : 'bg-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 w-12'
+                  ? 'bg-white text-[#0f172a] pl-5 pr-6 w-auto' 
+                  : 'bg-transparent text-slate-500 hover:text-slate-300 w-12 hover:bg-white/5'
                 }
               `}
             >
               <item.icon 
-                className="w-5 h-5 shrink-0" 
+                className={`w-6 h-6 shrink-0 transition-colors duration-300 ${isActive ? 'text-[#0f172a]' : 'text-slate-500'}`} 
                 strokeWidth={2.5} 
               />
               <div className={`
