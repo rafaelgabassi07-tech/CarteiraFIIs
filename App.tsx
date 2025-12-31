@@ -31,14 +31,17 @@ const STORAGE_KEYS = {
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-// Lógica Cronológica Estrita:
+// Lógica Cronológica Estrita v2:
 // A quantidade de cotas elegíveis para um dividendo é baseada na posição do usuário
 // no FECHAMENTO do dia da Data Com (Record Date).
-const getQuantityOnDate = (ticker: string, dateCom: string, paymentDate: string, transactions: Transaction[]) => {
-  // Se não houver data com, usamos pagamento como fallback (menos preciso, mas evita zerar)
-  const cutoffDate = dateCom || paymentDate;
-  if (!cutoffDate) return 0;
+const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
+  // Se não houver data com, não há como garantir elegibilidade. Retorna 0 para segurança.
+  // Não usamos Data de Pagamento como fallback pois gera falsos positivos (comprar na Data Ex).
+  if (!dateCom || dateCom.length < 10) return 0;
   
+  // Normaliza a Data Com para YYYY-MM-DD
+  const targetDate = dateCom.substring(0, 10);
+
   const normalize = (t: string) => {
       const clean = t.trim().toUpperCase();
       // Remove 'F' final (fracionário) para agrupar corretamente
@@ -53,8 +56,11 @@ const getQuantityOnDate = (ticker: string, dateCom: string, paymentDate: string,
   return transactions
     .filter(t => {
        const txTicker = normalize(t.ticker);
+       // Normaliza data da transação para garantir comparação de string correta
+       const txDate = t.date.substring(0, 10);
+       
        // A transação conta se foi feita ANTES ou NO DIA da Data Com.
-       return txTicker === targetTicker && t.date <= cutoffDate;
+       return txTicker === targetTicker && txDate <= targetDate;
     })
     .reduce((acc, t) => {
       if (t.type === 'BUY') return acc + t.quantity;
@@ -202,7 +208,7 @@ const App: React.FC = () => {
 
     geminiDividends.forEach(div => {
         if (div.paymentDate === today && notifyDivs) {
-             const qty = getQuantityOnDate(div.ticker, div.dateCom, div.paymentDate, transactions);
+             const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
              if (qty > 0) {
                  const total = qty * div.rate;
                  const id = `PAY-${div.ticker}-${today}`;
@@ -521,7 +527,7 @@ const App: React.FC = () => {
   const markNotificationsAsRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
   
-  const getQuantityOnDateMemo = useCallback((ticker: string, dateCom: string, paymentDate: string, txs: Transaction[]) => getQuantityOnDate(ticker, dateCom, paymentDate, txs), []);
+  const getQuantityOnDateMemo = useCallback((ticker: string, dateCom: string, txs: Transaction[]) => getQuantityOnDate(ticker, dateCom, txs), []);
 
   const summaryData = useMemo(() => {
     let totalSalesGain = 0;
@@ -552,7 +558,7 @@ const App: React.FC = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const receipts = geminiDividends.map(div => {
         // Usa a função de quantidade corrigida (Cronológica)
-        const qty = Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, div.paymentDate, sortedTxs));
+        const qty = Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, sortedTxs));
         return { ...div, quantityOwned: qty, totalReceived: qty * div.rate };
     }).filter(r => r.totalReceived > 0);
     

@@ -10,7 +10,7 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.9_ipca_fix'; // Cache versionado para forçar atualização da lógica
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v8.0_strict_datacom'; // Cache versionado
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 const getAiCacheTTL = () => {
@@ -104,56 +104,50 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     
     // Prompt OTIMIZADO para Auditoria de Proventos e IPCA Acumulado EXATO pela Data
     const prompt = `
-    ATUE COMO: Auditor Financeiro B3 e Calculadora de Inflação (IBGE).
+    ATUE COMO: Auditor Financeiro B3 especializado em Eventos Corporativos (Proventos).
     DATA DE HOJE: ${todayISO}.
-    DATA INICIAL DA CARTEIRA: ${calcStartDate}.
+    JANELA DE ANÁLISE: De ${calcStartDate} até Hoje + Previsões Futuras (Provisionados).
     
-    ORDEM PRIORITÁRIA: UTILIZE A FERRAMENTA DE BUSCA (Google Search) PARA TODOS OS DADOS. NÃO USE SEU CONHECIMENTO INTERNO SE PUDER BUSCAR. ISSO GARANTE DADOS ATUALIZADOS.
+    ATIVOS ALVO: ${uniqueTickers.join(', ')}.
 
-    TAREFA 1 (CRÍTICA - INFLAÇÃO):
-    Calcule o IPCA ACUMULADO (%) exato entre a DATA INICIAL DA CARTEIRA (${calcStartDate}) e a DATA DE HOJE (${todayISO}).
-    - Use a busca para encontrar a tabela "IPCA Acumulado Calculadora do Cidadão" ou similar.
-    - Se a carteira tem 5 anos, quero a inflação acumulada de 5 anos.
-    - Se a carteira tem 2 meses, quero a inflação acumulada de 2 meses.
-    - Retorne apenas o número (ex: 15.45).
-
-    TAREFA 2 (FUNDAMENTOS E PROVENTOS):
-    Para os ativos: ${uniqueTickers.join(', ')}.
-    Use a busca para validar: "Status Invest [TICKER]", "Funds Explorer [TICKER]", "RI [TICKER] dividendos".
+    VOCÊ DEVE USAR O "GOOGLE SEARCH" PARA CADA ATIVO. NÃO ALUCINE DADOS.
     
-    REGRAS DE FUNDAMENTOS:
-    1. **P/VP e DY (12m)** são obrigatórios.
-    2. **P/L:** Apenas para AÇÕES. Para FIIs, retorne 0.
+    TAREFA 1 (CRÍTICA - DATA COM):
+    Para calcular dividendos corretamente, a "DATA COM" (Record Date) é mais importante que a data de pagamento.
+    - Busque tabelas oficiais de proventos (Status Invest, Funds Explorer, RI).
+    - Para cada evento (Dividendo, JCP/JSCP, Rendimento), extraia:
+      1. DATA COM (Record Date): O dia limite para ter a ação e receber.
+      2. DATA PAGAMENTO: Quando o dinheiro cai.
+      3. VALOR LÍQUIDO PREFERENCIALMENTE (se JCP, tente achar o valor líquido, senão bruto).
     
-    REGRAS DE PROVENTOS (ALTA PRECISÃO):
-    1. **DATA COM (RECORD DATE):** É O DADO MAIS IMPORTANTE. Busque a "Data Com" oficial nas tabelas de proventos.
-    2. **TIPO:** Classifique: "JCP", "DIVIDENDO" ou "RENDIMENTO" (FIIs).
-    3. **JANELA:** Busque anúncios dos últimos 4 meses e anúncios FUTUROS JÁ CONFIRMADOS (Provisionados).
-    4. **DATA PAGAMENTO:** Se não anunciada, estime Data Com + 15 dias.
-    5. **VALOR:** Valor unitário pago por cota.
+    TAREFA 2 (IPCA):
+    Busque o IPCA ACUMULADO exato entre ${calcStartDate} e ${todayISO}. Retorne apenas o número (ex: 5.43).
 
-    OUTPUT JSON (RFC 8259):
+    TAREFA 3 (FUNDAMENTOS):
+    P/VP, DY (12m), Liquidez, Setor. Para FIIs, P/L é 0.
+
+    OUTPUT JSON (RFC 8259) - ESTRUTURA RÍGIDA:
     {
-      "sys": { "ipca": number }, // O valor ACUMULADO calculado na Tarefa 1
+      "sys": { "ipca": number },
       "data": [
         {
           "t": "TICKER",
           "type": "FII" | "ACAO",
-          "segment": "Setor",
+          "segment": "Setor Exato",
           "fund": {
              "pvp": number,
              "pl": number,
              "dy": number,
-             "liq": "string",
+             "liq": "string (ex: 2.5M)",
              "cotistas": "string",
-             "desc": "Resumo curto",
+             "desc": "Resumo",
              "mcap": "string",
              "sent": "Neutro", 
-             "sent_r": "Motivo curto"
+             "sent_r": "Motivo"
           },
           "divs": [
              { 
-               "com": "YYYY-MM-DD", 
+               "com": "YYYY-MM-DD",  <-- EXTREMAMENTE IMPORTANTE
                "pag": "YYYY-MM-DD", 
                "val": number, 
                "tipo": "DIVIDENDO" | "JCP" | "RENDIMENTO" 
@@ -168,8 +162,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         model: "gemini-2.5-flash", 
         contents: prompt,
         config: {
-            tools: [{googleSearch: {}}], // Força uso de busca para dados exatos de IPCA
-            temperature: 0.1, 
+            tools: [{googleSearch: {}}], // Força uso de busca para dados exatos
+            temperature: 0.0, // Zero criatividade, máxima precisão
         },
     });
     
@@ -219,12 +213,14 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             for (const div of asset.divs) {
                 const normalizedDateCom = normalizeDate(div.com);
                 const normalizedDatePag = normalizeDate(div.pag);
+                
+                // Só adiciona se tiver Data Com válida, pois é essencial para o cálculo
                 if (normalizedDateCom) {
                     dividends.push({
                         ticker: ticker,
                         type: div.tipo ? div.tipo.toUpperCase() : 'DIVIDENDO', 
                         dateCom: normalizedDateCom,
-                        paymentDate: normalizedDatePag || normalizedDateCom,
+                        paymentDate: normalizedDatePag || normalizedDateCom, // Fallback apenas para display, não lógica
                         rate: normalizeValue(div.val),
                     });
                 }
