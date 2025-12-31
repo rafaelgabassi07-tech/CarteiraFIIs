@@ -10,7 +10,7 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.5_auditor_pro'; // Cache versionado
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.6_auditor_colors'; // Cache versionado e limpo
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 const getAiCacheTTL = () => {
@@ -93,28 +93,25 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     
     // Prompt OTIMIZADO para Auditoria de Proventos e Data Com
     const prompt = `
-    ATUE COMO: Auditor de Governança Corporativa e Dividendos (B3).
+    ATUE COMO: Auditor Financeiro B3 Especialista.
     DATA DE REFERÊNCIA: ${todayISO}.
     
-    TAREFA: Realizar uma busca forense sobre proventos (Dividendos, JCP, Rendimentos) para os ativos: ${uniqueTickers.join(', ')}.
+    TAREFA: Buscar dados fundamentalistas e proventos para: ${uniqueTickers.join(', ')}.
 
-    ESTRATÉGIA DE BUSCA (Google Search):
-    Para CADA ativo, você deve encontrar o documento "Aviso aos Acionistas" ou "Fato Relevante" mais recente.
-    Busque especificamente:
-    1. "[TICKER] data com dividendos 2024 2025 oficial"
-    2. "[TICKER] aviso aos acionistas proventos valor por ação"
-    3. "[TICKER] statusinvest proventos historico"
-    
-    REGRAS DE EXTRAÇÃO DE DADOS (CRÍTICO):
-    1. **DATA COM (RECORD DATE):** É a data MANDATÓRIA. É o dia limite para ter a ação e receber o provento. Se não achar a Data Com exata, não registre o dividendo.
-    2. **DATA PAGAMENTO:** Se já foi definido, preencha. Se for "A definir", deixe null/vazio.
-    3. **VALOR PRECISO:**
-       - FIIs: Sempre valor LÍQUIDO (isento).
-       - Ações (JCP): O valor anunciado é geralmente BRUTO. Se encontrar o bruto, registre-o e marque o tipo como "JCP". O app descontará o IR. Se achar o líquido, marque como "DIVIDENDO".
-    4. **JANELA:** Busque proventos com "Data Com" nos últimos 90 dias e TODOS os futuros anunciados.
-    
-    FUNDAMENTOS:
-    - P/VP, DY (12m), Setor (Segmento de atuação exato).
+    REGRAS DE FUNDAMENTOS (CRÍTICO):
+    1. **P/VP (Preço/Valor Patrimonial):** Essencial para FIIs e Ações.
+    2. **P/L (Preço/Lucro):**
+       - PARA AÇÕES: Obrigatório. Busque o P/L atualizado (LPA dos últimos 12 meses).
+       - PARA FIIs: Retorne 0 ou null. P/L não se aplica a FIIs (usa-se P/FFO, mas não vamos coletar agora). NÃO INVENTE P/L PARA FII.
+    3. **DY (Dividend Yield 12m):** Yield anualizado.
+
+    REGRAS DE PROVENTOS:
+    1. **TIPO:** Diferencie com precisão:
+       - "JCP" (Juros sobre Capital Próprio - incide IR).
+       - "DIVIDENDO" (Isento).
+       - "RENDIMENTO" (FIIs).
+    2. **JANELA:** Últimos 90 dias + Futuros.
+    3. **DATA COM:** Se não tiver data com exata, ignore o provento.
 
     OUTPUT JSON (RFC 8259):
     {
@@ -126,7 +123,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           "segment": "Setor Exato",
           "fund": {
              "pvp": number,
-             "pl": number,
+             "pl": number, // 0 para FIIs
              "dy": number,
              "liq": "string",
              "cotistas": "string",
@@ -206,7 +203,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                 if (normalizedDateCom) {
                     dividends.push({
                         ticker: ticker,
-                        type: div.tipo ? div.tipo.toUpperCase() : 'PROVENTO', 
+                        type: div.tipo ? div.tipo.toUpperCase() : 'DIVIDENDO', 
                         dateCom: normalizedDateCom,
                         paymentDate: normalizeDate(div.pag),
                         rate: normalizeValue(div.val),

@@ -208,14 +208,15 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
          </div>
       </div>
       
-      <div className="h-[calc(100vh-240px)]">
+      <div className="h-[calc(100vh-190px)]"> 
         {flatTransactions.length > 0 ? (
           <List 
-            height={window.innerHeight - 240} 
+            height={window.innerHeight - 190} 
             itemCount={flatTransactions.length} 
             itemSize={getItemSize} 
             width="100%"
             itemData={itemData}
+            style={{ paddingBottom: '120px' }} // Padding extra para o final da lista não ficar escondido
           >
             {TransactionRow}
           </List>

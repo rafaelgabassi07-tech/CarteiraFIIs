@@ -146,30 +146,41 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
                     <p className="text-center text-slate-400 text-xs font-medium">Nenhum provento registrado.</p>
                 </div>
               ) : (
-                history.map((h, i) => (
-                  <div key={i} className="group relative bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm" style={{ animationDelay: `${i * 30}ms` }}>
-                    <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-3">
-                           <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 font-bold shrink-0">
-                               <span className="text-[9px] uppercase leading-none mb-0.5">{h.paymentDate.split('-')[1]}</span>
-                               <span className="text-xs leading-none text-slate-900 dark:text-white">{h.paymentDate.split('-')[2]}</span>
-                           </div>
-                           <div>
-                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-0.5">{h.type} <span className="text-slate-300 dark:text-slate-600">•</span> {h.paymentDate.split('-')[0]}</p>
-                               <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Pagamento Realizado</p>
-                           </div>
-                        </div>
-                        <div className="text-right">
-                           <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Total Recebido</p>
-                           <p className="text-base font-black text-emerald-600 dark:text-emerald-500 tabular-nums">R$ {formatCurrency(h.totalReceived)}</p>
-                        </div>
+                history.map((h, i) => {
+                  // Lógica de Cor para Tipos de Proventos
+                  const isJCP = h.type === 'JCP';
+                  const isRendimento = h.type === 'RENDIMENTO';
+                  const colorClass = isJCP 
+                      ? 'text-sky-600 dark:text-sky-400' 
+                      : isRendimento 
+                        ? 'text-indigo-600 dark:text-indigo-400'
+                        : 'text-emerald-600 dark:text-emerald-500';
+
+                  return (
+                    <div key={i} className="group relative bg-white dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm" style={{ animationDelay: `${i * 30}ms` }}>
+                      <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 font-bold shrink-0">
+                                <span className="text-[9px] uppercase leading-none mb-0.5">{h.paymentDate.split('-')[1]}</span>
+                                <span className="text-xs leading-none text-slate-900 dark:text-white">{h.paymentDate.split('-')[2]}</span>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide mb-0.5">{h.type} <span className="text-slate-300 dark:text-slate-600">•</span> {h.paymentDate.split('-')[0]}</p>
+                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Pagamento Realizado</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Total Recebido</p>
+                            <p className={`text-base font-black tabular-nums ${colorClass}`}>R$ {formatCurrency(h.totalReceived)}</p>
+                          </div>
+                      </div>
+                      <div className="pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[10px] font-medium text-slate-500">
+                          <span className="flex items-center gap-1.5"><Hash className="w-3 h-3 text-slate-300" />Posição: <strong className="text-slate-700 dark:text-slate-300">{h.quantityOwned} Cotas</strong></span>
+                          <span className="flex items-center gap-1.5"><Target className="w-3 h-3 text-slate-300" />Valor Unitário: <strong className="text-slate-700 dark:text-slate-300">R$ {h.rate.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</strong></span>
+                      </div>
                     </div>
-                    <div className="pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[10px] font-medium text-slate-500">
-                        <span className="flex items-center gap-1.5"><Hash className="w-3 h-3 text-slate-300" />Posição: <strong className="text-slate-700 dark:text-slate-300">{h.quantityOwned} Cotas</strong></span>
-                        <span className="flex items-center gap-1.5"><Target className="w-3 h-3 text-slate-300" />Valor Unitário: <strong className="text-slate-700 dark:text-slate-300">R$ {h.rate.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</strong></span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
         </div>
@@ -228,7 +239,9 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
               </div>
               <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl text-center border border-slate-100 dark:border-transparent">
                   <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">P/L</p>
-                  <p className="text-base font-black text-slate-800 dark:text-white tabular-nums">{asset.p_l?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '-'}</p>
+                  <p className="text-base font-black text-slate-800 dark:text-white tabular-nums">
+                    {asset.assetType === AssetType.FII ? '-' : (asset.p_l?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '-')}
+                  </p>
               </div>
           </div>
 

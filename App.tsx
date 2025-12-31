@@ -169,6 +169,28 @@ const App: React.FC = () => {
     if (type !== 'info') setTimeout(() => setToast(null), 3000);
   }, []);
 
+  // Notificação de Atualização Disponível
+  useEffect(() => {
+      if (updateManager.isUpdateAvailable) {
+          const id = `UPDATE-${updateManager.availableVersion}`;
+          if (!notifications.some(n => n.id === id)) {
+              const notif: AppNotification = {
+                  id,
+                  title: `Nova Versão ${updateManager.availableVersion}`,
+                  message: `Uma atualização está pronta para ser instalada. Toque para ver as novidades.`,
+                  type: 'update',
+                  category: 'update',
+                  timestamp: Date.now(),
+                  read: false,
+                  actionLabel: 'Atualizar',
+                  onAction: () => updateManager.setShowChangelog(true)
+              };
+              setNotifications(prev => [notif, ...prev]);
+              showToast('info', 'Nova atualização disponível!');
+          }
+      }
+  }, [updateManager.isUpdateAvailable, updateManager.availableVersion, notifications, showToast, updateManager]);
+
   useEffect(() => {
     if (!session || geminiDividends.length === 0 || transactions.length === 0) return;
 
