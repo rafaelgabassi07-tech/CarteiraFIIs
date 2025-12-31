@@ -14,10 +14,9 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.2.1'; 
+const APP_VERSION = '7.2.2'; 
 
 const STORAGE_KEYS = {
-  // TXS removido pois agora é cloud-only
   DIVS: 'investfiis_v4_div_cache',
   THEME: 'investfiis_theme',
   ACCENT: 'investfiis_accent_color',
@@ -107,19 +106,16 @@ const App: React.FC = () => {
   const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.5, startDate: '' }; } catch { return { ipca: 4.5, startDate: '' }; } });
   
-  // Last sync time is mostly for UI now, data is realtime
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(new Date());
   
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>({});
 
-  // --- Efeitos de Persistência Local (Apenas Cache de UI/IA, NUNCA Transações) ---
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled)); }, [pushEnabled]);
 
-  // --- Tema e Variáveis CSS ---
   useEffect(() => {
     const root = window.document.documentElement;
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -147,8 +143,6 @@ const App: React.FC = () => {
     if (type !== 'info') setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // --- Funções de Sincronização ---
-
   const syncMarketData = useCallback(async (force: boolean = false, txsToUse: Transaction[] = transactions) => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) {
@@ -160,15 +154,13 @@ const App: React.FC = () => {
     if (appLoading) setLoadingProgress(prev => Math.max(prev, 30));
 
     try {
-      // BRAPI
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
       }
       
-      if (appLoading) setLoadingProgress(prev => Math.max(prev, 60)); // Quotes completas
+      if (appLoading) setLoadingProgress(prev => Math.max(prev, 60)); 
 
-      // GEMINI (IA)
       setIsAiLoading(true);
       const startDate = txsToUse.length > 0 ? txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date) : '';
       
@@ -182,7 +174,7 @@ const App: React.FC = () => {
       if (aiData.indicators?.ipca_cumulative) setMarketIndicators({ ipca: aiData.indicators.ipca_cumulative, startDate: aiData.indicators.start_date_used });
       setLastSyncTime(new Date());
       
-      if (appLoading) setLoadingProgress(prev => Math.max(prev, 90)); // IA Completa
+      if (appLoading) setLoadingProgress(prev => Math.max(prev, 90)); 
 
     } catch (e) { 
       if (force) showToast('error', 'Sem conexão'); 
@@ -226,8 +218,6 @@ const App: React.FC = () => {
     }
   }, [fetchTransactionsFromCloud, session]);
 
-  // --- Auth & Startup Logic ---
-
   useEffect(() => {
     let mounted = true;
     setLoadingProgress(5);
@@ -249,7 +239,6 @@ const App: React.FC = () => {
       setSession(currentSession);
 
       if (currentSessionId) {
-        // Usuário logado ou restaurado
         if (!previousSessionId) {
             setLoadingProgress(15);
             await fetchTransactionsFromCloud();
@@ -258,7 +247,6 @@ const App: React.FC = () => {
         }
       } 
       else {
-        // Usuário deslogado ou sem sessão
         setTransactions([]);
         setQuotes({});
         setGeminiDividends([]);
@@ -266,7 +254,6 @@ const App: React.FC = () => {
       }
 
       if (appLoading) {
-          // Finaliza loading se já temos uma decisão de sessão (sim ou não)
           setLoadingProgress(100);
           setTimeout(() => {
               if (mounted) {
@@ -283,7 +270,6 @@ const App: React.FC = () => {
     };
   }, []); 
 
-  // --- Realtime Subscription (Supabase) ---
   useEffect(() => {
     if (!session) return;
     
@@ -296,9 +282,7 @@ const App: React.FC = () => {
             if (eventType === 'INSERT') {
               if (currentTxs.some(t => t.id === newRecord.id)) return currentTxs;
               const newTx = mapSupabaseToTx(newRecord);
-              // Dispara atualização de mercado se for um ticker novo
               if (!currentTxs.some(t => t.ticker === newTx.ticker)) {
-                 // Pequeno delay para evitar travar a UI durante a animação
                  setTimeout(() => syncMarketData(false, [...currentTxs, newTx]), 500);
               }
               return [...currentTxs, newTx];
@@ -317,15 +301,12 @@ const App: React.FC = () => {
     return () => { supabase.removeChannel(channel); };
   }, [session, syncMarketData]);
 
-  // --- Handlers de Transação (Cloud Only) ---
-
   const handleAddTransaction = async (t: Omit<Transaction, 'id'>) => {
     if (!session) return;
     
     const tempId = crypto.randomUUID();
     const newTx = { ...t, id: tempId };
     
-    // Optimistic
     setTransactions(p => [...p, newTx]);
 
     const record = cleanTxForSupabase(newTx);
@@ -334,7 +315,7 @@ const App: React.FC = () => {
     if (error) {
         console.error("Supabase insert error:", error);
         showToast('error', 'Erro ao salvar na nuvem.');
-        setTransactions(p => p.filter(tx => tx.id !== tempId)); // Rollback
+        setTransactions(p => p.filter(tx => tx.id !== tempId)); 
     } else {
         showToast('success', 'Ordem salva na nuvem');
     }
@@ -354,7 +335,7 @@ const App: React.FC = () => {
     if (error) {
         console.error("Supabase update error:", error);
         showToast('error', 'Falha ao atualizar na nuvem.');
-        setTransactions(p => p.map(t => t.id === id ? originalTx! : t)); // Rollback
+        setTransactions(p => p.map(t => t.id === id ? originalTx! : t)); 
     } else {
         showToast('success', 'Ordem atualizada');
     }
@@ -370,7 +351,7 @@ const App: React.FC = () => {
     if (error) {
         console.error("Supabase delete error:", error);
         showToast('error', 'Falha ao apagar na nuvem.');
-        setTransactions(p => [...p, deletedTx!]); // Rollback
+        setTransactions(p => [...p, deletedTx!]); 
     } else {
         showToast('success', 'Ordem removida');
     }
@@ -394,13 +375,10 @@ const App: React.FC = () => {
     showToast('info', 'Substituindo dados na nuvem...');
     
     try {
-        // Remove tudo do usuário atual
         await supabase.from('transactions').delete().eq('user_id', session.user.id);
         
-        // Insere novos
         const sbData = importedTxs.map(t => {
             const record = cleanTxForSupabase(t);
-            // Garante IDs novos ou preserva se forem válidos UUIDs
             return { ...record, user_id: session.user.id, id: t.id || crypto.randomUUID() };
         });
         
@@ -409,7 +387,6 @@ const App: React.FC = () => {
             if (error) throw error;
         }
         
-        // Fetch fresh data
         await fetchTransactionsFromCloud();
         showToast('success', 'Backup restaurado na nuvem!');
     } catch (e: any) {
@@ -419,8 +396,6 @@ const App: React.FC = () => {
         setIsCloudSyncing(false);
     }
   };
-
-  // --- Cálculos de Dados (Memoized) ---
 
   const markNotificationsAsRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
@@ -520,7 +495,11 @@ const App: React.FC = () => {
     showToast(permission === 'granted' ? 'success' : 'info', permission === 'granted' ? 'Notificações Ativadas!' : 'Permissão negada.');
   };
 
-  const content = (
+  if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
+  
+  if (!session && !appLoading) return <Login />;
+
+  return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       
@@ -581,9 +560,6 @@ const App: React.FC = () => {
                           inflationRate={marketIndicators.ipca} 
                           portfolioStartDate={marketIndicators.startDate} 
                           accentColor={accentColor} 
-                          invested={memoizedData.invested}
-                          balance={memoizedData.balance}
-                          totalAppreciation={memoizedData.balance - memoizedData.invested}
                       />
                   )}
                   {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedData} />}
@@ -608,14 +584,6 @@ const App: React.FC = () => {
       {confirmModal?.isOpen && ( <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} /> )}
     </div>
   );
-
-  if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
-  
-  // Se não estiver logado e o app já tentou carregar a sessão, mostra o login
-  // O SplashScreen cobre tudo até appLoading ser false
-  if (!session && !appLoading) return <Login />;
-
-  return content;
 };
 
 export default App;
