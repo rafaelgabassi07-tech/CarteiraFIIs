@@ -11,23 +11,26 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [displayProgress, setDisplayProgress] = useState(0);
 
-  // Lógica de Handover (Passagem de bastão do HTML estático para o React)
+  // Lógica de Scroll Lock e Cleanup do Static Splash
   useEffect(() => {
-    // 1. O componente React monta imediatamente.
-    // 2. Procuramos o loader estático no index.html
+    // Bloqueia scroll enquanto o splash está ativo
+    document.body.style.overflow = 'hidden';
+
+    // Remove o splash estático do HTML assim que o React monta
     const staticSplash = document.getElementById('root-splash');
-    
     if (staticSplash) {
-        // Pequeno delay para garantir que o React renderizou o primeiro frame visualmente idêntico
         requestAnimationFrame(() => {
-            // Adiciona classe que faz o fade-out via CSS (opacity: 0)
             staticSplash.classList.add('loaded');
-            // Remove do DOM após a transição CSS terminar (600ms no CSS)
             setTimeout(() => {
                 if(staticSplash.parentNode) staticSplash.parentNode.removeChild(staticSplash);
             }, 600);
         });
     }
+
+    // Cleanup: Garante que o scroll seja liberado ao desmontar
+    return () => {
+        document.body.style.overflow = '';
+    };
   }, []);
 
   // Interpolação suave do progresso visual
@@ -44,7 +47,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
     return () => clearInterval(timer);
   }, [realProgress]);
 
-  // Garante 100% e inicia saída final do componente React
+  // Garante 100% e inicia saída final
   useEffect(() => {
     if (finishLoading) {
       setDisplayProgress(100);
@@ -52,6 +55,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         setIsFadingOut(true);
         const removeTimeout = setTimeout(() => {
           setShouldRender(false);
+          // Força liberação do scroll explicitamente ao finalizar a animação
+          document.body.style.overflow = ''; 
         }, 800); // Tempo da transição de saída
         return () => clearTimeout(removeTimeout);
       }, 600);
