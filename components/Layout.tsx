@@ -96,12 +96,12 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint pt-safe ${
-        bannerVisible ? 'top-14' : 'top-0'
+      className={`fixed left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint ${
+        bannerVisible ? 'top-10' : 'top-0'
       } ${
         isScrolled 
-          ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl py-2 border-b border-slate-200/50 dark:border-white/5' 
-          : 'bg-transparent py-4 border-b border-transparent'
+          ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5' 
+          : 'bg-transparent pt-4 border-b border-transparent'
       }`}
     >
       <div className="flex items-center gap-3 w-full">

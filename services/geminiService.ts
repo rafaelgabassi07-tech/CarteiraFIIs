@@ -10,7 +10,7 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.8_perf'; // Cache versionado e limpo
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.7_ipca_fix'; // Cache versionado e limpo
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 const getAiCacheTTL = () => {
@@ -156,7 +156,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     `;
 
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview", 
+        model: "gemini-2.5-flash", 
         contents: prompt,
         config: {
             tools: [{googleSearch: {}}],
