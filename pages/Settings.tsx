@@ -75,14 +75,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   // Supabase Auth States
   const [user, setUser] = useState<any>(null);
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [confirmAuthPassword, setConfirmAuthPassword] = useState('');
-  const [showAuthPassword, setShowAuthPassword] = useState(false);
-  const [showConfirmAuthPassword, setShowConfirmAuthPassword] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-
+  
   // Diagnostics State
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [diagState, setDiagState] = useState<{
@@ -334,12 +327,23 @@ export const Settings: React.FC<SettingsProps> = ({
         setDiagState(prev => ({ ...prev, step: 'error' }));
         return;
     }
+    
+    if (!user) {
+        addLog('Erro crítico: Usuário não autenticado.', 'error');
+        setDiagState(prev => ({ ...prev, step: 'error' }));
+        return;
+    }
 
     try {
         // 1. Teste de Latência
         addLog('Testando latência de rede...');
         const start = performance.now();
-        const { count, error: countError } = await supabase.from('transactions').select('*', { count: 'exact', head: true });
+        // IMPORTANTE: Filtrar por user_id é crucial para segurança e performance, e para garantir que o count reflita os dados do usuário atual
+        const { count, error: countError } = await supabase
+            .from('transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
         const end = performance.now();
         const latency = Math.round(end - start);
         

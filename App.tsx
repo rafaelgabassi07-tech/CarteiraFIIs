@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.2.2'; 
+const APP_VERSION = '7.2.3'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -143,6 +143,8 @@ const App: React.FC = () => {
     if (type !== 'info') setTimeout(() => setToast(null), 3000);
   }, []);
 
+  // --- Funções de Sincronização ---
+
   const syncMarketData = useCallback(async (force: boolean = false, txsToUse: Transaction[] = transactions) => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) {
@@ -154,6 +156,7 @@ const App: React.FC = () => {
     if (appLoading) setLoadingProgress(prev => Math.max(prev, 30));
 
     try {
+      // BRAPI
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
@@ -161,6 +164,7 @@ const App: React.FC = () => {
       
       if (appLoading) setLoadingProgress(prev => Math.max(prev, 60)); 
 
+      // GEMINI (IA)
       setIsAiLoading(true);
       const startDate = txsToUse.length > 0 ? txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date) : '';
       
@@ -185,9 +189,13 @@ const App: React.FC = () => {
     }
   }, [transactions, showToast, quotes, appLoading]);
 
+  // Função Principal de Sync com Controle de Banner
   const fetchTransactionsFromCloud = useCallback(async () => {
     setIsCloudSyncing(true);
+    setCloudStatus('syncing');
+
     if (appLoading) setLoadingProgress(prev => Math.max(prev, 15)); 
+    
     try {
       const { data, error } = await supabase.from('transactions').select('*');
       if (error) throw error;
@@ -202,11 +210,20 @@ const App: React.FC = () => {
             await syncMarketData(false, cloudTxs);
         }
       }
+      
+      // Sucesso: Mostra "Conectado" e depois esconde
+      setCloudStatus('connected');
+      setTimeout(() => setCloudStatus('hidden'), 3000);
       return true;
+
     } catch (err: any) {
       console.error("Supabase fetch error:", err);
       showToast('error', 'Erro ao buscar dados da nuvem.');
+      // Erro: Esconde o banner ou mostra desconectado
+      setCloudStatus('disconnected');
+      setTimeout(() => setCloudStatus('hidden'), 3000);
       return false;
+
     } finally {
       setIsCloudSyncing(false);
     }
@@ -214,9 +231,12 @@ const App: React.FC = () => {
 
   const handleSyncAll = useCallback(async (force: boolean) => {
     if (session) {
+        // Usa a função centralizada que gerencia o banner
         await fetchTransactionsFromCloud();
     }
   }, [fetchTransactionsFromCloud, session]);
+
+  // --- Auth & Startup Logic ---
 
   useEffect(() => {
     let mounted = true;
@@ -239,14 +259,15 @@ const App: React.FC = () => {
       setSession(currentSession);
 
       if (currentSessionId) {
+        // Usuário logado ou restaurado
         if (!previousSessionId) {
             setLoadingProgress(15);
+            // Inicia o sync que gerencia o próprio status
             await fetchTransactionsFromCloud();
-            setCloudStatus('connected');
-            setTimeout(() => setCloudStatus('hidden'), 3000);
         }
       } 
       else {
+        // Usuário deslogado ou sem sessão
         setTransactions([]);
         setQuotes({});
         setGeminiDividends([]);
@@ -254,6 +275,7 @@ const App: React.FC = () => {
       }
 
       if (appLoading) {
+          // Finaliza loading se já temos uma decisão de sessão (sim ou não)
           setLoadingProgress(100);
           setTimeout(() => {
               if (mounted) {
@@ -270,6 +292,7 @@ const App: React.FC = () => {
     };
   }, []); 
 
+  // --- Realtime Subscription (Supabase) ---
   useEffect(() => {
     if (!session) return;
     
@@ -282,6 +305,7 @@ const App: React.FC = () => {
             if (eventType === 'INSERT') {
               if (currentTxs.some(t => t.id === newRecord.id)) return currentTxs;
               const newTx = mapSupabaseToTx(newRecord);
+              // Dispara atualização de mercado se for um ticker novo
               if (!currentTxs.some(t => t.ticker === newTx.ticker)) {
                  setTimeout(() => syncMarketData(false, [...currentTxs, newTx]), 500);
               }
@@ -301,6 +325,8 @@ const App: React.FC = () => {
     return () => { supabase.removeChannel(channel); };
   }, [session, syncMarketData]);
 
+  // --- Handlers de Transação (Cloud Only) ---
+
   const handleAddTransaction = async (t: Omit<Transaction, 'id'>) => {
     if (!session) return;
     
@@ -315,7 +341,7 @@ const App: React.FC = () => {
     if (error) {
         console.error("Supabase insert error:", error);
         showToast('error', 'Erro ao salvar na nuvem.');
-        setTransactions(p => p.filter(tx => tx.id !== tempId)); 
+        setTransactions(p => p.filter(tx => tx.id !== tempId)); // Rollback
     } else {
         showToast('success', 'Ordem salva na nuvem');
     }
@@ -335,7 +361,7 @@ const App: React.FC = () => {
     if (error) {
         console.error("Supabase update error:", error);
         showToast('error', 'Falha ao atualizar na nuvem.');
-        setTransactions(p => p.map(t => t.id === id ? originalTx! : t)); 
+        setTransactions(p => p.map(t => t.id === id ? originalTx! : t)); // Rollback
     } else {
         showToast('success', 'Ordem atualizada');
     }
@@ -351,7 +377,7 @@ const App: React.FC = () => {
     if (error) {
         console.error("Supabase delete error:", error);
         showToast('error', 'Falha ao apagar na nuvem.');
-        setTransactions(p => [...p, deletedTx!]); 
+        setTransactions(p => [...p, deletedTx!]); // Rollback
     } else {
         showToast('success', 'Ordem removida');
     }
@@ -372,6 +398,7 @@ const App: React.FC = () => {
     if (!Array.isArray(importedTxs) || !session) return;
     
     setIsCloudSyncing(true);
+    setCloudStatus('syncing');
     showToast('info', 'Substituindo dados na nuvem...');
     
     try {
@@ -392,8 +419,10 @@ const App: React.FC = () => {
     } catch (e: any) {
         console.error("Supabase import error:", e);
         showToast('error', 'Erro ao restaurar backup na nuvem.');
+        setCloudStatus('disconnected');
     } finally {
         setIsCloudSyncing(false);
+        // O fetchTransactionsFromCloud já gerencia o status para 'connected'/'hidden' em caso de sucesso
     }
   };
 
@@ -524,7 +553,7 @@ const App: React.FC = () => {
               showBack={showSettings} 
               onBack={() => setShowSettings(false)} 
               onSettingsClick={() => setShowSettings(true)} 
-              onRefresh={() => syncMarketData(true)} 
+              onRefresh={() => fetchTransactionsFromCloud()} 
               isRefreshing={isRefreshing || isAiLoading || isCloudSyncing} 
               updateAvailable={updateManager.isUpdateAvailable} 
               onUpdateClick={() => updateManager.setShowChangelog(true)} 
