@@ -29,23 +29,27 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
 
   return (
     <div 
-      className={`fixed top-0 left-0 right-0 pt-safe pb-4 z-[100] flex items-center justify-center gap-2 px-4 text-[11px] font-black uppercase tracking-[0.15em] transition-all duration-500 ease-out-quint shadow-sm transform ${
-        isHidden ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
+      className={`fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-2xl transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform border ${
+        isHidden ? '-translate-y-[200%] scale-90 opacity-0' : 'translate-y-0 scale-100 opacity-100'
       } ${
         isConnected 
-          ? 'bg-[#10b981] text-white' // Emerald-500 Solid
-          : 'bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-xl text-slate-500 dark:text-slate-400 border-b border-slate-200/50 dark:border-white/5'
+          ? 'bg-[#10b981] text-white border-emerald-400/50' 
+          : isSyncing 
+            ? 'bg-indigo-500 text-white border-indigo-400/50'
+            : 'bg-slate-800 text-white border-slate-700'
       }`}
     >
       {isSyncing ? (
         <>
-          <Loader2 className="w-3 h-3 animate-spin" />
+          <Loader2 className="w-3 h-3 animate-spin text-white/80" />
           <span>Sincronizando...</span>
         </>
       ) : isConnected ? (
-        <div className="flex items-center gap-2 animate-pulse">
-          <Cloud className="w-3 h-3" strokeWidth={3} />
-          <span>Sincronizado com a Nuvem</span>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-white/20 rounded-full flex items-center justify-center">
+             <Check className="w-2.5 h-2.5 text-white" strokeWidth={4} />
+          </div>
+          <span>Sincronizado</span>
         </div>
       ) : (
         <div className="flex items-center gap-2">
@@ -96,9 +100,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint ${
-        bannerVisible ? 'top-10' : 'top-0'
-      } ${
+      className={`fixed left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint top-0 ${
         isScrolled 
           ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5' 
           : 'bg-transparent pt-4 border-b border-transparent'
