@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, LockScreen, ConfirmationModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.1.0'; 
+const APP_VERSION = '7.1.5'; 
 
 const STORAGE_KEYS = {
   TXS: 'investfiis_v4_transactions',
@@ -82,6 +82,9 @@ const App: React.FC = () => {
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true');
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
+
+  // Ref para evitar stale closures no listener de auth
+  const sessionRef = useRef<Session | null>(null);
 
   const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem(STORAGE_KEYS.PASSCODE));
   const savedPasscode = localStorage.getItem(STORAGE_KEYS.PASSCODE);
@@ -258,95 +261,84 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
+    
+    // Inicia a barra de progresso visualmente
+    setLoadingProgress(5);
 
-    const initApp = async () => {
-      // 1. Inicialização: Define progresso inicial
-      setLoadingProgress(5); 
-
-      const appInitialization = async () => {
-        try {
-          // Checa sessão
-          const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-          if (!mounted) return;
-
-          setLoadingProgress(10); // Sessão verificada
-
-          const isGuestMode = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
-          
-          if (initialSession) {
-            setSession(initialSession);
-            setIsGuest(false);
-            // 2. Se logado, busca da nuvem (inclui syncMarketData internamente)
-            await fetchTransactionsFromCloud();
-            setCloudStatus('connected');
-            setTimeout(() => setCloudStatus('hidden'), 3000);
-          } else {
-            setSession(null);
-            setIsGuest(isGuestMode);
-            // 3. Se convidado, carrega dados locais
-            if (isGuestMode) {
-                setCloudStatus('disconnected');
-                const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
-                setLoadingProgress(25); // Dados locais lidos
-                if (localTxs.length > 0) {
-                   setTransactions(localTxs);
-                   await syncMarketData(false, localTxs);
-                }
-            }
-          }
-        } catch (e) {
-            console.error("Critical app init error:", e);
-        } finally {
-            if (mounted) setIsAuthLoading(false);
-        }
-      };
-
-      await appInitialization();
-      
-      if (mounted) {
-        setLoadingProgress(100); // Finaliza
-        // Pequeno delay para permitir que o usuário veja 100% no splash antes de desmontar
-        setTimeout(() => setAppLoading(false), 500); 
-      }
-    };
-
-    // Timeout de segurança
+    // Timeout de segurança para garantir que o usuário entre mesmo se a auth falhar silenciosamente
     const timeout = setTimeout(() => {
       if (mounted && appLoading) {
         console.warn("Init timeout, forcing entry");
         setAppLoading(false);
         setIsAuthLoading(false);
       }
-    }, 15000); // Aumentado para 15s pois agora temos requests reais
+    }, 10000);
 
-    initApp().then(() => clearTimeout(timeout));
-
+    // Listener de Auth Principal - Fonte da Verdade
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, currentSession: Session | null) => {
       if (!mounted) return;
       
-      const previousSessionId = session?.user?.id;
+      const previousSession = sessionRef.current;
+      const previousSessionId = previousSession?.user?.id;
       const currentSessionId = currentSession?.user?.id;
       
+      // Atualiza ref e estado
+      sessionRef.current = currentSession;
       setSession(currentSession);
 
-      if (currentSessionId && currentSessionId !== previousSessionId) {
-        setIsGuest(false);
-        const wasGuest = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
-        
-        if (wasGuest) {
-          await migrateGuestDataToCloud(currentSessionId);
+      // Evento de Inicialização ou Login
+      if (currentSessionId) {
+        if (!previousSessionId) {
+            // Usuário acabou de entrar ou sessão foi restaurada
+            setLoadingProgress(15);
+            setIsGuest(false);
+            
+            // Verifica se precisa migrar dados de convidado
+            const wasGuest = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
+            if (wasGuest) {
+              await migrateGuestDataToCloud(currentSessionId);
+            }
+            
+            // Busca dados
+            await fetchTransactionsFromCloud();
+            setCloudStatus('connected');
+            setTimeout(() => setCloudStatus('hidden'), 3000);
         }
-        
-        await fetchTransactionsFromCloud();
-        setCloudStatus('connected');
-        setTimeout(() => setCloudStatus('hidden'), 3000);
       } 
+      // Evento de Logout
       else if (!currentSessionId && previousSessionId) {
         setTransactions([]);
         setQuotes({});
         setGeminiDividends([]);
         setIsGuest(false);
         setCloudStatus('hidden');
+      } 
+      // Sem Sessão (Visitante/Convidado) na inicialização
+      else if (!currentSessionId && event === 'INITIAL_SESSION') {
+         const isGuestMode = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
+         if (isGuestMode) {
+            setSession(null);
+            setIsGuest(true);
+            setCloudStatus('disconnected');
+            const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
+            setLoadingProgress(25);
+            if (localTxs.length > 0) {
+                setTransactions(localTxs);
+                await syncMarketData(false, localTxs);
+            }
+         }
+      }
+
+      // Finaliza carregamento se for evento inicial ou mudança de estado
+      if (appLoading) {
+          setLoadingProgress(100);
+          // Pequeno delay para a animação da barra terminar
+          setTimeout(() => {
+              if (mounted) {
+                  setAppLoading(false);
+                  setIsAuthLoading(false);
+              }
+          }, 600);
       }
     });
 
@@ -355,7 +347,7 @@ const App: React.FC = () => {
       clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Executa apenas uma vez no mount
 
   // --- Realtime Subscription (Supabase) ---
   useEffect(() => {
