@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star } from 'lucide-react';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star, ArrowRightLeft } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
 import { ThemeType } from '../App';
 import { supabase } from '../services/supabase';
@@ -63,7 +63,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const [notifyMarket, setNotifyMarket] = useState(() => localStorage.getItem('investfiis_notify_market') === 'true');
   const [notifyUpdates, setNotifyUpdates] = useState(() => localStorage.getItem('investfiis_notify_updates') !== 'false');
   
-  const [backendStatus, setBackendStatus] = useState<'idle' | 'checking' | 'ok' | 'error'>('idle');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const isServiceWorkerActive = 'serviceWorker' in navigator;
@@ -83,6 +82,26 @@ export const Settings: React.FC<SettingsProps> = ({
   const [showConfirmAuthPassword, setShowConfirmAuthPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+
+  // Diagnostics State
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [diagState, setDiagState] = useState<{
+    step: 'idle' | 'running' | 'done' | 'error';
+    logs: { id: number, text: string, type: 'info' | 'success' | 'error' | 'warn' }[];
+    latency: number | null;
+    cloudCount: number | null;
+    localCount: number;
+    integrity: boolean | null;
+    writeTest: boolean | null;
+  }>({
+    step: 'idle',
+    logs: [],
+    latency: null,
+    cloudCount: null,
+    localCount: transactions.length,
+    integrity: null,
+    writeTest: null
+  });
 
   // Modal States
   const [showTerms, setShowTerms] = useState(false);
@@ -194,22 +213,6 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleLogout = async () => { await supabase.auth.signOut(); showMessage('info', 'Desconectado.'); };
-  
-  const handleTestBackend = async () => {
-    setBackendStatus('checking');
-    try {
-        const { error } = await supabase.functions.invoke('market-data-proxy', {
-            body: { type: 'test' }
-        });
-        if (error) throw error;
-        setBackendStatus('ok');
-        showMessage('success', 'Serviços de backend operacionais!');
-    } catch (e) {
-        setBackendStatus('error');
-        showMessage('error', 'Falha na comunicação com o servidor.');
-    }
-    setTimeout(() => setBackendStatus('idle'), 3000);
-  };
   
   const handleForceSync = async () => { setIsSyncing(true); await onSyncAll(true); setIsSyncing(false); };
   const handleClearQuoteCache = () => { localStorage.removeItem('investfiis_v3_quote_cache'); calculateStorage(); showMessage('success', 'Cache limpo.'); };
@@ -334,6 +337,88 @@ export const Settings: React.FC<SettingsProps> = ({
       } else {
           showMessage('error', 'Dispositivo não suporta autenticação web.');
       }
+  };
+
+  // Diagnostics Logic
+  const addLog = (text: string, type: 'info' | 'success' | 'error' | 'warn' = 'info') => {
+    setDiagState(prev => ({
+        ...prev,
+        logs: [...prev.logs, { id: Date.now(), text, type }]
+    }));
+  };
+
+  const runDiagnostics = async () => {
+    setDiagState({ step: 'running', logs: [], latency: null, cloudCount: null, localCount: transactions.length, integrity: null, writeTest: null });
+    
+    addLog('Iniciando diagnósticos profundos...');
+    
+    if (!navigator.onLine) {
+        addLog('Dispositivo offline. Testes cancelados.', 'error');
+        setDiagState(prev => ({ ...prev, step: 'error' }));
+        return;
+    }
+
+    if (!user) {
+        addLog('Usuário não autenticado (Modo Convidado). Nuvem inativa.', 'warn');
+        setDiagState(prev => ({ ...prev, step: 'done' }));
+        return;
+    }
+
+    try {
+        // 1. Teste de Latência
+        addLog('Testando latência de rede...');
+        const start = performance.now();
+        const { count, error: countError } = await supabase.from('transactions').select('*', { count: 'exact', head: true });
+        const end = performance.now();
+        const latency = Math.round(end - start);
+        
+        if (countError) throw countError;
+        setDiagState(prev => ({ ...prev, latency, cloudCount: count }));
+        addLog(`Latência: ${latency}ms. Itens na nuvem: ${count}`, latency < 500 ? 'success' : 'warn');
+
+        // 2. Integridade
+        const localCount = transactions.length;
+        if (localCount === count) {
+            setDiagState(prev => ({ ...prev, integrity: true }));
+            addLog('Integridade de contagem: OK', 'success');
+        } else {
+            setDiagState(prev => ({ ...prev, integrity: false }));
+            addLog(`Discrepância detectada! Local: ${localCount} vs Nuvem: ${count}`, 'error');
+        }
+
+        // 3. Teste de Escrita (Round Trip)
+        addLog('Testando permissões de escrita...');
+        const testTx = {
+            user_id: user.id,
+            ticker: 'DIAG_TEST',
+            type: 'BUY',
+            quantity: 0,
+            price: 0,
+            date: new Date().toISOString(),
+            asset_type: 'FII'
+        };
+        
+        const { data: inserted, error: insertError } = await supabase.from('transactions').insert(testTx).select();
+        if (insertError) throw insertError;
+        
+        if (inserted && inserted.length > 0) {
+            const idToDelete = inserted[0].id;
+            const { error: deleteError } = await supabase.from('transactions').delete().eq('id', idToDelete);
+            if (deleteError) throw deleteError;
+            setDiagState(prev => ({ ...prev, writeTest: true }));
+            addLog('Teste de escrita e remoção: Sucesso', 'success');
+        } else {
+            throw new Error("Falha ao inserir registro de teste");
+        }
+
+        setDiagState(prev => ({ ...prev, step: 'done' }));
+        addLog('Diagnóstico concluído com sucesso.', 'success');
+
+    } catch (e: any) {
+        console.error(e);
+        addLog(`Erro crítico: ${e.message}`, 'error');
+        setDiagState(prev => ({ ...prev, step: 'error' }));
+    }
   };
 
   const getSectionTitle = (section: string) => {
@@ -474,6 +559,32 @@ export const Settings: React.FC<SettingsProps> = ({
               </h2>
           </div>
           
+          {activeSection === 'integrations' && (
+            <div className="space-y-6">
+                <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Status da Sincronização</h3><button onClick={handleForceSync} disabled={isSyncing} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent active:scale-90 transition-all"><RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /></button></div>
+                     <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs"><span className="font-bold text-slate-400">Última Atualização</span>{lastSyncTime ? (<div className="flex items-center gap-2 text-emerald-500 font-bold"><span>{lastSyncTime.toLocaleTimeString('pt-BR')}</span><CheckCircle2 className="w-4 h-4" /></div>) : (<span className="font-bold text-slate-400">Pendente</span>)}</div>
+                </div>
+                
+                <Section title="Ferramentas">
+                    <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-white dark:bg-[#0f172a] rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all group">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center"><Activity className="w-5 h-5" /></div>
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Diagnóstico Profundo</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                </Section>
+
+                <Section title="Diagnóstico do App">
+                    <div className="bg-white dark:bg-[#0f172a] p-4 space-y-3">
+                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Wifi className="w-4 h-4" /> Conexão com a Internet</span><span className={`text-xs font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Online' : 'Offline'}</span></div>
+                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Smartphone className="w-4 h-4" /> Service Worker (PWA)</span><span className={`text-xs font-bold ${isServiceWorkerActive ? 'text-emerald-500' : 'text-rose-500'}`}>{isServiceWorkerActive ? 'Ativo' : 'Inativo'}</span></div>
+                    </div>
+                </Section>
+            </div>
+          )}
+
           {activeSection === 'security' && (
               <div className="space-y-6">
                    <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-6 rounded-[2.5rem] border border-emerald-500/20 text-center relative overflow-hidden">
@@ -673,30 +784,6 @@ export const Settings: React.FC<SettingsProps> = ({
              </div>
           )}
 
-          {activeSection === 'integrations' && (
-            <div className="space-y-6">
-                <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Status da Sincronização</h3><button onClick={handleForceSync} disabled={isSyncing} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 hover:text-accent active:scale-90 transition-all"><RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /></button></div>
-                     <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-2xl text-xs"><span className="font-bold text-slate-400">Última Atualização</span>{lastSyncTime ? (<div className="flex items-center gap-2 text-emerald-500 font-bold"><span>{lastSyncTime.toLocaleTimeString('pt-BR')}</span><CheckCircle2 className="w-4 h-4" /></div>) : (<span className="font-bold text-slate-400">Pendente</span>)}</div>
-                </div>
-                <Section title="Serviços de Backend (Edge Functions)">
-                    <div className="bg-white dark:bg-[#0f172a] p-6 space-y-4">
-                        <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center"><Server className="w-6 h-6" /></div><div><h3 className="font-bold text-slate-900 dark:text-white">Proxy de Dados</h3><div className="flex items-center gap-1.5 text-xs font-bold mt-1"><span className={`w-2 h-2 rounded-full ${backendStatus === 'ok' ? 'bg-emerald-500' : backendStatus === 'error' ? 'bg-rose-500' : 'bg-slate-400'}`}></span><span className={`${backendStatus === 'ok' ? 'text-emerald-500' : backendStatus === 'error' ? 'text-rose-500' : 'text-slate-400'}`}>{backendStatus === 'ok' ? 'Operacional' : backendStatus === 'checking' ? 'Testando...' : backendStatus === 'error' ? 'Falha' : 'Não verificado'}</span></div></div></div>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">As chaves de API agora são gerenciadas de forma segura no servidor.</p>
-                        <button onClick={handleTestBackend} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2">{backendStatus === 'checking' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Testar Conexão'}</button>
-                    </div>
-                </Section>
-                <Section title="Diagnóstico do App">
-                    <div className="bg-white dark:bg-[#0f172a] p-4 space-y-3">
-                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Wifi className="w-4 h-4" /> Conexão com a Internet</span><span className={`text-xs font-bold ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>{isOnline ? 'Online' : 'Offline'}</span></div>
-                       <div className="flex items-center justify-between p-2 rounded-lg"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300"><Smartphone className="w-4 h-4" /> Service Worker (PWA)</span><span className={`text-xs font-bold ${isServiceWorkerActive ? 'text-emerald-500' : 'text-rose-500'}`}>{isServiceWorkerActive ? 'Ativo' : 'Inativo'}</span></div>
-                    </div>
-                </Section>
-            </div>
-          )}
-
           {activeSection === 'system' && (
               <div className="space-y-6">
                   <Section title="Perigo">
@@ -779,6 +866,76 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
         </div>
       )}
+
+      {/* Cloud Diagnostics Modal */}
+      <SwipeableModal isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)}>
+        <div className="px-6 py-4 pb-8 min-h-[50vh]">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-500">
+                        <Activity className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-tight">Diagnóstico</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saúde da Nuvem</p>
+                    </div>
+                </div>
+                {diagState.step !== 'running' && (
+                    <button onClick={runDiagnostics} className="px-4 py-2 bg-slate-100 dark:bg-white/5 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-colors">Re-testar</button>
+                )}
+            </div>
+
+            <div className="space-y-4 font-mono text-xs">
+                {/* Console Log */}
+                <div className="bg-slate-900 rounded-xl p-4 min-h-[200px] max-h-[300px] overflow-y-auto border border-white/10 shadow-inner">
+                    {diagState.logs.length === 0 ? (
+                        <span className="text-slate-500 animate-pulse">Aguardando início...</span>
+                    ) : (
+                        diagState.logs.map(log => (
+                            <div key={log.id} className={`mb-1.5 flex gap-2 ${
+                                log.type === 'error' ? 'text-rose-400' :
+                                log.type === 'success' ? 'text-emerald-400' :
+                                log.type === 'warn' ? 'text-amber-400' :
+                                'text-slate-300'
+                            }`}>
+                                <span className="opacity-50">[{new Date(log.id).toLocaleTimeString('pt-BR', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'})}]</span>
+                                <span>{log.text}</span>
+                            </div>
+                        ))
+                    )}
+                    {diagState.step === 'running' && <div className="mt-2 h-1 w-4 bg-emerald-500 animate-pulse"></div>}
+                </div>
+
+                {/* Summary Cards */}
+                {diagState.step !== 'idle' && (
+                    <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
+                        <div className={`p-4 rounded-2xl border ${diagState.latency && diagState.latency < 500 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5'}`}>
+                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Latência</p>
+                            <p className="text-xl font-black">{diagState.latency ? `${diagState.latency}ms` : '...'}</p>
+                        </div>
+                        <div className={`p-4 rounded-2xl border ${diagState.integrity === false ? 'bg-rose-500/10 border-rose-500/20' : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5'}`}>
+                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Sincronia</p>
+                            <p className="text-xl font-black">{diagState.cloudCount !== null ? `${diagState.localCount}/${diagState.cloudCount}` : '...'}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Actions */}
+                {diagState.integrity === false && (
+                    <div className="p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20 text-center anim-fade-in-up is-visible">
+                        <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                        <p className="text-amber-500 font-bold mb-3">Discrepância Detectada</p>
+                        <button 
+                            onClick={() => { setShowDiagnostics(false); onSyncAll(true); }}
+                            className="w-full py-3 bg-amber-500 text-white rounded-xl font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                        >
+                            <ArrowRightLeft className="w-4 h-4" /> Forçar Ressincronização
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+      </SwipeableModal>
 
       <ConfirmationModal
         isOpen={!!fileToRestore}

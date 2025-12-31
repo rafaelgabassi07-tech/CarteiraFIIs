@@ -222,6 +222,14 @@ const App: React.FC = () => {
     }
   }, [showToast, syncMarketData, appLoading]);
 
+  const handleSyncAll = useCallback(async (force: boolean) => {
+    if (force && !isGuest && session) {
+        await fetchTransactionsFromCloud();
+    } else {
+        await syncMarketData(force);
+    }
+  }, [fetchTransactionsFromCloud, syncMarketData, isGuest, session]);
+
   const migrateGuestDataToCloud = useCallback(async (user_id: string) => {
     const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]') as Transaction[];
     if (localTxs.length === 0) return;
@@ -619,7 +627,7 @@ const App: React.FC = () => {
                   updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
                   onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} 
                   lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} 
-                  lastSyncTime={lastSyncTime} onSyncAll={() => syncMarketData(false)} 
+                  lastSyncTime={lastSyncTime} onSyncAll={handleSyncAll} 
                 />
               ) : (
                 <div key={currentTab} className="anim-fade-in is-visible">
