@@ -15,7 +15,7 @@ interface SettingsProps {
   onImportTransactions: (data: Transaction[]) => void;
   geminiDividends: DividendReceipt[];
   onImportDividends: (data: DividendReceipt[]) => void;
-  onResetApp: () => void;
+  onForceResync: () => void;
   theme: ThemeType;
   onSetTheme: (theme: ThemeType) => void;
   accentColor: string;
@@ -39,7 +39,7 @@ interface SettingsProps {
 export const Settings: React.FC<SettingsProps> = ({ 
   user,
   transactions, onImportTransactions,
-  geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
+  geminiDividends, onImportDividends, onForceResync, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
   appVersion, availableVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
   pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll, currentVersionDate
@@ -444,7 +444,7 @@ export const Settings: React.FC<SettingsProps> = ({
         case 'privacy': return 'Privacidade';
         case 'integrations': return 'Conexões e Serviços';
         case 'data': return 'Alocação e Backup';
-        case 'system': return 'Sistema';
+        case 'system': return 'Diagnóstico e Reparo';
         case 'updates': return 'Atualizações';
         case 'about': return 'Sobre o App';
         case 'security': return 'Segurança';
@@ -513,649 +513,272 @@ export const Settings: React.FC<SettingsProps> = ({
   );
 
   const Toggle = ({ label, checked, onChange, icon: Icon, description }: any) => (
-    <div onClick={onChange} className={`flex items-center justify-between p-4 rounded-3xl cursor-pointer active:scale-[0.99] transition-all border border-slate-100 dark:border-white/5 ${checked ? 'bg-white dark:bg-[#0f172a] shadow-sm' : 'bg-slate-50 dark:bg-white/5'}`}>
-        <div className="flex items-center gap-3">
-          {Icon && <div className={`p-2 rounded-lg ${checked ? 'bg-accent/10 text-accent' : 'bg-slate-200 dark:bg-white/10 text-slate-400'}`}><Icon className="w-4 h-4" strokeWidth={2.2} /></div>}
-          <div>
-            <span className={`text-sm font-semibold block ${checked ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{label}</span>
-            {description && <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">{description}</p>}
-          </div>
+    <div className="w-full flex items-start justify-between p-4 bg-white dark:bg-[#0f172a] hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-b last:border-0 border-slate-100 dark:border-white/5 group">
+        <div className="flex items-start gap-4 flex-1 min-w-0">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400">
+                <Icon className="w-5 h-5" strokeWidth={2} />
+            </div>
+            <div className="flex flex-col">
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</span>
+                {description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{description}</p>}
+            </div>
         </div>
-        <div className={`transition-all duration-300 ${checked ? 'text-accent' : 'text-slate-300 dark:text-slate-600'}`}>
-            {checked ? <ToggleRight className="w-9 h-9" /> : <ToggleLeft className="w-9 h-9" />}
-        </div>
+        <button onClick={() => onChange(!checked)} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors shrink-0 ${checked ? 'bg-accent' : 'bg-slate-200 dark:bg-white/10'}`}>
+            <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
     </div>
   );
 
   return (
-    <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-      {message && <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3.5 rounded-2xl flex items-center gap-3 shadow-2xl z-[60] text-[10px] font-black uppercase tracking-widest text-white transition-all transform anim-fade-in-up is-visible ${message.type === 'success' ? 'bg-emerald-500' : message.type === 'info' ? 'bg-indigo-500' : 'bg-rose-500'}`}>{message.text}</div>}
-
-      {activeSection === 'menu' ? (
-        <>
-            <div className="mb-6 anim-fade-in-up is-visible">
-               <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Conta Cloud</h3>
-               <div className="rounded-[2rem] overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5 bg-white dark:bg-[#0f172a]">
-                 <div className="p-6 space-y-4">
-                     <div className="flex items-center gap-4">
-                         <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><User className="w-6 h-6" /></div>
-                         <div className="overflow-hidden"><h3 className="font-bold text-slate-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-slate-500 truncate">{user ? user.email : 'Carregando...'}</p></div>
-                     </div>
-                     <button onClick={handleLogout} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
-                 </div>
-               </div>
-            </div>
-
-            <Section title="Preferências">
-                <MenuItem icon={Palette} label="Aparência" onClick={() => setActiveSection('appearance')} colorClass="bg-indigo-500/10 text-indigo-500" />
-                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Ativado' : ''} colorClass="bg-amber-500/10 text-amber-500" />
-                <MenuItem icon={privacyMode ? EyeOff : Eye} label="Privacidade" onClick={() => setActiveSection('privacy')} value={privacyMode ? 'Ativado' : 'Público'} colorClass="bg-slate-500/10 text-slate-500" />
-                <MenuItem icon={ShieldCheck} label="Segurança" onClick={() => setActiveSection('security')} value={passcode ? 'Protegido' : 'Desativado'} colorClass="bg-emerald-500/10 text-emerald-500" />
-            </Section>
-
-            <Section title="Dados & Sincronização">
-                <MenuItem icon={Globe} label="Conexões e Serviços" onClick={() => setActiveSection('integrations')} value="Online" colorClass="bg-sky-500/10 text-sky-500" />
-                <MenuItem icon={Database} label="Backup e IA Cache" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} colorClass="bg-emerald-500/10 text-emerald-500" />
-            </Section>
-
-            <Section title="Sistema">
-                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} colorClass="bg-purple-500/10 text-purple-500" />
-                <MenuItem icon={Info} label="Sobre o APP" onClick={() => setActiveSection('about')} colorClass="bg-slate-500/10 text-slate-500" />
-                <MenuItem icon={ShieldAlert} label="Resetar Aplicativo" onClick={() => setActiveSection('system')} isDestructive />
-            </Section>
-            
-            <div className="text-center mt-8 opacity-40"><p className="text-[10px] font-bold uppercase tracking-widest">InvestFIIs Ultra</p><p className="text-[9px]">Versão {appVersion}</p></div>
-        </>
-      ) : (
-        <div className="anim-fade-in is-visible pt-2">
-          <div className="flex items-center gap-3 mb-6 px-1">
-              <button 
-                onClick={() => setActiveSection('menu')} 
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-all active:scale-95"
-              >
-                  <ArrowLeft className="w-4 h-4" strokeWidth={3} />
-              </button>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                  {getSectionTitle(activeSection)}
-              </h2>
-          </div>
-          
-          {activeSection === 'integrations' && (
-            <div className="space-y-6">
-                
-                {/* Central de Controle de Mercado (NOVO) */}
-                <div className="bg-gradient-to-br from-indigo-500/5 via-violet-500/5 to-transparent p-6 rounded-[2.5rem] border border-indigo-500/10 shadow-xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] -mr-24 -mt-24 pointer-events-none"></div>
-                    
-                    <div className="relative z-10">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-14 h-14 bg-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                                <Activity className="w-7 h-7" strokeWidth={1.5} />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">Central de Mercado</h3>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Gestão de Cotações e IA</p>
-                            </div>
-                        </div>
-
-                        <button 
-                            onClick={handleForceMarketUpdate}
-                            disabled={isMarketUpdating}
-                            className="w-full h-10 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden group"
-                        >
-                             {isMarketUpdating ? (
-                                <>
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  <span>Atualizando...</span>
-                                </>
-                             ) : (
-                                <>
-                                  <RefreshCcw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-700" />
-                                  <span>Forçar Atualização</span>
-                                </>
-                             )}
-                             {/* Shine Effect */}
-                             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
-                        </button>
-                        
-                        <div className="grid grid-cols-2 gap-3 mt-4">
-                            <div className="bg-white/50 dark:bg-black/20 p-3 rounded-2xl border border-indigo-100 dark:border-white/5 backdrop-blur-sm">
-                                <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mb-1">Última Checagem</p>
-                                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums flex items-center gap-1.5">
-                                    <Clock className="w-3 h-3 text-slate-400" />
-                                    {lastSyncTime ? lastSyncTime.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--'}
-                                </p>
-                            </div>
-                            <div className="bg-white/50 dark:bg-black/20 p-3 rounded-2xl border border-indigo-100 dark:border-white/5 backdrop-blur-sm">
-                                <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mb-1">Status da API</p>
-                                <p className="text-xs font-bold text-emerald-500 tabular-nums flex items-center gap-1.5">
-                                    <Signal className="w-3 h-3" />
-                                    Online
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Status da Nuvem e Bolsa */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none group-hover:bg-sky-500/10 transition-colors"></div>
-                        <div className="relative z-10">
-                            <div className="w-10 h-10 bg-sky-500/10 text-sky-500 rounded-xl flex items-center justify-center mb-2"><Cloud className="w-5 h-5" /></div>
-                            <p className="text-xs font-bold text-slate-900 dark:text-white">Cloud Sync</p>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-1 flex items-center gap-1.5 ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                                {isOnline ? 'Conectado' : 'Offline'}
-                            </p>
-                        </div>
-                        {isOnline && (
-                             <button onClick={handleForceSync} disabled={isSyncing} className="absolute bottom-3 right-3 p-2 bg-slate-50 dark:bg-white/5 rounded-full text-slate-400 hover:text-sky-500 transition-colors">
-                                 <RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                             </button>
-                        )}
-                    </div>
-
-                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
-                        <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none transition-colors ${marketStatus.bg}`}></div>
-                        <div className="relative z-10">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${marketStatus.bg} ${marketStatus.color}`}><marketStatus.icon className="w-5 h-5" /></div>
-                            <p className="text-xs font-bold text-slate-900 dark:text-white">B3 (Bolsa)</p>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${marketStatus.color}`}>
-                                {marketStatus.label}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                {/* Services Health List */}
-                <Section title="Saúde dos Serviços">
-                    <div className="grid grid-cols-1 gap-2 p-2 bg-white dark:bg-[#0f172a]">
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg"><Database className="w-4 h-4" /></div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Supabase</p>
-                                    <p className="text-[9px] text-slate-400 font-medium">Banco de Dados</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Operacional</span>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg"><BarChart3 className="w-4 h-4" /></div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Brapi API</p>
-                                    <p className="text-[9px] text-slate-400 font-medium">Cotações (15min delay)</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20">
-                                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">Online</span>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><Sparkles className="w-4 h-4" /></div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Gemini AI</p>
-                                    <p className="text-[9px] text-slate-400 font-medium">Proventos & Análise</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase">v2.5 Flash</span>
-                            </div>
-                        </div>
-                    </div>
-                </Section>
-
-                <Section title="Rede e Dados">
-                    <div className="p-1 bg-white dark:bg-[#0f172a]">
-                        <Toggle 
-                           label="Modo Economia de Dados" 
-                           description="Reduz atualizações automáticas em redes móveis" 
-                           icon={WifiOff} 
-                           checked={dataSaver} 
-                           onChange={() => setDataSaver(!dataSaver)} 
-                        />
-                    </div>
-                </Section>
-
-                {/* Advanced Diagnostics Button */}
-                <div className="pt-2">
-                     <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200/50 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
-                            <div className="text-left">
-                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 block">Diagnóstico Avançado</span>
-                                <span className="text-[9px] text-slate-400">Teste de latência e integridade</span>
-                            </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                </div>
-            </div>
-          )}
-
-          {activeSection === 'security' && (
-              <div className="space-y-6">
-                   <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-6 rounded-[2.5rem] border border-emerald-500/20 text-center relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                        <ShieldCheck className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Proteção do App</h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Adicione uma camada extra de segurança ao abrir o InvestFIIs.</p>
-                        
-                        {!passcode ? (
-                            <button 
-                                onClick={handleEnablePin}
-                                className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                            >
-                                Ativar Bloqueio
-                            </button>
-                        ) : (
-                            <div className="flex flex-col gap-2">
-                                <div className="px-4 py-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4" /> Protegido com PIN
-                                </div>
-                                <button onClick={handleDisableSecurity} className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-2 hover:underline">Remover Proteção</button>
-                            </div>
-                        )}
-                   </div>
-
-                   {passcode && (
-                       <Section title="Métodos de Desbloqueio">
-                           <Toggle 
-                               label="Biometria / FaceID" 
-                               description="Usar impressão digital ou reconhecimento facial do dispositivo" 
-                               icon={Fingerprint} 
-                               checked={biometricsEnabled} 
-                               onChange={handleToggleBiometrics} 
-                            />
-                       </Section>
-                   )}
-              </div>
-          )}
-
-          {activeSection === 'appearance' && (
-            <div className="space-y-8">
-              <div>
-                  <h3 className="px-4 mb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tema do Sistema</h3>
-                  <div className="bg-slate-100 dark:bg-white/5 p-1 rounded-[1.5rem] flex items-center">
-                      {[{ id: 'light', icon: Sun, label: 'Claro' }, { id: 'dark', icon: Moon, label: 'Escuro' }, { id: 'system', icon: Monitor, label: 'Auto' }].map((mode) => (
-                          <button 
-                            key={mode.id} 
-                            onClick={() => onSetTheme(mode.id as ThemeType)} 
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[1.2rem] transition-all duration-300 ${theme === mode.id ? 'bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white shadow-sm scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
-                          >
-                              <mode.icon className="w-4 h-4" strokeWidth={2.5} />
-                              <span className="text-[10px] font-bold uppercase tracking-wider">{mode.label}</span>
-                          </button>
-                      ))}
-                  </div>
-              </div>
-
-              <Section title="Efeitos & Acessibilidade">
-                  <Toggle label="Efeito Glassmorphism" description="Transparência e desfoque nos elementos" icon={Layers} checked={glassMode} onChange={() => setGlassMode(!glassMode)} />
-              </Section>
-            </div>
-          )}
-
-          {activeSection === 'privacy' && (
-            <div className="space-y-6">
-                <div className="bg-gradient-to-br from-slate-500/10 to-slate-700/10 p-6 rounded-[2.5rem] border border-slate-500/20 text-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                    {privacyMode ? <EyeOff className="w-10 h-10 text-slate-500 mx-auto mb-3" /> : <Eye className="w-10 h-10 text-slate-500 mx-auto mb-3" />}
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Configurações de Privacidade</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Oculta valores sensíveis da tela para evitar olhares curiosos em público.</p>
-                    <button 
-                        onClick={() => onSetPrivacyMode(!privacyMode)}
-                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-rose-500 text-white' : 'bg-slate-700 text-white'}`}
-                    >
-                        {privacyMode ? 'Desativar Agora' : 'Ativar Modo Privacidade'}
-                    </button>
-                </div>
-
-                <Section title="Estilo do Desfoque">
-                  <div className="p-4 bg-white dark:bg-[#0f172a] space-y-3">
-                      <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 bg-slate-100 dark:bg-white/10 rounded-lg text-slate-500"><Aperture className="w-4 h-4" /></div>
-                          <div>
-                              <span className="text-sm font-semibold block text-slate-900 dark:text-white">Intensidade do Blur</span>
-                              <p className="text-[10px] text-slate-400 font-medium">Ajuste o quão ilegível os dados ficam</p>
-                          </div>
-                      </div>
-                      <div className="flex bg-slate-50 dark:bg-white/5 p-1 rounded-xl">
-                          {['low', 'medium', 'high'].map((level) => (
-                              <button
-                                key={level}
-                                onClick={() => setBlurIntensity(level as any)}
-                                className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${blurIntensity === level ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
-                              >
-                                {level === 'low' ? 'Suave' : level === 'medium' ? 'Médio' : 'Forte'}
-                              </button>
-                          ))}
-                      </div>
-                  </div>
-              </Section>
-            </div>
-          )}
-
-          {activeSection === 'about' && (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-12 py-10">
-                <div className="text-center relative">
-                    <div className="absolute inset-0 bg-accent blur-[80px] opacity-20 rounded-full"></div>
-                    <div className="relative z-10">
-                        <div className="w-24 h-24 bg-white dark:bg-white/5 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl ring-1 ring-slate-900/5 dark:ring-white/10">
-                            <Wallet className="w-10 h-10 text-slate-900 dark:text-white" strokeWidth={1.5} />
-                        </div>
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">InvestFIIs</h2>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-white/5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">v{appVersion} Pro</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-6 w-full max-w-xs text-center">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                        Feito com paixão para simplificar sua jornada de investimentos. Focado em privacidade, performance e elegância.
-                    </p>
-                    
-                    <div className="flex justify-center gap-8 pt-4 border-t border-slate-200 dark:border-white/5 w-3/4 mx-auto">
-                        <button onClick={() => setShowTerms(true)} className="text-[10px] font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest transition-colors">Termos</button>
-                        <button onClick={() => setShowPrivacy(true)} className="text-[10px] font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest transition-colors">Privacidade</button>
-                    </div>
-                </div>
-                
-                <div className="text-[9px] text-slate-300 dark:text-slate-600 font-mono">
-                    Build 2025.06.29 • Cloud Only
-                </div>
-            </div>
-          )}
-
-          {activeSection === 'notifications' && (
-            <div className="space-y-6">
-                <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 rounded-[2.5rem] border border-amber-500/20 text-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                    <Bell className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Push Notifications</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Receba alertas em tempo real sobre dividendos e eventos da carteira.</p>
-                    <button 
-                        onClick={onRequestPushPermission}
-                        disabled={pushEnabled}
-                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${pushEnabled ? 'bg-emerald-500 text-white cursor-default' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
-                    >
-                        {pushEnabled ? 'Ativado ✓' : 'Ativar Notificações'}
-                    </button>
-                </div>
-
-                <div className="mb-6 anim-fade-in-up is-visible">
-                    <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Alertas Específicos</h3>
-                    <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5 space-y-3 p-3 bg-white dark:bg-[#0f172a]">
-                        <Toggle label="Pagamentos Recebidos" description="Quando o dinheiro cair na conta" icon={BadgeDollarSignIcon} checked={notifyDivs} onChange={() => setNotifyDivs(!notifyDivs)} />
-                        <Toggle label="Data Com" description="Avisar no último dia para garantir proventos" icon={Calendar} checked={notifyDataCom} onChange={() => setNotifyDataCom(!notifyDataCom)} />
-                        <Toggle label="Metas Atingidas" description="Magic Number e objetivos de renda" icon={Target} checked={notifyGoals} onChange={() => setNotifyGoals(!notifyGoals)} />
-                        <Toggle label="Atualizações do App" description="Novas versões e melhorias" icon={Rocket} checked={notifyUpdates} onChange={() => setNotifyUpdates(!notifyUpdates)} />
-                    </div>
-                </div>
-            </div>
-          )}
-
-          {activeSection === 'data' && (
-             <div className="space-y-6">
-                <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-6 rounded-[2.5rem] border border-indigo-500/20 text-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                    <Database className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Backup & Restauração</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 max-w-[250px] mx-auto">Salve uma cópia de segurança dos seus dados ou restaure um backup anterior.</p>
-                    <div className="grid grid-cols-2 gap-3">
-                        <button onClick={handleExport} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-4 rounded-3xl flex flex-col items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
-                            <Download className="w-5 h-5" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Exportar</span>
-                        </button>
-                        <button onClick={handleImportClick} className="bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white p-4 rounded-3xl flex flex-col items-center justify-center gap-2 border border-slate-200/50 dark:border-white/5 active:scale-95 transition-all">
-                            <Upload className="w-5 h-5" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Importar</span>
-                        </button>
-                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                    </div>
-                </div>
-
-                 <Section title="Gerenciamento de Cache">
-                    <div className="bg-white dark:bg-[#0f172a] p-4 space-y-2">
-                        <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5">
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Cache de Cotações</span>
-                            <span className="text-xs text-slate-400 font-mono">{formatBytes(storageData.breakdown.quotes)}</span>
-                        </button>
-                        <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5">
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Dados de IA (Gemini)</span>
-                            <span className="text-xs text-slate-400 font-mono">{formatBytes(storageData.breakdown.divs)}</span>
-                        </button>
-                    </div>
-                 </Section>
-             </div>
-          )}
-
-          {activeSection === 'system' && (
-              <div className="space-y-6">
-                  <Section title="Perigo">
-                      <div className="p-6 bg-rose-50 dark:bg-rose-500/5 flex flex-col items-center text-center">
-                          <ShieldAlert className="w-10 h-10 text-rose-500 mb-3" />
-                          <h3 className="font-bold text-rose-600 dark:text-rose-400 mb-1">Apagar Tudo</h3>
-                          <p className="text-xs text-rose-400 mb-4 max-w-[200px]">Esta ação removerá todas as transações e configurações permanentemente.</p>
-                          <button onClick={onResetApp} className="px-6 py-3 bg-rose-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest active:scale-95 shadow-lg shadow-rose-500/20">Confirmar Reset</button>
-                      </div>
-                  </Section>
-              </div>
-          )}
-          
-          {activeSection === 'updates' && (
-             <div className="h-[calc(100dvh-140px)] -mt-2 flex flex-col bg-gradient-to-b from-[#0b1121] to-[#020617] rounded-3xl overflow-hidden shadow-2xl border border-white/5">
-                {/* --- Animated Header --- */}
-                <div className={`relative z-10 text-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'pt-4 pb-4 backdrop-blur-md bg-black/20 border-b border-white/5' : 'pt-10 pb-6'}`}>
-                    <div className={`relative mx-auto transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'w-16 h-16 mb-2' : 'w-24 h-24 mb-4'}`}>
-                        <div className={`w-full h-full rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-white/5 scale-110' : updateAvailable ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                            {checkStatus === 'checking' ? (
-                                <div className="absolute inset-0 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
-                            ) : updateAvailable ? (
-                                <Rocket className="w-1/2 h-1/2 animate-bounce" strokeWidth={1.5} />
-                            ) : (
-                                <CheckCircle2 className="w-1/2 h-1/2" strokeWidth={1.5} />
-                            )}
-                        </div>
-                        {checkStatus === 'checking' && <div className="absolute inset-0 rounded-full animate-ping bg-indigo-500/10"></div>}
-                    </div>
-                    
-                    <h2 className={`font-black text-white tracking-tighter transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'text-xl' : 'text-3xl'}`}>
-                        {updateAvailable ? 'Nova Versão' : 'Tudo em Dia'}
-                    </h2>
-                    
-                    <div className={`overflow-hidden transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'max-h-0 opacity-0' : 'max-h-12 opacity-100'}`}>
-                        <p className="text-sm font-medium text-slate-400 mt-1 mb-4">
-                            {updateAvailable ? `A versão ${availableVersion || ''} está disponível.` : `Você está rodando a v${appVersion}`}
-                        </p>
-                    </div>
-
-                    <div className="flex justify-center gap-3">
-                      <button 
-                          onClick={handleCheckUpdate}
-                          disabled={checkStatus === 'checking'}
-                          className={`group relative overflow-hidden px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all shadow-xl hover:shadow-2xl active:scale-95 flex items-center gap-2 duration-500 ease-out-quint ${isHeaderCompact ? 'scale-90' : 'scale-100'} ${
-                              updateAvailable 
-                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30' 
-                              : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-indigo-500/30'
-                          }`}
-                      >
-                          <span className="relative z-10 flex items-center gap-2">
-                              {checkStatus === 'checking' ? <>Buscando...</> : updateAvailable ? <><Download className="w-4 h-4" /> Atualizar</> : <><RefreshCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" /> Verificar</>}
-                          </span>
-                          <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
-                      </button>
-                    </div>
-                </div>
-                
-                {/* --- Scrollable Content --- */}
-                <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-5 p-4 pb-20 overscroll-contain">
-                   
-                   {/* Technical Details Grid */}
-                   <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
-                      <DetailCard label="Versão Instalada" value={`v${appVersion}`} icon={GitCommit} color="text-indigo-400" />
-                      <DetailCard label="Data de Lançamento" value={formatDate(currentVersionDate)} icon={Calendar} color="text-slate-200" />
-                      <DetailCard label="Última Verificação" value={formatTime(lastChecked)} icon={Clock} color="text-slate-400" />
-                      <DetailCard label="Canal" value="Stable/Cloud" icon={Server} color="text-emerald-500" />
-                   </div>
-
-                   {/* Release Notes */}
-                   {(releaseNotes && releaseNotes.length > 0) && (
-                      <div className="space-y-3">
-                         <h3 className={`text-xs font-bold text-slate-500 uppercase tracking-widest pl-2`}>
-                           Notas da v{availableVersion || appVersion}
-                         </h3>
-                         {releaseNotes.map((note, i) => {
-                            const { Icon, color, bg } = getNoteIconAndColor(note.type);
-                            return (
-                              <div key={i} className="flex gap-4 items-start p-4 bg-white/5 rounded-2xl border border-white/5">
-                                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${bg} ${color}`}>
-                                      <Icon className="w-4 h-4" strokeWidth={2.5} />
-                                  </div>
-                                  <div>
-                                      <h4 className="text-sm font-bold text-white leading-tight mb-1">{note.title}</h4>
-                                      <p className="text-xs text-slate-400 leading-relaxed font-medium">{note.desc}</p>
-                                  </div>
-                              </div>
-                            );
-                         })}
-                      </div>
-                   )}
-                </div>
-             </div>
-          )}
+    <div className="pt-24 pb-28 max-w-lg mx-auto anim-fade-in-up is-visible">
+      {message && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+            {message.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400"/>}
+            {message.type === 'error' && <AlertTriangle className="w-4 h-4 text-rose-400"/>}
+            {message.type === 'info' && <Info className="w-4 h-4 text-sky-400"/>}
+            {message.text}
         </div>
       )}
 
-      {/* Cloud Diagnostics Modal */}
-      <SwipeableModal isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)}>
-        <div className="px-6 py-4 pb-8 min-h-[50vh]">
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-500">
-                        <Activity className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-tight">Diagnóstico</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saúde da Nuvem</p>
-                    </div>
-                </div>
-                {diagState.step !== 'running' && (
-                    <button onClick={runDiagnostics} className="px-4 py-2 bg-slate-100 dark:bg-white/5 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-colors">Re-testar</button>
-                )}
+      {activeSection !== 'menu' && (
+        <div className="px-4 mb-4">
+          <button onClick={() => setActiveSection('menu')} className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-accent transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            <span>Voltar</span>
+          </button>
+        </div>
+      )}
+
+      {activeSection === 'menu' && (
+        <div className="px-4">
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-white dark:bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-slate-200 dark:border-white/5 shadow-sm">
+                <User className="w-8 h-8 text-slate-400" />
             </div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate max-w-[250px] mx-auto">{user.email}</h2>
+            <p className="text-xs text-slate-400 font-medium">Conta Gratuita</p>
+          </div>
+          
+          <Section title="Geral">
+            <MenuItem icon={Palette} label="Aparência" value={theme.charAt(0).toUpperCase() + theme.slice(1)} onClick={() => setActiveSection('appearance')} />
+            <MenuItem icon={Bell} label="Notificações" value={pushEnabled ? 'Ativadas' : 'Inativas'} onClick={() => setActiveSection('notifications')} />
+            <MenuItem icon={EyeOff} label="Privacidade" value={privacyMode ? 'Ativado' : 'Desativado'} onClick={() => setActiveSection('privacy')} />
+            <MenuItem icon={Shield} label="Segurança" value={passcode ? 'PIN Ativado' : 'Inativo'} onClick={() => setActiveSection('security')} />
+          </Section>
 
-            <div className="space-y-4 font-mono text-xs">
-                {/* Console Log */}
-                <div className="bg-slate-900 rounded-xl p-4 min-h-[200px] max-h-[300px] overflow-y-auto border border-white/10 shadow-inner">
-                    {diagState.logs.length === 0 ? (
-                        <span className="text-slate-500 animate-pulse">Aguardando início...</span>
-                    ) : (
-                        diagState.logs.map(log => (
-                            <div key={log.id} className={`mb-1.5 flex gap-2 ${
-                                log.type === 'error' ? 'text-rose-400' :
-                                log.type === 'success' ? 'text-emerald-400' :
-                                log.type === 'warn' ? 'text-amber-400' :
-                                'text-slate-300'
-                            }`}>
-                                <span className="opacity-50">[{new Date(log.id).toLocaleTimeString('pt-BR', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'})}]</span>
-                                <span>{log.text}</span>
-                            </div>
-                        ))
-                    )}
-                    {diagState.step === 'running' && <div className="mt-2 h-1 w-4 bg-emerald-500 animate-pulse"></div>}
+          <Section title="Dados & Sincronização">
+            <MenuItem icon={Database} label="Backup e Restauração" onClick={() => setActiveSection('data')} />
+            <MenuItem icon={Cpu} label="Diagnóstico e Reparo" onClick={() => setActiveSection('system')} colorClass="bg-amber-500/10 text-amber-500"/>
+          </Section>
+
+          <Section title="Aplicativo">
+            <MenuItem icon={Rocket} label="Atualizações" value={`v${appVersion}`} hasUpdate={updateAvailable} onClick={() => setActiveSection('updates')} />
+            <MenuItem icon={Info} label="Sobre o App" onClick={() => setActiveSection('about')} />
+          </Section>
+
+          <Section>
+            <MenuItem icon={LogOut} label="Sair da Conta" onClick={handleLogout} isDestructive />
+          </Section>
+        </div>
+      )}
+
+      {activeSection === 'appearance' && (
+        <div className="px-4">
+            <Section title="Tema do App">
+                <div className="p-4 grid grid-cols-3 gap-3 bg-white dark:bg-[#0f172a]">
+                    <button onClick={() => onSetTheme('light')} className={`py-3 rounded-xl border-2 transition-all text-xs font-bold flex items-center justify-center gap-2 ${theme === 'light' ? 'border-accent bg-accent/5 text-accent' : 'border-transparent bg-slate-100 dark:bg-white/5 text-slate-500'}`}><Sun className="w-4 h-4"/> Claro</button>
+                    <button onClick={() => onSetTheme('dark')} className={`py-3 rounded-xl border-2 transition-all text-xs font-bold flex items-center justify-center gap-2 ${theme === 'dark' ? 'border-accent bg-accent/5 text-accent' : 'border-transparent bg-slate-100 dark:bg-white/5 text-slate-500'}`}><Moon className="w-4 h-4"/> Escuro</button>
+                    <button onClick={() => onSetTheme('system')} className={`py-3 rounded-xl border-2 transition-all text-xs font-bold flex items-center justify-center gap-2 ${theme === 'system' ? 'border-accent bg-accent/5 text-accent' : 'border-transparent bg-slate-100 dark:bg-white/5 text-slate-500'}`}><Monitor className="w-4 h-4"/> Sistema</button>
                 </div>
-
-                {/* Summary Cards */}
-                {diagState.step !== 'idle' && (
-                    <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
-                        <div className={`p-4 rounded-2xl border ${diagState.latency && diagState.latency < 500 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5'}`}>
-                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Latência</p>
-                            <p className="text-xl font-black">{diagState.latency ? `${diagState.latency}ms` : '...'}</p>
-                        </div>
-                        <div className={`p-4 rounded-2xl border ${diagState.integrity === false ? 'bg-rose-500/10 border-rose-500/20' : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5'}`}>
-                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Sincronia</p>
-                            <p className="text-xl font-black">{diagState.cloudCount !== null ? `${diagState.localCount}/${diagState.cloudCount}` : '...'}</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Actions */}
-                {diagState.integrity === false && (
-                    <div className="p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20 text-center anim-fade-in-up is-visible">
-                        <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                        <p className="text-amber-500 font-bold mb-3">Discrepância Detectada</p>
-                        <button 
-                            onClick={() => { setShowDiagnostics(false); onSyncAll(true); }}
-                            className="w-full py-3 bg-amber-500 text-white rounded-xl font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
-                        >
-                            <ArrowRightLeft className="w-4 h-4" /> Forçar Ressincronização
+            </Section>
+            <Section title="Cor de Destaque">
+                <div className="p-4 grid grid-cols-6 gap-3 bg-white dark:bg-[#0f172a]">
+                    {['#0ea5e9', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899'].map(color => (
+                        <button key={color} onClick={() => onSetAccentColor(color)} className="w-10 h-10 rounded-full transition-all active:scale-90 flex items-center justify-center" style={{backgroundColor: color}}>
+                            {accentColor === color && <Check className="w-5 h-5 text-white" strokeWidth={3} />}
                         </button>
-                    </div>
-                )}
-            </div>
-        </div>
-      </SwipeableModal>
-
-      <ConfirmationModal
-        isOpen={!!fileToRestore}
-        title="Restaurar Backup"
-        message="Atenção: Restaurar um backup substituirá TODOS os seus dados atuais. Esta ação não pode ser desfeita. Deseja continuar?"
-        onConfirm={handleConfirmRestore}
-        onCancel={() => setFileToRestore(null)}
-      />
-
-      {/* Security Setup Modal */}
-      <SwipeableModal isOpen={showPinSetup} onClose={() => setShowPinSetup(false)}>
-        <div className="px-6 py-4">
-             <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                    <KeyRound className="w-8 h-8 text-slate-400" strokeWidth={1.5} />
+                    ))}
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Definir PIN</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[200px] mx-auto">Crie uma senha de 4 dígitos para proteger seu acesso.</p>
-             </div>
-             
-             <div className="flex justify-center gap-4 mb-8">
-                 {[0, 1, 2, 3].map(i => (
-                     <div key={i} className={`w-4 h-4 rounded-full border-2 border-slate-200 dark:border-white/20 ${newPin.length > i ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent'}`} />
-                 ))}
-             </div>
-             
-             <div className="grid grid-cols-3 gap-4 max-w-[280px] mx-auto">
-                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(num => (
-                     <button 
-                        key={num} 
-                        onClick={() => {
-                            if (newPin.length < 4) {
-                                const val = newPin + num;
-                                setNewPin(val);
-                                if (val.length === 4) handleSavePin(val);
-                            }
-                        }}
-                        className={`w-16 h-16 rounded-2xl bg-slate-50 dark:bg-white/5 text-xl font-bold flex items-center justify-center active:scale-90 transition-transform ${num === 0 ? 'col-start-2' : ''}`}
-                     >
-                         {num}
-                     </button>
-                 ))}
-                 <button 
-                    onClick={() => setNewPin(prev => prev.slice(0, -1))}
-                    className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center active:scale-90 transition-transform col-start-3 row-start-4"
-                 >
-                     <Trash2 className="w-6 h-6 text-rose-500" />
-                 </button>
-             </div>
+            </Section>
         </div>
-      </SwipeableModal>
+      )}
+
+      {activeSection === 'notifications' && (
+        <div className="px-4">
+            <Section title="Notificações Push">
+                 <Toggle label="Alertas no Celular" checked={pushEnabled} onChange={onRequestPushPermission} icon={Smartphone} description="Receba notificações mesmo com o app fechado." />
+            </Section>
+            <Section title="Preferências de Alertas">
+                <Toggle label="Pagamento de Proventos" checked={notifyDivs} onChange={setNotifyDivs} icon={BadgeDollarSignIcon} />
+                <Toggle label="Aviso de 'Data Com'" checked={notifyDataCom} onChange={setNotifyDataCom} icon={Calendar} />
+                <Toggle label="Novidades do App" checked={notifyUpdates} onChange={setNotifyUpdates} icon={Rocket} />
+            </Section>
+        </div>
+      )}
+
+      {activeSection === 'privacy' && (
+        <div className="px-4">
+            <Section title="Modo Privacidade">
+                <Toggle label="Ocultar Valores" checked={privacyMode} onChange={onSetPrivacyMode} icon={EyeOff} description="Borra os valores monetários na tela inicial para discrição em locais públicos." />
+            </Section>
+        </div>
+      )}
+      
+      {activeSection === 'security' && (
+          <div className="px-4">
+              <Section title="Bloqueio do App">
+                  {passcode ? (
+                      <>
+                        <Toggle label="PIN Ativado" checked={!!passcode} onChange={handleDisableSecurity} icon={Lock} description={`PIN: ${"•".repeat(4)}`} />
+                        <Toggle label="Desbloqueio Facial/Digital" checked={biometricsEnabled} onChange={handleToggleBiometrics} icon={Fingerprint} description="Use a biometria do seu celular para um acesso mais rápido e seguro." />
+                      </>
+                  ) : (
+                      <MenuItem icon={KeyRound} label="Configurar PIN de Acesso" onClick={handleEnablePin} />
+                  )}
+              </Section>
+              <SwipeableModal isOpen={showPinSetup} onClose={() => setShowPinSetup(false)}>
+                <div className="p-6 text-center">
+                    <div className="w-16 h-16 bg-indigo-500/10 rounded-3xl flex items-center justify-center mx-auto mb-4 text-indigo-500"><KeyRound className="w-8 h-8"/></div>
+                    <h3 className="text-xl font-bold text-white mb-2">Configure seu PIN</h3>
+                    <p className="text-sm text-slate-400 mb-6">Crie um código de 4 dígitos para proteger seu app.</p>
+                    <div className="flex items-center justify-center gap-4 mb-8">
+                        {Array(4).fill(0).map((_, i) => <div key={i} className={`w-4 h-4 rounded-full transition-colors ${newPin.length > i ? 'bg-white' : 'bg-white/20'}`}></div>)}
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 max-w-[240px] mx-auto">
+                        {[1,2,3,4,5,6,7,8,9].map(n => <button key={n} onClick={() => handleSavePin(newPin + n)} className="h-16 rounded-full bg-white/5 text-xl font-bold text-white active:bg-white/20">{n}</button>)}
+                        <div/>
+                        <button onClick={() => handleSavePin(newPin + 0)} className="h-16 rounded-full bg-white/5 text-xl font-bold text-white active:bg-white/20">0</button>
+                        <button onClick={() => setNewPin(p => p.slice(0, -1))} className="h-16 rounded-full bg-white/5 flex items-center justify-center text-slate-400 active:bg-white/20"><ArrowLeft/></button>
+                    </div>
+                </div>
+              </SwipeableModal>
+          </div>
+      )}
+
+      {activeSection === 'data' && (
+        <div className="px-4">
+          <Section title="Backup na Nuvem">
+              <MenuItem icon={Download} label="Exportar Backup Local" onClick={handleExport} value={`${transactions.length} ordens`} />
+              <MenuItem icon={Upload} label="Restaurar de um Arquivo" onClick={handleImportClick} />
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+          </Section>
+          <Section title="Gerenciamento de Cache">
+              <MenuItem icon={FileJson} label="Cache de Cotações (Brapi)" value={formatBytes(storageData.breakdown.quotes)} onClick={handleClearQuoteCache} />
+              <MenuItem icon={Sparkles} label="Cache de Proventos (IA)" value={formatBytes(storageData.breakdown.divs)} onClick={handleClearDivCache} />
+          </Section>
+          {fileToRestore && <ConfirmationModal isOpen={true} title="Restaurar Backup?" message={`Restaurar os dados de "${fileToRestore.name}" irá substituir TODAS as suas ordens na nuvem. Esta ação não pode ser desfeita.`} onConfirm={handleConfirmRestore} onCancel={() => setFileToRestore(null)} />}
+        </div>
+      )}
+
+      {activeSection === 'system' && (
+          <div className="px-4">
+              <Section title="Manutenção da Conta">
+                <div className="p-4 bg-white dark:bg-[#0f172a]">
+                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">Forçar Ressincronização</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Se seus dados parecerem inconsistentes, esta ação limpará o app e baixará uma cópia nova da nuvem. É a forma mais segura de corrigir problemas.</p>
+                    <button onClick={onForceResync} className="w-full text-center py-3 bg-amber-500/10 text-amber-500 text-xs font-bold uppercase tracking-widest rounded-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Ressincronizar
+                    </button>
+                </div>
+              </Section>
+              <Section title="Ferramentas Avançadas">
+                  <MenuItem icon={Cpu} label="Diagnóstico do Sistema" onClick={() => setShowDiagnostics(true)} />
+              </Section>
+              <SwipeableModal isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)}>
+                <div className="p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500"><Cpu className="w-6 h-6" /></div>
+                        <div>
+                            <h3 className="text-xl font-bold text-white">Diagnóstico</h3>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Verificação de Saúde</p>
+                        </div>
+                    </div>
+                    {diagState.step === 'idle' && (
+                        <div className="text-center py-10">
+                            <p className="text-sm text-slate-400 mb-6">Verifique a conexão com a nuvem, a integridade dos dados e as permissões de escrita.</p>
+                            <button onClick={runDiagnostics} className="px-8 py-4 bg-amber-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-amber-500/20 active:scale-95 transition-transform">Iniciar Testes</button>
+                        </div>
+                    )}
+                    {(diagState.step === 'running' || diagState.step === 'done' || diagState.step === 'error') && (
+                        <div>
+                            <div className="bg-black/20 rounded-xl p-4 h-48 overflow-y-auto mb-4 font-mono text-xs">
+                                {diagState.logs.map(log => <p key={log.id} className={log.type === 'success' ? 'text-emerald-400' : log.type === 'error' ? 'text-rose-400' : log.type === 'warn' ? 'text-amber-400' : 'text-slate-400'}>
+                                    <span className="mr-2 opacity-50">{new Date(log.id).toLocaleTimeString()}</span>{log.text}
+                                </p>)}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className={`p-3 rounded-lg flex items-center justify-between ${diagState.latency === null ? 'bg-white/5' : diagState.latency < 500 ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
+                                    <span className="text-xs font-bold text-slate-300">Latência</span>
+                                    <span className="text-xs font-mono">{diagState.latency !== null ? `${diagState.latency}ms` : '...'}</span>
+                                </div>
+                                <div className={`p-3 rounded-lg flex items-center justify-between ${diagState.integrity === null ? 'bg-white/5' : diagState.integrity ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
+                                    <span className="text-xs font-bold text-slate-300">Contagem</span>
+                                    <span className="text-xs font-mono">{diagState.integrity === null ? '...' : diagState.integrity ? 'OK' : 'Falha'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+              </SwipeableModal>
+          </div>
+      )}
+
+      {activeSection === 'updates' && (
+        <div className="px-4">
+            <Section>
+                <div className="p-5 bg-white dark:bg-[#0f172a] text-center">
+                    <div className="w-16 h-16 bg-accent/10 rounded-3xl flex items-center justify-center mx-auto mb-4 text-accent"><Rocket className="w-8 h-8"/></div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Versão {appVersion}</h3>
+                    <p className="text-xs text-slate-400 font-medium">Instalada em {formatDate(currentVersionDate)}</p>
+                    <button onClick={handleCheckUpdate} disabled={checkStatus === 'checking'} className="mt-6 w-full relative bg-slate-100 dark:bg-white/5 py-3.5 rounded-xl font-bold text-xs uppercase tracking-[0.1em] text-slate-600 dark:text-slate-200 active:scale-95 transition-all flex items-center justify-center gap-2">
+                        {checkStatus === 'checking' && <><Loader2 className="w-4 h-4 animate-spin"/>Verificando...</>}
+                        {checkStatus === 'latest' && <><CheckCircle2 className="w-4 h-4 text-emerald-500"/>Você está atualizado</>}
+                        {checkStatus === 'offline' && <><WifiOff className="w-4 h-4 text-rose-500"/>Sem conexão</>}
+                        {checkStatus === 'available' && <><Download className="w-4 h-4 text-accent animate-pulse"/>Instalar v{availableVersion}</>}
+                        {checkStatus === 'idle' && 'Verificar Atualizações'}
+                    </button>
+                    <p className="text-[10px] text-slate-400 mt-2">Última checagem: {formatTime(lastChecked)}</p>
+                </div>
+            </Section>
+            {releaseNotes && releaseNotes.length > 0 && (
+                <Section title="Novidades da Versão">
+                    <div className="p-4 space-y-4 bg-white dark:bg-[#0f172a]">
+                        {releaseNotes.map((note, i) => {
+                            const { Icon, color, bg } = getNoteIconAndColor(note.type);
+                            return (
+                                <div key={i} className="flex items-start gap-3">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg} ${color}`}><Icon className="w-4 h-4"/></div>
+                                    <div>
+                                        <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100">{note.title}</h4>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">{note.desc}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Section>
+            )}
+        </div>
+      )}
+
+      {activeSection === 'about' && (
+        <div className="px-4 text-center">
+            <div className="mb-8">
+                <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-white/10 shadow-lg"><Wallet className="w-9 h-9 text-white" strokeWidth={1.5}/></div>
+                <h2 className="text-xl font-black text-white">InvestFIIs</h2>
+                <p className="text-sm text-slate-400">Versão {appVersion}</p>
+            </div>
+            <Section>
+                <p className="p-4 text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-[#0f172a]">Este app é uma ferramenta de estudo para aprimorar minhas habilidades em desenvolvimento de software, e não deve ser considerado como uma recomendação de investimento.</p>
+                <MenuItem icon={Code2} label="Ver Código no GitHub" onClick={() => window.open('https://github.com/seu-usuario/investfiis', '_blank')} />
+            </Section>
+            <Section>
+                <MenuItem icon={FileText} label="Termos de Serviço" onClick={() => setShowTerms(true)} />
+                <MenuItem icon={ShieldCheck} label="Política de Privacidade" onClick={() => setShowPrivacy(true)} />
+            </Section>
+        </div>
+      )}
     </div>
   );
 };

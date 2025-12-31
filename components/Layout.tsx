@@ -29,7 +29,7 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
 
   return (
     <div 
-      className={`fixed top-0 left-0 right-0 pt-safe pb-3 z-[100] flex items-center justify-center gap-2 px-4 text-[11px] font-black uppercase tracking-[0.15em] transition-all duration-500 ease-out-quint shadow-sm transform ${
+      className={`fixed top-0 left-0 right-0 pt-safe pb-4 z-[100] flex items-center justify-center gap-2 px-4 text-[11px] font-black uppercase tracking-[0.15em] transition-all duration-500 ease-out-quint shadow-sm transform ${
         isHidden ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
       } ${
         isConnected 
@@ -96,12 +96,12 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint ${
-        bannerVisible ? 'top-8' : 'top-0'
+      className={`fixed left-0 right-0 z-40 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint pt-safe ${
+        bannerVisible ? 'top-14' : 'top-0'
       } ${
         isScrolled 
-          ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5' 
-          : 'bg-transparent pt-4 border-b border-transparent'
+          ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl py-2 border-b border-slate-200/50 dark:border-white/5' 
+          : 'bg-transparent py-4 border-b border-transparent'
       }`}
     >
       <div className="flex items-center gap-3 w-full">
@@ -158,7 +158,8 @@ export const Header: React.FC<HeaderProps> = ({
         )}
         {!showBack && onSettingsClick && (
           <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
-            <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" strokeWidth={2} />
+            {/* FIX: Complete component JSX */}
+            <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform" strokeWidth={2} />
           </button>
         )}
       </div>
@@ -166,434 +167,124 @@ export const Header: React.FC<HeaderProps> = ({
   );
 };
 
-export const BottomNav: React.FC<{ currentTab: string; onTabChange: (tab: string) => void }> = ({ currentTab, onTabChange }) => {
-  const tabs = [
-    { id: 'home', icon: Home, label: 'Início' },
-    { id: 'portfolio', icon: PieChart, label: 'Carteira' },
-    { id: 'transactions', icon: ArrowRightLeft, label: 'Ordens' },
-  ];
+// --- START: Added missing components ---
 
-  return (
-    <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-6 pointer-events-none">
-      <nav className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl p-2 rounded-[1.5rem] flex items-center gap-2 shadow-2xl shadow-slate-200/50 dark:shadow-black/50 pointer-events-auto transition-all duration-300 border border-white/20 dark:border-white/5">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = currentTab === tab.id;
-          return (
-            <button 
-              key={tab.id} 
-              onClick={() => onTabChange(tab.id)} 
-              className={`relative flex items-center justify-center h-12 rounded-2xl transition-all duration-500 ease-out-quint active:scale-95 ${isActive ? 'bg-accent text-white shadow-lg shadow-accent/30 px-6' : 'px-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'}`}
-            >
-               <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-110' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
-               <div className={`overflow-hidden transition-[max-width,opacity,margin] duration-500 ease-out-quint flex items-center ${isActive ? 'max-w-[100px] opacity-100 ml-2' : 'max-w-0 opacity-0'}`}>
-                 <span className="text-[11px] font-bold uppercase tracking-wide whitespace-nowrap">
-                   {tab.label}
-                 </span>
-               </div>
-            </button>
-          );
-        })}
-      </nav>
-    </div>
-  );
-};
+interface SwipeableModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
 
-export const SwipeableModal: React.FC<{ isOpen: boolean; onClose: () => void; children: React.ReactNode }> = ({ isOpen, onClose, children }) => {
-  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 500);
-  const [offsetY, setOffsetY] = useState(0);
-  const startY = useRef(0);
-  const isDragging = useRef(false);
+export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
+  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
   const modalRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const startY = useRef(0);
+  const currentY = useRef(0);
+  const isDragging = useRef(false);
 
-  const triggerClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
-
-  useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = 'auto';
-    return () => { document.body.style.overflow = 'auto'; };
-  }, [isOpen]);
-
-  if (!isMounted) return null;
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (contentRef.current && contentRef.current.scrollTop > 0) return;
-    startY.current = e.touches[0].clientY;
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (modalRef.current && modalRef.current.scrollTop === 0) {
+      startY.current = e.touches[0].clientY;
+      isDragging.current = true;
+      currentY.current = 0;
+      modalRef.current.style.transition = 'none';
+    }
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const currentY = e.touches[0].clientY;
-    const diff = currentY - startY.current;
-
-    if (!isDragging.current && diff > 5 && contentRef.current?.scrollTop === 0) {
-      isDragging.current = true;
-    }
-    
-    if (isDragging.current) {
-      e.preventDefault();
-      setOffsetY(Math.max(0, diff));
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDragging.current || !modalRef.current) return;
+    const y = e.touches[0].clientY;
+    const deltaY = y - startY.current;
+    if (deltaY > 0) { // Only allow dragging down
+      currentY.current = deltaY;
+      modalRef.current.style.transform = `translateY(${deltaY}px)`;
     }
   };
 
   const handleTouchEnd = () => {
-    if (!isDragging.current) return;
+    if (!isDragging.current || !modalRef.current) return;
     isDragging.current = false;
-    
-    const modalHeight = modalRef.current?.clientHeight || window.innerHeight;
-    const closeThreshold = Math.max(120, modalHeight * 0.3);
-
-    if (offsetY > closeThreshold) {
-      triggerClose();
+    modalRef.current.style.transition = 'transform 0.3s ease-out-quint';
+    if (currentY.current > 100) { // Threshold to close
+      onClose();
     } else {
-      setOffsetY(0);
+      modalRef.current.style.transform = 'translateY(0)';
     }
   };
 
+  if (!isMounted) return null;
+
   return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-end justify-center pointer-events-auto">
-      <div className={`absolute inset-0 bg-slate-900/40 backdrop-blur-sm pointer-events-auto anim-fade-in ${isVisible ? 'is-visible' : ''}`} onClick={triggerClose} />
+    <div 
+      className={`fixed inset-0 z-50 flex flex-col justify-end transition-opacity duration-300 ${
+        isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}
+      onClick={onClose}
+    >
       <div 
+        className={`absolute inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm transition-opacity ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      ></div>
+      <div
         ref={modalRef}
-        className={`bg-white dark:bg-[#0b1121] w-full h-[calc(100dvh-5rem)] rounded-t-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden pointer-events-auto anim-slide-up border-t border-white/20 dark:border-white/5 ${isVisible ? 'is-visible' : ''}`}
-        style={{
-          transform: isDragging.current ? `translateY(${offsetY}px)` : undefined,
-          transition: isDragging.current ? 'none' : 'transform var(--duration-normal) var(--ease-out-quint)'
-        }}
+        onClick={(e) => e.stopPropagation()}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-3xl max-h-[90dvh] overflow-y-auto overscroll-contain transition-transform duration-500 ease-out-quint transform ${
+          isVisible ? 'translate-y-0' : 'translate-y-full'
+        }`}
       >
-        <div className="w-full h-10 flex items-center justify-center shrink-0 touch-none bg-transparent">
-          <div className="w-10 h-1 bg-slate-200 dark:bg-white/10 rounded-full" />
-        </div>
-        <div ref={contentRef} className="flex-1 overflow-y-auto no-scrollbar pb-10 px-1">{children}</div>
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto my-3 cursor-grab"></div>
+        {children}
       </div>
     </div>,
     document.body
   );
 };
 
-export const NotificationsModal: React.FC<{ isOpen: boolean; onClose: () => void; notifications: AppNotification[]; onClear: () => void }> = ({ isOpen, onClose, notifications, onClear }) => {
-  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
-  if (!isMounted) return null;
-
-  return createPortal(
-    <div className={`fixed inset-0 z-[2000] flex flex-col bg-slate-50 dark:bg-[#020617] anim-fade-in ${isVisible ? 'is-visible' : ''}`}>
-        <div className="px-6 pt-safe pb-4 bg-white dark:bg-[#0f172a] shadow-sm z-10 sticky top-0 border-b border-slate-100 dark:border-white/5">
-             <div className="flex items-center justify-between pt-4">
-                 <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-transform">
-                     <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
-                 </button>
-                 <div className="text-center">
-                    <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-none">Notificações</h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Central de Mensagens</p>
-                 </div>
-                 <button onClick={onClear} disabled={notifications.length === 0} className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${notifications.length > 0 ? 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:text-rose-500' : 'opacity-0 pointer-events-none'}`}>
-                     <Trash2 className="w-5 h-5" />
-                 </button>
-             </div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-             {notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-[60vh] opacity-60">
-                   <div className="w-24 h-24 bg-slate-200 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 anim-fade-in is-visible">
-                      <Inbox className="w-10 h-10 text-slate-400" strokeWidth={1.5} />
-                   </div>
-                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>Tudo Limpo</h3>
-                   <p className="text-sm text-slate-500 dark:text-slate-400 text-center max-w-[250px] anim-fade-in-up is-visible" style={{ animationDelay: '200ms' }}>Você não tem novas notificações.</p>
-                </div>
-             ) : (
-                notifications.map((n, i) => (
-                    <div key={n.id} className={`relative p-5 rounded-[1.8rem] border flex gap-4 transition-all active:scale-[0.98] anim-fade-in-up shadow-sm bg-white dark:bg-[#0f172a] border-slate-100 dark:border-white/5 ${n.read ? 'opacity-50' : ''}`} style={{ transitionDelay: `${i * 50}ms` }}>
-                       {!n.read && <div className="w-2 h-2 rounded-full bg-accent absolute top-4 right-4 ring-4 ring-white dark:ring-[#0f172a]"></div>}
-                       <div className="flex-1">
-                          <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{n.title}</h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{n.message}</p>
-                          <p className="text-[10px] text-slate-400 mt-2 font-semibold">{new Date(n.timestamp).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                       </div>
-                    </div>
-                ))
-             )}
-        </div>
-    </div>,
-    document.body
-  );
-};
-
-const getNoteIconAndColor = (type: ReleaseNoteType) => {
-  switch (type) {
-    case 'feat': return { Icon: Sparkles, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10' };
-    case 'fix': return { Icon: Check, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' };
-    case 'ui': return { Icon: Palette, color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-500/10' };
-    case 'perf': return { Icon: Zap, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' };
-    default: return { Icon: Star, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-white/10' };
-  }
-};
-
-export const ChangelogModal: React.FC<{ 
-  isOpen: boolean; onClose: () => void; version: string; notes?: ReleaseNote[];
-  isUpdatePending?: boolean; onUpdate?: () => void; isUpdating?: boolean; progress?: number;
-}> = ({ isOpen, onClose, version, notes, isUpdatePending, onUpdate, isUpdating, progress = 0 }) => {
-  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
-  if (!isMounted) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6">
-        <div className={`absolute inset-0 bg-slate-900/40 backdrop-blur-md anim-fade-in ${isVisible ? 'is-visible' : ''}`} onClick={onClose} />
-        
-        <div className={`relative bg-white dark:bg-[#0f172a] w-full max-w-[20rem] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden anim-scale-in border border-white/20 dark:border-white/5 ${isVisible ? 'is-visible' : ''}`}>
-            {/* Minimal Header */}
-            <div className="pt-8 px-6 pb-2 text-center relative overflow-hidden">
-                <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full blur-[60px] opacity-40 ${isUpdatePending ? 'bg-indigo-500' : 'bg-emerald-500'}`}></div>
-                <div className="relative z-10 flex flex-col items-center">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-sm ${isUpdatePending ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
-                        {isUpdatePending ? <Gift className="w-7 h-7" strokeWidth={1.5} /> : <Sparkles className="w-7 h-7" strokeWidth={1.5} />}
-                    </div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">v{version}</h2>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                        {isUpdatePending ? 'Nova Atualização' : 'O que há de novo'}
-                    </p>
-                </div>
-            </div>
-            
-            {/* Content List */}
-            <div className="flex-1 overflow-y-auto max-h-[40vh] p-6 space-y-5">
-                {notes?.length ? notes.map((note, i) => {
-                    const { Icon, color, bg } = getNoteIconAndColor(note.type);
-                    return (
-                      <div key={i} className="flex gap-4 items-start group">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${bg} ${color}`}>
-                            <Icon className="w-4 h-4" strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight mb-1">{note.title}</h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{note.desc}</p>
-                        </div>
-                      </div>
-                    );
-                }) : (
-                  <div className="text-center py-4 opacity-50">
-                      <p className="text-xs text-slate-400 italic">Melhorias internas e correções de bugs.</p>
-                  </div>
-                )}
-            </div>
-
-            {/* Footer Actions */}
-            <div className="p-6 pt-2 bg-gradient-to-t from-white via-white to-transparent dark:from-[#0f172a] dark:via-[#0f172a] dark:to-transparent">
-                {isUpdatePending ? (
-                    isUpdating ? (
-                        <div className="w-full text-center py-3">
-                            <div className="w-full bg-slate-100 dark:bg-white/10 rounded-full h-2 overflow-hidden mb-2 relative">
-                                <div 
-                                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-300 ease-linear" 
-                                    style={{ width: `${progress}%` }}
-                                ></div>
-                                <div 
-                                  className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite]"
-                                  style={{ animationName: 'shimmer', animationDuration: '2s', animationIterationCount: 'infinite' }}
-                                ></div>
-                            </div>
-                            <p className="text-xs font-bold text-slate-400">Instalando... {Math.round(progress)}%</p>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-3">
-                            <button 
-                                onClick={onUpdate}
-                                disabled={isUpdating}
-                                className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
-                            >
-                               <Download className="w-4 h-4" /> Instalar e Reiniciar
-                            </button>
-                            <button 
-                                onClick={onClose}
-                                disabled={isUpdating}
-                                className="w-full py-3.5 rounded-2xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all"
-                            >
-                                Depois
-                            </button>
-                        </div>
-                    )
-                ) : (
-                    <button 
-                        onClick={onClose}
-                        className="w-full py-3.5 rounded-2xl bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all hover:bg-slate-200 dark:hover:bg-white/20"
-                    >
-                        Fechar
-                    </button>
-                )}
-            </div>
-        </div>
-    </div>,
-    document.body
-  );
-};
-
-export const LockScreen: React.FC<{ 
-  isOpen: boolean; 
-  onUnlock: () => void; 
-  correctPin: string; 
-  isBiometricsEnabled: boolean;
-}> = ({ isOpen, onUnlock, correctPin, isBiometricsEnabled }) => {
-    const [inputPin, setInputPin] = useState('');
-    const [error, setError] = useState(false);
-    
-    useEffect(() => {
-        if (isOpen && isBiometricsEnabled) {
-            handleBiometric();
-        }
-    }, [isOpen, isBiometricsEnabled]);
-
-    const handleBiometric = async () => {
-        try {
-            const challenge = new Uint8Array(32);
-            window.crypto.getRandomValues(challenge);
-            
-            await navigator.credentials.get({
-                publicKey: {
-                    challenge,
-                    rpId: window.location.hostname,
-                    userVerification: 'required',
-                    timeout: 60000
-                }
-            });
-            onUnlock();
-            setInputPin('');
-        } catch (e) {
-            console.log("Biometria cancelada ou falhou", e);
-        }
-    };
-
-    const handleNumPress = (num: string) => {
-        if (inputPin.length < 4) {
-            const newPin = inputPin + num;
-            setInputPin(newPin);
-            if (newPin.length === 4) {
-                if (newPin === correctPin) {
-                    setTimeout(() => {
-                        onUnlock();
-                        setInputPin('');
-                    }, 100);
-                } else {
-                    setError(true);
-                    setTimeout(() => {
-                        setInputPin('');
-                        setError(false);
-                    }, 500);
-                }
-            }
-        }
-    };
-
-    const handleDelete = () => {
-        setInputPin(prev => prev.slice(0, -1));
-    };
-
-    if (!isOpen) return null;
-
-    return createPortal(
-        <div className="fixed inset-0 z-[9999] bg-[#020617] flex flex-col items-center justify-center p-6 touch-none">
-            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xs">
-                 <div className="mb-8 flex flex-col items-center">
-                    <div className="w-16 h-16 bg-slate-800 rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-black/50">
-                        <Lock className="w-8 h-8 text-white" strokeWidth={1.5} />
-                    </div>
-                    <h2 className="text-xl font-bold text-white tracking-tight">InvestFIIs Bloqueado</h2>
-                    <p className="text-xs font-medium text-slate-500 mt-2">Digite seu PIN ou use a biometria</p>
-                 </div>
-
-                 <div className="flex gap-4 mb-12 h-4">
-                     {[0, 1, 2, 3].map(i => (
-                         <div 
-                            key={i} 
-                            className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                                inputPin.length > i 
-                                    ? error ? 'bg-rose-500 scale-110' : 'bg-emerald-500 scale-110' 
-                                    : 'bg-slate-700'
-                            }`}
-                         />
-                     ))}
-                 </div>
-
-                 <div className="grid grid-cols-3 gap-6 w-full">
-                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                         <button 
-                            key={num}
-                            onClick={() => handleNumPress(num.toString())}
-                            className="w-16 h-16 rounded-full bg-slate-800/50 text-white text-2xl font-medium flex items-center justify-center active:bg-slate-700 transition-colors mx-auto"
-                         >
-                            {num}
-                         </button>
-                     ))}
-                     <div className="flex items-center justify-center">
-                        {isBiometricsEnabled && (
-                            <button onClick={handleBiometric} className="w-16 h-16 rounded-full flex items-center justify-center text-emerald-500 active:scale-95 transition-transform">
-                                <Fingerprint className="w-8 h-8" />
-                            </button>
-                        )}
-                     </div>
-                     <button 
-                        onClick={() => handleNumPress('0')}
-                        className="w-16 h-16 rounded-full bg-slate-800/50 text-white text-2xl font-medium flex items-center justify-center active:bg-slate-700 transition-colors mx-auto"
-                     >
-                        0
-                     </button>
-                     <div className="flex items-center justify-center">
-                        <button onClick={handleDelete} className="w-16 h-16 rounded-full flex items-center justify-center text-slate-400 active:scale-95 transition-transform hover:text-white">
-                            <Delete className="w-6 h-6" />
-                        </button>
-                     </div>
-                 </div>
-            </div>
-            <div className="mt-8 text-center opacity-40">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Secure Vault</p>
-            </div>
-        </div>,
-        document.body
-    );
-};
-
-export const ConfirmationModal: React.FC<{
+interface ConfirmationModalProps {
   isOpen: boolean;
   title: string;
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
-}> = ({ isOpen, title, message, onConfirm, onCancel }) => {
-  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
+}
+
+export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
+  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 300);
 
   if (!isMounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6">
-      <div
-        className={`absolute inset-0 bg-slate-900/40 backdrop-blur-md anim-fade-in ${isVisible ? 'is-visible' : ''}`}
+    <div 
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${
+        isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}
+    >
+      <div 
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
         onClick={onCancel}
-      />
-      <div
-        className={`relative bg-white dark:bg-[#0f172a] w-full max-w-[22rem] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden anim-scale-in border border-white/20 dark:border-white/5 ${isVisible ? 'is-visible' : ''}`}
+      ></div>
+      <div 
+        className={`relative bg-white dark:bg-[#0f172a] rounded-3xl w-full max-w-sm shadow-xl p-6 text-center transition-all duration-300 ease-out-quint transform ${
+          isVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0'
+        }`}
       >
-        <div className="p-8 text-center">
-          <div className="w-16 h-16 bg-rose-50 dark:bg-rose-500/10 rounded-3xl flex items-center justify-center mx-auto mb-5">
-            <AlertTriangle className="w-8 h-8 text-rose-500" strokeWidth={1.5} />
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{title}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            {message}
-          </p>
+        <div className="mx-auto w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center mb-4 text-rose-500">
+          <AlertTriangle className="w-7 h-7" />
         </div>
-        <div className="p-5 bg-slate-50 dark:bg-black/20 grid grid-cols-2 gap-3">
-          <button
-            onClick={onCancel}
-            className="py-3.5 rounded-2xl bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all"
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{message}</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button 
+            onClick={onCancel} 
+            className="py-3 bg-slate-100 dark:bg-white/5 rounded-xl text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
           >
             Cancelar
           </button>
-          <button
-            onClick={onConfirm}
-            className="py-3.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-[0.15em] active:scale-95 transition-all shadow-lg shadow-rose-500/20"
+          <button 
+            onClick={onConfirm} 
+            className="py-3 bg-rose-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-rose-500/20 active:scale-95 transition-transform"
           >
             Confirmar
           </button>
@@ -603,3 +294,289 @@ export const ConfirmationModal: React.FC<{
     document.body
   );
 };
+
+
+interface BottomNavProps {
+  currentTab: string;
+  onTabChange: (tab: string) => void;
+}
+
+const navItems = [
+  { id: 'home', icon: Home, label: 'Início' },
+  { id: 'portfolio', icon: PieChart, label: 'Carteira' },
+  { id: 'transactions', icon: ArrowRightLeft, label: 'Ordens' },
+];
+
+export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/70 dark:bg-[#0f172a]/70 backdrop-blur-2xl border-t border-slate-200/80 dark:border-white/5">
+      <div className="max-w-lg mx-auto flex justify-around items-center h-20 px-4 pb-safe">
+        {navItems.map(item => {
+          const isActive = currentTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onTabChange(item.id)}
+              className="flex flex-col items-center justify-center gap-1 w-20 h-full text-slate-400 dark:text-slate-500 relative transition-all duration-300"
+            >
+              <div className={`absolute top-0 w-8 h-1 rounded-b-full transition-all duration-300 ${isActive ? 'bg-accent scale-x-100' : 'scale-x-0'}`}></div>
+              <item.icon className={`w-6 h-6 transition-all duration-300 ${isActive ? 'text-accent -translate-y-1' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
+              <span className={`text-[10px] font-bold transition-all duration-300 ${isActive ? 'text-slate-900 dark:text-white' : ''}`}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+};
+
+interface ChangelogModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  version: string;
+  notes?: ReleaseNote[];
+  isUpdatePending: boolean;
+  onUpdate: () => void;
+  isUpdating: boolean;
+  progress: number;
+}
+
+const getNoteIcon = (type: ReleaseNoteType) => {
+  switch (type) {
+    case 'feat': return { Icon: Rocket, color: 'text-indigo-500 bg-indigo-500/10' };
+    case 'fix': return { Icon: Check, color: 'text-emerald-500 bg-emerald-500/10' };
+    case 'perf': return { Icon: Zap, color: 'text-amber-500 bg-amber-500/10' };
+    case 'ui': return { Icon: Palette, color: 'text-sky-500 bg-sky-500/10' };
+    default: return { Icon: Star, color: 'text-slate-500 bg-slate-500/10' };
+  }
+};
+
+export const ChangelogModal: React.FC<ChangelogModalProps> = ({
+  isOpen, onClose, version, notes = [], isUpdatePending, onUpdate, isUpdating, progress,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <SwipeableModal isOpen={isOpen} onClose={onClose}>
+      <div className="p-6 pb-8">
+        <div className="text-center mb-6">
+          <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 text-accent">
+            <Gift className="w-10 h-10" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Novidades na v{version}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Confira o que mudou na última atualização.</p>
+        </div>
+        <div className="space-y-4 mb-8">
+          {notes.map((note, i) => {
+            const { Icon, color } = getNoteIcon(note.type);
+            return (
+              <div key={i} className="flex items-start gap-4">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${color}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white">{note.title}</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{note.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {isUpdatePending && (
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-[#0b1121]/80 backdrop-blur-lg border-t border-slate-200/50 dark:border-white/5">
+             <div className="max-w-lg mx-auto">
+              <button 
+                onClick={onUpdate} 
+                disabled={isUpdating}
+                className="w-full relative overflow-hidden bg-accent text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-accent/30 active:scale-95 transition-all disabled:opacity-70"
+              >
+                 {isUpdating ? 'Atualizando...' : 'Instalar Atualização'}
+                 {isUpdating && (
+                    <div className="absolute top-0 left-0 h-full bg-white/20" style={{width: `${progress}%`}}></div>
+                 )}
+              </button>
+             </div>
+          </div>
+        )}
+      </div>
+    </SwipeableModal>
+  );
+};
+
+interface NotificationsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  notifications: AppNotification[];
+  onClear: () => void;
+}
+
+const getNotificationIcon = (type: AppNotification['type']) => {
+    switch(type) {
+        case 'success': return { Icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-500/10' };
+        case 'warning': return { Icon: AlertTriangle, color: 'text-amber-500 bg-amber-500/10' };
+        case 'update': return { Icon: ArrowUpCircle, color: 'text-accent bg-accent/10' };
+        default: return { Icon: Info, color: 'text-slate-500 bg-slate-500/10' };
+    }
+};
+
+export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, onClose, notifications, onClear }) => {
+  
+  return (
+    <SwipeableModal isOpen={isOpen} onClose={onClose}>
+      <div className="px-6 py-2 pb-8">
+        <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500">
+                    <Bell className="w-6 h-6" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Notificações</h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Central de Alertas</p>
+                </div>
+            </div>
+            {notifications.length > 0 && (
+                <button onClick={onClear} className="text-xs font-bold text-rose-500 flex items-center gap-1">
+                    <Trash2 className="w-3 h-3" /> Limpar
+                </button>
+            )}
+        </div>
+        
+        {notifications.length === 0 ? (
+            <div className="text-center py-20 opacity-60">
+                <Inbox className="w-16 h-16 text-slate-300 mx-auto mb-4" strokeWidth={1} />
+                <p className="text-sm font-bold text-slate-500">Caixa de entrada vazia</p>
+                <p className="text-xs text-slate-400 mt-1">Você está em dia com tudo.</p>
+            </div>
+        ) : (
+            <div className="space-y-3">
+                {notifications.map(n => {
+                    const { Icon, color } = getNotificationIcon(n.type);
+                    return (
+                        <div key={n.id} className={`p-4 rounded-2xl flex items-start gap-4 border ${n.read ? 'bg-slate-50 dark:bg-white/5 border-transparent opacity-60' : 'bg-white dark:bg-[#0f172a] border-slate-100 dark:border-white/5 shadow-sm'}`}>
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+                                <Icon className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">{n.title}</h4>
+                                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{n.message}</p>
+                                {n.actionLabel && n.onAction && (
+                                    <button onClick={n.onAction} className="mt-3 px-3 py-1 bg-accent/10 text-accent text-[10px] font-bold uppercase rounded-md">
+                                        {n.actionLabel}
+                                    </button>
+                                )}
+                            </div>
+                            {!n.read && <div className="w-2 h-2 rounded-full bg-accent mt-1.5"></div>}
+                        </div>
+                    );
+                })}
+            </div>
+        )}
+      </div>
+    </SwipeableModal>
+  );
+};
+
+interface LockScreenProps {
+  isOpen: boolean;
+  correctPin: string;
+  onUnlock: () => void;
+  isBiometricsEnabled: boolean;
+}
+
+export const LockScreen: React.FC<LockScreenProps> = ({ isOpen, correctPin, onUnlock, isBiometricsEnabled }) => {
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState(false);
+  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
+
+  const handleKeyPress = (key: string) => {
+    if (error) setError(false);
+    if (key === 'del') {
+      setPin(p => p.slice(0, -1));
+      return;
+    }
+    if (pin.length < 4) {
+      setPin(p => p + key);
+    }
+  };
+  
+  const attemptBiometrics = useCallback(async () => {
+      if (!isBiometricsEnabled || !window.PublicKeyCredential) return;
+      try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        
+        await navigator.credentials.get({
+          publicKey: {
+            challenge,
+            allowCredentials: [],
+            userVerification: 'required',
+            timeout: 60000,
+          }
+        });
+        onUnlock();
+      } catch (e) {
+        console.warn('Biometric auth failed or cancelled', e);
+      }
+  }, [isBiometricsEnabled, onUnlock]);
+  
+  useEffect(() => {
+    if (isVisible && isBiometricsEnabled) {
+      attemptBiometrics();
+    }
+  }, [isVisible, isBiometricsEnabled, attemptBiometrics]);
+  
+  useEffect(() => {
+    if (pin.length === 4) {
+      if (pin === correctPin) {
+        onUnlock();
+      } else {
+        setError(true);
+        setTimeout(() => setPin(''), 500);
+      }
+    }
+  }, [pin, correctPin, onUnlock]);
+
+  if (!isMounted) return null;
+
+  return createPortal(
+    <div className={`fixed inset-0 z-[1000] bg-[#020617] backdrop-blur-2xl transition-opacity duration-300 flex flex-col justify-between items-center py-20 px-6 ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className="text-center">
+        <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4">
+            <Fingerprint className="w-8 h-8 text-white/50" />
+        </div>
+        <h2 className="text-xl font-bold text-white">App Bloqueado</h2>
+        <p className="text-sm text-slate-400 mt-1">Insira seu PIN para continuar</p>
+      </div>
+      
+      <div className="flex items-center gap-4">
+        {Array(4).fill(0).map((_, i) => (
+          <div key={i} className={`w-4 h-4 rounded-full transition-all duration-300 ${error ? 'bg-rose-500 animate-pulse' : pin.length > i ? 'bg-white' : 'bg-white/20'}`}></div>
+        ))}
+      </div>
+      
+      <div className="grid grid-cols-3 gap-6 max-w-[280px] mx-auto w-full">
+        {[1,2,3,4,5,6,7,8,9].map(num => (
+          <button key={num} onClick={() => handleKeyPress(String(num))} className="w-16 h-16 rounded-full bg-white/5 text-xl font-bold text-white flex items-center justify-center active:bg-white/20 transition-colors">
+            {num}
+          </button>
+        ))}
+        {isBiometricsEnabled ? (
+            <button onClick={attemptBiometrics} className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-white/50 active:bg-white/20 transition-colors">
+                <Fingerprint className="w-7 h-7" />
+            </button>
+        ) : <div className="w-16 h-16"></div>}
+        <button onClick={() => handleKeyPress('0')} className="w-16 h-16 rounded-full bg-white/5 text-xl font-bold text-white flex items-center justify-center active:bg-white/20 transition-colors">
+            0
+        </button>
+        <button onClick={() => handleKeyPress('del')} className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-white/50 active:bg-white/20 transition-colors">
+            <Delete className="w-7 h-7" />
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+// --- END: Added missing components ---

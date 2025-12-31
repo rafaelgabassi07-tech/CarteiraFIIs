@@ -360,6 +360,20 @@ const App: React.FC = () => {
     }
   }, [fetchTransactionsFromCloud, session]);
 
+  const handleForceResync = useCallback(() => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Forçar Ressincronização',
+      message: 'Esta ação limpará os dados locais do aplicativo e baixará uma cópia nova da nuvem. Útil para resolver problemas de sincronia.',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setTransactions([]); // Clear local state immediately for responsiveness
+        await fetchTransactionsFromCloud(true); // Re-fetch all and force market data refresh
+        showToast('success', 'Ressincronização completa!');
+      }
+    });
+  }, [fetchTransactionsFromCloud, showToast]);
+
   useEffect(() => {
     let mounted = true;
     setLoadingProgress(5);
@@ -651,7 +665,7 @@ const App: React.FC = () => {
                   user={session.user}
                   transactions={transactions} onImportTransactions={handleImportTransactions} 
                   geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} 
-                  onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); window.location.reload(); }} 
+                  onForceResync={handleForceResync}
                   theme={theme} onSetTheme={setTheme} 
                   accentColor={accentColor} onSetAccentColor={setAccentColor} 
                   privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} 
