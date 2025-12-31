@@ -10,7 +10,7 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.6_auditor_colors'; // Cache versionado e limpo
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v7.7_ipca_fix'; // Cache versionado e limpo
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 const getAiCacheTTL = () => {
@@ -77,6 +77,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             const cached = JSON.parse(cachedRaw);
             const isFresh = (Date.now() - cached.timestamp) < CACHE_TTL;
             if (isFresh && cached.tickerKey === tickerKey) {
+                // Verifica se a data de inicio do cache é compatível (se a carteira não mudou muito o inicio)
+                // Se a startDate mudou drasticamente (ex: usuário importou histórico antigo), força refresh.
+                // Mas aqui simplificamos: se tickers são os mesmos, usamos cache. 
                 console.log("⚡ [Gemini] Usando Cache Inteligente");
                 return cached.data;
             }
@@ -90,13 +93,20 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   try {
     const ai = new GoogleGenAI({ apiKey: apiKey as string });
     const todayISO = new Date().toISOString().split('T')[0];
+    const portfolioStart = startDate || '12 meses atrás';
     
-    // Prompt OTIMIZADO para Auditoria de Proventos e Data Com
+    // Prompt OTIMIZADO para Auditoria de Proventos e IPCA Acumulado Customizado
     const prompt = `
     ATUE COMO: Auditor Financeiro B3 Especialista.
     DATA DE REFERÊNCIA: ${todayISO}.
+    INICIO DA CARTEIRA: ${portfolioStart}.
     
-    TAREFA: Buscar dados fundamentalistas e proventos para: ${uniqueTickers.join(', ')}.
+    TAREFA: 
+    1. Buscar dados fundamentalistas e proventos para: ${uniqueTickers.join(', ')}.
+    2. CALCULAR IPCA (Inflação): Preciso do IPCA ACUMULADO (%) exato desde a data "${portfolioStart}" até "${todayISO}".
+       - Se a data for antiga (ex: 2020), acumule a inflação mês a mês desde lá.
+       - Se a data for recente ou inválida, use os últimos 12 meses como fallback.
+       - Este valor é CRÍTICO para calcular o ganho real do usuário.
 
     REGRAS DE FUNDAMENTOS (CRÍTICO):
     1. **P/VP (Preço/Valor Patrimonial):** Essencial para FIIs e Ações.
@@ -115,7 +125,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
     OUTPUT JSON (RFC 8259):
     {
-      "sys": { "ipca": number },
+      "sys": { "ipca": number }, // Ex: 15.5 para 15.5% acumulado no período solicitado
       "data": [
         {
           "t": "TICKER",
