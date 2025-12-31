@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, LockScreen, ConfirmationModal } from './components/Layout';
+import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
@@ -72,6 +73,9 @@ const MemoizedTransactions = React.memo(Transactions);
 const App: React.FC = () => {
   const updateManager = useUpdateManager(APP_VERSION);
   
+  // Estado de controle do SplashScreen
+  const [appLoading, setAppLoading] = useState(true);
+
   const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true');
@@ -190,12 +194,15 @@ const App: React.FC = () => {
         const cloudTxs: Transaction[] = data.map(mapSupabaseToTx);
         setTransactions(cloudTxs);
         if (cloudTxs.length > 0) {
+            // Não bloqueia a UI aqui, sync acontece em background ou via promise no init
             syncMarketData(false, cloudTxs);
         }
       }
+      return true;
     } catch (err: any) {
       console.error("Supabase fetch error:", err);
       showToast('error', 'Erro ao buscar dados da nuvem.');
+      return false;
     } finally {
       setIsCloudSyncing(false);
     }
@@ -231,44 +238,58 @@ const App: React.FC = () => {
     let mounted = true;
 
     const initApp = async () => {
-      try {
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
-        if (!mounted) return;
+      // Lógica de Inicialização Baseada em Dados (Sem Timer Artificial)
+      const appInitialization = async () => {
+        try {
+          // 1. Checa sessão
+          const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+          if (!mounted) return;
 
-        const isGuestMode = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
-        
-        if (initialSession) {
-          setSession(initialSession);
-          setIsGuest(false);
-          fetchTransactionsFromCloud();
-          setCloudStatus('connected');
-          setTimeout(() => setCloudStatus('hidden'), 3000);
-        } else {
-          setSession(null);
-          setIsGuest(isGuestMode);
-          if (isGuestMode) {
-              setCloudStatus('disconnected');
-              const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
-              if (localTxs.length > 0) {
-                  syncMarketData(false, localTxs);
-              }
+          const isGuestMode = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
+          
+          if (initialSession) {
+            setSession(initialSession);
+            setIsGuest(false);
+            // 2. Se logado, AGUARDA (await) os dados virem da nuvem antes de liberar
+            await fetchTransactionsFromCloud();
+            setCloudStatus('connected');
+            setTimeout(() => setCloudStatus('hidden'), 3000);
+          } else {
+            setSession(null);
+            setIsGuest(isGuestMode);
+            // 3. Se convidado, carrega dados locais imediatamente
+            if (isGuestMode) {
+                setCloudStatus('disconnected');
+                const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
+                if (localTxs.length > 0) {
+                   setTransactions(localTxs);
+                   syncMarketData(false, localTxs);
+                }
+            }
           }
+        } catch (e) {
+            console.error("Critical app init error:", e);
+        } finally {
+            if (mounted) setIsAuthLoading(false);
         }
-      } catch (e) {
-          console.error("Critical app init error:", e);
-      } finally {
-          if (mounted) setIsAuthLoading(false);
+      };
+
+      // Executa a inicialização e fecha o loading imediatamente após
+      await appInitialization();
+      
+      if (mounted) {
+        setAppLoading(false); // Remove SplashScreen imediatamente após o carregamento dos dados
       }
     };
 
-    // Safety timeout to prevent infinite loading if Supabase hangs
+    // Timeout de segurança caso o Supabase demore demais (10s) para não travar o usuário
     const timeout = setTimeout(() => {
-      if (mounted && isAuthLoading) {
-        console.warn("Auth check timed out, forcing state update");
+      if (mounted && appLoading) {
+        console.warn("Init timeout, forcing entry");
+        setAppLoading(false);
         setIsAuthLoading(false);
       }
-    }, 5000);
+    }, 10000);
 
     initApp().then(() => clearTimeout(timeout));
 
@@ -526,12 +547,14 @@ const App: React.FC = () => {
     showToast(permission === 'granted' ? 'success' : 'info', permission === 'granted' ? 'Notificações Ativadas!' : 'Permissão negada.');
   };
 
-  if (isAuthLoading) return <div className="min-h-screen bg-slate-100 dark:bg-[#020617] flex items-center justify-center"><Loader2 className="w-8 h-8 text-accent animate-spin" /></div>;
-  if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
-  if (!session && !isGuest) return <Login onGuestAccess={() => setIsGuest(true)} />;
-
-  return (
+  // Se o app estiver carregando (SplashScreen), renderiza o SplashScreen
+  // Ele ficará visível sobre o conteúdo até que `appLoading` seja falso.
+  // Nota: Continuamos renderizando o app por baixo para que ele monte e busque dados.
+  
+  const content = (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
+      <SplashScreen finishLoading={!appLoading} />
+      
       <CloudStatusBanner status={cloudStatus} />
       
       {toast && ( 
@@ -545,69 +568,83 @@ const App: React.FC = () => {
         </div> 
       )}
 
-      <Header 
-        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} 
-        showBack={showSettings} 
-        onBack={() => setShowSettings(false)} 
-        onSettingsClick={() => setShowSettings(true)} 
-        onRefresh={() => syncMarketData(true)} 
-        isRefreshing={isRefreshing || isAiLoading || isCloudSyncing} 
-        updateAvailable={updateManager.isUpdateAvailable} 
-        onUpdateClick={() => updateManager.setShowChangelog(true)} 
-        onNotificationClick={() => { setShowNotifications(true); markNotificationsAsRead(); }} 
-        notificationCount={unreadCount} 
-        appVersion={APP_VERSION} 
-        bannerVisible={cloudStatus !== 'hidden'} 
-      />
-      
-      <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
-        {showSettings ? (
-          <Settings 
-            transactions={transactions} onImportTransactions={handleImportTransactions} 
-            geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} 
-            onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); setIsGuest(false); window.location.reload(); }} 
-            theme={theme} onSetTheme={setTheme} 
-            accentColor={accentColor} onSetAccentColor={setAccentColor} 
-            privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} 
-            appVersion={APP_VERSION} availableVersion={updateManager.availableVersion} 
-            updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
-            onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} 
-            lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} 
-            lastSyncTime={lastSyncTime} onSyncAll={() => syncMarketData(false)} 
-          />
-        ) : (
-          <div key={currentTab} className="anim-fade-in is-visible">
-            {currentTab === 'home' && (
-                <MemoizedHome 
-                    {...memoizedData} 
-                    salesGain={summaryData.salesGain} 
-                    totalAppreciation={memoizedData.balance - memoizedData.invested} 
-                    isAiLoading={isAiLoading} 
-                    inflationRate={marketIndicators.ipca} 
-                    portfolioStartDate={marketIndicators.startDate} 
-                    accentColor={accentColor} 
+      {/* Só mostra header e conteúdo se a autenticação estiver resolvida OU se for guest, e depois do splash começar a sair */}
+      {(!isAuthLoading || isGuest) && (
+        <>
+            <Header 
+              title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} 
+              showBack={showSettings} 
+              onBack={() => setShowSettings(false)} 
+              onSettingsClick={() => setShowSettings(true)} 
+              onRefresh={() => syncMarketData(true)} 
+              isRefreshing={isRefreshing || isAiLoading || isCloudSyncing} 
+              updateAvailable={updateManager.isUpdateAvailable} 
+              onUpdateClick={() => updateManager.setShowChangelog(true)} 
+              onNotificationClick={() => { setShowNotifications(true); markNotificationsAsRead(); }} 
+              notificationCount={unreadCount} 
+              appVersion={APP_VERSION} 
+              bannerVisible={cloudStatus !== 'hidden'} 
+            />
+            
+            <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
+              {showSettings ? (
+                <Settings 
+                  transactions={transactions} onImportTransactions={handleImportTransactions} 
+                  geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} 
+                  onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); setIsGuest(false); window.location.reload(); }} 
+                  theme={theme} onSetTheme={setTheme} 
+                  accentColor={accentColor} onSetAccentColor={setAccentColor} 
+                  privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} 
+                  appVersion={APP_VERSION} availableVersion={updateManager.availableVersion} 
+                  updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
+                  onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} 
+                  lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} 
+                  lastSyncTime={lastSyncTime} onSyncAll={() => syncMarketData(false)} 
                 />
-            )}
-            {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedData} />}
-            {currentTab === 'transactions' && ( 
-                <MemoizedTransactions 
-                    transactions={transactions} 
-                    onAddTransaction={handleAddTransaction} 
-                    onUpdateTransaction={handleUpdateTransaction} 
-                    onRequestDeleteConfirmation={onRequestDeleteConfirmation} 
-                /> 
-            )}
-          </div>
-        )}
-      </main>
-      
-      {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
-      
+              ) : (
+                <div key={currentTab} className="anim-fade-in is-visible">
+                  {currentTab === 'home' && (
+                      <MemoizedHome 
+                          {...memoizedData} 
+                          salesGain={summaryData.salesGain} 
+                          totalAppreciation={memoizedData.balance - memoizedData.invested} 
+                          isAiLoading={isAiLoading} 
+                          inflationRate={marketIndicators.ipca} 
+                          portfolioStartDate={marketIndicators.startDate} 
+                          accentColor={accentColor} 
+                      />
+                  )}
+                  {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedData} />}
+                  {currentTab === 'transactions' && ( 
+                      <MemoizedTransactions 
+                          transactions={transactions} 
+                          onAddTransaction={handleAddTransaction} 
+                          onUpdateTransaction={handleUpdateTransaction} 
+                          onRequestDeleteConfirmation={onRequestDeleteConfirmation} 
+                      /> 
+                  )}
+                </div>
+              )}
+            </main>
+            
+            {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
+        </>
+      )}
+
       <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => !updateManager.isUpdating && updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={!updateManager.wasUpdated && updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
       <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={() => setNotifications([])} />
       {confirmModal?.isOpen && ( <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} /> )}
     </div>
   );
+
+  // Se estiver bloqueado (PIN), mostra LockScreen independente do resto
+  if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
+  
+  // Se não estiver logado nem for guest, e não estiver carregando Auth, mostra Login
+  // Mas se appLoading for true, mostra o SplashScreen (que está dentro de 'content')
+  if (!appLoading && !session && !isGuest) return <Login onGuestAccess={() => setIsGuest(true)} />;
+
+  return content;
 };
 
 export default App;
