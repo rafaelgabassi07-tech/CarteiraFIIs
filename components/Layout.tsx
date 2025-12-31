@@ -29,7 +29,7 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
 
   return (
     <div 
-      className={`fixed top-0 left-0 right-0 z-[110] flex items-center justify-center gap-2 pt-[calc(env(safe-area-inset-top)+20px)] pb-3 px-4 text-[10px] font-black uppercase tracking-[0.15em] shadow-sm transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform ${
+      className={`fixed top-0 left-0 right-0 z-[110] flex items-center justify-center gap-2 pt-[calc(env(safe-area-inset-top)+32px)] pb-4 px-4 text-[10px] font-black uppercase tracking-[0.15em] shadow-sm transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform ${
         isHidden ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
       } ${
         isConnected 
@@ -241,7 +241,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] h-[90dvh] w-full overflow-y-auto overscroll-contain transition-transform duration-500 ease-out-quint transform shadow-2xl pb-safe ${
+        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] h-[92dvh] w-full overflow-y-auto overscroll-contain transition-transform duration-500 ease-out-quint transform shadow-2xl pb-safe ${
           isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}
       >

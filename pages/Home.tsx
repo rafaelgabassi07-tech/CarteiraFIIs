@@ -212,8 +212,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const custoCorrosaoInflacao = invested * (finalIPCA / 100);
   const ganhoRealValor = lucroNominalAbsoluto - custoCorrosaoInflacao;
   const isAboveInflation = ganhoRealPercent > 0;
+  
+  // Rótulo dinâmico para o gráfico de comparação
   const dateLabel = getShortDateLabel(portfolioStartDate);
-  const comparisonData = useMemo(() => [{ name: `IPCA ${dateLabel}`, value: finalIPCA, fill: '#64748b' }, { name: 'Carteira', value: nominalYield, fill: nominalYield >= finalIPCA ? '#10b981' : '#f43f5e' }], [nominalYield, finalIPCA, dateLabel]);
+  
+  const comparisonData = useMemo(() => [
+      { name: `IPCA ${dateLabel}`, value: finalIPCA, fill: '#64748b' }, 
+      { name: 'Carteira', value: nominalYield, fill: nominalYield >= finalIPCA ? '#10b981' : '#f43f5e' }
+  ], [nominalYield, finalIPCA, dateLabel]);
 
   return (
     <div className="pt-24 pb-28 px-5 space-y-4 max-w-lg mx-auto">
