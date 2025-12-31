@@ -288,7 +288,11 @@ const App: React.FC = () => {
           const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
           
           if (aiData.error === 'quota_exceeded') showToast('info', 'IA em pausa (Cota). Usando cache.');
-          else if (force) showToast('success', 'Carteira Sincronizada');
+          else if (force) {
+             // Sincronização Forçada (Manual) - Usa a barra de topo verde
+             setCloudStatus('connected');
+             setTimeout(() => setCloudStatus('hidden'), 3000);
+          }
           else if (aiData.error) console.warn("Erro Gemini:", aiData.error);
           
           if (aiData.dividends.length > 0) setGeminiDividends(aiData.dividends);
@@ -439,7 +443,9 @@ const App: React.FC = () => {
         showToast('error', 'Erro ao salvar na nuvem.');
         setTransactions(p => p.filter(tx => tx.id !== tempId)); 
     } else {
-        showToast('success', 'Ordem salva na nuvem');
+        // Success: Trigger the "Green Bar" notification
+        setCloudStatus('connected');
+        setTimeout(() => setCloudStatus('hidden'), 3000);
     }
   };
 
@@ -454,7 +460,9 @@ const App: React.FC = () => {
         showToast('error', 'Falha ao atualizar na nuvem.');
         setTransactions(p => p.map(t => t.id === id ? originalTx! : t)); 
     } else {
-        showToast('success', 'Ordem atualizada');
+        // Success: Trigger the "Green Bar" notification
+        setCloudStatus('connected');
+        setTimeout(() => setCloudStatus('hidden'), 3000);
     }
   };
 
@@ -467,7 +475,9 @@ const App: React.FC = () => {
         showToast('error', 'Falha ao apagar na nuvem.');
         setTransactions(p => [...p, deletedTx!]); 
     } else {
-        showToast('success', 'Ordem removida');
+        // Success: Trigger the "Green Bar" notification
+        setCloudStatus('connected');
+        setTimeout(() => setCloudStatus('hidden'), 3000);
     }
   };
 
@@ -498,7 +508,7 @@ const App: React.FC = () => {
             if (error) throw error;
         }
         await fetchTransactionsFromCloud(true);
-        showToast('success', 'Backup restaurado!');
+        // Backup restore also triggers the connected state implicitly via fetchTransactionsFromCloud
     } catch (e: any) {
         console.error("Supabase import error:", e);
         showToast('error', 'Erro ao restaurar backup.');
