@@ -1,22 +1,23 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, LockScreen, ConfirmationModal } from '../components/Layout';
-import { Home } from '../pages/Home';
-import { Portfolio } from '../pages/Portfolio';
-import { Transactions } from '../pages/Transactions';
-import { Settings } from '../pages/Settings';
-import { Login } from '../pages/Login';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals } from '../types';
-import { getQuotes } from '../services/brapiService';
-import { fetchUnifiedMarketData } from '../services/geminiService';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, LockScreen, ConfirmationModal } from './components/Layout';
+import { SplashScreen } from './components/SplashScreen';
+import { Home } from './pages/Home';
+import { Portfolio } from './pages/Portfolio';
+import { Transactions } from './pages/Transactions';
+import { Settings } from './pages/Settings';
+import { Login } from './pages/Login';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals } from './types';
+import { getQuotes } from './services/brapiService';
+import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import { useUpdateManager } from '../hooks/useUpdateManager';
-import { supabase } from '../services/supabase';
+import { useUpdateManager } from './hooks/useUpdateManager';
+import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.1.0'; 
+const APP_VERSION = '7.2.1'; 
 
 const STORAGE_KEYS = {
-  TXS: 'investfiis_v4_transactions',
+  // TXS removido pois agora é cloud-only
   DIVS: 'investfiis_v4_div_cache',
   THEME: 'investfiis_theme',
   ACCENT: 'investfiis_accent_color',
@@ -24,8 +25,6 @@ const STORAGE_KEYS = {
   PREFS_NOTIF: 'investfiis_prefs_notifications',
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
-  LAST_SYNC: 'investfiis_last_sync_time',
-  GUEST_MODE: 'investfiis_guest_mode',
   PASSCODE: 'investfiis_passcode',
   BIOMETRICS: 'investfiis_biometrics'
 };
@@ -72,11 +71,16 @@ const MemoizedTransactions = React.memo(Transactions);
 const App: React.FC = () => {
   const updateManager = useUpdateManager(APP_VERSION);
   
+  // Estado de controle do SplashScreen
+  const [appLoading, setAppLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0); 
+
   const [session, setSession] = useState<Session | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(() => localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true');
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
+
+  // Ref para evitar stale closures no listener de auth
+  const sessionRef = useRef<Session | null>(null);
 
   const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem(STORAGE_KEYS.PASSCODE));
   const savedPasscode = localStorage.getItem(STORAGE_KEYS.PASSCODE);
@@ -96,23 +100,24 @@ const App: React.FC = () => {
 
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
   
-  const [transactions, setTransactions] = useState<Transaction[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.TXS); return s ? JSON.parse(s) : []; } catch { return []; } });
+  // Transactions agora iniciam vazias. Sem fallback local.
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>({});
   const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.5, startDate: '' }; } catch { return { ipca: 4.5, startDate: '' }; } });
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.LAST_SYNC); return s ? new Date(s) : null; } catch { return null; } });
+  
+  // Last sync time is mostly for UI now, data is realtime
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(new Date());
   
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>({});
 
-  // --- Efeitos de Persistência Local ---
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.TXS, JSON.stringify(transactions)); }, [transactions]);
+  // --- Efeitos de Persistência Local (Apenas Cache de UI/IA, NUNCA Transações) ---
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled)); }, [pushEnabled]);
-  useEffect(() => { if (lastSyncTime) localStorage.setItem(STORAGE_KEYS.LAST_SYNC, lastSyncTime.toISOString()); }, [lastSyncTime]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.GUEST_MODE, String(isGuest)); }, [isGuest]);
 
   // --- Tema e Variáveis CSS ---
   useEffect(() => {
@@ -152,12 +157,18 @@ const App: React.FC = () => {
     }
     
     setIsRefreshing(true);
+    if (appLoading) setLoadingProgress(prev => Math.max(prev, 30));
+
     try {
+      // BRAPI
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
       }
       
+      if (appLoading) setLoadingProgress(prev => Math.max(prev, 60)); // Quotes completas
+
+      // GEMINI (IA)
       setIsAiLoading(true);
       const startDate = txsToUse.length > 0 ? txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date) : '';
       
@@ -170,6 +181,8 @@ const App: React.FC = () => {
       setAssetsMetadata(aiData.metadata);
       if (aiData.indicators?.ipca_cumulative) setMarketIndicators({ ipca: aiData.indicators.ipca_cumulative, startDate: aiData.indicators.start_date_used });
       setLastSyncTime(new Date());
+      
+      if (appLoading) setLoadingProgress(prev => Math.max(prev, 90)); // IA Completa
 
     } catch (e) { 
       if (force) showToast('error', 'Sem conexão'); 
@@ -178,10 +191,11 @@ const App: React.FC = () => {
       setIsRefreshing(false); 
       setIsAiLoading(false); 
     }
-  }, [transactions, showToast, quotes]);
+  }, [transactions, showToast, quotes, appLoading]);
 
   const fetchTransactionsFromCloud = useCallback(async () => {
     setIsCloudSyncing(true);
+    if (appLoading) setLoadingProgress(prev => Math.max(prev, 15)); 
     try {
       const { data, error } = await supabase.from('transactions').select('*');
       if (error) throw error;
@@ -189,115 +203,85 @@ const App: React.FC = () => {
       if (data) {
         const cloudTxs: Transaction[] = data.map(mapSupabaseToTx);
         setTransactions(cloudTxs);
+        
+        if (appLoading) setLoadingProgress(prev => Math.max(prev, 25)); 
+
         if (cloudTxs.length > 0) {
-            syncMarketData(false, cloudTxs);
+            await syncMarketData(false, cloudTxs);
         }
       }
+      return true;
     } catch (err: any) {
       console.error("Supabase fetch error:", err);
       showToast('error', 'Erro ao buscar dados da nuvem.');
+      return false;
     } finally {
       setIsCloudSyncing(false);
     }
-  }, [showToast, syncMarketData]);
+  }, [showToast, syncMarketData, appLoading]);
 
-  const migrateGuestDataToCloud = useCallback(async (user_id: string) => {
-    const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]') as Transaction[];
-    if (localTxs.length === 0) return;
-    
-    setCloudStatus('syncing');
-    showToast('info', 'Migrando dados locais para a nuvem...');
-    
-    try {
-        const dataToInsert = localTxs.map(tx => {
-            const { id, ...rest } = tx;
-            const record = cleanTxForSupabase(rest);
-            return { ...record, user_id, id };
-        });
-
-        const { error } = await supabase.from('transactions').insert(dataToInsert);
-        if (error) throw error;
-        
-        showToast('success', 'Dados locais salvos na nuvem!');
-    } catch (error) {
-      console.error("Supabase migration error:", error);
-      showToast('error', 'Erro ao migrar dados.');
+  const handleSyncAll = useCallback(async (force: boolean) => {
+    if (session) {
+        await fetchTransactionsFromCloud();
     }
-  }, [showToast]);
+  }, [fetchTransactionsFromCloud, session]);
 
   // --- Auth & Startup Logic ---
 
   useEffect(() => {
     let mounted = true;
+    setLoadingProgress(5);
 
-    const initApp = async () => {
-      try {
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
-        if (!mounted) return;
-
-        const isGuestMode = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
-        
-        if (initialSession) {
-          setSession(initialSession);
-          setIsGuest(false);
-          fetchTransactionsFromCloud();
-          setCloudStatus('connected');
-          setTimeout(() => setCloudStatus('hidden'), 3000);
-        } else {
-          setSession(null);
-          setIsGuest(isGuestMode);
-          if (isGuestMode) {
-              setCloudStatus('disconnected');
-              const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
-              if (localTxs.length > 0) {
-                  syncMarketData(false, localTxs);
-              }
-          }
-        }
-      } catch (e) {
-          console.error("Critical app init error:", e);
-      } finally {
-          if (mounted) setIsAuthLoading(false);
+    const timeout = setTimeout(() => {
+      if (mounted && appLoading) {
+        console.warn("Init timeout");
+        setAppLoading(false);
       }
-    };
-
-    initApp();
+    }, 15000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, currentSession: Session | null) => {
       if (!mounted) return;
       
-      const previousSessionId = session?.user?.id;
+      const previousSessionId = sessionRef.current?.user?.id;
       const currentSessionId = currentSession?.user?.id;
       
+      sessionRef.current = currentSession;
       setSession(currentSession);
 
-      if (currentSessionId && currentSessionId !== previousSessionId) {
-        setIsGuest(false);
-        const wasGuest = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
-        
-        if (wasGuest) {
-          await migrateGuestDataToCloud(currentSessionId);
+      if (currentSessionId) {
+        // Usuário logado ou restaurado
+        if (!previousSessionId) {
+            setLoadingProgress(15);
+            await fetchTransactionsFromCloud();
+            setCloudStatus('connected');
+            setTimeout(() => setCloudStatus('hidden'), 3000);
         }
-        
-        await fetchTransactionsFromCloud();
-        setCloudStatus('connected');
-        setTimeout(() => setCloudStatus('hidden'), 3000);
       } 
-      else if (!currentSessionId && previousSessionId) {
+      else {
+        // Usuário deslogado ou sem sessão
         setTransactions([]);
         setQuotes({});
         setGeminiDividends([]);
-        setIsGuest(false);
         setCloudStatus('hidden');
+      }
+
+      if (appLoading) {
+          // Finaliza loading se já temos uma decisão de sessão (sim ou não)
+          setLoadingProgress(100);
+          setTimeout(() => {
+              if (mounted) {
+                  setAppLoading(false);
+              }
+          }, 600);
       }
     });
 
     return () => {
       mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); 
 
   // --- Realtime Subscription (Supabase) ---
   useEffect(() => {
@@ -311,7 +295,13 @@ const App: React.FC = () => {
         setTransactions(currentTxs => {
             if (eventType === 'INSERT') {
               if (currentTxs.some(t => t.id === newRecord.id)) return currentTxs;
-              return [...currentTxs, mapSupabaseToTx(newRecord)];
+              const newTx = mapSupabaseToTx(newRecord);
+              // Dispara atualização de mercado se for um ticker novo
+              if (!currentTxs.some(t => t.ticker === newTx.ticker)) {
+                 // Pequeno delay para evitar travar a UI durante a animação
+                 setTimeout(() => syncMarketData(false, [...currentTxs, newTx]), 500);
+              }
+              return [...currentTxs, newTx];
             }
             if (eventType === 'UPDATE') {
                 return currentTxs.map(t => t.id === newRecord.id ? mapSupabaseToTx(newRecord) : t);
@@ -325,53 +315,64 @@ const App: React.FC = () => {
       .subscribe();
       
     return () => { supabase.removeChannel(channel); };
-  }, [session]);
+  }, [session, syncMarketData]);
 
-  // --- Handlers de Transação ---
+  // --- Handlers de Transação (Cloud Only) ---
 
   const handleAddTransaction = async (t: Omit<Transaction, 'id'>) => {
-    const newTx = { ...t, id: crypto.randomUUID() };
-    setTransactions(p => [...p, newTx]); 
+    if (!session) return;
     
-    if (session) {
-      const record = cleanTxForSupabase(newTx);
-      const { error } = await supabase.from('transactions').insert({ ...record, user_id: session.user.id });
-      if (error) {
+    const tempId = crypto.randomUUID();
+    const newTx = { ...t, id: tempId };
+    
+    // Optimistic
+    setTransactions(p => [...p, newTx]);
+
+    const record = cleanTxForSupabase(newTx);
+    const { error } = await supabase.from('transactions').insert({ ...record, id: tempId, user_id: session.user.id });
+    
+    if (error) {
         console.error("Supabase insert error:", error);
         showToast('error', 'Erro ao salvar na nuvem.');
-        setTransactions(p => p.filter(tx => tx.id !== newTx.id)); 
-      }
+        setTransactions(p => p.filter(tx => tx.id !== tempId)); // Rollback
+    } else {
+        showToast('success', 'Ordem salva na nuvem');
     }
   };
 
   const handleUpdateTransaction = async (id: string, updated: Omit<Transaction, 'id'>) => {
+    if (!session) return;
+    
     const originalTx = transactions.find(t => t.id === id);
     const updatedTx = { ...updated, id };
     
     setTransactions(p => p.map(t => t.id === id ? updatedTx : t)); 
 
-    if (session && originalTx) {
-      const record = cleanTxForSupabase(updated);
-      const { error } = await supabase.from('transactions').update(record).match({ id });
-      if (error) {
+    const record = cleanTxForSupabase(updated);
+    const { error } = await supabase.from('transactions').update(record).match({ id });
+    
+    if (error) {
         console.error("Supabase update error:", error);
         showToast('error', 'Falha ao atualizar na nuvem.');
-        setTransactions(p => p.map(t => t.id === id ? originalTx : t)); 
-      }
+        setTransactions(p => p.map(t => t.id === id ? originalTx! : t)); // Rollback
+    } else {
+        showToast('success', 'Ordem atualizada');
     }
   };
 
   const handleDeleteTransaction = async (id: string) => {
+    if (!session) return;
+
     const deletedTx = transactions.find(t => t.id === id);
     setTransactions(p => p.filter(t => t.id !== id)); 
 
-    if (session && deletedTx) {
-      const { error } = await supabase.from('transactions').delete().match({ id });
-      if (error) {
+    const { error } = await supabase.from('transactions').delete().match({ id });
+    if (error) {
         console.error("Supabase delete error:", error);
         showToast('error', 'Falha ao apagar na nuvem.');
-        setTransactions(p => [...p, deletedTx]); 
-      }
+        setTransactions(p => [...p, deletedTx!]); // Rollback
+    } else {
+        showToast('success', 'Ordem removida');
     }
   };
 
@@ -381,39 +382,41 @@ const App: React.FC = () => {
     setConfirmModal({
         isOpen: true,
         title: 'Confirmar Exclusão',
-        message: `Deseja realmente apagar a ordem de ${txToDelete.type === 'BUY' ? 'compra' : 'venda'} de ${txToDelete.ticker}? Esta ação não pode ser desfeita.`,
+        message: `Deseja realmente apagar a ordem de ${txToDelete.type === 'BUY' ? 'compra' : 'venda'} de ${txToDelete.ticker}? Esta ação será sincronizada em todos os dispositivos.`,
         onConfirm: () => { handleDeleteTransaction(id); setConfirmModal(null); }
     });
   };
 
   const handleImportTransactions = async (importedTxs: Transaction[]) => {
-    if (!Array.isArray(importedTxs)) return;
-    const originalTxs = transactions;
-    setTransactions(importedTxs);
+    if (!Array.isArray(importedTxs) || !session) return;
     
-    if (session) {
-        setIsCloudSyncing(true);
-        showToast('info', 'Sincronizando backup...');
-        try {
-            await supabase.from('transactions').delete().eq('user_id', session.user.id);
-            const sbData = importedTxs.map(t => {
-                const record = cleanTxForSupabase(t);
-                return { ...record, user_id: session.user.id };
-            });
-            if (sbData.length > 0) {
-              const { error } = await supabase.from('transactions').insert(sbData);
-              if (error) throw error;
-            }
-            showToast('success', 'Backup restaurado na nuvem!');
-        } catch (e: any) {
-            console.error("Supabase import error:", e);
-            showToast('error', 'Erro na nuvem. Restaurando estado anterior.');
-            setTransactions(originalTxs);
-        } finally {
-            setIsCloudSyncing(false);
+    setIsCloudSyncing(true);
+    showToast('info', 'Substituindo dados na nuvem...');
+    
+    try {
+        // Remove tudo do usuário atual
+        await supabase.from('transactions').delete().eq('user_id', session.user.id);
+        
+        // Insere novos
+        const sbData = importedTxs.map(t => {
+            const record = cleanTxForSupabase(t);
+            // Garante IDs novos ou preserva se forem válidos UUIDs
+            return { ...record, user_id: session.user.id, id: t.id || crypto.randomUUID() };
+        });
+        
+        if (sbData.length > 0) {
+            const { error } = await supabase.from('transactions').insert(sbData);
+            if (error) throw error;
         }
-    } else {
-        showToast('success', 'Backup restaurado localmente.');
+        
+        // Fetch fresh data
+        await fetchTransactionsFromCloud();
+        showToast('success', 'Backup restaurado na nuvem!');
+    } catch (e: any) {
+        console.error("Supabase import error:", e);
+        showToast('error', 'Erro ao restaurar backup na nuvem.');
+    } finally {
+        setIsCloudSyncing(false);
     }
   };
 
@@ -517,12 +520,17 @@ const App: React.FC = () => {
     showToast(permission === 'granted' ? 'success' : 'info', permission === 'granted' ? 'Notificações Ativadas!' : 'Permissão negada.');
   };
 
-  if (isAuthLoading) return <div className="min-h-screen bg-slate-100 dark:bg-[#020617] flex items-center justify-center"><Loader2 className="w-8 h-8 text-accent animate-spin" /></div>;
+  // Se não estiver logado e o app já tentou carregar a sessão, mostra o login
+  // O SplashScreen cobre tudo até appLoading ser false
+  if (!session && !appLoading) return <Login />;
+  
+  // Se está bloqueado, mostra LockScreen
   if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
-  if (!session && !isGuest) return <Login onGuestAccess={() => setIsGuest(true)} />;
 
   return (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
+      <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
+      
       <CloudStatusBanner status={cloudStatus} />
       
       {toast && ( 
@@ -536,64 +544,69 @@ const App: React.FC = () => {
         </div> 
       )}
 
-      <Header 
-        title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} 
-        showBack={showSettings} 
-        onBack={() => setShowSettings(false)} 
-        onSettingsClick={() => setShowSettings(true)} 
-        onRefresh={() => syncMarketData(true)} 
-        isRefreshing={isRefreshing || isAiLoading || isCloudSyncing} 
-        updateAvailable={updateManager.isUpdateAvailable} 
-        onUpdateClick={() => updateManager.setShowChangelog(true)} 
-        onNotificationClick={() => { setShowNotifications(true); markNotificationsAsRead(); }} 
-        notificationCount={unreadCount} 
-        appVersion={APP_VERSION} 
-        bannerVisible={cloudStatus !== 'hidden'} 
-      />
-      
-      <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
-        {showSettings ? (
-          <Settings 
-            transactions={transactions} onImportTransactions={handleImportTransactions} 
-            geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} 
-            onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); setIsGuest(false); window.location.reload(); }} 
-            theme={theme} onSetTheme={setTheme} 
-            accentColor={accentColor} onSetAccentColor={setAccentColor} 
-            privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} 
-            appVersion={APP_VERSION} availableVersion={updateManager.availableVersion} 
-            updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
-            onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} 
-            lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} 
-            lastSyncTime={lastSyncTime} onSyncAll={() => syncMarketData(false)} 
-          />
-        ) : (
-          <div key={currentTab} className="anim-fade-in is-visible">
-            {currentTab === 'home' && (
-                <MemoizedHome 
-                    {...memoizedData} 
-                    salesGain={summaryData.salesGain} 
-                    totalAppreciation={memoizedData.balance - memoizedData.invested} 
-                    isAiLoading={isAiLoading} 
-                    inflationRate={marketIndicators.ipca} 
-                    portfolioStartDate={marketIndicators.startDate} 
-                    accentColor={accentColor} 
+      {/* Só mostra conteúdo se tiver sessão confirmada e app não estiver carregando */}
+      {session && !appLoading && (
+        <>
+            <Header 
+              title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} 
+              showBack={showSettings} 
+              onBack={() => setShowSettings(false)} 
+              onSettingsClick={() => setShowSettings(true)} 
+              onRefresh={() => syncMarketData(true)} 
+              isRefreshing={isRefreshing || isAiLoading || isCloudSyncing} 
+              updateAvailable={updateManager.isUpdateAvailable} 
+              onUpdateClick={() => updateManager.setShowChangelog(true)} 
+              onNotificationClick={() => { setShowNotifications(true); markNotificationsAsRead(); }} 
+              notificationCount={unreadCount} 
+              appVersion={APP_VERSION} 
+              bannerVisible={cloudStatus !== 'hidden'} 
+            />
+            
+            <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
+              {showSettings ? (
+                <Settings 
+                  transactions={transactions} onImportTransactions={handleImportTransactions} 
+                  geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} 
+                  onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); window.location.reload(); }} 
+                  theme={theme} onSetTheme={setTheme} 
+                  accentColor={accentColor} onSetAccentColor={setAccentColor} 
+                  privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} 
+                  appVersion={APP_VERSION} availableVersion={updateManager.availableVersion} 
+                  updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
+                  onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} 
+                  lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} 
+                  lastSyncTime={lastSyncTime} onSyncAll={handleSyncAll} 
                 />
-            )}
-            {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedData} />}
-            {currentTab === 'transactions' && ( 
-                <MemoizedTransactions 
-                    transactions={transactions} 
-                    onAddTransaction={handleAddTransaction} 
-                    onUpdateTransaction={handleUpdateTransaction} 
-                    onRequestDeleteConfirmation={onRequestDeleteConfirmation} 
-                /> 
-            )}
-          </div>
-        )}
-      </main>
-      
-      {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
-      
+              ) : (
+                <div key={currentTab} className="anim-fade-in is-visible">
+                  {currentTab === 'home' && (
+                      <MemoizedHome 
+                          {...memoizedData} 
+                          salesGain={summaryData.salesGain} 
+                          totalAppreciation={memoizedData.balance - memoizedData.invested} 
+                          isAiLoading={isAiLoading} 
+                          inflationRate={marketIndicators.ipca} 
+                          portfolioStartDate={marketIndicators.startDate} 
+                          accentColor={accentColor} 
+                      />
+                  )}
+                  {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedData} />}
+                  {currentTab === 'transactions' && ( 
+                      <MemoizedTransactions 
+                          transactions={transactions} 
+                          onAddTransaction={handleAddTransaction} 
+                          onUpdateTransaction={handleUpdateTransaction} 
+                          onRequestDeleteConfirmation={onRequestDeleteConfirmation} 
+                      /> 
+                  )}
+                </div>
+              )}
+            </main>
+            
+            {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
+        </>
+      )}
+
       <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => !updateManager.isUpdating && updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={!updateManager.wasUpdated && updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
       <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={() => setNotifications([])} />
       {confirmModal?.isOpen && ( <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} /> )}

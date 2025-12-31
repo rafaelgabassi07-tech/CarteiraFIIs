@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.2.0'; 
+const APP_VERSION = '7.2.1'; 
 
 const STORAGE_KEYS = {
   // TXS removido pois agora é cloud-only
@@ -77,9 +77,7 @@ const App: React.FC = () => {
 
   const [session, setSession] = useState<Session | null>(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
-  
-  // Como não há mais modo convidado, o status da nuvem é sempre 'connected' se logado
-  const cloudStatus = session ? 'connected' : 'hidden';
+  const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
 
   // Ref para evitar stale closures no listener de auth
   const sessionRef = useRef<Session | null>(null);
@@ -255,6 +253,8 @@ const App: React.FC = () => {
         if (!previousSessionId) {
             setLoadingProgress(15);
             await fetchTransactionsFromCloud();
+            setCloudStatus('connected');
+            setTimeout(() => setCloudStatus('hidden'), 3000);
         }
       } 
       else {
@@ -262,6 +262,7 @@ const App: React.FC = () => {
         setTransactions([]);
         setQuotes({});
         setGeminiDividends([]);
+        setCloudStatus('hidden');
       }
 
       if (appLoading) {
@@ -321,9 +322,6 @@ const App: React.FC = () => {
   const handleAddTransaction = async (t: Omit<Transaction, 'id'>) => {
     if (!session) return;
     
-    // Otimistic UI: Adiciona localmente enquanto envia, mas se falhar, remove.
-    // Na verdade, como pediu cloud-only, vamos apenas enviar e esperar o realtime ou retorno
-    // Mas para UX rápida, mantemos optimistic update com rollback em erro.
     const tempId = crypto.randomUUID();
     const newTx = { ...t, id: tempId };
     
@@ -331,8 +329,6 @@ const App: React.FC = () => {
     setTransactions(p => [...p, newTx]);
 
     const record = cleanTxForSupabase(newTx);
-    // Removemos o ID gerado no front para deixar o Supabase gerar (ou usamos UUID v4)
-    // O ideal no Supabase é deixar ele gerar ou mandar um UUID válido. Vamos mandar o UUID.
     const { error } = await supabase.from('transactions').insert({ ...record, id: tempId, user_id: session.user.id });
     
     if (error) {
@@ -524,13 +520,7 @@ const App: React.FC = () => {
     showToast(permission === 'granted' ? 'success' : 'info', permission === 'granted' ? 'Notificações Ativadas!' : 'Permissão negada.');
   };
 
-  if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
-  
-  // Se não estiver logado e o app já tentou carregar a sessão, mostra o login
-  // O SplashScreen cobre tudo até appLoading ser false
-  if (!session && !appLoading) return <Login />;
-
-  return (
+  const content = (
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       
@@ -565,7 +555,7 @@ const App: React.FC = () => {
               bannerVisible={cloudStatus !== 'hidden'} 
             />
             
-            <main className="max-w-screen-md mx-auto pt-2 mt-0 transition-all duration-500">
+            <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
               {showSettings ? (
                 <Settings 
                   transactions={transactions} onImportTransactions={handleImportTransactions} 
@@ -618,6 +608,14 @@ const App: React.FC = () => {
       {confirmModal?.isOpen && ( <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} /> )}
     </div>
   );
+
+  if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
+  
+  // Se não estiver logado e o app já tentou carregar a sessão, mostra o login
+  // O SplashScreen cobre tudo até appLoading ser false
+  if (!session && !appLoading) return <Login />;
+
+  return content;
 };
 
 export default App;
