@@ -322,26 +322,36 @@ const navItems = [
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/70 dark:bg-[#0f172a]/70 backdrop-blur-2xl border-t border-slate-200/80 dark:border-white/5">
-      <div className="max-w-lg mx-auto flex justify-around items-center h-20 px-4 pb-safe">
-        {navItems.map(item => {
-          const isActive = currentTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onTabChange(item.id)}
-              className="flex flex-col items-center justify-center gap-1 w-20 h-full text-slate-400 dark:text-slate-500 relative transition-all duration-300"
-            >
-              <div className={`absolute top-0 w-8 h-1 rounded-b-full transition-all duration-300 ${isActive ? 'bg-accent scale-x-100' : 'scale-x-0'}`}></div>
-              <item.icon className={`w-6 h-6 transition-all duration-300 ${isActive ? 'text-accent -translate-y-1' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
-              <span className={`text-[10px] font-bold transition-all duration-300 ${isActive ? 'text-slate-900 dark:text-white' : ''}`}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
+    <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none flex flex-col justify-end">
+      {/* Gradient fade to ensure text readability behind the floating dock */}
+      <div className="h-12 w-full bg-gradient-to-t from-[#020617] to-transparent opacity-80 pointer-events-none absolute bottom-0 left-0 right-0"></div>
+      
+      <div className="max-w-md mx-auto w-full px-6 pb-6 pt-2 pointer-events-auto">
+        <nav className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl border border-slate-200/50 dark:border-white/10 shadow-2xl shadow-slate-200/20 dark:shadow-black/50 rounded-[2.5rem] p-2 flex justify-between items-center relative">
+          {navItems.map(item => {
+            const isActive = currentTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onTabChange(item.id)}
+                className={`relative flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-[2rem] transition-all duration-300 group ${
+                  isActive ? 'bg-slate-100 dark:bg-white/10 shadow-sm' : 'hover:bg-slate-50 dark:hover:bg-white/5'
+                }`}
+              >
+                <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'text-accent' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}>
+                    <item.icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />
+                </div>
+                {isActive && (
+                    <span className="text-[9px] font-black text-slate-700 dark:text-white uppercase tracking-wider scale-100 opacity-100 transition-all leading-none -mt-1">
+                        {item.label}
+                    </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
       </div>
-    </nav>
+    </div>
   );
 };
 
