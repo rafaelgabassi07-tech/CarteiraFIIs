@@ -51,56 +51,6 @@ const normalizeValue = (val: any): number => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
-// --- Esquema de Resposta para a Gemini ---
-const unifiedDataSchema = {
-  type: Type.OBJECT,
-  properties: {
-    sys: {
-      type: Type.OBJECT,
-      properties: {
-        ipca: { type: Type.NUMBER, description: "IPCA acumulado (ex: 4.51 para 4.51%)" }
-      }
-    },
-    data: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          t: { type: Type.STRING, description: "Ticker do ativo" },
-          type: { type: Type.STRING, description: "CLASSIFICACAO EXATA: 'FII' ou 'ACAO'" },
-          segment: { type: Type.STRING, description: "Segmento de atuação" },
-          fund: {
-            type: Type.OBJECT,
-            properties: {
-              pvp: { type: Type.NUMBER, description: "P/VP do ativo" },
-              pl: { type: Type.NUMBER, description: "P/L do ativo. Nulo para FIIs." },
-              dy: { type: Type.NUMBER, description: "Dividend Yield dos últimos 12 meses" },
-              liq: { type: Type.STRING, description: "Liquidez média diária" },
-              cotistas: { type: Type.STRING, description: "Número de cotistas/acionistas" },
-              desc: { type: Type.STRING, description: "Breve descrição do ativo." },
-              mcap: { type: Type.STRING, description: "Market Cap" },
-              sent: { type: Type.STRING, description: "Sentimento (Otimista, Neutro, Pessimista)" },
-              sent_r: { type: Type.STRING, description: "Justificativa curta baseada em notícias recentes." }
-            }
-          },
-          divs: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                com: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
-                pag: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
-                val: { type: Type.NUMBER, description: "Valor exato por cota" },
-                tipo: { type: Type.STRING, description: "Tipo exato: 'DIVIDENDO', 'JCP', 'RENDIMENTO'" }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-};
-
 /**
  * Busca dados unificados de mercado (dividendos, fundamentos) diretamente da API do Google Gemini.
  * Utiliza o modelo gemini-2.5-flash COM Google Search para garantir dados atualizados e precisos.
@@ -163,13 +113,33 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     3. Verifique a "Data Com", "Data Pagamento" e "Valor Líquido/Bruto" (use o líquido se possível para FIIs, bruto para Ações se não especificado, mas padronize o valor que cai na conta).
     
     RETORNO ESPERADO (JSON Rígido):
-    Para cada ativo:
-    - Fundamentos: P/VP, DY (últimos 12m), Liquidez, etc. Classifique corretamente 'FII' ou 'ACAO'.
-    - Dividendos/Proventos: Liste TODOS os eventos (Dividendos, JCP, Rendimentos) com Data Com >= ${portfolioStart}. Inclua pagamentos FUTUROS (agendados).
-    - Sistema: Calcule o IPCA acumulado de ${portfolioStart} até hoje.
+    Você deve responder APENAS um objeto JSON válido, sem markdown (sem \`\`\`json), contendo:
+    {
+      "sys": { "ipca": numero (ex: 4.51) },
+      "data": [
+        {
+          "t": "TICKER",
+          "type": "FII" ou "ACAO",
+          "segment": "Segmento",
+          "fund": {
+             "pvp": numero,
+             "pl": numero,
+             "dy": numero (yield 12m),
+             "liq": "string",
+             "cotistas": "string",
+             "desc": "string",
+             "mcap": "string",
+             "sent": "Otimista/Neutro/Pessimista",
+             "sent_r": "Justificativa"
+          },
+          "divs": [
+             { "com": "YYYY-MM-DD", "pag": "YYYY-MM-DD", "val": numero, "tipo": "DIVIDENDO" }
+          ]
+        }
+      ]
+    }
     
-    Se houver discrepância de valores em diferentes fontes, priorize a fonte oficial da B3 ou RI da empresa encontrada na busca.
-    Responda APENAS com o JSON preenchido, sem texto adicional.`;
+    Se houver discrepância, priorize fontes oficiais B3/RI. Responda APENAS o JSON.`;
 
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash", 
@@ -177,24 +147,31 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         config: {
             // ATIVA O GOOGLE SEARCH PARA DADOS REAIS
             tools: [{googleSearch: {}}],
-            responseMimeType: "application/json",
-            responseSchema: unifiedDataSchema,
+            // REMOVIDO: responseMimeType e responseSchema pois geram erro 400 com googleSearch
             temperature: 0.1, // Baixa temperatura para maior precisão factual
         },
     });
     
-    // Tratamento robusto do JSON
+    // Tratamento robusto do JSON (Limpeza de Markdown)
     let parsedJson: any;
     try {
       if (response.text) {
-          const cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+          // Remove blocos de código markdown se a IA os adicionar, mesmo com o prompt pedindo para não
+          let cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+          // Remove possíveis textos antes ou depois do JSON
+          const firstBrace = cleanText.indexOf('{');
+          const lastBrace = cleanText.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1) {
+              cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+          }
           parsedJson = JSON.parse(cleanText);
       } else {
           throw new Error("Resposta vazia da IA");
       }
     } catch (parseError) {
       console.error("Erro ao fazer parse do JSON da Gemini:", parseError);
-      throw new Error("Falha no processamento da resposta da IA");
+      console.log("Raw Text:", response.text);
+      throw new Error("Falha no processamento da resposta da IA (Formato inválido)");
     }
 
     const metadata: any = {};

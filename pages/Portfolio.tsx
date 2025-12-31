@@ -69,7 +69,10 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
                 <div className="font-black text-base text-slate-900 dark:text-white tabular-nums tracking-tight">R$ {formatCurrency(totalValue)}</div>
                 <div className={`flex items-center justify-end gap-1 text-xs font-bold tabular-nums ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                    {isPositive ? <ArrowUp className="w-3 h-3" strokeWidth={3} /> : <ArrowDown className="w-3 h-3" strokeWidth={3} />}
-                   {gainPercent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                   <span>{isPositive ? '+' : ''}{formatCurrency(gainValue)}</span>
+                   <span className="opacity-60 text-[10px] font-semibold ml-0.5">
+                     ({gainPercent.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%)
+                   </span>
                 </div>
              </div>
           </div>
