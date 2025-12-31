@@ -11,7 +11,7 @@ import { fetchUnifiedMarketData } from './services/geminiService';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
-import { Session } from '@supabase/supabase-js';
+import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
 const APP_VERSION = '7.1.0'; 
 
@@ -74,7 +74,7 @@ const App: React.FC = () => {
   
   const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(false);
+  const [isGuest, setIsGuest] = useState(() => localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true');
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
 
@@ -155,7 +155,7 @@ const App: React.FC = () => {
     try {
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
-        setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc, q) => ({...acc, [q.symbol]: q }), {})}));
+        setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
       }
       
       setIsAiLoading(true);
@@ -189,7 +189,6 @@ const App: React.FC = () => {
       if (data) {
         const cloudTxs: Transaction[] = data.map(mapSupabaseToTx);
         setTransactions(cloudTxs);
-        // Only trigger market sync if we got data
         if (cloudTxs.length > 0) {
             syncMarketData(false, cloudTxs);
         }
@@ -237,7 +236,6 @@ const App: React.FC = () => {
         
         if (!mounted) return;
 
-        // Determine initial state
         const isGuestMode = localStorage.getItem(STORAGE_KEYS.GUEST_MODE) === 'true';
         
         if (initialSession) {
@@ -251,7 +249,6 @@ const App: React.FC = () => {
           setIsGuest(isGuestMode);
           if (isGuestMode) {
               setCloudStatus('disconnected');
-              // Sync market if guest has data
               const localTxs = JSON.parse(localStorage.getItem(STORAGE_KEYS.TXS) || '[]');
               if (localTxs.length > 0) {
                   syncMarketData(false, localTxs);
@@ -265,9 +262,17 @@ const App: React.FC = () => {
       }
     };
 
-    initApp();
+    // Safety timeout to prevent infinite loading if Supabase hangs
+    const timeout = setTimeout(() => {
+      if (mounted && isAuthLoading) {
+        console.warn("Auth check timed out, forcing state update");
+        setIsAuthLoading(false);
+      }
+    }, 5000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+    initApp().then(() => clearTimeout(timeout));
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, currentSession: Session | null) => {
       if (!mounted) return;
       
       const previousSessionId = session?.user?.id;
@@ -298,6 +303,7 @@ const App: React.FC = () => {
 
     return () => {
       mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -308,7 +314,7 @@ const App: React.FC = () => {
     
     const channel = supabase
       .channel('transactions-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${session.user.id}` }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${session.user.id}` }, (payload: any) => {
         const { eventType, new: newRecord, old: oldRecord } = payload;
         
         setTransactions(currentTxs => {
@@ -457,7 +463,6 @@ const App: React.FC = () => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     const todayStr = new Date().toISOString().split('T')[0];
     
-    // Calcula recibos com base na quantidade possuída na Data Com
     const receipts = geminiDividends.map(div => ({
         ...div, 
         quantityOwned: Math.max(0, getQuantityOnDateMemo(div.ticker, div.dateCom, sortedTxs)), 
@@ -498,7 +503,7 @@ const App: React.FC = () => {
     });
     
     const finalPortfolio = Object.values(positions)
-        .filter(p => p.quantity > 0.0001) // Filtra posições zeradas
+        .filter(p => p.quantity > 0.0001) 
         .map(p => ({ 
             ...p, 
             currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice, 

@@ -4,35 +4,17 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: './',
+    base: './', // Garante caminhos relativos corretos
     plugins: [react()],
-    optimizeDeps: {
-      include: ['react', 'react-dom', 'react-window', 'recharts', 'lucide-react', '@google/genai', '@supabase/supabase-js']
-    },
     server: {
-      host: '0.0.0.0',
+      host: true, // Escuta em todos os IPs
       port: 5173,
-      cors: true,
-      hmr: {
-        overlay: false
-      }
     },
     build: {
-      chunkSizeWarningLimit: 1600,
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              if (id.includes('recharts')) return 'recharts';
-              if (id.includes('lucide-react')) return 'lucide';
-              if (id.includes('@supabase')) return 'supabase';
-              if (id.includes('@google/genai')) return 'genai';
-              if (id.includes('react-window')) return 'react-window';
-              return 'vendor';
-            }
-          }
-        }
-      }
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: false,
+      emptyOutDir: true,
     },
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY),
