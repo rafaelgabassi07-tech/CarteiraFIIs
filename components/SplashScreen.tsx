@@ -9,25 +9,22 @@ interface SplashScreenProps {
 export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realProgress }) => {
   const [shouldRender, setShouldRender] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [displayProgress, setDisplayProgress] = useState(0);
+  const [displayProgress, setDisplayProgress] = useState(5); // Começa em 5% para combinar com a tela estática
 
-  // Lógica de Scroll Lock e Cleanup do Static Splash
+  // Lógica de "Handover" (Passagem de bastão da tela estática para a React)
   useEffect(() => {
-    // Bloqueia scroll enquanto o splash está ativo
+    // 1. Bloqueia scroll
     document.body.style.overflow = 'hidden';
 
-    // Remove o splash estático do HTML assim que o React monta
+    // 2. Remove a tela estática IMEDIATAMENTE pois este componente é visualmente idêntico
+    // Isso evita qualquer "pulo" ou flash.
     const staticSplash = document.getElementById('root-splash');
-    if (staticSplash) {
-        requestAnimationFrame(() => {
-            staticSplash.classList.add('loaded');
-            setTimeout(() => {
-                if(staticSplash.parentNode) staticSplash.parentNode.removeChild(staticSplash);
-            }, 600);
-        });
+    if (staticSplash && staticSplash.parentNode) {
+        staticSplash.style.display = 'none'; // Esconde instantaneamente
+        setTimeout(() => staticSplash.parentNode?.removeChild(staticSplash), 100);
     }
 
-    // Cleanup: Garante que o scroll seja liberado ao desmontar
+    // Cleanup: Libera scroll ao desmontar
     return () => {
         document.body.style.overflow = '';
     };
@@ -37,13 +34,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
   useEffect(() => {
     const update = () => {
         setDisplayProgress(prev => {
-            const diff = realProgress - prev;
-            if (diff <= 0) return prev;
-            // Avança suavemente
-            return prev + (diff * 0.15); 
+            const target = Math.max(prev, realProgress);
+            const diff = target - prev;
+            if (diff <= 0.1) return prev;
+            return prev + (diff * 0.1); 
         });
     };
-    const timer = setInterval(update, 20);
+    const timer = setInterval(update, 16);
     return () => clearInterval(timer);
   }, [realProgress]);
 
@@ -51,15 +48,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
   useEffect(() => {
     if (finishLoading) {
       setDisplayProgress(100);
+      // Pequeno delay para usuário ver o 100%
       const timeout = setTimeout(() => {
         setIsFadingOut(true);
         const removeTimeout = setTimeout(() => {
           setShouldRender(false);
-          // Força liberação do scroll explicitamente ao finalizar a animação
           document.body.style.overflow = ''; 
-        }, 800); // Tempo da transição de saída
+        }, 700); // Tempo da transição CSS
         return () => clearTimeout(removeTimeout);
-      }, 600);
+      }, 500);
       return () => clearTimeout(timeout);
     }
   }, [finishLoading]);
@@ -68,27 +65,26 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
 
   return (
     <div 
-      className={`fixed inset-0 z-[9999] bg-[#020617] flex flex-col items-center justify-center overflow-hidden transition-all duration-700 ease-out-quint ${
+      className={`fixed inset-0 z-[9999] bg-[#020617] flex flex-col items-center justify-center overflow-hidden transition-all duration-700 ease-in-out ${
         isFadingOut ? 'opacity-0 scale-110 pointer-events-none' : 'opacity-100 scale-100'
       }`}
     >
-      {/* Background Ambience (Blobs alinhados com o tema) */}
+      {/* Background Ambience */}
       <div className="absolute top-[-20%] left-[-20%] w-[60vw] h-[60vw] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none animate-pulse" />
       <div className="absolute bottom-[-20%] right-[-20%] w-[60vw] h-[60vw] bg-sky-500/10 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDelay: '1s' }} />
       
       {/* Grid Pattern Sutil */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b10_1px,transparent_1px),linear-gradient(to_bottom,#1e293b10_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(30,41,59,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(30,41,59,0.1)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
 
       {/* Main Content */}
       <div className="relative z-10 flex flex-col items-center">
         
-        {/* App Icon Container (Estilo iOS/Glassmorphism) */}
+        {/* App Icon Container */}
         <div className="relative mb-10 group">
-            {/* Glow Effect behind logo */}
-            <div className={`absolute inset-0 bg-sky-500 blur-[40px] rounded-full transition-all duration-1000 ${finishLoading ? 'opacity-40 scale-125' : 'opacity-0 scale-100'}`}></div>
+            {/* Glow Effect behind logo - Animação de entrada suave */}
+            <div className={`absolute inset-0 bg-sky-500 blur-[40px] rounded-full transition-all duration-1000 ${finishLoading ? 'opacity-40 scale-125' : 'opacity-10 scale-100'}`}></div>
             
             <div className="relative w-28 h-28 bg-gradient-to-br from-slate-800 to-slate-950 rounded-[2.5rem] flex items-center justify-center shadow-2xl border border-white/10 ring-1 ring-black/50">
-                {/* Logo Inner */}
                 <div className="relative flex items-center justify-center">
                     <Wallet 
                         className={`w-12 h-12 text-white transition-all duration-700 ${finishLoading ? 'scale-110' : 'scale-100'}`} 

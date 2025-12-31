@@ -1,173 +1,231 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="antialiased">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#020617" />
     <meta name="app-version" content="7.1.5" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
+    
     <title>InvestFIIs - FIIs & Ações</title>
     
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%231e293b'/%3E%3Cstop offset='100%25' style='stop-color:%23020617'/%3E%3C/linearGradient%3E%3ClinearGradient id='a' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2338bdf8'/%3E%3Cstop offset='100%25' style='stop-color:%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='128' fill='url(%23g)'/%3E%3Cpath d='M100 380l100-100 80 40 140-220' stroke='url(%23a)' stroke-width='40' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M360 100h60v60' stroke='url(%23a)' stroke-width='40' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%231e293b'/%3E%3Cstop offset='100%25' style='stop-color:%23020617'/%3E%3C/linearGradient%3E%3ClinearGradient id='a' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2338bdf8'/%3E%3Cstop offset='100%25' style='stop-color:%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='128' fill='url(%23g)'/%3E%3Cpath d='M100 380l100-100 80 40 140-220' stroke='url(%23a)' stroke-width='40' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M360 100h60v60' stroke='url(%23a)' stroke-width='40' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-      /* Critical CSS for Instant Splash - Pixel Perfect Match with React Component */
-      :root { --bg-dark: #020617; --accent: #0ea5e9; }
+      /* CSS Crítico para Splash Screen Instantânea - Réplica exata do React */
+      :root {
+        --bg-dark: #020617;
+        --accent: #0ea5e9;
+      }
       
-      body { background-color: var(--bg-dark); margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+      html, body {
+        background-color: var(--bg-dark); /* Garante fundo escuro imediato */
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        font-family: 'Inter', sans-serif;
+        overflow: hidden; /* Evita scroll durante carregamento */
+      }
       
       #root-splash {
-        position: fixed; inset: 0; z-index: 9999;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         background-color: var(--bg-dark);
-        transition: opacity 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-        touch-action: none;
+        transition: opacity 0.5s ease-out;
       }
 
-      /* Class to hide splash smoothly once React is ready */
-      #root-splash.loaded {
-        opacity: 0;
+      /* Logo Container */
+      .s-logo-box {
+        position: relative;
+        width: 112px;
+        height: 112px;
+        border-radius: 40px; /* rounded-[2.5rem] aprox */
+        background: linear-gradient(135deg, #1e293b 0%, #020617 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 40px;
+        z-index: 10;
+      }
+
+      /* Glow behind logo */
+      .s-logo-glow {
+        position: absolute;
+        width: 112px;
+        height: 112px;
+        border-radius: 50%;
+        background: var(--accent);
+        filter: blur(40px);
+        opacity: 0; /* Começa invisível igual ao React */
+        animation: fadeInGlow 1s ease-out forwards;
+        z-index: 0;
+      }
+
+      @keyframes fadeInGlow { to { opacity: 0.15; } }
+
+      /* Icons */
+      .s-icon-main { width: 48px; height: 48px; color: white; }
+      
+      .s-badge {
+        position: absolute;
+        bottom: -8px;
+        right: -8px;
+        width: 32px;
+        height: 32px;
+        background-color: var(--accent);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 3px solid var(--bg-dark);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      }
+      .s-icon-badge { width: 16px; height: 16px; color: white; }
+
+      /* Title */
+      .s-title {
+        font-size: 30px;
+        font-weight: 900;
+        letter-spacing: -0.025em;
+        color: white;
+        margin-bottom: 24px;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .s-title span { color: var(--accent); }
+
+      /* Progress Bar */
+      .s-bar-container {
+        width: 140px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        z-index: 10;
+      }
+      
+      .s-track {
+        width: 100%;
+        height: 6px;
+        background-color: rgba(30, 41, 59, 0.5);
+        border-radius: 9999px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      
+      .s-fill {
+        height: 100%;
+        width: 5%; /* Começa com um pouco para indicar atividade */
+        background: linear-gradient(90deg, #38bdf8, #6366f1);
+        border-radius: 9999px;
+        box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+        transition: width 0.3s ease-out;
+      }
+
+      .s-meta {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #64748b;
+        padding: 0 4px;
+      }
+
+      /* Footer */
+      .s-footer {
+        position: absolute;
+        bottom: 40px;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: #64748b;
+        opacity: 0.3;
+        z-index: 10;
+      }
+
+      /* Background Blobs */
+      .s-blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(100px);
+        opacity: 0.1;
+        z-index: 0;
+      }
+      .s-blob-1 { top: -20%; left: -20%; width: 60vw; height: 60vw; background: #6366f1; }
+      .s-blob-2 { bottom: -20%; right: -20%; width: 60vw; height: 60vw; background: #0ea5e9; }
+      
+      /* Grid Pattern */
+      .s-grid {
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(to right, rgba(30,41,59,0.1) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(30,41,59,0.1) 1px, transparent 1px);
+        background-size: 24px 24px;
+        z-index: 0;
         pointer-events: none;
       }
-      
-      .splash-card-outer {
-        position: relative; margin-bottom: 40px;
-      }
-
-      /* Glow behind logo - Disabled initially to match React start state */
-      .splash-card-glow {
-        position: absolute; inset: 0; background: #0ea5e9; 
-        filter: blur(40px); opacity: 0; transform: scale(1);
-        border-radius: 9999px;
-      }
-
-      .splash-card {
-        width: 112px; height: 112px; border-radius: 40px;
-        background: linear-gradient(135deg, #1e293b, #020617);
-        display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-        border: 1px solid rgba(255,255,255,0.1);
-        position: relative; z-index: 10;
-        box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
-      }
-      
-      .splash-svg { width: 48px; height: 48px; color: white; }
-      
-      .splash-badge {
-        position: absolute; bottom: -8px; right: -8px;
-        width: 32px; height: 32px; background: var(--accent);
-        border-radius: 12px; display: flex; align-items: center; justify-content: center;
-        border: 3px solid var(--bg-dark);
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
-      }
-      .badge-svg { width: 16px; height: 16px; color: white; }
-
-      .splash-title {
-        font-size: 30px; font-weight: 900; color: white; letter-spacing: -0.025em;
-        margin-bottom: 24px; position: relative; z-index: 10;
-        display: flex; align-items: center; gap: 4px;
-      }
-      .splash-title span { color: var(--accent); }
-
-      .splash-bar-container {
-        width: 140px; height: 6px; background: rgba(30, 41, 59, 0.5);
-        border-radius: 99px; overflow: hidden; position: relative; z-index: 10;
-        border: 1px solid rgba(255,255,255,0.05);
-      }
-      
-      /* Bar starts at 0% width to match React initial state */
-      .splash-bar {
-        width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #6366f1);
-        border-radius: 99px;
-        box-shadow: 0 0 10px rgba(14,165,233,0.5);
-      }
-
-      .splash-text-row {
-         display: flex; justify-content: space-between; width: 140px; margin-top: 8px;
-         font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em;
-      }
-
-      .splash-footer {
-        position: absolute; bottom: 40px; 
-        font-size: 9px; font-weight: 700; color: #64748b; 
-        text-transform: uppercase; letter-spacing: 0.2em; opacity: 0.3;
-      }
-
-      .splash-blob {
-        position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.1; z-index: 0;
-      }
-      .sb-1 { top: -20%; left: -20%; width: 60vw; height: 60vw; background: #6366f1; }
-      .sb-2 { bottom: -20%; right: -20%; width: 60vw; height: 60vw; background: #0ea5e9; }
-      .sb-grid { position: absolute; inset: 0; background-image: linear-gradient(to right, rgba(30,41,59,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(30,41,59,0.05) 1px, transparent 1px); background-size: 24px 24px; pointer-events: none; }
-
     </style>
 
-    <script>
-      (function() {
-        try {
-          const theme = localStorage.getItem('investfiis_theme') || 'system';
-          const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-          if (isDark) document.documentElement.classList.add('dark');
-          
-          const hex = localStorage.getItem('investfiis_accent_color') || '#0ea5e9';
-          document.documentElement.style.setProperty('--color-accent', hex);
-          
-          const glassMode = localStorage.getItem('investfiis_glass_mode') !== 'false';
-          if (glassMode) document.documentElement.classList.add('glass-effect');
-        } catch (e) {}
-      })();
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.2.3",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+        "react/": "https://esm.sh/react@^19.2.3/",
+        "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+        "react-dom": "https://esm.sh/react-dom@^19.2.3",
+        "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+        "recharts": "https://esm.sh/recharts@^3.6.0",
+        "react-window": "https://esm.sh/react-window@^2.2.3",
+        "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0",
+        "vite": "https://esm.sh/vite@^7.3.0",
+        "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+      }
+    }
     </script>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "react-dom": "https://esm.sh/react-dom@^19.2.3",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "recharts": "https://esm.sh/recharts@^3.6.0",
-    "react-window": "https://esm.sh/react-window@^2.2.3",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0",
-    "vite": "https://esm.sh/vite@^7.3.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
-  }
-}
-</script>
 </head>
-  <body class="bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100 min-h-screen overflow-x-hidden antialiased" style="background-color: #020617;">
+  <body class="bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100 min-h-screen overflow-x-hidden antialiased">
     
-    <!-- Static Splash Screen (Matches React Component Exactly) -->
-    <!-- Moved OUTSIDE #root to prevent React from clearing it immediately -->
+    <!-- Tela Estática (Réplica Exata do Componente React) -->
     <div id="root-splash">
-        <div class="splash-blob sb-1"></div>
-        <div class="splash-blob sb-2"></div>
-        <div class="sb-grid"></div>
+        <div class="s-blob s-blob-1"></div>
+        <div class="s-blob s-blob-2"></div>
+        <div class="s-grid"></div>
         
-        <div class="splash-card-outer">
-            <div class="splash-card-glow"></div>
-            <div class="splash-card">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="splash-svg"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
-                <div class="splash-badge">
-                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="badge-svg"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>
-                </div>
+        <div class="s-logo-box">
+            <div class="s-logo-glow"></div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="s-icon-main"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+            <div class="s-badge">
+               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="s-icon-badge"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>
             </div>
         </div>
         
-        <div class="splash-title">Invest<span>FIIs</span></div>
+        <div class="s-title">Invest<span>FIIs</span></div>
         
-        <div class="splash-bar-container"><div class="splash-bar"></div></div>
-        <div class="splash-text-row">
-            <span>Carregando</span>
-            <span>0%</span>
+        <div class="s-bar-container">
+            <div class="s-track"><div class="s-fill"></div></div>
+            <div class="s-meta">
+                <span>Iniciando...</span>
+                <span>0%</span>
+            </div>
         </div>
 
-        <div class="splash-footer">FIIs & Ações</div>
+        <div class="s-footer">FIIs & Ações</div>
     </div>
 
     <div id="root"></div>
