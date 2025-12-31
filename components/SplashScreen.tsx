@@ -11,21 +11,40 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [displayProgress, setDisplayProgress] = useState(0);
 
+  // Lógica de Handover (Passagem de bastão do HTML estático para o React)
+  useEffect(() => {
+    // 1. O componente React monta imediatamente.
+    // 2. Procuramos o loader estático no index.html
+    const staticSplash = document.getElementById('root-splash');
+    
+    if (staticSplash) {
+        // Pequeno delay para garantir que o React renderizou o primeiro frame visualmente idêntico
+        requestAnimationFrame(() => {
+            // Adiciona classe que faz o fade-out via CSS (opacity: 0)
+            staticSplash.classList.add('loaded');
+            // Remove do DOM após a transição CSS terminar (600ms no CSS)
+            setTimeout(() => {
+                if(staticSplash.parentNode) staticSplash.parentNode.removeChild(staticSplash);
+            }, 600);
+        });
+    }
+  }, []);
+
   // Interpolação suave do progresso visual
   useEffect(() => {
     const update = () => {
         setDisplayProgress(prev => {
             const diff = realProgress - prev;
             if (diff <= 0) return prev;
-            // Avança 10% da diferença restante a cada tick para suavidade
-            return prev + (diff * 0.1); 
+            // Avança suavemente
+            return prev + (diff * 0.15); 
         });
     };
     const timer = setInterval(update, 20);
     return () => clearInterval(timer);
   }, [realProgress]);
 
-  // Garante 100% e inicia saída
+  // Garante 100% e inicia saída final do componente React
   useEffect(() => {
     if (finishLoading) {
       setDisplayProgress(100);
@@ -84,7 +103,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
             </h1>
             
             {/* Loading Bar & Status */}
-            <div className="flex flex-col items-center gap-3 min-w-[140px]">
+            <div className="flex flex-col items-center gap-2 min-w-[140px]">
                 <div className="w-full h-1.5 bg-slate-800/50 rounded-full overflow-hidden border border-white/5">
                     <div 
                         className="h-full bg-gradient-to-r from-sky-400 to-indigo-500 rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(14,165,233,0.5)]"
