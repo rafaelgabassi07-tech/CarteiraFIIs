@@ -10,6 +10,7 @@ const BadgeDollarSignIcon = (props: any) => (
 );
 
 interface SettingsProps {
+  user: any; // User passed from App
   transactions: Transaction[];
   onImportTransactions: (data: Transaction[]) => void;
   geminiDividends: DividendReceipt[];
@@ -35,6 +36,7 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ 
+  user,
   transactions, onImportTransactions,
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
@@ -72,9 +74,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const [biometricsEnabled, setBiometricsEnabled] = useState(() => localStorage.getItem('investfiis_biometrics') === 'true');
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [newPin, setNewPin] = useState('');
-
-  // Supabase Auth States
-  const [user, setUser] = useState<any>(null);
   
   // Diagnostics State
   const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -108,16 +107,6 @@ export const Settings: React.FC<SettingsProps> = ({
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [activeSection]);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     if (updateAvailable) setCheckStatus('available');

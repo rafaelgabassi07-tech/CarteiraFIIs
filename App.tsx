@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.2.3'; 
+const APP_VERSION = '7.2.4'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -204,16 +204,20 @@ const App: React.FC = () => {
         const cloudTxs: Transaction[] = data.map(mapSupabaseToTx);
         setTransactions(cloudTxs);
         
+        // Sucesso: Mostra "Conectado" imediatamente e agenda para esconder
+        setCloudStatus('connected');
+        setTimeout(() => setCloudStatus('hidden'), 3000);
+        
         if (appLoading) setLoadingProgress(prev => Math.max(prev, 25)); 
 
+        // Dispara atualização de mercado em background, sem bloquear o status da nuvem
         if (cloudTxs.length > 0) {
-            await syncMarketData(false, cloudTxs);
+            syncMarketData(false, cloudTxs);
         }
+      } else {
+         setCloudStatus('connected');
+         setTimeout(() => setCloudStatus('hidden'), 3000);
       }
-      
-      // Sucesso: Mostra "Conectado" e depois esconde
-      setCloudStatus('connected');
-      setTimeout(() => setCloudStatus('hidden'), 3000);
       return true;
 
     } catch (err: any) {
@@ -566,6 +570,7 @@ const App: React.FC = () => {
             <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
               {showSettings ? (
                 <Settings 
+                  user={session.user}
                   transactions={transactions} onImportTransactions={handleImportTransactions} 
                   geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} 
                   onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); window.location.reload(); }} 
