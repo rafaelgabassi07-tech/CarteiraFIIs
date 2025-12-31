@@ -670,43 +670,64 @@ export const Settings: React.FC<SettingsProps> = ({
                 
                 {/* Services Health List */}
                 <Section title="Saúde dos Serviços">
-                    <div className="grid grid-cols-1 gap-2 p-2 bg-white dark:bg-[#0f172a]">
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg"><Database className="w-4 h-4" /></div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Supabase</p>
-                                    <p className="text-[9px] text-slate-400 font-medium">Banco de Dados</p>
+                    <div className="space-y-3">
+                        {/* Supabase Card */}
+                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-emerald-500/10 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl -mr-6 -mt-6 transition-opacity opacity-50 group-hover:opacity-100"></div>
+                            <div className="flex items-center justify-between relative z-10">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center border border-emerald-500/10">
+                                        <Database className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Supabase</p>
+                                        <p className="text-[10px] text-slate-400 font-medium">Banco de Dados & Auth</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Operacional</span>
+                                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Operacional</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg"><BarChart3 className="w-4 h-4" /></div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Brapi API</p>
-                                    <p className="text-[9px] text-slate-400 font-medium">Cotações (15min delay)</p>
+                        {/* Brapi Card */}
+                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-indigo-500/10 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/5 rounded-full blur-xl -mr-6 -mt-6 transition-opacity opacity-50 group-hover:opacity-100"></div>
+                            <div className="flex items-center justify-between relative z-10">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-indigo-500/10 text-indigo-500 rounded-xl flex items-center justify-center border border-indigo-500/10">
+                                        <BarChart3 className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Brapi API</p>
+                                        <p className="text-[10px] text-slate-400 font-medium">Cotações B3 (15min delay)</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20">
-                                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">Online</span>
+                                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                                    <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Online</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><Sparkles className="w-4 h-4" /></div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Gemini AI</p>
-                                    <p className="text-[9px] text-slate-400 font-medium">Proventos & Análise</p>
+                        {/* Gemini Card */}
+                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-amber-500/10 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-full blur-xl -mr-6 -mt-6 transition-opacity opacity-50 group-hover:opacity-100"></div>
+                            <div className="flex items-center justify-between relative z-10">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center border border-amber-500/10">
+                                        <Sparkles className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Gemini AI</p>
+                                        <p className="text-[10px] text-slate-400 font-medium">Google DeepMind</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase">v2.5 Flash</span>
+                                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                                    <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">v2.5 Flash</span>
+                                </div>
                             </div>
                         </div>
                     </div>

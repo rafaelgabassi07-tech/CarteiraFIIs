@@ -29,7 +29,7 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
 
   return (
     <div 
-      className={`fixed top-0 left-0 right-0 z-[110] flex items-center justify-center gap-2 pt-[calc(env(safe-area-inset-top)+32px)] pb-4 px-4 text-[10px] font-black uppercase tracking-[0.15em] shadow-sm transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform ${
+      className={`fixed top-0 left-0 right-0 z-[110] flex items-center justify-center gap-2 pt-[calc(env(safe-area-inset-top)+8px)] pb-1.5 px-4 text-[9px] font-black uppercase tracking-[0.15em] shadow-sm transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform ${
         isHidden ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
       } ${
         isConnected 
@@ -41,13 +41,13 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
     >
       {isSyncing ? (
         <>
-          <Loader2 className="w-3 h-3 animate-spin text-white/80" />
+          <Loader2 className="w-2.5 h-2.5 animate-spin text-white/80" />
           <span>Sincronizando...</span>
         </>
       ) : isConnected ? (
         <div className="flex items-center gap-2">
-          <Cloud className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
-          <span>Sincronizado com a Nuvem</span>
+          <Cloud className="w-3 h-3 text-white" strokeWidth={2.5} />
+          <span>Sincronizado</span>
         </div>
       ) : (
         <div className="flex items-center gap-2">
@@ -99,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header 
       className={`fixed left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint ${
-        bannerVisible ? 'top-14' : 'top-0'
+        bannerVisible ? 'top-10' : 'top-0'
       } ${
         isScrolled 
           ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5' 
