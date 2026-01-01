@@ -16,8 +16,8 @@ const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown';
 
 // --- BLOQUEIO DE MODELO ---
 // ESTA CONSTANTE NÃO DEVE SER ALTERADA A MENOS QUE EXPLICITAMENTE SOLICITADO PELO USUÁRIO.
-// MODELO ATUAL: GEMINI 2.5 PRO
-const LOCKED_MODEL_ID = "gemini-2.5-pro-preview";
+// MODELO ATUAL: GEMINI 2.5 PRO (Versão Estável)
+const LOCKED_MODEL_ID = "gemini-2.5-pro";
 // --------------------------
 
 const getAiCacheTTL = () => {
@@ -165,7 +165,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     }
     `;
 
-    // LOCKED MODEL: gemini-2.5-pro-preview
+    // LOCKED MODEL: gemini-2.5-pro
     // DO NOT CHANGE WITHOUT USER REQUEST
     const response = await ai.models.generateContent({
         model: LOCKED_MODEL_ID, 
