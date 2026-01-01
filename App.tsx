@@ -9,7 +9,7 @@ import { Login } from './pages/Login';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, Sparkles, X, Download } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -81,6 +81,9 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   
+  // Estado local para controle da pílula de update visual
+  const [showUpdatePill, setShowUpdatePill] = useState(false);
+  
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#0ea5e9');
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
@@ -133,12 +136,26 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-      if (updateManager.isUpdateAvailable && !notifications.some(n => n.id === `UPDATE-${updateManager.availableVersion}`)) {
-          const notif: AppNotification = { id: `UPDATE-${updateManager.availableVersion}`, title: `Nova Versão ${updateManager.availableVersion}`, message: `Uma atualização está pronta para ser instalada. Toque para ver as novidades.`, type: 'update', category: 'update', timestamp: Date.now(), read: false, actionLabel: 'Atualizar', onAction: () => updateManager.setShowChangelog(true) };
-          setNotifications(prev => [notif, ...prev]);
-          showToast('info', 'Nova atualização disponível!');
+      // Quando há uma atualização, mostramos a pílula visual e adicionamos ao histórico,
+      // mas NÃO disparamos um toast genérico que cubra o header.
+      if (updateManager.isUpdateAvailable) {
+          setShowUpdatePill(true);
+          if (!notifications.some(n => n.id === `UPDATE-${updateManager.availableVersion}`)) {
+              const notif: AppNotification = { 
+                  id: `UPDATE-${updateManager.availableVersion}`, 
+                  title: `Nova Versão ${updateManager.availableVersion}`, 
+                  message: `Toque para instalar e ver as novidades.`, 
+                  type: 'update', 
+                  category: 'update', 
+                  timestamp: Date.now(), 
+                  read: false, 
+                  actionLabel: 'Instalar', 
+                  onAction: () => updateManager.setShowChangelog(true) 
+              };
+              setNotifications(prev => [notif, ...prev]);
+          }
       }
-  }, [updateManager.isUpdateAvailable, updateManager.availableVersion, notifications, showToast, updateManager]);
+  }, [updateManager.isUpdateAvailable, updateManager.availableVersion, notifications, updateManager]);
 
   useEffect(() => {
     if (!session || geminiDividends.length === 0 || transactions.length === 0) return;
@@ -389,7 +406,57 @@ const App: React.FC = () => {
     <div className="min-h-screen transition-colors duration-500 bg-primary-light dark:bg-primary-dark">
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       <CloudStatusBanner status={cloudStatus} />
-      {toast && ( <div className="fixed top-6 left-0 w-full flex justify-center z-[1000] pointer-events-none"><div className="anim-fade-in-up is-visible w-auto max-w-[90%] pointer-events-auto"> <div className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-slate-900/95 dark:bg-white/95 backdrop-blur-xl shadow-2xl border border-white/10 dark:border-black/5 ring-1 ring-black/5"> <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'info' ? 'bg-slate-800 dark:bg-slate-200' : toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>{toast.type === 'info' ? <Loader2 className="w-3 h-3 text-white dark:text-slate-900 animate-spin" /> : toast.type === 'success' ? <CheckCircle2 className="w-3 h-3 text-white" /> : <AlertCircle className="w-3 h-3 text-white" />}</div> <span className="text-[10px] font-bold text-white dark:text-slate-900 tracking-wide truncate">{toast.text}</span> </div> </div></div> )}
+      
+      {/* UPDATE NOTIFICATION PILL - VISUAL PREMIUM (SUBSTITUI O TOAST) */}
+      {showUpdatePill && (
+        <div className="fixed bottom-24 left-0 w-full flex justify-center z-[1000] pointer-events-none px-6">
+            <div className="anim-fade-in-up is-visible w-full max-w-sm pointer-events-auto">
+                <div className="relative overflow-hidden p-[1px] rounded-2xl bg-gradient-to-r from-accent via-purple-500 to-accent bg-[length:200%_100%] animate-shimmer shadow-2xl shadow-accent/20">
+                    <div className="bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
+                                <Sparkles className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-accent mb-0.5">Nova Versão Disponível</p>
+                                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Instalar v{updateManager.availableVersion}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={() => updateManager.setShowChangelog(true)} 
+                                className="h-9 px-4 rounded-xl bg-accent text-white text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-accent/30 active:scale-95 transition-transform flex items-center gap-1.5"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>Update</span>
+                            </button>
+                            <button 
+                                onClick={() => setShowUpdatePill(false)} 
+                                className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center active:scale-95 transition-all"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* STANDARD TOASTS - MOVED TO BOTTOM (SAFE AREA) */}
+      {toast && ( 
+        <div className="fixed bottom-24 left-0 w-full flex justify-center z-[900] pointer-events-none transition-all duration-300">
+            <div className="anim-fade-in-up is-visible w-auto max-w-[90%] pointer-events-auto"> 
+                <div className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-slate-900/95 dark:bg-white/95 backdrop-blur-xl shadow-2xl border border-white/10 dark:border-black/5 ring-1 ring-black/5"> 
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'info' ? 'bg-slate-800 dark:bg-slate-200' : toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                        {toast.type === 'info' ? <Loader2 className="w-3 h-3 text-white dark:text-slate-900 animate-spin" /> : toast.type === 'success' ? <CheckCircle2 className="w-3 h-3 text-white" /> : <AlertCircle className="w-3 h-3 text-white" />}
+                    </div> 
+                    <span className="text-[10px] font-bold text-white dark:text-slate-900 tracking-wide truncate">{toast.text}</span> 
+                </div> 
+            </div>
+        </div> 
+      )}
+
       {session && !appLoading && (
         <>
             <Header title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} onRefresh={() => fetchTransactionsFromCloud(session, false)} isRefreshing={isRefreshing || isAiLoading || isCloudSyncing} updateAvailable={updateManager.isUpdateAvailable} onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => { setShowNotifications(true); setNotifications(prev => prev.map(n => ({...n, read: true}))); }} notificationCount={unreadCount} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} />

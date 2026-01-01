@@ -1,7 +1,17 @@
+
 import { BrapiQuote } from '../types';
 
 // A chave de API agora é lida do ambiente do Vite.
 const BRAPI_TOKEN = process.env.BRAPI_TOKEN;
+
+// ============================================================================
+// 🔒 SYSTEM LOCK: BRAPI REQUEST LOGIC
+// ============================================================================
+// ATENÇÃO: A lógica abaixo foi definida especificamente para realizar requisições
+// individuais por ticker (Single Request per Asset) para garantir estabilidade.
+// NÃO ALTERE a forma como o 'fetch' é realizado ou como o array de promises
+// é construído, a menos que solicitado EXPLICITAMENTE pelo usuário.
+// ============================================================================
 
 /**
  * Busca cotações de ativos na API da Brapi.
@@ -26,7 +36,7 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
   console.log(`📈 [Brapi Service] Buscando cotações para ${uniqueTickers.length} ativos...`);
 
   try {
-    // Cria um array de Promises, uma para cada ticker
+    // 🔒 LOCKED: Promise.all com map individual. Não agrupar tickers na URL.
     const fetchPromises = uniqueTickers.map(async (ticker) => {
       const url = `https://brapi.dev/api/quote/${ticker}?token=${BRAPI_TOKEN}&range=1d&interval=1d`;
       try {
@@ -59,3 +69,6 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
     return { quotes: [], error: "Erro ao processar cotações." };
   }
 };
+// ============================================================================
+// 🔒 END LOCK
+// ============================================================================
