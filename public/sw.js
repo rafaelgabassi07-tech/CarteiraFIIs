@@ -1,5 +1,4 @@
-
-const CACHE_NAME = 'investfiis-emergency-reset-v10'; // Nome alterado para forçar reset total
+const CACHE_NAME = 'investfiis-pwa-stable-v1'; // Nome semântico para forçar reset e estabilidade
 
 const PRECACHE_ASSETS = [
   './',
@@ -7,8 +6,16 @@ const PRECACHE_ASSETS = [
   './manifest.json'
 ];
 
+// Ouve a mensagem da UI para ativar o novo SW quando o usuário confirmar
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'INVESTFIIS_SKIP_WAITING') {
+    console.log('SW: Received SKIP_WAITING message. Activating new worker.');
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Força ativação imediata
+  // Não força mais skipWaiting aqui; espera a UI ou o fechamento de abas.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
@@ -21,7 +28,7 @@ self.addEventListener('activate', (event) => {
     Promise.all([
       self.clients.claim(), // Toma controle imediato das páginas
       caches.keys().then((keys) => {
-        // Deleta TODO e qualquer cache antigo
+        // Deleta TODO e qualquer cache antigo que não seja o atual
         return Promise.all(
           keys.map((key) => {
             if (key !== CACHE_NAME) {
