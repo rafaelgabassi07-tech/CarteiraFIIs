@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck, AlertCircle, Sparkle, PartyPopper, Loader2, CloudOff, Cloud, Wifi, Lock, Fingerprint, Delete, ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -187,7 +188,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       startY.current = e.touches[0].clientY;
       isDragging.current = true;
       currentY.current = 0;
-      modalRef.current.style.transition = 'none';
+      modalRef.current.style.transition = 'none'; // Remove transição para seguir o dedo instantaneamente
     }
   };
 
@@ -206,14 +207,15 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
           return;
       }
 
-      // Impede o "Pull-to-Refresh" nativo do navegador
+      // Impede o "Pull-to-Refresh" nativo do navegador e scrolls indesejados
       if (e.cancelable) {
           e.preventDefault();
       }
 
       currentY.current = deltaY;
-      // Resistência elástica
-      const dragValue = deltaY * 0.85; 
+      
+      // FIX: Resistência removida (1:1) para o modal "colar" no dedo do usuário
+      const dragValue = deltaY; 
       modalRef.current.style.transform = `translateY(${dragValue}px)`;
     } else {
         // Se tentar rolar para cima (deltaY < 0), liberamos o controle para o scroll nativo
@@ -229,7 +231,8 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     isDragging.current = false;
     modalRef.current.style.transition = 'transform 0.5s cubic-bezier(0.23, 1, 0.32, 1)'; // ease-out-quint
     
-    if (currentY.current > 120) { // Threshold de fechamento
+    // Threshold para fechar
+    if (currentY.current > 100) { 
       onClose();
     } else {
       modalRef.current.style.transform = 'translateY(0)';
@@ -254,14 +257,14 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        // "overscroll-contain" é crucial aqui: impede que o scroll do modal ative o refresh da página pai
+        // "overscroll-contain" impede que o scroll do modal afete a página de trás
         className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] h-[92dvh] w-full overflow-y-auto overscroll-contain transition-transform duration-500 ease-out-quint transform shadow-2xl pb-safe ${
           isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
-        {/* Sticky Handle Bar - Touch Action None garante que o browser não interfira aqui */}
-        <div className="sticky top-0 z-50 flex justify-center pt-3 pb-1 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md touch-none">
-            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full cursor-grab active:cursor-grabbing hover:bg-slate-400 dark:hover:bg-slate-600 transition-colors"></div>
+        {/* Handle Bar - Área de toque visual para arrastar */}
+        <div className="sticky top-0 z-50 flex justify-center pt-4 pb-2 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md touch-none pointer-events-none cursor-grab active:cursor-grabbing">
+            <div className="w-16 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full opacity-60"></div>
         </div>
         
         {children}
@@ -401,7 +404,9 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({
   return (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
       <div className="p-6 pb-8">
-        <div className="text-center mb-6">
+        {/* X Button REMOVED - Drag to close only */}
+        
+        <div className="text-center mb-6 mt-2">
           <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 text-accent">
             <Gift className="w-10 h-10" />
           </div>
@@ -466,7 +471,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
   return (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
       <div className="px-6 py-2 pb-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 mt-2">
             <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500">
                     <Bell className="w-6 h-6" />
@@ -476,11 +481,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Central de Alertas</p>
                 </div>
             </div>
-            {notifications.length > 0 && (
-                <button onClick={onClear} className="text-xs font-bold text-rose-500 flex items-center gap-1">
-                    <Trash2 className="w-3 h-3" /> Limpar
-                </button>
-            )}
+            <div className="flex items-center gap-3">
+                {notifications.length > 0 && (
+                    <button onClick={onClear} className="text-xs font-bold text-rose-500 flex items-center gap-1">
+                        <Trash2 className="w-3 h-3" /> Limpar
+                    </button>
+                )}
+                {/* X Button REMOVED - Drag to close only */}
+            </div>
         </div>
         
         {notifications.length === 0 ? (

@@ -132,7 +132,9 @@ const App: React.FC = () => {
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     setToast({ type, text });
-    if (type !== 'info') setTimeout(() => setToast(null), 3000);
+    // FIX: Removemos a condição "if type !== info" para garantir que TODOS os toasts sumam sozinhos.
+    // Isso evita que notificações como "IA em pausa" fiquem travadas na tela.
+    setTimeout(() => setToast(null), 3000);
   }, []);
 
   useEffect(() => {
@@ -407,9 +409,9 @@ const App: React.FC = () => {
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       <CloudStatusBanner status={cloudStatus} />
       
-      {/* UPDATE NOTIFICATION PILL - VISUAL PREMIUM (SUBSTITUI O TOAST) */}
+      {/* UPDATE NOTIFICATION PILL - VISUAL PREMIUM (MOVED TO TOP) */}
       {showUpdatePill && (
-        <div className="fixed bottom-24 left-0 w-full flex justify-center z-[1000] pointer-events-none px-6">
+        <div className="fixed top-28 left-0 w-full flex justify-center z-[1000] pointer-events-none px-6">
             <div className="anim-fade-in-up is-visible w-full max-w-sm pointer-events-auto">
                 <div className="relative overflow-hidden p-[1px] rounded-2xl bg-gradient-to-r from-accent via-purple-500 to-accent bg-[length:200%_100%] animate-shimmer shadow-2xl shadow-accent/20">
                     <div className="bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center justify-between gap-3">
@@ -443,7 +445,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* STANDARD TOASTS - MOVED TO BOTTOM (SAFE AREA) */}
+      {/* STANDARD TOASTS - BOTTOM SAFE AREA */}
       {toast && ( 
         <div className="fixed bottom-24 left-0 w-full flex justify-center z-[900] pointer-events-none transition-all duration-300">
             <div className="anim-fade-in-up is-visible w-auto max-w-[90%] pointer-events-auto"> 
