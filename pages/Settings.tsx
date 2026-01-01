@@ -90,6 +90,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [showDisableSecurityConfirm, setShowDisableSecurityConfirm] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [newPin, setNewPin] = useState('');
   
   // Diagnostics State
@@ -608,7 +609,7 @@ export const Settings: React.FC<SettingsProps> = ({
                          <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><User className="w-6 h-6" /></div>
                          <div className="overflow-hidden"><h3 className="font-bold text-slate-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-slate-500 truncate">{user ? user.email : 'Carregando...'}</p></div>
                      </div>
-                     <button onClick={onLogout} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
+                     <button onClick={() => setShowLogoutConfirm(true)} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
                  </div>
                </div>
             </div>
@@ -1179,6 +1180,15 @@ export const Settings: React.FC<SettingsProps> = ({
         message="Tem certeza que deseja remover o bloqueio do app? Sua carteira ficará exposta para qualquer pessoa que abrir este dispositivo."
         onConfirm={handleConfirmDisableSecurity}
         onCancel={() => setShowDisableSecurityConfirm(false)}
+      />
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showLogoutConfirm}
+        title="Sair da Conta"
+        message="Deseja realmente desconectar sua conta? Seus dados locais serão limpos para segurança e você precisará fazer login novamente."
+        onConfirm={() => { setShowLogoutConfirm(false); onLogout(); }}
+        onCancel={() => setShowLogoutConfirm(false)}
       />
 
       {/* Security Setup Modal */}

@@ -1,4 +1,5 @@
-const CACHE_NAME = 'investfiis-pwa-stable-v2'; // Updated cache name to force update for all users
+
+const CACHE_NAME = 'investfiis-pwa-stable-v3'; // Cache incrementado para garantir atualização
 
 const PRECACHE_ASSETS = [
   './',

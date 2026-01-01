@@ -30,8 +30,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
-  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
-
   const fetchVersionMetadata = useCallback(async () => {
     try {
       // Adiciona timestamp para evitar cache agressivo do JSON de versão
@@ -61,7 +59,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
             
             // Se já existe um worker esperando quando o app carrega
             if (registration.waiting) {
-                setWaitingWorker(registration.waiting);
                 setIsUpdateAvailable(true);
             }
 
@@ -71,7 +68,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
               if (newWorker) {
                 newWorker.addEventListener('statechange', () => {
                   if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    setWaitingWorker(newWorker);
                     setIsUpdateAvailable(true);
                   }
                 });
@@ -116,11 +112,11 @@ export const useUpdateManager = (currentAppVersion: string) => {
      setUpdateError(null);
      
      try {
-         // 1. Verifica SW
+         // 1. Verifica SW (Força update no browser)
          if ('serviceWorker' in navigator) {
            const reg = await navigator.serviceWorker.getRegistration();
            if (reg) {
-             await reg.update(); // Força a verificação no browser
+             await reg.update(); 
            }
          }
          
@@ -140,44 +136,58 @@ export const useUpdateManager = (currentAppVersion: string) => {
      }
   }, [currentAppVersion, fetchVersionMetadata]);
   
-  const startUpdateProcess = useCallback(() => {
+  const startUpdateProcess = useCallback(async () => {
     setIsUpdating(true);
     setUpdateProgress(10);
 
-    // Fallback de segurança: Se o SW não recarregar em 4 segundos, forçamos o reload.
-    // Isso evita que o app fique travado na tela de "Atualizando...".
+    // Safety timeout: se nada acontecer em 5s, recarrega forçado
     const safetyTimeout = setTimeout(() => {
-        console.warn("Update timeout reached. Forcing reload.");
+        console.warn("Update timeout. Forcing reload.");
         window.location.reload();
-    }, 4000);
+    }, 5000);
 
     try {
-        if (waitingWorker) {
-          setUpdateProgress(50);
-          waitingWorker.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-        } else if ('serviceWorker' in navigator) {
-           // Tenta forçar via registration se waitingWorker se perdeu
-           navigator.serviceWorker.getRegistration().then(reg => {
-               if (reg && reg.waiting) {
-                   reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-               } else {
-                   // Se não achou worker, reload direto
-                   setUpdateProgress(100);
-                   window.location.reload();
-               }
-           });
-        } else {
-          // Fallback para ambientes sem SW
-          setUpdateProgress(100);
-          window.location.reload();
+        if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.getRegistration();
+            
+            if (reg) {
+                // Caso 1: Já temos um worker esperando (Ideal)
+                if (reg.waiting) {
+                    setUpdateProgress(50);
+                    reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+                    return; // O reload acontece via controllerchange
+                }
+
+                // Caso 2: Não tem waiting, mas o JSON diz que tem update.
+                // Forçamos o browser a checar novamente.
+                setUpdateProgress(30);
+                await reg.update();
+
+                // Checa novamente após update explícito
+                if (reg.waiting) {
+                    setUpdateProgress(60);
+                    reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+                    return;
+                }
+
+                // Caso 3: Browser ainda não achou update ou algo travou.
+                // Desregistramos o SW para garantir que o próximo load venha da rede (fresh).
+                setUpdateProgress(80);
+                await reg.unregister();
+                console.log("SW Unregistered to force update apply.");
+            }
         }
+        
+        // Finalização: Recarrega a página.
+        // Se o SW foi desregistrado, o browser vai buscar tudo novo.
+        setUpdateProgress(100);
+        window.location.reload();
+
     } catch (e) {
         console.error("Critical update error:", e);
-        window.location.reload(); // Último recurso
+        window.location.reload();
     }
-    
-    // O reload deve acontecer via 'controllerchange' ou pelo safetyTimeout
-  }, [waitingWorker]);
+  }, []);
 
   return {
     isUpdateAvailable,

@@ -1,17 +1,17 @@
 
 {
-  "version": "7.3.4",
+  "version": "7.3.5",
   "date": "2025-07-02",
   "notes": [
     {
-      "type": "perf",
-      "title": "Sistema de Atualizações Estável",
-      "desc": "Mecanismo aprimorado que previne travamentos durante a atualização e garante recarregamento seguro."
+      "type": "fix",
+      "title": "Correção de Update OTA",
+      "desc": "Resolvido problema que impedia a aplicação de novas versões. O processo agora força uma atualização limpa se necessário."
     },
     {
-      "type": "ui",
-      "title": "Nova Tela de Updates",
-      "desc": "Interface minimalista e limpa para visualizar novidades da versão sem distrações."
+      "type": "perf",
+      "title": "Fluxo de Service Worker",
+      "desc": "Lógica de registro e desregistro aprimorada para evitar estados inconsistentes."
     }
   ]
 }
