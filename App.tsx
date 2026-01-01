@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.3.1'; 
+const APP_VERSION = '7.3.2'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -202,8 +202,21 @@ const App: React.FC = () => {
         setTransactions(cloudTxs);
         setCloudStatus('connected');
         setTimeout(() => setCloudStatus('hidden'), 3000);
+        
         if (initialLoad) setLoadingProgress(prev => Math.max(prev, 40));
-        if (cloudTxs.length > 0) await syncMarketData(force, cloudTxs, initialLoad);
+        
+        // CORREÇÃO CRÍTICA:
+        // Se for carregamento inicial, NÃO espera (await) a sincronização de mercado terminar.
+        // Dispara ela em background e deixa o app abrir instantaneamente.
+        if (cloudTxs.length > 0) {
+            if (initialLoad) {
+                // Background fire-and-forget
+                syncMarketData(force, cloudTxs, initialLoad).catch(console.error);
+            } else {
+                // Se for refresh manual (pull-to-refresh), espera terminar
+                await syncMarketData(force, cloudTxs, initialLoad);
+            }
+        }
     } catch (err: any) {
         console.error("Supabase fetch error:", err);
         showToast('error', 'Erro ao buscar dados da nuvem.');
@@ -231,6 +244,7 @@ const App: React.FC = () => {
         }
   
         if (initialSession?.user?.id) {
+          // Agora este fetch vai resolver rápido pois não espera a IA
           await fetchTransactionsFromCloud(initialSession, false, true);
         }
   
