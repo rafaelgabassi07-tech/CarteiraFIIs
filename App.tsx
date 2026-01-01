@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.3.0'; 
+const APP_VERSION = '7.3.1'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -197,32 +197,51 @@ const App: React.FC = () => {
       }
   }, [updateManager.isUpdateAvailable, updateManager.availableVersion, notifications, showToast, updateManager]);
 
+  // SYSTEM DE NOTIFICAÇÕES INTELIGENTE v2.0
   useEffect(() => {
     if (!session || geminiDividends.length === 0 || transactions.length === 0) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    // Obtém data local correta (YYYY-MM-DD) para evitar erro de fuso horário UTC
+    const now = new Date();
+    const today = now.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD local
+    
+    // Calcula "Amanhã" para alertas prévios
+    const t = new Date();
+    t.setDate(t.getDate() + 1);
+    const tomorrow = t.toLocaleDateString('en-CA');
+
     const notifyDivs = localStorage.getItem('investfiis_notify_divs') !== 'false';
     const notifyDataCom = localStorage.getItem('investfiis_notify_datacom') !== 'false';
     
     const newNotifications: AppNotification[] = [];
 
     geminiDividends.forEach(div => {
+        const isJCP = div.type.includes('JCP') || div.type.includes('JRS');
+
+        // 1. PAGAMENTO CAINDO HOJE
         if (div.paymentDate === today && notifyDivs) {
              const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
              if (qty > 0) {
                  const total = qty * div.rate;
-                 const id = `PAY-${div.ticker}-${today}`;
+                 const id = `PAY-${div.ticker}-${today}`; // ID único por dia
+                 
+                 // Só notifica se não existir este ID na lista
                  if (!notifications.some(n => n.id === id)) {
                      const notif: AppNotification = {
                          id,
-                         title: `💰 ${div.ticker} Pagou!`,
-                         message: `Caiu na conta: R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}. (${div.type})`,
+                         title: `💰 ${div.ticker}: Dinheiro na Conta!`,
+                         message: `Recebimento de R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})} referente a ${div.type}.`,
                          type: 'success',
                          category: 'payment',
                          timestamp: Date.now(),
                          read: false
                      };
                      newNotifications.push(notif);
+                     
+                     // Trigger Pop-up Visual (Toast)
+                     showToast('success', `R$ ${total.toFixed(2)} recebidos de ${div.ticker}`);
+                     
+                     // Trigger Push Notification Nativa
                      if (pushEnabled && document.hidden) {
                          new Notification(notif.title, { body: notif.message, icon: '/vite.svg' });
                      }
@@ -230,33 +249,49 @@ const App: React.FC = () => {
              }
         }
 
-        if (div.dateCom === today && notifyDataCom) {
-             const id = `DATACOM-${div.ticker}-${today}`;
-             if (!notifications.some(n => n.id === id)) {
-                 const notif: AppNotification = {
-                     id,
-                     title: `📅 Data Com: ${div.ticker}`,
-                     message: `Hoje é o último dia para garantir R$ ${div.rate.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/cota.`,
-                     type: 'warning',
-                     category: 'datacom',
-                     timestamp: Date.now(),
-                     read: false
-                 };
-                 newNotifications.push(notif);
+        // 2. DATA COM (HOJE OU AMANHÃ)
+        if (notifyDataCom) {
+             const isToday = div.dateCom === today;
+             const isTomorrow = div.dateCom === tomorrow;
 
-                 if (pushEnabled && document.hidden) {
-                    new Notification(notif.title, { body: notif.message, icon: '/vite.svg' });
-                }
+             if (isToday || isTomorrow) {
+                 const idSuffix = isToday ? 'TODAY' : 'TOMORROW';
+                 const id = `DATACOM-${div.ticker}-${div.dateCom}-${idSuffix}`;
+
+                 if (!notifications.some(n => n.id === id)) {
+                     const urgency = isToday ? "🚨 ÚLTIMO DIA" : "📅 AMANHÃ";
+                     const message = isToday 
+                        ? `Hoje é o último dia para garantir R$ ${div.rate.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/cota. ${isJCP ? '(Sujeito a IR)' : ''}`
+                        : `Prepare-se: Data Com de ${div.ticker} é amanhã!`;
+
+                     const notif: AppNotification = {
+                         id,
+                         title: `${urgency}: ${div.ticker}`,
+                         message: message,
+                         type: isToday ? 'warning' : 'info', // Amarelo se hoje, Azul se amanhã
+                         category: 'datacom',
+                         timestamp: Date.now(),
+                         read: false
+                     };
+                     newNotifications.push(notif);
+                     
+                     // Trigger Pop-up Visual (Toast)
+                     showToast(isToday ? 'info' : 'info', `${urgency}: ${div.ticker}`);
+
+                     if (pushEnabled && document.hidden) {
+                        new Notification(notif.title, { body: notif.message, icon: '/vite.svg' });
+                    }
+                 }
              }
         }
     });
 
+    // Se houver novas, atualiza estado global
     if (newNotifications.length > 0) {
         setNotifications(prev => [...newNotifications, ...prev]);
-        showToast('info', `${newNotifications.length} novas notificações.`);
     }
 
-  }, [geminiDividends, transactions, session, pushEnabled, showToast]);
+  }, [geminiDividends, transactions, session, pushEnabled, showToast]); // removemos 'notifications' das deps para evitar loop infinito, usamos callback em setNotifications
 
   useEffect(() => {
     if (!process.env.BRAPI_TOKEN) {
