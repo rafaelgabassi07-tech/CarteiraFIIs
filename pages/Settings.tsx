@@ -177,8 +177,13 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleLogout = async () => { 
-      await supabase.auth.signOut(); 
-      window.location.reload(); // Força recarregamento para limpar estados e garantir o logout visual
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+        showMessage('error', 'Falha ao sair da conta.');
+        console.error("Logout failed:", error);
+    }
+    // A recarga da página foi removida. O listener de autenticação no App.tsx
+    // agora gerencia a atualização da interface de forma reativa e segura.
   };
   
   const handleForceSync = async () => { 

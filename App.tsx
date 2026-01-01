@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, LockScreen, ConfirmationModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
@@ -72,8 +72,6 @@ const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
-
-  const sessionRef = useRef<Session | null>(null);
 
   const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem(STORAGE_KEYS.PASSCODE));
   const savedPasscode = localStorage.getItem(STORAGE_KEYS.PASSCODE);
@@ -205,17 +203,8 @@ const App: React.FC = () => {
         
         if (initialLoad) setLoadingProgress(prev => Math.max(prev, 40));
         
-        // CORREÇÃO CRÍTICA:
-        // Se for carregamento inicial, NÃO espera (await) a sincronização de mercado terminar.
-        // Dispara ela em background e deixa o app abrir instantaneamente.
         if (cloudTxs.length > 0) {
-            if (initialLoad) {
-                // Background fire-and-forget
-                syncMarketData(force, cloudTxs, initialLoad).catch(console.error);
-            } else {
-                // Se for refresh manual (pull-to-refresh), espera terminar
-                await syncMarketData(force, cloudTxs, initialLoad);
-            }
+            await syncMarketData(force, cloudTxs, initialLoad);
         }
     } catch (err: any) {
         console.error("Supabase fetch error:", err);
@@ -226,66 +215,51 @@ const App: React.FC = () => {
     }
   }, [showToast, syncMarketData]);
 
-  // EFEITO DE INICIALIZAÇÃO ROBUSTO
+  // EFEITO DE INICIALIZAÇÃO E AUTENTICAÇÃO
   useEffect(() => {
-    let mounted = true;
-    setLoadingProgress(5);
-  
-    const initializeApp = async () => {
-      try {
-        setLoadingProgress(10);
-        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-  
-        if (mounted) {
-          setSession(initialSession);
-          sessionRef.current = initialSession;
-          setLoadingProgress(20);
-        }
-  
-        if (initialSession?.user?.id) {
-          // Agora este fetch vai resolver rápido pois não espera a IA
-          await fetchTransactionsFromCloud(initialSession, false, true);
-        }
-  
-        if (mounted) {
-          setLoadingProgress(100);
-          setTimeout(() => {
-            if (mounted) setAppLoading(false);
-          }, 500);
-        }
-      } catch (error) {
-        console.error("App initialization error:", error);
-        if (mounted) {
-          showToast('error', 'Falha na inicialização.');
-          setAppLoading(false);
-        }
-      }
-    };
-  
-    initializeApp();
-  
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-      if (!mounted) return;
-      
-      const previousSessionId = sessionRef.current?.user?.id;
-      const currentSessionId = currentSession?.user?.id;
-      
-      sessionRef.current = currentSession;
-      setSession(currentSession);
-      
-      if (previousSessionId !== currentSessionId) {
-        // Recarrega tudo se o usuário mudou (login/logout)
-        setAppLoading(true);
-        initializeApp();
+    setLoadingProgress(10);
+    // 1. Verifica a sessão inicial assim que o app carrega.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoadingProgress(20);
+      // O splash screen será removido após este passo, permitindo que a UI apareça
+      // enquanto os dados são carregados em segundo plano, se necessário.
+      setTimeout(() => setAppLoading(false), 500);
+    });
+
+    // 2. Ouve por mudanças no estado de autenticação (login, logout).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      // Se o usuário fez logout, reseta a interface para o estado inicial.
+      if (_event === 'SIGNED_OUT') {
+        setCurrentTab('home');
+        setShowSettings(false);
       }
     });
-  
+
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
-  }, []); // Roda apenas uma vez
+  }, []);
+
+  // EFEITO DE CARGA E LIMPEZA DE DADOS (Reativo à sessão)
+  useEffect(() => {
+    if (session?.user) {
+      // Usuário está logado: carrega os dados da nuvem.
+      // O 'true' indica que é a carga inicial, para atualizar a barra de progresso.
+      fetchTransactionsFromCloud(session, false, transactions.length === 0);
+    } else {
+      // Usuário deslogado: limpa todos os dados sensíveis do estado e do storage.
+      setTransactions([]);
+      setQuotes({});
+      setGeminiDividends([]);
+      setAssetsMetadata({});
+      setNotifications([]);
+      localStorage.removeItem(STORAGE_KEYS.DIVS);
+      localStorage.removeItem(STORAGE_KEYS.INDICATORS);
+      localStorage.removeItem(STORAGE_KEYS.NOTIF_HISTORY);
+    }
+  }, [session, fetchTransactionsFromCloud]);
 
   const handleSyncAll = useCallback(async (force: boolean) => {
     await fetchTransactionsFromCloud(session, force);
