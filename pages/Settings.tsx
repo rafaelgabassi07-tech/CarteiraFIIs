@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star, ArrowRightLeft, Clock, BarChart3, Signal, Network, GitCommit } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
@@ -79,6 +80,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [biometricsEnabled, setBiometricsEnabled] = useState(() => localStorage.getItem('investfiis_biometrics') === 'true');
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
+  const [showDisableSecurityConfirm, setShowDisableSecurityConfirm] = useState(false);
   const [newPin, setNewPin] = useState('');
   
   // Diagnostics State
@@ -274,14 +276,17 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const handleDisableSecurity = () => {
-    if (window.confirm('Tem certeza que deseja remover o bloqueio do app?')) {
-      localStorage.removeItem('investfiis_passcode');
-      localStorage.removeItem('investfiis_biometrics');
-      setPasscode(null);
-      setBiometricsEnabled(false);
-      showMessage('info', 'Segurança desativada.');
-    }
+  const handleDisableSecurityRequest = () => {
+    setShowDisableSecurityConfirm(true);
+  };
+
+  const handleConfirmDisableSecurity = () => {
+    localStorage.removeItem('investfiis_passcode');
+    localStorage.removeItem('investfiis_biometrics');
+    setPasscode(null);
+    setBiometricsEnabled(false);
+    setShowDisableSecurityConfirm(false);
+    showMessage('info', 'Segurança desativada.');
   };
 
   const handleToggleBiometrics = () => {
@@ -532,10 +537,10 @@ export const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-      {/* Toast de Notificação Centralizado em formato de Pílula */}
+      {/* Toast de Notificação Centralizado em formato de Pílula Flutuante */}
       {message && (
-        <div className="fixed top-6 left-0 w-full flex justify-center z-[1000] pointer-events-none">
-          <div className="anim-fade-in-up is-visible pointer-events-auto">
+        <div className="fixed top-6 left-0 w-full flex justify-center z-[2000] pointer-events-none">
+          <div className="anim-fade-in-up is-visible pointer-events-auto w-auto max-w-[90%]">
             <div className={`flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full backdrop-blur-xl shadow-2xl border border-white/10 dark:border-black/5 ring-1 ring-black/5 ${
               message.type === 'success' ? 'bg-emerald-500/90' : 
               message.type === 'info' ? 'bg-indigo-500/90' : 
@@ -802,7 +807,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                 <div className="px-4 py-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
                                     <CheckCircle2 className="w-4 h-4" /> Protegido com PIN
                                 </div>
-                                <button onClick={handleDisableSecurity} className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-2 hover:underline">Remover Proteção</button>
+                                <button onClick={handleDisableSecurityRequest} className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-2 hover:underline">Remover Proteção</button>
                             </div>
                         )}
                    </div>
@@ -1162,6 +1167,14 @@ export const Settings: React.FC<SettingsProps> = ({
         message="Autentique-se agora para vincular sua biometria ao aplicativo."
         onConfirm={activateBiometrics}
         onCancel={() => setShowBiometricModal(false)}
+      />
+
+      <ConfirmationModal
+        isOpen={showDisableSecurityConfirm}
+        title="Remover Bloqueio"
+        message="Tem certeza que deseja remover o bloqueio do app? Sua carteira ficará exposta para qualquer pessoa que abrir este dispositivo."
+        onConfirm={handleConfirmDisableSecurity}
+        onCancel={() => setShowDisableSecurityConfirm(false)}
       />
 
       {/* Security Setup Modal */}

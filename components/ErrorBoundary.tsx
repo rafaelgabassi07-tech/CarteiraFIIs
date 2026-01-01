@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 const ConfigurationError: React.FC = () => (
@@ -19,39 +20,37 @@ const ConfigurationError: React.FC = () => (
   </div>
 );
 
-
 interface State {
   hasError: boolean;
   error: Error | null;
 }
 
 interface Props {
-  // Fix: Defined children explicitly in the interface
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 // ErrorBoundary class catches JavaScript errors anywhere in their child component tree
-export class ErrorBoundary extends React.Component<Props, State> {
-  // Fix: Removed 'override' modifier as it is not needed and was causing a compilation error
-  state: State = { hasError: false, error: null };
+export class ErrorBoundary extends Component<Props, State> {
+  // Using public state and explicit return type for clarity in inheritance
+  public state: State = {
+    hasError: false,
+    error: null
+  };
 
-  // Fix: Initializing constructor and calling super(props) to ensure this.props is properly established
-  constructor(props: Props) {
-    super(props);
-  }
-
-  static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  render() {
-    // Fix: Access state and props via 'this' as they are inherited from React.Component
-    if (this.state.hasError) {
-      if (this.state.error?.message.includes('Credenciais do Supabase')) {
+  public render() {
+    const { hasError, error } = this.state;
+    const { children } = this.props;
+
+    if (hasError) {
+      if (error?.message.includes('Credenciais do Supabase')) {
         return <ConfigurationError />;
       }
       
@@ -65,6 +64,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return children;
   }
 }
