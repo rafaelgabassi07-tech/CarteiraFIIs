@@ -101,6 +101,7 @@ const App: React.FC = () => {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(new Date());
   
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [lastAiStatus, setLastAiStatus] = useState<'operational' | 'degraded' | 'error' | 'unknown'>('unknown');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>({});
 
@@ -177,11 +178,25 @@ const App: React.FC = () => {
           setIsAiLoading(true);
           const startDate = txsToUse.length > 0 ? txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date) : '';
           const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
-          if (aiData.error === 'quota_exceeded') showToast('info', 'IA em pausa (Cota). Usando cache.');
-          else if (aiData.error) console.warn("Erro Gemini:", aiData.error);
+          
+          if (aiData.error) {
+            if (aiData.error.includes('quota')) {
+              setLastAiStatus('degraded');
+              showToast('info', 'IA em pausa (Cota). Usando cache.');
+            } else if (aiData.error.includes('API_KEY')) {
+              setLastAiStatus('error');
+            } else {
+              setLastAiStatus('degraded');
+            }
+          } else {
+            setLastAiStatus('operational');
+          }
+
           if (aiData.dividends.length > 0) setGeminiDividends(aiData.dividends);
           if (Object.keys(aiData.metadata).length > 0) setAssetsMetadata(aiData.metadata);
           if (aiData.indicators?.ipca_cumulative) setMarketIndicators({ ipca: aiData.indicators.ipca_cumulative, startDate: aiData.indicators.start_date_used });
+      } else {
+        setLastAiStatus('error');
       }
       setLastSyncTime(new Date());
       if (initialLoad) setLoadingProgress(prev => Math.max(prev, 90)); 
@@ -380,7 +395,7 @@ const App: React.FC = () => {
             <Header title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} onRefresh={() => fetchTransactionsFromCloud(session, false)} isRefreshing={isRefreshing || isAiLoading || isCloudSyncing} updateAvailable={updateManager.isUpdateAvailable} onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => { setShowNotifications(true); setNotifications(prev => prev.map(n => ({...n, read: true}))); }} notificationCount={unreadCount} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} />
             <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
               {showSettings ? (
-                <Settings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={handleImportTransactions} geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} availableVersion={updateManager.availableVersion} updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} lastSyncTime={lastSyncTime} onSyncAll={handleSyncAll} currentVersionDate={updateManager.currentVersionDate} />
+                <Settings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={handleImportTransactions} geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} availableVersion={updateManager.availableVersion} updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} lastSyncTime={lastSyncTime} onSyncAll={handleSyncAll} currentVersionDate={updateManager.currentVersionDate} lastAiStatus={lastAiStatus} />
               ) : (
                 <div key={currentTab} className="anim-fade-in is-visible">
                   {currentTab === 'home' && <MemoizedHome {...memoizedData} salesGain={salesGain} totalAppreciation={memoizedData.balance - memoizedData.invested} isAiLoading={isAiLoading} inflationRate={marketIndicators.ipca} portfolioStartDate={marketIndicators.startDate} accentColor={accentColor} />}

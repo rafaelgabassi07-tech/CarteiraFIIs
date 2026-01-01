@@ -1,6 +1,7 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star, ArrowRightLeft, Clock, BarChart3, Signal, Network, GitCommit } from 'lucide-react';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star, ArrowRightLeft, Clock, BarChart3, Signal, Network, GitCommit, HelpCircle } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
 import { ThemeType } from '../App';
 import { supabase } from '../services/supabase';
@@ -10,8 +11,10 @@ const BadgeDollarSignIcon = (props: any) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1-6.74 0 4 4 0 0 1-4.78-4.78 4 4 0 0 1 0-6.74Z"/><path d="M12 8v8"/><path d="M9.5 10.5c5.5-2.5 5.5 5.5 0 3"/></svg>
 );
 
+type ServiceStatus = 'operational' | 'degraded' | 'error' | 'checking' | 'unknown';
+
 interface SettingsProps {
-  user: any; // User passed from App
+  user: any;
   transactions: Transaction[];
   onImportTransactions: (data: Transaction[]) => void;
   geminiDividends: DividendReceipt[];
@@ -36,6 +39,7 @@ interface SettingsProps {
   lastSyncTime?: Date | null;
   onSyncAll: (force: boolean) => Promise<void>;
   currentVersionDate: string | null;
+  lastAiStatus: ServiceStatus;
 }
 
 export const Settings: React.FC<SettingsProps> = ({ 
@@ -44,7 +48,7 @@ export const Settings: React.FC<SettingsProps> = ({
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
   appVersion, availableVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
-  pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll, currentVersionDate
+  pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll, currentVersionDate, lastAiStatus
 }) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates' | 'about' | 'security' | 'privacy'>('menu');
   const [message, setMessage] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
@@ -52,6 +56,11 @@ export const Settings: React.FC<SettingsProps> = ({
   const [fileToRestore, setFileToRestore] = useState<File | null>(null);
   
   const [checkStatus, setCheckStatus] = useState<'idle' | 'checking' | 'latest' | 'available' | 'offline'>('idle');
+
+  const [healthStatus, setHealthStatus] = useState<{ supabase: ServiceStatus; brapi: ServiceStatus }>({
+    supabase: 'checking',
+    brapi: 'checking',
+  });
   
   // Visual Preferences
   const [glassMode, setGlassMode] = useState(() => localStorage.getItem('investfiis_glass_mode') !== 'false');
@@ -110,6 +119,38 @@ export const Settings: React.FC<SettingsProps> = ({
   // State for Updates screen animation
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const notesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Efeito para verificar a saúde dos serviços quando a seção é aberta
+  useEffect(() => {
+    if (activeSection === 'integrations' && (healthStatus.supabase === 'checking' || healthStatus.brapi === 'checking')) {
+      const checkServices = async () => {
+        const checkSupabase = async (): Promise<ServiceStatus> => {
+          if (!user?.id) return 'error';
+          const { error } = await supabase.from('transactions').select('id', { count: 'exact', head: true });
+          return error ? 'error' : 'operational';
+        };
+
+        const checkBrapi = async (): Promise<ServiceStatus> => {
+          try {
+            if (!process.env.BRAPI_TOKEN) return 'error';
+            const res = await fetch(`https://brapi.dev/api/quote/PETR4?token=${process.env.BRAPI_TOKEN}`);
+            return res.ok ? 'operational' : 'degraded';
+          } catch {
+            return 'error';
+          }
+        };
+
+        const [supabaseResult, brapiResult] = await Promise.all([checkSupabase(), checkBrapi()]);
+
+        setHealthStatus({
+          supabase: supabaseResult,
+          brapi: brapiResult
+        });
+      };
+      checkServices();
+    }
+  }, [activeSection, user, healthStatus.supabase, healthStatus.brapi]);
+
 
   // Scroll Reset Effect
   useEffect(() => {
@@ -535,6 +576,27 @@ export const Settings: React.FC<SettingsProps> = ({
     </div>
   );
 
+  const statusMap: Record<ServiceStatus, { label: string; Icon: React.ElementType; color: string; animate?: boolean }> = {
+    operational: { label: 'Operacional', Icon: Signal, color: 'emerald' },
+    degraded: { label: 'Instável', Icon: AlertTriangle, color: 'amber' },
+    error: { label: 'Offline', Icon: WifiOff, color: 'rose' },
+    checking: { label: 'Verificando...', Icon: Loader2, color: 'slate', animate: true },
+    unknown: { label: 'Desconhecido', Icon: HelpCircle, color: 'slate' }
+  };
+  
+  const colorMap: Record<string, { bg: string; border: string; dot: string; text: string }> = {
+    emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
+    amber: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
+    rose: { bg: 'bg-rose-500/10', border: 'border-rose-500/20', dot: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400' },
+    slate: { bg: 'bg-slate-500/10', border: 'border-slate-500/20', dot: 'bg-slate-500', text: 'text-slate-600 dark:text-slate-400' },
+  };
+
+  const services = [
+    { id: 'supabase', name: 'Supabase', description: 'Banco de Dados & Auth', icon: Database, status: healthStatus.supabase, model: null },
+    { id: 'brapi', name: 'Brapi API', description: 'Cotações B3 (15min delay)', icon: BarChart3, status: healthStatus.brapi, model: null },
+    { id: 'gemini', name: 'Gemini AI', description: 'Google DeepMind', icon: Sparkles, status: lastAiStatus, model: 'v2.5 Pro' }
+  ];
+
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
       {/* Toast de Notificação Centralizado em formato de Pílula Flutuante */}
@@ -697,65 +759,31 @@ export const Settings: React.FC<SettingsProps> = ({
                 {/* Services Health List */}
                 <Section title="Saúde dos Serviços">
                     <div className="space-y-3">
-                        {/* Supabase Card */}
-                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-emerald-500/10 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl -mr-6 -mt-6 transition-opacity opacity-50 group-hover:opacity-100"></div>
-                            <div className="flex items-center justify-between relative z-10">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center border border-emerald-500/10">
-                                        <Database className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Supabase</p>
-                                        <p className="text-[10px] text-slate-400 font-medium">Banco de Dados & Auth</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Operacional</span>
-                                </div>
-                            </div>
-                        </div>
+                      {services.map(service => {
+                        const status = statusMap[service.status];
+                        const colors = colorMap[status.color];
+                        const ServiceIcon = service.icon;
 
-                        {/* Brapi Card */}
-                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-indigo-500/10 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/5 rounded-full blur-xl -mr-6 -mt-6 transition-opacity opacity-50 group-hover:opacity-100"></div>
-                            <div className="flex items-center justify-between relative z-10">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-indigo-500/10 text-indigo-500 rounded-xl flex items-center justify-center border border-indigo-500/10">
-                                        <BarChart3 className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Brapi API</p>
-                                        <p className="text-[10px] text-slate-400 font-medium">Cotações B3 (15min delay)</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
-                                    <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Online</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Gemini Card */}
-                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-amber-500/10 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-full blur-xl -mr-6 -mt-6 transition-opacity opacity-50 group-hover:opacity-100"></div>
-                            <div className="flex items-center justify-between relative z-10">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center border border-amber-500/10">
-                                        <Sparkles className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Gemini AI</p>
-                                        <p className="text-[10px] text-slate-400 font-medium">Google DeepMind</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
-                                    <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">v2.5 Flash</span>
-                                </div>
-                            </div>
-                        </div>
+                        return (
+                          <div key={service.id} className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/10 shadow-sm relative overflow-hidden group">
+                              <div className="flex items-center justify-between relative z-10">
+                                  <div className="flex items-center gap-3">
+                                      <div className={`w-10 h-10 ${colors.bg} rounded-xl flex items-center justify-center border ${colors.border}`}>
+                                          <ServiceIcon className={`w-5 h-5 ${colors.text}`} />
+                                      </div>
+                                      <div>
+                                          <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{service.name}</p>
+                                          <p className="text-[10px] text-slate-400 font-medium">{service.description}</p>
+                                      </div>
+                                  </div>
+                                  <div className={`flex items-center gap-2 px-2.5 py-1 rounded-lg ${colors.bg} ${colors.border}`}>
+                                      <status.Icon className={`w-3 h-3 ${colors.text} ${status.animate ? 'animate-spin' : ''}`} />
+                                      <span className={`text-[9px] font-bold ${colors.text} uppercase tracking-wide`}>{service.model || status.label}</span>
+                                  </div>
+                              </div>
+                          </div>
+                        );
+                      })}
                     </div>
                 </Section>
 

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
 
@@ -12,6 +13,12 @@ export interface UnifiedMarketData {
 
 const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v9.0_smart_auditor'; // Cache versionado para nova lógica
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
+
+// --- BLOQUEIO DE MODELO ---
+// ESTA CONSTANTE NÃO DEVE SER ALTERADA A MENOS QUE EXPLICITAMENTE SOLICITADO PELO USUÁRIO.
+// MODELO ATUAL: GEMINI 2.5 PRO
+const LOCKED_MODEL_ID = "gemini-2.5-pro-preview";
+// --------------------------
 
 const getAiCacheTTL = () => {
     const now = new Date();
@@ -158,9 +165,10 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     }
     `;
 
-    // Fix: Using gemini-3-pro-preview for complex reasoning task as per guidelines
+    // LOCKED MODEL: gemini-2.5-pro-preview
+    // DO NOT CHANGE WITHOUT USER REQUEST
     const response = await ai.models.generateContent({
-        model: "gemini-3-pro-preview", 
+        model: LOCKED_MODEL_ID, 
         contents: prompt,
         config: {
             tools: [{googleSearch: {}}], // Obrigatório para dados live
