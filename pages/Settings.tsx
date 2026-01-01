@@ -532,7 +532,25 @@ export const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-      {message && <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3.5 rounded-2xl flex items-center gap-3 shadow-2xl z-[60] text-[10px] font-black uppercase tracking-widest text-white transition-all transform anim-fade-in-up is-visible ${message.type === 'success' ? 'bg-emerald-500' : message.type === 'info' ? 'bg-indigo-500' : 'bg-rose-500'}`}>{message.text}</div>}
+      {/* Toast de Notificação Centralizado em formato de Pílula */}
+      {message && (
+        <div className="fixed top-6 left-0 w-full flex justify-center z-[1000] pointer-events-none">
+          <div className="anim-fade-in-up is-visible pointer-events-auto">
+            <div className={`flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full backdrop-blur-xl shadow-2xl border border-white/10 dark:border-black/5 ring-1 ring-black/5 ${
+              message.type === 'success' ? 'bg-emerald-500/90' : 
+              message.type === 'info' ? 'bg-indigo-500/90' : 
+              'bg-rose-500/90'
+            }`}>
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                {message.type === 'success' ? <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} /> : 
+                 message.type === 'info' ? <Info className="w-3.5 h-3.5 text-white" /> : 
+                 <AlertTriangle className="w-3.5 h-3.5 text-white" />}
+              </div>
+              <span className="text-[11px] font-bold text-white uppercase tracking-wider whitespace-nowrap">{message.text}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeSection === 'menu' ? (
         <>

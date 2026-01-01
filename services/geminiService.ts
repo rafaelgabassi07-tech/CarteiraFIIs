@@ -87,11 +87,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     } catch (e) { console.warn("Cache Warning", e); }
   }
 
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
+  // Fix: Ensure correct initialization using process.env.API_KEY directly
+  if (!process.env.API_KEY) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
 
   try {
-    const ai = new GoogleGenAI({ apiKey: apiKey as string });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const todayISO = new Date().toISOString().split('T')[0];
     
     // Define a data de início padrão se não fornecida (12 meses atrás)
@@ -158,8 +158,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     }
     `;
 
+    // Fix: Using gemini-3-pro-preview for complex reasoning task as per guidelines
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash", 
+        model: "gemini-3-pro-preview", 
         contents: prompt,
         config: {
             tools: [{googleSearch: {}}], // Obrigatório para dados live
@@ -169,8 +170,10 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     
     let parsedJson: any;
     try {
-      if (response.text) {
-          let cleanText = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+      // Fix: Access .text property directly
+      const responseText = response.text;
+      if (responseText) {
+          let cleanText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
           const firstBrace = cleanText.indexOf('{');
           const lastBrace = cleanText.lastIndexOf('}');
           if (firstBrace !== -1 && lastBrace !== -1) {

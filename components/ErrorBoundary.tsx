@@ -26,14 +26,17 @@ interface State {
 }
 
 interface Props {
-  children: React.ReactNode;
+  // Fix: Making children optional helps TypeScript recognize them when passed via JSX children
+  children?: React.ReactNode;
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
-  // Fix: Initialize state and props by adding a constructor.
+  // Fix: Explicitly declare the state property on the class to avoid "does not exist" errors
+  override state: State = { hasError: false, error: null };
+
+  // Fix: Ensure constructor correctly handles props
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -45,6 +48,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   render() {
+    // Fix: Access state and props which are now correctly recognized by the compiler
     if (this.state.hasError) {
       if (this.state.error?.message.includes('Credenciais do Supabase')) {
         return <ConfigurationError />;
