@@ -261,6 +261,20 @@ const App: React.FC = () => {
     }
   }, [session, fetchTransactionsFromCloud]);
 
+  const handleLogout = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    
+    // Regardless of the outcome of signOut (which can fail with AuthSessionMissingError
+    // on a stale session), the user's intent is to log out. We manually nullify the
+    // session in the app's state to ensure the UI transitions to the login screen
+    // and all user data is cleared. This creates a robust and predictable logout flow.
+    setSession(null); 
+    
+    if (error) {
+      console.error("Supabase signOut error occurred, but session was cleared locally:", error);
+    }
+  }, []);
+
   const handleSyncAll = useCallback(async (force: boolean) => {
     await fetchTransactionsFromCloud(session, force);
   }, [fetchTransactionsFromCloud, session]);
@@ -366,7 +380,7 @@ const App: React.FC = () => {
             <Header title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} onRefresh={() => fetchTransactionsFromCloud(session, false)} isRefreshing={isRefreshing || isAiLoading || isCloudSyncing} updateAvailable={updateManager.isUpdateAvailable} onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => { setShowNotifications(true); setNotifications(prev => prev.map(n => ({...n, read: true}))); }} notificationCount={unreadCount} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} />
             <main className={`max-w-screen-md mx-auto pt-2 transition-all duration-500 ${cloudStatus !== 'hidden' ? 'mt-8' : 'mt-0'}`}>
               {showSettings ? (
-                <Settings user={session.user} transactions={transactions} onImportTransactions={handleImportTransactions} geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} availableVersion={updateManager.availableVersion} updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} lastSyncTime={lastSyncTime} onSyncAll={handleSyncAll} currentVersionDate={updateManager.currentVersionDate} />
+                <Settings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={handleImportTransactions} geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); supabase.auth.signOut(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} availableVersion={updateManager.availableVersion} updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} onShowChangelog={() => updateManager.setShowChangelog(true)} releaseNotes={updateManager.releaseNotes} lastChecked={updateManager.lastChecked} pushEnabled={pushEnabled} onRequestPushPermission={requestPushPermission} lastSyncTime={lastSyncTime} onSyncAll={handleSyncAll} currentVersionDate={updateManager.currentVersionDate} />
               ) : (
                 <div key={currentTab} className="anim-fade-in is-visible">
                   {currentTab === 'home' && <MemoizedHome {...memoizedData} salesGain={salesGain} totalAppreciation={memoizedData.balance - memoizedData.invested} isAiLoading={isAiLoading} inflationRate={marketIndicators.ipca} portfolioStartDate={marketIndicators.startDate} accentColor={accentColor} />}

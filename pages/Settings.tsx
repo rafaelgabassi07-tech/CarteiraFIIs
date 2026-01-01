@@ -15,6 +15,7 @@ interface SettingsProps {
   onImportTransactions: (data: Transaction[]) => void;
   geminiDividends: DividendReceipt[];
   onImportDividends: (data: DividendReceipt[]) => void;
+  onLogout: () => void;
   onResetApp: () => void;
   theme: ThemeType;
   onSetTheme: (theme: ThemeType) => void;
@@ -37,7 +38,7 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ 
-  user,
+  user, onLogout,
   transactions, onImportTransactions,
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
@@ -174,16 +175,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const showMessage = (type: 'success' | 'error' | 'info', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
-  };
-
-  const handleLogout = async () => { 
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-        showMessage('error', 'Falha ao sair da conta.');
-        console.error("Logout failed:", error);
-    }
-    // A recarga da página foi removida. O listener de autenticação no App.tsx
-    // agora gerencia a atualização da interface de forma reativa e segura.
   };
   
   const handleForceSync = async () => { 
@@ -553,7 +544,7 @@ export const Settings: React.FC<SettingsProps> = ({
                          <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><User className="w-6 h-6" /></div>
                          <div className="overflow-hidden"><h3 className="font-bold text-slate-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-slate-500 truncate">{user ? user.email : 'Carregando...'}</p></div>
                      </div>
-                     <button onClick={handleLogout} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
+                     <button onClick={onLogout} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
                  </div>
                </div>
             </div>

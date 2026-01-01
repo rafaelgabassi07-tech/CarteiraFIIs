@@ -30,7 +30,7 @@ interface Props {
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
-  // FIX: Using a constructor with super(props) ensures `this.props` is correctly initialized. This resolves the error where `props` was not found on the component instance.
+  // Fix: Initialize state and props by adding a constructor.
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null };
