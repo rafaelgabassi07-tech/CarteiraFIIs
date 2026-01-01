@@ -77,6 +77,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [passcode, setPasscode] = useState<string | null>(() => localStorage.getItem('investfiis_passcode'));
   const [biometricsEnabled, setBiometricsEnabled] = useState(() => localStorage.getItem('investfiis_biometrics') === 'true');
   const [showPinSetup, setShowPinSetup] = useState(false);
+  const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [newPin, setNewPin] = useState('');
   
   // Diagnostics State
@@ -287,16 +288,22 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const handleToggleBiometrics = async () => {
+  const handleToggleBiometrics = () => {
       if (biometricsEnabled) {
           localStorage.setItem('investfiis_biometrics', 'false');
           setBiometricsEnabled(false);
+          showMessage('info', 'Biometria desativada.');
           return;
       }
+      // Abre o Modal de Confirmação em vez de chamar direto
+      setShowBiometricModal(true);
+  };
+
+  const activateBiometrics = async () => {
+      setShowBiometricModal(false); // Fecha o modal
 
       if (window.PublicKeyCredential) {
           try {
-              showMessage('info', 'Autentique para ativar...');
               const challenge = new Uint8Array(32);
               window.crypto.getRandomValues(challenge);
               
@@ -318,13 +325,13 @@ export const Settings: React.FC<SettingsProps> = ({
               
               localStorage.setItem('investfiis_biometrics', 'true');
               setBiometricsEnabled(true);
-              showMessage('success', 'Biometria/PIN do celular ativado!');
+              showMessage('success', 'Biometria ativada com sucesso!');
           } catch (e) {
               console.error(e);
-              showMessage('error', 'Falha ao ativar biometria. Verifique se seu dispositivo suporta.');
+              showMessage('error', 'Falha na autenticação ou cancelado.');
           }
       } else {
-          showMessage('error', 'Dispositivo não suporta autenticação web.');
+          showMessage('error', 'Este dispositivo não suporta biometria web.');
       }
   };
 
@@ -1133,6 +1140,14 @@ export const Settings: React.FC<SettingsProps> = ({
         message="Atenção: Restaurar um backup substituirá TODOS os seus dados atuais. Esta ação não pode ser desfeita. Deseja continuar?"
         onConfirm={handleConfirmRestore}
         onCancel={() => setFileToRestore(null)}
+      />
+
+      <ConfirmationModal
+        isOpen={showBiometricModal}
+        title="Ativar Biometria"
+        message="Autentique-se agora para vincular sua biometria ao aplicativo."
+        onConfirm={activateBiometrics}
+        onCancel={() => setShowBiometricModal(false)}
       />
 
       {/* Security Setup Modal */}
