@@ -543,10 +543,10 @@ export const Settings: React.FC<SettingsProps> = ({
             }`}>
               <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                 {message.type === 'success' ? <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} /> : 
-                 message.type === 'info' ? <Info className="w-3.5 h-3.5 text-white" /> : 
+                 message.type === 'info' ? <Info className="w-3.5 h-3.5 text-white" strokeWidth={2.5} /> : 
                  <AlertTriangle className="w-3.5 h-3.5 text-white" />}
               </div>
-              <span className="text-[11px] font-bold text-white uppercase tracking-wider whitespace-nowrap">{message.text}</span>
+              <span className="text-[10px] font-black text-white uppercase tracking-wider whitespace-nowrap">{message.text}</span>
             </div>
           </div>
         </div>
