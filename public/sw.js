@@ -1,4 +1,4 @@
-const CACHE_NAME = 'investfiis-pwa-stable-v1'; // Nome semântico para forçar reset e estabilidade
+const CACHE_NAME = 'investfiis-pwa-stable-v2'; // Updated cache name to force update for all users
 
 const PRECACHE_ASSETS = [
   './',
@@ -6,7 +6,7 @@ const PRECACHE_ASSETS = [
   './manifest.json'
 ];
 
-// Ouve a mensagem da UI para ativar o novo SW quando o usuário confirmar
+// Listens for a message from the UI to activate the new SW when the user confirms an update
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'INVESTFIIS_SKIP_WAITING') {
     console.log('SW: Received SKIP_WAITING message. Activating new worker.');
@@ -15,7 +15,6 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('install', (event) => {
-  // Não força mais skipWaiting aqui; espera a UI ou o fechamento de abas.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
@@ -26,13 +25,13 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
-      self.clients.claim(), // Toma controle imediato das páginas
+      self.clients.claim(), // Take control of all open pages
       caches.keys().then((keys) => {
-        // Deleta TODO e qualquer cache antigo que não seja o atual
+        // Delete all old caches that don't match the current CACHE_NAME
         return Promise.all(
           keys.map((key) => {
             if (key !== CACHE_NAME) {
-              console.log('SW: Deletando cache obsoleto:', key);
+              console.log('SW: Deleting obsolete cache:', key);
               return caches.delete(key);
             }
           })
@@ -43,31 +42,43 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Estratégia Network First para HTML (garante que index.html sempre venha atualizado da rede se possível)
+  const url = new URL(event.request.url);
+
+  // 1. Bypass non-GET requests and all requests to external origins.
+  // This is CRITICAL to prevent interference with API calls (Supabase, Brapi, etc.).
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
+    // Let the browser handle the request as usual.
+    return;
+  }
+
+  // 2. For navigation (HTML document requests), use a "Network first" strategy.
+  // This ensures users get the latest version of the app's entry point if they are online.
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          return caches.match('./index.html');
-        })
+      fetch(event.request).catch(() => {
+        // If the network fails, fall back to the cached index.html.
+        return caches.match('./index.html');
+      })
     );
     return;
   }
 
-  // Stale-while-revalidate para assets estáticos
+  // 3. For local assets (JS, CSS, etc.), use a "Stale-While-Revalidate" strategy.
+  // This serves assets from cache instantly for speed, then updates the cache in the background.
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        // If the network request is successful, update the cache with the new version.
+        if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-             if (event.request.url.startsWith('http')) {
-                cache.put(event.request, responseToCache);
-             }
+            cache.put(event.request, responseToCache);
           });
         }
         return networkResponse;
-      }).catch(() => {});
+      });
+
+      // Return the cached response immediately if it exists, otherwise wait for the network.
       return cachedResponse || fetchPromise;
     })
   );
