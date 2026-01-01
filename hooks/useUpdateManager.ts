@@ -166,7 +166,8 @@ export const useUpdateManager = (currentAppVersion: string) => {
                 // Checa novamente após update explícito
                 if (reg.waiting) {
                     setUpdateProgress(60);
-                    reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+                    // TS FIX: Cast explícito para ServiceWorker pois o TS estreita o tipo para 'never' ou 'null' devido ao 'if' anterior
+                    (reg.waiting as ServiceWorker).postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
                     return;
                 }
 
