@@ -1,4 +1,5 @@
 
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
@@ -46,11 +47,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public render() {
-    const { hasError, error } = this.state;
-    const { children } = this.props;
-
-    if (hasError) {
-      if (error?.message.includes('Credenciais do Supabase')) {
+    if (this.state.hasError) {
+      if (this.state.error?.message.includes('Credenciais do Supabase')) {
         return <ConfigurationError />;
       }
       
@@ -64,6 +62,6 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return children;
+    return this.props.children;
   }
 }
