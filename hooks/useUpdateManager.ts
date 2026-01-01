@@ -49,35 +49,35 @@ export const useUpdateManager = (currentAppVersion: string) => {
     return null;
   }, [currentAppVersion]);
 
-  // Effect for SW registration and update listening
+  // Efeito simplificado: Agora ele apenas OUVE por atualizações, não registra mais.
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      const onUpdate = (registration: ServiceWorkerRegistration) => {
+      const setupUpdateListener = async () => {
+        const registration = await navigator.serviceWorker.ready;
+        
+        // Se já existe um worker esperando quando o app carrega, notifica o usuário
         if (registration.waiting) {
-          setWaitingWorker(registration.waiting);
-          fetchVersionMetadata().then(() => {
+            setWaitingWorker(registration.waiting);
             setIsUpdateAvailable(true);
-          });
         }
+
+        // Ouve por novas atualizações que forem encontradas
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                setWaitingWorker(newWorker);
+                setIsUpdateAvailable(true);
+              }
+            });
+          }
+        });
       };
 
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => {
-          reg.update();
-          
-          reg.addEventListener('updatefound', () => {
-            const newWorker = reg.installing;
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  onUpdate(reg);
-                }
-              });
-            }
-          });
-        })
-        .catch(error => console.error('Service Worker registration failed:', error));
+      setupUpdateListener();
 
+      // Recarrega a página quando o novo SW assume o controle
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) {
@@ -109,14 +109,16 @@ export const useUpdateManager = (currentAppVersion: string) => {
      if ('serviceWorker' in navigator) {
        const reg = await navigator.serviceWorker.getRegistration();
        if (reg) {
-         await reg.update();
-         if (reg.waiting) {
-             setIsUpdateAvailable(true);
-             setWaitingWorker(reg.waiting);
-             return true;
+         try {
+           await reg.update(); // Força a verificação
+           return true; // A verificação foi iniciada, o listener vai pegar se houver algo
+         } catch (e) {
+            console.error("Erro ao forçar update do SW:", e);
+            return false;
          }
        }
      }
+     // Fallback para ambientes sem SW
      const meta = await fetchVersionMetadata();
      const hasUpdate = !!meta && isNewerVersion(meta.version, currentAppVersion);
      if (hasUpdate) {
@@ -133,6 +135,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
       setUpdateProgress(70);
       waitingWorker.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
     } else {
+      // Fallback caso não haja SW, apenas recarrega a página
       setUpdateProgress(100);
       window.location.reload();
     }
