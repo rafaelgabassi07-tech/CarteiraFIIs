@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Registro do Service Worker movido para o ponto de entrada principal.
 // Isso garante que ele seja registrado o mais rápido possível,
@@ -26,6 +27,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );
