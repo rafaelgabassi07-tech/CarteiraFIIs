@@ -517,28 +517,7 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const formatDate = (dateStr: string | null) => {
-      if (!dateStr) return 'N/A';
-      try {
-        const d = new Date(dateStr + 'T00:00:00'); // Add time to parse as local date correctly
-        return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
-      } catch { return dateStr; }
-  };
-
-  const formatTime = (ts: number | null | undefined) => {
-      if (!ts) return '--:--';
-      return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const DetailCard = ({ label, value, icon: Icon, color }: any) => (
-      <div className="bg-white/5 p-3 rounded-2xl border border-white/5 flex flex-col justify-between">
-          <div className="flex items-center gap-2 mb-2 text-slate-400">
-             <Icon className="w-3.5 h-3.5" />
-             <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
-          </div>
-          <p className={`text-xs font-bold tabular-nums ${color || 'text-white'}`}>{value}</p>
-      </div>
-  );
+  // CLEANED UP: Removed redundant DetailCard component and old grid logic
 
   const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, colorClass }: any) => (
     <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-[#0f172a] hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all border-b last:border-0 border-slate-100 dark:border-white/5 group gap-4`}>
@@ -668,6 +647,84 @@ export const Settings: React.FC<SettingsProps> = ({
               </h2>
           </div>
           
+          {activeSection === 'updates' && (
+             <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-[#0f172a] rounded-[2.5rem] border border-slate-100 dark:border-white/5 overflow-hidden shadow-xl">
+                {/* --- Clean Animated Header --- */}
+                <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'py-6 border-b border-slate-100 dark:border-white/5' : 'py-12'}`}>
+                    <div className={`relative mb-4 transition-all duration-500 ${isHeaderCompact ? 'scale-75' : 'scale-100'}`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-white/5 text-slate-400' : updateAvailable ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                            {checkStatus === 'checking' ? (
+                                <Loader2 className="w-8 h-8 animate-spin" strokeWidth={2} />
+                            ) : updateAvailable ? (
+                                <Download className="w-8 h-8 animate-bounce" strokeWidth={2} />
+                            ) : (
+                                <CheckCircle2 className="w-8 h-8" strokeWidth={2} />
+                            )}
+                        </div>
+                    </div>
+                    
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
+                        {checkStatus === 'checking' ? 'Buscando...' : updateAvailable ? 'Nova Versão Disponível' : 'Tudo Atualizado'}
+                    </h2>
+                    
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6">
+                        {updateAvailable ? `Versão ${availableVersion} pronta para instalar.` : `Você está na versão ${appVersion}`}
+                    </p>
+
+                    <button 
+                        onClick={handleCheckUpdate}
+                        disabled={checkStatus === 'checking'}
+                        className={`group relative overflow-hidden px-8 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center gap-2 ${
+                            updateAvailable 
+                            ? 'bg-amber-500 text-white shadow-amber-500/20' 
+                            : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        }`}
+                    >
+                        <span className="relative z-10 flex items-center gap-2">
+                            {checkStatus === 'checking' ? 'Verificando...' : updateAvailable ? 'Atualizar Agora' : 'Buscar Atualizações'}
+                        </span>
+                    </button>
+                </div>
+                
+                {/* --- Clean Scrollable Content --- */}
+                <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 overscroll-contain">
+                   
+                   {/* Release Notes Header */}
+                   <div className="flex items-center gap-2 px-2">
+                       <Sparkles className="w-4 h-4 text-indigo-500" />
+                       <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                           Novidades da Versão
+                       </h3>
+                   </div>
+
+                   {/* Release Notes List */}
+                   {(releaseNotes && releaseNotes.length > 0) ? (
+                      <div className="space-y-4">
+                         {releaseNotes.map((note, i) => {
+                            const { Icon, color, bg } = getNoteIconAndColor(note.type);
+                            return (
+                              <div key={i} className="flex gap-4 items-start">
+                                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${bg} ${color}`}>
+                                      <Icon className="w-4 h-4" strokeWidth={2.5} />
+                                  </div>
+                                  <div className="pt-1">
+                                      <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight mb-1">{note.title}</h4>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{note.desc}</p>
+                                  </div>
+                              </div>
+                            );
+                         })}
+                      </div>
+                   ) : (
+                       <div className="text-center py-10 opacity-50">
+                           <p className="text-xs text-slate-400">Nenhuma nota de atualização disponível.</p>
+                       </div>
+                   )}
+                </div>
+             </div>
+          )}
+
+          {/* O restante das seções permanece igual (Settings.tsx é grande, mantendo o contexto onde não houve mudança) */}
           {activeSection === 'integrations' && (
             <div className="space-y-6">
                 
@@ -1026,93 +1083,12 @@ export const Settings: React.FC<SettingsProps> = ({
                   </Section>
               </div>
           )}
-          
-          {activeSection === 'updates' && (
-             <div className="h-[calc(100dvh-140px)] -mt-2 flex flex-col bg-gradient-to-b from-[#0b1121] to-[#020617] rounded-3xl overflow-hidden shadow-2xl border border-white/5">
-                {/* --- Animated Header --- */}
-                <div className={`relative z-10 text-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'pt-4 pb-4 backdrop-blur-md bg-black/20 border-b border-white/5' : 'pt-10 pb-6'}`}>
-                    <div className={`relative mx-auto transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'w-16 h-16 mb-2' : 'w-24 h-24 mb-4'}`}>
-                        <div className={`w-full h-full rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-white/5 scale-110' : updateAvailable ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                            {checkStatus === 'checking' ? (
-                                <div className="absolute inset-0 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
-                            ) : updateAvailable ? (
-                                <Rocket className="w-1/2 h-1/2 animate-bounce" strokeWidth={1.5} />
-                            ) : (
-                                <CheckCircle2 className="w-1/2 h-1/2" strokeWidth={1.5} />
-                            )}
-                        </div>
-                        {checkStatus === 'checking' && <div className="absolute inset-0 rounded-full animate-ping bg-indigo-500/10"></div>}
-                    </div>
-                    
-                    <h2 className={`font-black text-white tracking-tighter transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'text-xl' : 'text-3xl'}`}>
-                        {updateAvailable ? 'Nova Versão' : 'Tudo em Dia'}
-                    </h2>
-                    
-                    <div className={`overflow-hidden transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'max-h-0 opacity-0' : 'max-h-12 opacity-100'}`}>
-                        <p className="text-sm font-medium text-slate-400 mt-1 mb-4">
-                            {updateAvailable ? `A versão ${availableVersion || ''} está disponível.` : `Você está rodando a v${appVersion}`}
-                        </p>
-                    </div>
-
-                    <div className="flex justify-center gap-3">
-                      <button 
-                          onClick={handleCheckUpdate}
-                          disabled={checkStatus === 'checking'}
-                          className={`group relative overflow-hidden px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all shadow-xl hover:shadow-2xl active:scale-95 flex items-center gap-2 duration-500 ease-out-quint ${isHeaderCompact ? 'scale-90' : 'scale-100'} ${
-                              updateAvailable 
-                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30' 
-                              : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-indigo-500/30'
-                          }`}
-                      >
-                          <span className="relative z-10 flex items-center gap-2">
-                              {checkStatus === 'checking' ? <>Buscando...</> : updateAvailable ? <><Download className="w-4 h-4" /> Atualizar</> : <><RefreshCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" /> Verificar</>}
-                          </span>
-                          <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
-                      </button>
-                    </div>
-                </div>
-                
-                {/* --- Scrollable Content --- */}
-                <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-5 p-4 pb-20 overscroll-contain">
-                   
-                   {/* Technical Details Grid */}
-                   <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
-                      <DetailCard label="Versão Instalada" value={`v${appVersion}`} icon={GitCommit} color="text-indigo-400" />
-                      <DetailCard label="Data de Lançamento" value={formatDate(currentVersionDate)} icon={Calendar} color="text-slate-200" />
-                      <DetailCard label="Última Verificação" value={formatTime(lastChecked)} icon={Clock} color="text-slate-400" />
-                      <DetailCard label="Canal" value="Stable/Cloud" icon={Server} color="text-emerald-500" />
-                   </div>
-
-                   {/* Release Notes */}
-                   {(releaseNotes && releaseNotes.length > 0) && (
-                      <div className="space-y-3">
-                         <h3 className={`text-xs font-bold text-slate-500 uppercase tracking-widest pl-2`}>
-                           Notas da v{availableVersion || appVersion}
-                         </h3>
-                         {releaseNotes.map((note, i) => {
-                            const { Icon, color, bg } = getNoteIconAndColor(note.type);
-                            return (
-                              <div key={i} className="flex gap-4 items-start p-4 bg-white/5 rounded-2xl border border-white/5">
-                                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${bg} ${color}`}>
-                                      <Icon className="w-4 h-4" strokeWidth={2.5} />
-                                  </div>
-                                  <div>
-                                      <h4 className="text-sm font-bold text-white leading-tight mb-1">{note.title}</h4>
-                                      <p className="text-xs text-slate-400 leading-relaxed font-medium">{note.desc}</p>
-                                  </div>
-                              </div>
-                            );
-                         })}
-                      </div>
-                   )}
-                </div>
-             </div>
-          )}
         </div>
       )}
 
       {/* Cloud Diagnostics Modal */}
       <SwipeableModal isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)}>
+        {/* ... (mantido igual ao original) ... */}
         <div className="px-6 py-4 pb-8 min-h-[50vh]">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">

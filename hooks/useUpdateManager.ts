@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { ReleaseNote, VersionData } from '../types';
 
@@ -27,11 +28,13 @@ export const useUpdateManager = (currentAppVersion: string) => {
   const [lastChecked, setLastChecked] = useState<number | null>(Date.now());
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
 
   const fetchVersionMetadata = useCallback(async () => {
     try {
+      // Adiciona timestamp para evitar cache agressivo do JSON de versão
       const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data: VersionData = await res.json();
@@ -49,30 +52,34 @@ export const useUpdateManager = (currentAppVersion: string) => {
     return null;
   }, [currentAppVersion]);
 
-  // Efeito simplificado: Agora ele apenas OUVE por atualizações, não registra mais.
+  // Gerenciamento do Service Worker
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       const setupUpdateListener = async () => {
-        const registration = await navigator.serviceWorker.ready;
-        
-        // Se já existe um worker esperando quando o app carrega, notifica o usuário
-        if (registration.waiting) {
-            setWaitingWorker(registration.waiting);
-            setIsUpdateAvailable(true);
-        }
-
-        // Ouve por novas atualizações que forem encontradas
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                setWaitingWorker(newWorker);
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            
+            // Se já existe um worker esperando quando o app carrega
+            if (registration.waiting) {
+                setWaitingWorker(registration.waiting);
                 setIsUpdateAvailable(true);
+            }
+
+            // Ouve por novas atualizações
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    setWaitingWorker(newWorker);
+                    setIsUpdateAvailable(true);
+                  }
+                });
               }
             });
-          }
-        });
+        } catch (e) {
+            console.error("Erro ao configurar listener do SW:", e);
+        }
       };
 
       setupUpdateListener();
@@ -81,17 +88,16 @@ export const useUpdateManager = (currentAppVersion: string) => {
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) {
-          window.location.reload();
           refreshing = true;
+          window.location.reload();
         }
       });
     }
     
-    // Busca inicial de metadados para popular a data da versão
     fetchVersionMetadata();
   }, [fetchVersionMetadata]);
 
-  // Effect for checking if the app was just updated on load
+  // Verifica se o app acabou de ser atualizado
   useEffect(() => {
     const lastVersion = localStorage.getItem('investfiis_version');
     if (lastVersion && isNewerVersion(currentAppVersion, lastVersion)) {
@@ -101,44 +107,76 @@ export const useUpdateManager = (currentAppVersion: string) => {
         setShowChangelog(true);
       });
     }
+    // Sempre atualiza a versão no storage
     localStorage.setItem('investfiis_version', currentAppVersion);
   }, [currentAppVersion, fetchVersionMetadata]);
 
   const checkForUpdates = useCallback(async () => {
      setLastChecked(Date.now());
-     if ('serviceWorker' in navigator) {
-       const reg = await navigator.serviceWorker.getRegistration();
-       if (reg) {
-         try {
-           await reg.update(); // Força a verificação
-           return true; // A verificação foi iniciada, o listener vai pegar se houver algo
-         } catch (e) {
-            console.error("Erro ao forçar update do SW:", e);
-            return false;
+     setUpdateError(null);
+     
+     try {
+         // 1. Verifica SW
+         if ('serviceWorker' in navigator) {
+           const reg = await navigator.serviceWorker.getRegistration();
+           if (reg) {
+             await reg.update(); // Força a verificação no browser
+           }
          }
-       }
+         
+         // 2. Verifica Metadados (JSON)
+         const meta = await fetchVersionMetadata();
+         const hasUpdate = !!meta && isNewerVersion(meta.version, currentAppVersion);
+         
+         if (hasUpdate) {
+             setIsUpdateAvailable(true);
+         }
+         return hasUpdate;
+         
+     } catch (e: any) {
+        console.error("Erro ao verificar atualizações:", e);
+        setUpdateError("Não foi possível verificar.");
+        return false;
      }
-     // Fallback para ambientes sem SW
-     const meta = await fetchVersionMetadata();
-     const hasUpdate = !!meta && isNewerVersion(meta.version, currentAppVersion);
-     if (hasUpdate) {
-         setIsUpdateAvailable(true);
-     }
-     return hasUpdate;
   }, [currentAppVersion, fetchVersionMetadata]);
   
   const startUpdateProcess = useCallback(() => {
     setIsUpdating(true);
-    setUpdateProgress(30);
+    setUpdateProgress(10);
 
-    if (waitingWorker) {
-      setUpdateProgress(70);
-      waitingWorker.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-    } else {
-      // Fallback caso não haja SW, apenas recarrega a página
-      setUpdateProgress(100);
-      window.location.reload();
+    // Fallback de segurança: Se o SW não recarregar em 4 segundos, forçamos o reload.
+    // Isso evita que o app fique travado na tela de "Atualizando...".
+    const safetyTimeout = setTimeout(() => {
+        console.warn("Update timeout reached. Forcing reload.");
+        window.location.reload();
+    }, 4000);
+
+    try {
+        if (waitingWorker) {
+          setUpdateProgress(50);
+          waitingWorker.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+        } else if ('serviceWorker' in navigator) {
+           // Tenta forçar via registration se waitingWorker se perdeu
+           navigator.serviceWorker.getRegistration().then(reg => {
+               if (reg && reg.waiting) {
+                   reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+               } else {
+                   // Se não achou worker, reload direto
+                   setUpdateProgress(100);
+                   window.location.reload();
+               }
+           });
+        } else {
+          // Fallback para ambientes sem SW
+          setUpdateProgress(100);
+          window.location.reload();
+        }
+    } catch (e) {
+        console.error("Critical update error:", e);
+        window.location.reload(); // Último recurso
     }
+    
+    // O reload deve acontecer via 'controllerchange' ou pelo safetyTimeout
   }, [waitingWorker]);
 
   return {
@@ -154,5 +192,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
     startUpdateProcess,
     isUpdating,
     updateProgress,
+    updateError
   };
 };

@@ -1,21 +1,17 @@
+
 {
-  "version": "7.0.2",
-  "date": "2025-07-01",
+  "version": "7.3.4",
+  "date": "2025-07-02",
   "notes": [
     {
-      "type": "feat",
-      "title": "Backup e Restauração Aprimorados",
-      "desc": "Sistema de backup mais seguro e intuitivo com confirmação e validação de arquivos."
+      "type": "perf",
+      "title": "Sistema de Atualizações Estável",
+      "desc": "Mecanismo aprimorado que previne travamentos durante a atualização e garante recarregamento seguro."
     },
     {
       "type": "ui",
-      "title": "Agenda de Proventos Unificada",
-      "desc": "Pagamentos e 'Datas Com' agora são exibidos em uma única linha do tempo cronológica para maior clareza."
-    },
-    {
-      "type": "fix",
-      "title": "Estabilidade da Home",
-      "desc": "Corrigido um erro crítico que causava o travamento do aplicativo ao iniciar."
+      "title": "Nova Tela de Updates",
+      "desc": "Interface minimalista e limpa para visualizar novidades da versão sem distrações."
     }
   ]
 }

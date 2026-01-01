@@ -11,12 +11,12 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v9.0_smart_auditor'; // Cache versionado para nova lógica
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v9.1_smart_auditor'; // Cache atualizado para v9.1 (Stable Model)
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 // --- BLOQUEIO DE MODELO ---
 // ESTA CONSTANTE NÃO DEVE SER ALTERADA A MENOS QUE EXPLICITAMENTE SOLICITADO PELO USUÁRIO.
-// MODELO ATUAL: GEMINI 2.5 PRO (Versão Estável)
+// MODELO ATUAL: GEMINI 2.5 PRO (Versão Estável - Sem Preview)
 const LOCKED_MODEL_ID = "gemini-2.5-pro";
 // --------------------------
 

@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '7.3.2'; 
+const APP_VERSION = '7.3.3'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
