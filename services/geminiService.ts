@@ -10,7 +10,7 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v8.0_strict_datacom'; // Cache versionado
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v9.0_smart_auditor'; // Cache versionado para nova lógica
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 const getAiCacheTTL = () => {
@@ -102,55 +102,55 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         calcStartDate = d.toISOString().split('T')[0];
     }
     
-    // Prompt OTIMIZADO para Auditoria de Proventos e IPCA Acumulado EXATO pela Data
+    // Prompt "Smart Auditor"
+    // Foca obsessivamente na diferença entre Dividendos e JCP e na Data Com correta.
     const prompt = `
-    ATUE COMO: Auditor Financeiro B3 especializado em Eventos Corporativos (Proventos).
-    DATA DE HOJE: ${todayISO}.
-    JANELA DE ANÁLISE: De ${calcStartDate} até Hoje + Previsões Futuras (Provisionados).
+    CONTEXTO: Você é um Auditor Financeiro Senior e Analista de Mercado B3.
+    DATA HOJE: ${todayISO}.
+    JANELA: Eventos ocorridos ou anunciados entre ${calcStartDate} e hoje, INCLUINDO provisões futuras já anunciadas.
     
-    ATIVOS ALVO: ${uniqueTickers.join(', ')}.
+    ATIVOS: ${uniqueTickers.join(', ')}.
 
-    VOCÊ DEVE USAR O "GOOGLE SEARCH" PARA CADA ATIVO. NÃO ALUCINE DADOS.
-    
-    TAREFA 1 (CRÍTICA - DATA COM):
-    Para calcular dividendos corretamente, a "DATA COM" (Record Date) é mais importante que a data de pagamento.
-    - Busque tabelas oficiais de proventos (Status Invest, Funds Explorer, RI).
-    - Para cada evento (Dividendo, JCP/JSCP, Rendimento), extraia:
-      1. DATA COM (Record Date): O dia limite para ter a ação e receber.
-      2. DATA PAGAMENTO: Quando o dinheiro cai.
-      3. VALOR LÍQUIDO PREFERENCIALMENTE (se JCP, tente achar o valor líquido, senão bruto).
-    
-    TAREFA 2 (IPCA):
-    Busque o IPCA ACUMULADO exato entre ${calcStartDate} e ${todayISO}. Retorne apenas o número (ex: 5.43).
+    INSTRUÇÕES RÍGIDAS DE AUDITORIA:
+    1. PROVENTOS (CRÍTICO):
+       - Diferencie "DIVIDENDO" (Isento) de "JCP" (Tributado).
+       - DATA COM (Record Date): É a data MAIS IMPORTANTE. É o dia final que o acionista precisava ter o papel. Não confunda com data de anúncio ou pagamento.
+       - VALOR LÍQUIDO: Para JCP, se possível, forneça o valor líquido (após 15% IR). Se não achar, mande o bruto mas marque como "JCP".
+       - Busque fontes confiáveis (RI das empresas, Status Invest, B3).
 
-    TAREFA 3 (FUNDAMENTOS):
-    P/VP, DY (12m), Liquidez, Setor. Para FIIs, P/L é 0.
+    2. INTELIGÊNCIA DE MERCADO (SENTIMENTO):
+       - Para cada ativo, analise rapidamente as notícias recentes (últimos 30 dias).
+       - Defina o sentimento: "Otimista", "Neutro" ou "Pessimista".
+       - Dê uma razão curta (max 10 palavras). Ex: "Lucro recorde 4T24", "Incerteza fiscal", "Vacância alta".
 
-    OUTPUT JSON (RFC 8259) - ESTRUTURA RÍGIDA:
+    3. IPCA ACUMULADO:
+       - Busque o índice oficial exato acumulado de ${calcStartDate} até hoje.
+
+    FORMATO JSON OBRIGATÓRIO (RFC 8259):
     {
       "sys": { "ipca": number },
       "data": [
         {
           "t": "TICKER",
           "type": "FII" | "ACAO",
-          "segment": "Setor Exato",
+          "segment": "Setor",
           "fund": {
              "pvp": number,
-             "pl": number,
-             "dy": number,
+             "pl": number, // 0 para FIIs
+             "dy": number, // Yield 12m %
              "liq": "string (ex: 2.5M)",
              "cotistas": "string",
-             "desc": "Resumo",
+             "desc": "Resumo de 1 linha",
              "mcap": "string",
-             "sent": "Neutro", 
-             "sent_r": "Motivo"
+             "sent": "Otimista" | "Neutro" | "Pessimista", 
+             "sent_r": "Motivo curto da analise"
           },
           "divs": [
              { 
-               "com": "YYYY-MM-DD",  <-- EXTREMAMENTE IMPORTANTE
+               "com": "YYYY-MM-DD", 
                "pag": "YYYY-MM-DD", 
-               "val": number, 
-               "tipo": "DIVIDENDO" | "JCP" | "RENDIMENTO" 
+               "val": number, // Valor unitário
+               "tipo": "DIVIDENDO" | "JCP" | "RENDIMENTO"
              }
           ]
         }
@@ -162,8 +162,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         model: "gemini-2.5-flash", 
         contents: prompt,
         config: {
-            tools: [{googleSearch: {}}], // Força uso de busca para dados exatos
-            temperature: 0.0, // Zero criatividade, máxima precisão
+            tools: [{googleSearch: {}}], // Obrigatório para dados live
+            temperature: 0.1, // Baixa criatividade para evitar alucinação de números
         },
     });
     
@@ -214,13 +214,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                 const normalizedDateCom = normalizeDate(div.com);
                 const normalizedDatePag = normalizeDate(div.pag);
                 
-                // Só adiciona se tiver Data Com válida, pois é essencial para o cálculo
+                // Só adiciona se tiver Data Com válida (obrigatória para entitlement)
                 if (normalizedDateCom) {
                     dividends.push({
                         ticker: ticker,
                         type: div.tipo ? div.tipo.toUpperCase() : 'DIVIDENDO', 
                         dateCom: normalizedDateCom,
-                        paymentDate: normalizedDatePag || normalizedDateCom, // Fallback apenas para display, não lógica
+                        paymentDate: normalizedDatePag || normalizedDateCom, // Se não tiver data pag, usa a com (raro)
                         rate: normalizeValue(div.val),
                     });
                 }

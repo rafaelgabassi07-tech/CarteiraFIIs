@@ -221,7 +221,8 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
               </div>
           </div>
 
-          {asset.sentiment && asset.sentiment_reason && (
+          {/* Análise de Sentimento Inteligente */}
+          {asset.sentiment && (
             <div className={`p-5 rounded-[2rem] mb-6 border ${
               asset.sentiment === 'Otimista' ? 'bg-emerald-50/80 dark:bg-emerald-500/5 border-emerald-500/10' :
               asset.sentiment === 'Pessimista' ? 'bg-rose-50/80 dark:bg-rose-500/5 border-rose-500/10' :
@@ -235,14 +236,14 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
                     }`}>
                         <Zap className="w-4 h-4" />
                     </div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Análise IA (Gemini)</h4>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Sentimento de Mercado (IA)</h4>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                     <strong className={`${
                       asset.sentiment === 'Otimista' ? 'text-emerald-600 dark:text-emerald-500' :
                       asset.sentiment === 'Pessimista' ? 'text-rose-600 dark:text-rose-500' :
                       'text-slate-700 dark:text-slate-200'
-                    }`}>{asset.sentiment}:</strong> {asset.sentiment_reason}
+                    }`}>{asset.sentiment}:</strong> {asset.sentiment_reason || 'Sem análise disponível no momento.'}
                 </p>
             </div>
           )}
