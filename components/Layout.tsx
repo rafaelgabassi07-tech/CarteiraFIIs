@@ -182,8 +182,8 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   const isDragging = useRef(false);
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    // Só permite arrastar se estiver no topo do scroll
-    if (modalRef.current && modalRef.current.scrollTop === 0) {
+    // Só inicia o drag se estivermos no topo do modal.
+    if (modalRef.current && modalRef.current.scrollTop <= 0) {
       startY.current = e.touches[0].clientY;
       isDragging.current = true;
       currentY.current = 0;
@@ -193,21 +193,34 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!isDragging.current || !modalRef.current) return;
+    
     const y = e.touches[0].clientY;
     const deltaY = y - startY.current;
     
-    // Só permite arrastar para baixo
-    if (deltaY > 0) { 
-      // Se tiver conteúdo scrollável e o usuário estiver scrollando para baixo, não arraste o modal
+    // Se o movimento for para baixo (deltaY > 0)
+    if (deltaY > 0) {
+      // PREVENÇÃO CRÍTICA: Se o modal tiver conteúdo scrollável e o usuário
+      // começar a rolar para baixo tendo saído do topo, cancelamos o drag.
       if (modalRef.current.scrollTop > 0) {
           isDragging.current = false;
           return;
       }
-      e.preventDefault(); // Evita scroll da página de fundo
+
+      // Impede o "Pull-to-Refresh" nativo do navegador
+      if (e.cancelable) {
+          e.preventDefault();
+      }
+
       currentY.current = deltaY;
-      // Resistência elástica simples
-      const dragValue = deltaY * 0.8;
+      // Resistência elástica
+      const dragValue = deltaY * 0.85; 
       modalRef.current.style.transform = `translateY(${dragValue}px)`;
+    } else {
+        // Se tentar rolar para cima (deltaY < 0), liberamos o controle para o scroll nativo
+        // a menos que estejamos já arrastando (para evitar pulos)
+        if (currentY.current <= 0) {
+            isDragging.current = false;
+        }
     }
   };
 
@@ -241,12 +254,13 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        // "overscroll-contain" é crucial aqui: impede que o scroll do modal ative o refresh da página pai
         className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] h-[92dvh] w-full overflow-y-auto overscroll-contain transition-transform duration-500 ease-out-quint transform shadow-2xl pb-safe ${
           isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
-        {/* Sticky Handle Bar - Sempre visível no topo do modal */}
-        <div className="sticky top-0 z-50 flex justify-center pt-3 pb-1 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md">
+        {/* Sticky Handle Bar - Touch Action None garante que o browser não interfira aqui */}
+        <div className="sticky top-0 z-50 flex justify-center pt-3 pb-1 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md touch-none">
             <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full cursor-grab active:cursor-grabbing hover:bg-slate-400 dark:hover:bg-slate-600 transition-colors"></div>
         </div>
         
