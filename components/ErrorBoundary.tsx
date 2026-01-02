@@ -29,17 +29,16 @@ interface Props {
   children?: ReactNode;
 }
 
-// ErrorBoundary class catches JavaScript errors anywhere in their child component tree.
-// Inherit from named Component import to ensure 'props' is properly recognized by the compiler.
-export class ErrorBoundary extends Component<Props, State> {
-  // Define initial state
-  public state: State = {
-    hasError: false,
-    error: null
-  };
-
+// Fix: Explicitly extending React.Component and initializing state in the constructor 
+// to ensure the 'props' property is correctly inherited and recognized by the TypeScript compiler.
+export class ErrorBoundary extends React.Component<Props, State> {
+  // Explicitly defining state initialization in constructor for better compatibility and ensuring props availability.
   constructor(props: Props) {
     super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
   }
 
   public static getDerivedStateFromError(error: Error): State {
@@ -50,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  public render() {
+  public render(): React.ReactNode {
     if (this.state.hasError) {
       // Safely check for message presence to avoid potential runtime errors
       if (this.state.error?.message?.includes('Credenciais do Supabase')) {
@@ -67,7 +66,7 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    // Accessing children from this.props now works as inheritance is correctly handled.
+    // Accessing children from this.props works as expected when inheriting from React.Component.
     return this.props.children;
   }
 }

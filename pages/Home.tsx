@@ -256,7 +256,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [portfolio]);
   const topSegments = useMemo(() => segmentData.slice(0, 3), [segmentData]);
   const magicNumbers = useMemo(() => portfolio.map(p => { const lastDiv = [...dividendReceipts].filter(d => d.ticker === p.ticker).sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))[0]; if (!lastDiv || !p.currentPrice || lastDiv.rate <= 0) return null; const magicQty = Math.ceil(p.currentPrice / lastDiv.rate); if (!isFinite(magicQty) || magicQty <= 0) return null; return { ticker: p.ticker, currentQty: p.quantity, magicQty, progress: Math.min(100, (p.quantity / magicQty) * 100), missing: Math.max(0, magicQty - p.quantity), rate: lastDiv.rate }; }).filter(m => m !== null).sort((a,b) => (b?.progress || 0) - (a?.progress || 0)), [portfolio, dividendReceipts]);
-  const renderActiveShape = (props: any) => { const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props; return ( <g> <text x={cx} y={cy - 10} dy={0} textAnchor="middle" className="text-sm font-bold dark:fill-white fill-slate-900" style={{ fontSize: '16px' }}> {payload.name} </text> <text x={cx} y={cy + 10} dy={8} textAnchor="middle" className="text-xs font-medium fill-slate-500"> {formatBRL(value)} </text> <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} cornerRadius={6} /> <Sector cx={cx} cy={cy} startAngle={startAngle} endAngle={endAngle} innerRadius={outerRadius + 12} outerRadius={outerRadius + 14} fill={fill} opacity={0.2} cornerRadius={10} /> </g> ); };
+  
+  // Refined Active Shape with stroke none
+  const renderActiveShape = (props: any) => { 
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props; 
+    return ( 
+        <g> 
+            <text x={cx} y={cy - 10} dy={0} textAnchor="middle" className="text-sm font-bold dark:fill-white fill-slate-900" style={{ fontSize: '16px', outline: 'none' }}> {payload.name} </text> 
+            <text x={cx} y={cy + 10} dy={8} textAnchor="middle" className="text-xs font-medium fill-slate-500" style={{ outline: 'none' }}> {formatBRL(value)} </text> 
+            <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} cornerRadius={6} stroke="none" /> 
+            <Sector cx={cx} cy={cy} startAngle={startAngle} endAngle={endAngle} innerRadius={outerRadius + 12} outerRadius={outerRadius + 14} fill={fill} opacity={0.2} cornerRadius={10} stroke="none" /> 
+        </g> 
+    ); 
+  };
+
   const COLORS = useMemo(() => [accentColor, '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#6366f1', '#14b8a6', '#f97316', '#64748b', '#d946ef', '#22c55e'], [accentColor]);
   const finalIPCA = inflationRate > 0 ? inflationRate : 0;
   const nominalYield = invested > 0 ? (totalProfitValue / invested) * 100 : 0;
@@ -774,7 +787,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" stroke="none" 
                             onMouseEnter={onPieEnter} 
                         >
-                            {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
+                            {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />))}
                         </Pie>
                     </PieChart>
                 </ResponsiveContainer>

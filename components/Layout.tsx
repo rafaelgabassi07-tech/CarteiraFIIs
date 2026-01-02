@@ -207,7 +207,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       isDragging.current = true;
       currentDeltaY.current = 0;
       
-      // Resposta tátil imediata: remove transições
+      // Resposta tátil imediata
       modalRef.current.style.transition = 'none'; 
       if (backdropRef.current) backdropRef.current.style.transition = 'none';
     }
@@ -219,9 +219,8 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     const clientY = e.touches[0].clientY;
     const deltaY = clientY - touchStartY.current;
     
-    // Movimento para baixo (arrasto para fechar)
+    // Movimento para baixo
     if (deltaY > 0) {
-      // Se o usuário rolou o conteúdo para baixo, cancela o gesto de arrasto do modal
       if (modalRef.current.scrollTop > 5) {
           isDragging.current = false;
           return;
@@ -234,11 +233,9 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       
       rafId.current = requestAnimationFrame(() => {
           if (modalRef.current) {
-              // Aplica transform com GPU (translate3d)
               modalRef.current.style.transform = `translate3d(0, ${deltaY}px, 0)`;
               
               if (backdropRef.current) {
-                  // Efeito de saída sincronizado: opacidade e desfoque diminuem proporcionalmente
                   const progress = Math.min(1, deltaY / (window.innerHeight * 0.4));
                   const opacity = Math.max(0, 1 - progress);
                   backdropRef.current.style.opacity = String(opacity);
@@ -247,13 +244,12 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
           }
       });
     } else {
-        // Resistência elástica ao puxar para cima no topo do modal
+        // Resistência elástica ao puxar para cima
         if (modalRef.current.scrollTop <= 0) {
             if (e.cancelable) e.preventDefault();
-            const resistance = Math.pow(Math.abs(deltaY), 0.7); // Resistência logarítmica
+            const resistance = Math.pow(Math.abs(deltaY), 0.7); 
             modalRef.current.style.transform = `translate3d(0, -${resistance}px, 0)`;
         } else {
-            // Se estiver rolando o conteúdo normalmente, libera o gesto
             isDragging.current = false;
         }
     }
@@ -266,19 +262,21 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     if (rafId.current) cancelAnimationFrame(rafId.current);
 
     const deltaTime = Date.now() - touchStartTime.current;
-    const velocity = currentDeltaY.current / deltaTime; // pixels por milissegundo
+    const velocity = currentDeltaY.current / deltaTime; 
     
-    // Restaura as transições para o fechamento ou retorno suave
-    modalRef.current.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
+    // Restaura transição suave com curva iOS-like
+    modalRef.current.style.transition = 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
     if (backdropRef.current) {
         backdropRef.current.style.transition = 'opacity 0.4s ease, backdrop-filter 0.4s ease';
     }
 
-    // Fechamento Inteligente: Gatilho por distância (150px) OU por velocidade (Flick)
-    if (currentDeltaY.current > 150 || (velocity > 0.5 && currentDeltaY.current > 20)) { 
-      onClose();
+    // Gatilho de fechamento: Distância > 140px OU Flick rápido > 0.4
+    if (currentDeltaY.current > 140 || (velocity > 0.4 && currentDeltaY.current > 10)) { 
+      // Executa o fechamento com transform para garantir fluidez total
+      modalRef.current.style.transform = `translate3d(0, 100%, 0)`;
+      setTimeout(onClose, 100);
     } else {
-      // Snap back: retorna à posição original
+      // Retorna com mola
       modalRef.current.style.transform = 'translate3d(0, 0, 0)';
       if (backdropRef.current) {
           backdropRef.current.style.opacity = '1';
@@ -316,11 +314,10 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
           isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{
-            transition: 'transform 0.5s cubic-bezier(0.23, 1, 0.32, 1)',
+            transition: 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
             WebkitOverflowScrolling: 'touch'
         }}
       >
-        {/* Modal Handle - Área de Arraste Visual */}
         <div className="sticky top-0 z-[110] flex justify-center pt-4 pb-2 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md touch-none">
             <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full opacity-60 active:opacity-100 active:scale-x-110 transition-all"></div>
         </div>
