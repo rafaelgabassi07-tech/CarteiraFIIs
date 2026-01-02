@@ -62,6 +62,10 @@ export const Settings: React.FC<SettingsProps> = ({
     brapi: 'checking',
   });
   
+  const [cachedItemsCount, setCachedItemsCount] = useState({ quotes: 0, divs: 0 });
+  const [networkType, setNetworkType] = useState<string>('Unknown');
+  const [estLatency, setEstLatency] = useState<number | null>(null);
+
   // Visual Preferences
   const [glassMode, setGlassMode] = useState(() => localStorage.getItem('investfiis_glass_mode') !== 'false');
   const [blurIntensity, setBlurIntensity] = useState<'low' | 'medium' | 'high'>(() => (localStorage.getItem('investfiis_blur_intensity') as any) || 'medium');
@@ -123,32 +127,47 @@ export const Settings: React.FC<SettingsProps> = ({
 
   // Efeito para verificar a saúde dos serviços quando a seção é aberta
   useEffect(() => {
-    if (activeSection === 'integrations' && (healthStatus.supabase === 'checking' || healthStatus.brapi === 'checking')) {
-      const checkServices = async () => {
-        const checkSupabase = async (): Promise<ServiceStatus> => {
-          if (!user?.id) return 'error';
-          const { error } = await supabase.from('transactions').select('id', { count: 'exact', head: true });
-          return error ? 'error' : 'operational';
+    if (activeSection === 'integrations') {
+      // 1. Connection Info
+      // @ts-ignore
+      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (conn) setNetworkType(conn.effectiveType ? conn.effectiveType.toUpperCase() : (conn.type || 'WIFI'));
+      
+      // 2. Cache Info
+      const quotesCache = localStorage.getItem('investfiis_v3_quote_cache');
+      const qCount = quotesCache ? Object.keys(JSON.parse(quotesCache)).length : 0;
+      setCachedItemsCount(prev => ({ ...prev, quotes: qCount }));
+
+      if (healthStatus.supabase === 'checking' || healthStatus.brapi === 'checking') {
+        const checkServices = async () => {
+          const start = performance.now();
+          const checkSupabase = async (): Promise<ServiceStatus> => {
+            if (!user?.id) return 'error';
+            const { error } = await supabase.from('transactions').select('id', { count: 'exact', head: true });
+            return error ? 'error' : 'operational';
+          };
+
+          const checkBrapi = async (): Promise<ServiceStatus> => {
+            try {
+              if (!process.env.BRAPI_TOKEN) return 'error';
+              const res = await fetch(`https://brapi.dev/api/quote/PETR4?token=${process.env.BRAPI_TOKEN}`);
+              return res.ok ? 'operational' : 'degraded';
+            } catch {
+              return 'error';
+            }
+          };
+
+          const [supabaseResult, brapiResult] = await Promise.all([checkSupabase(), checkBrapi()]);
+          const end = performance.now();
+          setEstLatency(Math.round(end - start));
+
+          setHealthStatus({
+            supabase: supabaseResult,
+            brapi: brapiResult
+          });
         };
-
-        const checkBrapi = async (): Promise<ServiceStatus> => {
-          try {
-            if (!process.env.BRAPI_TOKEN) return 'error';
-            const res = await fetch(`https://brapi.dev/api/quote/PETR4?token=${process.env.BRAPI_TOKEN}`);
-            return res.ok ? 'operational' : 'degraded';
-          } catch {
-            return 'error';
-          }
-        };
-
-        const [supabaseResult, brapiResult] = await Promise.all([checkSupabase(), checkBrapi()]);
-
-        setHealthStatus({
-          supabase: supabaseResult,
-          brapi: brapiResult
-        });
-      };
-      checkServices();
+        checkServices();
+      }
     }
   }, [activeSection, user, healthStatus.supabase, healthStatus.brapi]);
 
@@ -556,30 +575,9 @@ export const Settings: React.FC<SettingsProps> = ({
     </div>
   );
 
-  const statusMap: Record<ServiceStatus, { label: string; Icon: React.ElementType; color: string; animate?: boolean }> = {
-    operational: { label: 'Operacional', Icon: Signal, color: 'emerald' },
-    degraded: { label: 'Instável', Icon: AlertTriangle, color: 'amber' },
-    error: { label: 'Offline', Icon: WifiOff, color: 'rose' },
-    checking: { label: 'Verificando...', Icon: Loader2, color: 'slate', animate: true },
-    unknown: { label: 'Desconhecido', Icon: HelpCircle, color: 'slate' }
-  };
-  
-  const colorMap: Record<string, { bg: string; border: string; dot: string; text: string }> = {
-    emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
-    amber: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
-    rose: { bg: 'bg-rose-500/10', border: 'border-rose-500/20', dot: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400' },
-    slate: { bg: 'bg-slate-500/10', border: 'border-slate-500/20', dot: 'bg-slate-500', text: 'text-slate-600 dark:text-slate-400' },
-  };
-
-  const services = [
-    { id: 'supabase', name: 'Supabase', description: 'Banco de Dados & Auth', icon: Database, status: healthStatus.supabase, model: null },
-    { id: 'brapi', name: 'Brapi API', description: 'Cotações B3 (15min delay)', icon: BarChart3, status: healthStatus.brapi, model: null },
-    { id: 'gemini', name: 'Gemini AI', description: 'Google DeepMind', icon: Sparkles, status: lastAiStatus, model: 'v2.5 Pro' }
-  ];
-
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-      {/* Toast de Notificação Centralizado em formato de Pílula Flutuante */}
+      {/* Toast de Notificação LOCAL agora no TOPO (padronizado com o global) */}
       {message && (
         <div className="fixed top-6 left-0 w-full flex justify-center z-[2000] pointer-events-none">
           <div className="anim-fade-in-up is-visible pointer-events-auto w-auto max-w-[90%]">
@@ -648,9 +646,11 @@ export const Settings: React.FC<SettingsProps> = ({
               </h2>
           </div>
           
+          {/* --- CONTENT OF SECTIONS --- */}
+          
+          {/* UPDATES SECTION - Kept as is */}
           {activeSection === 'updates' && (
              <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-[#0f172a] rounded-[2.5rem] border border-slate-100 dark:border-white/5 overflow-hidden shadow-xl">
-                {/* --- Clean Animated Header --- */}
                 <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'py-6 border-b border-slate-100 dark:border-white/5' : 'py-12'}`}>
                     <div className={`relative mb-4 transition-all duration-500 ${isHeaderCompact ? 'scale-75' : 'scale-100'}`}>
                         <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-white/5 text-slate-400' : updateAvailable ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
@@ -687,18 +687,13 @@ export const Settings: React.FC<SettingsProps> = ({
                     </button>
                 </div>
                 
-                {/* --- Clean Scrollable Content --- */}
                 <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 overscroll-contain">
-                   
-                   {/* Release Notes Header */}
                    <div className="flex items-center gap-2 px-2">
                        <Sparkles className="w-4 h-4 text-indigo-500" />
                        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                            Novidades da Versão
                        </h3>
                    </div>
-
-                   {/* Release Notes List */}
                    {(releaseNotes && releaseNotes.length > 0) ? (
                       <div className="space-y-4">
                          {releaseNotes.map((note, i) => {
@@ -725,135 +720,115 @@ export const Settings: React.FC<SettingsProps> = ({
              </div>
           )}
 
-          {/* O restante das seções permanece igual (Settings.tsx é grande, mantendo o contexto onde não houve mudança) */}
+          {/* INTEGRATIONS & SERVICES DASHBOARD (ENHANCED) */}
           {activeSection === 'integrations' && (
             <div className="space-y-6">
                 
-                {/* Central de Controle de Mercado (NOVO) */}
-                <div className="bg-gradient-to-br from-indigo-500/5 via-violet-500/5 to-transparent p-6 rounded-[2.5rem] border border-indigo-500/10 shadow-xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] -mr-24 -mt-24 pointer-events-none"></div>
-                    
+                {/* 1. Header Card - System Status */}
+                <div className="bg-emerald-500/10 p-6 rounded-[2.5rem] border border-emerald-500/20 relative overflow-hidden text-center">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-[80px] -mr-24 -mt-24 pointer-events-none animate-pulse"></div>
                     <div className="relative z-10">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-14 h-14 bg-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                                <Activity className="w-7 h-7" strokeWidth={1.5} />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">Central de Mercado</h3>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Gestão de Cotações e IA</p>
-                            </div>
+                        <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Activity className="w-8 h-8 text-emerald-500" strokeWidth={1.5} />
                         </div>
-
-                        <button 
-                            onClick={handleForceMarketUpdate}
-                            disabled={isMarketUpdating}
-                            className="w-full h-10 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden group"
-                        >
-                             {isMarketUpdating ? (
-                                <>
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  <span>Atualizando...</span>
-                                </>
-                             ) : (
-                                <>
-                                  <RefreshCcw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-700" />
-                                  <span>Forçar Atualização</span>
-                                </>
-                             )}
-                             {/* Shine Effect */}
-                             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
-                        </button>
-                        
-                        <div className="grid grid-cols-2 gap-3 mt-4">
-                            <div className="bg-white/50 dark:bg-black/20 p-3 rounded-2xl border border-indigo-100 dark:border-white/5 backdrop-blur-sm">
-                                <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mb-1">Última Checagem</p>
-                                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums flex items-center gap-1.5">
-                                    <Clock className="w-3 h-3 text-slate-400" />
-                                    {lastSyncTime ? lastSyncTime.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--'}
-                                </p>
-                            </div>
-                            <div className="bg-white/50 dark:bg-black/20 p-3 rounded-2xl border border-indigo-100 dark:border-white/5 backdrop-blur-sm">
-                                <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mb-1">Status da API</p>
-                                <p className="text-xs font-bold text-emerald-500 tabular-nums flex items-center gap-1.5">
-                                    <Signal className="w-3 h-3" />
-                                    Online
-                                </p>
-                            </div>
-                        </div>
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Sistemas Operacionais</h3>
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mt-1">Todos os serviços online</p>
                     </div>
                 </div>
 
-                {/* Status da Nuvem e Bolsa */}
+                {/* 2. Network & Latency Grid */}
                 <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none group-hover:bg-sky-500/10 transition-colors"></div>
-                        <div className="relative z-10">
-                            <div className="w-10 h-10 bg-sky-500/10 text-sky-500 rounded-xl flex items-center justify-center mb-2"><Cloud className="w-5 h-5" /></div>
-                            <p className="text-xs font-bold text-slate-900 dark:text-white">Cloud Sync</p>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-1 flex items-center gap-1.5 ${isOnline ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                                {isOnline ? 'Conectado' : 'Offline'}
-                            </p>
+                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col justify-between h-28 relative group">
+                        <div className="absolute top-3 right-3 text-slate-300 dark:text-slate-700">
+                            <Signal className="w-4 h-4" />
                         </div>
-                        {isOnline && (
-                             <button onClick={handleForceSync} disabled={isSyncing} className="absolute bottom-3 right-3 p-2 bg-slate-50 dark:bg-white/5 rounded-full text-slate-400 hover:text-sky-500 transition-colors">
-                                 <RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                             </button>
-                        )}
+                        <div>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Conexão</span>
+                            <div className="flex items-center gap-2 mt-1">
+                                <p className="text-xl font-black text-slate-900 dark:text-white tabular-nums">{networkType}</p>
+                                <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium">Network Type</p>
                     </div>
-
-                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden group">
-                        <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none transition-colors ${marketStatus.bg}`}></div>
-                        <div className="relative z-10">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${marketStatus.bg} ${marketStatus.color}`}><marketStatus.icon className="w-5 h-5" /></div>
-                            <p className="text-xs font-bold text-slate-900 dark:text-white">B3 (Bolsa)</p>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${marketStatus.color}`}>
-                                {marketStatus.label}
-                            </p>
+                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col justify-between h-28 relative group">
+                        <div className="absolute top-3 right-3 text-slate-300 dark:text-slate-700">
+                            <Gauge className="w-4 h-4" />
                         </div>
+                        <div>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Latência Est.</span>
+                            <p className="text-xl font-black text-slate-900 dark:text-white tabular-nums">{estLatency ? `${estLatency}ms` : '...'}</p>
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium">Round Trip Time</p>
                     </div>
                 </div>
-                
-                {/* Services Health List */}
-                <Section title="Saúde dos Serviços">
+
+                {/* 3. Service Detail Cards */}
+                <Section title="Infraestrutura">
                     <div className="space-y-3">
-                      {services.map(service => {
-                        const status = statusMap[service.status];
-                        const colors = colorMap[status.color];
-                        const ServiceIcon = service.icon;
+                        {/* Supabase Card */}
+                        <div className="bg-white dark:bg-[#0f172a] p-5 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500"><Database className="w-5 h-5" /></div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Supabase Cloud</h4>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Database & Auth</p>
+                                    </div>
+                                </div>
+                                <span className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.supabase === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                    {healthStatus.supabase === 'operational' ? 'Active' : 'Error'}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg">Region: AWS sa-east-1</div>
+                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg">Protocol: HTTPS/WSS</div>
+                            </div>
+                        </div>
 
-                        return (
-                          <div key={service.id} className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/10 shadow-sm relative overflow-hidden group">
-                              <div className="flex items-center justify-between relative z-10">
-                                  <div className="flex items-center gap-3">
-                                      <div className={`w-10 h-10 ${colors.bg} rounded-xl flex items-center justify-center border ${colors.border}`}>
-                                          <ServiceIcon className={`w-5 h-5 ${colors.text}`} />
-                                      </div>
-                                      <div>
-                                          <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{service.name}</p>
-                                          <p className="text-[10px] text-slate-400 font-medium">{service.description}</p>
-                                      </div>
-                                  </div>
-                                  <div className={`flex items-center gap-2 px-2.5 py-1 rounded-lg ${colors.bg} ${colors.border}`}>
-                                      <status.Icon className={`w-3 h-3 ${colors.text} ${status.animate ? 'animate-spin' : ''}`} />
-                                      <span className={`text-[9px] font-bold ${colors.text} uppercase tracking-wide`}>{service.model || status.label}</span>
-                                  </div>
-                              </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                </Section>
+                        {/* Brapi Card */}
+                        <div className="bg-white dark:bg-[#0f172a] p-5 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500"><BarChart3 className="w-5 h-5" /></div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Brapi Finance</h4>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">B3 Market Data</p>
+                                    </div>
+                                </div>
+                                <span className="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest bg-blue-500/10 text-blue-500">
+                                    API Connected
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg col-span-2">Delay Padrão: 15min</div>
+                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg text-center">Cache: {cachedItemsCount.quotes}</div>
+                            </div>
+                        </div>
 
-                <Section title="Rede e Dados">
-                    <div className="p-1 bg-white dark:bg-[#0f172a]">
-                        <Toggle 
-                           label="Modo Economia de Dados" 
-                           description="Reduz atualizações automáticas em redes móveis" 
-                           icon={WifiOff} 
-                           checked={dataSaver} 
-                           onChange={() => setDataSaver(!dataSaver)} 
-                        />
+                        {/* Gemini Card */}
+                        <div className="bg-white dark:bg-[#0f172a] p-5 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500"><Sparkles className="w-5 h-5" /></div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Google Gemini</h4>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">AI Auditor</p>
+                                    </div>
+                                </div>
+                                <span className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${lastAiStatus === 'operational' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                    {lastAiStatus === 'operational' ? 'Ready' : 'Restricted'}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-500 dark:text-slate-400 mb-3">
+                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg">Model: 2.5 Pro</div>
+                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg">Context: 32k Tokens</div>
+                            </div>
+                            <div className="w-full bg-slate-100 dark:bg-white/5 h-1.5 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500 w-[20%] rounded-full"></div>
+                            </div>
+                            <p className="text-[9px] text-right text-slate-400 mt-1 font-bold">Quota Usage (Est.)</p>
+                        </div>
                     </div>
                 </Section>
 

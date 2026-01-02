@@ -445,9 +445,9 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* STANDARD TOASTS - BOTTOM SAFE AREA */}
+      {/* STANDARD TOASTS - PUSH STYLE AT TOP */}
       {toast && ( 
-        <div className="fixed bottom-24 left-0 w-full flex justify-center z-[900] pointer-events-none transition-all duration-300">
+        <div className="fixed top-6 left-0 w-full flex justify-center z-[2000] pointer-events-none transition-all duration-300">
             <div className="anim-fade-in-up is-visible w-auto max-w-[90%] pointer-events-auto"> 
                 <div className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-slate-900/95 dark:bg-white/95 backdrop-blur-xl shadow-2xl border border-white/10 dark:border-black/5 ring-1 ring-black/5"> 
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'info' ? 'bg-slate-800 dark:bg-slate-200' : toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
