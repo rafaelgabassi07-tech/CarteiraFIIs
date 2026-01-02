@@ -9,7 +9,7 @@ import { Login } from './pages/Login';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { CheckCircle2, AlertCircle, Loader2, Sparkles, X, Download } from 'lucide-react';
+import { Check, X, AlertTriangle, Info, Download, Sparkles, Loader2, Wallet } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -132,9 +132,8 @@ const App: React.FC = () => {
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     setToast({ type, text });
-    // FIX: Removemos a condição "if type !== info" para garantir que TODOS os toasts sumam sozinhos.
-    // Isso evita que notificações como "IA em pausa" fiquem travadas na tela.
-    setTimeout(() => setToast(null), 3000);
+    // Removemos a condição "if type !== info" para garantir que TODOS os toasts sumam sozinhos.
+    setTimeout(() => setToast(null), 3500);
   }, []);
 
   useEffect(() => {
@@ -403,7 +402,7 @@ const App: React.FC = () => {
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       <CloudStatusBanner status={cloudStatus} />
       
-      {/* UPDATE NOTIFICATION PILL - VISUAL PREMIUM (MOVED TO TOP) */}
+      {/* UPDATE NOTIFICATION PILL */}
       {showUpdatePill && (
         <div className="fixed top-28 left-0 w-full flex justify-center z-[1000] pointer-events-none px-6">
             <div className="anim-fade-in-up is-visible w-full max-w-sm pointer-events-auto">
@@ -439,16 +438,43 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* STANDARD TOASTS - PUSH STYLE AT TOP */}
+      {/* PREMIUM GLASS TOAST NOTIFICATION (GLOBAL) */}
       {toast && ( 
-        <div className="fixed top-6 left-0 w-full flex justify-center z-[2000] pointer-events-none transition-all duration-300">
-            <div className="anim-fade-in-up is-visible w-auto max-w-[90%] pointer-events-auto"> 
-                <div className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full bg-slate-900/95 dark:bg-white/95 backdrop-blur-xl shadow-2xl border border-white/10 dark:border-black/5 ring-1 ring-black/5"> 
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'info' ? 'bg-slate-800 dark:bg-slate-200' : toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
-                        {toast.type === 'info' ? <Loader2 className="w-3 h-3 text-white dark:text-slate-900 animate-spin" /> : toast.type === 'success' ? <CheckCircle2 className="w-3 h-3 text-white" /> : <AlertCircle className="w-3 h-3 text-white" />}
-                    </div> 
-                    <span className="text-[10px] font-bold text-white dark:text-slate-900 tracking-wide truncate">{toast.text}</span> 
-                </div> 
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none w-full max-w-sm px-4">
+            <div className={`
+              pointer-events-auto mx-auto flex items-center gap-3 p-2 pr-5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl border transition-all duration-300 anim-fade-in-up is-visible
+              ${toast.type === 'success' 
+                ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' 
+                : toast.type === 'error' 
+                  ? 'bg-rose-500/10 border-rose-500/20 shadow-rose-500/10'
+                  : 'bg-[#0f172a]/80 dark:bg-white/80 border-slate-200/20 dark:border-white/20 shadow-black/10'
+              }
+            `}>
+               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
+                 toast.type === 'success' ? 'bg-emerald-500 text-white' :
+                 toast.type === 'error' ? 'bg-rose-500 text-white' :
+                 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
+               }`}>
+                 {toast.type === 'info' ? <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : 
+                  toast.type === 'success' ? <Check className="w-4 h-4" strokeWidth={3} /> : 
+                  <AlertTriangle className="w-4 h-4" strokeWidth={2.5} />}
+               </div>
+               <div className="min-w-0">
+                 <p className={`text-[11px] font-bold leading-tight ${
+                    toast.type === 'success' ? 'text-emerald-700 dark:text-emerald-400' :
+                    toast.type === 'error' ? 'text-rose-700 dark:text-rose-400' :
+                    'text-slate-900 dark:text-slate-900' // Dark mode toast has white bg, so text should be dark
+                 }`}>
+                    {toast.type === 'success' ? 'Sucesso' : toast.type === 'error' ? 'Atenção' : 'Info'}
+                 </p>
+                 <p className={`text-[10px] font-semibold truncate ${
+                    toast.type === 'success' ? 'text-emerald-600/80 dark:text-emerald-300/80' :
+                    toast.type === 'error' ? 'text-rose-600/80 dark:text-rose-300/80' :
+                    'text-slate-600 dark:text-slate-700'
+                 }`}>
+                    {toast.text}
+                 </p>
+               </div>
             </div>
         </div> 
       )}

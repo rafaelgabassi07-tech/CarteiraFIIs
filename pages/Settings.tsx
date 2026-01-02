@@ -586,24 +586,45 @@ export const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-      {/* Toast de Notificação LOCAL agora no TOPO (padronizado com o global) */}
+      {/* PREMIUM GLASS TOAST NOTIFICATION (LOCAL) */}
       {message && (
-        <div className="fixed top-6 left-0 w-full flex justify-center z-[2000] pointer-events-none">
-          <div className="anim-fade-in-up is-visible pointer-events-auto w-auto max-w-[90%]">
-            <div className={`flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-full backdrop-blur-xl shadow-2xl border border-white/10 dark:border-black/5 ring-1 ring-black/5 ${
-              message.type === 'success' ? 'bg-emerald-500/90' : 
-              message.type === 'info' ? 'bg-indigo-500/90' : 
-              'bg-rose-500/90'
-            }`}>
-              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                {message.type === 'success' ? <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} /> : 
-                 message.type === 'info' ? <Info className="w-3.5 h-3.5 text-white" strokeWidth={2.5} /> : 
-                 <AlertTriangle className="w-3.5 h-3.5 text-white" />}
-              </div>
-              <span className="text-[10px] font-black text-white uppercase tracking-wider whitespace-nowrap">{message.text}</span>
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none w-full max-w-sm px-4">
+            <div className={`
+              pointer-events-auto mx-auto flex items-center gap-3 p-2 pr-5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl border transition-all duration-300 anim-fade-in-up is-visible
+              ${message.type === 'success' 
+                ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' 
+                : message.type === 'error' 
+                  ? 'bg-rose-500/10 border-rose-500/20 shadow-rose-500/10'
+                  : 'bg-[#0f172a]/80 dark:bg-white/80 border-slate-200/20 dark:border-white/20 shadow-black/10'
+              }
+            `}>
+               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
+                 message.type === 'success' ? 'bg-emerald-500 text-white' :
+                 message.type === 'error' ? 'bg-rose-500 text-white' :
+                 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
+               }`}>
+                 {message.type === 'info' ? <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : 
+                  message.type === 'success' ? <Check className="w-4 h-4" strokeWidth={3} /> : 
+                  <AlertTriangle className="w-4 h-4" strokeWidth={2.5} />}
+               </div>
+               <div className="min-w-0">
+                 <p className={`text-[11px] font-bold leading-tight ${
+                    message.type === 'success' ? 'text-emerald-700 dark:text-emerald-400' :
+                    message.type === 'error' ? 'text-rose-700 dark:text-rose-400' :
+                    'text-slate-900 dark:text-slate-900'
+                 }`}>
+                    {message.type === 'success' ? 'Sucesso' : message.type === 'error' ? 'Atenção' : 'Info'}
+                 </p>
+                 <p className={`text-[10px] font-semibold truncate ${
+                    message.type === 'success' ? 'text-emerald-600/80 dark:text-emerald-300/80' :
+                    message.type === 'error' ? 'text-rose-600/80 dark:text-rose-300/80' :
+                    'text-slate-600 dark:text-slate-700'
+                 }`}>
+                    {message.text}
+                 </p>
+               </div>
             </div>
-          </div>
-        </div>
+        </div> 
       )}
 
       {activeSection === 'menu' ? (
