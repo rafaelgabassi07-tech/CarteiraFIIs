@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
 
@@ -11,12 +10,11 @@ export interface UnifiedMarketData {
 
 // A chave de API agora é lida do ambiente do Vite.
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v9.1_smart_auditor'; // Cache atualizado para v9.1 (Stable Model)
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v9.2_forensic_auditor'; // Cache atualizado para v9.2 (Thinking Model)
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 // --- BLOQUEIO DE MODELO ---
-// ESTA CONSTANTE NÃO DEVE SER ALTERADA A MENOS QUE EXPLICITAMENTE SOLICITADO PELO USUÁRIO.
-// MODELO ATUAL: GEMINI 2.5 PRO (Versão Estável - Sem Preview)
+// O modelo 2.5 Pro é necessário para suportar o Thinking Config com alta capacidade de raciocínio.
 const LOCKED_MODEL_ID = "gemini-2.5-pro";
 // --------------------------
 
@@ -109,54 +107,56 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         calcStartDate = d.toISOString().split('T')[0];
     }
     
-    // Prompt "Smart Auditor"
-    // Foca obsessivamente na diferença entre Dividendos e JCP e na Data Com correta.
+    // Prompt "Forensic Auditor" - Otimizado para Thinking Model
     const prompt = `
-    CONTEXTO: Você é um Auditor Financeiro Senior e Analista de Mercado B3.
-    DATA HOJE: ${todayISO}.
-    JANELA: Eventos ocorridos ou anunciados entre ${calcStartDate} e hoje, INCLUINDO provisões futuras já anunciadas.
+    VOCÊ É UM AUDITOR FORENSE DE MERCADO DE CAPITAIS (B3).
+    Sua missão é extrair dados EXATOS e COMPROVÁVEIS.
     
-    ATIVOS: ${uniqueTickers.join(', ')}.
+    DATA BASE (HOJE): ${todayISO}
+    PERÍODO DE ANÁLISE: ${calcStartDate} até o futuro (provisões).
+    ATIVOS ALVO: ${uniqueTickers.join(', ')}.
 
-    INSTRUÇÕES RÍGIDAS DE AUDITORIA:
-    1. PROVENTOS (CRÍTICO):
-       - Diferencie "DIVIDENDO" (Isento) de "JCP" (Tributado).
-       - DATA COM (Record Date): É a data MAIS IMPORTANTE. É o dia final que o acionista precisava ter o papel. Não confunda com data de anúncio ou pagamento.
-       - VALOR LÍQUIDO: Para JCP, se possível, forneça o valor líquido (após 15% IR). Se não achar, mande o bruto mas marque como "JCP".
-       - Busque fontes confiáveis (RI das empresas, Status Invest, B3).
+    PROTOCOLO DE INVESTIGAÇÃO (Use seu Thinking Process para isso):
+    1.  **BUSCA PRIMÁRIA:** Para cada ativo, busque "Histórico de proventos {TICKER} {ANO}", "Aviso aos Acionistas {TICKER}", "Fato Relevante proventos {TICKER}".
+    2.  **CRUZAMENTO DE DADOS:** 
+        -   Compare datas de "DATA COM" (Record Date) vs "DATA PAGAMENTO" (Payment Date). 
+        -   A "DATA COM" é a data limite para ter o ativo. Se a Data Com foi ontem, o usuário já perdeu o direito se comprar hoje.
+    3.  **DETECÇÃO DE JCP:** 
+        -   JCP (Juros sobre Capital Próprio) tem 15% de IR retido na fonte.
+        -   Se encontrar valor BRUTO, tente calcular o LÍQUIDO (Valor * 0.85) ou busque explicitamente o "valor líquido por ação".
+    4.  **FUNDAMENTOS EM TEMPO REAL:**
+        -   Busque o P/VP e DY atuais.
+        -   Analise as manchetes recentes (últimos 15 dias) para determinar o Sentimento (Otimista/Neutro/Pessimista). Seja crítico.
 
-    2. INTELIGÊNCIA DE MERCADO (SENTIMENTO):
-       - Para cada ativo, analise rapidamente as notícias recentes (últimos 30 dias).
-       - Defina o sentimento: "Otimista", "Neutro" ou "Pessimista".
-       - Dê uma razão curta (max 10 palavras). Ex: "Lucro recorde 4T24", "Incerteza fiscal", "Vacância alta".
+    REGRAS DE SAÍDA JSON (RÍGIDAS):
+    -   Retorne APENAS o JSON válido. Sem markdown, sem texto antes ou depois.
+    -   Se não houver dividendos no período, retorne array vazio, não invente.
+    -   Datas devem ser YYYY-MM-DD.
 
-    3. IPCA ACUMULADO:
-       - Busque o índice oficial exato acumulado de ${calcStartDate} até hoje.
-
-    FORMATO JSON OBRIGATÓRIO (RFC 8259):
+    SCHEMA JSON ALVO:
     {
-      "sys": { "ipca": number },
+      "sys": { "ipca": number }, // IPCA acumulado exato do período
       "data": [
         {
           "t": "TICKER",
           "type": "FII" | "ACAO",
-          "segment": "Setor",
+          "segment": "Setor Exato (ex: Logística, Bancos)",
           "fund": {
              "pvp": number,
              "pl": number, // 0 para FIIs
              "dy": number, // Yield 12m %
              "liq": "string (ex: 2.5M)",
              "cotistas": "string",
-             "desc": "Resumo de 1 linha",
+             "desc": "Resumo técnico de 1 linha",
              "mcap": "string",
              "sent": "Otimista" | "Neutro" | "Pessimista", 
-             "sent_r": "Motivo curto da analise"
+             "sent_r": "Justificativa factual baseada em notícias recentes"
           },
           "divs": [
              { 
-               "com": "YYYY-MM-DD", 
-               "pag": "YYYY-MM-DD", 
-               "val": number, // Valor unitário
+               "com": "YYYY-MM-DD", // CRÍTICO: Data de corte
+               "pag": "YYYY-MM-DD", // Data do dinheiro na conta
+               "val": number, // Valor monetário unitário
                "tipo": "DIVIDENDO" | "JCP" | "RENDIMENTO"
              }
           ]
@@ -171,8 +171,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         model: LOCKED_MODEL_ID, 
         contents: prompt,
         config: {
-            tools: [{googleSearch: {}}], // Obrigatório para dados live
-            temperature: 0.1, // Baixa criatividade para evitar alucinação de números
+            tools: [{googleSearch: {}}], // Ferramenta de busca essencial
+            temperature: 0.1, // Temperatura baixa para precisão factual
+            // ATIVAÇÃO DO "CÉREBRO": Thinking Config
+            // Permite que o modelo "pense", planeje as buscas e critique seus próprios resultados
+            // antes de gerar a resposta final. Essencial para auditoria de datas.
+            thinkingConfig: { thinkingBudget: 8192 }, 
         },
     });
     
