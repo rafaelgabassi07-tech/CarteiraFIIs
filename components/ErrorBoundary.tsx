@@ -1,5 +1,4 @@
 
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
@@ -31,6 +30,7 @@ interface Props {
 }
 
 // ErrorBoundary class catches JavaScript errors anywhere in their child component tree
+// Fixed "Property 'props' does not exist" error by extending Component directly.
 export class ErrorBoundary extends Component<Props, State> {
   // Using public state and explicit return type for clarity in inheritance
   public state: State = {
@@ -48,7 +48,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      if (this.state.error?.message.includes('Credenciais do Supabase')) {
+      // Fix: Safely check for message presence to avoid potential runtime errors
+      if (this.state.error?.message?.includes('Credenciais do Supabase')) {
         return <ConfigurationError />;
       }
       

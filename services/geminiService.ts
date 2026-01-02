@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
 
@@ -14,8 +15,8 @@ const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v9.2_forensic_auditor'; // Cac
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 // --- BLOQUEIO DE MODELO ---
-// O modelo 2.5 Pro é necessário para suportar o Thinking Config com alta capacidade de raciocínio.
-const LOCKED_MODEL_ID = "gemini-2.5-pro";
+// Updated to gemini-3-pro-preview for advanced reasoning as per latest SDK guidelines.
+const LOCKED_MODEL_ID = "gemini-3-pro-preview";
 // --------------------------
 
 const getAiCacheTTL = () => {
@@ -92,7 +93,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     } catch (e) { console.warn("Cache Warning", e); }
   }
 
-  // Fix: Ensure correct initialization using process.env.API_KEY directly
+  // Use process.env.API_KEY directly for initialization
   if (!process.env.API_KEY) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
 
   try {
@@ -165,7 +166,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     }
     `;
 
-    // LOCKED MODEL: gemini-2.5-pro
+    // LOCKED MODEL: gemini-3-pro-preview
     // DO NOT CHANGE WITHOUT USER REQUEST
     const response = await ai.models.generateContent({
         model: LOCKED_MODEL_ID, 
@@ -176,13 +177,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             // ATIVAÇÃO DO "CÉREBRO": Thinking Config
             // Permite que o modelo "pense", planeje as buscas e critique seus próprios resultados
             // antes de gerar a resposta final. Essencial para auditoria de datas.
-            thinkingConfig: { thinkingBudget: 8192 }, 
+            thinkingConfig: { thinkingBudget: 32768 }, 
         },
     });
     
     let parsedJson: any;
     try {
-      // Fix: Access .text property directly
+      // Accessing .text property directly as per Gemini API guidelines.
       const responseText = response.text;
       if (responseText) {
           let cleanText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
