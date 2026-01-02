@@ -3,7 +3,9 @@ import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ChevronsRight, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, YAxis, ComposedChart, Line } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
-import { VariableSizeList as List } from 'react-window';
+import * as ReactWindow from 'react-window';
+
+const List = ReactWindow.VariableSizeList;
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -169,7 +171,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     if (transactions.length === 0) return [];
 
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-    const historyMap = new Map<string, { invested: number, adjusted: number, simulatedValue: number }>();
     
     // Determinar o range de datas
     const startDateStr = sortedTxs[0].date;
@@ -183,9 +184,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     let cumulativeAdjusted = 0;
     
     // Taxa de inflação mensal aproximada (Compound Monthly Growth Rate)
-    // Se inflationRate for 4.5% a.a ou acumulado do período
-    // Simplificação: Assume distribuição linear da inflação do período
-    // O ideal seria ter IPCA mensal histórico, mas usaremos a média do período.
     const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
     const safeMonths = Math.max(1, totalMonths);
     const monthlyInflationRate = Math.pow(1 + (inflationRate / 100), 1 / safeMonths) - 1;
@@ -195,10 +193,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     let currentIterMonth = startMonth;
     let txIndex = 0;
 
-    const data = [];
+    const data: EvolutionPoint[] = [];
 
-    // Fator de valorização linear para simular a curva do valor de mercado (já que não temos cotações históricas)
-    // Interpolamos o "Lucro Total Atual" ao longo do tempo ponderado pelo capital investido
+    // Fator de valorização linear para simular a curva do valor de mercado
     const totalCurrentProfitPercent = invested > 0 ? (balance - invested) / invested : 0;
 
     while (currentIterYear < endYear || (currentIterYear === endYear && currentIterMonth <= endMonth)) {
@@ -217,8 +214,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         cumulativeInvested += monthFlow;
         
         // Corrige o acumulado anterior pela inflação do mês + novo aporte
-        // (Capital Anterior * (1 + IPCA)) + Novo Aporte
-        // No primeiro mês, é apenas o aporte.
         if (data.length === 0) {
             cumulativeAdjusted = monthFlow;
         } else {
@@ -226,7 +221,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         }
 
         // Simulação de Valor de Mercado (Interpolado)
-        // Isso é uma aproximação visual para mostrar a tendência
         const timeProgress = data.length / safeMonths;
         const currentEstimatedYield = totalCurrentProfitPercent * Math.pow(timeProgress, 0.5); // Curva suave
         const simulatedValue = cumulativeInvested * (1 + currentEstimatedYield);
@@ -262,7 +256,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     
     dividendReceipts.forEach(receipt => {
       const payDate = receipt.paymentDate;
-      // Considera recebido apenas se data <= hoje
       if (payDate <= todayStr) {
         totalReceivedValue += receipt.totalReceived;
         const monthKey = payDate.substring(0, 7);
@@ -273,7 +266,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         historyGrouped[monthKey].total += receipt.totalReceived;
       }
       
-      // Contabiliza totais por ticker (apenas recebidos para ranking de maior pagador)
       if (payDate <= todayStr) {
           tickerTotalMap[receipt.ticker] = (tickerTotalMap[receipt.ticker] || 0) + receipt.totalReceived;
       }
@@ -281,20 +273,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
     const allUpcomingEvents: any[] = [];
     dividendReceipts.forEach(receipt => {
-      // Eventos Futuros OU Hoje
       if (receipt.paymentDate >= todayStr) allUpcomingEvents.push({ ...receipt, eventType: 'payment', date: receipt.paymentDate });
       if (receipt.dateCom >= todayStr) allUpcomingEvents.push({ ...receipt, eventType: 'datacom', date: receipt.dateCom });
     });
     
     allUpcomingEvents.sort((a, b) => a.date.localeCompare(b.date));
     
-    // Remove duplicatas
     const uniqueUpcomingEvents = allUpcomingEvents.reduce((acc: any[], current) => {
       if (!acc.find(item => item.date === current.date && item.ticker === current.ticker && item.eventType === current.eventType)) acc.push(current);
       return acc;
     }, []);
 
-    // Valor Provisionado (Futuro) - Apenas pagamentos > Hoje
     const upcomingValue = uniqueUpcomingEvents
         .filter(e => e.eventType === 'payment' && e.date > todayStr)
         .reduce((acc, curr) => acc + curr.totalReceived, 0);
@@ -340,7 +329,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const ganhoRealValor = lucroNominalAbsoluto - custoCorrosaoInflacao;
   const isAboveInflation = ganhoRealPercent > 0;
   
-  // Rótulo dinâmico para o gráfico de comparação
   const dateLabel = getShortDateLabel(portfolioStartDate);
   
   const comparisonData = useMemo(() => [
@@ -348,7 +336,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       { name: 'Carteira', value: nominalYield, fill: nominalYield >= finalIPCA ? '#10b981' : '#f43f5e' }
   ], [nominalYield, finalIPCA, dateLabel]);
 
-  // Lista simples para virtualização do histórico de inflação
   const getInflationHistoryItemSize = () => 60;
 
   return (
@@ -358,7 +345,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <div className="anim-fade-in-up is-visible">
         <button onClick={() => setShowSummaryModal(true)} className="w-full text-left bg-gradient-to-br from-white to-slate-50 dark:from-[#0f172a] dark:to-[#0b1121] p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-black/20 border border-white/60 dark:border-white/5 relative overflow-hidden group transition-transform duration-300 active:scale-[0.98] hover:scale-[1.01]">
             
-            {/* Glow Background Dynamic based on Profit */}
             <div 
                 className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full blur-[120px] -mr-32 -mt-32 pointer-events-none transition-opacity duration-1000 opacity-20 dark:opacity-10" 
                 style={{ backgroundColor: isProfitPositive ? '#10b981' : '#f43f5e' }}
@@ -384,7 +370,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </span>
                 </div>
 
-                {/* GRÁFICO DE EVOLUÇÃO (NOVO) */}
                 {evolutionData.length > 1 && (
                     <div className="h-20 w-full mb-6 relative -mx-2">
                         <ResponsiveContainer width="100%" height="100%">
@@ -431,7 +416,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </p>
                     </div>
                     
-                    {/* Alterado de "Realizado" para "Proventos" (Foco em Longo Prazo) */}
                     <div className="bg-emerald-50/50 dark:bg-emerald-500/10 py-3 px-2 rounded-2xl border border-emerald-100/50 dark:border-emerald-500/20 flex flex-col justify-center h-full">
                          <div className="flex items-center gap-1.5 mb-1">
                             <Coins className="w-3 h-3 text-emerald-500" />
@@ -448,7 +432,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}><button onClick={() => setShowProventosModal(true)} className="w-full text-left bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-500/[0.05] dark:to-teal-500/[0.05] p-5 rounded-[2.5rem] border border-emerald-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-emerald-500/5 pointer-events-auto"><div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/20 transition-colors"></div><div className="relative z-10 flex flex-col gap-4"><div className="flex justify-between items-start"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100 dark:border-emerald-500/20 group-hover:scale-110 transition-transform"><CircleDollarSign className="w-5 h-5" strokeWidth={2} /></div><div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Renda Passiva</h3><p className="text-[10px] font-semibold text-slate-400">Extrato Completo</p></div></div><div className="text-right"><p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-0.5">Total</p><p className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">{formatBRL(received)}</p></div></div><div className="grid grid-cols-2 gap-2 mt-1"><div className="px-3 py-2 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex flex-col items-center justify-center"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Média</p><p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</p></div><div className="px-3 py-2 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex flex-col items-center justify-center"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Yield on Cost</p><p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatPercent(yieldOnCostPortfolio)}</p></div></div></div></button></div>
       <div className="grid grid-cols-2 gap-4"><button onClick={() => setShowAllocationModal(true)} className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col h-full group hover:shadow-lg relative overflow-hidden" style={{ animationDelay: '200ms' }}><div className="flex justify-between items-start mb-4 w-full"><div><div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent mb-2 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Alocação</h3></div></div><div className="w-full mt-auto space-y-2">{topSegments.length > 0 ? topSegments.map((seg, i) => { const totalVal = portfolio.reduce((acc, curr) => acc + ((curr.currentPrice || curr.averagePrice) * curr.quantity), 0); const percent = totalVal > 0 ? (seg.value / totalVal) * 100 : 0; return ( <div key={i} className="flex justify-between items-center text-[10px]"><span className="flex items-center gap-1.5 font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[80px]"><div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />{seg.name}</span><span className="font-bold text-slate-700 dark:text-slate-300 tabular-nums">{percent.toFixed(0)}%</span></div> ); }) : (<p className="text-[9px] text-slate-400">Sem dados</p>)}</div></button><button onClick={() => setShowRealGainModal(true)} className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg relative overflow-hidden" style={{ animationDelay: '250ms' }}><div className="mb-4"><div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 mb-2 group-hover:scale-110 transition-transform"><Scale className="w-5 h-5" strokeWidth={2} /></div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Ganho Real</h3></div><div><p className={`text-xl font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{isAboveInflation ? '+' : ''}{formatPercent(ganhoRealPercent)}</p><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Acima da Inflação</p></div></button></div>
       
-      {/* MODAL DE RESUMO FINANCEIRO - REMOVIDO GANHOS COM VENDAS */}
+      {/* MODAL DE RESUMO FINANCEIRO */}
       <SwipeableModal isOpen={showSummaryModal} onClose={() => setShowSummaryModal(false)}>
           <div className="px-6 py-2">
             <div className="flex items-center gap-3 mb-8 px-2 mt-2">
@@ -457,7 +441,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
             
             <div className="space-y-3 pb-6">
-                {/* 1. Custo de Aquisição */}
                 <div className="flex items-center gap-4">
                     <div className="flex-1 bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Custo de Aquisição</p>
@@ -467,7 +450,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 
                 <div className="flex items-center gap-3 justify-center"><Plus className="w-4 h-4 text-slate-300" /></div>
                 
-                {/* 2. Valorização e Proventos (Lado a Lado) */}
                 <div className="flex items-center gap-4">
                     <div className={`flex-1 p-4 rounded-2xl border ${totalAppreciation >= 0 ? 'bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-100 dark:border-transparent' : 'bg-rose-50 dark:bg-rose-500/5 border-rose-100 dark:border-transparent'}`}>
                         <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${totalAppreciation >= 0 ? 'text-emerald-600/60 dark:text-emerald-300/60' : 'text-rose-600/60 dark:text-rose-300/60'}`}>Valorização</p>
@@ -482,7 +464,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 
                 <div className="flex items-center gap-3 justify-center"><Equal className="w-4 h-4 text-slate-300" /></div>
                 
-                {/* 3. Patrimônio Total */}
                 <div className="flex items-center gap-4">
                     <div className="flex-1 bg-white dark:bg-slate-800 p-5 rounded-3xl border-2 border-slate-900 dark:border-white shadow-lg">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Patrimônio Total</p>

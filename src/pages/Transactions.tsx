@@ -2,8 +2,9 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Transaction, AssetType } from '../types';
 import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign, X, Building2, BarChart3 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { VariableSizeList as List } from 'react-window';
 import * as ReactWindow from 'react-window';
+
+const List = ReactWindow.VariableSizeList;
 
 const formatBRL = (val: number | undefined | null) => {
   const num = typeof val === 'number' ? val : 0;
