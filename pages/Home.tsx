@@ -272,7 +272,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   ].sort((a, b) => b.value - a.value), [nominalYield, finalIPCA, isAboveInflation]);
 
   const dateLabel = getShortDateLabel(portfolioStartDate);
-  const getInflationHistoryItemSize = () => 80;
+  const getInflationHistoryItemSize = () => 72;
 
   return (
     <div className="pt-24 pb-28 px-5 space-y-4 max-w-lg mx-auto">
@@ -353,203 +353,361 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform mt-1" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-1"><div className="px-3 py-2 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex flex-col items-center justify-center"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Média</p><p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</p></div><div className="px-3 py-2 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex flex-col items-center justify-center"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Yield on Cost</p><p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatPercent(yieldOnCostPortfolio)}</p></div></div>
+            <div className="grid grid-cols-2 gap-2 mt-1"><div className="px-3 py-2 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex flex-col items-center justify-center"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Média</p><p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</p></div><div className="px-3 py-2 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex flex-col items-center justify-center"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Yield on Cost</p><p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{yieldOnCostPortfolio.toFixed(2)}%</p></div></div>
           </div>
         </button>
       </div>
 
-      {/* GRID DE CARDS SECUNDÁRIOS */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* CARD ALOCAÇÃO */}
-        <button onClick={() => setShowAllocationModal(true)} className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col h-full group hover:shadow-lg relative overflow-hidden" style={{ animationDelay: '200ms' }}>
-          <div className="flex justify-between items-start mb-4 w-full">
-            <div>
-              <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent mb-2 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
-              <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Alocação</h3>
+      {/* CARD ALOCAÇÃO RÁPIDA */}
+      <div className="anim-fade-in-up is-visible" style={{ animationDelay: '150ms' }}>
+        <button onClick={() => setShowAllocationModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 active:scale-[0.98] transition-all hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/30 group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shadow-sm border border-amber-100 dark:border-amber-500/20 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
+              <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Minha Alocação</h3><p className="text-[10px] font-semibold text-slate-400">Distribuição da Carteira</p></div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
+            <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
           </div>
-          <div className="w-full mt-auto space-y-2">{topSegments.length > 0 ? topSegments.map((seg, i) => { const totalVal = portfolio.reduce((acc, item) => acc + ((item.currentPrice || item.averagePrice) * item.quantity), 0); const percent = totalVal > 0 ? (seg.value / totalVal) * 100 : 0; return ( <div key={i} className="flex justify-between items-center text-[10px]"><span className="flex items-center gap-1.5 font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[80px]"><div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />{seg.name}</span><span className="font-bold text-slate-700 dark:text-slate-300 tabular-nums">{percent.toFixed(0)}%</span></div> ); }) : (<p className="text-[9px] text-slate-400">Sem dados</p>)}</div>
-        </button>
-
-        {/* CARD GANHO REAL */}
-        <button onClick={() => setShowRealGainModal(true)} className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] shadow-sm border border-slate-200/50 dark:border-white/5 active:scale-[0.96] transition-all text-left flex flex-col justify-between h-full group hover:shadow-lg relative overflow-hidden" style={{ animationDelay: '250ms' }}>
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 mb-2 group-hover:scale-110 transition-transform"><Scale className="w-5 h-5" strokeWidth={2} /></div>
-              <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Ganho Real</h3>
+          <div className="flex items-center gap-4">
+            <div className="h-2 flex-1 flex rounded-full overflow-hidden bg-slate-100 dark:bg-white/5">
+              {typeData.map((type, i) => (<div key={type.name} style={{ width: `${(type.value / balance) * 100}%`, backgroundColor: COLORS[i] }} className="h-full first:rounded-l-full last:rounded-r-full"></div>))}
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
+            <div className="flex gap-3">
+              {typeData.map((type, i) => (<div key={type.name} className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i] }}></div><span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{type.name}</span></div>))}
+            </div>
           </div>
-          <div><p className={`text-xl font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{isAboveInflation ? '+' : ''}{formatPercent(ganhoRealPercent)}</p><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Acima da Inflação</p></div>
         </button>
       </div>
-      
-      {/* MODAL DE RESUMO FINANCEIRO (ANALISE DE PATRIMÔNIO) */}
+
+      {/* CARD GANHO REAL */}
+      <div className="anim-fade-in-up is-visible" style={{ animationDelay: '200ms' }}>
+        <button onClick={() => setShowRealGainModal(true)} className="w-full text-left bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-500/[0.05] dark:to-indigo-500/[0.05] p-5 rounded-[2.5rem] border border-blue-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-blue-500/5">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-blue-500/20 transition-colors"></div>
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-blue-500 shadow-sm border border-blue-100 dark:border-blue-500/20 group-hover:scale-110 transition-transform"><TrendingUp className="w-5 h-5" strokeWidth={2} /></div>
+              <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Poder de Compra</h3><p className="text-[10px] font-semibold text-slate-400">Rentabilidade vs IPCA</p></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right"><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ganho Real</p><p className={`text-lg font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{ganhoRealPercent.toFixed(2)}%</p></div>
+              <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* --- MODAIS --- */}
+
+      {/* MODAL RESUMO PATRIMONIAL */}
       <SwipeableModal isOpen={showSummaryModal} onClose={() => setShowSummaryModal(false)}>
-          <div className="px-6 py-2 pb-12">
-            <div className="flex items-center gap-3 mb-8 px-2 mt-2">
-                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent"><Wallet className="w-6 h-6" strokeWidth={2} /></div>
+        <div className="p-6">
+            <div className="flex items-center gap-4 mb-8 mt-2">
+                <div className="w-14 h-14 bg-accent/10 rounded-3xl flex items-center justify-center text-accent"><Wallet className="w-7 h-7" /></div>
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Análise de Patrimônio</h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Evolução e Performance</p>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">Evolução</h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{dateLabel}</p>
                 </div>
             </div>
-            
-            {/* Gráfico de Evolução */}
-            {evolutionData.length > 1 && (
-                <div className="mb-8 anim-fade-in-up is-visible">
-                    <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-[2rem] border border-slate-100 dark:border-white/5">
-                        <div className="flex items-center justify-between mb-6 px-2">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Histórico de Saldo</span>
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-accent"></div><span className="text-[9px] font-bold text-slate-500 uppercase">Aportes</span></div>
-                                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[9px] font-bold text-slate-500 uppercase">Total</span></div>
+
+            <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Total Investido</p>
+                    <p className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(invested)}</p>
+                    <p className="text-[10px] text-slate-500 mt-1 font-semibold">Valor de aquisição</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Valor de Mercado</p>
+                    <p className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(balance)}</p>
+                    <p className={`text-[10px] font-bold mt-1 ${totalAppreciation >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {totalAppreciation >= 0 ? '+' : ''}{formatBRL(totalAppreciation)}
+                    </p>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-6 border border-slate-100 dark:border-white/5 shadow-xl mb-8">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <AreaIcon className="w-4 h-4 text-accent" /> Histórico de Patrimônio
+                </h3>
+                <div className="h-48 w-full mt-4 -mx-4 px-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={evolutionData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                            <defs>
+                                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={accentColor} stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor={accentColor} stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <XAxis 
+                                dataKey="date" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{ fontSize: 10, fill: '#64748b', fontWeight: 700 }} 
+                                dy={10}
+                                minTickGap={30}
+                            />
+                            <Tooltip content={<EvolutionTooltip />} />
+                            <Area 
+                                type="monotone" 
+                                dataKey="value" 
+                                stroke={accentColor} 
+                                strokeWidth={3} 
+                                fillOpacity={1} 
+                                fill="url(#colorValue)" 
+                                animationDuration={1500}
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            <div className="space-y-3 pb-10">
+                <div className="flex justify-between items-center bg-white dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent">
+                    <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500"><Coins className="w-4 h-4" /></div><span className="text-xs font-bold text-slate-700 dark:text-slate-300">Lucro com Vendas</span></div>
+                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">+{formatBRL(salesGain)}</span>
+                </div>
+                <div className="flex justify-between items-center bg-white dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent">
+                    <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><Banknote className="w-4 h-4" /></div><span className="text-xs font-bold text-slate-700 dark:text-slate-300">Total de Proventos</span></div>
+                    <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 tabular-nums">+{formatBRL(totalDividendsReceived)}</span>
+                </div>
+                <div className="flex justify-between items-center bg-slate-900 dark:bg-white p-5 rounded-[2rem] shadow-xl mt-4">
+                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-white/10 dark:bg-slate-900/10 flex items-center justify-center text-white dark:text-slate-900"><Trophy className="w-5 h-5" /></div><span className="text-sm font-black text-white dark:text-slate-900">Retorno Total Bruto</span></div>
+                    <div className="text-right"><p className="text-lg font-black text-white dark:text-slate-900 tabular-nums leading-none mb-1">{formatBRL(totalProfitValue)}</p><p className="text-[10px] font-black text-white/60 dark:text-slate-900/60 uppercase tracking-widest">{formatPercent(totalProfitPercent)}</p></div>
+                </div>
+            </div>
+        </div>
+      </SwipeableModal>
+
+      {/* MODAL AGENDA */}
+      <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
+        <div className="px-6 py-2">
+            <div className="flex items-center gap-4 mb-8 mt-2">
+                <div className="w-14 h-14 bg-indigo-500/10 rounded-3xl flex items-center justify-center text-indigo-500"><CalendarDays className="w-7 h-7" /></div>
+                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">Próximos Passos</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cronograma de ganhos</p></div>
+            </div>
+            {upcomingEvents.length === 0 ? (
+                <div className="text-center py-20 opacity-50"><Calendar className="w-16 h-16 text-slate-200 mx-auto mb-4" /><p className="text-sm font-bold text-slate-400">Nenhum evento futuro encontrado.</p></div>
+            ) : (
+                <div className="space-y-4 pb-12">
+                    {upcomingEvents.map((event, i) => {
+                        const style = getEventStyle(event.eventType, event.date);
+                        return (
+                            <div key={i} className={`p-5 rounded-[2rem] border-2 shadow-sm transition-all hover:scale-[1.02] flex items-center justify-between ${style.bg} ${style.border}`}>
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${style.text} bg-white dark:bg-[#0f172a] shadow-sm`}><style.icon className="w-6 h-6" /></div>
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-0.5"><h4 className="font-black text-slate-900 dark:text-white text-base tracking-tight leading-none">{event.ticker}</h4><span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${style.bg} ${style.text}`}>{style.label}</span></div>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{event.date.split('-').reverse().join('/')}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    {event.eventType === 'payment' ? (
+                                        <><p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Previsão</p><p className={`text-base font-black tabular-nums ${style.text}`}>{formatBRL(event.totalReceived)}</p></>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-amber-500"><Sparkles className="w-4 h-4 animate-pulse" /><span className="text-[10px] font-black uppercase tracking-widest">Garantir!</span></div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+      </SwipeableModal>
+
+      {/* MODAL RENDA PASSIVA */}
+      <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
+        <div className="flex flex-col h-full">
+            <div className="px-6 pt-2 pb-6 flex items-center justify-between mt-2">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><CircleDollarSign className="w-6 h-6" /></div>
+                    <div><h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Meus Ganhos</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rendimento Acumulado</p></div>
+                </div>
+                <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
+                    {['summary', 'history', 'magic'].map(tab => (<button key={tab} onClick={() => setIncomeTab(tab as any)} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${incomeTab === tab ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}>{tab === 'summary' ? 'Resumo' : tab === 'history' ? 'Extrato' : 'Magic'}</button>))}
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 pb-20">
+                {incomeTab === 'summary' && (
+                    <div className="space-y-6 anim-fade-in-up is-visible">
+                        <div className="bg-emerald-500 text-white p-8 rounded-[2.5rem] shadow-xl shadow-emerald-500/20 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-80">Rendimento Total</p>
+                            <h3 className="text-4xl font-black tabular-nums tracking-tighter mb-4">{formatBRL(received)}</h3>
+                            <div className="pt-6 border-t border-white/20 grid grid-cols-2 gap-4">
+                                <div><p className="text-[10px] font-bold uppercase opacity-60 mb-1">Média Mensal</p><p className="text-lg font-black tabular-nums">{formatBRL(averageMonthly)}</p></div>
+                                <div><p className="text-[10px] font-bold uppercase opacity-60 mb-1">Melhor Pagador</p><p className="text-lg font-black truncate">{bestPayer.ticker}</p></div>
                             </div>
                         </div>
-                        <div className="h-56 w-full -ml-4">
-                            <ResponsiveContainer width="110%" height="100%">
-                                <AreaChart data={evolutionData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="modalColorValue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                        </linearGradient>
-                                        <linearGradient id="modalColorInvested" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={accentColor} stopOpacity={0.1}/>
-                                            <stop offset="95%" stopColor={accentColor} stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <Tooltip content={<EvolutionTooltip />} />
-                                    <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#modalColorValue)" animationDuration={1500} />
-                                    <Area type="monotone" dataKey="invested" stroke={accentColor} strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#modalColorInvested)" animationDuration={1500} />
-                                </AreaChart>
+
+                        <div className="bg-white dark:bg-white/5 p-6 rounded-[2.5rem] border border-slate-100 dark:border-transparent">
+                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Últimos 12 Meses</h4>
+                            <div className="h-40 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={chartData}><XAxis dataKey="name" hide /><Tooltip content={<CustomTooltip />} /><Bar dataKey="value" fill={accentColor} radius={[4, 4, 0, 0]} /></BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                            <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-transparent flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><Zap className="w-5 h-5" /></div><span className="text-xs font-bold text-slate-700 dark:text-slate-300">Pendente p/ Receber</span></div><span className="text-sm font-black text-amber-500 tabular-nums">{formatBRL(upcoming)}</span></div>
+                            <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-transparent flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-sky-500/10 flex items-center justify-center text-sky-500"><Coins className="w-5 h-5" /></div><span className="text-xs font-bold text-slate-700 dark:text-slate-300">Dividendos Pagos</span></div><span className="text-sm font-black text-emerald-500 tabular-nums">{formatBRL(totalDividendsReceived)}</span></div>
+                        </div>
+                    </div>
+                )}
+
+                {incomeTab === 'history' && (
+                    <div className="h-[500px] anim-fade-in-up is-visible">
+                         <List height={500} itemCount={flatHistory.length} itemSize={getItemSize} width="100%">
+                            {({ index, style }) => {
+                                const item = flatHistory[index];
+                                if (item.type === 'header') return (<div style={style} className="flex items-center justify-between px-2 pt-4 pb-2"><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{getMonthName(item.month)}</h4><span className="text-[10px] font-black text-emerald-500 tabular-nums">{formatBRL(item.total)}</span></div>);
+                                const h = item.data;
+                                return (
+                                    <div style={style} className="py-1">
+                                        <div className="bg-white dark:bg-[#0b1121] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center font-bold text-xs text-slate-400 flex-col leading-none"><span>{h.paymentDate.split('-')[2]}</span><span className="text-[8px] opacity-60 uppercase">{h.paymentDate.split('-')[1]}</span></div>
+                                                <div><h5 className="text-sm font-black text-slate-900 dark:text-white leading-tight">{h.ticker}</h5><p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{h.type.replace('JRS CAP PROPRIO', 'JCP')}</p></div>
+                                            </div>
+                                            <div className="text-right"><p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(h.totalReceived)}</p><p className="text-[9px] text-slate-400 font-medium leading-none mt-1">{h.quantityOwned} cotas</p></div>
+                                        </div>
+                                    </div>
+                                );
+                            }}
+                        </List>
+                    </div>
+                )}
+
+                {incomeTab === 'magic' && (
+                    <div className="space-y-4 anim-fade-in-up is-visible">
+                        <div className="bg-slate-900 dark:bg-white p-6 rounded-[2.5rem] text-center mb-6">
+                            <Sparkles className="w-8 h-8 text-amber-400 mx-auto mb-3" />
+                            <h3 className="text-lg font-black text-white dark:text-slate-900">Número Mágico</h3>
+                            <p className="text-xs text-white/60 dark:text-slate-900/60 max-w-[200px] mx-auto mt-2 leading-relaxed">Quantas cotas você precisa para que o ativo se pague sozinho todo mês.</p>
+                        </div>
+                        {magicNumbers.map(m => (
+                            <div key={m.ticker} className="bg-white dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-transparent">
+                                <div className="flex justify-between items-center mb-3">
+                                    <div className="flex items-center gap-2"><h4 className="text-base font-black text-slate-900 dark:text-white">{m.ticker}</h4><span className="text-[10px] font-bold text-slate-400">R$ {m.rate.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / cota</span></div>
+                                    <span className="text-[10px] font-black uppercase text-amber-500 bg-amber-500/10 px-2 py-1 rounded-lg">{m.progress.toFixed(0)}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden mb-3"><div style={{ width: `${m.progress}%` }} className="h-full bg-emerald-500 rounded-full"></div></div>
+                                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-400"><span>Possui: {m.currentQty}</span><span>Objetivo: {m.magicQty}</span></div>
+                                {m.missing > 0 && <p className="text-[10px] text-slate-500 mt-2 font-medium">Faltam <span className="text-slate-900 dark:text-white font-black">{m.missing} cotas</span> para o efeito bola de neve.</p>}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+      </SwipeableModal>
+
+      {/* MODAL ALOCAÇÃO */}
+      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
+        <div className="px-6 py-2">
+            <div className="flex items-center justify-between mb-8 mt-2">
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-amber-500/10 rounded-3xl flex items-center justify-center text-amber-500"><PieIcon className="w-7 h-7" /></div>
+                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">Estratégia</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Equilíbrio da Carteira</p></div>
+                </div>
+            </div>
+
+            <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl mb-8">
+                {['assets', 'types', 'segments'].map(tab => (<button key={tab} onClick={() => setAllocationTab(tab as any)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationTab === tab ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm scale-[1.02]' : 'text-slate-400'}`}>{tab === 'assets' ? 'Ativos' : tab === 'types' ? 'Classes' : 'Setores'}</button>))}
+            </div>
+
+            <div className="h-64 mb-8">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie 
+                            activeIndex={activeIndex} 
+                            activeShape={renderActiveShape} 
+                            data={allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData} 
+                            cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" stroke="none" 
+                            onMouseEnter={onPieEnter} 
+                        >
+                            {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
+                        </Pie>
+                    </PieChart>
+                </ResponsiveContainer>
+            </div>
+
+            <div className="space-y-2 pb-12">
+                {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((item, i) => (
+                    <div key={item.name} className="flex items-center justify-between p-4 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-transparent">
+                        <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div><span className="text-sm font-bold text-slate-700 dark:text-slate-300">{item.name}</span></div>
+                        <div className="text-right"><p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{((item.value / balance) * 100).toFixed(1)}%</p><p className="text-[10px] text-slate-400 font-medium tabular-nums">{formatBRL(item.value)}</p></div>
+                    </div>
+                ))}
+            </div>
+        </div>
+      </SwipeableModal>
+
+      {/* MODAL GANHO REAL */}
+      <SwipeableModal isOpen={showRealGainModal} onClose={() => setShowRealGainModal(false)}>
+         <div className="px-6 py-2">
+            <div className="flex items-center justify-between mb-8 mt-2">
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-blue-500/10 rounded-3xl flex items-center justify-center text-blue-500"><Target className="w-7 h-7" /></div>
+                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">Ganho Real</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rentabilidade Acima da Inflação</p></div>
+                </div>
+            </div>
+
+            <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl mb-8">
+                {['benchmark', 'history'].map(tab => (<button key={tab} onClick={() => setGainTab(tab as any)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${gainTab === tab ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm scale-[1.02]' : 'text-slate-400'}`}>{tab === 'benchmark' ? 'Comparação' : 'Histórico Inflação'}</button>))}
+            </div>
+
+            {gainTab === 'benchmark' ? (
+                <div className="space-y-6 anim-fade-in-up is-visible">
+                    <div className={`p-8 rounded-[2.5rem] text-center shadow-xl shadow-blue-500/10 border ${isAboveInflation ? 'bg-emerald-500 border-emerald-400' : 'bg-rose-500 border-rose-400'} text-white`}>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-80">Seu Alpha Estimado</p>
+                        <h3 className="text-4xl font-black tabular-nums tracking-tighter mb-4">{isAboveInflation ? '+' : ''}{ganhoRealPercent.toFixed(2)}%</h3>
+                        <p className="text-xs font-medium opacity-90 max-w-[200px] mx-auto leading-relaxed">{isAboveInflation ? 'Parabéns! Sua carteira está protegendo e aumentando seu poder de compra.' : 'Atenção: A inflação está corroendo o retorno nominal da sua carteira.'}</p>
+                    </div>
+
+                    <div className="bg-white dark:bg-white/5 p-6 rounded-[2.5rem] border border-slate-100 dark:border-transparent">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Comparativo % {dateLabel}</h4>
+                        <div className="h-40 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={comparisonData} layout="vertical" margin={{ left: -20, right: 20 }}>
+                                    <XAxis type="number" hide />
+                                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
+                                    <Tooltip cursor={{ fill: 'transparent' }} content={({ active, payload }) => { if (active && payload?.length) return (<div className="bg-slate-900 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg">{payload[0].value.toFixed(2)}%</div>); return null; }} />
+                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20} />
+                                </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3 pb-12">
+                         <div className="bg-white dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-transparent"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Lucro Nominal</p><p className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(lucroNominalAbsoluto)}</p></div>
+                         <div className="bg-white dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-transparent"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Corrosão IPCA</p><p className="text-lg font-black text-rose-500 tabular-nums">-{formatBRL(custoCorrosaoInflacao)}</p></div>
+                         <div className="bg-slate-900 dark:bg-white col-span-2 p-6 rounded-[2rem] flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-white/10 dark:bg-slate-900/10 flex items-center justify-center text-white dark:text-slate-900"><Scale className="w-5 h-5" /></div><span className="text-sm font-black text-white dark:text-slate-900">Lucro Real (em R$)</span></div><span className="text-xl font-black text-white dark:text-slate-900 tabular-nums">{formatBRL(ganhoRealValor)}</span></div>
+                    </div>
+                </div>
+            ) : (
+                <div className="h-[500px] anim-fade-in-up is-visible">
+                    <List height={500} itemCount={evolutionData.length} itemSize={getInflationHistoryItemSize} width="100%">
+                        {({ index, style }) => {
+                            const point = evolutionData[evolutionData.length - 1 - index];
+                            return (
+                                <div style={style} className="py-1">
+                                    <div className="bg-white dark:bg-[#0b1121] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400"><Calendar className="w-5 h-5" /></div>
+                                            <div><h5 className="text-sm font-black text-slate-900 dark:text-white leading-tight">{point.date}</h5><p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Inflação Acumulada</p></div>
+                                        </div>
+                                        <div className="text-right"><p className="text-sm font-black text-rose-500 tabular-nums">-{formatBRL(point.monthlyInflationCost)}</p><p className="text-[9px] text-slate-400 font-medium leading-none mt-1">Impacto no patrimônio</p></div>
+                                    </div>
+                                </div>
+                            );
+                        }}
+                    </List>
                 </div>
             )}
-
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 gap-4">
-                    <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 relative overflow-hidden">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Patrimônio Líquido</p>
-                        <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums tracking-tighter mb-4">{formatBRL(balance)}</p>
-                        
-                        <div className="space-y-3 pt-4 border-t border-slate-200/50 dark:border-white/5">
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Custo Total (Aportes)</span>
-                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300 tabular-nums">{formatBRL(invested)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Valorização de Mercado</span>
-                                <span className={`text-sm font-bold tabular-nums ${totalAppreciation >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    {totalAppreciation >= 0 ? '+' : ''}{formatBRL(totalAppreciation)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Dividendos Recebidos</span>
-                                <span className="text-sm font-bold text-emerald-600 tabular-nums">+{formatBRL(totalDividendsReceived)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className={`p-5 rounded-[2rem] border ${isProfitPositive ? 'bg-emerald-50 dark:bg-emerald-500/5 border-emerald-100 dark:border-emerald-500/20' : 'bg-rose-50 dark:bg-rose-500/5 border-rose-100 dark:border-rose-500/20'}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                            {isProfitPositive ? <TrendingUp className="w-4 h-4 text-emerald-500" /> : <TrendingDown className="w-4 h-4 text-rose-500" />}
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${isProfitPositive ? 'text-emerald-600' : 'text-rose-600'}`}>Lucro Total do Portfólio</span>
-                        </div>
-                        <div className="flex items-end justify-between">
-                            <p className={`text-2xl font-black tabular-nums tracking-tight ${isProfitPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                                {isProfitPositive ? '+' : ''}{formatBRL(totalProfitValue)}
-                            </p>
-                            <p className={`text-sm font-black tabular-nums ${isProfitPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                {isProfitPositive ? '+' : ''}{formatPercent(totalProfitPercent)}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="bg-amber-50 dark:bg-amber-500/5 p-5 rounded-[2rem] border border-amber-100 dark:border-amber-500/20">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600"><Info className="w-5 h-5" /></div>
-                        <p className="text-xs font-medium text-amber-700 dark:text-amber-300 leading-tight">
-                            O lucro total considera a <strong>valorização atual</strong> somada aos <strong>dividendos recebidos</strong> e ganhos de <strong>vendas passadas</strong>.
-                        </p>
-                    </div>
-                </div>
-            </div>
-          </div>
+         </div>
       </SwipeableModal>
-
-      {/* MODAL PROVENTOS (RENDA PASSIVA) */}
-      <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}><div className="pb-8"><div className="px-6 pt-2"><div className="flex items-center gap-3 mb-4 px-2 mt-2"><div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><CircleDollarSign className="w-6 h-6" strokeWidth={2} /></div><div><h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Renda Passiva</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Seus Proventos</p></div></div></div><div className="flex p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl mb-6 mx-4"><button onClick={() => setIncomeTab('summary')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${incomeTab === 'summary' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Resumo</button><button onClick={() => setIncomeTab('history')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${incomeTab === 'history' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Histórico</button><button onClick={() => setIncomeTab('magic')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${incomeTab === 'magic' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Magic Number</button></div><div className="px-5">{incomeTab === 'summary' && (<div className="space-y-6 anim-fade-in-up is-visible"><div className="text-center py-4 relative"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Acumulado</span><div className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mt-1 tabular-nums">{formatBRL(received)}</div></div><div className="h-40 w-full relative"><p className="absolute top-0 left-0 text-[10px] font-bold text-slate-300 dark:text-slate-600 uppercase">Últimos 6 meses</p><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData.slice(-6)}><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} dy={10} /><Tooltip cursor={{ fill: 'rgba(16, 185, 129, 0.1)', radius: 8 }} content={<CustomTooltip />} /><Bar dataKey="value" fill={accentColor} radius={[4, 4, 4, 4]} barSize={32} animationDuration={1000} /></BarChart></ResponsiveContainer></div><div className="grid grid-cols-2 gap-3"><div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent flex flex-col justify-between"><div className="flex items-center gap-2 mb-2 text-slate-400"><Calendar className="w-3.5 h-3.5" /><span className="text-[9px] font-bold uppercase tracking-widest">Média Mensal</span></div><p className="text-lg font-bold text-slate-700 dark:text-white tabular-nums">{formatBRL(averageMonthly)}</p></div><div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent flex flex-col justify-between"><div className="flex items-center gap-2 mb-2 text-slate-400"><Percent className="w-3.5 h-3.5" /><span className="text-[9px] font-bold uppercase tracking-widest">Yield on Cost</span></div><p className="text-lg font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatPercent(yieldOnCostPortfolio)}</p></div><div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent flex flex-col justify-between"><div className="flex items-center gap-2 mb-2 text-slate-400"><Trophy className="w-3.5 h-3.5" /><span className="text-[9px] font-bold uppercase tracking-widest">Maior Pagador</span></div><div><p className="text-sm font-bold text-slate-900 dark:text-white">{bestPayer.ticker}</p><p className="text-xs font-semibold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(bestPayer.value)}</p></div></div><div className="bg-indigo-500/10 p-4 rounded-2xl border border-indigo-500/20 flex flex-col justify-between"><div className="flex items-center gap-2 mb-2 text-indigo-500"><Sparkles className="w-3.5 h-3.5" /><span className="text-[9px] font-bold uppercase tracking-widest">Provisão Futura</span></div><p className="text-lg font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">{formatBRL(upcoming)}</p></div></div></div>)}{incomeTab === 'history' && (<div className="pb-4 anim-fade-in-up is-visible h-[60vh]">{flatHistory.length === 0 ? (<div className="text-center py-10 opacity-50 h-full flex flex-col items-center justify-center"><ListFilter className="w-10 h-10 mx-auto mb-2 text-slate-300" strokeWidth={1.5} /><p className="text-xs text-slate-400 font-medium">Nenhum histórico encontrado.</p></div>) : (<List height={window.innerHeight * 0.6} itemCount={flatHistory.length} itemSize={getItemSize} width="100%">{({ index, style }) => { const item = flatHistory[index]; return ( <div style={style}> {item.type === 'header' ? ( <div className="flex items-center justify-between my-3 px-2 sticky top-0 bg-white dark:bg-[#0b1121] py-2 z-10"><h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">{getMonthName(item.month + '-01')}</h4><span className="text-xs font-bold text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-lg tabular-nums">{formatBRL(item.total)}</span></div> ) : ( <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 mb-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-white dark:bg-white/10 flex flex-col items-center justify-center shadow-sm"><span className="text-[9px] font-black uppercase text-slate-400">{item.data.paymentDate.split('-')[1]}</span><span className="text-sm font-bold text-slate-900 dark:text-white leading-none">{item.data.paymentDate.split('-')[2]}</span></div><div><p className="font-bold text-slate-900 dark:text-white">{item.data.ticker}</p><p className="text-[10px] font-medium text-slate-400 uppercase">{item.data.type.replace('DIVIDENDO', 'DIV').replace('JRS CAP PROPRIO', 'JCP')}</p></div></div><div className="text-right"><p className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(item.data.totalReceived)}</p><p className="text-[9px] font-medium text-slate-400 tabular-nums">{item.data.quantityOwned} un.</p></div></div> )} </div> ); }}</List>)}</div>)}{incomeTab === 'magic' && (<div className="space-y-3 anim-fade-in-up is-visible">{magicNumbers?.length > 0 ? magicNumbers.map((m, i) => m && ( <div key={i} className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm"><div className="flex justify-between items-center mb-2"><h4 className="text-sm font-bold text-slate-900 dark:text-white">{m.ticker}</h4><span className="text-xs font-bold text-accent tabular-nums">{m.progress.toFixed(0)}%</span></div><div className="h-2 bg-slate-100 dark:bg-white/5 rounded-full mb-2 overflow-hidden"><div className="h-full bg-accent" style={{ width: `${m.progress}%` }}></div></div><div className="text-[10px] text-slate-400 font-semibold flex justify-between"><span>{m.currentQty} / {m.magicQty} Cotas</span><span>Faltam {m.missing}</span></div></div> )) : ( <div className="text-center py-10 opacity-50"><Sparkles className="w-10 h-10 mx-auto mb-2 text-slate-300" strokeWidth={1.5} /><p className="text-xs text-slate-400 font-medium">Sem dados de proventos suficientes.</p></div> )}</div>)}</div></div></SwipeableModal>
-
-      {/* MODAL ALOCAÇÃO */}
-      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}><div className="pb-8"><div className="px-6 pt-2"><div className="flex items-center gap-3 mb-4 px-2 mt-2"><div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent"><PieIcon className="w-6 h-6" strokeWidth={2} /></div><div><h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Alocação</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Composição da Carteira</p></div></div></div><div className="flex p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl mb-6 mx-4"><button onClick={() => setAllocationTab('assets')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'assets' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Ativos</button><button onClick={() => setAllocationTab('types')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'types' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Tipos</button><button onClick={() => setAllocationTab('segments')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'segments' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Segmentos</button></div><div className="px-5">{[{ id: 'assets', data: assetData }, { id: 'types', data: typeData }, { id: 'segments', data: segmentData }].map(tab => { if(tab.id !== allocationTab) return null; const currentData = tab.data; const total = currentData.reduce((acc, item) => acc + item.value, 0); return ( <div key={tab.id} className="anim-fade-in-up is-visible"><div className="h-48 w-full -my-4"><ResponsiveContainer width="100%" height="100%"><PieChart>
-      {/* @ts-ignore */}
-      <Pie data={currentData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5} dataKey="value" activeIndex={activeIndex as any} activeShape={renderActiveShape} onMouseEnter={onPieEnter} cornerRadius={8}>{currentData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" fillOpacity={activeIndex === index ? 1 : 0.3} style={{ transition: 'opacity 0.3s ease' }} />)}</Pie></PieChart></ResponsiveContainer></div><div className="space-y-2 mt-4">{currentData.map((item, index) => ( <div key={index} onMouseEnter={() => onPieEnter(null, index)} className={`flex items-center justify-between p-3 rounded-xl transition-all ${activeIndex === index ? 'bg-slate-100 dark:bg-white/5' : ''}`}><div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div><span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{item.name}</span></div><div className="text-right"><p className="font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(item.value)}</p><p className="text-xs text-slate-400 font-medium tabular-nums">{formatPercent((item.value / total) * 100)}</p></div></div> ))}</div></div> ) })}</div></div></SwipeableModal>
-
-      {/* MODAL GANHO REAL */}
-      <SwipeableModal isOpen={showRealGainModal} onClose={() => setShowRealGainModal(false)}><div className="px-6 py-2 pb-8"><div className="flex items-center gap-3 mb-4 px-2 mt-2"><div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500"><Scale className="w-6 h-6" strokeWidth={2} /></div><div><h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Poder de Compra</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rentabilidade vs. Inflação</p></div></div><div className="flex p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl mb-6"><button onClick={() => setGainTab('benchmark')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${gainTab === 'benchmark' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Benchmark</button><button onClick={() => setGainTab('power')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${gainTab === 'power' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Poder de Compra</button><button onClick={() => setGainTab('history')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${gainTab === 'history' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Histórico</button></div>{gainTab === 'benchmark' && (<div className="space-y-4 px-4 anim-fade-in-up is-visible"><div className="bg-slate-50 dark:bg-[#0f172a] p-6 rounded-3xl grid grid-cols-3 items-center text-center"><div className="space-y-1"><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Carteira</p><p className={`text-2xl font-black tabular-nums ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{formatPercent(nominalYield)}</p></div><p className="font-bold text-slate-300 dark:text-slate-600">VS</p><div className="space-y-1"><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">IPCA {dateLabel}</p><p className="text-2xl font-black text-slate-500 tabular-nums">{formatPercent(finalIPCA)}</p></div></div><div className={`p-6 rounded-3xl text-center relative overflow-hidden ${isAboveInflation ? 'bg-gradient-to-br from-emerald-500/10 to-transparent' : 'bg-gradient-to-br from-rose-500/10 to-transparent'}`}><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Retorno Real Acumulado</p><p className={`text-5xl font-black tabular-nums tracking-tighter my-2 ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{isAboveInflation ? '+' : ''}{formatPercent(ganhoRealPercent)}</p><p className="text-xs text-slate-500 dark:text-slate-400 max-w-[250px] mx-auto">Sua carteira está {isAboveInflation ? 'preservando e multiplicando' : 'perdendo valor para'} seu capital acima da inflação.</p></div><div className="bg-slate-50 dark:bg-[#0f172a] p-6 rounded-3xl space-y-4">{comparisonData.map(item => { const maxValue = Math.max(nominalYield, finalIPCA, 1); const barWidth = (item.value / maxValue) * 100; return ( <div key={item.name}><div className="flex items-center text-xs font-bold"><span className="w-24 text-slate-400 truncate pr-1">{item.name}</span><div className="flex-1 h-3 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${barWidth}%`, backgroundColor: item.fill, transition: 'width 0.5s ease-out' }}></div></div><span className="w-12 text-right text-slate-500 tabular-nums">{item.value.toFixed(2)}%</span></div></div> ); })}</div></div>)}{gainTab === 'power' && (<div className="space-y-3 px-4 anim-fade-in-up is-visible"><div className="flex items-center gap-4"><div className="flex-1 bg-emerald-50 dark:bg-emerald-500/5 p-4 rounded-2xl border border-emerald-100 dark:border-transparent"><p className="text-[10px] font-bold text-emerald-600/60 dark:text-emerald-300/60 uppercase tracking-widest mb-1">Lucro Total</p><p className="text-lg font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatBRL(lucroNominalAbsoluto)}</p></div></div><div className="flex items-center gap-3 justify-center"><Minus className="w-4 h-4 text-slate-300" /></div><div className="flex items-center gap-4"><div className="flex-1 bg-rose-50 dark:bg-rose-500/5 p-4 rounded-2xl border border-rose-100 dark:border-transparent"><p className="text-[10px] font-bold text-rose-600/60 dark:text-rose-300/60 uppercase tracking-widest mb-1">Custo da Inflação (IPCA)</p><p className="text-lg font-bold text-rose-700 dark:text-rose-400 tabular-nums">{formatBRL(custoCorrosaoInflacao)}</p></div></div><div className="flex items-center gap-3 justify-center"><Equal className="w-4 h-4 text-slate-300" /></div><div className={`flex-1 p-5 rounded-3xl border-2 ${isAboveInflation ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30' : 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30'}`}><p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isAboveInflation ? 'text-emerald-600/60 dark:text-emerald-300/60' : 'text-rose-600/60 dark:text-rose-300/60'}`}>Ganho Real de Poder de Compra</p><p className={`text-2xl font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>{isAboveInflation ? '+' : ''}{formatBRL(ganhoRealValor)}</p></div></div>)}{gainTab === 'history' && (
-        <div className="h-[65vh] anim-fade-in-up is-visible px-4 relative">
-          <div className="flex items-center gap-2 mb-6 px-2">
-            <Clock className="w-4 h-4 text-slate-400" />
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Linha do Tempo de Retorno</h4>
-          </div>
-          
-          {/* Vertical Timeline Spine */}
-          <div className="absolute left-[39px] top-12 bottom-10 w-[2px] bg-slate-200 dark:bg-white/5 z-0"></div>
-          
-          <div className="h-[calc(65vh-40px)] overflow-hidden">
-            <List 
-                height={window.innerHeight * 0.6} 
-                itemCount={evolutionData.length} 
-                itemSize={getInflationHistoryItemSize} 
-                width="100%"
-                className="no-scrollbar"
-            >
-                {({ index, style }) => { 
-                    const item = [...evolutionData].reverse()[index]; 
-                    const isGain = item.value >= item.adjusted; 
-                    const diff = item.value - item.adjusted;
-                    
-                    return ( 
-                        <div style={style} className="py-2 pl-4 flex gap-6 relative">
-                            {/* Timeline Node */}
-                            <div className="relative z-10 flex flex-col items-center justify-start mt-1">
-                                <div className={`w-10 h-10 rounded-full flex flex-col items-center justify-center font-black text-[9px] uppercase border-4 border-primary-light dark:border-[#0b1121] shadow-sm ${isGain ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                                    <span>{item.date.split(' ')[0].substring(0,3)}</span>
-                                </div>
-                            </div>
-                            
-                            {/* Content Card */}
-                            <div className={`flex-1 p-3 rounded-2xl border transition-all ${isGain ? 'bg-emerald-50/30 dark:bg-emerald-500/5 border-emerald-500/10' : 'bg-rose-50/30 dark:bg-rose-500/5 border-rose-500/10'}`}>
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mb-0.5">{item.date}</p>
-                                        <p className={`text-xs font-black tracking-tight ${isGain ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                            {isGain ? 'Ganho Real' : 'Perda Real'}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className={`text-sm font-black tabular-nums ${isGain ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                                            {isGain ? '+' : ''}{formatBRL(diff)}
-                                        </p>
-                                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">vs IPCA</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div> 
-                    ); 
-                }}
-            </List>
-          </div>
-        </div>
-      )}</div></SwipeableModal>
-
-      {/* MODAL AGENDA */}
-      <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}><div className="pb-8"><div className="px-6 pt-2"><div className="flex items-center gap-3 mb-6 px-2 mt-2"><div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500"><CalendarDays className="w-6 h-6" strokeWidth={2} /></div><div><h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Agenda de Eventos</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Linha do Tempo</p></div></div></div><div className="px-5 space-y-3">{upcomingEvents.length > 0 ? upcomingEvents.map((event, i) => { const style = getEventStyle(event.eventType, event.date); return ( <div key={i} className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center gap-4"> <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center font-bold text-sm border ${style.border} ${style.bg} ${style.text}`}>{style.pulse ? <span className="text-[9px] font-black uppercase tracking-wider">HOJE</span> : <><span className="text-xs font-bold opacity-70">{event.date.split('-')[1]}</span><span className="text-sm font-bold">{event.date.split('-')[2]}</span></>}</div> <div className="flex-1"> <p className="font-bold text-slate-900 dark:text-white">{event.ticker}</p> {event.eventType === 'payment' ? ( <p className={`text-[10px] font-semibold uppercase flex items-center gap-1.5 ${style.text}`}><style.icon className="w-3 h-3"/> {style.label}: {formatBRL(event.totalReceived)}</p> ) : ( <p className={`text-[10px] font-semibold uppercase flex items-center gap-1.5 ${style.text}`}><style.icon className="w-3 h-3"/> Último dia para ter direito</p> )} </div> {event.eventType === 'datacom' && ( <p className="text-xs font-bold text-slate-400 tabular-nums">{formatBRL(event.rate)}/cota</p> )}</div> ); }) : <div className="text-center py-20 opacity-60"> <CalendarDays className="w-12 h-12 text-slate-300 mx-auto mb-4" strokeWidth={1.5}/> <p className="text-sm font-bold text-slate-500">Nenhum evento futuro</p> <p className="text-xs text-slate-400 mt-1">Sua agenda está limpa por enquanto.</p> </div>}</div></div></SwipeableModal>
     </div>
   );
 };

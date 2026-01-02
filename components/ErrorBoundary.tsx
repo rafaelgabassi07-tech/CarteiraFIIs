@@ -1,3 +1,4 @@
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
@@ -28,14 +29,19 @@ interface Props {
   children?: ReactNode;
 }
 
-// ErrorBoundary class catches JavaScript errors anywhere in their child component tree.
-// Resolved "Property 'props' does not exist" by using direct Component import and removing redundant constructor.
+// ErrorBoundary class catches JavaScript errors anywhere in their child component tree
+// Fixed "Property 'props' does not exist" error by extending Component directly from the react import.
 export class ErrorBoundary extends Component<Props, State> {
-  // Using public state and explicit return type for clarity in inheritance.
+  // Using public state and explicit return type for clarity in inheritance
   public state: State = {
     hasError: false,
     error: null
   };
+
+  // Adding an explicit constructor can help TypeScript resolve property inheritance correctly
+  constructor(props: Props) {
+    super(props);
+  }
 
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -45,9 +51,9 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  public render(): ReactNode {
+  public render() {
     if (this.state.hasError) {
-      // Safely check for message presence to avoid potential runtime errors.
+      // Fix: Safely check for message presence to avoid potential runtime errors
       if (this.state.error?.message?.includes('Credenciais do Supabase')) {
         return <ConfigurationError />;
       }
@@ -62,6 +68,7 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
+    // Fix: Return children from this.props which is now correctly recognized by extending Component directly
     return this.props.children;
   }
 }
