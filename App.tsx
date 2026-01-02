@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, LockScreen, ConfirmationModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
@@ -81,7 +82,6 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   
-  // Estado local para controle da pílula de update visual
   const [showUpdatePill, setShowUpdatePill] = useState(false);
   
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
@@ -90,6 +90,9 @@ const App: React.FC = () => {
   const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(STORAGE_KEYS.PUSH_ENABLED) === 'true');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
+  
+  // Use useRef hook properly imported above
+  const toastTimeoutRef = useRef<number | null>(null);
   
   const [notifications, setNotifications] = useState<AppNotification[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY); return s ? JSON.parse(s) : []; } catch { return []; } });
 
@@ -131,14 +134,17 @@ const App: React.FC = () => {
   useEffect(() => { document.body.classList.toggle('privacy-blur', privacyMode); localStorage.setItem(STORAGE_KEYS.PRIVACY, String(privacyMode)); }, [privacyMode]);
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
-    setToast({ type, text });
-    // Removemos a condição "if type !== info" para garantir que TODOS os toasts sumam sozinhos.
-    setTimeout(() => setToast(null), 3500);
+    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+    
+    // Pequena pausa se já houver um toast para criar uma transição mais limpa
+    setToast(null);
+    setTimeout(() => {
+        setToast({ type, text });
+        toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3500);
+    }, 50);
   }, []);
 
   useEffect(() => {
-      // Quando há uma atualização, mostramos a pílula visual e adicionamos ao histórico,
-      // mas NÃO disparamos um toast genérico que cubra o header.
       if (updateManager.isUpdateAvailable) {
           setShowUpdatePill(true);
           if (!notifications.some(n => n.id === `UPDATE-${updateManager.availableVersion}`)) {
@@ -248,22 +254,16 @@ const App: React.FC = () => {
     }
   }, [showToast, syncMarketData]);
 
-  // EFEITO DE INICIALIZAÇÃO E AUTENTICAÇÃO
   useEffect(() => {
     setLoadingProgress(10);
-    // 1. Verifica a sessão inicial assim que o app carrega.
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoadingProgress(20);
-      // O splash screen será removido após este passo, permitindo que a UI apareça
-      // enquanto os dados são carregados em segundo plano, se necessário.
       setTimeout(() => setAppLoading(false), 500);
     });
 
-    // 2. Ouve por mudanças no estado de autenticação (login, logout).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      // Se o usuário fez logout, reseta a interface para o estado inicial.
       if (_event === 'SIGNED_OUT') {
         setCurrentTab('home');
         setShowSettings(false);
@@ -275,14 +275,10 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // EFEITO DE CARGA E LIMPEZA DE DADOS (Reativo à sessão)
   useEffect(() => {
     if (session?.user) {
-      // Usuário está logado: carrega os dados da nuvem.
-      // O 'true' indica que é a carga inicial, para atualizar a barra de progresso.
       fetchTransactionsFromCloud(session, false, transactions.length === 0);
     } else {
-      // Usuário deslogado: limpa todos os dados sensíveis do estado e do storage.
       setTransactions([]);
       setQuotes({});
       setGeminiDividends([]);
@@ -298,7 +294,7 @@ const App: React.FC = () => {
     const { error } = await supabase.auth.signOut();
     setSession(null); 
     if (error) {
-      console.error("Supabase signOut error occurred, but session was cleared locally:", error);
+      console.error("Supabase signOut error:", error);
     }
   }, []);
 
@@ -402,9 +398,8 @@ const App: React.FC = () => {
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       <CloudStatusBanner status={cloudStatus} />
       
-      {/* UPDATE NOTIFICATION PILL */}
       {showUpdatePill && (
-        <div className="fixed top-28 left-0 w-full flex justify-center z-[1000] pointer-events-none px-6">
+        <div className="fixed top-28 left-0 w-full flex justify-center z-[90] pointer-events-none px-6">
             <div className="anim-fade-in-up is-visible w-full max-w-sm pointer-events-auto">
                 <div className="relative overflow-hidden p-[1px] rounded-2xl bg-gradient-to-r from-accent via-purple-500 to-accent bg-[length:200%_100%] animate-shimmer shadow-2xl shadow-accent/20">
                     <div className="bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center justify-between gap-3">
@@ -438,11 +433,10 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* PREMIUM GLASS TOAST NOTIFICATION (GLOBAL) */}
       {toast && ( 
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none w-full max-w-sm px-4">
             <div className={`
-              pointer-events-auto mx-auto flex items-center gap-3 p-2 pr-5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl border transition-all duration-300 anim-fade-in-up is-visible
+              pointer-events-auto mx-auto flex items-center gap-3 p-2 pr-5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl border transition-all duration-500 anim-fade-in-up is-visible
               ${toast.type === 'success' 
                 ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' 
                 : toast.type === 'error' 
@@ -463,7 +457,7 @@ const App: React.FC = () => {
                  <p className={`text-[11px] font-bold leading-tight ${
                     toast.type === 'success' ? 'text-emerald-700 dark:text-emerald-400' :
                     toast.type === 'error' ? 'text-rose-700 dark:text-rose-400' :
-                    'text-slate-900 dark:text-slate-900' // Dark mode toast has white bg, so text should be dark
+                    'text-slate-900 dark:text-slate-900'
                  }`}>
                     {toast.type === 'success' ? 'Sucesso' : toast.type === 'error' ? 'Atenção' : 'Info'}
                  </p>

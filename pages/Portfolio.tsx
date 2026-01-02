@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
 import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown, Briefcase, ChevronUp, Layers, Hash, Info, CheckCircle2, Clock } from 'lucide-react';
@@ -7,14 +8,6 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
   const [isExpanded, setIsExpanded] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [contentHeight, setContentHeight] = useState(0);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.scrollHeight);
-    }
-  }, [isExpanded, asset]); 
   
   const currentPrice = asset.currentPrice || asset.averagePrice;
   const totalValue = currentPrice * asset.quantity;
@@ -42,11 +35,10 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="p-4">
-          {/* Header do Card (Novo Layout Grid para evitar sobreposição) */}
+          {/* Header do Card */}
           <div className="flex items-center justify-between gap-4">
-             {/* Lado Esquerdo: Info do Ativo */}
              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-all duration-300 ${isExpanded ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 scale-110' : asset.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-600' : 'bg-blue-500/10 text-blue-600'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-all duration-500 ${isExpanded ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 scale-110' : asset.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-600' : 'bg-blue-500/10 text-blue-600'}`}>
                     {asset.logoUrl ? (
                         <img loading="lazy" src={asset.logoUrl} alt={asset.ticker} className="w-7 h-7 object-contain" onError={(e) => { (e.target as any).style.display='none'; }} />
                     ) : (
@@ -67,7 +59,6 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
                 </div>
              </div>
 
-             {/* Lado Direito: Valores (Alinhado à direita, sem encolher) */}
              <div className="text-right shrink-0">
                 <div className="font-black text-base text-slate-900 dark:text-white tabular-nums tracking-tight">R$ {formatCurrency(totalValue)}</div>
                 <div className="flex justify-end mt-0.5">
@@ -81,49 +72,51 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
              </div>
           </div>
 
-          {/* Área Expandida com `max-height` */}
-          <div 
-            className="overflow-hidden transition-[max-height,opacity] duration-500 ease-out-quint"
-            style={{ maxHeight: isExpanded ? `${contentHeight}px` : '0px', opacity: isExpanded ? 1 : 0 }}
-          >
-             <div ref={contentRef} className="pt-4">
-                 <div className="flex gap-4 mb-4 relative pt-4 border-t border-slate-100 dark:border-white/5">
-                     <div className="absolute left-1/2 top-4 bottom-0 w-[1px] bg-slate-100 dark:bg-white/5 -ml-[0.5px]"></div>
-                     <div className="flex-1 text-center">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Preço Médio</p>
-                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400 tabular-nums">R$ {formatCurrency(asset.averagePrice)}</p>
+          {/* Área Expandida - Técnica Grid Accordion (Zero Layout Shifts) */}
+          <div className={`grid-accordion ${isExpanded ? 'grid-accordion-open' : ''}`}>
+             <div className="grid-accordion-content">
+                 <div className="pt-5 pb-1">
+                     <div className="flex gap-4 mb-5 relative pt-4 border-t border-slate-100 dark:border-white/5">
+                         <div className="absolute left-1/2 top-4 bottom-0 w-[1px] bg-slate-100 dark:bg-white/5 -ml-[0.5px]"></div>
+                         <div className="flex-1 text-center">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Preço Médio</p>
+                            <p className="text-sm font-bold text-slate-600 dark:text-slate-400 tabular-nums">R$ {formatCurrency(asset.averagePrice)}</p>
+                         </div>
+                         <div className="flex-1 text-center">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Última Cotação</p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">R$ {formatCurrency(currentPrice)}</p>
+                         </div>
                      </div>
-                     <div className="flex-1 text-center">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Última Cotação</p>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">R$ {formatCurrency(currentPrice)}</p>
+                     
+                     <div className="grid grid-cols-3 gap-2 mb-5">
+                        <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-2.5 text-center border border-slate-100 dark:border-white/5 shadow-sm">
+                            <div className="flex justify-center mb-1 text-emerald-500"><Target className="w-3 h-3" /></div>
+                            <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Y.O.C.</p>
+                            <p className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{yoc.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-2.5 text-center border border-slate-100 dark:border-white/5 shadow-sm">
+                            <div className="flex justify-center mb-1 text-blue-500"><Activity className="w-3 h-3" /></div>
+                            <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Lucro/Prej.</p>
+                            <p className={`text-[11px] font-black tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                               {isPositive ? '+' : ''}{formatCurrency(gainValue)}
+                            </p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-2.5 text-center border border-slate-100 dark:border-white/5 shadow-sm">
+                            <div className="flex justify-center mb-1 text-amber-500"><Percent className="w-3 h-3" /></div>
+                            <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Peso</p>
+                            <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 tabular-nums">{portfolioShare.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</p>
+                        </div>
                      </div>
-                 </div>
-                 <div className="grid grid-cols-3 gap-2 mb-4">
-                    <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-2 text-center border border-slate-100 dark:border-white/5">
-                        <div className="flex justify-center mb-1 text-emerald-500"><Target className="w-3 h-3" /></div>
-                        <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Y.O.C.</p>
-                        <p className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{yoc.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-2 text-center border border-slate-100 dark:border-white/5">
-                        <div className="flex justify-center mb-1 text-blue-500"><Activity className="w-3 h-3" /></div>
-                        <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Lucro/Prej.</p>
-                        <p className={`text-[11px] font-black tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                           {isPositive ? '+' : ''}{formatCurrency(gainValue)}
-                        </p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-2 text-center border border-slate-100 dark:border-white/5">
-                        <div className="flex justify-center mb-1 text-amber-500"><Percent className="w-3 h-3" /></div>
-                        <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">Peso</p>
-                        <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 tabular-nums">{portfolioShare.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</p>
-                    </div>
-                 </div>
-                 <div className="flex gap-2">
-                     <button onClick={(e) => { e.stopPropagation(); setShowHistoryModal(true); }} className="flex-1 py-3 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors active:scale-95">Extrato</button>
-                     <button onClick={(e) => { e.stopPropagation(); setShowDetailsModal(true); }} className="flex-1 py-3 bg-slate-900 dark:bg-white rounded-full text-[10px] font-black uppercase tracking-widest text-white dark:text-slate-900 transition-all active:scale-95 shadow-lg shadow-slate-900/10 dark:shadow-white/10 flex items-center justify-center gap-2">Fundamentos</button>
+
+                     <div className="flex gap-2">
+                         <button onClick={(e) => { e.stopPropagation(); setShowHistoryModal(true); }} className="flex-1 py-3.5 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors active:scale-95">Extrato</button>
+                         <button onClick={(e) => { e.stopPropagation(); setShowDetailsModal(true); }} className="flex-1 py-3.5 bg-slate-900 dark:bg-white rounded-full text-[10px] font-black uppercase tracking-widest text-white dark:text-slate-900 transition-all active:scale-95 shadow-lg shadow-slate-900/10 dark:shadow-white/10 flex items-center justify-center gap-2">Fundamentos</button>
+                     </div>
                  </div>
              </div>
           </div>
-          <div className="flex justify-center">
+          
+          <div className="flex justify-center mt-1">
              <ChevronDown className={`w-3 h-3 text-slate-300 dark:text-slate-600 transition-transform duration-500 ${isExpanded ? 'rotate-180 opacity-0' : 'opacity-100'}`} />
           </div>
         </div>
@@ -148,20 +141,17 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
               ) : (
                 history.map((h, i) => {
                   const todayStr = new Date().toISOString().split('T')[0];
-                  // Lógica Rigorosa: Futuro vs Pago
                   const isFuture = h.paymentDate > todayStr;
                   const isPaid = !isFuture;
 
-                  // Cores e Bordas Diferenciadas
                   const statusColor = isPaid 
-                      ? 'text-emerald-600 dark:text-emerald-500' // Pago = Verde
-                      : 'text-indigo-600 dark:text-indigo-400'; // Futuro = Azul
+                      ? 'text-emerald-600 dark:text-emerald-500'
+                      : 'text-indigo-600 dark:text-indigo-400';
 
                   const typeBoxClass = isPaid
                       ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500'
                       : 'bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400';
                   
-                  // Borda Tracejada se for Futuro
                   const borderClass = isFuture 
                       ? 'border-indigo-200 dark:border-indigo-500/30 border-dashed bg-indigo-50/30 dark:bg-indigo-500/5' 
                       : 'border-slate-100 dark:border-white/5 bg-white dark:bg-[#0f172a]';
@@ -221,7 +211,6 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
               </div>
           </div>
 
-          {/* Análise de Sentimento Inteligente */}
           {asset.sentiment && (
             <div className={`p-5 rounded-[2rem] mb-6 border ${
               asset.sentiment === 'Otimista' ? 'bg-emerald-50/80 dark:bg-emerald-500/5 border-emerald-500/10' :
@@ -299,8 +288,8 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
           )}
 
           <a href={statusInvestUrl} target="_blank" rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 py-3 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors mt-4">
-            <ExternalLink className="w-3 h-3" />
+            className="w-full flex items-center justify-center gap-2 py-4 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors mt-4">
+            <ExternalLink className="w-3.5 h-3.5" />
             Ver no Status Invest
           </a>
         </div>

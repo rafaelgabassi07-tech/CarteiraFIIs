@@ -21,6 +21,8 @@
     /* Font smoothing para animações mais limpas */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Previne seleção de texto acidental em botões */
+    user-select: none;
   }
   
   /* Melhora a rolagem em iOS */
@@ -51,11 +53,12 @@
   }
   .privacy-blur .tabular-nums:hover { filter: blur(0); }
 
-  /* Força aceleração de Hardware */
+  /* Força aceleração de Hardware com backface-visibility */
   .gpu {
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     perspective: 1000px;
+    will-change: transform, opacity;
   }
 }
 
@@ -65,28 +68,32 @@
 ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
 .dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
 
-/* Animations - Usando translate3d para forçar GPU */
+/* Animations Otimizadas */
 .anim-fade-in {
   opacity: 0;
-  transition: opacity var(--duration-normal) var(--ease-out-quint);
-  will-change: opacity;
+  animation: fadeIn var(--duration-normal) var(--ease-out-quint) forwards;
 }
-.anim-fade-in.is-visible { opacity: 1; }
 
 .anim-fade-in-up {
   opacity: 0;
-  transform: translate3d(0, 20px, 0);
-  transition: opacity var(--duration-normal) var(--ease-out-quint), transform var(--duration-normal) var(--ease-out-quint);
-  will-change: opacity, transform;
+  transform: translate3d(0, 15px, 0);
+  animation: fadeInUp var(--duration-normal) var(--ease-out-quint) forwards;
 }
-.anim-fade-in-up.is-visible {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .anim-scale-in {
   opacity: 0;
-  transform: scale3d(0.95, 0.95, 1);
+  transform: scale3d(0.96, 0.96, 1);
   transition: opacity var(--duration-normal) var(--ease-out-quint), transform var(--duration-normal) var(--ease-out-quint);
   will-change: opacity, transform;
 }
@@ -95,16 +102,20 @@
   transform: scale3d(1, 1, 1);
 }
 
-.anim-slide-up {
-  transform: translate3d(0, 100%, 0);
-  transition: transform var(--duration-slow) var(--ease-out-quint);
-  will-change: transform;
-}
-.anim-slide-up.is-visible {
-  transform: translate3d(0, 0, 0);
-}
-
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* Transição suave para Expansão de Cards (CSS Grid trick) */
+.grid-accordion {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-normal) var(--ease-out-quint);
+}
+.grid-accordion-open {
+  grid-template-rows: 1fr;
+}
+.grid-accordion-content {
+  overflow: hidden;
 }

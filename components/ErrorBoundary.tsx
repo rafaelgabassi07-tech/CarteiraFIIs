@@ -1,5 +1,5 @@
 
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 const ConfigurationError: React.FC = () => (
@@ -30,8 +30,8 @@ interface Props {
 }
 
 // ErrorBoundary class catches JavaScript errors anywhere in their child component tree.
-// Using React.Component explicitly to ensure props and state are correctly inherited.
-export class ErrorBoundary extends React.Component<Props, State> {
+// Inherit from named Component import to ensure 'props' is properly recognized by the compiler.
+export class ErrorBoundary extends Component<Props, State> {
   // Define initial state
   public state: State = {
     hasError: false,
@@ -67,7 +67,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    // Accessing children from this.props now works correctly as inheritance is properly defined.
+    // Accessing children from this.props now works as inheritance is correctly handled.
     return this.props.children;
   }
 }
