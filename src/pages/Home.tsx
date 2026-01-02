@@ -3,9 +3,7 @@ import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ChevronsRight, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, YAxis, ComposedChart, Line } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
-import { VariableSizeList } from 'react-window';
-
-const List = VariableSizeList;
+import { VariableSizeList as List } from 'react-window';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -115,15 +113,34 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 const EvolutionTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const invested = data.invested || 0;
+      const total = data.value || 0;
+      const appreciation = total - invested;
+      const isPositive = appreciation >= 0;
+
       return ( 
-        <div className="bg-slate-900/90 backdrop-blur-md text-white px-3 py-2 rounded-xl shadow-2xl border border-white/10 z-50">
-           <p className="text-[10px] font-bold text-slate-400 mb-0.5">{label}</p>
-           {payload.map((entry: any, index: number) => (
-               <p key={index} className="text-xs font-bold tabular-nums flex items-center gap-1.5">
-                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
-                   <span style={{ color: entry.color }}>{entry.name}: {formatBRL(entry.value)}</span>
-               </p>
-           ))}
+        <div className="bg-slate-900/95 backdrop-blur-xl text-white p-3 rounded-2xl shadow-2xl border border-white/10 z-50 min-w-[160px]">
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">{label}</p>
+           
+           <div className="space-y-1.5">
+               <div className="flex justify-between items-center gap-4 text-[10px]">
+                   <span className="font-semibold text-slate-400">Aportes</span>
+                   <span className="font-bold text-slate-200 tabular-nums">{formatBRL(invested)}</span>
+               </div>
+               
+               <div className="flex justify-between items-center gap-4 text-[10px]">
+                   <span className="font-semibold text-slate-400">Valorização</span>
+                   <span className={`font-bold tabular-nums ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                       {isPositive ? '+' : ''}{formatBRL(appreciation)}
+                   </span>
+               </div>
+
+               <div className="pt-1.5 mt-1.5 border-t border-white/10 flex justify-between items-center gap-4">
+                   <span className="text-[10px] font-black text-slate-300 uppercase tracking-wider">Total</span>
+                   <span className="text-xs font-black text-white tabular-nums">{formatBRL(total)}</span>
+               </div>
+           </div>
         </div> 
       );
     }
