@@ -1,7 +1,8 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info } from 'lucide-react';
+// Added CheckCircle2 to the lucide-react imports to fix the missing component error.
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info, LayoutDashboard, History, CheckCircle2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, ComposedChart, Line, YAxis } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 import { VariableSizeList as List } from 'react-window';
@@ -95,7 +96,7 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    return ( <div className="bg-slate-900 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50"> <p className="mb-1 opacity-70">{label}</p> <p className="text-emerald-400 text-sm">{formatBRL(payload[0].value)}</p> </div> );
+    return ( <div className="bg-slate-900 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50 border border-white/10"> <p className="mb-1 opacity-70">{label}</p> <p className="text-emerald-400 text-sm">{formatBRL(payload[0].value)}</p> </div> );
   }
   return null;
 };
@@ -191,7 +192,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         const currentEstimatedYield = totalCurrentProfitPercent * Math.pow(timeProgress, 0.5);
         const simulatedValue = cumulativeInvested * (1 + currentEstimatedYield);
         const [year, month] = monthKey.split('-');
-        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const monthNames = ['Jan', 'Fev', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         data.push({
             rawDate: monthKey,
             date: `${monthNames[parseInt(month) - 1]} ${year.slice(2)}`,
@@ -380,7 +381,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* CARD GANHO REAL */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '200ms' }}>
-        <button onClick={() => setShowRealGainModal(true)} className="w-full text-left bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-500/[0.05] dark:to-indigo-500/[0.05] p-5 rounded-[2.5rem] border border-blue-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-blue-500/5">
+        <button onClick={() => setShowRealGainModal(true)} className="w-full text-left bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-500/[0.05] dark:to-purple-500/[0.05] p-5 rounded-[2.5rem] border border-blue-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-blue-500/5">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-blue-500/20 transition-colors"></div>
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-3">
@@ -513,63 +514,162 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
-      {/* MODAL RENDA PASSIVA */}
+      {/* MODAL RENDA PASSIVA REFINADO */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
-        <div className="flex flex-col h-full">
-            <div className="px-6 pt-2 pb-6 flex items-center justify-between mt-2">
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><CircleDollarSign className="w-6 h-6" /></div>
-                    <div><h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Meus Ganhos</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rendimento Acumulado</p></div>
+        <div className="flex flex-col h-full bg-primary-light dark:bg-[#0b1121]">
+            {/* Header com Navegação Estilizada */}
+            <div className="px-6 pt-4 pb-6 mt-2">
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 shadow-sm">
+                            <CircleDollarSign className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Minha Renda</h2>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Estatísticas e Histórico</p>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
-                    {['summary', 'history', 'magic'].map(tab => (<button key={tab} onClick={() => setIncomeTab(tab as any)} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${incomeTab === tab ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}>{tab === 'summary' ? 'Resumo' : tab === 'history' ? 'Extrato' : 'Magic'}</button>))}
+
+                <div className="flex bg-slate-100 dark:bg-white/5 p-1.5 rounded-[1.75rem] border border-slate-200/50 dark:border-white/5">
+                    {[
+                        { id: 'summary', label: 'Resumo', icon: LayoutDashboard },
+                        { id: 'history', label: 'Extrato', icon: History },
+                        { id: 'magic', label: 'Magic', icon: Sparkles }
+                    ].map(tab => (
+                        <button 
+                            key={tab.id} 
+                            onClick={() => setIncomeTab(tab.id as any)} 
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                                incomeTab === tab.id 
+                                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md scale-[1.02]' 
+                                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                            }`}
+                        >
+                            <tab.icon className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">{tab.label}</span>
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 pb-20">
+            {/* Conteúdo Dinâmico com Padding Ajustado */}
+            <div className="flex-1 overflow-y-auto px-6 pb-24">
                 {incomeTab === 'summary' && (
                     <div className="space-y-6 anim-fade-in-up is-visible">
-                        <div className="bg-emerald-500 text-white p-8 rounded-[2.5rem] shadow-xl shadow-emerald-500/20 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-80">Rendimento Total</p>
-                            <h3 className="text-4xl font-black tabular-nums tracking-tighter mb-4">{formatBRL(received)}</h3>
-                            <div className="pt-6 border-t border-white/20 grid grid-cols-2 gap-4">
-                                <div><p className="text-[10px] font-bold uppercase opacity-60 mb-1">Média Mensal</p><p className="text-lg font-black tabular-nums">{formatBRL(averageMonthly)}</p></div>
-                                <div><p className="text-[10px] font-bold uppercase opacity-60 mb-1">Melhor Pagador</p><p className="text-lg font-black truncate">{bestPayer.ticker}</p></div>
+                        {/* Card Principal de Destaque */}
+                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-8 rounded-[2.5rem] shadow-2xl shadow-emerald-500/20 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-[60px] -mr-16 -mt-16"></div>
+                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full blur-[40px] -ml-16 -mb-16"></div>
+                            
+                            <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-3 opacity-90">Total Recebido</p>
+                            <div className="flex items-baseline gap-2 mb-8">
+                                <span className="text-lg font-bold opacity-70">R$</span>
+                                <h3 className="text-4xl font-black tabular-nums tracking-tighter">{received.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                            </div>
+                            
+                            <div className="pt-6 border-t border-white/20 grid grid-cols-2 gap-6">
+                                <div>
+                                    <p className="text-[9px] font-black uppercase opacity-70 mb-1 tracking-widest">Média Mensal</p>
+                                    <p className="text-lg font-black tabular-nums">{formatBRL(averageMonthly)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-black uppercase opacity-70 mb-1 tracking-widest">Yield on Cost</p>
+                                    <p className="text-lg font-black tabular-nums">{yieldOnCostPortfolio.toFixed(2)}%</p>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-white/5 p-6 rounded-[2.5rem] border border-slate-100 dark:border-transparent">
-                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Últimos 12 Meses</h4>
-                            <div className="h-40 w-full">
+                        {/* Gráfico de Barras Elegante */}
+                        <div className="bg-white dark:bg-white/5 p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm">
+                            <div className="flex items-center justify-between mb-8">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Últimos 12 Meses</h4>
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full">
+                                    <TrendingUp className="w-3 h-3 text-emerald-500" />
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Em Crescimento</span>
+                                </div>
+                            </div>
+                            <div className="h-44 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={chartData}><XAxis dataKey="name" hide /><Tooltip content={<CustomTooltip />} /><Bar dataKey="value" fill={accentColor} radius={[4, 4, 0, 0]} /></BarChart>
+                                    <BarChart data={chartData}>
+                                        <XAxis dataKey="name" hide />
+                                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                                        <Bar 
+                                            dataKey="value" 
+                                            fill={accentColor} 
+                                            radius={[6, 6, 0, 0]} 
+                                            animationDuration={1500}
+                                        />
+                                    </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3">
-                            <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-transparent flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><Zap className="w-5 h-5" /></div><span className="text-xs font-bold text-slate-700 dark:text-slate-300">Pendente p/ Receber</span></div><span className="text-sm font-black text-amber-500 tabular-nums">{formatBRL(upcoming)}</span></div>
-                            <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-transparent flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-sky-500/10 flex items-center justify-center text-sky-500"><Coins className="w-5 h-5" /></div><span className="text-xs font-bold text-slate-700 dark:text-slate-300">Dividendos Pagos</span></div><span className="text-sm font-black text-emerald-500 tabular-nums">{formatBRL(totalDividendsReceived)}</span></div>
+                        {/* Estatísticas Complementares */}
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm transition-transform active:scale-[0.98]">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><Hourglass className="w-6 h-6" /></div>
+                                    <div>
+                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Proventos Provisionados</span>
+                                        <p className="text-[10px] text-slate-400 font-medium">Aguardando data de pagamento</p>
+                                    </div>
+                                </div>
+                                <span className="text-base font-black text-amber-500 tabular-nums">{formatBRL(upcoming)}</span>
+                            </div>
+
+                            <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm transition-transform active:scale-[0.98]">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><Trophy className="w-6 h-6" /></div>
+                                    <div>
+                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Melhor Pagador</span>
+                                        <p className="text-[10px] text-slate-400 font-medium">Maior acúmulo histórico</p>
+                                    </div>
+                                </div>
+                                <span className="text-base font-black text-indigo-500 tabular-nums">{bestPayer.ticker}</span>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {incomeTab === 'history' && (
-                    <div className="h-[500px] anim-fade-in-up is-visible">
-                         <List height={500} itemCount={flatHistory.length} itemSize={getItemSize} width="100%">
+                    <div className="h-[520px] anim-fade-in-up is-visible">
+                         <List height={520} itemCount={flatHistory.length} itemSize={getItemSize} width="100%">
                             {({ index, style }) => {
                                 const item = flatHistory[index];
-                                if (item.type === 'header') return (<div style={style} className="flex items-center justify-between px-2 pt-4 pb-2"><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{getMonthName(item.month)}</h4><span className="text-[10px] font-black text-emerald-500 tabular-nums">{formatBRL(item.total)}</span></div>);
+                                if (item.type === 'header') return (
+                                    <div style={style} className="flex items-center justify-between px-3 pt-6 pb-2">
+                                        <h4 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] flex items-center gap-2">
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            {getMonthName(item.month)}
+                                        </h4>
+                                        <div className="h-[1px] flex-1 mx-4 bg-slate-200 dark:bg-white/5"></div>
+                                        <span className="text-xs font-black text-emerald-500 tabular-nums">{formatBRL(item.total)}</span>
+                                    </div>
+                                );
+                                
                                 const h = item.data;
                                 return (
-                                    <div style={style} className="py-1">
-                                        <div className="bg-white dark:bg-[#0b1121] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center font-bold text-xs text-slate-400 flex-col leading-none"><span>{h.paymentDate.split('-')[2]}</span><span className="text-[8px] opacity-60 uppercase">{h.paymentDate.split('-')[1]}</span></div>
-                                                <div><h5 className="text-sm font-black text-slate-900 dark:text-white leading-tight">{h.ticker}</h5><p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{h.type.replace('JRS CAP PROPRIO', 'JCP')}</p></div>
+                                    <div style={style} className="py-1.5">
+                                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[1.75rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm transition-all hover:border-emerald-500/30 active:scale-[0.98]">
+                                            <div className="flex items-center gap-4 min-w-0">
+                                                <div className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-black/20 flex flex-col items-center justify-center font-black text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-white/5">
+                                                    <span className="text-xs leading-none">{h.paymentDate.split('-')[2]}</span>
+                                                    <span className="text-[9px] uppercase mt-0.5 opacity-60">{h.paymentDate.split('-')[1]}</span>
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <h5 className="text-sm font-black text-slate-900 dark:text-white leading-none mb-1 truncate">{h.ticker}</h5>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{h.type.replace('JRS CAP PROPRIO', 'JCP')}</span>
+                                                        <span className="text-[9px] text-slate-300">•</span>
+                                                        <span className="text-[9px] font-bold text-slate-400">{h.quantityOwned} cotas</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="text-right"><p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(h.totalReceived)}</p><p className="text-[9px] text-slate-400 font-medium leading-none mt-1">{h.quantityOwned} cotas</p></div>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">{formatBRL(h.totalReceived)}</p>
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">Líquido</p>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -580,20 +680,68 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                 {incomeTab === 'magic' && (
                     <div className="space-y-4 anim-fade-in-up is-visible">
-                        <div className="bg-slate-900 dark:bg-white p-6 rounded-[2.5rem] text-center mb-6">
-                            <Sparkles className="w-8 h-8 text-amber-400 mx-auto mb-3" />
-                            <h3 className="text-lg font-black text-white dark:text-slate-900">Número Mágico</h3>
-                            <p className="text-xs text-white/60 dark:text-slate-900/60 max-w-[200px] mx-auto mt-2 leading-relaxed">Quantas cotas você precisa para que o ativo se pague sozinho todo mês.</p>
+                        <div className="bg-slate-900 dark:bg-white p-8 rounded-[2.5rem] text-center mb-6 relative overflow-hidden shadow-xl">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 dark:bg-black/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                            <div className="relative z-10">
+                                <Sparkles className="w-10 h-10 text-amber-400 mx-auto mb-4 animate-pulse" />
+                                <h3 className="text-xl font-black text-white dark:text-slate-900 tracking-tight">Efeito Bola de Neve</h3>
+                                <p className="text-xs text-white/60 dark:text-slate-900/60 max-w-[240px] mx-auto mt-3 leading-relaxed font-medium">Quantas cotas você precisa para que os proventos paguem uma nova cota todo mês.</p>
+                            </div>
                         </div>
-                        {magicNumbers.map(m => (
-                            <div key={m.ticker} className="bg-white dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-transparent">
-                                <div className="flex justify-between items-center mb-3">
-                                    <div className="flex items-center gap-2"><h4 className="text-base font-black text-slate-900 dark:text-white">{m.ticker}</h4><span className="text-[10px] font-bold text-slate-400">R$ {m.rate.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / cota</span></div>
-                                    <span className="text-[10px] font-black uppercase text-amber-500 bg-amber-500/10 px-2 py-1 rounded-lg">{m.progress.toFixed(0)}%</span>
+
+                        {magicNumbers.length === 0 ? (
+                            <div className="text-center py-20 opacity-50 bg-white dark:bg-white/5 rounded-[2.5rem] border border-dashed border-slate-300 dark:border-white/10">
+                                <Zap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                                <p className="text-sm font-bold text-slate-400">Dados insuficientes para cálculo.</p>
+                            </div>
+                        ) : magicNumbers.map(m => (
+                            <div key={m.ticker} className="bg-white dark:bg-white/5 p-6 rounded-[2.25rem] border border-slate-100 dark:border-white/5 shadow-sm transition-all hover:shadow-md">
+                                <div className="flex justify-between items-start mb-5">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent font-black text-xs">{m.ticker.substring(0,4)}</div>
+                                        <div>
+                                            <h4 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{m.ticker}</h4>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">R$ {m.rate.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} por cota</p>
+                                        </div>
+                                    </div>
+                                    <div className="px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest tabular-nums">
+                                        {m.progress.toFixed(0)}%
+                                    </div>
                                 </div>
-                                <div className="h-2 w-full bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden mb-3"><div style={{ width: `${m.progress}%` }} className="h-full bg-emerald-500 rounded-full"></div></div>
-                                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-400"><span>Possui: {m.currentQty}</span><span>Objetivo: {m.magicQty}</span></div>
-                                {m.missing > 0 && <p className="text-[10px] text-slate-500 mt-2 font-medium">Faltam <span className="text-slate-900 dark:text-white font-black">{m.missing} cotas</span> para o efeito bola de neve.</p>}
+                                
+                                <div className="space-y-4">
+                                    <div className="h-1.5 w-full bg-slate-100 dark:bg-black/20 rounded-full overflow-hidden">
+                                        <div 
+                                            style={{ width: `${m.progress}%` }} 
+                                            className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(16,185,129,0.3)]"
+                                        ></div>
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center px-1">
+                                        <div className="text-center">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Atual</p>
+                                            <p className="text-sm font-black text-slate-700 dark:text-slate-300 tabular-nums">{m.currentQty}</p>
+                                        </div>
+                                        <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
+                                        <div className="text-center">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Meta</p>
+                                            <p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{m.magicQty}</p>
+                                        </div>
+                                    </div>
+
+                                    {m.missing > 0 ? (
+                                        <div className="pt-4 border-t border-slate-50 dark:border-white/5 text-center">
+                                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
+                                                Faltam <span className="text-emerald-500 font-black tabular-nums">{m.missing} cotas</span> para o ativo se pagar sozinho.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="pt-4 border-t border-slate-50 dark:border-white/5 text-center flex items-center justify-center gap-2">
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Objetivo Concluído!</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -679,7 +827,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                           const val = payload[0].value;
                                           const displayVal = typeof val === 'number' ? val.toFixed(2) : val;
                                           return (
-                                            <div className="bg-slate-900 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg">
+                                            <div className="bg-slate-900 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg border border-white/10">
                                               {displayVal}%
                                             </div>
                                           );
@@ -696,7 +844,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <div className="grid grid-cols-2 gap-3 pb-12">
                          <div className="bg-white dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-transparent"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Lucro Nominal</p><p className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(lucroNominalAbsoluto)}</p></div>
                          <div className="bg-white dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-transparent"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Corrosão IPCA</p><p className="text-lg font-black text-rose-500 tabular-nums">-{formatBRL(custoCorrosaoInflacao)}</p></div>
-                         <div className="bg-slate-900 dark:bg-white col-span-2 p-6 rounded-[2rem] flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-white/10 dark:bg-slate-900/10 flex items-center justify-center text-white dark:text-slate-900"><Scale className="w-5 h-5" /></div><span className="text-sm font-black text-white dark:text-slate-900">Lucro Real (em R$)</span></div><span className="text-xl font-black text-white dark:text-slate-900 tabular-nums">{formatBRL(ganhoRealValor)}</span></div>
+                         <div className="bg-slate-900 dark:bg-white col-span-2 p-6 rounded-[2rem] flex items-center justify-between shadow-xl"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-white/10 dark:bg-slate-900/10 flex items-center justify-center text-white dark:text-slate-900"><Scale className="w-5 h-5" /></div><span className="text-sm font-black text-white dark:text-slate-900">Lucro Real (em R$)</span></div><span className="text-xl font-black text-white dark:text-slate-900 tabular-nums">{formatBRL(ganhoRealValor)}</span></div>
                     </div>
                 </div>
             ) : (

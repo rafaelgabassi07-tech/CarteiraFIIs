@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,6 +25,12 @@
   
   /* Melhora a rolagem em iOS */
   * { -webkit-overflow-scrolling: touch; }
+
+  /* REMOVER CONTORNO QUADRADO NOS GRÁFICOS */
+  .recharts-wrapper, .recharts-surface {
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @layer utilities {

@@ -30,7 +30,7 @@ interface Props {
 }
 
 // ErrorBoundary class catches JavaScript errors anywhere in their child component tree.
-// Using React.Component explicitly with generic types ensures that 'props' and 'state' are correctly recognized by TypeScript.
+// Using React.Component explicitly to ensure props and state are correctly inherited.
 export class ErrorBoundary extends React.Component<Props, State> {
   // Define initial state
   public state: State = {
@@ -67,7 +67,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    // Return children from this.props which is correctly recognized when extending React.Component<Props, State>
+    // Accessing children from this.props now works correctly as inheritance is properly defined.
     return this.props.children;
   }
 }
