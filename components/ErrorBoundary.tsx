@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 const ConfigurationError: React.FC = () => (
@@ -30,13 +30,18 @@ interface Props {
 }
 
 // ErrorBoundary class catches JavaScript errors anywhere in their child component tree
-// Fixed "Property 'props' does not exist" error by extending Component directly.
-export class ErrorBoundary extends Component<Props, State> {
+// Fixed "Property 'props' does not exist" error by extending React.Component explicitly.
+export class ErrorBoundary extends React.Component<Props, State> {
   // Using public state and explicit return type for clarity in inheritance
   public state: State = {
     hasError: false,
     error: null
   };
+
+  // Adding an explicit constructor can help TypeScript resolve property inheritance correctly
+  constructor(props: Props) {
+    super(props);
+  }
 
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
