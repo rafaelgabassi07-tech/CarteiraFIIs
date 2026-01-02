@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck, AlertCircle, Sparkle, PartyPopper, Loader2, CloudOff, Cloud, Wifi, Lock, Fingerprint, Delete, ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -12,7 +11,10 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
   useEffect(() => {
     if (isOpen) {
       setIsMounted(true);
-      requestAnimationFrame(() => setIsVisible(true));
+      // Double RAF garante que o browser pintou o frame inicial antes de animar
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+      });
     } else {
       setIsVisible(false);
       const timer = setTimeout(() => setIsMounted(false), duration);
@@ -30,7 +32,7 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
 
   return (
     <div 
-      className={`fixed top-0 left-0 right-0 z-[110] flex items-center justify-center gap-2 pt-[calc(env(safe-area-inset-top)+8px)] pb-1.5 px-4 text-[9px] font-black uppercase tracking-[0.15em] shadow-sm transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform ${
+      className={`fixed top-0 left-0 right-0 z-[110] flex items-center justify-center gap-2 pt-[calc(env(safe-area-inset-top)+8px)] pb-1.5 px-4 text-[9px] font-black uppercase tracking-[0.15em] shadow-sm transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform will-change-transform ${
         isHidden ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
       } ${
         isConnected 
@@ -92,14 +94,17 @@ export const Header: React.FC<HeaderProps> = ({
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 10);
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => {
+        const scrolled = window.scrollY > 10;
+        if (scrolled !== isScrolled) setIsScrolled(scrolled);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [isScrolled]);
 
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint ${
+      className={`fixed left-0 right-0 z-40 h-24 flex items-center justify-between px-6 transition-all duration-500 ease-out-quint will-change-transform ${
         bannerVisible ? 'top-10' : 'top-0'
       } ${
         isScrolled 
@@ -178,9 +183,12 @@ interface SwipeableModalProps {
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
   const modalRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  
   const startY = useRef(0);
   const currentY = useRef(0);
   const isDragging = useRef(false);
+  const rafId = useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     // Só inicia o drag se estivermos no topo do modal.
@@ -188,7 +196,10 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       startY.current = e.touches[0].clientY;
       isDragging.current = true;
       currentY.current = 0;
-      modalRef.current.style.transition = 'none'; // Remove transição para seguir o dedo instantaneamente
+      
+      // Remove transição para evitar lag durante o arraste
+      modalRef.current.style.transition = 'none'; 
+      if (backdropRef.current) backdropRef.current.style.transition = 'none';
     }
   };
 
@@ -198,28 +209,31 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     const y = e.touches[0].clientY;
     const deltaY = y - startY.current;
     
-    // Se o movimento for para baixo (deltaY > 0)
     if (deltaY > 0) {
-      // PREVENÇÃO CRÍTICA: Se o modal tiver conteúdo scrollável e o usuário
-      // começar a rolar para baixo tendo saído do topo, cancelamos o drag.
       if (modalRef.current.scrollTop > 0) {
           isDragging.current = false;
           return;
       }
 
-      // Impede o "Pull-to-Refresh" nativo do navegador e scrolls indesejados
-      if (e.cancelable) {
-          e.preventDefault();
-      }
+      if (e.cancelable) e.preventDefault();
 
       currentY.current = deltaY;
       
-      // FIX: Resistência removida (1:1) para o modal "colar" no dedo do usuário
-      const dragValue = deltaY; 
-      modalRef.current.style.transform = `translateY(${dragValue}px)`;
+      // Use requestAnimationFrame para atualizar o DOM de forma fluida (60fps)
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+      
+      rafId.current = requestAnimationFrame(() => {
+          if (modalRef.current) {
+              modalRef.current.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+              
+              // Calcula opacidade do backdrop baseado na distância (max 600px para sumir totalmente)
+              if (backdropRef.current) {
+                  const opacity = Math.max(0, 1 - (deltaY / 600));
+                  backdropRef.current.style.opacity = String(opacity);
+              }
+          }
+      });
     } else {
-        // Se tentar rolar para cima (deltaY < 0), liberamos o controle para o scroll nativo
-        // a menos que estejamos já arrastando (para evitar pulos)
         if (currentY.current <= 0) {
             isDragging.current = false;
         }
@@ -229,27 +243,42 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   const handleTouchEnd = () => {
     if (!isDragging.current || !modalRef.current) return;
     isDragging.current = false;
-    modalRef.current.style.transition = 'transform 0.5s cubic-bezier(0.23, 1, 0.32, 1)'; // ease-out-quint
     
-    // Threshold para fechar
-    if (currentY.current > 100) { 
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+
+    // Restaura transições para a animação final (fechar ou voltar)
+    modalRef.current.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
+    if (backdropRef.current) backdropRef.current.style.transition = 'opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
+    
+    // Threshold para fechar (120px ou velocidade rápida)
+    if (currentY.current > 120) { 
       onClose();
     } else {
-      modalRef.current.style.transform = 'translateY(0)';
+      // Reseta posições
+      modalRef.current.style.transform = 'translate3d(0, 0, 0)';
+      if (backdropRef.current) backdropRef.current.style.opacity = '1';
     }
   };
+
+  // Cleanup de RAF
+  useEffect(() => {
+      return () => {
+          if (rafId.current) cancelAnimationFrame(rafId.current);
+      };
+  }, []);
 
   if (!isMounted) return null;
 
   return createPortal(
     <div 
-      className={`fixed inset-0 z-50 flex flex-col justify-end transition-opacity duration-300 ${
-        isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      className={`fixed inset-0 z-50 flex flex-col justify-end transition-opacity duration-400 ease-out-quint ${
+        isVisible ? 'pointer-events-auto' : 'pointer-events-none'
       }`}
       onClick={onClose}
     >
       <div 
-        className={`absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm transition-opacity ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+        ref={backdropRef}
+        className={`absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm transition-opacity duration-400 ease-out-quint will-change-opacity ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       ></div>
       <div
         ref={modalRef}
@@ -258,9 +287,13 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         // "overscroll-contain" impede que o scroll do modal afete a página de trás
-        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] h-[92dvh] w-full overflow-y-auto overscroll-contain transition-transform duration-500 ease-out-quint transform shadow-2xl pb-safe ${
+        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] h-[92dvh] w-full overflow-y-auto overscroll-contain shadow-2xl pb-safe will-change-transform gpu ${
           isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}
+        style={{
+            // Garante que a transição CSS inicial funcione
+            transition: 'transform 0.5s cubic-bezier(0.23, 1, 0.32, 1)'
+        }}
       >
         {/* Handle Bar - Área de toque visual para arrastar */}
         <div className="sticky top-0 z-50 flex justify-center pt-4 pb-2 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md touch-none pointer-events-none cursor-grab active:cursor-grabbing">
@@ -298,8 +331,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
         onClick={onCancel}
       ></div>
       <div 
-        className={`relative bg-white dark:bg-[#0f172a] rounded-3xl w-full max-w-sm shadow-xl p-6 text-center transition-all duration-300 ease-out-quint transform ${
-          isVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0'
+        className={`relative bg-white dark:bg-[#0f172a] rounded-3xl w-full max-w-sm shadow-xl p-6 text-center transition-all duration-300 ease-out-quint transform will-change-transform ${
+          isVisible ? 'scale-100 opacity-100 translate-y-0' : 'scale-90 opacity-0 translate-y-4'
         }`}
       >
         <div className="mx-auto w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center mb-4 text-rose-500">
@@ -342,7 +375,7 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
     <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center pointer-events-none pb-safe">
-      <nav className="pointer-events-auto bg-[#0f172a] shadow-2xl shadow-black/50 p-2 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-2xl">
+      <nav className="pointer-events-auto bg-[#0f172a] shadow-2xl shadow-black/50 p-2 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-2xl gpu">
         {navItems.map(item => {
           const isActive = currentTab === item.id;
           return (
@@ -404,8 +437,6 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({
   return (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
       <div className="p-6 pb-8">
-        {/* X Button REMOVED - Drag to close only */}
-        
         <div className="text-center mb-6 mt-2">
           <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 text-accent">
             <Gift className="w-10 h-10" />

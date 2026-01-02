@@ -4,10 +4,11 @@
 
 @layer base {
   :root {
-    --duration-fast: 150ms;
-    --duration-normal: 300ms;
-    --duration-slow: 500ms;
+    --duration-fast: 200ms;
+    --duration-normal: 400ms;
+    --duration-slow: 600ms;
     --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
     --blur-amount: 8px;
     --color-accent-rgb: 14 165 233; /* Default Sky-500 */
     --color-accent: #0ea5e9;
@@ -16,6 +17,9 @@
   body { 
     -webkit-tap-highlight-color: transparent; 
     overscroll-behavior-y: none; 
+    /* Font smoothing para animações mais limpas */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   /* Melhora a rolagem em iOS */
@@ -39,6 +43,13 @@
     transition: filter 0.2s ease;
   }
   .privacy-blur .tabular-nums:hover { filter: blur(0); }
+
+  /* Força aceleração de Hardware */
+  .gpu {
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
 }
 
 /* Scrollbar Styles */
@@ -47,39 +58,43 @@
 ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
 .dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
 
-/* Animations */
+/* Animations - Usando translate3d para forçar GPU */
 .anim-fade-in {
   opacity: 0;
   transition: opacity var(--duration-normal) var(--ease-out-quint);
+  will-change: opacity;
 }
 .anim-fade-in.is-visible { opacity: 1; }
 
 .anim-fade-in-up {
   opacity: 0;
-  transform: translateY(15px);
+  transform: translate3d(0, 20px, 0);
   transition: opacity var(--duration-normal) var(--ease-out-quint), transform var(--duration-normal) var(--ease-out-quint);
+  will-change: opacity, transform;
 }
 .anim-fade-in-up.is-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 
 .anim-scale-in {
   opacity: 0;
-  transform: scale(0.95);
+  transform: scale3d(0.95, 0.95, 1);
   transition: opacity var(--duration-normal) var(--ease-out-quint), transform var(--duration-normal) var(--ease-out-quint);
+  will-change: opacity, transform;
 }
 .anim-scale-in.is-visible {
   opacity: 1;
-  transform: scale(1);
+  transform: scale3d(1, 1, 1);
 }
 
 .anim-slide-up {
-  transform: translateY(100%);
+  transform: translate3d(0, 100%, 0);
   transition: transform var(--duration-slow) var(--ease-out-quint);
+  will-change: transform;
 }
 .anim-slide-up.is-visible {
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 
 @keyframes shimmer {
