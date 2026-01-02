@@ -1,7 +1,7 @@
 
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star, ArrowRightLeft, Clock, BarChart3, Signal, Network, GitCommit, HelpCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star, ArrowRightLeft, Clock, BarChart3, Signal, Network, GitCommit, HelpCircle, RefreshCw, Power } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
 import { ThemeType } from '../App';
 import { supabase } from '../services/supabase';
@@ -40,6 +40,7 @@ interface SettingsProps {
   onSyncAll: (force: boolean) => Promise<void>;
   currentVersionDate: string | null;
   lastAiStatus: ServiceStatus;
+  onForceUpdate: () => void;
 }
 
 export const Settings: React.FC<SettingsProps> = ({ 
@@ -48,7 +49,7 @@ export const Settings: React.FC<SettingsProps> = ({
   geminiDividends, onImportDividends, onResetApp, theme, onSetTheme,
   accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode,
   appVersion, availableVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
-  pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll, currentVersionDate, lastAiStatus
+  pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll, currentVersionDate, lastAiStatus, onForceUpdate
 }) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates' | 'about' | 'security' | 'privacy'>('menu');
   const [message, setMessage] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
@@ -61,6 +62,7 @@ export const Settings: React.FC<SettingsProps> = ({
     supabase: 'checking',
     brapi: 'checking',
   });
+  const [isServicesChecking, setIsServicesChecking] = useState(false);
   
   const [cachedItemsCount, setCachedItemsCount] = useState({ quotes: 0, divs: 0 });
   const [networkType, setNetworkType] = useState<string>('Unknown');
@@ -120,56 +122,63 @@ export const Settings: React.FC<SettingsProps> = ({
   // Modal States
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showForceUpdateConfirm, setShowForceUpdateConfirm] = useState(false);
   
   // State for Updates screen animation
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const notesContainerRef = useRef<HTMLDivElement>(null);
 
+  // Função centralizada de verificação de serviços
+  const runServiceCheck = useCallback(async () => {
+    setIsServicesChecking(true);
+    setHealthStatus({ supabase: 'checking', brapi: 'checking' });
+    setEstLatency(null);
+
+    // 1. Connection Info
+    // @ts-ignore
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn) setNetworkType(conn.effectiveType ? conn.effectiveType.toUpperCase() : (conn.type || 'WIFI'));
+    
+    // 2. Cache Info
+    const quotesCache = localStorage.getItem('investfiis_v3_quote_cache');
+    const qCount = quotesCache ? Object.keys(JSON.parse(quotesCache)).length : 0;
+    setCachedItemsCount(prev => ({ ...prev, quotes: qCount }));
+
+    const start = performance.now();
+    
+    const checkSupabase = async (): Promise<ServiceStatus> => {
+        if (!user?.id) return 'error';
+        const { error } = await supabase.from('transactions').select('id', { count: 'exact', head: true });
+        return error ? 'error' : 'operational';
+    };
+
+    const checkBrapi = async (): Promise<ServiceStatus> => {
+        try {
+            if (!process.env.BRAPI_TOKEN) return 'error';
+            const res = await fetch(`https://brapi.dev/api/quote/PETR4?token=${process.env.BRAPI_TOKEN}`);
+            return res.ok ? 'operational' : 'degraded';
+        } catch {
+            return 'error';
+        }
+    };
+
+    const [supabaseResult, brapiResult] = await Promise.all([checkSupabase(), checkBrapi()]);
+    const end = performance.now();
+    
+    setEstLatency(Math.round(end - start));
+    setHealthStatus({
+        supabase: supabaseResult,
+        brapi: brapiResult
+    });
+    setIsServicesChecking(false);
+  }, [user]);
+
   // Efeito para verificar a saúde dos serviços quando a seção é aberta
   useEffect(() => {
     if (activeSection === 'integrations') {
-      // 1. Connection Info
-      // @ts-ignore
-      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      if (conn) setNetworkType(conn.effectiveType ? conn.effectiveType.toUpperCase() : (conn.type || 'WIFI'));
-      
-      // 2. Cache Info
-      const quotesCache = localStorage.getItem('investfiis_v3_quote_cache');
-      const qCount = quotesCache ? Object.keys(JSON.parse(quotesCache)).length : 0;
-      setCachedItemsCount(prev => ({ ...prev, quotes: qCount }));
-
-      if (healthStatus.supabase === 'checking' || healthStatus.brapi === 'checking') {
-        const checkServices = async () => {
-          const start = performance.now();
-          const checkSupabase = async (): Promise<ServiceStatus> => {
-            if (!user?.id) return 'error';
-            const { error } = await supabase.from('transactions').select('id', { count: 'exact', head: true });
-            return error ? 'error' : 'operational';
-          };
-
-          const checkBrapi = async (): Promise<ServiceStatus> => {
-            try {
-              if (!process.env.BRAPI_TOKEN) return 'error';
-              const res = await fetch(`https://brapi.dev/api/quote/PETR4?token=${process.env.BRAPI_TOKEN}`);
-              return res.ok ? 'operational' : 'degraded';
-            } catch {
-              return 'error';
-            }
-          };
-
-          const [supabaseResult, brapiResult] = await Promise.all([checkSupabase(), checkBrapi()]);
-          const end = performance.now();
-          setEstLatency(Math.round(end - start));
-
-          setHealthStatus({
-            supabase: supabaseResult,
-            brapi: brapiResult
-          });
-        };
-        checkServices();
-      }
+        runServiceCheck();
     }
-  }, [activeSection, user, healthStatus.supabase, healthStatus.brapi]);
+  }, [activeSection, runServiceCheck]);
 
 
   // Scroll Reset Effect
@@ -685,6 +694,11 @@ export const Settings: React.FC<SettingsProps> = ({
                             {checkStatus === 'checking' ? 'Verificando...' : updateAvailable ? 'Atualizar Agora' : 'Buscar Atualizações'}
                         </span>
                     </button>
+                    {lastChecked && (
+                        <p className="text-[10px] text-slate-400 mt-3 opacity-60 font-mono">
+                            Última verificação: {new Date(lastChecked).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                    )}
                 </div>
                 
                 <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 overscroll-contain">
@@ -716,6 +730,15 @@ export const Settings: React.FC<SettingsProps> = ({
                            <p className="text-xs text-slate-400">Nenhuma nota de atualização disponível.</p>
                        </div>
                    )}
+                   
+                   <div className="pt-8 border-t border-slate-100 dark:border-white/5 mt-4">
+                       <button 
+                           onClick={() => setShowForceUpdateConfirm(true)}
+                           className="w-full text-center text-[10px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 uppercase tracking-widest py-2"
+                       >
+                           Problemas? Reinstalar App
+                       </button>
+                   </div>
                 </div>
              </div>
           )}
@@ -724,122 +747,122 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'integrations' && (
             <div className="space-y-6">
                 
-                {/* 1. Header Card - System Status */}
-                <div className="bg-emerald-500/10 p-6 rounded-[2.5rem] border border-emerald-500/20 relative overflow-hidden text-center">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-[80px] -mr-24 -mt-24 pointer-events-none animate-pulse"></div>
-                    <div className="relative z-10">
-                        <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <Activity className="w-8 h-8 text-emerald-500" strokeWidth={1.5} />
+                {/* 1. Network & Status Compact Bar */}
+                <div className="flex items-center justify-between bg-white dark:bg-[#0f172a] p-3 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">{isOnline ? 'Sistema Online' : 'Offline'}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400">
+                            <span className="flex items-center gap-1.5"><Signal className="w-3 h-3" /> {networkType}</span>
+                            <div className="h-3 w-[1px] bg-slate-200 dark:bg-white/10"></div>
+                            <span className="flex items-center gap-1.5"><Gauge className="w-3 h-3" /> {estLatency ? `${estLatency}ms` : '-'}</span>
                         </div>
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Sistemas Operacionais</h3>
-                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mt-1">Todos os serviços online</p>
+                        <button 
+                            onClick={runServiceCheck} 
+                            disabled={isServicesChecking}
+                            className={`w-6 h-6 rounded-lg bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-white transition-all active:scale-95 ${isServicesChecking ? 'animate-spin' : ''}`}
+                        >
+                            <RefreshCw className="w-3 h-3" />
+                        </button>
                     </div>
                 </div>
 
-                {/* 2. Network & Latency Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col justify-between h-28 relative group">
-                        <div className="absolute top-3 right-3 text-slate-300 dark:text-slate-700">
-                            <Signal className="w-4 h-4" />
-                        </div>
-                        <div>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Conexão</span>
-                            <div className="flex items-center gap-2 mt-1">
-                                <p className="text-xl font-black text-slate-900 dark:text-white tabular-nums">{networkType}</p>
-                                <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                {/* 2. Primary Actions - Manual Control (RESTORED & PROMINENT) */}
+                <Section title="Controle Manual">
+                    <div className="grid grid-cols-2 gap-3">
+                        <button 
+                            onClick={handleForceMarketUpdate}
+                            disabled={isMarketUpdating}
+                            className="bg-indigo-500/10 hover:bg-indigo-500/20 active:scale-95 text-indigo-600 dark:text-indigo-400 p-4 rounded-2xl border border-indigo-500/20 flex flex-col items-center justify-center gap-2 transition-all group"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-white/10 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                {isMarketUpdating ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
                             </div>
-                        </div>
-                        <p className="text-[10px] text-slate-500 font-medium">Network Type</p>
-                    </div>
-                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col justify-between h-28 relative group">
-                        <div className="absolute top-3 right-3 text-slate-300 dark:text-slate-700">
-                            <Gauge className="w-4 h-4" />
-                        </div>
-                        <div>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Latência Est.</span>
-                            <p className="text-xl font-black text-slate-900 dark:text-white tabular-nums">{estLatency ? `${estLatency}ms` : '...'}</p>
-                        </div>
-                        <p className="text-[10px] text-slate-500 font-medium">Round Trip Time</p>
-                    </div>
-                </div>
+                            <div className="text-center">
+                                <span className="text-[10px] font-black uppercase tracking-wider block mb-0.5">Atualizar Mercado</span>
+                                <span className="text-[9px] opacity-70 block leading-tight">Forçar recarga de cotações</span>
+                            </div>
+                        </button>
 
-                {/* 3. Service Detail Cards */}
-                <Section title="Infraestrutura">
+                        <button 
+                            onClick={handleForceSync}
+                            disabled={isSyncing}
+                            className="bg-sky-500/10 hover:bg-sky-500/20 active:scale-95 text-sky-600 dark:text-sky-400 p-4 rounded-2xl border border-sky-500/20 flex flex-col items-center justify-center gap-2 transition-all group"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-white/10 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Cloud className="w-5 h-5" />}
+                            </div>
+                            <div className="text-center">
+                                <span className="text-[10px] font-black uppercase tracking-wider block mb-0.5">Sincronizar Nuvem</span>
+                                <span className="text-[9px] opacity-70 block leading-tight">Backup instantâneo</span>
+                            </div>
+                        </button>
+                    </div>
+                </Section>
+
+                {/* 3. Service Detail Cards (Refined) */}
+                <Section title="Infraestrutura & Serviços">
                     <div className="space-y-3">
                         {/* Supabase Card */}
-                        <div className="bg-white dark:bg-[#0f172a] p-5 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500"><Database className="w-5 h-5" /></div>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Supabase Cloud</h4>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Database & Auth</p>
-                                    </div>
+                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500"><Database className="w-5 h-5" /></div>
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Supabase Cloud</h4>
+                                    <p className="text-[9px] text-slate-400 font-mono">AWS sa-east-1 • WSS</p>
                                 </div>
-                                <span className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.supabase === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                                    {healthStatus.supabase === 'operational' ? 'Active' : 'Error'}
-                                </span>
                             </div>
-                            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg">Region: AWS sa-east-1</div>
-                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg">Protocol: HTTPS/WSS</div>
+                            <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.supabase === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : healthStatus.supabase === 'checking' ? 'bg-slate-100 text-slate-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                {healthStatus.supabase === 'operational' ? 'Online' : healthStatus.supabase === 'checking' ? 'Checking...' : 'Error'}
                             </div>
                         </div>
 
                         {/* Brapi Card */}
-                        <div className="bg-white dark:bg-[#0f172a] p-5 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500"><BarChart3 className="w-5 h-5" /></div>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Brapi Finance</h4>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">B3 Market Data</p>
-                                    </div>
+                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500"><BarChart3 className="w-5 h-5" /></div>
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Brapi Finance</h4>
+                                    <p className="text-[9px] text-slate-400 font-mono">Delay 15m • Cache: {cachedItemsCount.quotes}</p>
                                 </div>
-                                <span className="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest bg-blue-500/10 text-blue-500">
-                                    API Connected
-                                </span>
                             </div>
-                            <div className="grid grid-cols-3 gap-2 text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg col-span-2">Delay Padrão: 15min</div>
-                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg text-center">Cache: {cachedItemsCount.quotes}</div>
+                            <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.brapi === 'operational' ? 'bg-blue-500/10 text-blue-500' : healthStatus.brapi === 'checking' ? 'bg-slate-100 text-slate-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                {healthStatus.brapi === 'operational' ? 'Connected' : healthStatus.brapi === 'checking' ? 'Pinging...' : 'Degraded'}
                             </div>
                         </div>
 
                         {/* Gemini Card */}
-                        <div className="bg-white dark:bg-[#0f172a] p-5 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden">
-                            <div className="flex justify-between items-start mb-4">
+                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden">
+                            <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500"><Sparkles className="w-5 h-5" /></div>
                                     <div>
-                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Google Gemini</h4>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">AI Auditor</p>
+                                        <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Google Gemini</h4>
+                                        <p className="text-[9px] text-slate-400 font-mono">Model: 2.5 Pro (Stable)</p>
                                     </div>
                                 </div>
-                                <span className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${lastAiStatus === 'operational' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                                    {lastAiStatus === 'operational' ? 'Ready' : 'Restricted'}
-                                </span>
+                                <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${lastAiStatus === 'operational' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                    {lastAiStatus === 'operational' ? 'Ready' : 'Quota Limit'}
+                                </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-500 dark:text-slate-400 mb-3">
-                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg">Model: 2.5 Pro</div>
-                                <div className="bg-slate-50 dark:bg-black/20 p-2 rounded-lg">Context: 32k Tokens</div>
+                            <div className="w-full bg-slate-100 dark:bg-white/5 h-1.5 rounded-full overflow-hidden flex items-center">
+                                <div className={`h-full rounded-full transition-all duration-500 ${lastAiStatus === 'operational' ? 'bg-indigo-500 w-[15%]' : 'bg-amber-500 w-[95%]'}`}></div>
                             </div>
-                            <div className="w-full bg-slate-100 dark:bg-white/5 h-1.5 rounded-full overflow-hidden">
-                                <div className="h-full bg-indigo-500 w-[20%] rounded-full"></div>
-                            </div>
-                            <p className="text-[9px] text-right text-slate-400 mt-1 font-bold">Quota Usage (Est.)</p>
+                            <p className="text-[8px] text-right text-slate-400 mt-1 font-bold uppercase tracking-wider">Uso Estimado da Cota</p>
                         </div>
                     </div>
                 </Section>
 
-                {/* Advanced Diagnostics Button */}
-                <div className="pt-2">
+                {/* Advanced Diagnostics Button (Secondary) */}
+                <div className="pt-2 pb-6">
                      <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200/50 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group">
                         <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
+                            <div className="w-9 h-9 rounded-lg bg-slate-200 dark:bg-white/10 text-slate-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
                             <div className="text-left">
-                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 block">Diagnóstico Avançado</span>
-                                <span className="text-[9px] text-slate-400">Teste de latência e integridade</span>
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block uppercase tracking-wide">Diagnóstico Avançado</span>
+                                <span className="text-[9px] text-slate-400">Logs técnicos e testes de integridade</span>
                             </div>
                         </div>
                         <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
@@ -1132,6 +1155,15 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
         </div>
       </SwipeableModal>
+
+      {/* Force Update Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showForceUpdateConfirm}
+        title="Reinstalar App"
+        message="Isso limpará o cache do navegador e recarregará a versão mais recente do servidor. Útil se o app estiver travado ou com comportamento estranho. Deseja continuar?"
+        onConfirm={() => { onForceUpdate(); setShowForceUpdateConfirm(false); }}
+        onCancel={() => setShowForceUpdateConfirm(false)}
+      />
 
       <ConfirmationModal
         isOpen={!!fileToRestore}

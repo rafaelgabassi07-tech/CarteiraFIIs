@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { ReleaseNote, VersionData } from '../types';
 
@@ -136,6 +135,26 @@ export const useUpdateManager = (currentAppVersion: string) => {
      }
   }, [currentAppVersion, fetchVersionMetadata]);
   
+  const forceReload = useCallback(async () => {
+      setIsUpdating(true);
+      setUpdateProgress(20);
+      try {
+          if ('serviceWorker' in navigator) {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              for (const registration of registrations) {
+                  await registration.unregister();
+              }
+          }
+          caches.keys().then(async (names) => {
+              await Promise.all(names.map(name => caches.delete(name)));
+          });
+          setUpdateProgress(100);
+          window.location.reload();
+      } catch (e) {
+          window.location.reload();
+      }
+  }, []);
+
   const startUpdateProcess = useCallback(async () => {
     setIsUpdating(true);
     setUpdateProgress(10);
@@ -201,6 +220,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
     lastChecked,
     checkForUpdates,
     startUpdateProcess,
+    forceReload, // New export
     isUpdating,
     updateProgress,
     updateError
