@@ -190,14 +190,25 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   const isDragging = useRef(false);
   const rafId = useRef<number | null>(null);
 
+  // Bloqueio do Scroll do Body quando o modal abre
+  // Isso previne que a página de trás role junto e ajuda a evitar o pull-to-refresh
+  useEffect(() => {
+    if (isOpen) {
+        document.body.style.overflow = 'hidden';
+    } else {
+        document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    // Só inicia o drag se estivermos no topo do modal.
-    if (modalRef.current && modalRef.current.scrollTop <= 0) {
+    // Permite iniciar o drag se estamos no topo (scrollTop <= 1 para margem de segurança)
+    if (modalRef.current && modalRef.current.scrollTop <= 1) {
       startY.current = e.touches[0].clientY;
       isDragging.current = true;
       currentY.current = 0;
       
-      // Remove transição para evitar lag durante o arraste
+      // Remove transição para resposta instantânea ao dedo (1:1)
       modalRef.current.style.transition = 'none'; 
       if (backdropRef.current) backdropRef.current.style.transition = 'none';
     }
@@ -209,24 +220,28 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     const y = e.touches[0].clientY;
     const deltaY = y - startY.current;
     
+    // Lógica para arrastar para baixo
     if (deltaY > 0) {
+      // Se o usuário rolou o conteúdo para baixo e depois tentou subir,
+      // não queremos arrastar o modal, queremos rolar o conteúdo.
       if (modalRef.current.scrollTop > 0) {
           isDragging.current = false;
           return;
       }
 
+      // CRÍTICO: Previne o Pull-to-Refresh nativo do navegador
       if (e.cancelable) e.preventDefault();
 
       currentY.current = deltaY;
       
-      // Use requestAnimationFrame para atualizar o DOM de forma fluida (60fps)
       if (rafId.current) cancelAnimationFrame(rafId.current);
       
       rafId.current = requestAnimationFrame(() => {
           if (modalRef.current) {
+              // Aplica a transição física usando GPU
               modalRef.current.style.transform = `translate3d(0, ${deltaY}px, 0)`;
               
-              // Calcula opacidade do backdrop baseado na distância (max 600px para sumir totalmente)
+              // Fade out progressivo do backdrop
               if (backdropRef.current) {
                   const opacity = Math.max(0, 1 - (deltaY / 600));
                   backdropRef.current.style.opacity = String(opacity);
@@ -234,6 +249,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
           }
       });
     } else {
+        // Se arrastar para cima, cancela o drag do modal para permitir scroll do conteúdo
         if (currentY.current <= 0) {
             isDragging.current = false;
         }
@@ -246,21 +262,20 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     
     if (rafId.current) cancelAnimationFrame(rafId.current);
 
-    // Restaura transições para a animação final (fechar ou voltar)
+    // Restaura as transições suaves para a animação de soltar
     modalRef.current.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
     if (backdropRef.current) backdropRef.current.style.transition = 'opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
     
-    // Threshold para fechar (120px ou velocidade rápida)
+    // Se arrastou mais de 120px, fecha o modal
     if (currentY.current > 120) { 
       onClose();
     } else {
-      // Reseta posições
+      // Caso contrário, volta para a posição original (snap back)
       modalRef.current.style.transform = 'translate3d(0, 0, 0)';
       if (backdropRef.current) backdropRef.current.style.opacity = '1';
     }
   };
 
-  // Cleanup de RAF
   useEffect(() => {
       return () => {
           if (rafId.current) cancelAnimationFrame(rafId.current);
@@ -286,17 +301,16 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        // "overscroll-contain" impede que o scroll do modal afete a página de trás
-        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] h-[92dvh] w-full overflow-y-auto overscroll-contain shadow-2xl pb-safe will-change-transform gpu ${
+        // "overscroll-none" é VITAL: impede que o scroll propague para o body e dispare o refresh
+        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] h-[92dvh] w-full overflow-y-auto overscroll-none shadow-2xl pb-safe will-change-transform gpu ${
           isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{
-            // Garante que a transição CSS inicial funcione
             transition: 'transform 0.5s cubic-bezier(0.23, 1, 0.32, 1)'
         }}
       >
-        {/* Handle Bar - Área de toque visual para arrastar */}
-        <div className="sticky top-0 z-50 flex justify-center pt-4 pb-2 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md touch-none pointer-events-none cursor-grab active:cursor-grabbing">
+        {/* Handle Bar - Agora com pointer-events-auto para garantir captura do toque */}
+        <div className="sticky top-0 z-50 flex justify-center pt-4 pb-2 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md touch-none pointer-events-auto cursor-grab active:cursor-grabbing">
             <div className="w-16 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full opacity-60"></div>
         </div>
         
