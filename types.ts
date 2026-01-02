@@ -93,3 +93,12 @@ export interface MarketIndicators {
   ipca_cumulative: number;
   start_date_used: string;
 }
+
+export interface EvolutionPoint {
+    rawDate: string;
+    date: string;
+    invested: number;
+    adjusted: number;
+    value: number;
+    monthlyInflationCost: number;
+}

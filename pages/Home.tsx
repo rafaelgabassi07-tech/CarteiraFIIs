@@ -1,11 +1,11 @@
+
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
+import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, ComposedChart, Line } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
-import * as ReactWindow from 'react-window';
-
-const List = ReactWindow.VariableSizeList;
+// Fix: Use named import for VariableSizeList to resolve type error
+import { VariableSizeList as List } from 'react-window';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -20,15 +20,6 @@ interface HomeProps {
   balance: number;
   totalAppreciation: number;
   transactions?: Transaction[];
-}
-
-interface EvolutionPoint {
-    rawDate: string;
-    date: string;
-    invested: number;
-    adjusted: number;
-    value: number;
-    monthlyInflationCost: number;
 }
 
 const formatBRL = (val: any) => {
@@ -296,7 +287,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
     return { 
       received: totalReceivedValue, 
-      upcoming: upcomingValue,
+      upcoming: upcomingValue, 
       averageMonthly: totalReceivedValue / (uniqueMonths || 1), 
       bestPayer: { ticker: maxTicker, value: maxVal }, 
       chartData: last12MonthsData, 
