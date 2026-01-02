@@ -4,7 +4,6 @@ import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint 
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, ComposedChart, Line, YAxis } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
-// Fix: Use named import for VariableSizeList to resolve type error
 import { VariableSizeList as List } from 'react-window';
 
 interface HomeProps {
@@ -673,7 +672,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 <BarChart data={comparisonData} layout="vertical" margin={{ left: -20, right: 20 }}>
                                     <XAxis type="number" hide />
                                     <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
-                                    <Tooltip cursor={{ fill: 'transparent' }} content={({ active, payload }) => { if (active && payload?.length) return (<div className="bg-slate-900 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg">{payload[0].value.toFixed(2)}%</div>); return null; }} />
+                                    <Tooltip 
+                                      cursor={{ fill: 'transparent' }} 
+                                      content={({ active, payload }) => { 
+                                        if (active && payload && payload.length && payload[0].value !== undefined) {
+                                          const val = payload[0].value;
+                                          const displayVal = typeof val === 'number' ? val.toFixed(2) : val;
+                                          return (
+                                            <div className="bg-slate-900 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg">
+                                              {displayVal}%
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      }} 
+                                    />
                                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20} />
                                 </BarChart>
                             </ResponsiveContainer>
