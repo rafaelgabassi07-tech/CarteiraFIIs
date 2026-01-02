@@ -3,9 +3,9 @@ import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ChevronsRight, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, YAxis, ComposedChart, Line } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
-import * as ReactWindow from 'react-window';
+import { VariableSizeList } from 'react-window';
 
-const List = ReactWindow.VariableSizeList;
+const List = VariableSizeList;
 
 interface HomeProps {
   portfolio: AssetPosition[];
