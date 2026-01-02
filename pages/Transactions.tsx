@@ -2,7 +2,9 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Transaction, AssetType } from '../types';
 import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign, X, Building2, BarChart3 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { VariableSizeList as List, ListChildComponentProps, areEqual } from 'react-window';
+import * as ReactWindow from 'react-window';
+
+const List = ReactWindow.VariableSizeList;
 
 const formatBRL = (val: number | undefined | null) => {
   const num = typeof val === 'number' ? val : 0;
@@ -40,9 +42,23 @@ interface RowData {
   onDelete: (id: string) => void;
 }
 
+interface RowProps<T> {
+    index: number;
+    style: React.CSSProperties;
+    data: T;
+}
+
+const areEqual = (prev: RowProps<RowData>, next: RowProps<RowData>) => {
+    return (
+        prev.index === next.index &&
+        prev.style === next.style &&
+        prev.data === next.data
+    );
+};
+
 // --- Componente Row Otimizado (Fora do Componente Principal) ---
 
-const TransactionRow = React.memo(({ index, style, data }: ListChildComponentProps<RowData>) => {
+const TransactionRow = React.memo(({ index, style, data }: RowProps<RowData>) => {
   const item = data.items[index];
 
   if (item.type === 'header') {
