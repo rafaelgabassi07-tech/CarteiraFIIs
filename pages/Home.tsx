@@ -1,11 +1,9 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { AssetPosition, DividendReceipt, AssetType } from '../types';
+import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, ArrowUpRight, ArrowDownRight, LayoutGrid, ShieldCheck, AlertTriangle, Banknote, Award, Percent, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ChevronsRight, ListFilter, CalendarCheck, Hourglass, Layers } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, YAxis } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
-import * as ReactWindow from 'react-window';
-
-const List = ReactWindow.VariableSizeList;
+import { VariableSizeList as List } from 'react-window';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -19,6 +17,7 @@ interface HomeProps {
   invested: number;
   balance: number;
   totalAppreciation: number;
+  transactions?: Transaction[]; // Added prop
 }
 
 const formatBRL = (val: any) => {
@@ -112,7 +111,21 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate = 0, portfolioStartDate, accentColor = '#0ea5e9', invested, balance, totalAppreciation, }) => {
+const EvolutionTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return ( 
+        <div className="bg-slate-900/90 backdrop-blur-md text-white px-3 py-2 rounded-xl shadow-2xl border border-white/10 z-50">
+           <p className="text-[10px] font-bold text-slate-400 mb-0.5">{label}</p>
+           <p className="text-sm font-black text-emerald-400 tabular-nums">
+             {formatBRL(payload[0].value)}
+           </p>
+        </div> 
+      );
+    }
+    return null;
+};
+
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate = 0, portfolioStartDate, accentColor = '#0ea5e9', invested, balance, totalAppreciation, transactions = [] }) => {
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRealGainModal, setShowRealGainModal] = useState(false);
   const [showAgendaModal, setShowAgendaModal] = useState(false);
@@ -128,6 +141,66 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const totalProfit = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const isProfitPositive = totalProfit >= 0;
+
+  // Cálculo da Evolução Patrimonial (Investido vs Tempo)
+  const evolutionData = useMemo(() => {
+    if (transactions.length === 0) return [];
+
+    // 1. Agrupar transações por Mês
+    const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+    const historyMap = new Map<string, number>();
+    let cumulativeInvested = 0;
+
+    sortedTxs.forEach(tx => {
+        const monthKey = tx.date.substring(0, 7); // YYYY-MM
+        const amount = tx.quantity * tx.price;
+        
+        if (tx.type === 'BUY') {
+            cumulativeInvested += amount;
+        } else {
+            // Em caso de venda, reduzimos o capital investido proporcionalmente ou absoluto
+            cumulativeInvested -= amount;
+        }
+        
+        // Mantém apenas o valor final do mês
+        historyMap.set(monthKey, Math.max(0, cumulativeInvested));
+    });
+
+    // 2. Converter para Array
+    const data = Array.from(historyMap.entries()).map(([key, value]) => {
+        const [year, month] = key.split('-');
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        return {
+            rawDate: key,
+            date: `${monthNames[parseInt(month) - 1]} ${year.slice(2)}`,
+            value: value
+        };
+    });
+
+    // 3. Adicionar o Patrimônio ATUAL como o ponto final (Market Value)
+    // Isso cria a curva visual de valorização final
+    const today = new Date();
+    const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+    
+    // Se o último ponto não for o mês atual, ou se quisermos forçar o valor de mercado atual
+    if (balance > 0) {
+        // Verifica se já existe ponto para este mês
+        const lastPoint = data[data.length - 1];
+        if (lastPoint && lastPoint.rawDate === currentMonthKey) {
+            // Atualiza com valor de mercado atual para mostrar a diferença
+            lastPoint.value = balance;
+        } else {
+            data.push({
+                rawDate: currentMonthKey,
+                date: 'Atual',
+                value: balance
+            });
+        }
+    }
+
+    // Retorna apenas se tivermos pelo menos 2 pontos para formar uma linha/area decente
+    return data.length > 1 ? data : [];
+  }, [transactions, balance]);
 
   const { received, upcoming, averageMonthly, bestPayer, chartData, upcomingEvents, historyGrouped } = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -249,12 +322,39 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     {formatBRL(balance)}
                 </div>
                 
-                <div className="flex items-center gap-2 mb-8">
+                <div className="flex items-center gap-2 mb-6">
                     <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg ${isProfitPositive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/10'}`}>
                         {isProfitPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                         <span>Lucro: {formatBRL(totalProfit)}</span>
                     </span>
                 </div>
+
+                {/* GRÁFICO DE EVOLUÇÃO (NOVO) */}
+                {evolutionData.length > 1 && (
+                    <div className="h-20 w-full mb-6 relative -mx-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={evolutionData}>
+                                <defs>
+                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <Tooltip content={<EvolutionTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="value" 
+                                    stroke="#10b981" 
+                                    strokeWidth={3}
+                                    fillOpacity={1} 
+                                    fill="url(#colorValue)" 
+                                    animationDuration={1500}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                        <p className="text-[9px] font-bold text-emerald-500/60 text-center uppercase tracking-widest absolute bottom-0 left-0 right-0 pointer-events-none">Evolução Patrimonial</p>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-3 gap-2">
                     <div className="bg-white/50 dark:bg-white/[0.03] py-3 px-2 rounded-2xl border border-slate-200/50 dark:border-white/5 flex flex-col justify-center h-full">
@@ -338,7 +438,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}><div className="pb-8"><div className="px-6 pt-2"><div className="flex items-center gap-3 mb-4 px-2 mt-2"><div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><CircleDollarSign className="w-6 h-6" strokeWidth={2} /></div><div><h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Renda Passiva</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Seus Proventos</p></div></div></div><div className="flex p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl mb-6 mx-4"><button onClick={() => setIncomeTab('summary')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${incomeTab === 'summary' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Resumo</button><button onClick={() => setIncomeTab('history')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${incomeTab === 'history' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Histórico</button><button onClick={() => setIncomeTab('magic')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${incomeTab === 'magic' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Magic Number</button></div><div className="px-5">{incomeTab === 'summary' && (<div className="space-y-6 anim-fade-in-up is-visible"><div className="text-center py-4 relative"><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Acumulado</span><div className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mt-1 tabular-nums">{formatBRL(received)}</div></div><div className="h-40 w-full relative"><p className="absolute top-0 left-0 text-[10px] font-bold text-slate-300 dark:text-slate-600 uppercase">Últimos 6 meses</p><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData.slice(-6)}><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} dy={10} /><Tooltip cursor={{ fill: 'rgba(16, 185, 129, 0.1)', radius: 8 }} content={<CustomTooltip />} /><Bar dataKey="value" fill={accentColor} radius={[4, 4, 4, 4]} barSize={32} animationDuration={1000} /></BarChart></ResponsiveContainer></div><div className="grid grid-cols-2 gap-3"><div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent flex flex-col justify-between"><div className="flex items-center gap-2 mb-2 text-slate-400"><Calendar className="w-3.5 h-3.5" /><span className="text-[9px] font-bold uppercase tracking-widest">Média Mensal</span></div><p className="text-lg font-bold text-slate-700 dark:text-white tabular-nums">{formatBRL(averageMonthly)}</p></div><div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent flex flex-col justify-between"><div className="flex items-center gap-2 mb-2 text-slate-400"><Percent className="w-3.5 h-3.5" /><span className="text-[9px] font-bold uppercase tracking-widest">Yield on Cost</span></div><p className="text-lg font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatPercent(yieldOnCostPortfolio)}</p></div><div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent flex flex-col justify-between"><div className="flex items-center gap-2 mb-2 text-slate-400"><Trophy className="w-3.5 h-3.5" /><span className="text-[9px] font-bold uppercase tracking-widest">Maior Pagador</span></div><div><p className="text-sm font-bold text-slate-900 dark:text-white">{bestPayer.ticker}</p><p className="text-xs font-semibold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(bestPayer.value)}</p></div></div><div className="bg-indigo-500/10 p-4 rounded-2xl border border-indigo-500/20 flex flex-col justify-between"><div className="flex items-center gap-2 mb-2 text-indigo-500"><Sparkles className="w-3.5 h-3.5" /><span className="text-[9px] font-bold uppercase tracking-widest">Provisão Futura</span></div><p className="text-lg font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">{formatBRL(upcoming)}</p></div></div></div>)}{incomeTab === 'history' && (<div className="pb-4 anim-fade-in-up is-visible h-[60vh]">{flatHistory.length === 0 ? (<div className="text-center py-10 opacity-50 h-full flex flex-col items-center justify-center"><ListFilter className="w-10 h-10 mx-auto mb-2 text-slate-300" strokeWidth={1.5} /><p className="text-xs text-slate-400 font-medium">Nenhum histórico encontrado.</p></div>) : (<List height={window.innerHeight * 0.6} itemCount={flatHistory.length} itemSize={getItemSize} width="100%">{({ index, style }) => { const item = flatHistory[index]; return ( <div style={style}> {item.type === 'header' ? ( <div className="flex items-center justify-between my-3 px-2 sticky top-0 bg-white dark:bg-[#0b1121] py-2 z-10"><h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">{getMonthName(item.month + '-01')}</h4><span className="text-xs font-bold text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-lg tabular-nums">{formatBRL(item.total)}</span></div> ) : ( <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 mb-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-white dark:bg-white/10 flex flex-col items-center justify-center shadow-sm"><span className="text-[9px] font-black uppercase text-slate-400">{item.data.paymentDate.split('-')[1]}</span><span className="text-sm font-bold text-slate-900 dark:text-white leading-none">{item.data.paymentDate.split('-')[2]}</span></div><div><p className="font-bold text-slate-900 dark:text-white">{item.data.ticker}</p><p className="text-[10px] font-medium text-slate-400 uppercase">{item.data.type.replace('DIVIDENDO', 'DIV').replace('JRS CAP PROPRIO', 'JCP')}</p></div></div><div className="text-right"><p className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(item.data.totalReceived)}</p><p className="text-[9px] font-medium text-slate-400 tabular-nums">{item.data.quantityOwned} un.</p></div></div> )} </div> ); }}</List>)}</div>)}{incomeTab === 'magic' && (<div className="space-y-3 anim-fade-in-up is-visible">{magicNumbers?.length > 0 ? magicNumbers.map((m, i) => m && ( <div key={i} className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm"><div className="flex justify-between items-center mb-2"><h4 className="text-sm font-bold text-slate-900 dark:text-white">{m.ticker}</h4><span className="text-xs font-bold text-accent tabular-nums">{m.progress.toFixed(0)}%</span></div><div className="h-2 bg-slate-100 dark:bg-white/5 rounded-full mb-2 overflow-hidden"><div className="h-full bg-accent" style={{ width: `${m.progress}%` }}></div></div><div className="text-[10px] text-slate-400 font-semibold flex justify-between"><span>{m.currentQty} / {m.magicQty} Cotas</span><span>Faltam {m.missing}</span></div></div> )) : ( <div className="text-center py-10 opacity-50"><Sparkles className="w-10 h-10 mx-auto mb-2 text-slate-300" strokeWidth={1.5} /><p className="text-xs text-slate-400 font-medium">Sem dados de proventos suficientes.</p></div> )}</div>)}</div></div></SwipeableModal>
-      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}><div className="pb-8"><div className="px-6 pt-2"><div className="flex items-center gap-3 mb-4 px-2 mt-2"><div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent"><PieIcon className="w-6 h-6" strokeWidth={2} /></div><div><h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Alocação</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Composição da Carteira</p></div></div></div><div className="flex p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl mb-6 mx-4"><button onClick={() => setAllocationTab('assets')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'assets' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Ativos</button><button onClick={() => setAllocationTab('types')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'types' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Tipos</button><button onClick={() => setAllocationTab('segments')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'segments' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Segmentos</button></div><div className="px-5">{[{ id: 'assets', data: assetData }, { id: 'types', data: typeData }, { id: 'segments', data: segmentData }].map(tab => { if(tab.id !== allocationTab) return null; const currentData = tab.data; const total = currentData.reduce((acc, item) => acc + item.value, 0); return ( <div key={tab.id} className="anim-fade-in-up is-visible"><div className="h-48 w-full -my-4"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={currentData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5} dataKey="value" activeIndex={activeIndex as any} activeShape={renderActiveShape} onMouseEnter={onPieEnter} cornerRadius={8}>{currentData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" fillOpacity={activeIndex === index ? 1 : 0.3} style={{ transition: 'opacity 0.3s ease' }} />)}</Pie></PieChart></ResponsiveContainer></div><div className="space-y-2 mt-4">{currentData.map((item, index) => ( <div key={index} onMouseEnter={() => onPieEnter(null, index)} className={`flex items-center justify-between p-3 rounded-xl transition-all ${activeIndex === index ? 'bg-slate-100 dark:bg-white/5' : ''}`}><div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div><span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{item.name}</span></div><div className="text-right"><p className="font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(item.value)}</p><p className="text-xs text-slate-400 font-medium tabular-nums">{formatPercent((item.value / total) * 100)}</p></div></div> ))}</div></div> ) })}</div></div></SwipeableModal>
+      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}><div className="pb-8"><div className="px-6 pt-2"><div className="flex items-center gap-3 mb-4 px-2 mt-2"><div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent"><PieIcon className="w-6 h-6" strokeWidth={2} /></div><div><h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Alocação</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Composição da Carteira</p></div></div></div><div className="flex p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl mb-6 mx-4"><button onClick={() => setAllocationTab('assets')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'assets' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Ativos</button><button onClick={() => setAllocationTab('types')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'types' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Tipos</button><button onClick={() => setAllocationTab('segments')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'segments' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Segmentos</button></div><div className="px-5">{[{ id: 'assets', data: assetData }, { id: 'types', data: typeData }, { id: 'segments', data: segmentData }].map(tab => { if(tab.id !== allocationTab) return null; const currentData = tab.data; const total = currentData.reduce((acc, item) => acc + item.value, 0); return ( <div key={tab.id} className="anim-fade-in-up is-visible"><div className="h-48 w-full -my-4"><ResponsiveContainer width="100%" height="100%"><PieChart>
+      {/* @ts-ignore */}
+      <Pie data={currentData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5} dataKey="value" activeIndex={activeIndex as any} activeShape={renderActiveShape} onMouseEnter={onPieEnter} cornerRadius={8}>{currentData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" fillOpacity={activeIndex === index ? 1 : 0.3} style={{ transition: 'opacity 0.3s ease' }} />)}</Pie></PieChart></ResponsiveContainer></div><div className="space-y-2 mt-4">{currentData.map((item, index) => ( <div key={index} onMouseEnter={() => onPieEnter(null, index)} className={`flex items-center justify-between p-3 rounded-xl transition-all ${activeIndex === index ? 'bg-slate-100 dark:bg-white/5' : ''}`}><div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div><span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{item.name}</span></div><div className="text-right"><p className="font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(item.value)}</p><p className="text-xs text-slate-400 font-medium tabular-nums">{formatPercent((item.value / total) * 100)}</p></div></div> ))}</div></div> ) })}</div></div></SwipeableModal>
       <SwipeableModal isOpen={showRealGainModal} onClose={() => setShowRealGainModal(false)}><div className="px-6 py-2 pb-8"><div className="flex items-center gap-3 mb-4 px-2 mt-2"><div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500"><Scale className="w-6 h-6" strokeWidth={2} /></div><div><h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Poder de Compra</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rentabilidade vs. Inflação</p></div></div><div className="flex p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl mb-6"><button onClick={() => setGainTab('benchmark')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${gainTab === 'benchmark' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Benchmark</button><button onClick={() => setGainTab('power')} className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${gainTab === 'power' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>Poder de Compra</button></div>{gainTab === 'benchmark' && (<div className="space-y-4 px-4 anim-fade-in-up is-visible"><div className="bg-slate-50 dark:bg-[#0f172a] p-6 rounded-3xl grid grid-cols-3 items-center text-center"><div className="space-y-1"><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Carteira</p><p className={`text-2xl font-black tabular-nums ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{formatPercent(nominalYield)}</p></div><p className="font-bold text-slate-300 dark:text-slate-600">VS</p><div className="space-y-1"><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">IPCA {dateLabel}</p><p className="text-2xl font-black text-slate-500 tabular-nums">{formatPercent(finalIPCA)}</p></div></div><div className={`p-6 rounded-3xl text-center relative overflow-hidden ${isAboveInflation ? 'bg-gradient-to-br from-emerald-500/10 to-transparent' : 'bg-gradient-to-br from-rose-500/10 to-transparent'}`}><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Retorno Real Acumulado</p><p className={`text-5xl font-black tabular-nums tracking-tighter my-2 ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{isAboveInflation ? '+' : ''}{formatPercent(ganhoRealPercent)}</p><p className="text-xs text-slate-500 dark:text-slate-400 max-w-[250px] mx-auto">Sua carteira está {isAboveInflation ? 'preservando e multiplicando' : 'perdendo valor para'} seu capital acima da inflação.</p></div><div className="bg-slate-50 dark:bg-[#0f172a] p-6 rounded-3xl space-y-4">{(comparisonData.sort((a,b) => b.value - a.value)).map(item => { const maxValue = Math.max(nominalYield, finalIPCA, 1); const barWidth = (item.value / maxValue) * 100; return ( <div key={item.name}><div className="flex items-center text-xs font-bold"><span className="w-24 text-slate-400 truncate pr-1">{item.name}</span><div className="flex-1 h-3 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${barWidth}%`, backgroundColor: item.fill, transition: 'width 0.5s ease-out' }}></div></div><span className="w-12 text-right text-slate-500 tabular-nums">{item.value.toFixed(2)}%</span></div></div> ); })}</div></div>)}{gainTab === 'power' && (<div className="space-y-3 px-4 anim-fade-in-up is-visible"><div className="flex items-center gap-4"><div className="flex-1 bg-emerald-50 dark:bg-emerald-500/5 p-4 rounded-2xl border border-emerald-100 dark:border-transparent"><p className="text-[10px] font-bold text-emerald-600/60 dark:text-emerald-300/60 uppercase tracking-widest mb-1">Lucro Total</p><p className="text-lg font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatBRL(lucroNominalAbsoluto)}</p></div></div><div className="flex items-center gap-3 justify-center"><Minus className="w-4 h-4 text-slate-300" /></div><div className="flex items-center gap-4"><div className="flex-1 bg-rose-50 dark:bg-rose-500/5 p-4 rounded-2xl border border-rose-100 dark:border-transparent"><p className="text-[10px] font-bold text-rose-600/60 dark:text-rose-300/60 uppercase tracking-widest mb-1">Custo da Inflação (IPCA)</p><p className="text-lg font-bold text-rose-700 dark:text-rose-400 tabular-nums">{formatBRL(custoCorrosaoInflacao)}</p></div></div><div className="flex items-center gap-3 justify-center"><Equal className="w-4 h-4 text-slate-300" /></div><div className={`flex-1 p-5 rounded-3xl border-2 ${isAboveInflation ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30' : 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30'}`}><p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isAboveInflation ? 'text-emerald-600/60 dark:text-emerald-300/60' : 'text-rose-600/60 dark:text-rose-300/60'}`}>Ganho Real de Poder de Compra</p><p className={`text-2xl font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>{isAboveInflation ? '+' : ''}{formatBRL(ganhoRealValor)}</p></div></div>)}</div></SwipeableModal>
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}><div className="pb-8"><div className="px-6 pt-2"><div className="flex items-center gap-3 mb-6 px-2 mt-2"><div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500"><CalendarDays className="w-6 h-6" strokeWidth={2} /></div><div><h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-none mb-1">Agenda de Eventos</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Linha do Tempo</p></div></div></div><div className="px-5 space-y-3">{upcomingEvents.length > 0 ? upcomingEvents.map((event, i) => { const style = getEventStyle(event.eventType, event.date); return ( <div key={i} className="anim-fade-in-up is-visible bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center gap-4"> <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center font-bold text-sm border ${style.border} ${style.bg} ${style.text}`}>{style.pulse ? <span className="text-[9px] font-black uppercase tracking-wider">HOJE</span> : <><span className="text-xs font-bold opacity-70">{event.date.split('-')[1]}</span><span className="text-sm font-bold">{event.date.split('-')[2]}</span></>}</div> <div className="flex-1"> <p className="font-bold text-slate-900 dark:text-white">{event.ticker}</p> {event.eventType === 'payment' ? ( <p className={`text-[10px] font-semibold uppercase flex items-center gap-1.5 ${style.text}`}><style.icon className="w-3 h-3"/> {style.label}: {formatBRL(event.totalReceived)}</p> ) : ( <p className={`text-[10px] font-semibold uppercase flex items-center gap-1.5 ${style.text}`}><style.icon className="w-3 h-3"/> Último dia para ter direito</p> )} </div> {event.eventType === 'datacom' && ( <p className="text-xs font-bold text-slate-400 tabular-nums">{formatBRL(event.rate)}/cota</p> )}</div> ); }) : <div className="text-center py-20 opacity-60"> <CalendarDays className="w-12 h-12 text-slate-300 mx-auto mb-4" strokeWidth={1.5}/> <p className="text-sm font-bold text-slate-500">Nenhum evento futuro</p> <p className="text-xs text-slate-400 mt-1">Sua agenda está limpa por enquanto.</p> </div>}</div></div></SwipeableModal>
     </div>
