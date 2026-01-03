@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
 // Added CheckCircle2 to the lucide-react imports to fix the missing component error.
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info, LayoutDashboard, History, CheckCircle2 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, ComposedChart, Line, YAxis } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, ComposedChart, Line, YAxis, ReferenceLine } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 import { VariableSizeList as List } from 'react-window';
 
@@ -99,6 +99,20 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return ( <div className="bg-slate-900 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50 border border-white/10"> <p className="mb-1 opacity-70">{label}</p> <p className="text-emerald-400 text-sm">{formatBRL(payload[0].value)}</p> </div> );
   }
   return null;
+};
+
+const PercentTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const val = payload[0].value;
+      const formatted = typeof val === 'number' ? val.toFixed(2) + '%' : val;
+      return ( 
+        <div className="bg-slate-900 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50 border border-white/10"> 
+            <p className="mb-1 opacity-70">{label}</p> 
+            <p className={`text-sm ${val >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatted}</p> 
+        </div> 
+      );
+    }
+    return null;
 };
 
 const EvolutionTooltip = ({ active, payload, label }: any) => {
@@ -271,13 +285,28 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   };
 
   const COLORS = useMemo(() => [accentColor, '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#6366f1', '#14b8a6', '#f97316', '#64748b', '#d946ef', '#22c55e'], [accentColor]);
+  
+  // REAL GAIN LOGIC REFACTOR
   const finalIPCA = inflationRate > 0 ? inflationRate : 0;
-  const nominalYield = invested > 0 ? (totalProfitValue / invested) * 100 : 0;
-  const ganhoRealPercent = nominalYield - finalIPCA;
+  
+  // Calculate Flow-Aware Inflation Cost if evolution data exists
+  // This prevents overestimating inflation cost on DCA portfolios
+  const lastEvolutionPoint = useMemo(() => evolutionData.length > 0 ? evolutionData[evolutionData.length - 1] : null, [evolutionData]);
+
+  const custoCorrosaoInflacao = lastEvolutionPoint 
+      ? lastEvolutionPoint.monthlyInflationCost 
+      : invested * (finalIPCA / 100);
+
   const lucroNominalAbsoluto = totalProfitValue;
-  const custoCorrosaoInflacao = invested * (finalIPCA / 100);
   const ganhoRealValor = lucroNominalAbsoluto - custoCorrosaoInflacao;
-  const isAboveInflation = ganhoRealPercent > 0;
+  
+  // Fisher Equation for precise real rate
+  const nominalYield = invested > 0 ? (totalProfitValue / invested) * 100 : 0;
+  const nominalFactor = 1 + (nominalYield / 100);
+  const inflationFactor = 1 + (finalIPCA / 100);
+  const ganhoRealPercent = inflationFactor !== 0 ? ((nominalFactor / inflationFactor) - 1) * 100 : nominalYield;
+  
+  const isAboveInflation = ganhoRealValor >= 0;
 
   const comparisonData = useMemo(() => [
     { name: 'Carteira', value: nominalYield, fill: isAboveInflation ? '#10b981' : '#ef4444' },
@@ -821,7 +850,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             {gainTab === 'benchmark' ? (
                 <div className="space-y-6 anim-fade-in-up is-visible">
                     <div className={`p-8 rounded-[2.5rem] text-center shadow-xl shadow-blue-500/10 border ${isAboveInflation ? 'bg-emerald-500 border-emerald-400' : 'bg-rose-500 border-rose-400'} text-white`}>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-80">Seu Alpha Estimado</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-80">Rentabilidade Real (Fisher)</p>
                         <h3 className="text-4xl font-black tabular-nums tracking-tighter mb-4">{isAboveInflation ? '+' : ''}{ganhoRealPercent.toFixed(2)}%</h3>
                         <p className="text-xs font-medium opacity-90 max-w-[200px] mx-auto leading-relaxed">{isAboveInflation ? 'Parabéns! Sua carteira está protegendo e aumentando seu poder de compra.' : 'Atenção: A inflação está corroendo o retorno nominal da sua carteira.'}</p>
                     </div>
@@ -835,20 +864,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
                                     <Tooltip 
                                       cursor={{ fill: 'transparent' }} 
-                                      content={({ active, payload }) => { 
-                                        if (active && payload && payload.length && payload[0].value !== undefined) {
-                                          const val = payload[0].value;
-                                          const displayVal = typeof val === 'number' ? val.toFixed(2) : val;
-                                          return (
-                                            <div className="bg-slate-900 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg border border-white/10">
-                                              {displayVal}%
-                                            </div>
-                                          );
-                                        }
-                                        return null;
-                                      }} 
+                                      content={<PercentTooltip />}
                                     />
-                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20} />
+                                    <ReferenceLine x={0} stroke="#64748b" strokeOpacity={0.5} />
+                                    <Bar dataKey="value" radius={[4, 4, 4, 4]} barSize={20} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
