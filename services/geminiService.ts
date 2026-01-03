@@ -15,8 +15,8 @@ const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v9.2_forensic_auditor'; // Cac
 const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
 
 // --- BLOQUEIO DE MODELO ---
-// Updated to gemini-3-pro-preview for advanced reasoning as per latest SDK guidelines.
-const LOCKED_MODEL_ID = "gemini-3-pro-preview";
+// Updated to gemini-2.5-flash (stable) as explicitly requested.
+const LOCKED_MODEL_ID = "gemini-2.5-flash";
 // --------------------------
 
 const getAiCacheTTL = () => {
@@ -166,8 +166,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     }
     `;
 
-    // LOCKED MODEL: gemini-3-pro-preview
-    // DO NOT CHANGE WITHOUT USER REQUEST
+    // LOCKED MODEL: gemini-2.5-flash
+    // Using Thinking Config with budget optimized for Flash model (Max 24576)
     const response = await ai.models.generateContent({
         model: LOCKED_MODEL_ID, 
         contents: prompt,
@@ -175,9 +175,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             tools: [{googleSearch: {}}], // Ferramenta de busca essencial
             temperature: 0.1, // Temperatura baixa para precisão factual
             // ATIVAÇÃO DO "CÉREBRO": Thinking Config
-            // Permite que o modelo "pense", planeje as buscas e critique seus próprios resultados
-            // antes de gerar a resposta final. Essencial para auditoria de datas.
-            thinkingConfig: { thinkingBudget: 32768 }, 
+            // Budget ajustado para o modelo Flash 2.5
+            thinkingConfig: { thinkingBudget: 24576 }, 
         },
     });
     

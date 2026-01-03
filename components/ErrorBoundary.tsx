@@ -1,5 +1,4 @@
-
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 const ConfigurationError: React.FC = () => (
@@ -29,17 +28,11 @@ interface Props {
   children?: ReactNode;
 }
 
-// Fix: Explicitly extending React.Component and initializing state in the constructor 
-// to ensure the 'props' property is correctly inherited and recognized by the TypeScript compiler.
 export class ErrorBoundary extends React.Component<Props, State> {
-  // Explicitly defining state initialization in constructor for better compatibility and ensuring props availability.
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
-  }
+  public state: State = {
+    hasError: false,
+    error: null
+  };
 
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -49,9 +42,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  public render(): React.ReactNode {
+  public render(): ReactNode {
     if (this.state.hasError) {
-      // Safely check for message presence to avoid potential runtime errors
       if (this.state.error?.message?.includes('Credenciais do Supabase')) {
         return <ConfigurationError />;
       }
@@ -66,7 +58,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    // Accessing children from this.props works as expected when inheriting from React.Component.
     return this.props.children;
   }
 }
