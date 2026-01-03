@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
 import { Building2, TrendingUp, TrendingDown, ChevronDown, ChevronUp, BarChart3, PieChart, Activity, DollarSign, Calendar, ExternalLink, Info, AlertCircle } from 'lucide-react';
@@ -184,7 +185,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividendRecei
              <AssetCardInternal 
                key={asset.ticker} 
                asset={asset} 
-               index={index}
                totalPortfolioValue={balance}
                history={dividendReceipts.filter(d => d.ticker === asset.ticker).sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))}
              />
