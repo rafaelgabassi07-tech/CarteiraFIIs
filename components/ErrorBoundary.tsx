@@ -31,11 +31,13 @@ interface Props {
 
 // Fixed: Importing Component directly and extending it to ensure the compiler correctly recognizes inherited properties like 'props' and 'state'.
 export class ErrorBoundary extends Component<Props, State> {
-  // Fixed: Removed the 'override' keyword which was causing compilation errors and ensured proper state initialization.
-  public state: State = {
-    hasError: false,
-    error: null
-  };
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };

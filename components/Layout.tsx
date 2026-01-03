@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck, AlertCircle, Sparkle, PartyPopper, Loader2, CloudOff, Cloud, Wifi, Lock, Fingerprint, Delete, ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, RefreshCw, Bell, Download, X, Trash2, Info, ArrowUpCircle, Check, Star, Palette, Rocket, Gift, Wallet, Calendar, DollarSign, Clock, Zap, ChevronRight, Inbox, MessageSquare, Sparkles, PackageCheck, AlertCircle, Sparkle, PartyPopper, Loader2, CloudOff, Cloud, Wifi, Lock, ShieldCheck, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { ReleaseNote, AppNotification, ReleaseNoteType } from '../types';
 
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -575,106 +575,5 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
         )}
       </div>
     </SwipeableModal>
-  );
-};
-
-interface LockScreenProps {
-  isOpen: boolean;
-  correctPin: string;
-  onUnlock: () => void;
-  isBiometricsEnabled: boolean;
-}
-
-export const LockScreen: React.FC<LockScreenProps> = ({ isOpen, correctPin, onUnlock, isBiometricsEnabled }) => {
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState(false);
-  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
-
-  const handleKeyPress = (key: string) => {
-    if (error) setError(false);
-    if (key === 'del') {
-      setPin(p => p.slice(0, -1));
-      return;
-    }
-    if (pin.length < 4) {
-      setPin(p => p + key);
-    }
-  };
-  
-  const attemptBiometrics = useCallback(async () => {
-      if (!isBiometricsEnabled || !window.PublicKeyCredential) return;
-      try {
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
-        
-        await navigator.credentials.get({
-          publicKey: {
-            challenge,
-            allowCredentials: [],
-            userVerification: 'required',
-            timeout: 60000,
-          }
-        });
-        onUnlock();
-      } catch (e) {
-        console.warn('Biometric auth failed or cancelled', e);
-      }
-  }, [isBiometricsEnabled, onUnlock]);
-  
-  useEffect(() => {
-    if (isVisible && isBiometricsEnabled) {
-      attemptBiometrics();
-    }
-  }, [isVisible, isBiometricsEnabled, attemptBiometrics]);
-  
-  useEffect(() => {
-    if (pin.length === 4) {
-      if (pin === correctPin) {
-        onUnlock();
-      } else {
-        setError(true);
-        setTimeout(() => setPin(''), 500);
-      }
-    }
-  }, [pin, correctPin, onUnlock]);
-
-  if (!isMounted) return null;
-
-  return createPortal(
-    <div className={`fixed inset-0 z-[1000] bg-[#020617] backdrop-blur-2xl transition-opacity duration-300 flex flex-col justify-between items-center py-20 px-6 ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-      <div className="text-center">
-        <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4">
-            <Fingerprint className="w-8 h-8 text-white/50" />
-        </div>
-        <h2 className="text-xl font-bold text-white">App Bloqueado</h2>
-        <p className="text-sm text-slate-400 mt-1">Insira seu PIN para continuar</p>
-      </div>
-      
-      <div className="flex items-center gap-4">
-        {Array(4).fill(0).map((_, i) => (
-          <div key={i} className={`w-4 h-4 rounded-full transition-all duration-300 ${error ? 'bg-rose-500 animate-pulse' : pin.length > i ? 'bg-white' : 'bg-white/20'}`}></div>
-        ))}
-      </div>
-      
-      <div className="grid grid-cols-3 gap-6 max-w-[280px] mx-auto w-full">
-        {[1,2,3,4,5,6,7,8,9].map(num => (
-          <button key={num} onClick={() => handleKeyPress(String(num))} className="w-16 h-16 rounded-full bg-white/5 text-xl font-bold text-white flex items-center justify-center active:bg-white/20 transition-colors">
-            {num}
-          </button>
-        ))}
-        {isBiometricsEnabled ? (
-            <button onClick={attemptBiometrics} className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-white/50 active:bg-white/20 transition-colors">
-                <Fingerprint className="w-7 h-7" />
-            </button>
-        ) : <div className="w-16 h-16"></div>}
-        <button onClick={() => handleKeyPress('0')} className="w-16 h-16 rounded-full bg-white/5 text-xl font-bold text-white flex items-center justify-center active:bg-white/20 transition-colors">
-            0
-        </button>
-        <button onClick={() => handleKeyPress('del')} className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-white/50 active:bg-white/20 transition-colors">
-            <Delete className="w-7 h-7" />
-        </button>
-      </div>
-    </div>,
-    document.body
   );
 };

@@ -1,7 +1,6 @@
 
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Save, Download, Upload, Trash2, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Key, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Lock, History, Box, Layers, Gauge, Info, Wallet, FileJson, HardDrive, RotateCcw, XCircle, Smartphone, Wifi, Activity, Cloud, Server, Cpu, Radio, Zap, Loader2, Calendar, Target, TrendingUp, LayoutGrid, Sliders, ChevronDown, List, Search, WifiOff, MessageSquare, ExternalLink, LogIn, LogOut, User, Mail, ShieldCheck, FileText, Code2, ScrollText, Shield, PaintBucket, Fingerprint, KeyRound, Crown, Leaf, Flame, MousePointerClick, Aperture, Gem, CreditCard, Cpu as Chip, Star, ArrowRightLeft, Clock, BarChart3, Signal, Network, GitCommit, HelpCircle, RefreshCw, Power } from 'lucide-react';
+import { Save, Download, Upload, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, RefreshCw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Box, Layers, Gauge, Info, Wallet, RotateCcw, Activity, Cloud, Loader2, Calendar, Target, TrendingUp, Search, ExternalLink, LogIn, LogOut, User, Mail, FileText, ScrollText, Aperture, CreditCard, Star, ArrowRightLeft, Clock, BarChart3, Signal, Zap } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
 import { ThemeType } from '../App';
 import { supabase } from '../services/supabase';
@@ -51,7 +50,7 @@ export const Settings: React.FC<SettingsProps> = ({
   appVersion, availableVersion, updateAvailable, onCheckUpdates, onShowChangelog, releaseNotes, lastChecked,
   pushEnabled, onRequestPushPermission, lastSyncTime, onSyncAll, currentVersionDate, lastAiStatus, onForceUpdate
 }) => {
-  const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates' | 'about' | 'security' | 'privacy'>('menu');
+  const [activeSection, setActiveSection] = useState<'menu' | 'integrations' | 'data' | 'system' | 'notifications' | 'appearance' | 'updates' | 'about' | 'privacy'>('menu');
   const [message, setMessage] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileToRestore, setFileToRestore] = useState<File | null>(null);
@@ -84,20 +83,11 @@ export const Settings: React.FC<SettingsProps> = ({
   const [notifyUpdates, setNotifyUpdates] = useState(() => localStorage.getItem('investfiis_notify_updates') !== 'false');
   
   // Settings States
-  const [dataSaver, setDataSaver] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isMarketUpdating, setIsMarketUpdating] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const isServiceWorkerActive = 'serviceWorker' in navigator;
 
-  // Security State
-  const [passcode, setPasscode] = useState<string | null>(() => localStorage.getItem('investfiis_passcode'));
-  const [biometricsEnabled, setBiometricsEnabled] = useState(() => localStorage.getItem('investfiis_biometrics') === 'true');
-  const [showPinSetup, setShowPinSetup] = useState(false);
-  const [showBiometricModal, setShowBiometricModal] = useState(false);
-  const [showDisableSecurityConfirm, setShowDisableSecurityConfirm] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [newPin, setNewPin] = useState('');
   
   // Diagnostics State
   const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -331,81 +321,6 @@ export const Settings: React.FC<SettingsProps> = ({
     else { setCheckStatus('latest'); setTimeout(() => setCheckStatus('idle'), 3000); }
   };
 
-  // Security Functions
-  const handleEnablePin = () => {
-    setShowPinSetup(true);
-    setNewPin('');
-  };
-
-  const handleSavePin = (pin: string) => {
-    if (pin.length === 4) {
-      localStorage.setItem('investfiis_passcode', pin);
-      setPasscode(pin);
-      setShowPinSetup(false);
-      showMessage('success', 'PIN configurado com sucesso!');
-    }
-  };
-
-  const handleDisableSecurityRequest = () => {
-    setShowDisableSecurityConfirm(true);
-  };
-
-  const handleConfirmDisableSecurity = () => {
-    localStorage.removeItem('investfiis_passcode');
-    localStorage.removeItem('investfiis_biometrics');
-    setPasscode(null);
-    setBiometricsEnabled(false);
-    setShowDisableSecurityConfirm(false);
-    showMessage('info', 'Segurança desativada.');
-  };
-
-  const handleToggleBiometrics = () => {
-      if (biometricsEnabled) {
-          localStorage.setItem('investfiis_biometrics', 'false');
-          setBiometricsEnabled(false);
-          showMessage('info', 'Biometria desativada.');
-          return;
-      }
-      // Abre o Modal de Confirmação em vez de chamar direto
-      setShowBiometricModal(true);
-  };
-
-  const activateBiometrics = async () => {
-      setShowBiometricModal(false); // Fecha o modal
-
-      if (window.PublicKeyCredential) {
-          try {
-              const challenge = new Uint8Array(32);
-              window.crypto.getRandomValues(challenge);
-              
-              await navigator.credentials.create({
-                  publicKey: {
-                      challenge,
-                      rp: { name: "InvestFIIs" },
-                      user: {
-                          id: new Uint8Array(16),
-                          name: "user",
-                          displayName: "User"
-                      },
-                      pubKeyCredParams: [{ alg: -7, type: "public-key" }],
-                      authenticatorSelection: { authenticatorAttachment: "platform" },
-                      timeout: 60000,
-                      attestation: "direct"
-                  }
-              });
-              
-              localStorage.setItem('investfiis_biometrics', 'true');
-              setBiometricsEnabled(true);
-              showMessage('success', 'Biometria ativada com sucesso!');
-          } catch (e) {
-              console.error(e);
-              showMessage('error', 'Falha na autenticação ou cancelado.');
-          }
-      } else {
-          showMessage('error', 'Este dispositivo não suporta biometria web.');
-      }
-  };
-
   // Helper for Market Status
   const getMarketStatus = () => {
     const now = new Date();
@@ -525,7 +440,6 @@ export const Settings: React.FC<SettingsProps> = ({
         case 'system': return 'Sistema';
         case 'updates': return 'Atualizações';
         case 'about': return 'Sobre o App';
-        case 'security': return 'Segurança';
         default: return 'Ajustes';
     }
   };
@@ -545,8 +459,6 @@ export const Settings: React.FC<SettingsProps> = ({
       default: return { Icon: Star, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-white/10' };
     }
   };
-
-  // CLEANED UP: Removed redundant DetailCard component and old grid logic
 
   const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, colorClass }: any) => (
     <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-[#0f172a] hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all border-b last:border-0 border-slate-100 dark:border-white/5 group gap-4`}>
@@ -646,7 +558,6 @@ export const Settings: React.FC<SettingsProps> = ({
                 <MenuItem icon={Palette} label="Aparência" onClick={() => setActiveSection('appearance')} colorClass="bg-indigo-500/10 text-indigo-500" />
                 <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Ativado' : ''} colorClass="bg-amber-500/10 text-amber-500" />
                 <MenuItem icon={privacyMode ? EyeOff : Eye} label="Privacidade" onClick={() => setActiveSection('privacy')} value={privacyMode ? 'Ativado' : 'Público'} colorClass="bg-slate-500/10 text-slate-500" />
-                <MenuItem icon={ShieldCheck} label="Segurança" onClick={() => setActiveSection('security')} value={passcode ? 'Protegido' : 'Desativado'} colorClass="bg-emerald-500/10 text-emerald-500" />
             </Section>
 
             <Section title="Dados & Sincronização">
@@ -890,45 +801,6 @@ export const Settings: React.FC<SettingsProps> = ({
                     </button>
                 </div>
             </div>
-          )}
-
-          {activeSection === 'security' && (
-              <div className="space-y-6">
-                   <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-6 rounded-[2.5rem] border border-emerald-500/20 text-center relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                        <ShieldCheck className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Proteção do App</h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Adicione uma camada extra de segurança ao abrir o InvestFIIs.</p>
-                        
-                        {!passcode ? (
-                            <button 
-                                onClick={handleEnablePin}
-                                className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                            >
-                                Ativar Bloqueio
-                            </button>
-                        ) : (
-                            <div className="flex flex-col gap-2">
-                                <div className="px-4 py-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4" /> Protegido com PIN
-                                </div>
-                                <button onClick={handleDisableSecurityRequest} className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mt-2 hover:underline">Remover Proteção</button>
-                            </div>
-                        )}
-                   </div>
-
-                   {passcode && (
-                       <Section title="Métodos de Desbloqueio">
-                           <Toggle 
-                               label="Biometria / FaceID" 
-                               description="Usar impressão digital ou reconhecimento facial do dispositivo" 
-                               icon={Fingerprint} 
-                               checked={biometricsEnabled} 
-                               onChange={handleToggleBiometrics} 
-                            />
-                       </Section>
-                   )}
-              </div>
           )}
 
           {activeSection === 'appearance' && (
@@ -1194,22 +1066,6 @@ export const Settings: React.FC<SettingsProps> = ({
         onCancel={() => setFileToRestore(null)}
       />
 
-      <ConfirmationModal
-        isOpen={showBiometricModal}
-        title="Ativar Biometria"
-        message="Autentique-se agora para vincular sua biometria ao aplicativo."
-        onConfirm={activateBiometrics}
-        onCancel={() => setShowBiometricModal(false)}
-      />
-
-      <ConfirmationModal
-        isOpen={showDisableSecurityConfirm}
-        title="Remover Bloqueio"
-        message="Tem certeza que deseja remover o bloqueio do app? Sua carteira ficará exposta para qualquer pessoa que abrir este dispositivo."
-        onConfirm={handleConfirmDisableSecurity}
-        onCancel={() => setShowDisableSecurityConfirm(false)}
-      />
-
       {/* Logout Confirmation Modal */}
       <ConfirmationModal
         isOpen={showLogoutConfirm}
@@ -1218,49 +1074,6 @@ export const Settings: React.FC<SettingsProps> = ({
         onConfirm={() => { setShowLogoutConfirm(false); onLogout(); }}
         onCancel={() => setShowLogoutConfirm(false)}
       />
-
-      {/* Security Setup Modal */}
-      <SwipeableModal isOpen={showPinSetup} onClose={() => setShowPinSetup(false)}>
-        <div className="px-6 py-4">
-             <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                    <KeyRound className="w-8 h-8 text-slate-400" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Definir PIN</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[200px] mx-auto">Crie uma senha de 4 dígitos para proteger seu acesso.</p>
-             </div>
-             
-             <div className="flex justify-center gap-4 mb-8">
-                 {[0, 1, 2, 3].map(i => (
-                     <div key={i} className={`w-4 h-4 rounded-full border-2 border-slate-200 dark:border-white/20 ${newPin.length > i ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent'}`} />
-                 ))}
-             </div>
-             
-             <div className="grid grid-cols-3 gap-4 max-w-[280px] mx-auto">
-                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(num => (
-                     <button 
-                        key={num} 
-                        onClick={() => {
-                            if (newPin.length < 4) {
-                                const val = newPin + num;
-                                setNewPin(val);
-                                if (val.length === 4) handleSavePin(val);
-                            }
-                        }}
-                        className={`w-16 h-16 rounded-2xl bg-slate-50 dark:bg-white/5 text-xl font-bold flex items-center justify-center active:scale-90 transition-transform ${num === 0 ? 'col-start-2' : ''}`}
-                     >
-                         {num}
-                     </button>
-                 ))}
-                 <button 
-                    onClick={() => setNewPin(prev => prev.slice(0, -1))}
-                    className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center active:scale-90 transition-transform col-start-3 row-start-4"
-                 >
-                     <Trash2 className="w-6 h-6 text-rose-500" />
-                 </button>
-             </div>
-        </div>
-      </SwipeableModal>
     </div>
   );
 };

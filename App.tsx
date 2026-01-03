@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, LockScreen, ConfirmationModal } from './components/Layout';
+import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
@@ -10,7 +10,7 @@ import { Login } from './pages/Login';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { Check, X, AlertTriangle, Info, Download, Sparkles, Loader2, Wallet } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -26,8 +26,6 @@ const STORAGE_KEYS = {
   PREFS_NOTIF: 'investfiis_prefs_notifications',
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
-  PASSCODE: 'investfiis_passcode',
-  BIOMETRICS: 'investfiis_biometrics',
   NOTIF_HISTORY: 'investfiis_notification_history_v2' 
 };
 
@@ -62,9 +60,6 @@ const App: React.FC = () => {
   const [loadingProgress, setLoadingProgress] = useState(0); 
   const [session, setSession] = useState<Session | null>(null);
   const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
-  const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem(STORAGE_KEYS.PASSCODE));
-  const savedPasscode = localStorage.getItem(STORAGE_KEYS.PASSCODE);
-  const isBiometricsEnabled = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) === 'true';
 
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
@@ -240,7 +235,6 @@ const App: React.FC = () => {
     return { portfolio: finalPortfolio, dividendReceipts: receipts, totalDividendsReceived, invested, balance, salesGain };
   }, [transactions, quotes, geminiDividends, assetsMetadata]);
 
-  if (isLocked && savedPasscode) return <LockScreen isOpen={true} correctPin={savedPasscode} onUnlock={() => setIsLocked(false)} isBiometricsEnabled={isBiometricsEnabled} />;
   if (!session && !appLoading) return <Login />;
 
   return (
