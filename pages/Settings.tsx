@@ -254,8 +254,15 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleForceMarketUpdate = async () => {
       setIsMarketUpdating(true);
       try {
-          await onSyncAll(true); // Force = true limpa caches de mercado/IA
-          showMessage('success', 'Dados de mercado atualizados!');
+          // Limpeza profunda de dados de dividendos/IA antes de atualizar
+          onImportDividends([]); // Limpa estado visual imediatamente
+          localStorage.removeItem('investfiis_v4_div_cache'); // Limpa cache persistente do app
+          localStorage.removeItem('investfiis_gemini_cache_v13_3pro'); // Limpa cache específico do serviço Gemini
+          
+          await new Promise(resolve => setTimeout(resolve, 300)); // Pequeno delay para UI reagir
+
+          await onSyncAll(true); // Force = true limpa caches de mercado/IA (no serviço) e recarrega
+          showMessage('success', 'Dados de mercado recarregados!');
       } catch (e) {
           showMessage('error', 'Falha ao atualizar mercado.');
       } finally {
@@ -714,7 +721,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             </div>
                             <div className="text-center">
                                 <span className="text-[10px] font-black uppercase tracking-wider block mb-0.5">Atualizar Mercado</span>
-                                <span className="text-[9px] opacity-70 block leading-tight">Forçar recarga de cotações</span>
+                                <span className="text-[9px] opacity-70 block leading-tight">Forçar nova busca completa</span>
                             </div>
                         </button>
 

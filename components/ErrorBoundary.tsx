@@ -1,5 +1,4 @@
-
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 const ConfigurationError: React.FC = () => (
@@ -29,8 +28,7 @@ interface Props {
   children?: ReactNode;
 }
 
-// Fixed: Importing Component directly and extending it to ensure the compiler correctly recognizes inherited properties like 'props' and 'state'.
-export class ErrorBoundary extends Component<Props, State> {
+export class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -48,7 +46,6 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   render(): ReactNode {
-    // Fixed: Destructuring state and props from 'this' which are now properly recognized through direct Component inheritance.
     const { hasError, error } = this.state;
     const { children } = this.props;
 
