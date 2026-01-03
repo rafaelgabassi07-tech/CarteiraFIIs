@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
+import { supabase } from "./supabase";
 
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
@@ -61,6 +62,62 @@ const normalizeValue = (val: any): number => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+// --- SUPABASE HELPERS ---
+
+// Busca histórico existente no banco para economizar tokens
+const fetchStoredDividends = async (tickers: string[]): Promise<DividendReceipt[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('market_dividends')
+            .select('*')
+            .in('ticker', tickers);
+
+        if (error || !data) return [];
+
+        return data.map((d: any) => ({
+            id: d.id, // ID interno do banco
+            ticker: d.ticker,
+            type: d.type,
+            dateCom: d.date_com,
+            paymentDate: d.payment_date,
+            rate: Number(d.rate),
+            quantityOwned: 0, // Será calculado no App.tsx
+            totalReceived: 0  // Será calculado no App.tsx
+        }));
+    } catch (e) {
+        console.warn("Supabase Cache Read Error (Ignorable if offline):", e);
+        return [];
+    }
+};
+
+// Salva novos dados encontrados pela IA no banco (Crowdsourcing)
+const upsertDividendsToCloud = async (dividends: any[]) => {
+    if (dividends.length === 0) return;
+    
+    // Mapeia para o formato do banco (snake_case)
+    const dbPayload = dividends.map(d => ({
+        ticker: d.ticker,
+        type: d.type,
+        date_com: d.dateCom,
+        payment_date: d.paymentDate,
+        rate: d.rate
+    }));
+
+    try {
+        const { error } = await supabase
+            .from('market_dividends')
+            .upsert(dbPayload, { 
+                onConflict: 'ticker, type, date_com, payment_date, rate',
+                ignoreDuplicates: true 
+            });
+            
+        if (error) console.error("Erro ao salvar histórico na nuvem:", error.message);
+        else console.log(`☁️ [Cloud] ${dividends.length} proventos sincronizados.`);
+    } catch (e) {
+        console.error("Supabase Write Error:", e);
+    }
+};
+
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
@@ -79,6 +136,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       return { dividends: [], metadata: {}, error: 'quota_exceeded' };
   }
   
+  // 1. Tenta Cache Local Rápido (Se não for forceRefresh)
   if (!forceRefresh) {
     try {
         const cachedRaw = localStorage.getItem(GEMINI_CACHE_KEY);
@@ -86,7 +144,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             const cached = JSON.parse(cachedRaw);
             const isFresh = (Date.now() - cached.timestamp) < CACHE_TTL;
             if (isFresh && cached.tickerKey === tickerKey) {
-                console.log("⚡ [Gemini] Usando Cache Inteligente");
+                console.log("⚡ [Gemini] Usando Cache Local");
                 return cached.data;
             }
         }
@@ -100,64 +158,88 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const todayISO = new Date().toISOString().split('T')[0];
     
-    // Define a data de início padrão se não fornecida (12 meses atrás)
-    let calcStartDate = startDate;
-    if (!calcStartDate) {
-        const d = new Date();
-        d.setFullYear(d.getFullYear() - 1);
-        calcStartDate = d.toISOString().split('T')[0];
+    // 2. Busca dados históricos do Supabase (Cloud Cache)
+    const storedDividends = await fetchStoredDividends(uniqueTickers);
+    console.log(`📦 [Supabase] Recuperados ${storedDividends.length} registros históricos.`);
+
+    // Determina a data de corte para a IA
+    // Se temos dados no banco, pedimos para a IA buscar apenas do último mês registrado em diante
+    // para cobrir lacunas ou novos anúncios.
+    let aiSearchStartDate = startDate;
+    
+    if (storedDividends.length > 0) {
+        // Encontra a data mais recente no banco
+        const sortedDates = storedDividends
+            .map(d => d.paymentDate)
+            .sort((a, b) => b.localeCompare(a));
+            
+        if (sortedDates.length > 0) {
+            const latestDbDate = new Date(sortedDates[0]);
+            // Recua 45 dias da última data conhecida para garantir que pegamos correções ou "Datas Com" recentes
+            latestDbDate.setDate(latestDbDate.getDate() - 45);
+            aiSearchStartDate = latestDbDate.toISOString().split('T')[0];
+            console.log(`🤖 [IA] Solicitando busca incremental a partir de: ${aiSearchStartDate}`);
+        }
+    } else {
+        // Se não tem nada no banco, define padrão (12 meses atrás)
+        if (!aiSearchStartDate) {
+            const d = new Date();
+            d.setFullYear(d.getFullYear() - 1);
+            aiSearchStartDate = d.toISOString().split('T')[0];
+        }
+        console.log(`🤖 [IA] Solicitando histórico completo a partir de: ${aiSearchStartDate}`);
     }
     
-    // Prompt "Forensic Auditor" - Otimizado para Thinking Model
+    // Prompt "Forensic Auditor" - Otimizado para Thinking Model e Busca Incremental
     const prompt = `
     VOCÊ É UM AUDITOR FORENSE DE MERCADO DE CAPITAIS (B3).
     Sua missão é extrair dados EXATOS e COMPROVÁVEIS.
     
     DATA BASE (HOJE): ${todayISO}
-    PERÍODO DE ANÁLISE: ${calcStartDate} até o futuro (provisões).
+    PERÍODO DE BUSCA OBRIGATÓRIO: ${aiSearchStartDate} até o FUTURO (Provisões/Agendados).
     ATIVOS ALVO: ${uniqueTickers.join(', ')}.
 
-    PROTOCOLO DE INVESTIGAÇÃO (Use seu Thinking Process para isso):
-    1.  **BUSCA PRIMÁRIA:** Para cada ativo, busque "Histórico de proventos {TICKER} {ANO}", "Aviso aos Acionistas {TICKER}", "Fato Relevante proventos {TICKER}".
+    IMPORTANTE: Eu já tenho dados antigos no banco. Foque sua energia computacional em encontrar:
+    1.  Novos anúncios de dividendos/JCP recentes (últimos 45 dias).
+    2.  Provisões futuras e datas "Com" que ocorrerão em breve.
+    3.  Fundamentos atualizados em tempo real (P/VP, DY, Sentimento).
+
+    PROTOCOLO DE INVESTIGAÇÃO (Use seu Thinking Process):
+    1.  **BUSCA RECENTE:** Para cada ativo, busque "Aviso aos Acionistas {TICKER} ${new Date().getFullYear()}", "Data Com {TICKER} ${new Date().getMonth() + 1}/${new Date().getFullYear()}".
     2.  **CRUZAMENTO DE DADOS:** 
-        -   Compare datas de "DATA COM" (Record Date) vs "DATA PAGAMENTO" (Payment Date). 
-        -   A "DATA COM" é a data limite para ter o ativo. Se a Data Com foi ontem, o usuário já perdeu o direito se comprar hoje.
-    3.  **DETECÇÃO DE JCP:** 
-        -   JCP (Juros sobre Capital Próprio) tem 15% de IR retido na fonte.
-        -   Se encontrar valor BRUTO, tente calcular o LÍQUIDO (Valor * 0.85) ou busque explicitamente o "valor líquido por ação".
-    4.  **FUNDAMENTOS EM TEMPO REAL:**
+        -   Se a Data Com foi ontem ou hoje, marque claramente.
+    3.  **FUNDAMENTOS:**
         -   Busque o P/VP e DY atuais.
-        -   Analise as manchetes recentes (últimos 15 dias) para determinar o Sentimento (Otimista/Neutro/Pessimista). Seja crítico.
+        -   Analise as manchetes recentes (últimos 15 dias) para o Sentimento.
 
     REGRAS DE SAÍDA JSON (RÍGIDAS):
-    -   Retorne APENAS o JSON válido. Sem markdown, sem texto antes ou depois.
-    -   Se não houver dividendos no período, retorne array vazio, não invente.
+    -   Retorne APENAS o JSON válido.
     -   Datas devem ser YYYY-MM-DD.
 
     SCHEMA JSON ALVO:
     {
-      "sys": { "ipca": number }, // IPCA acumulado exato do período
+      "sys": { "ipca": number },
       "data": [
         {
           "t": "TICKER",
           "type": "FII" | "ACAO",
-          "segment": "Setor Exato (ex: Logística, Bancos)",
+          "segment": "Setor Exato",
           "fund": {
              "pvp": number,
-             "pl": number, // 0 para FIIs
-             "dy": number, // Yield 12m %
-             "liq": "string (ex: 2.5M)",
+             "pl": number,
+             "dy": number,
+             "liq": "string",
              "cotistas": "string",
-             "desc": "Resumo técnico de 1 linha",
+             "desc": "Resumo",
              "mcap": "string",
              "sent": "Otimista" | "Neutro" | "Pessimista", 
-             "sent_r": "Justificativa factual baseada em notícias recentes"
+             "sent_r": "Justificativa"
           },
           "divs": [
              { 
-               "com": "YYYY-MM-DD", // CRÍTICO: Data de corte
-               "pag": "YYYY-MM-DD", // Data do dinheiro na conta
-               "val": number, // Valor monetário unitário
+               "com": "YYYY-MM-DD",
+               "pag": "YYYY-MM-DD",
+               "val": number,
                "tipo": "DIVIDENDO" | "JCP" | "RENDIMENTO"
              }
           ]
@@ -167,22 +249,18 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     `;
 
     // LOCKED MODEL: gemini-2.5-flash
-    // Using Thinking Config with budget optimized for Flash model (Max 24576)
     const response = await ai.models.generateContent({
         model: LOCKED_MODEL_ID, 
         contents: prompt,
         config: {
             tools: [{googleSearch: {}}], // Ferramenta de busca essencial
             temperature: 0.1, // Temperatura baixa para precisão factual
-            // ATIVAÇÃO DO "CÉREBRO": Thinking Config
-            // Budget ajustado para o modelo Flash 2.5
-            thinkingConfig: { thinkingBudget: 24576 }, 
+            thinkingConfig: { thinkingBudget: 16384 }, // Budget ajustado para eficiência
         },
     });
     
     let parsedJson: any;
     try {
-      // Accessing .text property directly as per Gemini API guidelines.
       const responseText = response.text;
       if (responseText) {
           let cleanText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -201,7 +279,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     }
 
     const metadata: any = {};
-    const dividends: any[] = [];
+    const aiDividends: any[] = [];
     
     if (parsedJson.data) {
       for (const asset of parsedJson.data) {
@@ -229,13 +307,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                 const normalizedDateCom = normalizeDate(div.com);
                 const normalizedDatePag = normalizeDate(div.pag);
                 
-                // Só adiciona se tiver Data Com válida (obrigatória para entitlement)
                 if (normalizedDateCom) {
-                    dividends.push({
+                    aiDividends.push({
                         ticker: ticker,
                         type: div.tipo ? div.tipo.toUpperCase() : 'DIVIDENDO', 
                         dateCom: normalizedDateCom,
-                        paymentDate: normalizedDatePag || normalizedDateCom, // Se não tiver data pag, usa a com (raro)
+                        paymentDate: normalizedDatePag || normalizedDateCom,
                         rate: normalizeValue(div.val),
                     });
                 }
@@ -243,16 +320,39 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           }
       }
     }
+
+    // 3. Salva os novos dados da IA no Supabase (Async - não bloqueia UI)
+    upsertDividendsToCloud(aiDividends);
+
+    // 4. Merge: Junta o histórico do banco com as novidades da IA
+    // Remove duplicatas baseado em Ticker + DataPagamento + Valor
+    const combinedDividends = [...storedDividends];
+    
+    aiDividends.forEach(aiDiv => {
+        const exists = combinedDividends.some(
+            dbDiv => dbDiv.ticker === aiDiv.ticker && 
+                     dbDiv.paymentDate === aiDiv.paymentDate && 
+                     Math.abs(dbDiv.rate - aiDiv.rate) < 0.001 // Tolerância float
+        );
+        if (!exists) {
+            combinedDividends.push({
+                ...aiDiv,
+                quantityOwned: 0, 
+                totalReceived: 0
+            });
+        }
+    });
     
     const data = { 
-        dividends, 
+        dividends: combinedDividends, 
         metadata, 
         indicators: {
             ipca_cumulative: normalizeValue(parsedJson.sys?.ipca),
-            start_date_used: calcStartDate
+            start_date_used: aiSearchStartDate || ''
         }
     };
     
+    // Cache local também é atualizado
     if (data.metadata && Object.keys(data.metadata).length > 0) {
         localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({
             timestamp: Date.now(),
@@ -269,6 +369,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     if (oldCache) {
         const parsed = JSON.parse(oldCache);
         return { ...parsed.data, error: 'api_error_fallback' };
+    }
+    // Fallback: Se der erro na IA, pelo menos retorna o que tem no banco
+    const storedOnly = await fetchStoredDividends(uniqueTickers);
+    if (storedOnly.length > 0) {
+        return { dividends: storedOnly, metadata: {}, error: 'partial_data_db_only' };
     }
     return { dividends: [], metadata: {}, error: error.message };
   }
