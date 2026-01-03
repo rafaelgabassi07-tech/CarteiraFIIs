@@ -1,17 +1,17 @@
 
 {
-  "version": "7.3.5",
-  "date": "2025-07-02",
+  "version": "8.1.0",
+  "date": "2025-07-10",
   "notes": [
     {
-      "type": "fix",
-      "title": "Correção de Update OTA",
-      "desc": "Resolvido problema que impedia a aplicação de novas versões. O processo agora força uma atualização limpa se necessário."
+      "type": "perf",
+      "title": "Gemini 2.5 Flash",
+      "desc": "Migração para o novo modelo Gemini 2.5 Flash para maior agilidade nas respostas."
     },
     {
-      "type": "perf",
-      "title": "Fluxo de Service Worker",
-      "desc": "Lógica de registro e desregistro aprimorada para evitar estados inconsistentes."
+      "type": "feat",
+      "title": "Grounding Ativado",
+      "desc": "Confirmação do uso do Google Search para validação de dados reais da B3."
     }
   ]
 }

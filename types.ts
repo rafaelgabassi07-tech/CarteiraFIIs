@@ -24,6 +24,7 @@ export interface AssetFundamentals {
   market_cap?: string;
   sentiment?: 'Otimista' | 'Neutro' | 'Pessimista' | string;
   sentiment_reason?: string;
+  sources?: { title: string; uri: string }[]; // Links de onde a IA tirou a info
 }
 
 export interface AssetPosition extends AssetFundamentals {

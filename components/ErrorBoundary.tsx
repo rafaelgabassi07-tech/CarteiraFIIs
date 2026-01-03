@@ -1,4 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+
+import React, { ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 const ConfigurationError: React.FC = () => (
@@ -28,8 +29,10 @@ interface Props {
   children?: ReactNode;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
+// Fixed: Explicitly extending React.Component ensures the compiler correctly recognizes inherited properties like 'props' and 'state'.
+export class ErrorBoundary extends React.Component<Props, State> {
+  // Fixed: Explicitly initialize state with the correct type using the override keyword if supported, ensuring generic resolution.
+  public override state: State = {
     hasError: false,
     error: null
   };
@@ -43,8 +46,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   render(): ReactNode {
-    if (this.state.hasError) {
-      if (this.state.error?.message?.includes('Credenciais do Supabase')) {
+    // Fixed: Destructuring state and props from 'this' within the render method to resolve inherited property accessibility issues.
+    const { hasError, error } = this.state;
+    const { children } = this.props;
+
+    if (hasError) {
+      if (error?.message?.includes('Credenciais do Supabase')) {
         return <ConfigurationError />;
       }
       
@@ -58,6 +65,6 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return children;
   }
 }

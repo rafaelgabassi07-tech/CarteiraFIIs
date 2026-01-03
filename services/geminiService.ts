@@ -7,36 +7,18 @@ export interface UnifiedMarketData {
   dividends: DividendReceipt[];
   metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>;
   indicators?: MarketIndicators;
-  error?: string; // Flag para indicar erro de cota na UI
+  error?: string;
 }
 
-// A chave de API agora é lida do ambiente do Vite.
+// Updated cache key to reflect model change.
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v13_3pro'; 
+// Updated to Gemini 3 Pro Preview as per guidelines for complex reasoning/audit tasks.
+const LOCKED_MODEL_ID = "gemini-3-pro-preview";
 
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v9.2_forensic_auditor'; // Cache atualizado para v9.2 (Thinking Model)
-const QUOTA_COOLDOWN_KEY = 'investfiis_quota_cooldown'; 
-
-// --- BLOQUEIO DE MODELO ---
-// Updated to gemini-2.5-flash (stable) as explicitly requested.
-const LOCKED_MODEL_ID = "gemini-2.5-flash";
-// --------------------------
-
-const getAiCacheTTL = () => {
-    const now = new Date();
-    const day = now.getDay();
-    const isWeekend = day === 0 || day === 6;
-    // Cache de 4 horas durante semana, 24h fim de semana
-    return isWeekend ? (24 * 60 * 60 * 1000) : (4 * 60 * 60 * 1000);
-};
-
-// --- Funções Auxiliares de Parsing ---
 const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
   const s = String(dateStr).trim();
-  
-  // Se já for YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  
-  // Tenta converter DD/MM/YYYY
   const brMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
   if (brMatch) {
     const day = brMatch[1].padStart(2, '0');
@@ -45,7 +27,7 @@ const normalizeDate = (dateStr: any): string => {
     if (year.length === 2) year = `20${year}`;
     return `${year}-${month}-${day}`;
   }
-  return ''; // Data inválida
+  return '';
 };
 
 const normalizeValue = (val: any): number => {
@@ -62,60 +44,41 @@ const normalizeValue = (val: any): number => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
-// --- SUPABASE HELPERS ---
-
-// Busca histórico existente no banco para economizar tokens
 const fetchStoredDividends = async (tickers: string[]): Promise<DividendReceipt[]> => {
     try {
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
             .in('ticker', tickers);
-
         if (error || !data) return [];
-
         return data.map((d: any) => ({
-            id: d.id, // ID interno do banco
+            id: d.id,
             ticker: d.ticker,
             type: d.type,
             dateCom: d.date_com,
-            paymentDate: d.payment_date,
+            payment_date: d.payment_date,
             rate: Number(d.rate),
-            quantityOwned: 0, // Será calculado no App.tsx
-            totalReceived: 0  // Será calculado no App.tsx
+            quantityOwned: 0,
+            totalReceived: 0
         }));
-    } catch (e) {
-        console.warn("Supabase Cache Read Error (Ignorable if offline):", e);
-        return [];
-    }
+    } catch (e) { return []; }
 };
 
-// Salva novos dados encontrados pela IA no banco (Crowdsourcing)
 const upsertDividendsToCloud = async (dividends: any[]) => {
     if (dividends.length === 0) return;
-    
-    // Mapeia para o formato do banco (snake_case)
     const dbPayload = dividends.map(d => ({
         ticker: d.ticker,
         type: d.type,
         date_com: d.dateCom,
-        payment_date: d.paymentDate,
+        payment_date: d.payment_date,
         rate: d.rate
     }));
-
     try {
-        const { error } = await supabase
-            .from('market_dividends')
-            .upsert(dbPayload, { 
-                onConflict: 'ticker, type, date_com, payment_date, rate',
-                ignoreDuplicates: true 
-            });
-            
-        if (error) console.error("Erro ao salvar histórico na nuvem:", error.message);
-        else console.log(`☁️ [Cloud] ${dividends.length} proventos sincronizados.`);
-    } catch (e) {
-        console.error("Supabase Write Error:", e);
-    }
+        await supabase.from('market_dividends').upsert(dbPayload, { 
+            onConflict: 'ticker, type, date_com, payment_date, rate',
+            ignoreDuplicates: true 
+        });
+    } catch (e) { console.error("Cloud sync error", e); }
 };
 
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
@@ -123,258 +86,145 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.toUpperCase())));
   const tickerKey = uniqueTickers.slice().sort().join('|');
-  const CACHE_TTL = getAiCacheTTL();
 
-  const cooldown = localStorage.getItem(QUOTA_COOLDOWN_KEY);
-  if (cooldown && Date.now() < parseInt(cooldown)) {
-      console.warn("🚫 [Gemini] Circuit Breaker Ativo. Usando Cache.");
-      const oldCache = localStorage.getItem(GEMINI_CACHE_KEY);
-      if (oldCache) {
-          const parsed = JSON.parse(oldCache);
-          return { ...parsed.data, error: 'quota_exceeded' };
-      }
-      return { dividends: [], metadata: {}, error: 'quota_exceeded' };
-  }
-  
-  // 1. Tenta Cache Local Rápido (Se não for forceRefresh)
   if (!forceRefresh) {
     try {
         const cachedRaw = localStorage.getItem(GEMINI_CACHE_KEY);
         if (cachedRaw) {
             const cached = JSON.parse(cachedRaw);
-            const isFresh = (Date.now() - cached.timestamp) < CACHE_TTL;
-            if (isFresh && cached.tickerKey === tickerKey) {
-                console.log("⚡ [Gemini] Usando Cache Local");
+            if ((Date.now() - cached.timestamp) < (6 * 60 * 60 * 1000) && cached.tickerKey === tickerKey) {
                 return cached.data;
             }
         }
-    } catch (e) { console.warn("Cache Warning", e); }
+    } catch (e) {}
   }
 
-  // Use process.env.API_KEY directly for initialization
   if (!process.env.API_KEY) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
 
   try {
+    // Initializing Gemini client right before use to ensure the latest API Key is used.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const todayISO = new Date().toISOString().split('T')[0];
-    
-    // 2. Busca dados históricos do Supabase (Cloud Cache)
     const storedDividends = await fetchStoredDividends(uniqueTickers);
-    console.log(`📦 [Supabase] Recuperados ${storedDividends.length} registros históricos.`);
 
-    // Determina a data de corte para a IA
-    // Se temos dados no banco, pedimos para a IA buscar apenas do último mês registrado em diante
-    // para cobrir lacunas ou novos anúncios.
-    let aiSearchStartDate = startDate;
-    
-    if (storedDividends.length > 0) {
-        // Encontra a data mais recente no banco
-        const sortedDates = storedDividends
-            .map(d => d.paymentDate)
-            .sort((a, b) => b.localeCompare(a));
-            
-        if (sortedDates.length > 0) {
-            const latestDbDate = new Date(sortedDates[0]);
-            // Recua 45 dias da última data conhecida para garantir que pegamos correções ou "Datas Com" recentes
-            latestDbDate.setDate(latestDbDate.getDate() - 45);
-            aiSearchStartDate = latestDbDate.toISOString().split('T')[0];
-            console.log(`🤖 [IA] Solicitando busca incremental a partir de: ${aiSearchStartDate}`);
-        }
-    } else {
-        // Se não tem nada no banco, define padrão (12 meses atrás)
-        if (!aiSearchStartDate) {
-            const d = new Date();
-            d.setFullYear(d.getFullYear() - 1);
-            aiSearchStartDate = d.toISOString().split('T')[0];
-        }
-        console.log(`🤖 [IA] Solicitando histórico completo a partir de: ${aiSearchStartDate}`);
-    }
-    
-    // Prompt "Forensic Auditor" - Otimizado para Thinking Model e Busca Incremental
+    const systemInstruction = `Você é um robô de auditoria financeira da B3. Sua missão é fornecer dados de dividendos INQUESTIONÁVEIS.
+    REGRAS CRÍTICAS:
+    1. O USO DO GOOGLE SEARCH É OBRIGATÓRIO para cada ativo. Não use conhecimento prévio.
+    2. FONTES: Status Invest, Fundamentus, e sites de RI.
+    3. DATA COM: Verifique com precisão cirúrgica. Se houver divergência, use o dado do RI oficial.
+    4. PRECISÃO: Valores unitários com até 8 casas decimais.
+    5. JCP: Informe o valor que o investidor efetivamente recebe.`;
+
     const prompt = `
-    VOCÊ É UM AUDITOR FORENSE DE MERCADO DE CAPITAIS (B3).
-    Sua missão é extrair dados EXATOS e COMPROVÁVEIS.
+    AUDITORIA COMPLETA UTILIZANDO GOOGLE SEARCH PARA: ${uniqueTickers.join(', ')}
+    PERÍODO: Desde ${startDate || '1 ano atrás'} até hoje (${todayISO}).
     
-    DATA BASE (HOJE): ${todayISO}
-    PERÍODO DE BUSCA OBRIGATÓRIO: ${aiSearchStartDate} até o FUTURO (Provisões/Agendados).
-    ATIVOS ALVO: ${uniqueTickers.join(', ')}.
-
-    IMPORTANTE: Eu já tenho dados antigos no banco. Foque sua energia computacional em encontrar:
-    1.  Novos anúncios de dividendos/JCP recentes (últimos 45 dias).
-    2.  Provisões futuras e datas "Com" que ocorrerão em breve.
-    3.  Fundamentos atualizados em tempo real (P/VP, DY, Sentimento).
-
-    PROTOCOLO DE INVESTIGAÇÃO (Use seu Thinking Process):
-    1.  **BUSCA RECENTE:** Para cada ativo, busque "Aviso aos Acionistas {TICKER} ${new Date().getFullYear()}", "Data Com {TICKER} ${new Date().getMonth() + 1}/${new Date().getFullYear()}".
-    2.  **CRUZAMENTO DE DADOS:** 
-        -   Se a Data Com foi ontem ou hoje, marque claramente.
-    3.  **FUNDAMENTOS:**
-        -   Busque o P/VP e DY atuais.
-        -   Analise as manchetes recentes (últimos 15 dias) para o Sentimento.
-
-    REGRAS DE SAÍDA JSON (RÍGIDAS):
-    -   Retorne APENAS o JSON válido.
-    -   Datas devem ser YYYY-MM-DD.
-
-    SCHEMA JSON ALVO:
+    TAREFAS:
+    - Liste todos os proventos (Dividendos, JCP, Rendimentos) com Data Com após ${startDate || '1 ano atrás'}.
+    - Extraia fundamentos: P/VP, DY 12M e Segmento.
+    - Analise o sentimento atual do mercado para estes ativos.
+    
+    RESPONDA APENAS EM JSON:
     {
-      "sys": { "ipca": number },
-      "data": [
+      "sys": { "ipca_12m": number },
+      "assets": [
         {
-          "t": "TICKER",
-          "type": "FII" | "ACAO",
-          "segment": "Setor Exato",
-          "fund": {
-             "pvp": number,
-             "pl": number,
-             "dy": number,
-             "liq": "string",
-             "cotistas": "string",
-             "desc": "Resumo",
-             "mcap": "string",
-             "sent": "Otimista" | "Neutro" | "Pessimista", 
-             "sent_r": "Justificativa"
-          },
-          "divs": [
-             { 
-               "com": "YYYY-MM-DD",
-               "pag": "YYYY-MM-DD",
-               "val": number,
-               "tipo": "DIVIDENDO" | "JCP" | "RENDIMENTO"
-             }
+          "ticker": "TICKER",
+          "segment": "String",
+          "fundamentals": { "pvp": number, "dy": number, "liq": "string", "mcap": "string", "sentiment": "string", "reason": "string" },
+          "history": [
+            { "com": "YYYY-MM-DD", "pay": "YYYY-MM-DD", "val": number, "type": "DIVIDENDO|JCP|RENDIMENTO" }
           ]
         }
       ]
-    }
-    `;
+    }`;
 
-    // LOCKED MODEL: gemini-2.5-flash
+    // Calling generateContent with the model name and prompt as per guidelines.
     const response = await ai.models.generateContent({
         model: LOCKED_MODEL_ID, 
         contents: prompt,
         config: {
-            tools: [{googleSearch: {}}], // Ferramenta de busca essencial
-            temperature: 0.1, // Temperatura baixa para precisão factual
-            thinkingConfig: { thinkingBudget: 16384 }, // Budget ajustado para eficiência
+            systemInstruction,
+            tools: [{googleSearch: {}}], // Use Google Search for up-to-date information.
+            responseMimeType: "application/json",
+            temperature: 0.0,
         },
     });
     
-    let parsedJson: any;
-    try {
-      const responseText = response.text;
-      if (responseText) {
-          let cleanText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-          const firstBrace = cleanText.indexOf('{');
-          const lastBrace = cleanText.lastIndexOf('}');
-          if (firstBrace !== -1 && lastBrace !== -1) {
-              cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-          }
-          parsedJson = JSON.parse(cleanText);
-      } else {
-          throw new Error("Resposta vazia da IA");
-      }
-    } catch (parseError) {
-      console.error("Erro Parse JSON:", parseError);
-      throw new Error("Falha formato IA");
+    const sources: {title: string, uri: string}[] = [];
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    if (chunks) {
+        chunks.forEach((chunk: any) => {
+            if (chunk.web?.uri) {
+                sources.push({ title: chunk.web.title || 'Fonte de Mercado', uri: chunk.web.uri });
+            }
+        });
     }
 
+    // response.text is a property, not a method.
+    const parsedJson = JSON.parse(response.text);
     const metadata: any = {};
     const aiDividends: any[] = [];
     
-    if (parsedJson.data) {
-      for (const asset of parsedJson.data) {
-          const ticker = asset.t ? asset.t.trim().toUpperCase() : '';
-          if (!ticker) continue;
-
-          metadata[ticker] = {
-              type: asset.type === 'FII' ? 'FII' : 'ACAO',
+    if (parsedJson.assets) {
+      for (const asset of parsedJson.assets) {
+          const t = asset.ticker.toUpperCase();
+          metadata[t] = {
+              type: t.endsWith('11') ? AssetType.FII : AssetType.STOCK,
               segment: asset.segment,
               fundamentals: {
-                  p_vp: normalizeValue(asset.fund.pvp),
-                  p_l: normalizeValue(asset.fund.pl),
-                  dy_12m: normalizeValue(asset.fund.dy),
-                  liquidity: asset.fund.liq,
-                  shareholders: asset.fund.cotistas,
-                  description: asset.fund.desc,
-                  market_cap: asset.fund.mcap,
-                  sentiment: asset.fund.sent,
-                  sentiment_reason: asset.fund.sent_r,
+                  p_vp: normalizeValue(asset.fundamentals.pvp),
+                  dy_12m: normalizeValue(asset.fundamentals.dy),
+                  liquidity: asset.fundamentals.liq,
+                  market_cap: asset.fundamentals.mcap,
+                  sentiment: asset.fundamentals.sentiment,
+                  sentiment_reason: asset.fundamentals.reason,
+                  sources: sources.slice(0, 5)
               },
           };
           
-          if (asset.divs && Array.isArray(asset.divs)) {
-            for (const div of asset.divs) {
-                const normalizedDateCom = normalizeDate(div.com);
-                const normalizedDatePag = normalizeDate(div.pag);
-                
-                if (normalizedDateCom) {
+          if (asset.history) {
+            asset.history.forEach((d: any) => {
+                const dCom = normalizeDate(d.com);
+                const dPay = normalizeDate(d.pay);
+                if (dCom) {
                     aiDividends.push({
-                        ticker: ticker,
-                        type: div.tipo ? div.tipo.toUpperCase() : 'DIVIDENDO', 
-                        dateCom: normalizedDateCom,
-                        paymentDate: normalizedDatePag || normalizedDateCom,
-                        rate: normalizeValue(div.val),
+                        ticker: t,
+                        type: d.type || 'DIVIDENDO',
+                        dateCom: dCom,
+                        paymentDate: dPay || dCom,
+                        rate: normalizeValue(d.val),
                     });
                 }
-            }
+            });
           }
       }
     }
 
-    // 3. Salva os novos dados da IA no Supabase (Async - não bloqueia UI)
     upsertDividendsToCloud(aiDividends);
 
-    // 4. Merge: Junta o histórico do banco com as novidades da IA
-    // Remove duplicatas baseado em Ticker + DataPagamento + Valor
-    const combinedDividends = [...storedDividends];
-    
-    aiDividends.forEach(aiDiv => {
-        const exists = combinedDividends.some(
-            dbDiv => dbDiv.ticker === aiDiv.ticker && 
-                     dbDiv.paymentDate === aiDiv.paymentDate && 
-                     Math.abs(dbDiv.rate - aiDiv.rate) < 0.001 // Tolerância float
+    const combined = [...storedDividends];
+    aiDividends.forEach(newDiv => {
+        const isDuplicate = combined.some(old => 
+            old.ticker === newDiv.ticker && 
+            old.dateCom === newDiv.dateCom && 
+            Math.abs(old.rate - newDiv.rate) < 0.00001
         );
-        if (!exists) {
-            combinedDividends.push({
-                ...aiDiv,
-                quantityOwned: 0, 
-                totalReceived: 0
-            });
-        }
+        if (!isDuplicate) combined.push(newDiv);
     });
     
-    const data = { 
-        dividends: combinedDividends, 
+    const finalData = { 
+        dividends: combined, 
         metadata, 
-        indicators: {
-            ipca_cumulative: normalizeValue(parsedJson.sys?.ipca),
-            start_date_used: aiSearchStartDate || ''
-        }
+        indicators: { ipca_cumulative: normalizeValue(parsedJson.sys?.ipca_12m), start_date_used: startDate || '' }
     };
     
-    // Cache local também é atualizado
-    if (data.metadata && Object.keys(data.metadata).length > 0) {
-        localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({
-            timestamp: Date.now(),
-            tickerKey: tickerKey,
-            data: data
-        }));
-    }
-    
-    return data;
+    localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), tickerKey, data: finalData }));
+    return finalData;
 
   } catch (error: any) {
-    console.error("Erro Gemini:", error.message);
-    const oldCache = localStorage.getItem(GEMINI_CACHE_KEY);
-    if (oldCache) {
-        const parsed = JSON.parse(oldCache);
-        return { ...parsed.data, error: 'api_error_fallback' };
-    }
-    // Fallback: Se der erro na IA, pelo menos retorna o que tem no banco
-    const storedOnly = await fetchStoredDividends(uniqueTickers);
-    if (storedOnly.length > 0) {
-        return { dividends: storedOnly, metadata: {}, error: 'partial_data_db_only' };
-    }
-    return { dividends: [], metadata: {}, error: error.message };
+    console.error("Gemini Critical Audit Error:", error);
+    const stored = await fetchStoredDividends(uniqueTickers);
+    return { dividends: stored, metadata: {}, error: error.message };
   }
 };

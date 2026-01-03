@@ -1,40 +1,32 @@
-
-const CACHE_NAME = 'investfiis-pwa-stable-v3'; // Cache incrementado para garantir atualização
+const CACHE_NAME = 'investfiis-pwa-v7.5';
 
 const PRECACHE_ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './logo.svg'
 ];
 
-// Listens for a message from the UI to activate the new SW when the user confirms an update
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'INVESTFIIS_SKIP_WAITING') {
-    console.log('SW: Received SKIP_WAITING message. Activating new worker.');
     self.skipWaiting();
   }
 });
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
-      self.clients.claim(), // Take control of all open pages
+      self.clients.claim(),
       caches.keys().then((keys) => {
-        // Delete all old caches that don't match the current CACHE_NAME
         return Promise.all(
           keys.map((key) => {
-            if (key !== CACHE_NAME) {
-              console.log('SW: Deleting obsolete cache:', key);
-              return caches.delete(key);
-            }
+            if (key !== CACHE_NAME) return caches.delete(key);
           })
         );
       })
@@ -45,42 +37,48 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Bypass non-GET requests and all requests to external origins.
-  // This is CRITICAL to prevent interference with API calls (Supabase, Brapi, etc.).
-  if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
-    // Let the browser handle the request as usual.
-    return;
-  }
+  // 1. Bypass non-GET
+  if (event.request.method !== 'GET') return;
 
-  // 2. For navigation (HTML document requests), use a "Network first" strategy.
-  // This ensures users get the latest version of the app's entry point if they are online.
-  if (event.request.mode === 'navigate') {
+  // 2. Cache de Logos de Ativos (Brapi/Cloudfront)
+  // Estratégia: Cache First (Logos mudam raramente)
+  if (url.href.includes('brapi.dev') || url.href.includes('cloudfront.net') || url.href.includes('static.statusinvest')) {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        // If the network fails, fall back to the cached index.html.
-        return caches.match('./index.html');
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(event.request).then((networkResponse) => {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+          return networkResponse;
+        });
       })
     );
     return;
   }
 
-  // 3. For local assets (JS, CSS, etc.), use a "Stale-While-Revalidate" strategy.
-  // This serves assets from cache instantly for speed, then updates the cache in the background.
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // If the network request is successful, update the cache with the new version.
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      });
+  // 3. Navigation: Network First
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
 
-      // Return the cached response immediately if it exists, otherwise wait for the network.
-      return cachedResponse || fetchPromise;
-    })
-  );
+  // 4. Local Assets: Stale-While-Revalidate
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        const fetchPromise = fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
+        });
+        return cachedResponse || fetchPromise;
+      })
+    );
+  }
 });

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown, Briefcase, ChevronUp, Layers, Hash, Info, CheckCircle2, Clock } from 'lucide-react';
+import { Building2, TrendingUp, Calendar, ArrowUp, ArrowDown, Target, DollarSign, Landmark, ScrollText, BarChart3, BookOpen, Activity, Percent, Newspaper, ExternalLink, Zap, Users, ChevronDown, Briefcase, ChevronUp, Layers, Hash, Info, CheckCircle2, Clock, ShieldCheck, Globe } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history: DividendReceipt[], totalPortfolioValue: number }> = ({ asset, index, history, totalPortfolioValue }) => {
@@ -35,7 +35,6 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="p-4">
-          {/* Header do Card */}
           <div className="flex items-center justify-between gap-4">
              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-all duration-500 border border-slate-100 dark:border-white/5 ${isExpanded ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 scale-110' : asset.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-600' : 'bg-blue-500/10 text-blue-600'}`}>
@@ -72,7 +71,6 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
              </div>
           </div>
 
-          {/* Área Expandida - Técnica Grid Accordion (Zero Layout Shifts) */}
           <div className={`grid-accordion ${isExpanded ? 'grid-accordion-open' : ''}`}>
              <div className="grid-accordion-content">
                  <div className="pt-6 pb-2">
@@ -237,22 +235,42 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-6">
               <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl text-center border border-slate-100 dark:border-transparent">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">P/VP</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">P/VP Atual</p>
                   <p className="text-base font-black text-slate-800 dark:text-white tabular-nums">{asset.p_vp?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '-'}</p>
               </div>
               <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl text-center border border-slate-100 dark:border-transparent">
                   <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">DY (12M)</p>
                   <p className="text-base font-black text-emerald-600 dark:text-emerald-500 tabular-nums">{asset.dy_12m?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '-'}%</p>
               </div>
-              <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-3xl text-center border border-slate-100 dark:border-transparent">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">P/L</p>
-                  <p className="text-base font-black text-slate-800 dark:text-white tabular-nums">
-                    {asset.assetType === AssetType.FII ? '-' : (asset.p_l?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '-')}
-                  </p>
-              </div>
           </div>
+          
+          {/* FONTES DE GROUNDING DO GOOGLE SEARCH */}
+          {asset.sources && asset.sources.length > 0 && (
+            <div className="mb-6">
+                <h4 className="px-2 mb-3 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <ShieldCheck className="w-3 h-3 text-emerald-500" /> Fontes de Auditoria (Busca Google)
+                </h4>
+                <div className="space-y-2">
+                    {asset.sources.map((src, idx) => (
+                        <a 
+                            key={idx} 
+                            href={src.uri} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 hover:border-accent transition-colors"
+                        >
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 truncate">{src.title}</span>
+                            </div>
+                            <ExternalLink className="w-3 h-3 text-slate-300 shrink-0" />
+                        </a>
+                    ))}
+                </div>
+            </div>
+          )}
 
           <div className="space-y-3 pb-8">
             <div className="flex justify-between items-center bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5">
@@ -264,28 +282,12 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, index: number, history
             </div>
             <div className="flex justify-between items-center bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5">
               <div className="flex items-center gap-3">
-                <Users className="w-4 h-4 text-slate-400" />
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{asset.assetType === AssetType.FII ? 'Cotistas' : 'Acionistas'}</span>
-              </div>
-              <span className="text-xs font-bold text-slate-900 dark:text-white">{asset.shareholders || '-'}</span>
-            </div>
-            <div className="flex justify-between items-center bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5">
-              <div className="flex items-center gap-3">
                 <Landmark className="w-4 h-4 text-slate-400" />
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Market Cap</span>
               </div>
               <span className="text-xs font-bold text-slate-900 dark:text-white">{asset.market_cap || '-'}</span>
             </div>
           </div>
-          
-          {asset.description && (
-            <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-3xl mb-4">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2"><Info className="w-3 h-3" /> Sobre o Ativo</h4>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                {asset.description}
-              </p>
-            </div>
-          )}
 
           <a href={statusInvestUrl} target="_blank" rel="noopener noreferrer"
             className="w-full flex items-center justify-center gap-2 py-4 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors mt-4">
