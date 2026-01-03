@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
 // Added CheckCircle2 to the lucide-react imports to fix the missing component error.
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info, LayoutDashboard, History, CheckCircle2 } from 'lucide-react';
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info, LayoutDashboard, History, CheckCircle2, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, ComposedChart, Line, YAxis, ReferenceLine } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 import { VariableSizeList as List } from 'react-window';
@@ -162,6 +162,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [gainTab, setGainTab] = useState<'benchmark' | 'power' | 'history'>('benchmark');
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // Estado para controle do período do gráfico de evolução
+  const [evolutionRange, setEvolutionRange] = useState<'6M' | '1Y' | 'ALL'>('ALL');
+
   useEffect(() => { setActiveIndex(0); }, [allocationTab]);
   const onPieEnter = useCallback((_: any, index: number) => { setActiveIndex(index); }, []);
 
@@ -220,6 +223,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     }
     return data;
   }, [transactions, balance, invested, inflationRate]);
+
+  // Filtro de Evolução
+  const filteredEvolutionData = useMemo(() => {
+    if (evolutionRange === 'ALL') return evolutionData;
+    const slice = evolutionRange === '6M' ? 6 : 12;
+    return evolutionData.slice(-slice);
+  }, [evolutionData, evolutionRange]);
 
   const { received, upcoming, averageMonthly, bestPayer, chartData, upcomingEvents, historyGrouped } = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -467,15 +477,31 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
 
             <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-6 border border-slate-100 dark:border-white/5 shadow-xl mb-8">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                    <AreaIcon className="w-4 h-4 text-accent" /> Histórico de Patrimônio
-                </h3>
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                        <AreaIcon className="w-4 h-4 text-accent" /> Histórico de Patrimônio
+                    </h3>
+                    
+                    {/* Time Range Selector */}
+                    <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
+                        {(['6M', '1Y', 'ALL'] as const).map(range => (
+                            <button
+                                key={range}
+                                onClick={() => setEvolutionRange(range)}
+                                className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${evolutionRange === range ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
+                            >
+                                {range === 'ALL' ? 'Tudo' : range}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 <div className="h-48 w-full mt-4 -mx-4 px-4">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={evolutionData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                        <AreaChart data={filteredEvolutionData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                             <defs>
                                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={accentColor} stopOpacity={0.3}/>
+                                    <stop offset="5%" stopColor={accentColor} stopOpacity={0.4}/>
                                     <stop offset="95%" stopColor={accentColor} stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
@@ -495,7 +521,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 strokeWidth={3} 
                                 fillOpacity={1} 
                                 fill="url(#colorValue)" 
-                                animationDuration={1500}
+                                animationDuration={1000}
                             />
                         </AreaChart>
                     </ResponsiveContainer>
@@ -722,13 +748,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                 {incomeTab === 'magic' && (
                     <div className="space-y-4 anim-fade-in-up is-visible">
-                        <div className="bg-slate-900 dark:bg-white p-8 rounded-[2.5rem] text-center mb-6 relative overflow-hidden shadow-xl">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 dark:bg-black/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                            <div className="relative z-10">
-                                <Sparkles className="w-10 h-10 text-amber-400 mx-auto mb-4 animate-pulse" />
-                                <h3 className="text-xl font-black text-white dark:text-slate-900 tracking-tight">Efeito Bola de Neve</h3>
-                                <p className="text-xs text-white/60 dark:text-slate-900/60 max-w-[240px] mx-auto mt-3 leading-relaxed font-medium">Quantas cotas você precisa para que os proventos paguem uma nova cota todo mês.</p>
-                            </div>
+                        {/* Compact Header */}
+                        <div className="flex items-center justify-between px-2 mb-2">
+                             <div className="flex items-center gap-2 text-amber-500">
+                                <Sparkles className="w-4 h-4" />
+                                <span className="text-xs font-bold uppercase tracking-widest">Efeito Bola de Neve</span>
+                             </div>
+                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {magicNumbers.filter(m => m.missing === 0).length} atingidos
+                             </span>
                         </div>
 
                         {magicNumbers.length === 0 ? (
@@ -737,52 +765,43 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 <p className="text-sm font-bold text-slate-400">Dados insuficientes para cálculo.</p>
                             </div>
                         ) : magicNumbers.map(m => (
-                            <div key={m.ticker} className="bg-white dark:bg-white/5 p-6 rounded-[2.25rem] border border-slate-100 dark:border-white/5 shadow-sm transition-all hover:shadow-md">
-                                <div className="flex justify-between items-start mb-5">
+                            <div key={m.ticker} className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
+                                <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent font-black text-xs">{m.ticker.substring(0,4)}</div>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs border ${m.missing === 0 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 text-slate-500 border-slate-200 dark:border-white/5'}`}>
+                                            {m.ticker.substring(0,4)}
+                                        </div>
                                         <div>
-                                            <h4 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{m.ticker}</h4>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">R$ {m.rate.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} por cota</p>
+                                            <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-none mb-1">{m.ticker}</h4>
+                                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
+                                                <span>Atual: <strong className="text-slate-700 dark:text-slate-300">{m.currentQty}</strong></span>
+                                                <span className="opacity-50">/</span>
+                                                <span>Meta: <strong className="text-slate-700 dark:text-slate-300">{m.magicQty}</strong></span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest tabular-nums">
-                                        {m.progress.toFixed(0)}%
+                                    
+                                    <div className="text-right">
+                                        {m.missing > 0 ? (
+                                            <>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{m.missing}</p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Faltam</p>
+                                            </>
+                                        ) : (
+                                            <div className="px-2 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20 flex items-center gap-1.5">
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Atingido</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 
-                                <div className="space-y-4">
-                                    <div className="h-1.5 w-full bg-slate-100 dark:bg-black/20 rounded-full overflow-hidden">
-                                        <div 
-                                            style={{ width: `${m.progress}%` }} 
-                                            className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(16,185,129,0.3)]"
-                                        ></div>
-                                    </div>
-                                    
-                                    <div className="flex justify-between items-center px-1">
-                                        <div className="text-center">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Atual</p>
-                                            <p className="text-sm font-black text-slate-700 dark:text-slate-300 tabular-nums">{m.currentQty}</p>
-                                        </div>
-                                        <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
-                                        <div className="text-center">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Meta</p>
-                                            <p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{m.magicQty}</p>
-                                        </div>
-                                    </div>
-
-                                    {m.missing > 0 ? (
-                                        <div className="pt-4 border-t border-slate-50 dark:border-white/5 text-center">
-                                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
-                                                Faltam <span className="text-emerald-500 font-black tabular-nums">{m.missing} cotas</span> para o ativo se pagar sozinho.
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="pt-4 border-t border-slate-50 dark:border-white/5 text-center flex items-center justify-center gap-2">
-                                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Objetivo Concluído!</p>
-                                        </div>
-                                    )}
+                                {/* Compact Progress Bar */}
+                                <div className="relative h-1.5 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                    <div 
+                                        style={{ width: `${m.progress}%` }} 
+                                        className={`h-full rounded-full transition-all duration-1000 ease-out ${m.missing === 0 ? 'bg-emerald-500' : 'bg-amber-400'}`}
+                                    ></div>
                                 </div>
                             </div>
                         ))}
