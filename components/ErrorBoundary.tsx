@@ -1,6 +1,8 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
+// Componente para exibir quando houver erro de configuração das chaves do Supabase
 const ConfigurationError: React.FC = () => (
   <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 text-white text-center font-sans">
     <div className="bg-slate-900/60 backdrop-blur-xl rounded-[2.5rem] border border-white/10 p-8 max-w-lg anim-fade-in-up is-visible">
@@ -19,16 +21,17 @@ const ConfigurationError: React.FC = () => (
   </div>
 );
 
+interface Props {
+  children?: ReactNode;
+}
+
 interface State {
   hasError: boolean;
   error: Error | null;
 }
 
-interface Props {
-  children?: ReactNode;
-}
-
-export class ErrorBoundary extends React.Component<Props, State> {
+// Fix: Estendendo Component com tipos genéricos explícitos para garantir que 'this.props' seja reconhecido pelo TypeScript.
+export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null

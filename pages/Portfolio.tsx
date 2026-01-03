@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, TrendingUp, TrendingDown, ChevronDown, ChevronUp, BarChart3, PieChart, Activity, DollarSign, Calendar, ExternalLink, Info, AlertCircle } from 'lucide-react';
+import { Building2, TrendingUp, TrendingDown, ChevronDown, ChevronUp, BarChart3, PieChart, Activity, DollarSign, Calendar, ExternalLink, Info, AlertCircle, Globe } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
@@ -122,6 +122,27 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
                          <span className="text-slate-500 dark:text-slate-400 font-mono">{h.paymentDate.split('-').reverse().join('/')}</span>
                          <span className="font-bold text-emerald-500">+{formatBRL(h.rate)}/cota</span>
                       </div>
+                   ))}
+                </div>
+             </div>
+           )}
+
+           {/* Grounding Sources (Google Search Citations) */}
+           {/* Fix: ALWAYS list URLs from groundingChunks to satisfy Google GenAI guidelines. */}
+           {asset.sources && asset.sources.length > 0 && (
+             <div className="pt-2 border-t border-slate-100 dark:border-white/5 mt-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Fontes de Pesquisa (IA)</p>
+                <div className="flex flex-wrap gap-2">
+                   {asset.sources.map((src, i) => (
+                      <a 
+                        key={i} 
+                        href={src.uri} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-white/5 rounded-lg text-[9px] font-bold text-slate-500 hover:text-accent transition-colors border border-slate-100 dark:border-white/5"
+                      >
+                         <Globe className="w-2.5 h-2.5" /> {src.title.length > 25 ? src.title.substring(0, 25) + '...' : src.title}
+                      </a>
                    ))}
                 </div>
              </div>
