@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Wallet, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 interface SplashScreenProps {
   finishLoading: boolean;
@@ -86,9 +86,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
             
             <div className="relative w-28 h-28 bg-gradient-to-br from-slate-800 to-slate-950 rounded-[2.5rem] flex items-center justify-center shadow-2xl border border-white/10 ring-1 ring-black/50">
                 <div className="relative flex items-center justify-center">
-                    <Wallet 
-                        className={`w-12 h-12 text-white transition-all duration-700 ${finishLoading ? 'scale-110' : 'scale-100'}`} 
-                        strokeWidth={1.5} 
+                    <img 
+                        src="/logo.svg" 
+                        alt="InvestFIIs Logo" 
+                        className={`w-16 h-16 object-contain drop-shadow-2xl transition-all duration-700 ${finishLoading ? 'scale-110' : 'scale-100'}`} 
                     />
                     <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-sky-500 rounded-xl flex items-center justify-center border-[3px] border-[#020617] shadow-lg">
                         <TrendingUp className="w-4 h-4 text-white" strokeWidth={3} />

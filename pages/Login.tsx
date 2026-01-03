@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
-import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Wallet, Eye, EyeOff, Sparkles, TrendingUp, KeyRound, ArrowLeft, MailCheck } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Eye, EyeOff, Sparkles, TrendingUp, KeyRound, ArrowLeft, MailCheck } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -117,7 +117,7 @@ export const Login: React.FC = () => {
           <div className="inline-flex items-center justify-center relative mb-6 group cursor-default">
             <div className="absolute inset-0 bg-indigo-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
             <div className="relative w-20 h-20 bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-[2rem] flex items-center justify-center shadow-2xl">
-              <Wallet className="w-9 h-9 text-white group-hover:scale-110 transition-transform duration-500" strokeWidth={1.5} />
+              <img src="/logo.svg" alt="InvestFIIs Logo" className="w-12 h-12 object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-md" />
               <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-500 rounded-xl flex items-center justify-center border-4 border-[#020617]">
                  <TrendingUp className="w-3.5 h-3.5 text-white" strokeWidth={3} />
               </div>
