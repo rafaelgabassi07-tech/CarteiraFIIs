@@ -1,5 +1,5 @@
 
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 const ConfigurationError: React.FC = () => (
@@ -29,10 +29,10 @@ interface Props {
   children?: ReactNode;
 }
 
-// Fixed: Explicitly extending React.Component ensures the compiler correctly recognizes inherited properties like 'props' and 'state'.
-export class ErrorBoundary extends React.Component<Props, State> {
-  // Fixed: Explicitly initialize state with the correct type using the override keyword if supported, ensuring generic resolution.
-  public override state: State = {
+// Fixed: Importing Component directly and extending it to ensure the compiler correctly recognizes inherited properties like 'props' and 'state'.
+export class ErrorBoundary extends Component<Props, State> {
+  // Fixed: Removed the 'override' keyword which was causing compilation errors and ensured proper state initialization.
+  public state: State = {
     hasError: false,
     error: null
   };
@@ -46,7 +46,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   render(): ReactNode {
-    // Fixed: Destructuring state and props from 'this' within the render method to resolve inherited property accessibility issues.
+    // Fixed: Destructuring state and props from 'this' which are now properly recognized through direct Component inheritance.
     const { hasError, error } = this.state;
     const { children } = this.props;
 

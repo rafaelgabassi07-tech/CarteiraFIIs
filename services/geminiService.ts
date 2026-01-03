@@ -56,7 +56,7 @@ const fetchStoredDividends = async (tickers: string[]): Promise<DividendReceipt[
             ticker: d.ticker,
             type: d.type,
             dateCom: d.date_com,
-            payment_date: d.payment_date,
+            paymentDate: d.payment_date, // Corrigido de payment_date para paymentDate (CamelCase)
             rate: Number(d.rate),
             quantityOwned: 0,
             totalReceived: 0
@@ -70,7 +70,7 @@ const upsertDividendsToCloud = async (dividends: any[]) => {
         ticker: d.ticker,
         type: d.type,
         date_com: d.dateCom,
-        payment_date: d.payment_date,
+        payment_date: d.paymentDate,
         rate: d.rate
     }));
     try {
@@ -161,8 +161,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         });
     }
 
-    // response.text is a property, not a method.
-    const parsedJson = JSON.parse(response.text);
+    // response.text is a property, not a method. Corrected to handle string | undefined for JSON.parse.
+    const rawText = response.text || "{}";
+    const parsedJson = JSON.parse(rawText);
     const metadata: any = {};
     const aiDividends: any[] = [];
     
