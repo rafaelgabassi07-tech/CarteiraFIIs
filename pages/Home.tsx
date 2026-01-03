@@ -1,7 +1,8 @@
+
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info, LayoutDashboard, History, CheckCircle2, BarChart3 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, ComposedChart, Line, YAxis, ReferenceLine } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, ComposedChart, Line, YAxis, ReferenceLine } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 import * as ReactWindow from 'react-window';
 
@@ -96,23 +97,9 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    return ( <div className="bg-slate-900/95 backdrop-blur-md text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50 border border-white/10"> <p className="mb-1 opacity-70 tracking-wide uppercase">{label}</p> <p className="text-emerald-400 text-sm tabular-nums">{formatBRL(payload[0].value)}</p> </div> );
+    return ( <div className="bg-slate-900/90 backdrop-blur-xl text-white text-[10px] font-bold py-2 px-3 rounded-xl shadow-xl z-50 border border-white/10"> <p className="mb-1 opacity-70 tracking-wide uppercase">{label}</p> <p className="text-emerald-400 text-sm tabular-nums">{formatBRL(payload[0].value)}</p> </div> );
   }
   return null;
-};
-
-const PercentTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const val = payload[0].value;
-      const formatted = typeof val === 'number' ? val.toFixed(2) + '%' : val;
-      return ( 
-        <div className="bg-slate-900/95 backdrop-blur-md text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50 border border-white/10"> 
-            <p className="mb-1 opacity-70 tracking-wide uppercase">{label}</p> 
-            <p className={`text-sm tabular-nums ${val >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatted}</p> 
-        </div> 
-      );
-    }
-    return null;
 };
 
 const EvolutionTooltip = ({ active, payload, label }: any) => {
@@ -124,7 +111,7 @@ const EvolutionTooltip = ({ active, payload, label }: any) => {
       const isPositive = appreciation >= 0;
 
       return ( 
-        <div className="bg-slate-900/95 backdrop-blur-xl text-white p-3 rounded-2xl shadow-2xl border border-white/10 z-50 min-w-[160px]">
+        <div className="bg-slate-900/90 backdrop-blur-xl text-white p-3 rounded-2xl shadow-2xl border border-white/10 z-50 min-w-[160px]">
            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">{label}</p>
            
            <div className="space-y-1.5">
@@ -157,16 +144,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
-  const [allocationTab, setAllocationTab] = useState<'assets' | 'types' | 'segments'>('assets');
   const [incomeTab, setIncomeTab] = useState<'summary' | 'history' | 'magic'>('summary');
-  const [gainTab, setGainTab] = useState<'benchmark' | 'power' | 'history'>('benchmark');
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  // Estado para controle do período do gráfico de evolução
   const [evolutionRange, setEvolutionRange] = useState<'6M' | '1Y' | 'ALL'>('ALL');
-
-  useEffect(() => { setActiveIndex(0); }, [allocationTab]);
-  const onPieEnter = useCallback((_: any, index: number) => { setActiveIndex(index); }, []);
 
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
@@ -269,29 +248,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const getItemSize = (index: number) => flatHistory[index].type === 'header' ? 48 : 96;
 
   const yieldOnCostPortfolio = useMemo(() => (invested <= 0) ? 0 : (received / invested) * 100, [received, invested]);
-  const { assetData, typeData, segmentData } = useMemo(() => {
-    const assetData = portfolio.map(p => ({ name: p.ticker, value: (p.currentPrice || p.averagePrice) * p.quantity })).sort((a,b) => b.value - a.value);
+  const { typeData, segmentData } = useMemo(() => {
     const typesMap: Record<string, number> = {}, segmentsMap: Record<string, number> = {};
     portfolio.forEach(p => { const val = (p.currentPrice || p.averagePrice) * p.quantity; const t = p.assetType === AssetType.FII ? 'FIIs' : 'Ações'; typesMap[t] = (typesMap[t] || 0) + val; const s = p.segment || 'Outros'; segmentsMap[s] = (segmentsMap[s] || 0) + val; });
     const typeData = Object.entries(typesMap).map(([k, v]) => ({ name: k, value: v })).sort((a,b) => b.value - a.value);
     const segmentData = Object.entries(segmentsMap).map(([k, v]) => ({ name: k, value: v })).sort((a,b) => b.value - a.value);
-    return { assetData, typeData, segmentData };
+    return { typeData, segmentData };
   }, [portfolio]);
-  const topSegments = useMemo(() => segmentData.slice(0, 3), [segmentData]);
+  
   const magicNumbers = useMemo(() => portfolio.map(p => { const lastDiv = [...dividendReceipts].filter(d => d.ticker === p.ticker).sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))[0]; if (!lastDiv || !p.currentPrice || lastDiv.rate <= 0) return null; const magicQty = Math.ceil(p.currentPrice / lastDiv.rate); if (!isFinite(magicQty) || magicQty <= 0) return null; return { ticker: p.ticker, currentQty: p.quantity, magicQty, progress: Math.min(100, (p.quantity / magicQty) * 100), missing: Math.max(0, magicQty - p.quantity), rate: lastDiv.rate }; }).filter(m => m !== null).sort((a,b) => (b?.progress || 0) - (a?.progress || 0)), [portfolio, dividendReceipts]);
   
-  const renderActiveShape = (props: any) => { 
-    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props; 
-    return ( 
-        <g> 
-            <text x={cx} y={cy - 10} dy={0} textAnchor="middle" className="text-sm font-bold dark:fill-white fill-slate-900" style={{ fontSize: '16px', outline: 'none' }}> {payload.name} </text> 
-            <text x={cx} y={cy + 10} dy={8} textAnchor="middle" className="text-xs font-medium fill-slate-500" style={{ outline: 'none' }}> {formatBRL(value)} </text> 
-            <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} cornerRadius={6} stroke="none" /> 
-            <Sector cx={cx} cy={cy} startAngle={startAngle} endAngle={endAngle} innerRadius={outerRadius + 12} outerRadius={outerRadius + 14} fill={fill} opacity={0.2} cornerRadius={10} stroke="none" /> 
-        </g> 
-    ); 
-  };
-
   const COLORS = useMemo(() => [accentColor, '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#6366f1', '#14b8a6', '#f97316', '#64748b', '#d946ef', '#22c55e'], [accentColor]);
   
   const finalIPCA = inflationRate > 0 ? inflationRate : 0;
@@ -311,14 +277,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const ganhoRealPercent = inflationFactor !== 0 ? ((nominalFactor / inflationFactor) - 1) * 100 : nominalYield;
   
   const isAboveInflation = ganhoRealValor >= 0;
-
-  const comparisonData = useMemo(() => [
-    { name: 'Carteira', value: nominalYield, fill: isAboveInflation ? '#10b981' : '#ef4444' },
-    { name: 'IPCA', value: finalIPCA, fill: '#94a3b8' }
-  ].sort((a, b) => b.value - a.value), [nominalYield, finalIPCA, isAboveInflation]);
-
   const dateLabel = getShortDateLabel(portfolioStartDate);
-  const getInflationHistoryItemSize = () => 72;
 
   return (
     <div className="pt-24 pb-28 px-5 space-y-4 max-w-lg mx-auto">
@@ -327,6 +286,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <div className="anim-fade-in-up is-visible">
         <button onClick={() => setShowSummaryModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-black/30 border border-slate-200/60 dark:border-white/5 relative overflow-hidden group transition-all duration-300 active:scale-[0.98]">
             
+            {/* Glow Effect */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-accent/20 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
             <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
 
             <div className="relative z-10">
@@ -338,7 +299,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <div>
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Patrimônio Total</span>
                             <div className="flex items-center gap-2">
-                                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums">{formatBRL(balance)}</h2>
+                                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums">{formatBRL(balance)}</h2>
                                 {isAiLoading && <Loader2 className="w-3.5 h-3.5 text-accent animate-spin" />}
                             </div>
                         </div>
@@ -395,7 +356,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Renda Passiva</h3><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Extrato Completo</p></div>
               </div>
               <div className="flex items-start gap-2">
-                <div className="text-right"><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Total</p><p className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">{formatBRL(received)}</p></div>
+                <div className="text-right"><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Total</p><p className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tighter">{formatBRL(received)}</p></div>
                 <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform mt-1" />
               </div>
             </div>

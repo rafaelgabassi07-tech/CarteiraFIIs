@@ -9,9 +9,9 @@
     --duration-normal: 400ms;
     --duration-slow: 600ms;
     --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
-    --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Nova curva mais elástica */
+    --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
     --blur-amount: 8px;
-    --color-accent-rgb: 14 165 233; /* Default Sky-500 */
+    --color-accent-rgb: 14 165 233;
     --color-accent: #0ea5e9;
   }
 
@@ -21,9 +21,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
+    @apply bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100;
   }
   
-  /* Cor de seleção global elegante */
   ::selection {
     background-color: rgba(14, 165, 233, 0.2);
     color: inherit;
@@ -58,8 +58,8 @@
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
   .glass-effect {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
   
   .privacy-blur .tabular-nums {
@@ -77,11 +77,12 @@
 }
 
 /* Scrollbars mais finas e elegantes para Desktop/Web */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
-.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
-::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.5); }
+::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
+.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background-color: rgba(148, 163, 184, 0.4); }
+.dark ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
 
 .anim-fade-in {
   opacity: 0;
@@ -90,7 +91,7 @@
 
 .anim-fade-in-up {
   opacity: 0;
-  transform: translate3d(0, 15px, 0);
+  transform: translate3d(0, 20px, 0);
   animation: fadeInUp var(--duration-normal) var(--ease-out-quint) forwards;
 }
 
@@ -99,7 +100,7 @@
 
 .anim-scale-in {
   opacity: 0;
-  transform: scale3d(0.96, 0.96, 1);
+  transform: scale3d(0.95, 0.95, 1);
   transition: opacity var(--duration-normal) var(--ease-out-quint), transform var(--duration-normal) var(--ease-out-quint);
   will-change: opacity, transform;
 }
@@ -116,7 +117,7 @@
 .grid-accordion {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: grid-template-rows 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .grid-accordion-open {
   grid-template-rows: 1fr;

@@ -31,7 +31,7 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
 
   return (
     <div 
-      className={`fixed top-0 left-0 right-0 z-[110] flex items-center justify-center gap-2 pt-[calc(env(safe-area-inset-top)+8px)] pb-1.5 px-4 text-[9px] font-black uppercase tracking-[0.15em] shadow-sm transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform will-change-transform ${
+      className={`fixed top-0 left-0 right-0 z-[110] flex items-center justify-center gap-2 pt-[calc(env(safe-area-inset-top)+6px)] pb-2 px-4 text-[9px] font-black uppercase tracking-[0.15em] shadow-sm transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform will-change-transform ${
         isHidden ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
       } ${
         isConnected 
@@ -107,14 +107,14 @@ export const Header: React.FC<HeaderProps> = ({
         bannerVisible ? 'top-10' : 'top-0'
       } ${
         isScrolled 
-          ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5 shadow-sm dark:shadow-none' 
+          ? 'bg-white/90 dark:bg-[#020617]/90 backdrop-blur-2xl pt-2 border-b border-slate-200/50 dark:border-white/5 shadow-sm dark:shadow-black/20' 
           : 'bg-transparent pt-4 border-b border-transparent'
       }`}
     >
       <div className="flex items-center gap-3 w-full">
         {showBack ? (
           <div className="flex items-center gap-3 w-full anim-fade-in-up is-visible">
-            <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group border border-slate-200/60 dark:border-white/5">
+            <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-90 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group border border-slate-200/60 dark:border-white/5">
               <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" strokeWidth={2.5} />
             </button>
             <div className="flex flex-col ml-1">
@@ -126,8 +126,8 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex flex-col anim-fade-in-up is-visible">
               <div className="flex items-center gap-2.5">
                   <div className="relative flex h-2.5 w-2.5 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent ring-2 ring-white dark:ring-[#020617]"></span>
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isRefreshing ? 'bg-indigo-500' : 'bg-accent'}`}></span>
+                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ring-2 ring-white dark:ring-[#020617] ${isRefreshing ? 'bg-indigo-500' : 'bg-accent'}`}></span>
                   </div>
                   <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{title}</h1>
                   {updateAvailable && (
@@ -154,7 +154,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
         {onNotificationClick && !showBack && (
-          <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-200/60 dark:border-white/5">
+          <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-90 transition-all shadow-sm group border border-slate-200/60 dark:border-white/5">
             <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" strokeWidth={2} />
             {notificationCount > 0 && 
               <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 rounded-full shadow-sm ring-2 ring-white dark:ring-[#020617] text-white text-[10px] font-bold flex items-center justify-center">
@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
         {!showBack && onSettingsClick && (
-          <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-200/60 dark:border-white/5">
+          <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-90 transition-all shadow-sm group border border-slate-200/60 dark:border-white/5">
             <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform" strokeWidth={2} />
           </button>
         )}
@@ -319,7 +319,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         }}
       >
         <div className="sticky top-0 z-[110] flex justify-center pt-4 pb-2 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md touch-none">
-            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full opacity-60 active:opacity-100 active:scale-x-110 transition-all"></div>
+            <div className="w-16 h-1 bg-slate-300/50 dark:bg-slate-600/50 rounded-full opacity-80 active:opacity-100 active:scale-x-110 transition-all"></div>
         </div>
         
         {children}
@@ -397,7 +397,7 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
     <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center pointer-events-none pb-safe">
-      <nav className="pointer-events-auto bg-[#0f172a]/90 shadow-2xl shadow-black/50 p-2 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-2xl gpu ring-1 ring-white/10">
+      <nav className="pointer-events-auto bg-[#0f172a]/80 dark:bg-[#020617]/80 shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-2 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-2xl gpu ring-1 ring-white/5">
         {navItems.map(item => {
           const isActive = currentTab === item.id;
           return (
@@ -407,7 +407,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
               className={`
                 relative flex items-center justify-center h-12 rounded-full transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
                 ${isActive 
-                  ? 'bg-white text-[#0f172a] pl-5 pr-6 w-auto' 
+                  ? 'bg-white text-[#0f172a] pl-5 pr-6 w-auto shadow-lg' 
                   : 'bg-transparent text-slate-400 hover:text-slate-200 w-12 hover:bg-white/5'
                 }
               `}
