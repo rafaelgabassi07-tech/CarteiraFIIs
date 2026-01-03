@@ -1,11 +1,11 @@
-
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
-// Added CheckCircle2 to the lucide-react imports to fix the missing component error.
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info, LayoutDashboard, History, CheckCircle2, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, CartesianGrid, ComposedChart, Line, YAxis, ReferenceLine } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
-import { VariableSizeList as List } from 'react-window';
+import * as ReactWindow from 'react-window';
+
+const List = ReactWindow.VariableSizeList;
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -96,7 +96,7 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    return ( <div className="bg-slate-900 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50 border border-white/10"> <p className="mb-1 opacity-70">{label}</p> <p className="text-emerald-400 text-sm">{formatBRL(payload[0].value)}</p> </div> );
+    return ( <div className="bg-slate-900/95 backdrop-blur-md text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50 border border-white/10"> <p className="mb-1 opacity-70 tracking-wide uppercase">{label}</p> <p className="text-emerald-400 text-sm tabular-nums">{formatBRL(payload[0].value)}</p> </div> );
   }
   return null;
 };
@@ -106,9 +106,9 @@ const PercentTooltip = ({ active, payload, label }: any) => {
       const val = payload[0].value;
       const formatted = typeof val === 'number' ? val.toFixed(2) + '%' : val;
       return ( 
-        <div className="bg-slate-900 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50 border border-white/10"> 
-            <p className="mb-1 opacity-70">{label}</p> 
-            <p className={`text-sm ${val >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatted}</p> 
+        <div className="bg-slate-900/95 backdrop-blur-md text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-xl z-50 border border-white/10"> 
+            <p className="mb-1 opacity-70 tracking-wide uppercase">{label}</p> 
+            <p className={`text-sm tabular-nums ${val >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatted}</p> 
         </div> 
       );
     }
@@ -224,7 +224,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return data;
   }, [transactions, balance, invested, inflationRate]);
 
-  // Filtro de Evolução
   const filteredEvolutionData = useMemo(() => {
     if (evolutionRange === 'ALL') return evolutionData;
     const slice = evolutionRange === '6M' ? 6 : 12;
@@ -281,7 +280,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const topSegments = useMemo(() => segmentData.slice(0, 3), [segmentData]);
   const magicNumbers = useMemo(() => portfolio.map(p => { const lastDiv = [...dividendReceipts].filter(d => d.ticker === p.ticker).sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))[0]; if (!lastDiv || !p.currentPrice || lastDiv.rate <= 0) return null; const magicQty = Math.ceil(p.currentPrice / lastDiv.rate); if (!isFinite(magicQty) || magicQty <= 0) return null; return { ticker: p.ticker, currentQty: p.quantity, magicQty, progress: Math.min(100, (p.quantity / magicQty) * 100), missing: Math.max(0, magicQty - p.quantity), rate: lastDiv.rate }; }).filter(m => m !== null).sort((a,b) => (b?.progress || 0) - (a?.progress || 0)), [portfolio, dividendReceipts]);
   
-  // Refined Active Shape with stroke none
   const renderActiveShape = (props: any) => { 
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props; 
     return ( 
@@ -296,11 +294,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const COLORS = useMemo(() => [accentColor, '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#6366f1', '#14b8a6', '#f97316', '#64748b', '#d946ef', '#22c55e'], [accentColor]);
   
-  // REAL GAIN LOGIC REFACTOR
   const finalIPCA = inflationRate > 0 ? inflationRate : 0;
   
-  // Calculate Flow-Aware Inflation Cost if evolution data exists
-  // This prevents overestimating inflation cost on DCA portfolios
   const lastEvolutionPoint = useMemo(() => evolutionData.length > 0 ? evolutionData[evolutionData.length - 1] : null, [evolutionData]);
 
   const custoCorrosaoInflacao = lastEvolutionPoint 
@@ -310,7 +305,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const lucroNominalAbsoluto = totalProfitValue;
   const ganhoRealValor = lucroNominalAbsoluto - custoCorrosaoInflacao;
   
-  // Fisher Equation for precise real rate
   const nominalYield = invested > 0 ? (totalProfitValue / invested) * 100 : 0;
   const nominalFactor = 1 + (nominalYield / 100);
   const inflationFactor = 1 + (finalIPCA / 100);
@@ -331,7 +325,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       
       {/* CARD PRINCIPAL (PATRIMÔNIO) */}
       <div className="anim-fade-in-up is-visible">
-        <button onClick={() => setShowSummaryModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-black/30 border border-slate-100 dark:border-white/5 relative overflow-hidden group transition-all duration-300 active:scale-[0.98]">
+        <button onClick={() => setShowSummaryModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-black/30 border border-slate-200/60 dark:border-white/5 relative overflow-hidden group transition-all duration-300 active:scale-[0.98]">
             
             <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
 
@@ -374,14 +368,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* CARD AGENDA DE PROVENTOS */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '50ms' }}>
-        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-gradient-to-br from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/[0.05] dark:to-purple-500/[0.05] p-6 rounded-[2.5rem] border border-indigo-500/10 active:scale-[0.98] transition-all hover:shadow-xl hover:shadow-indigo-500/5 relative overflow-hidden group">
+        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-500/[0.05] dark:to-purple-500/[0.05] p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-500/10 active:scale-[0.98] transition-all hover:shadow-xl hover:shadow-indigo-500/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-indigo-500/20 transition-colors"></div>
           <div className="flex items-center justify-between relative z-10 mb-5">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-white dark:bg-[#0f172a] rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100 dark:border-indigo-500/20 group-hover:scale-110 transition-transform"><CalendarDays className="w-6 h-6" strokeWidth={2} /></div>
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">Agenda de Proventos</h3>
-                <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{upcomingEvents.length > 0 ? `${upcomingEvents.length} Eventos Próximos` : 'Nenhum evento previsto'}</p>
+                <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">{upcomingEvents.length > 0 ? `${upcomingEvents.length} Eventos Próximos` : 'Nenhum evento previsto'}</p>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
@@ -392,16 +386,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* CARD RENDA PASSIVA */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
-        <button onClick={() => setShowProventosModal(true)} className="w-full text-left bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-500/[0.05] dark:to-teal-500/[0.05] p-5 rounded-[2.5rem] border border-emerald-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-emerald-500/5 pointer-events-auto">
+        <button onClick={() => setShowProventosModal(true)} className="w-full text-left bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-500/[0.05] dark:to-teal-500/[0.05] p-5 rounded-[2.5rem] border border-emerald-100 dark:border-emerald-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-emerald-500/5 pointer-events-auto">
           <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/20 transition-colors"></div>
           <div className="relative z-10 flex flex-col gap-4">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100 dark:border-emerald-500/20 group-hover:scale-110 transition-transform"><CircleDollarSign className="w-5 h-5" strokeWidth={2} /></div>
-                <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Renda Passiva</h3><p className="text-[10px] font-semibold text-slate-400">Extrato Completo</p></div>
+                <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Renda Passiva</h3><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Extrato Completo</p></div>
               </div>
               <div className="flex items-start gap-2">
-                <div className="text-right"><p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-0.5">Total</p><p className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">{formatBRL(received)}</p></div>
+                <div className="text-right"><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Total</p><p className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">{formatBRL(received)}</p></div>
                 <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform mt-1" />
               </div>
             </div>
@@ -412,11 +406,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* CARD ALOCAÇÃO RÁPIDA */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '150ms' }}>
-        <button onClick={() => setShowAllocationModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-100 dark:border-white/5 active:scale-[0.98] transition-all hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/30 group">
+        <button onClick={() => setShowAllocationModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-200/60 dark:border-white/5 active:scale-[0.98] transition-all hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/30 group">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shadow-sm border border-amber-100 dark:border-amber-500/20 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
-              <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Minha Alocação</h3><p className="text-[10px] font-semibold text-slate-400">Distribuição da Carteira</p></div>
+              <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Minha Alocação</h3><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Distribuição da Carteira</p></div>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
           </div>
@@ -433,12 +427,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* CARD GANHO REAL */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '200ms' }}>
-        <button onClick={() => setShowRealGainModal(true)} className="w-full text-left bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-500/[0.05] dark:to-purple-500/[0.05] p-5 rounded-[2.5rem] border border-blue-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-blue-500/5">
+        <button onClick={() => setShowRealGainModal(true)} className="w-full text-left bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-500/[0.05] dark:to-purple-500/[0.05] p-5 rounded-[2.5rem] border border-blue-100 dark:border-blue-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-blue-500/5">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-blue-500/20 transition-colors"></div>
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-blue-500 shadow-sm border border-blue-100 dark:border-blue-500/20 group-hover:scale-110 transition-transform"><TrendingUp className="w-5 h-5" strokeWidth={2} /></div>
-              <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Poder de Compra</h3><p className="text-[10px] font-semibold text-slate-400">Rentabilidade vs IPCA</p></div>
+              <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Poder de Compra</h3><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Rentabilidade vs IPCA</p></div>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right"><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ganho Real</p><p className={`text-lg font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{ganhoRealPercent.toFixed(2)}%</p></div>
@@ -476,7 +470,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-6 border border-slate-100 dark:border-white/5 shadow-xl mb-8">
+            <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-6 border border-slate-200/50 dark:border-white/5 shadow-xl mb-8">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
                         <AreaIcon className="w-4 h-4 text-accent" /> Histórico de Patrimônio
@@ -809,116 +803,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 )}
             </div>
         </div>
-      </SwipeableModal>
-
-      {/* MODAL ALOCAÇÃO */}
-      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-        <div className="px-6 py-2">
-            <div className="flex items-center justify-between mb-8 mt-2">
-                <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-amber-500/10 rounded-3xl flex items-center justify-center text-amber-500"><PieIcon className="w-7 h-7" /></div>
-                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">Estratégia</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Equilíbrio da Carteira</p></div>
-                </div>
-            </div>
-
-            <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl mb-8">
-                {['assets', 'types', 'segments'].map(tab => (<button key={tab} onClick={() => setAllocationTab(tab as any)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationTab === tab ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm scale-[1.02]' : 'text-slate-400'}`}>{tab === 'assets' ? 'Ativos' : tab === 'types' ? 'Classes' : 'Setores'}</button>))}
-            </div>
-
-            <div className="h-64 mb-8">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie 
-                            activeIndex={activeIndex} 
-                            activeShape={renderActiveShape} 
-                            data={allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData} 
-                            cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" stroke="none" 
-                            onMouseEnter={onPieEnter} 
-                        >
-                            {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />))}
-                        </Pie>
-                    </PieChart>
-                </ResponsiveContainer>
-            </div>
-
-            <div className="space-y-2 pb-12">
-                {(allocationTab === 'assets' ? assetData : allocationTab === 'types' ? typeData : segmentData).map((item, i) => (
-                    <div key={item.name} className="flex items-center justify-between p-4 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-transparent">
-                        <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div><span className="text-sm font-bold text-slate-700 dark:text-slate-300">{item.name}</span></div>
-                        <div className="text-right"><p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{((item.value / balance) * 100).toFixed(1)}%</p><p className="text-[10px] text-slate-400 font-medium tabular-nums">{formatBRL(item.value)}</p></div>
-                    </div>
-                ))}
-            </div>
-        </div>
-      </SwipeableModal>
-
-      {/* MODAL GANHO REAL */}
-      <SwipeableModal isOpen={showRealGainModal} onClose={() => setShowRealGainModal(false)}>
-         <div className="px-6 py-2">
-            <div className="flex items-center justify-between mb-8 mt-2">
-                <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-blue-500/10 rounded-3xl flex items-center justify-center text-blue-500"><Target className="w-7 h-7" /></div>
-                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">Ganho Real</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rentabilidade Acima da Inflação</p></div>
-                </div>
-            </div>
-
-            <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl mb-8">
-                {['benchmark', 'history'].map(tab => (<button key={tab} onClick={() => setGainTab(tab as any)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${gainTab === tab ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm scale-[1.02]' : 'text-slate-400'}`}>{tab === 'benchmark' ? 'Comparação' : 'Histórico Inflação'}</button>))}
-            </div>
-
-            {gainTab === 'benchmark' ? (
-                <div className="space-y-6 anim-fade-in-up is-visible">
-                    <div className={`p-8 rounded-[2.5rem] text-center shadow-xl shadow-blue-500/10 border ${isAboveInflation ? 'bg-emerald-500 border-emerald-400' : 'bg-rose-500 border-rose-400'} text-white`}>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-80">Rentabilidade Real (Fisher)</p>
-                        <h3 className="text-4xl font-black tabular-nums tracking-tighter mb-4">{isAboveInflation ? '+' : ''}{ganhoRealPercent.toFixed(2)}%</h3>
-                        <p className="text-xs font-medium opacity-90 max-w-[200px] mx-auto leading-relaxed">{isAboveInflation ? 'Parabéns! Sua carteira está protegendo e aumentando seu poder de compra.' : 'Atenção: A inflação está corroendo o retorno nominal da sua carteira.'}</p>
-                    </div>
-
-                    <div className="bg-white dark:bg-white/5 p-6 rounded-[2.5rem] border border-slate-100 dark:border-transparent">
-                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Comparativo % {dateLabel}</h4>
-                        <div className="h-40 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={comparisonData} layout="vertical" margin={{ left: -20, right: 20 }}>
-                                    <XAxis type="number" hide />
-                                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
-                                    <Tooltip 
-                                      cursor={{ fill: 'transparent' }} 
-                                      content={<PercentTooltip />}
-                                    />
-                                    <ReferenceLine x={0} stroke="#64748b" strokeOpacity={0.5} />
-                                    <Bar dataKey="value" radius={[4, 4, 4, 4]} barSize={20} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 pb-12">
-                         <div className="bg-white dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-transparent"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Lucro Nominal</p><p className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(lucroNominalAbsoluto)}</p></div>
-                         <div className="bg-white dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-transparent"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Corrosão IPCA</p><p className="text-lg font-black text-rose-500 tabular-nums">-{formatBRL(custoCorrosaoInflacao)}</p></div>
-                         <div className="bg-slate-900 dark:bg-white col-span-2 p-6 rounded-[2rem] flex items-center justify-between shadow-xl"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl bg-white/10 dark:bg-slate-900/10 flex items-center justify-center text-white dark:text-slate-900"><Scale className="w-5 h-5" /></div><span className="text-sm font-black text-white dark:text-slate-900">Lucro Real (em R$)</span></div><span className="text-xl font-black text-white dark:text-slate-900 tabular-nums">{formatBRL(ganhoRealValor)}</span></div>
-                    </div>
-                </div>
-            ) : (
-                <div className="h-[500px] anim-fade-in-up is-visible">
-                    <List height={500} itemCount={evolutionData.length} itemSize={getInflationHistoryItemSize} width="100%">
-                        {({ index, style }) => {
-                            const point = evolutionData[evolutionData.length - 1 - index];
-                            return (
-                                <div style={style} className="py-1">
-                                    <div className="bg-white dark:bg-[#0b1121] p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400"><Calendar className="w-5 h-5" /></div>
-                                            <div><h5 className="text-sm font-black text-slate-900 dark:text-white leading-tight">{point.date}</h5><p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Inflação Acumulada</p></div>
-                                        </div>
-                                        <div className="text-right"><p className="text-sm font-black text-rose-500 tabular-nums">-{formatBRL(point.monthlyInflationCost)}</p><p className="text-[9px] text-slate-400 font-medium leading-none mt-1">Impacto no patrimônio</p></div>
-                                    </div>
-                                </div>
-                            );
-                        }}
-                    </List>
-                </div>
-            )}
-         </div>
       </SwipeableModal>
     </div>
   );

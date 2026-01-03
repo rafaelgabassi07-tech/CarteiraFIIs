@@ -1,10 +1,11 @@
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { Transaction, AssetType } from '../types';
 import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign, X, Building2, BarChart3 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-// Fix: Use named import for VariableSizeList to resolve type error
-import { VariableSizeList as List } from 'react-window';
+// Fix: Use namespace import for VariableSizeList to resolve type error
+import * as ReactWindow from 'react-window';
+
+const List = ReactWindow.VariableSizeList;
 
 const formatBRL = (val: number | undefined | null) => {
   const num = typeof val === 'number' ? val : 0;
@@ -112,10 +113,10 @@ const TransactionRow = React.memo(({ index, style, data }: RowProps<RowData>) =>
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <button onClick={() => data.onEdit(t)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-accent/10 hover:text-accent transition-colors active:scale-90">
+            <button onClick={() => data.onEdit(t)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-accent/10 hover:text-accent transition-colors active:scale-90 border border-slate-100 dark:border-white/5">
               <Pencil className="w-3 h-3" />
             </button>
-            <button onClick={() => data.onDelete(t.id)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors active:scale-90">
+            <button onClick={() => data.onDelete(t.id)} className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors active:scale-90 border border-slate-100 dark:border-white/5">
               <Trash2 className="w-3 h-3" />
             </button>
           </div>

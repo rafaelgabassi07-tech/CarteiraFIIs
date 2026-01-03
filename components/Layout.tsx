@@ -107,14 +107,14 @@ export const Header: React.FC<HeaderProps> = ({
         bannerVisible ? 'top-10' : 'top-0'
       } ${
         isScrolled 
-          ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5' 
+          ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl pt-2 border-b border-slate-200/50 dark:border-white/5 shadow-sm dark:shadow-none' 
           : 'bg-transparent pt-4 border-b border-transparent'
       }`}
     >
       <div className="flex items-center gap-3 w-full">
         {showBack ? (
           <div className="flex items-center gap-3 w-full anim-fade-in-up is-visible">
-            <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group border border-slate-100 dark:border-white/5">
+            <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-white/10 shadow-sm group border border-slate-200/60 dark:border-white/5">
               <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" strokeWidth={2.5} />
             </button>
             <div className="flex flex-col ml-1">
@@ -154,7 +154,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
         {onNotificationClick && !showBack && (
-          <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
+          <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-200/60 dark:border-white/5">
             <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" strokeWidth={2} />
             {notificationCount > 0 && 
               <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 rounded-full shadow-sm ring-2 ring-white dark:ring-[#020617] text-white text-[10px] font-bold flex items-center justify-center">
@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
         {!showBack && onSettingsClick && (
-          <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-100 dark:border-white/5">
+          <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all shadow-sm group border border-slate-200/60 dark:border-white/5">
             <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform" strokeWidth={2} />
           </button>
         )}
@@ -310,7 +310,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] h-[93dvh] w-full overflow-y-auto overscroll-contain shadow-2xl pb-safe will-change-transform gpu ${
+        className={`relative bg-primary-light dark:bg-[#0b1121] rounded-t-[2.5rem] h-[93dvh] w-full overflow-y-auto overscroll-contain shadow-2xl pb-safe will-change-transform gpu border-t border-white/10 ${
           isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{
@@ -353,7 +353,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
         onClick={onCancel}
       ></div>
       <div 
-        className={`relative bg-white dark:bg-[#0f172a] rounded-3xl w-full max-w-sm shadow-xl p-6 text-center transition-all duration-300 ease-out-quint transform will-change-transform ${
+        className={`relative bg-white dark:bg-[#0f172a] rounded-3xl w-full max-w-sm shadow-xl p-6 text-center transition-all duration-300 ease-out-quint transform will-change-transform border border-white/10 ${
           isVisible ? 'scale-100 opacity-100 translate-y-0' : 'scale-90 opacity-0 translate-y-4'
         }`}
       >
@@ -397,7 +397,7 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
     <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center pointer-events-none pb-safe">
-      <nav className="pointer-events-auto bg-[#0f172a] shadow-2xl shadow-black/50 p-2 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-2xl gpu">
+      <nav className="pointer-events-auto bg-[#0f172a]/90 shadow-2xl shadow-black/50 p-2 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-2xl gpu ring-1 ring-white/10">
         {navItems.map(item => {
           const isActive = currentTab === item.id;
           return (
@@ -408,12 +408,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
                 relative flex items-center justify-center h-12 rounded-full transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
                 ${isActive 
                   ? 'bg-white text-[#0f172a] pl-5 pr-6 w-auto' 
-                  : 'bg-transparent text-slate-500 hover:text-slate-300 w-12 hover:bg-white/5'
+                  : 'bg-transparent text-slate-400 hover:text-slate-200 w-12 hover:bg-white/5'
                 }
               `}
             >
               <item.icon 
-                className={`w-6 h-6 shrink-0 transition-colors duration-300 ${isActive ? 'text-[#0f172a]' : 'text-slate-500'}`} 
+                className={`w-6 h-6 shrink-0 transition-colors duration-300 ${isActive ? 'text-[#0f172a]' : 'text-slate-400'}`} 
                 strokeWidth={2.5} 
               />
               <div className={`
