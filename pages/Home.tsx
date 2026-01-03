@@ -4,9 +4,6 @@ import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint 
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info, LayoutDashboard, History, CheckCircle2, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, ComposedChart, Line, YAxis, ReferenceLine } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
-import * as ReactWindow from 'react-window';
-
-const List = ReactWindow.VariableSizeList;
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -245,7 +242,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const sortedHistoryKeys = useMemo(() => Object.keys(historyGrouped).sort((a,b) => b.localeCompare(a)), [historyGrouped]);
   const flatHistory = useMemo(() => sortedHistoryKeys.flatMap(monthKey => [{ type: 'header' as const, month: monthKey, total: historyGrouped[monthKey].total }, ...historyGrouped[monthKey].items.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).map(item => ({ type: 'item' as const, data: item }))]), [sortedHistoryKeys, historyGrouped]);
-  const getItemSize = (index: number) => flatHistory[index].type === 'header' ? 48 : 96;
 
   const yieldOnCostPortfolio = useMemo(() => (invested <= 0) ? 0 : (received / invested) * 100, [received, invested]);
   const { typeData, segmentData } = useMemo(() => {
@@ -537,11 +533,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
-      {/* MODAL RENDA PASSIVA REFINADO */}
+      {/* MODAL RENDA PASSIVA REFINADO (Corrigido Scroll/Fechamento) */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
-        <div className="flex flex-col h-full bg-primary-light dark:bg-[#0b1121]">
-            {/* Header com Navegação Estilizada */}
-            <div className="px-6 pt-4 pb-6 mt-2">
+        <div className="bg-primary-light dark:bg-[#0b1121] min-h-full pb-safe">
+            {/* Header Sticky - Fixo dentro do Modal */}
+            <div className="sticky top-0 z-20 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md px-6 pt-4 pb-6 border-b border-transparent transition-all">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 shadow-sm">
@@ -576,8 +572,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
             </div>
 
-            {/* Conteúdo Dinâmico com Padding Ajustado */}
-            <div className="flex-1 overflow-y-auto px-6 pb-24">
+            {/* Conteúdo Dinâmico */}
+            <div className="px-6 pb-24">
                 {incomeTab === 'summary' && (
                     <div className="space-y-6 anim-fade-in-up is-visible">
                         {/* Card Principal de Destaque */}
@@ -656,48 +652,51 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 )}
 
                 {incomeTab === 'history' && (
-                    <div className="h-[520px] anim-fade-in-up is-visible">
-                         <List height={520} itemCount={flatHistory.length} itemSize={getItemSize} width="100%">
-                            {({ index, style }) => {
-                                const item = flatHistory[index];
-                                if (item.type === 'header') return (
-                                    <div style={style} className="flex items-center justify-between px-3 pt-6 pb-2">
-                                        <h4 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] flex items-center gap-2">
-                                            <Calendar className="w-3.5 h-3.5" />
-                                            {getMonthName(item.month)}
-                                        </h4>
-                                        <div className="h-[1px] flex-1 mx-4 bg-slate-200 dark:bg-white/5"></div>
-                                        <span className="text-xs font-black text-emerald-500 tabular-nums">{formatBRL(item.total)}</span>
-                                    </div>
-                                );
-                                
-                                const h = item.data;
-                                return (
-                                    <div style={style} className="py-1.5">
-                                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[1.75rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm transition-all hover:border-emerald-500/30 active:scale-[0.98]">
-                                            <div className="flex items-center gap-4 min-w-0">
-                                                <div className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-black/20 flex flex-col items-center justify-center font-black text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-white/5">
-                                                    <span className="text-xs leading-none">{h.paymentDate.split('-')[2]}</span>
-                                                    <span className="text-[9px] uppercase mt-0.5 opacity-60">{h.paymentDate.split('-')[1]}</span>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <h5 className="text-sm font-black text-slate-900 dark:text-white leading-none mb-1 truncate">{h.ticker}</h5>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{h.type.replace('JRS CAP PROPRIO', 'JCP')}</span>
-                                                        <span className="text-[9px] text-slate-300">•</span>
-                                                        <span className="text-[9px] font-bold text-slate-400">{h.quantityOwned} cotas</span>
-                                                    </div>
-                                                </div>
+                    <div className="space-y-0 anim-fade-in-up is-visible">
+                        {/* Lista padrão sem virtualização para evitar conflito de scroll */}
+                        {flatHistory.map((item, index) => {
+                            if (item.type === 'header') return (
+                                <div key={`h-${index}`} className="flex items-center justify-between px-3 pt-6 pb-2">
+                                    <h4 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] flex items-center gap-2">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        {getMonthName(item.month)}
+                                    </h4>
+                                    <div className="h-[1px] flex-1 mx-4 bg-slate-200 dark:bg-white/5"></div>
+                                    <span className="text-xs font-black text-emerald-500 tabular-nums">{formatBRL(item.total)}</span>
+                                </div>
+                            );
+                            
+                            const h = item.data;
+                            return (
+                                <div key={`i-${index}`} className="py-1.5">
+                                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[1.75rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm transition-all hover:border-emerald-500/30 active:scale-[0.98]">
+                                        <div className="flex items-center gap-4 min-w-0">
+                                            <div className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-black/20 flex flex-col items-center justify-center font-black text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-white/5">
+                                                <span className="text-xs leading-none">{h.paymentDate.split('-')[2]}</span>
+                                                <span className="text-[9px] uppercase mt-0.5 opacity-60">{h.paymentDate.split('-')[1]}</span>
                                             </div>
-                                            <div className="text-right shrink-0">
-                                                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">{formatBRL(h.totalReceived)}</p>
-                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">Líquido</p>
+                                            <div className="min-w-0">
+                                                <h5 className="text-sm font-black text-slate-900 dark:text-white leading-none mb-1 truncate">{h.ticker}</h5>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{h.type.replace('JRS CAP PROPRIO', 'JCP')}</span>
+                                                    <span className="text-[9px] text-slate-300">•</span>
+                                                    <span className="text-[9px] font-bold text-slate-400">{h.quantityOwned} cotas</span>
+                                                </div>
                                             </div>
                                         </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">{formatBRL(h.totalReceived)}</p>
+                                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">Líquido</p>
+                                        </div>
                                     </div>
-                                );
-                            }}
-                        </List>
+                                </div>
+                            );
+                        })}
+                        {flatHistory.length === 0 && (
+                            <div className="text-center py-20 opacity-50">
+                                <p className="text-sm font-bold text-slate-400">Nenhum histórico encontrado.</p>
+                            </div>
+                        )}
                     </div>
                 )}
 

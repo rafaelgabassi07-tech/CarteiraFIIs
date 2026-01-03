@@ -295,7 +295,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 
   return createPortal(
     <div 
-      className={`fixed inset-0 z-[100] flex flex-col justify-end transition-opacity duration-400 ease-out-quint overscroll-none ${
+      className={`fixed inset-0 z-[200] flex flex-col justify-end transition-opacity duration-400 ease-out-quint overscroll-none ${
         isVisible ? 'pointer-events-auto' : 'pointer-events-none'
       }`}
       onClick={onClose}
