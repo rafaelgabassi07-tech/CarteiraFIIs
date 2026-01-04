@@ -1,5 +1,4 @@
-
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 // Componente para exibir quando houver erro de configuração das chaves do Supabase
@@ -30,12 +29,15 @@ interface State {
   error: Error | null;
 }
 
-// Fix: Estendendo Component com tipos genéricos explícitos para garantir que 'this.props' seja reconhecido pelo TypeScript.
-export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null
-  };
+// Fix: Estendendo React.Component explicitamente para garantir que 'this.props' seja reconhecido pelo TypeScript.
+export class ErrorBoundary extends React.Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };

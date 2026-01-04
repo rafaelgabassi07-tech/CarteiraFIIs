@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info, LayoutDashboard, History, CheckCircle2, BarChart3, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, Target, Zap, Scale, TrendingUp, Calendar, Trophy, Clock, CalendarDays, Coins, ArrowRight, Minus, Equal, ExternalLink, TrendingDown, Plus, ListFilter, CalendarCheck, Hourglass, Layers, AreaChart as AreaIcon, Banknote, Percent, ChevronRight, Loader2, Info, LayoutDashboard, History, CheckCircle2, BarChart3, ShieldCheck, AlertTriangle, ChevronDown, Building2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, BarChart, Bar, XAxis, Tooltip, AreaChart, Area, ComposedChart, Line, YAxis, ReferenceLine } from 'recharts';
 import { SwipeableModal } from '../components/Layout';
 
@@ -143,6 +143,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [incomeTab, setIncomeTab] = useState<'summary' | 'history' | 'magic'>('summary');
   const [evolutionRange, setEvolutionRange] = useState<'6M' | '1Y' | 'ALL'>('ALL');
+  
+  // States for Allocation Modal
+  const [allocationTab, setAllocationTab] = useState<'type' | 'segment'>('type');
+  const [expandedAllocation, setExpandedAllocation] = useState<string | null>(null);
 
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
@@ -244,12 +248,38 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const flatHistory = useMemo(() => sortedHistoryKeys.flatMap(monthKey => [{ type: 'header' as const, month: monthKey, total: historyGrouped[monthKey].total }, ...historyGrouped[monthKey].items.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).map(item => ({ type: 'item' as const, data: item }))]), [sortedHistoryKeys, historyGrouped]);
 
   const yieldOnCostPortfolio = useMemo(() => (invested <= 0) ? 0 : (received / invested) * 100, [received, invested]);
-  const { typeData, segmentData } = useMemo(() => {
-    const typesMap: Record<string, number> = {}, segmentsMap: Record<string, number> = {};
-    portfolio.forEach(p => { const val = (p.currentPrice || p.averagePrice) * p.quantity; const t = p.assetType === AssetType.FII ? 'FIIs' : 'Ações'; typesMap[t] = (typesMap[t] || 0) + val; const s = p.segment || 'Outros'; segmentsMap[s] = (segmentsMap[s] || 0) + val; });
+  
+  // Enhanced Allocation Data Logic with Drill-down capability
+  const { typeData, segmentData, groupedByType, groupedBySegment } = useMemo(() => {
+    const typesMap: Record<string, number> = {};
+    const segmentsMap: Record<string, number> = {};
+    const groupedType: Record<string, AssetPosition[]> = {};
+    const groupedSegment: Record<string, AssetPosition[]> = {};
+
+    portfolio.forEach(p => { 
+        const val = (p.currentPrice || p.averagePrice) * p.quantity; 
+        
+        // Type Grouping
+        const t = p.assetType === AssetType.FII ? 'FIIs' : 'Ações'; 
+        typesMap[t] = (typesMap[t] || 0) + val; 
+        if (!groupedType[t]) groupedType[t] = [];
+        groupedType[t].push(p);
+
+        // Segment Grouping
+        const s = p.segment || 'Outros'; 
+        segmentsMap[s] = (segmentsMap[s] || 0) + val; 
+        if (!groupedSegment[s]) groupedSegment[s] = [];
+        groupedSegment[s].push(p);
+    });
+
     const typeData = Object.entries(typesMap).map(([k, v]) => ({ name: k, value: v })).sort((a,b) => b.value - a.value);
     const segmentData = Object.entries(segmentsMap).map(([k, v]) => ({ name: k, value: v })).sort((a,b) => b.value - a.value);
-    return { typeData, segmentData };
+    
+    // Sort items within groups by value desc
+    Object.keys(groupedType).forEach(k => groupedType[k].sort((a,b) => ((b.currentPrice||0)*b.quantity) - ((a.currentPrice||0)*a.quantity)));
+    Object.keys(groupedSegment).forEach(k => groupedSegment[k].sort((a,b) => ((b.currentPrice||0)*b.quantity) - ((a.currentPrice||0)*a.quantity)));
+
+    return { typeData, segmentData, groupedByType: groupedType, groupedBySegment: groupedSegment };
   }, [portfolio]);
   
   const magicNumbers = useMemo(() => portfolio.map(p => { const lastDiv = [...dividendReceipts].filter(d => d.ticker === p.ticker).sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))[0]; if (!lastDiv || !p.currentPrice || lastDiv.rate <= 0) return null; const magicQty = Math.ceil(p.currentPrice / lastDiv.rate); if (!isFinite(magicQty) || magicQty <= 0) return null; return { ticker: p.ticker, currentQty: p.quantity, magicQty, progress: Math.min(100, (p.quantity / magicQty) * 100), missing: Math.max(0, magicQty - p.quantity), rate: lastDiv.rate }; }).filter(m => m !== null).sort((a,b) => (b?.progress || 0) - (a?.progress || 0)), [portfolio, dividendReceipts]);
@@ -471,8 +501,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
-      {/* MODAL ALOCAÇÃO DETALHADA */}
-      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
+      {/* MODAL ALOCAÇÃO DETALHADA (ENHANCED) */}
+      <SwipeableModal isOpen={showAllocationModal} onClose={() => { setShowAllocationModal(false); setExpandedAllocation(null); }}>
         <div className="p-6 pb-20">
             <div className="flex items-center gap-4 mb-8 mt-2">
                 <div className="w-14 h-14 bg-amber-500/10 rounded-3xl flex items-center justify-center text-amber-500 shadow-sm">
@@ -480,59 +510,170 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">Distribuição</h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Análise de Risco e Setores</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Análise de Risco</p>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-6 border border-slate-200/50 dark:border-white/5 shadow-xl mb-6">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Divisão por Classe</h3>
-                <div className="h-48 w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie data={typeData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={8} dataKey="value" animationDuration={1000}>
-                                {typeData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="transparent" />
-                                ))}
-                            </Pie>
-                            <Tooltip formatter={(value: number) => formatBRL(value)} />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                    {typeData.map((item, i) => (
-                        <div key={item.name} className="flex items-center gap-3">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-                            <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{item.name}</p>
-                                <p className="text-sm font-bold text-slate-800 dark:text-white tabular-nums">{formatPercent((item.value / balance) * 100)}</p>
+            {/* Tabs for View Switching */}
+            <div className="flex bg-slate-100 dark:bg-white/5 p-1.5 rounded-[1.75rem] border border-slate-200/50 dark:border-white/5 mb-6">
+                <button 
+                    onClick={() => setAllocationTab('type')} 
+                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === 'type' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                >
+                    Por Classe
+                </button>
+                <button 
+                    onClick={() => setAllocationTab('segment')} 
+                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === 'segment' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                >
+                    Por Segmento
+                </button>
+            </div>
+
+            {allocationTab === 'type' && (
+                <div className="space-y-6 anim-fade-in is-visible">
+                    {/* Donut Chart with Center Text */}
+                    <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-6 border border-slate-200/50 dark:border-white/5 shadow-xl relative">
+                         <div className="h-56 w-full flex items-center justify-center relative z-10">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie 
+                                        data={typeData} 
+                                        cx="50%" 
+                                        cy="50%" 
+                                        innerRadius={60} 
+                                        outerRadius={80} 
+                                        paddingAngle={5} 
+                                        dataKey="value" 
+                                        animationDuration={1000}
+                                        stroke="none"
+                                    >
+                                        {typeData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                </PieChart>
+                            </ResponsiveContainer>
+                            {/* Center Label */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total</span>
+                                <span className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(balance)}</span>
                             </div>
                         </div>
-                    ))}
-                </div>
-            </div>
 
-            <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-6 border border-slate-200/50 dark:border-white/5 shadow-xl">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Divisão por Segmento</h3>
-                <div className="space-y-4">
-                    {segmentData.slice(0, 8).map((seg, i) => {
+                        {/* Interactive List (Accordion) */}
+                        <div className="mt-4 space-y-3">
+                            {typeData.map((item, i) => {
+                                const isExpanded = expandedAllocation === item.name;
+                                const items = groupedByType[item.name] || [];
+                                
+                                return (
+                                    <div key={item.name} className="overflow-hidden rounded-2xl transition-all duration-300 border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5">
+                                        <button 
+                                            onClick={() => setExpandedAllocation(isExpanded ? null : item.name)}
+                                            className="w-full flex items-center justify-between p-4 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                                                <span className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">{item.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm font-bold tabular-nums">{formatPercent((item.value / balance) * 100)}</span>
+                                                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                            </div>
+                                        </button>
+                                        
+                                        <div className={`grid-accordion ${isExpanded ? 'grid-accordion-open' : ''}`}>
+                                            <div className="grid-accordion-content">
+                                                <div className="px-4 pb-4 pt-1 space-y-2">
+                                                    <div className="h-[1px] w-full bg-slate-100 dark:bg-white/10 mb-2"></div>
+                                                    {items.map(asset => {
+                                                        const assetVal = (asset.currentPrice || asset.averagePrice) * asset.quantity;
+                                                        const assetPercent = (assetVal / item.value) * 100;
+                                                        return (
+                                                            <div key={asset.ticker} className="flex items-center justify-between py-1.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-black/20 flex items-center justify-center text-[9px] font-black border border-slate-200 dark:border-white/5">
+                                                                        {asset.ticker.substring(0,4)}
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block leading-none">{asset.ticker}</span>
+                                                                        <span className="text-[9px] text-slate-400">{formatBRL(assetVal)}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-xs font-bold tabular-nums">{assetPercent.toFixed(1)}%</span>
+                                                                    <div className="w-16 h-1 bg-slate-200 dark:bg-white/10 rounded-full mt-1 ml-auto overflow-hidden">
+                                                                        <div className="h-full rounded-full" style={{ width: `${assetPercent}%`, backgroundColor: COLORS[i % COLORS.length] }}></div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {allocationTab === 'segment' && (
+                <div className="space-y-4 anim-fade-in is-visible">
+                    {segmentData.slice(0, 15).map((seg, i) => {
                         const percent = (seg.value / balance) * 100;
+                        const isExpanded = expandedAllocation === seg.name;
+                        const items = groupedBySegment[seg.name] || [];
+                        const barColor = COLORS[i % COLORS.length];
+
                         return (
-                            <div key={seg.name}>
-                                <div className="flex justify-between items-center mb-1.5 px-1">
-                                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider truncate mr-4">{seg.name}</span>
-                                    <span className="text-[10px] font-black text-slate-400 tabular-nums">{percent.toFixed(1)}%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full rounded-full transition-all duration-1000 ease-out" 
-                                        style={{ width: `${percent}%`, backgroundColor: COLORS[i % COLORS.length], opacity: 0.8 }}
-                                    ></div>
+                            <div key={seg.name} className="bg-white dark:bg-[#0f172a] rounded-[1.5rem] border border-slate-200/50 dark:border-white/5 shadow-sm overflow-hidden transition-all duration-300">
+                                <button 
+                                    onClick={() => setExpandedAllocation(isExpanded ? null : seg.name)}
+                                    className="w-full p-4 block text-left active:bg-slate-50 dark:active:bg-white/5 transition-colors"
+                                >
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider truncate mr-2">{seg.name}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-black text-slate-500 tabular-nums">{percent.toFixed(1)}%</span>
+                                            <ChevronDown className={`w-3.5 h-3.5 text-slate-300 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                        </div>
+                                    </div>
+                                    <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full rounded-full transition-all duration-1000 ease-out" 
+                                            style={{ width: `${percent}%`, backgroundColor: barColor }}
+                                        ></div>
+                                    </div>
+                                </button>
+
+                                <div className={`grid-accordion ${isExpanded ? 'grid-accordion-open' : ''}`}>
+                                    <div className="grid-accordion-content bg-slate-50/50 dark:bg-black/10">
+                                        <div className="px-4 pb-4 pt-1 space-y-2">
+                                            {items.map(asset => {
+                                                const assetVal = (asset.currentPrice || asset.averagePrice) * asset.quantity;
+                                                const assetPercentInSeg = (assetVal / seg.value) * 100;
+                                                return (
+                                                    <div key={asset.ticker} className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-white/5 last:border-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`w-1.5 h-6 rounded-full`} style={{ backgroundColor: barColor }}></div>
+                                                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{asset.ticker}</span>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 tabular-nums">{formatBRL(assetVal)}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         );
                     })}
                 </div>
-            </div>
+            )}
         </div>
       </SwipeableModal>
 
@@ -675,56 +816,90 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <div className="space-y-6 anim-fade-in-up is-visible">
                         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-8 rounded-[2.5rem] shadow-2xl shadow-emerald-500/20 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-[60px] -mr-16 -mt-16"></div>
+                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full blur-[40px] -ml-16 -mb-16"></div>
+                            
                             <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-3 opacity-90">Total Recebido</p>
                             <div className="flex items-baseline gap-2 mb-8">
                                 <span className="text-lg font-bold opacity-70">R$</span>
                                 <h3 className="text-4xl font-black tabular-nums tracking-tighter">{received.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                             </div>
+                            
                             <div className="pt-6 border-t border-white/20 grid grid-cols-2 gap-6">
-                                <div><p className="text-[9px] font-black uppercase opacity-70 mb-1 tracking-widest">Média Mensal</p><p className="text-lg font-black tabular-nums">{formatBRL(averageMonthly)}</p></div>
-                                <div><p className="text-[9px] font-black uppercase opacity-70 mb-1 tracking-widest">Yield on Cost</p><p className="text-lg font-black tabular-nums">{yieldOnCostPortfolio.toFixed(2)}%</p></div>
+                                <div>
+                                    <p className="text-[9px] font-black uppercase opacity-70 mb-1 tracking-widest">Média Mensal</p>
+                                    <p className="text-lg font-black tabular-nums">{formatBRL(averageMonthly)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-black uppercase opacity-70 mb-1 tracking-widest">Yield on Cost</p>
+                                    <p className="text-lg font-black tabular-nums">{yieldOnCostPortfolio.toFixed(2)}%</p>
+                                </div>
                             </div>
                         </div>
+
                         <div className="bg-white dark:bg-white/5 p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm">
-                            <div className="flex items-center justify-between mb-8"><h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Últimos 12 Meses</h4></div>
+                            <div className="flex items-center justify-between mb-8">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Últimos 12 Meses</h4>
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full">
+                                    <TrendingUp className="w-3 h-3 text-emerald-500" />
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Em Crescimento</span>
+                                </div>
+                            </div>
                             <div className="h-44 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={chartData}>
                                         <XAxis dataKey="name" hide />
                                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
-                                        <Bar dataKey="value" fill={accentColor} radius={[6, 6, 0, 0]} animationDuration={1500}/>
+                                        <Bar 
+                                            dataKey="value" 
+                                            fill={accentColor} 
+                                            radius={[6, 6, 0, 0]} 
+                                            animationDuration={1500}
+                                        />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
+
                         <div className="grid grid-cols-1 gap-4">
                             <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm transition-transform active:scale-[0.98]">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><Hourglass className="w-6 h-6" /></div>
-                                    <div><span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Proventos Provisionados</span></div>
+                                    <div>
+                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Proventos Provisionados</span>
+                                        <p className="text-[10px] text-slate-400 font-medium">Aguardando data de pagamento</p>
+                                    </div>
                                 </div>
                                 <span className="text-base font-black text-amber-500 tabular-nums">{formatBRL(upcoming)}</span>
                             </div>
+
                             <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm transition-transform active:scale-[0.98]">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><Trophy className="w-6 h-6" /></div>
-                                    <div><span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Melhor Pagador</span></div>
+                                    <div>
+                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Melhor Pagador</span>
+                                        <p className="text-[10px] text-slate-400 font-medium">Maior acúmulo histórico</p>
+                                    </div>
                                 </div>
                                 <span className="text-base font-black text-indigo-500 tabular-nums">{bestPayer.ticker}</span>
                             </div>
                         </div>
                     </div>
                 )}
+
                 {incomeTab === 'history' && (
                     <div className="space-y-0 anim-fade-in-up is-visible">
                         {flatHistory.map((item, index) => {
                             if (item.type === 'header') return (
                                 <div key={`h-${index}`} className="flex items-center justify-between px-3 pt-6 pb-2">
-                                    <h4 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] flex items-center gap-2"><Calendar className="w-3.5 h-3.5" />{getMonthName(item.month)}</h4>
+                                    <h4 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] flex items-center gap-2">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        {getMonthName(item.month)}
+                                    </h4>
                                     <div className="h-[1px] flex-1 mx-4 bg-slate-200 dark:bg-white/5"></div>
                                     <span className="text-xs font-black text-emerald-500 tabular-nums">{formatBRL(item.total)}</span>
                                 </div>
                             );
+                            
                             const h = item.data;
                             return (
                                 <div key={`i-${index}`} className="py-1.5">
@@ -736,7 +911,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                             </div>
                                             <div className="min-w-0">
                                                 <h5 className="text-sm font-black text-slate-900 dark:text-white leading-none mb-1 truncate">{h.ticker}</h5>
-                                                <div className="flex items-center gap-2"><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{h.type.replace('JRS CAP PROPRIO', 'JCP')}</span><span className="text-[9px] text-slate-300">•</span><span className="text-[9px] font-bold text-slate-400">{h.quantityOwned} cotas</span></div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{h.type.replace('JRS CAP PROPRIO', 'JCP')}</span>
+                                                    <span className="text-[9px] text-slate-300">•</span>
+                                                    <span className="text-[9px] font-bold text-slate-400">{h.quantityOwned} cotas</span>
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="text-right shrink-0">
@@ -748,19 +927,36 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         })}
                     </div>
                 )}
+
                 {incomeTab === 'magic' && (
                     <div className="space-y-4 anim-fade-in-up is-visible">
                         {magicNumbers.map(m => (
                             <div key={m.ticker} className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs border ${m.missing === 0 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 text-slate-500 border-slate-200 dark:border-white/5'}`}>{m.ticker.substring(0,4)}</div>
-                                        <div><h4 className="text-sm font-bold text-slate-900 dark:text-white leading-none mb-1">{m.ticker}</h4><p className="text-[10px] text-slate-400">Progresso: {m.progress.toFixed(1)}%</p></div>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs border ${m.missing === 0 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 text-slate-500 border-slate-200 dark:border-white/5'}`}>
+                                            {m.ticker.substring(0,4)}
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-none mb-1">{m.ticker}</h4>
+                                            <p className="text-[10px] text-slate-400">Progresso: {m.progress.toFixed(1)}%</p>
+                                        </div>
                                     </div>
-                                    <div className="text-right">{m.missing > 0 ? <p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{m.missing} cotas</p> : <CheckCircle2 className="w-5 h-5 text-emerald-500" />}</div>
+                                    
+                                    <div className="text-right">
+                                        {m.missing > 0 ? (
+                                            <p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{m.missing} cotas</p>
+                                        ) : (
+                                            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                        )}
+                                    </div>
                                 </div>
+                                
                                 <div className="h-1.5 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                    <div style={{ width: `${m.progress}%` }} className={`h-full rounded-full transition-all duration-1000 ${m.missing === 0 ? 'bg-emerald-500' : 'bg-amber-400'}`}></div>
+                                    <div 
+                                        style={{ width: `${m.progress}%` }} 
+                                        className={`h-full rounded-full transition-all duration-1000 ease-out ${m.missing === 0 ? 'bg-emerald-500' : 'bg-amber-400'}`}
+                                    ></div>
                                 </div>
                             </div>
                         ))}
