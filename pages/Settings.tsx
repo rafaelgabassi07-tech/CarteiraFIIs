@@ -5,6 +5,8 @@ import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../t
 import { ThemeType } from '../App';
 import { supabase } from '../services/supabase';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
+// Importa a chave de cache correta do serviço para garantir consistência
+import { GEMINI_CACHE_KEY } from '../services/geminiService';
 
 const BadgeDollarSignIcon = (props: any) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1-6.74 0 4 4 0 0 1-4.78-4.78 4 4 0 0 1 0-6.74Z"/><path d="M12 8v8"/><path d="M9.5 10.5c5.5-2.5 5.5 5.5 0 3"/></svg>
@@ -118,18 +120,15 @@ export const Settings: React.FC<SettingsProps> = ({
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const notesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Função centralizada de verificação de serviços
   const runServiceCheck = useCallback(async () => {
     setIsServicesChecking(true);
     setHealthStatus({ supabase: 'checking', brapi: 'checking' });
     setEstLatency(null);
 
-    // 1. Connection Info
     // @ts-ignore
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (conn) setNetworkType(conn.effectiveType ? conn.effectiveType.toUpperCase() : (conn.type || 'WIFI'));
     
-    // 2. Cache Info
     const quotesCache = localStorage.getItem('investfiis_v3_quote_cache');
     const qCount = quotesCache ? Object.keys(JSON.parse(quotesCache)).length : 0;
     setCachedItemsCount(prev => ({ ...prev, quotes: qCount }));
@@ -163,15 +162,12 @@ export const Settings: React.FC<SettingsProps> = ({
     setIsServicesChecking(false);
   }, [user]);
 
-  // Efeito para verificar a saúde dos serviços quando a seção é aberta
   useEffect(() => {
     if (activeSection === 'integrations') {
         runServiceCheck();
     }
   }, [activeSection, runServiceCheck]);
 
-
-  // Scroll Reset Effect
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [activeSection]);
@@ -191,7 +187,6 @@ export const Settings: React.FC<SettingsProps> = ({
     };
   }, []);
 
-  // Visual Effects Logic
   useEffect(() => {
     localStorage.setItem('investfiis_glass_mode', String(glassMode));
     document.documentElement.classList.toggle('glass-effect', glassMode);
@@ -224,10 +219,10 @@ export const Settings: React.FC<SettingsProps> = ({
         return item ? new Blob([item]).size : 0;
     };
     setStorageData({
-        totalBytes: getKeySize('investfiis_v3_quote_cache') + getKeySize('investfiis_v4_div_cache'),
+        totalBytes: getKeySize('investfiis_v3_quote_cache') + getKeySize('investfiis_v4_div_cache') + getKeySize(GEMINI_CACHE_KEY),
         breakdown: { 
             quotes: getKeySize('investfiis_v3_quote_cache'), 
-            divs: getKeySize('investfiis_v4_div_cache') 
+            divs: getKeySize('investfiis_v4_div_cache') + getKeySize(GEMINI_CACHE_KEY)
         }
     });
   };
@@ -242,7 +237,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleForceSync = async () => { 
       setIsSyncing(true); 
       try {
-        await onSyncAll(false); // Sync normal do cloud
+        await onSyncAll(false); 
         showMessage('success', 'Nuvem sincronizada.');
       } catch (e) {
         showMessage('error', 'Erro ao sincronizar nuvem.');
@@ -254,15 +249,26 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleForceMarketUpdate = async () => {
       setIsMarketUpdating(true);
       try {
-          // Limpeza profunda de dados de dividendos/IA antes de atualizar
+          // Limpeza profunda de dados
           onImportDividends([]); // Limpa estado visual imediatamente
-          localStorage.removeItem('investfiis_v4_div_cache'); // Limpa cache persistente do app
-          localStorage.removeItem('investfiis_gemini_cache_v13_3pro'); // Limpa cache específico do serviço Gemini
           
-          await new Promise(resolve => setTimeout(resolve, 300)); // Pequeno delay para UI reagir
+          // Limpa caches persistentes do App (listas já processadas)
+          localStorage.removeItem('investfiis_v4_div_cache');
+          localStorage.removeItem('investfiis_v3_quote_cache'); // Limpa também cotações (Brapi)
+          
+          // Limpa cache RAW do serviço Gemini (usando a chave importada)
+          localStorage.removeItem(GEMINI_CACHE_KEY); 
+          
+          // Pequeno delay para garantir que o React propague o estado limpo
+          await new Promise(resolve => setTimeout(resolve, 300)); 
 
-          await onSyncAll(true); // Force = true limpa caches de mercado/IA (no serviço) e recarrega
-          showMessage('success', 'Dados de mercado recarregados!');
+          // Chama o sync com force=true para ignorar qualquer cache restante em memória
+          await onSyncAll(true); 
+          
+          // Recalcula o tamanho do storage para a UI
+          calculateStorage();
+          
+          showMessage('success', 'Dados de mercado (IA + Cotações) recarregados!');
       } catch (e) {
           showMessage('error', 'Falha ao atualizar mercado.');
       } finally {
@@ -271,7 +277,13 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleClearQuoteCache = () => { localStorage.removeItem('investfiis_v3_quote_cache'); calculateStorage(); showMessage('success', 'Cache limpo.'); };
-  const handleClearDivCache = () => { localStorage.removeItem('investfiis_v4_div_cache'); onImportDividends([]); calculateStorage(); showMessage('success', 'Dados de IA limpos.'); };
+  const handleClearDivCache = () => { 
+      localStorage.removeItem('investfiis_v4_div_cache'); 
+      localStorage.removeItem(GEMINI_CACHE_KEY);
+      onImportDividends([]); 
+      calculateStorage(); 
+      showMessage('success', 'Dados de IA limpos.'); 
+  };
 
   const handleExport = () => {
     const blob = new Blob([JSON.stringify({ transactions, geminiDividends, version: appVersion, exportDate: new Date().toISOString() }, null, 2)], { type: "application/json" });
@@ -328,29 +340,20 @@ export const Settings: React.FC<SettingsProps> = ({
     else { setCheckStatus('latest'); setTimeout(() => setCheckStatus('idle'), 3000); }
   };
 
-  // Helper for Market Status
   const getMarketStatus = () => {
     const now = new Date();
-    const utcDay = now.getUTCDay(); // 0 = Domingo, 6 = Sábado
+    const utcDay = now.getUTCDay(); 
     const utcHour = now.getUTCHours();
-    
-    // Horário de Brasília é UTC-3 (aproximado)
     const brHour = (utcHour - 3 + 24) % 24;
-    
     const isWeekend = utcDay === 0 || utcDay === 6;
-    
     if (isWeekend) return { label: 'Fechado (FDS)', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-white/10', icon: Moon };
-    
-    // Mercado B3 aproximado: 10:00 - 17:00 (Pregão) | 17:00 - 18:00 (After)
     if (brHour >= 10 && brHour < 17) return { label: 'Pregão Aberto', color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: Activity };
     if (brHour >= 17 && brHour < 18) return { label: 'After-market', color: 'text-amber-500', bg: 'bg-amber-500/10', icon: Clock };
-    
     return { label: 'Fechado', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-white/10', icon: Moon };
   };
 
   const marketStatus = getMarketStatus();
 
-  // Diagnostics Logic
   const addLog = (text: string, type: 'info' | 'success' | 'error' | 'warn' = 'info') => {
     setDiagState(prev => ({
         ...prev,
@@ -376,7 +379,6 @@ export const Settings: React.FC<SettingsProps> = ({
     }
 
     try {
-        // 1. Teste de Latência
         addLog('Testando latência de rede...');
         const start = performance.now();
         
@@ -392,7 +394,6 @@ export const Settings: React.FC<SettingsProps> = ({
         setDiagState(prev => ({ ...prev, latency, cloudCount: count }));
         addLog(`Latência: ${latency}ms. Itens na nuvem: ${count}`, latency < 500 ? 'success' : 'warn');
 
-        // 2. Integridade
         const localCount = transactions.length;
         if (localCount === count) {
             setDiagState(prev => ({ ...prev, integrity: true }));
@@ -402,7 +403,6 @@ export const Settings: React.FC<SettingsProps> = ({
             addLog(`Discrepância detectada! Local: ${localCount} vs Nuvem: ${count}`, 'error');
         }
 
-        // 3. Teste de Escrita (Round Trip)
         addLog('Testando permissões de escrita...');
         const testTx = {
             user_id: user.id,
@@ -505,7 +505,6 @@ export const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-      {/* PREMIUM GLASS TOAST NOTIFICATION (LOCAL) */}
       {message && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none w-full max-w-sm px-4">
             <div className={`
@@ -594,9 +593,6 @@ export const Settings: React.FC<SettingsProps> = ({
               </h2>
           </div>
           
-          {/* --- CONTENT OF SECTIONS --- */}
-          
-          {/* UPDATES SECTION - Kept as is */}
           {activeSection === 'updates' && (
              <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-[#0f172a] rounded-[2.5rem] border border-slate-100 dark:border-white/5 overflow-hidden shadow-xl">
                 <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'py-6 border-b border-slate-100 dark:border-white/5' : 'py-12'}`}>
@@ -682,11 +678,8 @@ export const Settings: React.FC<SettingsProps> = ({
              </div>
           )}
 
-          {/* INTEGRATIONS & SERVICES DASHBOARD (ENHANCED) */}
           {activeSection === 'integrations' && (
             <div className="space-y-6">
-                
-                {/* 1. Network & Status Compact Bar */}
                 <div className="flex items-center justify-between bg-white dark:bg-[#0f172a] p-3 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
                     <div className="flex items-center gap-3">
                         <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
@@ -708,7 +701,6 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </div>
 
-                {/* 2. Primary Actions - Manual Control (RESTORED & PROMINENT) */}
                 <Section title="Controle Manual">
                     <div className="grid grid-cols-2 gap-3">
                         <button 
@@ -741,10 +733,8 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </Section>
 
-                {/* 3. Service Detail Cards (Refined) */}
                 <Section title="Infraestrutura & Serviços">
                     <div className="space-y-3">
-                        {/* Supabase Card */}
                         <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500"><Database className="w-5 h-5" /></div>
@@ -758,7 +748,6 @@ export const Settings: React.FC<SettingsProps> = ({
                             </div>
                         </div>
 
-                        {/* Brapi Card */}
                         <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500"><BarChart3 className="w-5 h-5" /></div>
@@ -772,14 +761,13 @@ export const Settings: React.FC<SettingsProps> = ({
                             </div>
                         </div>
 
-                        {/* Gemini Card */}
                         <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500"><Sparkles className="w-5 h-5" /></div>
                                     <div>
                                         <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Google Gemini</h4>
-                                        <p className="text-[9px] text-slate-400 font-mono">Model: 2.5 Pro (Stable)</p>
+                                        <p className="text-[9px] text-slate-400 font-mono">Model: 2.5 Flash</p>
                                     </div>
                                 </div>
                                 <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${lastAiStatus === 'operational' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-amber-500/10 text-amber-500'}`}>
@@ -794,7 +782,6 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </Section>
 
-                {/* Advanced Diagnostics Button (Secondary) */}
                 <div className="pt-2 pb-6">
                      <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200/50 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group">
                         <div className="flex items-center gap-3">
@@ -985,9 +972,7 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
       )}
 
-      {/* Cloud Diagnostics Modal */}
       <SwipeableModal isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)}>
-        {/* ... (mantido igual ao original) ... */}
         <div className="px-6 py-4 pb-8 min-h-[50vh]">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -1005,7 +990,6 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div className="space-y-4 font-mono text-xs">
-                {/* Console Log */}
                 <div className="bg-slate-900 rounded-xl p-4 min-h-[200px] max-h-[300px] overflow-y-auto border border-white/10 shadow-inner">
                     {diagState.logs.length === 0 ? (
                         <span className="text-slate-500 animate-pulse">Aguardando início...</span>
@@ -1025,7 +1009,6 @@ export const Settings: React.FC<SettingsProps> = ({
                     {diagState.step === 'running' && <div className="mt-2 h-1 w-4 bg-emerald-500 animate-pulse"></div>}
                 </div>
 
-                {/* Summary Cards */}
                 {diagState.step !== 'idle' && (
                     <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
                         <div className={`p-4 rounded-2xl border ${diagState.latency && diagState.latency < 500 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5'}`}>
@@ -1039,7 +1022,6 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                 )}
 
-                {/* Actions */}
                 {diagState.integrity === false && (
                     <div className="p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20 text-center anim-fade-in-up is-visible">
                         <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
@@ -1056,7 +1038,6 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
       </SwipeableModal>
 
-      {/* Force Update Confirmation Modal */}
       <ConfirmationModal
         isOpen={showForceUpdateConfirm}
         title="Reinstalar App"
@@ -1073,7 +1054,6 @@ export const Settings: React.FC<SettingsProps> = ({
         onCancel={() => setFileToRestore(null)}
       />
 
-      {/* Logout Confirmation Modal */}
       <ConfirmationModal
         isOpen={showLogoutConfirm}
         title="Sair da Conta"

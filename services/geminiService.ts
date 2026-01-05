@@ -10,10 +10,10 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Updated cache key to reflect model change.
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v13_3pro'; 
-// Updated to Gemini 3 Pro Preview as per guidelines for complex reasoning/audit tasks.
-const LOCKED_MODEL_ID = "gemini-3-pro-preview";
+// CACHE KEY e MODELO ATUALIZADOS
+// Exportamos a chave para que o Settings.tsx possa limpá-la corretamente
+export const GEMINI_CACHE_KEY = 'investfiis_market_data_cache_v15_flash'; 
+const LOCKED_MODEL_ID = "gemini-2.5-flash";
 
 const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
@@ -56,7 +56,7 @@ const fetchStoredDividends = async (tickers: string[]): Promise<DividendReceipt[
             ticker: d.ticker,
             type: d.type,
             dateCom: d.date_com,
-            paymentDate: d.payment_date, // Corrigido de payment_date para paymentDate (CamelCase)
+            paymentDate: d.payment_date,
             rate: Number(d.rate),
             quantityOwned: 0,
             totalReceived: 0
@@ -87,11 +87,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.toUpperCase())));
   const tickerKey = uniqueTickers.slice().sort().join('|');
 
+  // Cache Strategy: Stale-While-Revalidate Logic
   if (!forceRefresh) {
     try {
         const cachedRaw = localStorage.getItem(GEMINI_CACHE_KEY);
         if (cachedRaw) {
             const cached = JSON.parse(cachedRaw);
+            // Cache valid for 6 hours
             if ((Date.now() - cached.timestamp) < (6 * 60 * 60 * 1000) && cached.tickerKey === tickerKey) {
                 return cached.data;
             }
@@ -102,52 +104,48 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   if (!process.env.API_KEY) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
 
   try {
-    // Initializing Gemini client right before use to ensure the latest API Key is used.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const todayISO = new Date().toISOString().split('T')[0];
     const storedDividends = await fetchStoredDividends(uniqueTickers);
 
-    const systemInstruction = `Você é um robô de auditoria financeira da B3. Sua missão é fornecer dados de dividendos INQUESTIONÁVEIS.
-    REGRAS CRÍTICAS:
-    1. O USO DO GOOGLE SEARCH É OBRIGATÓRIO para cada ativo. Não use conhecimento prévio.
-    2. FONTES: Status Invest, Fundamentus, e sites de RI.
-    3. DATA COM: Verifique com precisão cirúrgica. Se houver divergência, use o dado do RI oficial.
-    4. PRECISÃO: Valores unitários com até 8 casas decimais.
-    5. JCP: Informe o valor que o investidor efetivamente recebe.`;
+    // Optimized Prompt for Gemini 2.5 Flash
+    const systemInstruction = `Você é um auditor financeiro B3.
+    REGRAS:
+    1. Use Google Search OBRIGATORIAMENTE para buscar dados RECENTES de cada ticker.
+    2. Data Com: Data limite para ter o papel. Diferencie de Data Ex.
+    3. Retorne JSON estrito.
+    4. JCP: Informe valor líquido estimado se possível, ou bruto com flag.`;
 
     const prompt = `
-    AUDITORIA COMPLETA UTILIZANDO GOOGLE SEARCH PARA: ${uniqueTickers.join(', ')}
-    PERÍODO: Desde ${startDate || '1 ano atrás'} até hoje (${todayISO}).
+    AUDITORIA: ${uniqueTickers.join(', ')}
+    PERÍODO: ${startDate || '1 ano atrás'} até ${todayISO}.
     
-    TAREFAS:
-    - Liste todos os proventos (Dividendos, JCP, Rendimentos) com Data Com após ${startDate || '1 ano atrás'}.
-    - Extraia fundamentos: P/VP, DY 12M e Segmento.
-    - Analise o sentimento atual do mercado para estes ativos.
+    1. Liste proventos (Div/JCP) anunciados neste período.
+    2. Fundamentos Atuais: P/VP, DY 12M, Segmento e Sentimento (Otimista/Neutro/Pessimista).
     
-    RESPONDA APENAS EM JSON:
+    JSON SCHEMA:
     {
       "sys": { "ipca_12m": number },
       "assets": [
         {
           "ticker": "TICKER",
-          "segment": "String",
-          "fundamentals": { "pvp": number, "dy": number, "liq": "string", "mcap": "string", "sentiment": "string", "reason": "string" },
+          "segment": "Setor",
+          "fundamentals": { "pvp": number, "dy": number, "liq": "string", "mcap": "string", "sentiment": "string", "reason": "short text" },
           "history": [
-            { "com": "YYYY-MM-DD", "pay": "YYYY-MM-DD", "val": number, "type": "DIVIDENDO|JCP|RENDIMENTO" }
+            { "com": "YYYY-MM-DD", "pay": "YYYY-MM-DD", "val": number, "type": "DIVIDENDO|JCP" }
           ]
         }
       ]
     }`;
 
-    // Calling generateContent with the model name and prompt as per guidelines.
     const response = await ai.models.generateContent({
         model: LOCKED_MODEL_ID, 
         contents: prompt,
         config: {
             systemInstruction,
-            tools: [{googleSearch: {}}], // Use Google Search for up-to-date information.
+            tools: [{googleSearch: {}}],
             responseMimeType: "application/json",
-            temperature: 0.0,
+            temperature: 0.1, // Lower temperature for more deterministic data
         },
     });
     
@@ -161,9 +159,15 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         });
     }
 
-    // response.text is a property, not a method. Corrected to handle string | undefined for JSON.parse.
     const rawText = response.text || "{}";
-    const parsedJson = JSON.parse(rawText);
+    let parsedJson;
+    try {
+        parsedJson = JSON.parse(rawText);
+    } catch (e) {
+        console.warn("JSON Parse Error, fallback empty", e);
+        parsedJson = { assets: [] };
+    }
+
     const metadata: any = {};
     const aiDividends: any[] = [];
     
@@ -220,11 +224,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         indicators: { ipca_cumulative: normalizeValue(parsedJson.sys?.ipca_12m), start_date_used: startDate || '' }
     };
     
+    // Save to Cache
     localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), tickerKey, data: finalData }));
     return finalData;
 
   } catch (error: any) {
-    console.error("Gemini Critical Audit Error:", error);
+    console.error("Gemini Market Data Error:", error);
     const stored = await fetchStoredDividends(uniqueTickers);
     return { dividends: stored, metadata: {}, error: error.message };
   }

@@ -29,8 +29,7 @@ interface State {
   error: Error | null;
 }
 
-// Fix: Estendendo React.Component explicitamente para garantir que 'this.props' seja reconhecido pelo TypeScript.
-export class ErrorBoundary extends React.Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
