@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Save, Download, Upload, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, RefreshCw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Box, Layers, Gauge, Info, Wallet, RotateCcw, Activity, Cloud, Loader2, Calendar, Target, TrendingUp, Search, ExternalLink, LogIn, LogOut, User, Mail, FileText, ScrollText, Aperture, CreditCard, Star, ArrowRightLeft, Clock, BarChart3, Signal, Zap, Terminal } from 'lucide-react';
+import { Save, Download, Upload, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, RefreshCw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Box, Layers, Gauge, Info, Wallet, RotateCcw, Activity, Cloud, Loader2, Calendar, Target, TrendingUp, Search, ExternalLink, LogIn, LogOut, User, Mail, FileText, ScrollText, Aperture, CreditCard, Star, ArrowRightLeft, Clock, BarChart3, Signal, Zap, Terminal, Cpu } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
 import { ThemeType } from '../App';
 import { supabase } from '../services/supabase';
@@ -252,25 +252,21 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleForceMarketUpdate = async () => {
       setIsMarketUpdating(true);
       try {
-          // Limpeza profunda de dados
-          onImportDividends([]); // Limpa estado visual imediatamente
+          // Limpeza profunda de dados visual
+          onImportDividends([]); 
           
-          // Limpa caches persistentes do App (listas já processadas)
+          // Limpa caches persistentes
           localStorage.removeItem('investfiis_v4_div_cache');
-          localStorage.removeItem('investfiis_v3_quote_cache'); // Limpa também cotações (Brapi)
-          
-          // Limpa cache RAW do serviço Gemini (usando a chave importada)
+          localStorage.removeItem('investfiis_v3_quote_cache');
           localStorage.removeItem(GEMINI_CACHE_KEY); 
           
-          // Pequeno delay para garantir que o React propague o estado limpo
-          await new Promise(resolve => setTimeout(resolve, 300)); 
+          // Delay técnico para propagação do estado
+          await new Promise(resolve => setTimeout(resolve, 500)); 
 
-          // Chama o sync com force=true para ignorar qualquer cache restante em memória
+          // Recarrega
           await onSyncAll(true); 
           
-          // Recalcula o tamanho do storage para a UI
           calculateStorage();
-          
           showMessage('success', 'Dados de mercado (IA + Cotações) recarregados!');
       } catch (e) {
           showMessage('error', 'Falha ao atualizar mercado.');
@@ -343,20 +339,6 @@ export const Settings: React.FC<SettingsProps> = ({
     else { setCheckStatus('latest'); setTimeout(() => setCheckStatus('idle'), 3000); }
   };
 
-  const getMarketStatus = () => {
-    const now = new Date();
-    const utcDay = now.getUTCDay(); 
-    const utcHour = now.getUTCHours();
-    const brHour = (utcHour - 3 + 24) % 24;
-    const isWeekend = utcDay === 0 || utcDay === 6;
-    if (isWeekend) return { label: 'Fechado (FDS)', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-white/10', icon: Moon };
-    if (brHour >= 10 && brHour < 17) return { label: 'Pregão Aberto', color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: Activity };
-    if (brHour >= 17 && brHour < 18) return { label: 'After-market', color: 'text-amber-500', bg: 'bg-amber-500/10', icon: Clock };
-    return { label: 'Fechado', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-white/10', icon: Moon };
-  };
-
-  const marketStatus = getMarketStatus();
-
   const addLog = (text: string, type: 'info' | 'success' | 'error' | 'warn' = 'info') => {
     setDiagState(prev => ({
         ...prev,
@@ -366,7 +348,6 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const runDiagnostics = async () => {
     setDiagState({ step: 'running', logs: [], latency: null, cloudCount: null, localCount: transactions.length, integrity: null, writeTest: null });
-    
     addLog('Iniciando diagnósticos profundos...');
     
     if (!navigator.onLine) {
@@ -384,12 +365,7 @@ export const Settings: React.FC<SettingsProps> = ({
     try {
         addLog('Testando latência de rede...');
         const start = performance.now();
-        
-        const { count, error: countError } = await supabase
-            .from('transactions')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id);
-
+        const { count, error: countError } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
         const end = performance.now();
         const latency = Math.round(end - start);
         
@@ -407,23 +383,12 @@ export const Settings: React.FC<SettingsProps> = ({
         }
 
         addLog('Testando permissões de escrita...');
-        const testTx = {
-            user_id: user.id,
-            ticker: 'DIAG_TEST',
-            type: 'BUY',
-            quantity: 0,
-            price: 0,
-            date: new Date().toISOString(),
-            asset_type: 'FII'
-        };
-        
+        const testTx = { user_id: user.id, ticker: 'DIAG_TEST', type: 'BUY', quantity: 0, price: 0, date: new Date().toISOString(), asset_type: 'FII' };
         const { data: inserted, error: insertError } = await supabase.from('transactions').insert(testTx).select();
         if (insertError) throw insertError;
         
         if (inserted && inserted.length > 0) {
-            const idToDelete = inserted[0].id;
-            const { error: deleteError } = await supabase.from('transactions').delete().eq('id', idToDelete);
-            if (deleteError) throw deleteError;
+            await supabase.from('transactions').delete().eq('id', inserted[0].id);
             setDiagState(prev => ({ ...prev, writeTest: true }));
             addLog('Teste de escrita e remoção: Sucesso', 'success');
         } else {
@@ -447,7 +412,7 @@ export const Settings: React.FC<SettingsProps> = ({
         case 'privacy': return 'Privacidade';
         case 'integrations': return 'Conexões e Serviços';
         case 'data': return 'Alocação e Backup';
-        case 'system': return 'Sistema';
+        case 'system': return 'Sistema Avançado'; // Renomeado para clareza
         case 'updates': return 'Atualizações';
         case 'about': return 'Sobre o App';
         default: return 'Ajustes';
@@ -577,7 +542,7 @@ export const Settings: React.FC<SettingsProps> = ({
             <Section title="Sistema">
                 <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} colorClass="bg-purple-500/10 text-purple-500" />
                 <MenuItem icon={Info} label="Sobre o APP" onClick={() => setActiveSection('about')} colorClass="bg-slate-500/10 text-slate-500" />
-                <MenuItem icon={ShieldAlert} label="Resetar Aplicativo" onClick={() => setActiveSection('system')} isDestructive />
+                <MenuItem icon={Cpu} label="Sistema Avançado" onClick={() => setActiveSection('system')} colorClass="bg-slate-500/10 text-slate-500" />
             </Section>
             
             <div className="text-center mt-8 opacity-40"><p className="text-[10px] font-bold uppercase tracking-widest">InvestFIIs Ultra</p><p className="text-[9px]">Versão {appVersion}</p></div>
