@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 // Componente para exibir quando houver erro de configuração das chaves do Supabase
