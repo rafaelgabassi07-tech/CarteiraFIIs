@@ -10,21 +10,22 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Chave de cache atualizada para versionamento do Schema
-export const GEMINI_CACHE_KEY = 'investfiis_market_data_v16_schema'; 
+// Atualizamos a chave de cache para garantir que os usuários baixem os novos dados com a nova lógica
+export const GEMINI_CACHE_KEY = 'investfiis_scraping_v18_sources'; 
 const LOCKED_MODEL_ID = "gemini-2.5-flash";
 
-// Variável para rastrear requisições em andamento (Deduplicação de chamadas)
+// Variável para evitar chamadas duplicadas (Erro 429)
 let activeRequest: { key: string, promise: Promise<UnifiedMarketData> } | null = null;
 
-// --- Definição do Schema de Resposta (Tipagem Estrita) ---
+// --- 1. DEFINIÇÃO DO SCHEMA (O MOLDE DOS DADOS) ---
+// Isso garante que a IA devolva exatamente o que o app precisa, sem texto extra.
 const marketDataSchema: Schema = {
   type: Type.OBJECT,
   properties: {
     sys: {
       type: Type.OBJECT,
       properties: {
-        ipca_12m: { type: Type.NUMBER, description: "Inflação acumulada últimos 12 meses (IBGE/IPCA)." }
+        ipca_12m: { type: Type.NUMBER, description: "Inflação acumulada 12 meses (IBGE)." }
       }
     },
     assets: {
@@ -33,28 +34,28 @@ const marketDataSchema: Schema = {
         type: Type.OBJECT,
         properties: {
           ticker: { type: Type.STRING },
-          segment: { type: Type.STRING, description: "Setor de atuação ex: Logística, Bancos, Shopping." },
-          type: { type: Type.STRING, enum: ["ACAO", "FII"], description: "Classificação do ativo." },
+          segment: { type: Type.STRING, description: "Setor (ex: Logística, Bancos)." },
+          type: { type: Type.STRING, enum: ["ACAO", "FII"], description: "Tipo do ativo." },
           fundamentals: {
             type: Type.OBJECT,
             properties: {
-              pvp: { type: Type.NUMBER, description: "Preço sobre Valor Patrimonial." },
-              dy: { type: Type.NUMBER, description: "Dividend Yield acumulado 12 meses (em %)." },
-              liq: { type: Type.STRING, description: "Liquidez diária média formatada." },
-              mcap: { type: Type.STRING, description: "Valor de mercado formatado." },
-              sentiment: { type: Type.STRING, enum: ["Otimista", "Neutro", "Pessimista"], description: "Consenso de mercado." },
-              reason: { type: Type.STRING, description: "Breve motivo do sentimento (max 10 palavras)." }
+              pvp: { type: Type.NUMBER, description: "P/VP (Preço sobre Valor Patrimonial)." },
+              dy: { type: Type.NUMBER, description: "Dividend Yield acumulado 12 meses (%)." },
+              liq: { type: Type.STRING, description: "Liquidez diária formatada (ex: R$ 5M)." },
+              mcap: { type: Type.STRING, description: "Valor de Mercado." },
+              sentiment: { type: Type.STRING, enum: ["Otimista", "Neutro", "Pessimista"] },
+              reason: { type: Type.STRING, description: "Motivo curto do sentimento." }
             }
           },
           history: {
             type: Type.ARRAY,
-            description: "Lista de proventos (Dividendos/JCP) anunciados/pagos nos últimos 12 meses.",
+            description: "Lista de proventos com Datacom e Pagamento (últimos 12 meses).",
             items: {
               type: Type.OBJECT,
               properties: {
                 com: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)." },
                 pay: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)." },
-                val: { type: Type.NUMBER, description: "Valor líquido (ou bruto se JCP)." },
+                val: { type: Type.NUMBER, description: "Valor do provento." },
                 type: { type: Type.STRING, enum: ["DIVIDENDO", "JCP", "RENDIMENTO"] }
               }
             }
@@ -69,11 +70,12 @@ const marketDataSchema: Schema = {
 const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
   const s = String(dateStr).trim();
+  // Tenta formato ISO YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // Fallback simples
   return new Date().toISOString().split('T')[0];
 };
 
+// Busca dividendos salvos no Supabase (Backup)
 const fetchStoredDividends = async (tickers: string[]): Promise<DividendReceipt[]> => {
     try {
         const { data, error } = await supabase
@@ -94,9 +96,9 @@ const fetchStoredDividends = async (tickers: string[]): Promise<DividendReceipt[
     } catch (e) { return []; }
 };
 
+// Salva os dados novos na nuvem para não precisar consultar a IA toda hora
 const upsertDividendsToCloud = async (dividends: any[]) => {
     if (dividends.length === 0) return;
-    // Prepara payload removendo duplicatas exatas locais antes do envio
     const dbPayload = dividends.map(d => ({
         ticker: d.ticker,
         type: d.type,
@@ -118,21 +120,21 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.toUpperCase())));
   const tickerKey = uniqueTickers.slice().sort().join('|');
 
-  // 1. DEDUPLICAÇÃO: Evita chamadas simultâneas idênticas (Erro 429)
+  // --- CONTROLE DE FLUXO (Evita Erro 429) ---
   if (activeRequest && activeRequest.key === tickerKey && !forceRefresh) {
-      console.log(`🔄 [Gemini] Reutilizando requisição ativa para ${uniqueTickers.length} ativos`);
+      console.log(`🔄 [Gemini] Reutilizando requisição ativa.`);
       return activeRequest.promise;
   }
 
-  // 2. CACHE LOCAL
+  // --- CACHE LOCAL (Prioridade 1) ---
   if (!forceRefresh) {
     try {
         const cachedRaw = localStorage.getItem(GEMINI_CACHE_KEY);
         if (cachedRaw) {
             const cached = JSON.parse(cachedRaw);
-            // Cache válido por 4 horas para dados de mercado
-            if ((Date.now() - cached.timestamp) < (4 * 60 * 60 * 1000) && cached.tickerKey === tickerKey) {
-                console.log(`📦 [Gemini] Dados recuperados do cache local`);
+            // Cache válido por 6 horas
+            if ((Date.now() - cached.timestamp) < (6 * 60 * 60 * 1000) && cached.tickerKey === tickerKey) {
+                console.log(`📦 [Gemini] Dados recuperados do cache local.`);
                 return cached.data;
             }
         }
@@ -146,53 +148,68 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const storedDividends = await fetchStoredDividends(uniqueTickers);
 
-        console.log(`🤖 [Gemini] Consultando dados para: ${uniqueTickers.length} ativos...`);
+        console.log(`🤖 [Gemini] Iniciando Scraping Inteligente para ${uniqueTickers.length} ativos...`);
 
+        // --- 2. O PROMPT (A ORDEM DE SCRAPING) ---
         const prompt = `
-        Analise os seguintes ativos da B3 (Brasil): ${uniqueTickers.join(', ')}.
-        Busque informações RECENTES e ATUALIZADAS (Data base hoje: ${new Date().toISOString().split('T')[0]}).
+        Atue como um Crawler Financeiro especializado na B3.
         
-        Use a tool 'googleSearch' para verificar:
-        1. Últimos proventos anunciados (Data Com, Pagamento, Valor).
-        2. Valor de P/VP atual.
-        3. Dividend Yield (DY) dos últimos 12 meses.
-        4. Sentimento de mercado.
+        ALVOS: ${uniqueTickers.join(', ')}.
+        DATA HOJE: ${new Date().toISOString().split('T')[0]}.
+        
+        INSTRUÇÃO DE SCRAPING (Busca Web Obrigatória):
+        Para cada ativo listado, use a tool 'googleSearch' para encontrar os dados ATUAIS nos sites "Status Invest" e "Investidor10".
+        
+        EXTRAIA EXATAMENTE:
+        1. FUNDAMENTOS:
+           - P/VP (Preço sobre Valor Patrimonial) atualizado.
+           - Dividend Yield (DY) acumulado dos últimos 12 meses.
+           - Liquidez média diária.
+           
+        2. PROVENTOS (Últimos 12 meses):
+           - Data Com (Data de corte).
+           - Data de Pagamento.
+           - Valor R$ por cota.
+           - Tipo (Dividendo/JCP).
+
+        REGRAS DE CONFLITO:
+        - Se Status Invest e Investidor10 discordarem, use o dado do Status Invest.
+        - Se não encontrar Data de Pagamento futura, use a Data Com como referência provisória.
         `;
 
         const response = await ai.models.generateContent({
             model: LOCKED_MODEL_ID, 
             contents: prompt,
             config: {
-                // Configuração Estrita: Força JSON perfeito baseada no Schema
                 responseMimeType: "application/json",
-                responseSchema: marketDataSchema,
-                tools: [{googleSearch: {}}],
-                temperature: 0.1, // Baixa criatividade para maior precisão
+                responseSchema: marketDataSchema, // Aplica o molde JSON
+                tools: [{googleSearch: {}}], // Ativa o acesso à internet
+                temperature: 0.1, // Baixa criatividade para garantir fidelidade aos números
             },
         });
         
-        // Coleta fontes (Grounding)
+        // Extrai as fontes usadas para dar credibilidade
         const sources: {title: string, uri: string}[] = [];
         const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
         if (chunks) {
             chunks.forEach((chunk: any) => {
                 if (chunk.web?.uri) {
-                    sources.push({ title: chunk.web.title || 'Fonte B3', uri: chunk.web.uri });
+                    sources.push({ title: chunk.web.title || 'Fonte Web', uri: chunk.web.uri });
                 }
             });
         }
 
-        // Parsing Direto (O Schema garante que response.text é um JSON válido)
         const parsedJson = JSON.parse(response.text || '{"assets": []}');
         
         const metadata: any = {};
         const aiDividends: any[] = [];
         
+        // Processa o JSON retornado pela IA
         if (parsedJson.assets) {
           for (const asset of parsedJson.assets) {
               const t = asset.ticker.toUpperCase();
               
-              // Garante normalização de AssetType
+              // Define tipo baseado no ticker se a IA falhar (ex: final 11 é geralmente FII/Unit)
               let assetType = AssetType.FII;
               if (asset.type === 'ACAO') assetType = AssetType.STOCK;
               else if (t.endsWith('3') || t.endsWith('4')) assetType = AssetType.STOCK;
@@ -207,7 +224,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                       market_cap: asset.fundamentals.mcap,
                       sentiment: asset.fundamentals.sentiment,
                       sentiment_reason: asset.fundamentals.reason,
-                      sources: sources.slice(0, 3) // Anexa as fontes reais
+                      sources: sources.slice(0, 4) // Anexa as fontes (StatusInvest, etc)
                   },
               };
               
@@ -229,11 +246,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           }
         }
 
-        // Sincroniza dados novos com a nuvem (Fire and forget)
         upsertDividendsToCloud(aiDividends);
 
-        // Mesclagem Inteligente: Dados do Banco + Dados Novos da IA
-        // Prioriza dados do banco se forem idênticos para manter consistência de ID
+        // Mescla dados do banco (histórico antigo) com dados novos da IA
         const combined = [...storedDividends];
         aiDividends.forEach(newDiv => {
             const isDuplicate = combined.some(old => 
@@ -250,23 +265,22 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             indicators: { ipca_cumulative: parsedJson.sys?.ipca_12m || 4.5, start_date_used: startDate || '' }
         };
         
-        // Salva no cache
         localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), tickerKey, data: finalData }));
         return finalData;
 
     } catch (error: any) {
-        console.error("Gemini Data Error:", error);
+        console.error("Gemini Scraping Error:", error);
         
-        // Estratégia de Fallback para Erro 429 (Rate Limit)
+        // Tratamento de Rate Limit (Erro 429)
         if (error.status === 429 || String(error).includes('429')) {
-             console.warn("⚠️ Rate Limit Detectado. Usando cache antigo se disponível.");
+             console.warn("⚠️ Rate Limit Detectado. Tentando usar cache antigo.");
              const cachedRaw = localStorage.getItem(GEMINI_CACHE_KEY);
              if (cachedRaw) {
-                 return { ...JSON.parse(cachedRaw).data, error: "Modo Offline (Limite de API)" };
+                 return { ...JSON.parse(cachedRaw).data, error: "Modo Offline (Limite API Google)" };
              }
         }
 
-        // Fallback final: Apenas dados do banco de dados
+        // Se tudo falhar, retorna o que tem no banco de dados
         const stored = await fetchStoredDividends(uniqueTickers);
         return { dividends: stored, metadata: {}, error: "Serviço indisponível temporariamente" };
     } finally {
