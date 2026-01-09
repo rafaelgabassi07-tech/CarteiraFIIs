@@ -1,139 +1,82 @@
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { Building2, TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Globe, ExternalLink } from 'lucide-react';
+import { Building2, TrendingUp, TrendingDown, BarChart3, Globe, ExternalLink, ChevronDown } from 'lucide-react';
 
 interface PortfolioProps {
   portfolio: AssetPosition[];
   dividendReceipts?: DividendReceipt[];
-  totalDividendsReceived?: number;
-  invested?: number;
   balance?: number;
-  salesGain?: number;
 }
 
 const formatBRL = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const formatPercent = (val: number) => `${val.toFixed(2)}%`;
 
-const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: number, history: DividendReceipt[] }> = ({ asset, totalPortfolioValue, history }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  
-  const currentPrice = asset.currentPrice || asset.averagePrice;
-  const totalValue = currentPrice * asset.quantity;
-  const totalCost = asset.averagePrice * asset.quantity;
-  const gainValue = totalValue - totalCost;
-  const gainPercent = totalCost > 0 ? (gainValue / totalCost) * 100 : 0;
-  const isPositive = gainValue >= 0;
-  
+const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number }> = ({ asset, totalValue }) => {
+  const [expanded, setExpanded] = useState(false);
+  const currentVal = (asset.currentPrice || asset.averagePrice) * asset.quantity;
+  const costVal = asset.averagePrice * asset.quantity;
+  const delta = currentVal - costVal;
+  const deltaPercent = costVal > 0 ? (delta / costVal) * 100 : 0;
+  const isPos = delta >= 0;
+
   return (
-    <div className="border-b border-white/5 last:border-0">
-      <button 
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full py-4 flex items-center justify-between active:bg-white/5 transition-colors px-2 rounded-lg"
-      >
-        <div className="flex items-center gap-4">
-            <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-zinc-900 border border-white/5 text-zinc-400">
-               {asset.assetType === AssetType.FII ? <Building2 className="w-5 h-5 stroke-1" /> : <BarChart3 className="w-5 h-5 stroke-1" />}
+    <div className={`bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden transition-all duration-300 ${expanded ? 'shadow-lg ring-1 ring-slate-200 dark:ring-white/10' : 'shadow-sm active:scale-[0.99]'}`}>
+        <button onClick={() => setExpanded(!expanded)} className="w-full p-5 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white font-bold text-xs border border-slate-100 dark:border-white/5">
+                    {asset.ticker.substring(0,4)}
+                </div>
+                <div className="text-left">
+                    <h3 className="text-base font-black text-slate-900 dark:text-white leading-none mb-1">{asset.ticker}</h3>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{asset.quantity} cotas</p>
+                </div>
             </div>
-            <div className="text-left">
-               <h3 className="text-sm font-bold text-white">{asset.ticker}</h3>
-               <p className="text-[10px] text-zinc-500">{asset.quantity} cotas</p>
+            <div className="text-right">
+                <p className="text-base font-black text-slate-900 dark:text-white leading-none mb-1">{formatBRL(currentVal)}</p>
+                <div className={`flex items-center justify-end gap-1 text-[10px] font-bold ${isPos ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {isPos ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {deltaPercent.toFixed(2)}%
+                </div>
             </div>
-        </div>
-        <div className="text-right">
-             <p className="text-sm font-medium text-white tabular-nums">{formatBRL(totalValue)}</p>
-             <p className={`text-[10px] tabular-nums ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                {isPositive ? '+' : ''}{formatPercent(gainPercent)}
-             </p>
-        </div>
-      </button>
-
-      {isExpanded && (
-        <div className="px-4 pb-6 pt-2 space-y-4">
-           <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-zinc-900/50 rounded-lg border border-white/5">
-                 <p className="text-[9px] text-zinc-500 uppercase tracking-widest mb-1">Preço Médio</p>
-                 <p className="text-xs font-medium text-white">{formatBRL(asset.averagePrice)}</p>
-              </div>
-              <div className="p-3 bg-zinc-900/50 rounded-lg border border-white/5">
-                 <p className="text-[9px] text-zinc-500 uppercase tracking-widest mb-1">Atual</p>
-                 <p className="text-xs font-medium text-white">{formatBRL(currentPrice)}</p>
-              </div>
-           </div>
-
-           {/* Indicators */}
-           {(asset.p_vp || asset.dy_12m) && (
-             <div className="flex gap-4 text-xs text-zinc-400 justify-center py-2">
-                {asset.p_vp && <span>P/VP <span className="text-white">{asset.p_vp.toFixed(2)}</span></span>}
-                <span className="text-zinc-700">|</span>
-                {asset.dy_12m && <span>DY <span className="text-white">{asset.dy_12m.toFixed(2)}%</span></span>}
-             </div>
-           )}
-           
-           {/* Recent Dividends - Minimal */}
-           {history.length > 0 && (
-             <div className="border-t border-white/5 pt-3">
-                <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-2">Últimos Proventos</p>
-                {history.slice(0, 3).map((h, i) => (
-                   <div key={i} className="flex justify-between text-xs py-1">
-                      <span className="text-zinc-500">{h.paymentDate.split('-').reverse().join('/')}</span>
-                      <span className="text-emerald-500">+{formatBRL(h.rate)}</span>
-                   </div>
-                ))}
-             </div>
-           )}
-
-           <div className="flex justify-end pt-2">
-              <a 
-                href={`https://statusinvest.com.br/${asset.assetType === AssetType.FII ? 'fundos-imobiliarios' : 'acoes'}/${asset.ticker.toLowerCase()}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[10px] font-bold text-zinc-600 hover:text-white transition-colors flex items-center gap-1 uppercase tracking-widest"
-              >
-                Status Invest <ExternalLink className="w-3 h-3" />
-              </a>
-           </div>
-        </div>
-      )}
+        </button>
+        
+        {expanded && (
+            <div className="px-5 pb-5 pt-0 anim-fade-in">
+                <div className="h-px w-full bg-slate-100 dark:bg-white/5 mb-4"></div>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-white/5">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Preço Médio</span>
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatBRL(asset.averagePrice)}</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-white/5">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Cotação</span>
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatBRL(asset.currentPrice || 0)}</span>
+                    </div>
+                </div>
+                {asset.sources && asset.sources.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                        {asset.sources.map((s, i) => (
+                            <a key={i} href={s.uri} target="_blank" className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-[9px] font-bold text-slate-500 flex items-center gap-1 hover:text-slate-900 dark:hover:text-white transition-colors">
+                                <Globe className="w-2.5 h-2.5" /> Fonte {i+1}
+                            </a>
+                        ))}
+                    </div>
+                )}
+            </div>
+        )}
     </div>
   );
 };
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividendReceipts = [], invested = 0, balance = 0 }) => {
-  const [filter, setFilter] = useState('');
-  
-  const filteredPortfolio = useMemo(() => {
-     if (!filter) return portfolio;
-     return portfolio.filter(p => p.ticker.includes(filter.toUpperCase()));
-  }, [portfolio, filter]);
-
+const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0 }) => {
   return (
-    <div className="pt-20 pb-28 px-4 max-w-lg mx-auto min-h-screen">
-      <div className="sticky top-20 z-30 pt-2 pb-4 bg-black">
-          <input 
-            type="text" 
-            placeholder="Filtrar..." 
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="w-full bg-zinc-900 border border-white/5 px-4 py-3 rounded-xl outline-none text-sm text-white placeholder:text-zinc-600 focus:border-white/20 transition-colors"
-          />
-      </div>
-
-      <div className="bg-black border border-white/5 rounded-2xl px-2">
-         {filteredPortfolio.length === 0 ? (
-           <div className="py-20 text-center opacity-40">
-              <p className="text-sm font-medium text-zinc-500">Vazio.</p>
-           </div>
-         ) : (
-           filteredPortfolio.map((asset) => (
-             <AssetCardInternal 
-               key={asset.ticker} 
-               asset={asset} 
-               totalPortfolioValue={balance}
-               history={dividendReceipts.filter(d => d.ticker === asset.ticker).sort((a,b) => b.paymentDate.localeCompare(a.paymentDate))}
-             />
-           ))
-         )}
-      </div>
+    <div className="pt-24 pb-32 px-5 max-w-lg mx-auto min-h-screen">
+       <div className="mb-6 px-1">
+           <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Meus Ativos</h2>
+           <p className="text-xs text-slate-500 font-medium mt-1">Total acumulado: {formatBRL(balance)}</p>
+       </div>
+       <div className="space-y-3">
+           {portfolio.map(p => <AssetCard key={p.ticker} asset={p} totalValue={balance} />)}
+       </div>
     </div>
   );
 };
