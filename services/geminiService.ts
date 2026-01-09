@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
 import { supabase } from "./supabase";
 
@@ -10,9 +10,8 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Updated cache key to reflect model change to Flash 2.5.
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v14_25flash'; 
-// Updated to Gemini 2.5 Flash for speed and efficiency.
+// Chave de cache atualizada para a versão otimizada com Google Search
+const GEMINI_CACHE_KEY = 'investfiis_gemini_v16_25flash_search'; 
 const LOCKED_MODEL_ID = "gemini-2.5-flash";
 
 const normalizeDate = (dateStr: any): string => {
@@ -56,7 +55,7 @@ const fetchStoredDividends = async (tickers: string[]): Promise<DividendReceipt[
             ticker: d.ticker,
             type: d.type,
             dateCom: d.date_com,
-            paymentDate: d.payment_date, // Corrigido de payment_date para paymentDate (CamelCase)
+            paymentDate: d.payment_date,
             rate: Number(d.rate),
             quantityOwned: 0,
             totalReceived: 0
@@ -87,12 +86,14 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.toUpperCase())));
   const tickerKey = uniqueTickers.slice().sort().join('|');
 
+  // 1. Verificação de Cache Local (Performance First)
   if (!forceRefresh) {
     try {
         const cachedRaw = localStorage.getItem(GEMINI_CACHE_KEY);
         if (cachedRaw) {
             const cached = JSON.parse(cachedRaw);
-            if ((Date.now() - cached.timestamp) < (6 * 60 * 60 * 1000) && cached.tickerKey === tickerKey) {
+            // Cache válido por 4 horas para dados de mercado com busca ativa
+            if ((Date.now() - cached.timestamp) < (4 * 60 * 60 * 1000) && cached.tickerKey === tickerKey) {
                 return cached.data;
             }
         }
@@ -102,66 +103,88 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   if (!process.env.API_KEY) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
 
   try {
-    // Initializing Gemini client right before use to ensure the latest API Key is used.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const todayISO = new Date().toISOString().split('T')[0];
     const storedDividends = await fetchStoredDividends(uniqueTickers);
 
-    const systemInstruction = `Você é um robô de auditoria financeira da B3. Sua missão é fornecer dados de dividendos INQUESTIONÁVEIS.
-    REGRAS CRÍTICAS:
-    1. O USO DO GOOGLE SEARCH É OBRIGATÓRIO para cada ativo. Não use conhecimento prévio.
-    2. FONTES: Status Invest, Fundamentus, e sites de RI.
-    3. DATA COM: Verifique com precisão cirúrgica. Se houver divergência, use o dado do RI oficial.
-    4. PRECISÃO: Valores unitários com até 8 casas decimais.
-    5. JCP: Informe o valor que o investidor efetivamente recebe.`;
+    // 2. Instrução de Sistema Otimizada para Busca (Grounding)
+    const systemInstruction = `
+    VOCÊ É UM AGENTE DE DADOS DE MERCADO FINANCEIRO (B3).
+    SUA FUNÇÃO: Usar a ferramenta "GoogleSearch" para buscar dados oficiais em tempo real.
+    
+    MÉTODO DE TRABALHO:
+    1. RECEBA a lista de ativos.
+    2. EXECUTE buscas no Google para encontrar: Dividendos recentes, P/VP, DY e Segmento.
+    3. COMPILE os resultados encontrados diretamente em um JSON único.
+    
+    FONTES PRIORITÁRIAS: Status Invest, Fundamentus, Clube FII, B3, Investidor10.
+    `;
 
+    // Prompt desenhado para "forçar" o uso eficiente da tool de busca
     const prompt = `
-    AUDITORIA COMPLETA UTILIZANDO GOOGLE SEARCH PARA: ${uniqueTickers.join(', ')}
-    PERÍODO: Desde ${startDate || '1 ano atrás'} até hoje (${todayISO}).
-    
-    TAREFAS:
-    - Liste todos os proventos (Dividendos, JCP, Rendimentos) com Data Com após ${startDate || '1 ano atrás'}.
-    - Extraia fundamentos: P/VP, DY 12M e Segmento.
-    - Analise o sentimento atual do mercado para estes ativos.
-    
-    RESPONDA APENAS EM JSON:
+    ATIVOS SOLICITADOS: ${uniqueTickers.join(', ')}
+    PERÍODO DE INTERESSE: ${startDate || '2024-01-01'} até ${todayISO}.
+
+    Execute buscas estratégicas no Google para obter os seguintes dados (Grounding):
+    1. "IPCA acumulado 12 meses Brasil hoje"
+    2. Para cada ativo (${uniqueTickers.join(' ')}):
+       - "Ultimos proventos anunciados ${uniqueTickers.join(' ')} data com pagamento valor"
+       - "P/VP Dividend Yield atual ${uniqueTickers.join(' ')}"
+       - "Segmento de atuação ${uniqueTickers.join(' ')}"
+
+    OUTPUT JSON (Strict Schema):
     {
       "sys": { "ipca_12m": number },
       "assets": [
         {
-          "ticker": "TICKER",
-          "segment": "String",
-          "fundamentals": { "pvp": number, "dy": number, "liq": "string", "mcap": "string", "sentiment": "string", "reason": "string" },
+          "ticker": "string",
+          "segment": "string",
+          "type": "FII" | "ACAO",
+          "fundamentals": {
+            "pvp": number,      
+            "dy": number,       
+            "mcap": "string",   
+            "liq": "string",   
+            "sentiment": "Otimista" | "Neutro" | "Pessimista",
+            "reason": "string"
+          },
           "history": [
-            { "com": "YYYY-MM-DD", "pay": "YYYY-MM-DD", "val": number, "type": "DIVIDENDO|JCP|RENDIMENTO" }
+            { 
+              "com": "YYYY-MM-DD",
+              "pay": "YYYY-MM-DD",
+              "val": number,
+              "type": "DIV" | "JCP" | "REND"
+            }
           ]
         }
       ]
-    }`;
+    }
+    `;
 
-    // Calling generateContent with the model name and prompt as per guidelines.
+    // 3. Chamada à API (Google Search Enable)
     const response = await ai.models.generateContent({
         model: LOCKED_MODEL_ID, 
         contents: prompt,
         config: {
             systemInstruction,
-            tools: [{googleSearch: {}}], // Use Google Search for up-to-date information.
+            tools: [{googleSearch: {}}], // Ativa o grounding no Google Search
             responseMimeType: "application/json",
-            temperature: 0.0,
+            temperature: 0.1, // Deterministico para dados
         },
     });
     
+    // 4. Tratamento de Fontes (Grounding Metadata)
     const sources: {title: string, uri: string}[] = [];
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     if (chunks) {
         chunks.forEach((chunk: any) => {
             if (chunk.web?.uri) {
-                sources.push({ title: chunk.web.title || 'Fonte de Mercado', uri: chunk.web.uri });
+                sources.push({ title: chunk.web.title || 'Fonte Web', uri: chunk.web.uri });
             }
         });
     }
 
-    // FIX: Limpeza robusta da string JSON retornada pela IA (remove blocos markdown)
+    // 5. Parse Seguro do JSON
     let rawText = response.text || "{}";
     rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
 
@@ -169,38 +192,40 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     try {
         parsedJson = JSON.parse(rawText);
     } catch (parseError) {
-        console.warn("Falha no parse do JSON da IA, tentando correção manual...", parseError);
-        parsedJson = { assets: [] }; // Fallback seguro
+        console.warn("Gemini: Erro no parse JSON, tentando recuperação...", parseError);
+        parsedJson = { assets: [] }; 
     }
 
+    // 6. Mapeamento
     const metadata: any = {};
     const aiDividends: any[] = [];
     
-    if (parsedJson.assets) {
+    if (parsedJson.assets && Array.isArray(parsedJson.assets)) {
       for (const asset of parsedJson.assets) {
-          const t = asset.ticker.toUpperCase();
+          const t = asset.ticker?.toUpperCase() || "UNKNOWN";
+          
           metadata[t] = {
-              type: t.endsWith('11') ? AssetType.FII : AssetType.STOCK,
-              segment: asset.segment,
+              type: asset.type === 'FII' ? AssetType.FII : AssetType.STOCK,
+              segment: asset.segment || 'Geral',
               fundamentals: {
                   p_vp: normalizeValue(asset.fundamentals?.pvp),
                   dy_12m: normalizeValue(asset.fundamentals?.dy),
                   liquidity: asset.fundamentals?.liq || '-',
                   market_cap: asset.fundamentals?.mcap || '-',
                   sentiment: asset.fundamentals?.sentiment || 'Neutro',
-                  sentiment_reason: asset.fundamentals?.reason || 'Sem análise disponível',
-                  sources: sources.slice(0, 5)
+                  sentiment_reason: asset.fundamentals?.reason || 'Análise automática',
+                  sources: sources.slice(0, 3)
               },
           };
           
-          if (asset.history) {
+          if (asset.history && Array.isArray(asset.history)) {
             asset.history.forEach((d: any) => {
                 const dCom = normalizeDate(d.com);
                 const dPay = normalizeDate(d.pay);
-                if (dCom) {
+                if (dCom && d.val > 0) {
                     aiDividends.push({
                         ticker: t,
-                        type: d.type || 'DIVIDENDO',
+                        type: d.type || 'REND',
                         dateCom: dCom,
                         paymentDate: dPay || dCom,
                         rate: normalizeValue(d.val),
@@ -211,31 +236,33 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }
     }
 
-    // Salva na nuvem em background (sem await para não travar UI se lento)
+    // 7. Sincronização
     upsertDividendsToCloud(aiDividends);
 
-    // Mescla com dados existentes para evitar perda se a IA falhar parcialmente
     const combined = [...storedDividends];
     aiDividends.forEach(newDiv => {
-        const isDuplicate = combined.some(old => 
+        const exists = combined.some(old => 
             old.ticker === newDiv.ticker && 
             old.dateCom === newDiv.dateCom && 
-            Math.abs(old.rate - newDiv.rate) < 0.00001
+            Math.abs(old.rate - newDiv.rate) < 0.001
         );
-        if (!isDuplicate) combined.push(newDiv);
+        if (!exists) combined.push(newDiv);
     });
     
     const finalData = { 
         dividends: combined, 
         metadata, 
-        indicators: { ipca_cumulative: normalizeValue(parsedJson.sys?.ipca_12m), start_date_used: startDate || '' }
+        indicators: { 
+            ipca_cumulative: normalizeValue(parsedJson.sys?.ipca_12m), 
+            start_date_used: startDate || '' 
+        }
     };
     
     localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), tickerKey, data: finalData }));
     return finalData;
 
   } catch (error: any) {
-    console.error("Gemini Critical Audit Error:", error);
+    console.error("Gemini 2.5 Flash Search Error:", error);
     const stored = await fetchStoredDividends(uniqueTickers);
     return { dividends: stored, metadata: {}, error: error.message };
   }

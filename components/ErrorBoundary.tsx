@@ -48,7 +48,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render(): ReactNode {
     const { hasError, error } = this.state;
-    const { children } = this.props;
 
     if (hasError) {
       if (error?.message?.includes('Credenciais do Supabase')) {
@@ -65,6 +64,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       );
     }
 
-    return children;
+    return this.props.children;
   }
 }
