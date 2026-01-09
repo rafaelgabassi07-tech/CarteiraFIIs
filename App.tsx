@@ -117,14 +117,16 @@ const App: React.FC = () => {
     setIsRefreshing(true);
     if (initialLoad) setLoadingProgress(50);
     try {
-      if (process.env.BRAPI_TOKEN) {
-          const { quotes: newQuotesData } = await getQuotes(tickers);
-          if (newQuotesData.length > 0) {
-            setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
-          }
+      // BRAPI FETCH - Tenta buscar mesmo sem verificação prévia de ENV no componente
+      // O Serviço agora lida com a ausência da chave e logs de erro
+      const { quotes: newQuotesData } = await getQuotes(tickers);
+      if (newQuotesData.length > 0) {
+        setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
       }
+      
       if (initialLoad) setLoadingProgress(70); 
-      if (process.env.API_KEY) {
+      
+      if (process.env.API_KEY || (import.meta as any).env?.VITE_API_KEY) {
           setIsAiLoading(true);
           const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
           const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
