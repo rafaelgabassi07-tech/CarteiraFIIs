@@ -83,7 +83,10 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex flex-col anim-fade-in">
               <div className="flex items-center gap-2">
                   {isRefreshing && <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />}
-                  <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{title}</h1>
+                  <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-baseline gap-1">
+                    {title}
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
+                  </h1>
               </div>
           </div>
         )}
