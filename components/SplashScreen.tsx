@@ -9,16 +9,16 @@ interface SplashScreenProps {
 export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realProgress }) => {
   const [shouldRender, setShouldRender] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [displayProgress, setDisplayProgress] = useState(10);
+  const [displayProgress, setDisplayProgress] = useState(0);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const staticSplash = document.getElementById('root-splash');
     if (staticSplash && staticSplash.parentNode) {
         staticSplash.style.display = 'none';
-        setTimeout(() => staticSplash.parentNode?.removeChild(staticSplash), 100);
+        setTimeout(() => staticSplash.parentNode?.removeChild(staticSplash), 50);
     }
-    return () => { document.body.style.overflow = 'auto'; };
+    return () => { document.body.style.overflow = ''; };
   }, []);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         setDisplayProgress(prev => {
             const target = Math.max(prev, realProgress);
             const diff = target - prev;
-            if (diff <= 0.5) return prev;
+            if (diff <= 0.1) return prev;
             return prev + (diff * 0.15); 
         });
     };
@@ -42,7 +42,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         const removeTimeout = setTimeout(() => {
           setShouldRender(false);
           document.body.style.overflow = 'auto';
-        }, 600);
+        }, 500);
         return () => clearTimeout(removeTimeout);
       }, 400);
       return () => clearTimeout(timeout);
@@ -53,34 +53,29 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
 
   return (
     <div 
-      className={`fixed inset-0 z-[9999] bg-[#020617] flex flex-col items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.87,0,0.13,1)] ${
-        isFadingOut ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
+      className={`fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center transition-opacity duration-500 ease-out ${
+        isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
-      style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 60%)' }}
     >
-      <div className="relative z-10 flex flex-col items-center">
-        <div className="relative mb-8">
-            <div className={`w-24 h-24 bg-[#0f172a] rounded-[2rem] flex items-center justify-center shadow-2xl border border-white/5 ring-1 ring-black/50 transition-all duration-700 ${finishLoading ? 'scale-110 shadow-sky-500/20' : 'scale-100'}`}>
-                <Wallet className="w-10 h-10 text-white opacity-90" strokeWidth={2} />
-            </div>
+      <div className="flex flex-col items-center">
+        <div className="mb-8 p-4 border border-white/10 rounded-3xl bg-white/5">
+            <Wallet className="w-12 h-12 text-white stroke-1" />
         </div>
 
-        <div className="text-center space-y-6">
-            <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-1">
-                Invest<span className="text-sky-500">FIIs</span>
-            </h1>
-            
-            <div className="w-[120px] h-1 bg-white/5 rounded-full overflow-hidden">
-                <div 
-                    className="h-full bg-white rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(255,255,255,0.5)]"
-                    style={{ width: `${displayProgress}%` }}
-                />
-            </div>
+        <h1 className="text-2xl font-semibold text-white tracking-tight mb-8">
+            InvestFIIs
+        </h1>
+        
+        <div className="w-32 h-[2px] bg-zinc-900 rounded-full overflow-hidden">
+            <div 
+                className="h-full bg-white transition-all duration-200 ease-out"
+                style={{ width: `${displayProgress}%` }}
+            />
         </div>
-      </div>
-
-      <div className="absolute bottom-10 opacity-30">
-        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.25em]">Simples & Funcional</p>
+        
+        <p className="mt-4 text-[10px] text-zinc-600 font-mono tracking-widest uppercase">
+            {finishLoading ? 'Pronto' : 'Carregando'}
+        </p>
       </div>
     </div>
   );
