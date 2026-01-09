@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { TrendingUp, TrendingDown, Globe, Layers, BarChart3, Wallet, Tag, ArrowUpRight, ArrowDownRight, PieChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, Globe, Layers, BarChart3, Wallet, Tag, ArrowUpRight, ArrowDownRight, PieChart, Info } from 'lucide-react';
 
 interface PortfolioProps {
   portfolio: AssetPosition[];
@@ -29,12 +29,12 @@ const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number }> = ({ ass
     <div className={`bg-white dark:bg-[#0F1623] rounded-[1.5rem] border transition-all duration-300 overflow-hidden ${expanded ? 'border-slate-300 dark:border-slate-700 shadow-xl scale-[1.02] z-10' : 'border-slate-200 dark:border-slate-800 shadow-sm'}`}>
         
         {/* HEADER (Always Visible) */}
-        <button onClick={() => setExpanded(!expanded)} className="w-full p-5 flex items-center justify-between group active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors">
-            <div className="flex items-center gap-4">
+        <button onClick={() => setExpanded(!expanded)} className="w-full p-4 flex items-center justify-between group active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors">
+            <div className="flex items-center gap-3">
                 {/* Logo/Icon Box */}
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xs font-black shadow-inner border border-white/5 ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black shadow-inner border border-white/5 ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400'}`}>
                     {asset.logoUrl ? (
-                        <img src={asset.logoUrl} alt={asset.ticker} className="w-8 h-8 object-contain rounded-md mix-blend-multiply dark:mix-blend-normal" />
+                        <img src={asset.logoUrl} alt={asset.ticker} className="w-6 h-6 object-contain rounded-md mix-blend-multiply dark:mix-blend-normal" />
                     ) : (
                         <span>{asset.ticker.substring(0,2)}</span>
                     )}
@@ -42,100 +42,81 @@ const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number }> = ({ ass
                 
                 <div className="text-left">
                     <div className="flex items-center gap-2 mb-0.5">
-                        <h3 className="text-base font-black text-slate-900 dark:text-white leading-none tracking-tight">{asset.ticker}</h3>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border uppercase tracking-widest ${asset.assetType === AssetType.FII ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' : 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800'}`}>
+                        <h3 className="text-sm font-black text-slate-900 dark:text-white leading-none tracking-tight">{asset.ticker}</h3>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border uppercase tracking-widest ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border-indigo-100 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border-sky-100 dark:border-sky-800'}`}>
                             {asset.assetType === AssetType.FII ? 'FII' : 'Ação'}
                         </span>
                     </div>
                     <p className="text-[10px] font-medium text-slate-400 flex items-center gap-1">
-                        {asset.quantity} cotas • {formatPercent(allocation)} da carteira
+                        {asset.quantity} cotas • {formatPercent(allocation)}
                     </p>
                 </div>
             </div>
 
             <div className="text-right">
-                <p className="text-base font-black text-slate-900 dark:text-white leading-none mb-1.5">{formatBRL(currentVal)}</p>
-                <div className={`flex items-center justify-end gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${isPos ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400'}`}>
+                <p className="text-sm font-black text-slate-900 dark:text-white leading-none mb-1">{formatBRL(currentVal)}</p>
+                <div className={`flex items-center justify-end gap-1 text-[10px] font-bold ${isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                     {isPos ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                     {deltaPercent > 0 ? '+' : ''}{formatPercent(deltaPercent)}
                 </div>
             </div>
         </button>
         
-        {/* EXPANDED CONTENT */}
+        {/* EXPANDED CONTENT (Optimized) */}
         {expanded && (
-            <div className="px-5 pb-6 pt-1 anim-fade-in border-t border-slate-100 dark:border-slate-800/50">
+            <div className="pb-4 pt-0 anim-fade-in">
                 
-                {/* Visual Profitability Bar */}
-                <div className="mb-6 mt-4">
-                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-1.5">
-                        <span className="text-slate-500">Custo Total</span>
-                        <span className={isPos ? 'text-emerald-500' : 'text-rose-500'}>
-                            {isPos ? 'Lucro' : 'Prejuízo'} ({formatBRL(delta)})
-                        </span>
-                    </div>
-                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex relative">
+                {/* 1. Slim Profit Bar */}
+                <div className="px-4 mb-5">
+                    <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex relative mb-2">
                         {/* Base (Cost) */}
                         <div className="h-full bg-slate-300 dark:bg-slate-600 w-full opacity-30"></div>
-                        
                         {/* Overlay (Profit/Loss) */}
                         <div 
                             style={{ width: `${profitBarPercent}%` }} 
                             className={`absolute h-full rounded-full ${isPos ? 'bg-emerald-500 left-0' : 'bg-rose-500 right-0'}`}
                         ></div>
                     </div>
+                    <div className="flex justify-between text-[10px] font-medium text-slate-400">
+                        <span>Custo: <strong className="text-slate-600 dark:text-slate-300">{formatBRL(costVal)}</strong></span>
+                        <span className={isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
+                             {isPos ? 'Lucro' : 'Prejuízo'}: <strong>{formatBRL(delta)}</strong>
+                        </span>
+                    </div>
                 </div>
 
-                {/* Main Stats Grid */}
-                <div className="grid grid-cols-2 gap-3 mb-5">
-                    {/* Prices */}
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <Tag className="w-3 h-3 text-slate-400" />
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Preço Médio</span>
-                        </div>
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{formatBRL(asset.averagePrice)}</span>
+                {/* 2. Clean Stats Grid (No boxes) */}
+                <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-slate-800 border-y border-slate-100 dark:border-slate-800 py-3 mb-3">
+                    <div className="px-2 text-center">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Preço Médio</span>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{formatBRL(asset.averagePrice)}</span>
                     </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <BarChart3 className="w-3 h-3 text-slate-400" />
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Cotação Atual</span>
-                        </div>
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">{formatBRL(asset.currentPrice || 0)}</span>
+                    <div className="px-2 text-center">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">P/VP</span>
+                        <span className={`text-xs font-bold ${!asset.p_vp ? 'text-slate-300' : asset.p_vp < 1 ? 'text-emerald-600 dark:text-emerald-400' : asset.p_vp > 1.2 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                            {asset.p_vp ? asset.p_vp.toFixed(2) : '-'}
+                        </span>
                     </div>
-
-                    {/* Fundamentals (If available) */}
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <Layers className="w-3 h-3 text-slate-400" />
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">P/VP</span>
-                        </div>
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{asset.p_vp ? asset.p_vp.toFixed(2) : '-'}</span>
-                    </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <PieChart className="w-3 h-3 text-slate-400" />
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">DY (12M)</span>
-                        </div>
-                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{asset.dy_12m ? formatPercent(asset.dy_12m) : '-'}</span>
+                    <div className="px-2 text-center">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">DY (12M)</span>
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            {asset.dy_12m ? formatPercent(asset.dy_12m) : '-'}
+                        </span>
                     </div>
                 </div>
                 
-                {/* Footer Info */}
-                <div className="flex items-center justify-between pt-2">
-                    {asset.segment && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                            <Layers className="w-3 h-3 text-slate-500" />
-                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider truncate max-w-[150px]">
-                                {asset.segment}
-                            </span>
-                        </div>
-                    )}
+                {/* 3. Minimal Footer (Segment & RI) */}
+                <div className="px-4 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 opacity-70">
+                        <Layers className="w-3 h-3 text-slate-400" />
+                        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
+                            {asset.segment || 'Geral'}
+                        </span>
+                    </div>
                     
                     {asset.sources && asset.sources.length > 0 && (
-                        <a href={asset.sources[0].uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                            <Globe className="w-3 h-3 text-sky-500" />
-                            <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">RI / Info</span>
+                        <a href={asset.sources[0].uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:underline">
+                            RI / Info <ArrowUpRight className="w-3 h-3" />
                         </a>
                     )}
                 </div>
@@ -149,19 +130,19 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0 }
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto min-h-screen">
        {/* Page Header */}
-       <div className="mb-8 px-1 flex items-end justify-between">
+       <div className="mb-6 px-1 flex items-end justify-between">
            <div>
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">Custódia</h2>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Meus Ativos ({portfolio.length})</p>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">Custódia</h2>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Meus Ativos ({portfolio.length})</p>
            </div>
            <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Patrimônio</span>
-                <span className="text-lg font-black text-slate-900 dark:text-white tracking-tight">{formatBRL(balance)}</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Patrimônio</span>
+                <span className="text-base font-black text-slate-900 dark:text-white tracking-tight">{formatBRL(balance)}</span>
            </div>
        </div>
 
        {/* Asset List */}
-       <div className="space-y-4">
+       <div className="space-y-3">
            {portfolio.length > 0 ? (
                portfolio.map(p => <AssetCard key={p.ticker} asset={p} totalValue={balance} />)
            ) : (
