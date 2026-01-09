@@ -30,14 +30,14 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
   const yoc = totalCost > 0 ? ((asset.totalDividends || 0) / totalCost) * 100 : 0;
 
   return (
-    <div className={`bg-white dark:bg-[#0f172a] rounded-[1.75rem] transition-all duration-300 border border-slate-200/50 dark:border-white/5 overflow-hidden ${isExpanded ? 'shadow-xl scale-[1.01] ring-1 ring-accent/20' : 'shadow-sm active:scale-[0.98]'}`}>
+    <div className={`bg-white dark:bg-slate-900 rounded-[1.75rem] transition-all duration-300 border border-slate-200 dark:border-slate-800 overflow-hidden ${isExpanded ? 'shadow-md scale-[1.01] ring-1 ring-slate-200 dark:ring-slate-700' : 'shadow-sm active:scale-[0.98]'}`}>
       <div 
         onClick={() => setIsExpanded(!isExpanded)}
         className="p-5 cursor-pointer"
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black shadow-sm border border-white/10 ${asset.assetType === AssetType.FII ? 'bg-orange-500/10 text-orange-500' : 'bg-blue-500/10 text-blue-500'}`}>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black shadow-sm border ${asset.assetType === AssetType.FII ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-500 border-orange-100 dark:border-orange-500/20' : 'bg-blue-50 dark:bg-blue-500/10 text-blue-500 border-blue-100 dark:border-blue-500/20'}`}>
                {asset.assetType === AssetType.FII ? <Building2 className="w-6 h-6" /> : <BarChart3 className="w-6 h-6" />}
             </div>
             <div>
@@ -59,7 +59,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
         </div>
         
         <div className="flex items-center gap-2">
-           <div className="flex-1 h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+           <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div style={{ width: `${allocation}%` }} className={`h-full rounded-full ${asset.assetType === AssetType.FII ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
            </div>
            <span className="text-[9px] font-bold text-slate-400 tabular-nums">{allocation.toFixed(1)}%</span>
@@ -68,22 +68,22 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
 
       {isExpanded && (
         <div className="px-5 pb-5 pt-0 space-y-4 anim-fade-in">
-           <div className="h-[1px] w-full bg-slate-100 dark:bg-white/5 mb-4"></div>
+           <div className="h-[1px] w-full bg-slate-100 dark:bg-slate-800 mb-4"></div>
            
            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Preço Médio</p>
                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatBRL(asset.averagePrice)}</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cotação Atual</p>
                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatBRL(currentPrice)}</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Dividendos (Total)</p>
                  <p className="text-sm font-bold text-emerald-500">{formatBRL(asset.totalDividends || 0)}</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Yield on Cost</p>
                  <p className="text-sm font-bold text-emerald-500">{yoc.toFixed(2)}%</p>
               </div>
@@ -118,7 +118,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Últimos Proventos</p>
                 <div className="space-y-1.5">
                    {history.slice(0, 3).map((h, i) => (
-                      <div key={i} className="flex justify-between items-center text-xs p-2 rounded-lg bg-slate-50 dark:bg-white/5">
+                      <div key={i} className="flex justify-between items-center text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                          <span className="text-slate-500 dark:text-slate-400 font-mono">{h.paymentDate.split('-').reverse().join('/')}</span>
                          <span className="font-bold text-emerald-500">+{formatBRL(h.rate)}/cota</span>
                       </div>
@@ -130,7 +130,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
            {/* Grounding Sources (Google Search Citations) */}
            {/* Fix: ALWAYS list URLs from groundingChunks to satisfy Google GenAI guidelines. */}
            {asset.sources && asset.sources.length > 0 && (
-             <div className="pt-2 border-t border-slate-100 dark:border-white/5 mt-4">
+             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 mt-4">
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Fontes de Pesquisa (IA)</p>
                 <div className="flex flex-wrap gap-2">
                    {asset.sources.map((src, i) => (
@@ -139,7 +139,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
                         href={src.uri} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-white/5 rounded-lg text-[9px] font-bold text-slate-500 hover:text-accent transition-colors border border-slate-100 dark:border-white/5"
+                        className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800 rounded-lg text-[9px] font-bold text-slate-500 hover:text-accent transition-colors border border-slate-200 dark:border-slate-700"
                       >
                          <Globe className="w-2.5 h-2.5" /> {src.title.length > 25 ? src.title.substring(0, 25) + '...' : src.title}
                       </a>
@@ -180,7 +180,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividendRecei
     <div className="pt-24 pb-28 px-5 max-w-lg mx-auto min-h-screen">
       
       {/* Search Header */}
-      <div className="sticky top-24 z-30 pt-2 pb-4 bg-slate-100 dark:bg-[#020617] -mx-5 px-5 transition-all">
+      <div className="sticky top-24 z-30 pt-2 pb-4 bg-slate-50 dark:bg-slate-950 -mx-5 px-5 transition-all">
           <div className="relative">
              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                <PieChart className="w-5 h-5" />
@@ -190,7 +190,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividendRecei
                placeholder="Buscar ativo ou segmento..." 
                value={filter}
                onChange={(e) => setFilter(e.target.value)}
-               className="w-full bg-white dark:bg-white/5 pl-12 pr-4 py-3.5 rounded-2xl outline-none font-bold text-sm text-slate-900 dark:text-white placeholder:text-slate-400 shadow-sm border border-slate-200/50 dark:border-white/5 focus:ring-2 focus:ring-accent/50 transition-all"
+               className="w-full bg-white dark:bg-slate-900 pl-12 pr-4 py-3.5 rounded-2xl outline-none font-bold text-sm text-slate-900 dark:text-white placeholder:text-slate-400 shadow-sm border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-accent/50 transition-all"
              />
           </div>
       </div>
@@ -213,7 +213,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividendRecei
          )}
       </div>
 
-      <div className="mt-8 pt-8 border-t border-slate-200 dark:border-white/10 text-center">
+      <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800 text-center">
          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Custodiado</p>
          <p className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(balance)}</p>
          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full mt-2 text-xs font-bold uppercase tracking-wider ${totalReturn >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>

@@ -452,9 +452,9 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, colorClass }: any) => (
-    <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-[#0f172a] hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all border-b last:border-0 border-slate-100 dark:border-white/5 group gap-4`}>
+    <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:scale-[0.98] transition-all border-b last:border-0 border-slate-200 dark:border-slate-800 group gap-4`}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : colorClass || 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400'}`}><Icon className="w-5 h-5" strokeWidth={2.5} /></div>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : colorClass || 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}><Icon className="w-5 h-5" strokeWidth={2.5} /></div>
             <span className={`text-sm font-semibold text-left ${isDestructive ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>{label}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -468,14 +468,14 @@ export const Settings: React.FC<SettingsProps> = ({
   const Section = ({ title, children }: any) => (
     <div className="mb-6 anim-fade-in-up is-visible">
         {title && <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</h3>}
-        <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5">{children}</div>
+        <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">{children}</div>
     </div>
   );
 
   const Toggle = ({ label, checked, onChange, icon: Icon, description }: any) => (
-    <div onClick={onChange} className={`flex items-center justify-between p-4 rounded-3xl cursor-pointer active:scale-[0.99] transition-all border border-slate-100 dark:border-white/5 ${checked ? 'bg-white dark:bg-[#0f172a] shadow-sm' : 'bg-slate-50 dark:bg-white/5'}`}>
+    <div onClick={onChange} className={`flex items-center justify-between p-4 rounded-3xl cursor-pointer active:scale-[0.99] transition-all border border-slate-200 dark:border-slate-800 ${checked ? 'bg-white dark:bg-slate-900 shadow-sm' : 'bg-slate-50 dark:bg-slate-800/30'}`}>
         <div className="flex items-center gap-3">
-          {Icon && <div className={`p-2 rounded-lg ${checked ? 'bg-accent/10 text-accent' : 'bg-slate-200 dark:bg-white/10 text-slate-400'}`}><Icon className="w-4 h-4" strokeWidth={2.2} /></div>}
+          {Icon && <div className={`p-2 rounded-lg ${checked ? 'bg-accent/10 text-accent' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'}`}><Icon className="w-4 h-4" strokeWidth={2.2} /></div>}
           <div>
             <span className={`text-sm font-semibold block ${checked ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{label}</span>
             {description && <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">{description}</p>}
@@ -534,7 +534,7 @@ export const Settings: React.FC<SettingsProps> = ({
         <>
             <div className="mb-6 anim-fade-in-up is-visible">
                <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Conta Cloud</h3>
-               <div className="rounded-[2rem] overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5 bg-white dark:bg-[#0f172a]">
+               <div className="rounded-[2rem] overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                  <div className="p-6 space-y-4">
                      <div className="flex items-center gap-4">
                          <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><User className="w-6 h-6" /></div>
@@ -569,7 +569,7 @@ export const Settings: React.FC<SettingsProps> = ({
           <div className="flex items-center gap-3 mb-6 px-1">
               <button 
                 onClick={() => setActiveSection('menu')} 
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-all active:scale-95"
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all active:scale-95"
               >
                   <ArrowLeft className="w-4 h-4" strokeWidth={3} />
               </button>
@@ -582,10 +582,10 @@ export const Settings: React.FC<SettingsProps> = ({
           
           {/* UPDATES SECTION - Kept as is */}
           {activeSection === 'updates' && (
-             <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-[#0f172a] rounded-[2.5rem] border border-slate-100 dark:border-white/5 overflow-hidden shadow-xl">
-                <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'py-6 border-b border-slate-100 dark:border-white/5' : 'py-12'}`}>
+             <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">
+                <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'py-6 border-b border-slate-200 dark:border-slate-800' : 'py-12'}`}>
                     <div className={`relative mb-4 transition-all duration-500 ${isHeaderCompact ? 'scale-75' : 'scale-100'}`}>
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-white/5 text-slate-400' : updateAvailable ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : updateAvailable ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                             {checkStatus === 'checking' ? (
                                 <Loader2 className="w-8 h-8 animate-spin" strokeWidth={2} />
                             ) : updateAvailable ? (
@@ -654,7 +654,7 @@ export const Settings: React.FC<SettingsProps> = ({
                        </div>
                    )}
                    
-                   <div className="pt-8 border-t border-slate-100 dark:border-white/5 mt-4">
+                   <div className="pt-8 border-t border-slate-200 dark:border-slate-800 mt-4">
                        <button 
                            onClick={() => setShowForceUpdateConfirm(true)}
                            className="w-full text-center text-[10px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 uppercase tracking-widest py-2"
@@ -671,7 +671,7 @@ export const Settings: React.FC<SettingsProps> = ({
             <div className="space-y-6">
                 
                 {/* 1. Network & Status Compact Bar */}
-                <div className="flex items-center justify-between bg-white dark:bg-[#0f172a] p-3 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
+                <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center gap-3">
                         <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">{isOnline ? 'Sistema Online' : 'Offline'}</span>
@@ -679,13 +679,13 @@ export const Settings: React.FC<SettingsProps> = ({
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400">
                             <span className="flex items-center gap-1.5"><Signal className="w-3 h-3" /> {networkType}</span>
-                            <div className="h-3 w-[1px] bg-slate-200 dark:bg-white/10"></div>
+                            <div className="h-3 w-[1px] bg-slate-200 dark:bg-slate-700"></div>
                             <span className="flex items-center gap-1.5"><Gauge className="w-3 h-3" /> {estLatency ? `${estLatency}ms` : '-'}</span>
                         </div>
                         <button 
                             onClick={runServiceCheck} 
                             disabled={isServicesChecking}
-                            className={`w-6 h-6 rounded-lg bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-white transition-all active:scale-95 ${isServicesChecking ? 'animate-spin' : ''}`}
+                            className={`w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-white transition-all active:scale-95 ${isServicesChecking ? 'animate-spin' : ''}`}
                         >
                             <RefreshCw className="w-3 h-3" />
                         </button>
@@ -700,7 +700,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             disabled={isMarketUpdating}
                             className="bg-indigo-500/10 hover:bg-indigo-500/20 active:scale-95 text-indigo-600 dark:text-indigo-400 p-4 rounded-2xl border border-indigo-500/20 flex flex-col items-center justify-center gap-2 transition-all group"
                         >
-                            <div className="w-10 h-10 rounded-full bg-white dark:bg-white/10 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                                 {isMarketUpdating ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
                             </div>
                             <div className="text-center">
@@ -714,7 +714,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             disabled={isSyncing}
                             className="bg-sky-500/10 hover:bg-sky-500/20 active:scale-95 text-sky-600 dark:text-sky-400 p-4 rounded-2xl border border-sky-500/20 flex flex-col items-center justify-center gap-2 transition-all group"
                         >
-                            <div className="w-10 h-10 rounded-full bg-white dark:bg-white/10 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                                 {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Cloud className="w-5 h-5" />}
                             </div>
                             <div className="text-center">
@@ -729,7 +729,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 <Section title="Infraestrutura & Serviços">
                     <div className="space-y-3">
                         {/* Supabase Card */}
-                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden flex items-center justify-between">
+                        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500"><Database className="w-5 h-5" /></div>
                                 <div>
@@ -743,7 +743,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         </div>
 
                         {/* Brapi Card */}
-                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden flex items-center justify-between">
+                        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500"><BarChart3 className="w-5 h-5" /></div>
                                 <div>
@@ -757,7 +757,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         </div>
 
                         {/* Gemini Card */}
-                        <div className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden">
+                        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500"><Sparkles className="w-5 h-5" /></div>
@@ -770,7 +770,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                     {lastAiStatus === 'operational' ? 'Ready' : 'Quota Limit'}
                                 </div>
                             </div>
-                            <div className="w-full bg-slate-100 dark:bg-white/5 h-1.5 rounded-full overflow-hidden flex items-center">
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden flex items-center">
                                 <div className={`h-full rounded-full transition-all duration-500 ${lastAiStatus === 'operational' ? 'bg-indigo-500 w-[15%]' : 'bg-amber-500 w-[95%]'}`}></div>
                             </div>
                             <p className="text-[8px] text-right text-slate-400 mt-1 font-bold uppercase tracking-wider">Uso Estimado da Cota</p>
@@ -780,9 +780,9 @@ export const Settings: React.FC<SettingsProps> = ({
 
                 {/* Advanced Diagnostics Button (Secondary) */}
                 <div className="pt-2 pb-6">
-                     <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200/50 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group">
+                     <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group">
                         <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-slate-200 dark:bg-white/10 text-slate-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
+                            <div className="w-9 h-9 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
                             <div className="text-left">
                                 <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block uppercase tracking-wide">Diagnóstico Avançado</span>
                                 <span className="text-[9px] text-slate-400">Logs técnicos e testes de integridade</span>
@@ -798,12 +798,12 @@ export const Settings: React.FC<SettingsProps> = ({
             <div className="space-y-8">
               <div>
                   <h3 className="px-4 mb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tema do Sistema</h3>
-                  <div className="bg-slate-100 dark:bg-white/5 p-1 rounded-[1.5rem] flex items-center">
+                  <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-[1.5rem] flex items-center">
                       {[{ id: 'light', icon: Sun, label: 'Claro' }, { id: 'dark', icon: Moon, label: 'Escuro' }, { id: 'system', icon: Monitor, label: 'Auto' }].map((mode) => (
                           <button 
                             key={mode.id} 
                             onClick={() => onSetTheme(mode.id as ThemeType)} 
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[1.2rem] transition-all duration-300 ${theme === mode.id ? 'bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white shadow-sm scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[1.2rem] transition-all duration-300 ${theme === mode.id ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                           >
                               <mode.icon className="w-4 h-4" strokeWidth={2.5} />
                               <span className="text-[10px] font-bold uppercase tracking-wider">{mode.label}</span>
@@ -836,11 +836,11 @@ export const Settings: React.FC<SettingsProps> = ({
                 <div className="text-center relative">
                     <div className="absolute inset-0 bg-accent blur-[80px] opacity-20 rounded-full"></div>
                     <div className="relative z-10">
-                        <div className="w-24 h-24 bg-white dark:bg-white/5 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl ring-1 ring-slate-900/5 dark:ring-white/10">
+                        <div className="w-24 h-24 bg-white dark:bg-slate-900 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl ring-1 ring-slate-900/5 dark:ring-white/10">
                             <Wallet className="w-10 h-10 text-slate-900 dark:text-white" strokeWidth={1.5} />
                         </div>
                         <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">InvestFIIs</h2>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-white/5">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">v{appVersion} Pro</span>
                         </div>
@@ -852,7 +852,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         Feito com paixão para simplificar sua jornada de investimentos. Focado em privacidade, performance e elegância.
                     </p>
                     
-                    <div className="flex justify-center gap-8 pt-4 border-t border-slate-200 dark:border-white/5 w-3/4 mx-auto">
+                    <div className="flex justify-center gap-8 pt-4 border-t border-slate-200 dark:border-slate-800 w-3/4 mx-auto">
                         <button onClick={() => setShowTerms(true)} className="text-[10px] font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest transition-colors">Termos</button>
                         <button onClick={() => setShowPrivacy(true)} className="text-[10px] font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest transition-colors">Privacidade</button>
                     </div>
@@ -882,7 +882,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
                 <div className="mb-6 anim-fade-in-up is-visible">
                     <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Alertas Específicos</h3>
-                    <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200/50 dark:border-white/5 space-y-3 p-3 bg-white dark:bg-[#0f172a]">
+                    <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 space-y-3 p-3 bg-white dark:bg-slate-900">
                         <Toggle label="Pagamentos Recebidos" description="Quando o dinheiro cair na conta" icon={BadgeDollarSignIcon} checked={notifyDivs} onChange={() => setNotifyDivs(!notifyDivs)} />
                         <Toggle label="Data Com" description="Avisar no último dia para garantir proventos" icon={Calendar} checked={notifyDataCom} onChange={() => setNotifyDataCom(!notifyDataCom)} />
                         <Toggle label="Metas Atingidas" description="Magic Number e objetivos de renda" icon={Target} checked={notifyGoals} onChange={() => setNotifyGoals(!notifyGoals)} />
@@ -904,7 +904,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             <Download className="w-5 h-5" />
                             <span className="text-[10px] font-bold uppercase tracking-widest">Exportar</span>
                         </button>
-                        <button onClick={handleImportClick} className="bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white p-4 rounded-3xl flex flex-col items-center justify-center gap-2 border border-slate-200/50 dark:border-white/5 active:scale-95 transition-all">
+                        <button onClick={handleImportClick} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white p-4 rounded-3xl flex flex-col items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 active:scale-95 transition-all">
                             <Upload className="w-5 h-5" />
                             <span className="text-[10px] font-bold uppercase tracking-widest">Importar</span>
                         </button>
@@ -913,12 +913,12 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
 
                  <Section title="Gerenciamento de Cache">
-                    <div className="bg-white dark:bg-[#0f172a] p-4 space-y-2">
-                        <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5">
+                    <div className="bg-white dark:bg-slate-900 p-4 space-y-2">
+                        <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800">
                             <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Cache de Cotações</span>
                             <span className="text-xs text-slate-400 font-mono">{formatBytes(storageData.breakdown.quotes)}</span>
                         </button>
-                        <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5">
+                        <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800">
                             <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Dados de IA (Gemini)</span>
                             <span className="text-xs text-slate-400 font-mono">{formatBytes(storageData.breakdown.divs)}</span>
                         </button>
@@ -957,13 +957,13 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </div>
                 {diagState.step !== 'running' && (
-                    <button onClick={runDiagnostics} className="px-4 py-2 bg-slate-100 dark:bg-white/5 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-colors">Re-testar</button>
+                    <button onClick={runDiagnostics} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-colors">Re-testar</button>
                 )}
             </div>
 
             <div className="space-y-4 font-mono text-xs">
                 {/* Console Log */}
-                <div className="bg-slate-900 rounded-xl p-4 min-h-[200px] max-h-[300px] overflow-y-auto border border-white/10 shadow-inner">
+                <div className="bg-slate-900 rounded-xl p-4 min-h-[200px] max-h-[300px] overflow-y-auto border border-slate-800 shadow-inner">
                     {diagState.logs.length === 0 ? (
                         <span className="text-slate-500 animate-pulse">Aguardando início...</span>
                     ) : (
@@ -985,11 +985,11 @@ export const Settings: React.FC<SettingsProps> = ({
                 {/* Summary Cards */}
                 {diagState.step !== 'idle' && (
                     <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
-                        <div className={`p-4 rounded-2xl border ${diagState.latency && diagState.latency < 500 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5'}`}>
+                        <div className={`p-4 rounded-2xl border ${diagState.latency && diagState.latency < 500 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800'}`}>
                             <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Latência</p>
                             <p className="text-xl font-black">{diagState.latency ? `${diagState.latency}ms` : '...'}</p>
                         </div>
-                        <div className={`p-4 rounded-2xl border ${diagState.integrity === false ? 'bg-rose-500/10 border-rose-500/20' : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5'}`}>
+                        <div className={`p-4 rounded-2xl border ${diagState.integrity === false ? 'bg-rose-500/10 border-rose-500/20' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800'}`}>
                             <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Sincronia</p>
                             <p className="text-xl font-black">{diagState.cloudCount !== null ? `${diagState.localCount}/${diagState.cloudCount}` : '...'}</p>
                         </div>

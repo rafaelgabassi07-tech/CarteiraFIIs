@@ -303,15 +303,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="pt-24 pb-28 px-5 space-y-4 max-w-lg mx-auto">
       
-      {/* CARD PRINCIPAL (PATRIMÔNIO) */}
+      {/* CARD PRINCIPAL (PATRIMÔNIO) - Neutro com destaque Accent */}
       <div className="anim-fade-in-up is-visible">
-        <button onClick={() => setShowSummaryModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-black/30 border border-slate-200/60 dark:border-white/5 relative overflow-hidden group transition-all duration-300 active:scale-[0.98]">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-accent/20 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+        <button onClick={() => setShowSummaryModal(true)} className="w-full text-left bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm hover:shadow-md border border-slate-200 dark:border-slate-800 relative overflow-hidden group transition-all duration-300 active:scale-[0.98]">
             <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
+                        <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-500 border border-sky-100 dark:border-sky-500/20">
                             <Wallet className="w-5 h-5" strokeWidth={2.5} />
                         </div>
                         <div>
@@ -325,14 +323,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
                 </div>
                 <div className="grid grid-cols-2 gap-3 mt-6">
-                    <div className="bg-slate-50 dark:bg-white/5 p-3.5 rounded-[1.5rem] border border-slate-100 dark:border-white/5">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Resultado Geral</span>
                         <div className={`flex items-center gap-1.5 font-bold text-sm tabular-nums ${isProfitPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                             {isProfitPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                             {formatPercent(totalProfitPercent)}
                         </div>
                     </div>
-                    <div className="bg-slate-50 dark:bg-white/5 p-3.5 rounded-[1.5rem] border border-slate-100 dark:border-white/5">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Renda Acumulada</span>
                         <div className="flex items-center gap-1.5 font-bold text-sm text-emerald-600 dark:text-emerald-400 tabular-nums">
                             <CircleDollarSign className="w-3.5 h-3.5" />
@@ -344,13 +342,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* CARD AGENDA DE PROVENTOS */}
+      {/* CARD AGENDA DE PROVENTOS - Neutro com destaque Indigo */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '50ms' }}>
-        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-500/[0.05] dark:to-purple-500/[0.05] p-6 rounded-[2.5rem] border border-indigo-100 dark:border-indigo-500/10 active:scale-[0.98] transition-all hover:shadow-xl hover:shadow-indigo-500/5 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-indigo-500/20 transition-colors"></div>
-          <div className="flex items-center justify-between relative z-10 mb-5">
+        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md active:scale-[0.98] transition-all group">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white dark:bg-[#0f172a] rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100 dark:border-indigo-500/20 group-hover:scale-110 transition-transform"><CalendarDays className="w-6 h-6" strokeWidth={2} /></div>
+              <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 border border-indigo-100 dark:border-indigo-500/20 group-hover:scale-110 transition-transform">
+                  <CalendarDays className="w-6 h-6" strokeWidth={2} />
+              </div>
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">Agenda de Proventos</h3>
                 <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">{upcomingEvents.length > 0 ? `${upcomingEvents.length} Eventos Próximos` : 'Nenhum evento previsto'}</p>
@@ -358,42 +357,79 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
             <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
           </div>
-          {upcomingEvents.length > 0 ? (<div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mask-linear-fade relative z-10">{upcomingEvents.slice(0, 4).map((event, i) => { const style = getEventStyle(event.eventType, event.date); return ( <div key={i} className={`flex items-center gap-2 bg-white dark:bg-[#0f172a] px-3 py-2 rounded-xl text-[10px] font-bold uppercase whitespace-nowrap shadow-sm min-w-max border ${style.border} ${style.text}`}><div className={`w-1.5 h-1.5 rounded-full ${style.pulse ? 'animate-pulse' : ''} ${style.dot}`}></div><span>{event.ticker}: {event.eventType === 'payment' ? formatBRL(event.totalReceived) : `Data Com`}</span></div> ); })}</div>) : (<div className="inline-block px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-[10px] font-medium text-slate-400">Sua agenda está limpa.</div>)}
+          {upcomingEvents.length > 0 ? (
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mask-linear-fade">
+                  {upcomingEvents.slice(0, 4).map((event, i) => { 
+                      const style = getEventStyle(event.eventType, event.date); 
+                      return ( 
+                          <div key={i} className={`flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded-xl text-[10px] font-bold uppercase whitespace-nowrap border border-slate-100 dark:border-slate-700/50 ${style.text}`}>
+                              <div className={`w-1.5 h-1.5 rounded-full ${style.pulse ? 'animate-pulse' : ''} ${style.dot}`}></div>
+                              <span>{event.ticker}: {event.eventType === 'payment' ? formatBRL(event.totalReceived) : `Data Com`}</span>
+                          </div> 
+                      ); 
+                  })}
+              </div>
+          ) : (
+              <div className="inline-block px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 text-[10px] font-medium text-slate-400">
+                  Sua agenda está limpa.
+              </div>
+          )}
         </button>
       </div>
 
-      {/* CARD RENDA PASSIVA */}
+      {/* CARD RENDA PASSIVA - Neutro com destaque Emerald */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
-        <button onClick={() => setShowProventosModal(true)} className="w-full text-left bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-500/[0.05] dark:to-teal-500/[0.05] p-5 rounded-[2.5rem] border border-emerald-100 dark:border-emerald-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-emerald-500/5 pointer-events-auto">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/20 transition-colors"></div>
-          <div className="relative z-10 flex flex-col gap-4">
+        <button onClick={() => setShowProventosModal(true)} className="w-full text-left bg-white dark:bg-slate-900 p-5 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md active:scale-[0.98] transition-all group">
+          <div className="flex flex-col gap-4">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100 dark:border-emerald-500/20 group-hover:scale-110 transition-transform"><CircleDollarSign className="w-5 h-5" strokeWidth={2} /></div>
-                <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Renda Passiva</h3><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Extrato Completo</p></div>
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-100 dark:border-emerald-500/20 group-hover:scale-110 transition-transform">
+                    <CircleDollarSign className="w-5 h-5" strokeWidth={2} />
+                </div>
+                <div>
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Renda Passiva</h3>
+                    <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Extrato Completo</p>
+                </div>
               </div>
               <div className="flex items-start gap-2">
-                <div className="text-right"><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Total</p><p className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tighter">{formatBRL(received)}</p></div>
+                <div className="text-right">
+                    <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Total</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tighter">{formatBRL(received)}</p>
+                </div>
                 <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform mt-1" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-1"><div className="px-3 py-2 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex flex-col items-center justify-center"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Média</p><p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</p></div><div className="px-3 py-2 rounded-xl bg-white dark:bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex flex-col items-center justify-center"><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Yield on Cost</p><p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{yieldOnCostPortfolio.toFixed(2)}%</p></div></div>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+                <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Média</p>
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(averageMonthly)}</p>
+                </div>
+                <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Yield on Cost</p>
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{yieldOnCostPortfolio.toFixed(2)}%</p>
+                </div>
+            </div>
           </div>
         </button>
       </div>
 
-      {/* CARD ALOCAÇÃO RÁPIDA */}
+      {/* CARD ALOCAÇÃO RÁPIDA - Neutro com destaque Amber */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '150ms' }}>
-        <button onClick={() => setShowAllocationModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-200/60 dark:border-white/5 active:scale-[0.98] transition-all hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/30 group">
+        <button onClick={() => setShowAllocationModal(true)} className="w-full text-left bg-white dark:bg-slate-900 p-5 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md active:scale-[0.98] transition-all group">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shadow-sm border border-amber-100 dark:border-amber-500/20 group-hover:scale-110 transition-transform"><PieIcon className="w-5 h-5" strokeWidth={2} /></div>
-              <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Minha Alocação</h3><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Distribuição da Carteira</p></div>
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-100 dark:border-amber-500/20 group-hover:scale-110 transition-transform">
+                  <PieIcon className="w-5 h-5" strokeWidth={2} />
+              </div>
+              <div>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Minha Alocação</h3>
+                  <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Distribuição da Carteira</p>
+              </div>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
           </div>
           <div className="flex items-center gap-4">
-            <div className="h-2 flex-1 flex rounded-full overflow-hidden bg-slate-100 dark:bg-white/5">
+            <div className="h-2 flex-1 flex rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
               {typeData.map((type, i) => (<div key={type.name} style={{ width: `${(type.value / balance) * 100}%`, backgroundColor: COLORS[i] }} className="h-full first:rounded-l-full last:rounded-r-full"></div>))}
             </div>
             <div className="flex gap-3">
@@ -403,17 +439,24 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* CARD GANHO REAL */}
+      {/* CARD GANHO REAL - Neutro com destaque Blue */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '200ms' }}>
-        <button onClick={() => setShowRealGainModal(true)} className="w-full text-left bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-500/[0.05] dark:to-purple-500/[0.05] p-5 rounded-[2.5rem] border border-blue-100 dark:border-blue-500/10 active:scale-[0.98] transition-all group relative overflow-hidden hover:shadow-xl hover:shadow-blue-500/5">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-blue-500/20 transition-colors"></div>
-          <div className="flex items-center justify-between relative z-10">
+        <button onClick={() => setShowRealGainModal(true)} className="w-full text-left bg-white dark:bg-slate-900 p-5 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md active:scale-[0.98] transition-all group">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#0f172a] flex items-center justify-center text-blue-500 shadow-sm border border-blue-100 dark:border-blue-500/20 group-hover:scale-110 transition-transform"><TrendingUp className="w-5 h-5" strokeWidth={2} /></div>
-              <div><h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Poder de Compra</h3><p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Rentabilidade vs IPCA</p></div>
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-100 dark:border-blue-500/20 group-hover:scale-110 transition-transform">
+                  <TrendingUp className="w-5 h-5" strokeWidth={2} />
+              </div>
+              <div>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Poder de Compra</h3>
+                  <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Rentabilidade vs IPCA</p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="text-right"><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ganho Real</p><p className={`text-lg font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{ganhoRealPercent.toFixed(2)}%</p></div>
+              <div className="text-right">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ganho Real</p>
+                  <p className={`text-lg font-black tabular-nums tracking-tight ${isAboveInflation ? 'text-emerald-500' : 'text-rose-500'}`}>{ganhoRealPercent.toFixed(2)}%</p>
+              </div>
               <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -426,19 +469,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <SwipeableModal isOpen={showSummaryModal} onClose={() => setShowSummaryModal(false)}>
         <div className="p-6">
             <div className="flex items-center gap-4 mb-8 mt-2">
-                <div className="w-14 h-14 bg-accent/10 rounded-3xl flex items-center justify-center text-accent"><Wallet className="w-7 h-7" /></div>
+                <div className="w-14 h-14 bg-sky-500/10 rounded-3xl flex items-center justify-center text-sky-500"><Wallet className="w-7 h-7" /></div>
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">Evolução</h2>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{dateLabel}</p>
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-[2rem] border border-slate-200 dark:border-slate-800">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Total Investido</p>
                     <p className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(invested)}</p>
                     <p className="text-[10px] text-slate-500 mt-1 font-semibold">Valor de aquisição</p>
                 </div>
-                <div className="bg-slate-50 dark:bg-white/5 p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-[2rem] border border-slate-200 dark:border-slate-800">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Valor de Mercado</p>
                     <p className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(balance)}</p>
                     <p className={`text-[10px] font-bold mt-1 ${totalAppreciation >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -446,12 +489,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </p>
                 </div>
             </div>
-            <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-6 border border-slate-200/50 dark:border-white/5 shadow-xl mb-8">
+            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200 dark:border-slate-800 shadow-sm mb-8">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
                         <AreaIcon className="w-4 h-4 text-accent" /> Histórico de Patrimônio
                     </h3>
-                    <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
+                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                         {(['6M', '1Y', 'ALL'] as const).map(range => (
                             <button
                                 key={range}
@@ -480,11 +523,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
             </div>
             <div className="space-y-3 pb-10">
-                <div className="flex justify-between items-center bg-white dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent">
+                <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
                     <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500"><Coins className="w-4 h-4" /></div><span className="text-xs font-bold text-slate-700 dark:text-slate-300">Lucro com Vendas</span></div>
                     <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">+{formatBRL(salesGain)}</span>
                 </div>
-                <div className="flex justify-between items-center bg-white dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-transparent">
+                <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
                     <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><Banknote className="w-4 h-4" /></div><span className="text-xs font-bold text-slate-700 dark:text-slate-300">Total de Proventos</span></div>
                     <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 tabular-nums">+{formatBRL(totalDividendsReceived)}</span>
                 </div>
@@ -510,10 +553,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
 
             {/* Tabs for View Switching */}
-            <div className="flex bg-slate-100 dark:bg-white/5 p-1.5 rounded-[1.75rem] border border-slate-200/50 dark:border-white/5 mb-6">
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-[1.75rem] border border-slate-200 dark:border-slate-700 mb-6">
                 <button 
                     onClick={() => setAllocationTab('type')} 
-                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === 'type' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === 'type' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                 >
                     Por Classe
                 </button>
@@ -528,7 +571,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             {allocationTab === 'type' && (
                 <div className="space-y-6 anim-fade-in is-visible">
                     {/* Donut Chart with Center Text */}
-                    <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-6 border border-slate-200/50 dark:border-white/5 shadow-xl relative">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative">
                          <div className="h-56 w-full flex items-center justify-center relative z-10">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -563,10 +606,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 const items = groupedByType[item.name] || [];
                                 
                                 return (
-                                    <div key={item.name} className="overflow-hidden rounded-2xl transition-all duration-300 border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5">
+                                    <div key={item.name} className="overflow-hidden rounded-2xl transition-all duration-300 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
                                         <button 
                                             onClick={() => setExpandedAllocation(isExpanded ? null : item.name)}
-                                            className="w-full flex items-center justify-between p-4 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
+                                            className="w-full flex items-center justify-between p-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
@@ -581,14 +624,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                         <div className={`grid-accordion ${isExpanded ? 'grid-accordion-open' : ''}`}>
                                             <div className="grid-accordion-content">
                                                 <div className="px-4 pb-4 pt-1 space-y-2">
-                                                    <div className="h-[1px] w-full bg-slate-100 dark:bg-white/10 mb-2"></div>
+                                                    <div className="h-[1px] w-full bg-slate-200 dark:bg-slate-800 mb-2"></div>
                                                     {items.map(asset => {
                                                         const assetVal = (asset.currentPrice || asset.averagePrice) * asset.quantity;
                                                         const assetPercent = (assetVal / item.value) * 100;
                                                         return (
                                                             <div key={asset.ticker} className="flex items-center justify-between py-1.5">
                                                                 <div className="flex items-center gap-2">
-                                                                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-black/20 flex items-center justify-center text-[9px] font-black border border-slate-200 dark:border-white/5">
+                                                                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[9px] font-black border border-slate-200 dark:border-slate-700">
                                                                         {asset.ticker.substring(0,4)}
                                                                     </div>
                                                                     <div>
@@ -598,7 +641,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <span className="text-xs font-bold tabular-nums">{assetPercent.toFixed(1)}%</span>
-                                                                    <div className="w-16 h-1 bg-slate-200 dark:bg-white/10 rounded-full mt-1 ml-auto overflow-hidden">
+                                                                    <div className="w-16 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mt-1 ml-auto overflow-hidden">
                                                                         <div className="h-full rounded-full" style={{ width: `${assetPercent}%`, backgroundColor: COLORS[i % COLORS.length] }}></div>
                                                                     </div>
                                                                 </div>
@@ -625,10 +668,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         const barColor = COLORS[i % COLORS.length];
 
                         return (
-                            <div key={seg.name} className="bg-white dark:bg-[#0f172a] rounded-[1.5rem] border border-slate-200/50 dark:border-white/5 shadow-sm overflow-hidden transition-all duration-300">
+                            <div key={seg.name} className="bg-white dark:bg-slate-900 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all duration-300">
                                 <button 
                                     onClick={() => setExpandedAllocation(isExpanded ? null : seg.name)}
-                                    className="w-full p-4 block text-left active:bg-slate-50 dark:active:bg-white/5 transition-colors"
+                                    className="w-full p-4 block text-left active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors"
                                 >
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider truncate mr-2">{seg.name}</span>
@@ -637,7 +680,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                             <ChevronDown className={`w-3.5 h-3.5 text-slate-300 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                                         </div>
                                     </div>
-                                    <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                         <div 
                                             className="h-full rounded-full transition-all duration-1000 ease-out" 
                                             style={{ width: `${percent}%`, backgroundColor: barColor }}
@@ -646,13 +689,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 </button>
 
                                 <div className={`grid-accordion ${isExpanded ? 'grid-accordion-open' : ''}`}>
-                                    <div className="grid-accordion-content bg-slate-50/50 dark:bg-black/10">
+                                    <div className="grid-accordion-content bg-slate-50 dark:bg-slate-800/30">
                                         <div className="px-4 pb-4 pt-1 space-y-2">
                                             {items.map(asset => {
                                                 const assetVal = (asset.currentPrice || asset.averagePrice) * asset.quantity;
                                                 const assetPercentInSeg = (assetVal / seg.value) * 100;
                                                 return (
-                                                    <div key={asset.ticker} className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-white/5 last:border-0">
+                                                    <div key={asset.ticker} className="flex items-center justify-between py-1.5 border-b border-slate-200 dark:border-slate-800 last:border-0">
                                                         <div className="flex items-center gap-2">
                                                             <div className={`w-1.5 h-6 rounded-full`} style={{ backgroundColor: barColor }}></div>
                                                             <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{asset.ticker}</span>
@@ -701,9 +744,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
 
             <div className="space-y-4">
-                <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm">
+                <div className="p-5 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><TrendingUp className="w-5 h-5" /></div>
+                        <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500"><TrendingUp className="w-5 h-5" /></div>
                         <div>
                             <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Lucro Nominal</span>
                             <p className="text-[10px] text-slate-400 font-medium">Valorização + Proventos</p>
@@ -712,9 +755,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <span className="text-base font-black text-indigo-500 tabular-nums">+{formatBRL(lucroNominalAbsoluto)}</span>
                 </div>
 
-                <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm">
+                <div className="p-5 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500"><TrendingDown className="w-5 h-5" /></div>
+                        <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-500"><TrendingDown className="w-5 h-5" /></div>
                         <div>
                             <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Custo da Inflação</span>
                             <p className="text-[10px] text-slate-400 font-medium">Perda de Poder de Compra ({finalIPCA.toFixed(1)}%)</p>
@@ -724,7 +767,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
 
                 <div className="pt-4 px-4 text-center">
-                    <div className="h-[1px] w-full bg-slate-100 dark:bg-white/5 mb-6"></div>
+                    <div className="h-[1px] w-full bg-slate-200 dark:bg-slate-800 mb-6"></div>
                     <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed max-w-[280px] mx-auto italic">
                         "Seu ganho real é o quanto você realmente enriqueceu após descontar o aumento generalizado de preços na economia."
                     </p>
@@ -749,7 +792,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         return (
                             <div key={i} className={`p-5 rounded-[2rem] border-2 shadow-sm transition-all hover:scale-[1.02] flex items-center justify-between ${style.bg} ${style.border}`}>
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${style.text} bg-white dark:bg-[#0f172a] shadow-sm`}><style.icon className="w-6 h-6" /></div>
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${style.text} bg-white dark:bg-slate-900 shadow-sm`}><style.icon className="w-6 h-6" /></div>
                                     <div>
                                         <div className="flex items-center gap-2 mb-0.5"><h4 className="font-black text-slate-900 dark:text-white text-base tracking-tight leading-none">{event.ticker}</h4><span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${style.bg} ${style.text}`}>{style.label}</span></div>
                                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{event.date.split('-').reverse().join('/')}</p>
@@ -785,7 +828,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </div>
                     </div>
                 </div>
-                <div className="flex bg-slate-100 dark:bg-white/5 p-1.5 rounded-[1.75rem] border border-slate-200/50 dark:border-white/5">
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-[1.75rem] border border-slate-200 dark:border-slate-700">
                     {[
                         { id: 'summary', label: 'Resumo', icon: LayoutDashboard },
                         { id: 'history', label: 'Extrato', icon: History },
@@ -831,7 +874,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-white/5 p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm">
+                        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
                             <div className="flex items-center justify-between mb-8">
                                 <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Últimos 12 Meses</h4>
                                 <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full">
@@ -856,9 +899,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </div>
 
                         <div className="grid grid-cols-1 gap-4">
-                            <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm transition-transform active:scale-[0.98]">
+                            <div className="p-5 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm transition-transform active:scale-[0.98]">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><Hourglass className="w-6 h-6" /></div>
+                                    <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-100 dark:border-amber-500/20"><Hourglass className="w-6 h-6" /></div>
                                     <div>
                                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Proventos Provisionados</span>
                                         <p className="text-[10px] text-slate-400 font-medium">Aguardando data de pagamento</p>
@@ -867,9 +910,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 <span className="text-base font-black text-amber-500 tabular-nums">{formatBRL(upcoming)}</span>
                             </div>
 
-                            <div className="p-5 bg-white dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm transition-transform active:scale-[0.98]">
+                            <div className="p-5 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm transition-transform active:scale-[0.98]">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500"><Trophy className="w-6 h-6" /></div>
+                                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500 border border-indigo-100 dark:border-indigo-500/20"><Trophy className="w-6 h-6" /></div>
                                     <div>
                                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Melhor Pagador</span>
                                         <p className="text-[10px] text-slate-400 font-medium">Maior acúmulo histórico</p>
@@ -890,7 +933,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                         <Calendar className="w-3.5 h-3.5" />
                                         {getMonthName(item.month)}
                                     </h4>
-                                    <div className="h-[1px] flex-1 mx-4 bg-slate-200 dark:bg-white/5"></div>
+                                    <div className="h-[1px] flex-1 mx-4 bg-slate-200 dark:bg-slate-800"></div>
                                     <span className="text-xs font-black text-emerald-500 tabular-nums">{formatBRL(item.total)}</span>
                                 </div>
                             );
@@ -898,9 +941,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             const h = item.data;
                             return (
                                 <div key={`i-${index}`} className="py-1.5">
-                                    <div className="bg-white dark:bg-[#0f172a] p-4 rounded-[1.75rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm transition-all hover:border-emerald-500/30 active:scale-[0.98]">
+                                    <div className="bg-white dark:bg-slate-900 p-4 rounded-[1.75rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm transition-all hover:border-emerald-500/30 active:scale-[0.98]">
                                         <div className="flex items-center gap-4 min-w-0">
-                                            <div className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-black/20 flex flex-col items-center justify-center font-black text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-white/5">
+                                            <div className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 flex flex-col items-center justify-center font-black text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-700/50">
                                                 <span className="text-xs leading-none">{h.paymentDate.split('-')[2]}</span>
                                                 <span className="text-[9px] uppercase mt-0.5 opacity-60">{h.paymentDate.split('-')[1]}</span>
                                             </div>
@@ -926,10 +969,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 {incomeTab === 'magic' && (
                     <div className="space-y-4 anim-fade-in-up is-visible">
                         {magicNumbers.map(m => (
-                            <div key={m.ticker} className="bg-white dark:bg-[#0f172a] p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
+                            <div key={m.ticker} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs border ${m.missing === 0 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 text-slate-500 border-slate-200 dark:border-white/5'}`}>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs border ${m.missing === 0 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'}`}>
                                             {m.ticker.substring(0,4)}
                                         </div>
                                         <div>
@@ -947,7 +990,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     </div>
                                 </div>
                                 
-                                <div className="h-1.5 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                     <div 
                                         style={{ width: `${m.progress}%` }} 
                                         className={`h-full rounded-full transition-all duration-1000 ease-out ${m.missing === 0 ? 'bg-emerald-500' : 'bg-amber-400'}`}
