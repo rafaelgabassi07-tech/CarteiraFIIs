@@ -37,7 +37,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black shadow-sm border ${asset.assetType === AssetType.FII ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-500 border-orange-100 dark:border-orange-500/20' : 'bg-blue-50 dark:bg-blue-500/10 text-blue-500 border-blue-100 dark:border-blue-500/20'}`}>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black shadow-sm border bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700`}>
                {asset.assetType === AssetType.FII ? <Building2 className="w-6 h-6" /> : <BarChart3 className="w-6 h-6" />}
             </div>
             <div>
@@ -60,7 +60,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
         
         <div className="flex items-center gap-2">
            <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div style={{ width: `${allocation}%` }} className={`h-full rounded-full ${asset.assetType === AssetType.FII ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+              <div style={{ width: `${allocation}%` }} className={`h-full rounded-full bg-slate-900 dark:bg-slate-400`}></div>
            </div>
            <span className="text-[9px] font-bold text-slate-400 tabular-nums">{allocation.toFixed(1)}%</span>
         </div>
@@ -71,42 +71,42 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
            <div className="h-[1px] w-full bg-slate-100 dark:bg-slate-800 mb-4"></div>
            
            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Preço Médio</p>
                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatBRL(asset.averagePrice)}</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cotação Atual</p>
                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatBRL(currentPrice)}</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Dividendos (Total)</p>
-                 <p className="text-sm font-bold text-emerald-500">{formatBRL(asset.totalDividends || 0)}</p>
+                 <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(asset.totalDividends || 0)}</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Yield on Cost</p>
-                 <p className="text-sm font-bold text-emerald-500">{yoc.toFixed(2)}%</p>
+                 <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{yoc.toFixed(2)}%</p>
               </div>
            </div>
 
-           {/* Fundamentals (from Gemini/Brapi) */}
+           {/* Fundamentals (from Gemini/Brapi) - NEUTRO */}
            {asset.p_vp && (
-             <div className="bg-indigo-50 dark:bg-indigo-500/10 p-4 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
+             <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2 mb-3">
-                   <Activity className="w-4 h-4 text-indigo-500" />
-                   <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Indicadores</span>
+                   <Activity className="w-4 h-4 text-slate-500" />
+                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Indicadores</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                    <div className="text-center">
-                      <span className="block text-[9px] font-bold text-indigo-400 uppercase">P/VP</span>
+                      <span className="block text-[9px] font-bold text-slate-400 uppercase">P/VP</span>
                       <span className="font-bold text-slate-700 dark:text-slate-200">{asset.p_vp.toFixed(2)}</span>
                    </div>
                    <div className="text-center">
-                      <span className="block text-[9px] font-bold text-indigo-400 uppercase">DY 12M</span>
+                      <span className="block text-[9px] font-bold text-slate-400 uppercase">DY 12M</span>
                       <span className="font-bold text-slate-700 dark:text-slate-200">{asset.dy_12m ? asset.dy_12m.toFixed(2) : '-'}%</span>
                    </div>
                    <div className="text-center">
-                      <span className="block text-[9px] font-bold text-indigo-400 uppercase">Sentimento</span>
+                      <span className="block text-[9px] font-bold text-slate-400 uppercase">Sentimento</span>
                       <span className="font-bold text-slate-700 dark:text-slate-200">{asset.sentiment || 'Neutro'}</span>
                    </div>
                 </div>
@@ -118,9 +118,9 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Últimos Proventos</p>
                 <div className="space-y-1.5">
                    {history.slice(0, 3).map((h, i) => (
-                      <div key={i} className="flex justify-between items-center text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                      <div key={i} className="flex justify-between items-center text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
                          <span className="text-slate-500 dark:text-slate-400 font-mono">{h.paymentDate.split('-').reverse().join('/')}</span>
-                         <span className="font-bold text-emerald-500">+{formatBRL(h.rate)}/cota</span>
+                         <span className="font-bold text-emerald-600 dark:text-emerald-400">+{formatBRL(h.rate)}/cota</span>
                       </div>
                    ))}
                 </div>
@@ -139,7 +139,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
                         href={src.uri} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800 rounded-lg text-[9px] font-bold text-slate-500 hover:text-accent transition-colors border border-slate-200 dark:border-slate-700"
+                        className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-950 rounded-lg text-[9px] font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-slate-800"
                       >
                          <Globe className="w-2.5 h-2.5" /> {src.title.length > 25 ? src.title.substring(0, 25) + '...' : src.title}
                       </a>
@@ -154,7 +154,7 @@ const AssetCardInternal: React.FC<{ asset: AssetPosition, totalPortfolioValue: n
                 href={`https://statusinvest.com.br/${asset.assetType === AssetType.FII ? 'fundos-imobiliarios' : 'acoes'}/${asset.ticker.toLowerCase()}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-accent transition-colors uppercase tracking-widest"
+                className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors uppercase tracking-widest"
               >
                 Status Invest <ExternalLink className="w-3 h-3" />
               </a>
@@ -190,7 +190,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividendRecei
                placeholder="Buscar ativo ou segmento..." 
                value={filter}
                onChange={(e) => setFilter(e.target.value)}
-               className="w-full bg-white dark:bg-slate-900 pl-12 pr-4 py-3.5 rounded-2xl outline-none font-bold text-sm text-slate-900 dark:text-white placeholder:text-slate-400 shadow-sm border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-accent/50 transition-all"
+               className="w-full bg-white dark:bg-slate-900 pl-12 pr-4 py-3.5 rounded-2xl outline-none font-bold text-sm text-slate-900 dark:text-white placeholder:text-slate-400 shadow-sm border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-slate-500/20 transition-all"
              />
           </div>
       </div>
@@ -216,7 +216,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividendRecei
       <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800 text-center">
          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Custodiado</p>
          <p className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">{formatBRL(balance)}</p>
-         <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full mt-2 text-xs font-bold uppercase tracking-wider ${totalReturn >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+         <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full mt-2 text-xs font-bold uppercase tracking-wider ${totalReturn >= 0 ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
             {totalReturn >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
             {formatPercent(totalReturnPercent)} Retorno Total
          </div>

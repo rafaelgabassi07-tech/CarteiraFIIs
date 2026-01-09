@@ -323,13 +323,13 @@ export const Settings: React.FC<SettingsProps> = ({
     
     const isWeekend = utcDay === 0 || utcDay === 6;
     
-    if (isWeekend) return { label: 'Fechado (FDS)', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-white/10', icon: Moon };
+    if (isWeekend) return { label: 'Fechado (FDS)', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-slate-700', icon: Moon };
     
     // Mercado B3 aproximado: 10:00 - 17:00 (Pregão) | 17:00 - 18:00 (After)
     if (brHour >= 10 && brHour < 17) return { label: 'Pregão Aberto', color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: Activity };
     if (brHour >= 17 && brHour < 18) return { label: 'After-market', color: 'text-amber-500', bg: 'bg-amber-500/10', icon: Clock };
     
-    return { label: 'Fechado', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-white/10', icon: Moon };
+    return { label: 'Fechado', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-slate-700', icon: Moon };
   };
 
   const marketStatus = getMarketStatus();
@@ -443,10 +443,10 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const getNoteIconAndColor = (type: ReleaseNoteType) => {
     switch (type) {
-      case 'feat': return { Icon: Sparkles, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10' };
-      case 'fix': return { Icon: Check, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' };
-      case 'ui': return { Icon: Palette, color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-500/10' };
-      case 'perf': return { Icon: Zap, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' };
+      case 'feat': return { Icon: Sparkles, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800' };
+      case 'fix': return { Icon: Check, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800' };
+      case 'ui': return { Icon: Palette, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800' };
+      case 'perf': return { Icon: Zap, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800' };
       default: return { Icon: Star, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-white/10' };
     }
   };
@@ -454,7 +454,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, colorClass }: any) => (
     <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:scale-[0.98] transition-all border-b last:border-0 border-slate-200 dark:border-slate-800 group gap-4`}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : colorClass || 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}><Icon className="w-5 h-5" strokeWidth={2.5} /></div>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}><Icon className="w-5 h-5" strokeWidth={2.5} /></div>
             <span className={`text-sm font-semibold text-left ${isDestructive ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>{label}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -475,13 +475,13 @@ export const Settings: React.FC<SettingsProps> = ({
   const Toggle = ({ label, checked, onChange, icon: Icon, description }: any) => (
     <div onClick={onChange} className={`flex items-center justify-between p-4 rounded-3xl cursor-pointer active:scale-[0.99] transition-all border border-slate-200 dark:border-slate-800 ${checked ? 'bg-white dark:bg-slate-900 shadow-sm' : 'bg-slate-50 dark:bg-slate-800/30'}`}>
         <div className="flex items-center gap-3">
-          {Icon && <div className={`p-2 rounded-lg ${checked ? 'bg-accent/10 text-accent' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'}`}><Icon className="w-4 h-4" strokeWidth={2.2} /></div>}
+          {Icon && <div className={`p-2 rounded-lg ${checked ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'}`}><Icon className="w-4 h-4" strokeWidth={2.2} /></div>}
           <div>
             <span className={`text-sm font-semibold block ${checked ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{label}</span>
             {description && <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">{description}</p>}
           </div>
         </div>
-        <div className={`transition-all duration-300 ${checked ? 'text-accent' : 'text-slate-300 dark:text-slate-600'}`}>
+        <div className={`transition-all duration-300 ${checked ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-slate-600'}`}>
             {checked ? <ToggleRight className="w-9 h-9" /> : <ToggleLeft className="w-9 h-9" />}
         </div>
     </div>
@@ -537,7 +537,7 @@ export const Settings: React.FC<SettingsProps> = ({
                <div className="rounded-[2rem] overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                  <div className="p-6 space-y-4">
                      <div className="flex items-center gap-4">
-                         <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500"><User className="w-6 h-6" /></div>
+                         <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white"><User className="w-6 h-6" /></div>
                          <div className="overflow-hidden"><h3 className="font-bold text-slate-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-slate-500 truncate">{user ? user.email : 'Carregando...'}</p></div>
                      </div>
                      <button onClick={() => setShowLogoutConfirm(true)} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
@@ -546,19 +546,19 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <Section title="Preferências">
-                <MenuItem icon={Palette} label="Aparência" onClick={() => setActiveSection('appearance')} colorClass="bg-indigo-500/10 text-indigo-500" />
-                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Ativado' : ''} colorClass="bg-amber-500/10 text-amber-500" />
-                <MenuItem icon={privacyMode ? EyeOff : Eye} label="Privacidade" onClick={() => setActiveSection('privacy')} value={privacyMode ? 'Ativado' : 'Público'} colorClass="bg-slate-500/10 text-slate-500" />
+                <MenuItem icon={Palette} label="Aparência" onClick={() => setActiveSection('appearance')} />
+                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Ativado' : ''} />
+                <MenuItem icon={privacyMode ? EyeOff : Eye} label="Privacidade" onClick={() => setActiveSection('privacy')} value={privacyMode ? 'Ativado' : 'Público'} />
             </Section>
 
             <Section title="Dados & Sincronização">
-                <MenuItem icon={Globe} label="Conexões e Serviços" onClick={() => setActiveSection('integrations')} value="Online" colorClass="bg-sky-500/10 text-sky-500" />
-                <MenuItem icon={Database} label="Backup e IA Cache" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} colorClass="bg-emerald-500/10 text-emerald-500" />
+                <MenuItem icon={Globe} label="Conexões e Serviços" onClick={() => setActiveSection('integrations')} value="Online" />
+                <MenuItem icon={Database} label="Backup e IA Cache" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} />
             </Section>
 
             <Section title="Sistema">
-                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} colorClass="bg-purple-500/10 text-purple-500" />
-                <MenuItem icon={Info} label="Sobre o APP" onClick={() => setActiveSection('about')} colorClass="bg-slate-500/10 text-slate-500" />
+                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} />
+                <MenuItem icon={Info} label="Sobre o APP" onClick={() => setActiveSection('about')} />
                 <MenuItem icon={ShieldAlert} label="Resetar Aplicativo" onClick={() => setActiveSection('system')} isDestructive />
             </Section>
             
@@ -585,7 +585,7 @@ export const Settings: React.FC<SettingsProps> = ({
              <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">
                 <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'py-6 border-b border-slate-200 dark:border-slate-800' : 'py-12'}`}>
                     <div className={`relative mb-4 transition-all duration-500 ${isHeaderCompact ? 'scale-75' : 'scale-100'}`}>
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : updateAvailable ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : updateAvailable ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'}`}>
                             {checkStatus === 'checking' ? (
                                 <Loader2 className="w-8 h-8 animate-spin" strokeWidth={2} />
                             ) : updateAvailable ? (
@@ -607,11 +607,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     <button 
                         onClick={handleCheckUpdate}
                         disabled={checkStatus === 'checking'}
-                        className={`group relative overflow-hidden px-8 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center gap-2 ${
-                            updateAvailable 
-                            ? 'bg-amber-500 text-white shadow-amber-500/20' 
-                            : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                        }`}
+                        className={`group relative overflow-hidden px-8 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900`}
                     >
                         <span className="relative z-10 flex items-center gap-2">
                             {checkStatus === 'checking' ? 'Verificando...' : updateAvailable ? 'Atualizar Agora' : 'Buscar Atualizações'}
@@ -626,7 +622,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 
                 <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 overscroll-contain">
                    <div className="flex items-center gap-2 px-2">
-                       <Sparkles className="w-4 h-4 text-indigo-500" />
+                       <Sparkles className="w-4 h-4 text-slate-500" />
                        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                            Novidades da Versão
                        </h3>
@@ -698,7 +694,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <button 
                             onClick={handleForceMarketUpdate}
                             disabled={isMarketUpdating}
-                            className="bg-indigo-500/10 hover:bg-indigo-500/20 active:scale-95 text-indigo-600 dark:text-indigo-400 p-4 rounded-2xl border border-indigo-500/20 flex flex-col items-center justify-center gap-2 transition-all group"
+                            className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 text-slate-700 dark:text-slate-300 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-2 transition-all group"
                         >
                             <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                                 {isMarketUpdating ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
@@ -712,7 +708,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <button 
                             onClick={handleForceSync}
                             disabled={isSyncing}
-                            className="bg-sky-500/10 hover:bg-sky-500/20 active:scale-95 text-sky-600 dark:text-sky-400 p-4 rounded-2xl border border-sky-500/20 flex flex-col items-center justify-center gap-2 transition-all group"
+                            className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 text-slate-700 dark:text-slate-300 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-2 transition-all group"
                         >
                             <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                                 {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Cloud className="w-5 h-5" />}
@@ -731,7 +727,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         {/* Supabase Card */}
                         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500"><Database className="w-5 h-5" /></div>
+                                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white"><Database className="w-5 h-5" /></div>
                                 <div>
                                     <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Supabase Cloud</h4>
                                     <p className="text-[9px] text-slate-400 font-mono">AWS sa-east-1 • WSS</p>
@@ -745,13 +741,13 @@ export const Settings: React.FC<SettingsProps> = ({
                         {/* Brapi Card */}
                         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500"><BarChart3 className="w-5 h-5" /></div>
+                                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white"><BarChart3 className="w-5 h-5" /></div>
                                 <div>
                                     <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Brapi Finance</h4>
                                     <p className="text-[9px] text-slate-400 font-mono">Delay 15m • Cache: {cachedItemsCount.quotes}</p>
                                 </div>
                             </div>
-                            <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.brapi === 'operational' ? 'bg-blue-500/10 text-blue-500' : healthStatus.brapi === 'checking' ? 'bg-slate-100 text-slate-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                            <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.brapi === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : healthStatus.brapi === 'checking' ? 'bg-slate-100 text-slate-500' : 'bg-rose-500/10 text-rose-500'}`}>
                                 {healthStatus.brapi === 'operational' ? 'Connected' : healthStatus.brapi === 'checking' ? 'Pinging...' : 'Degraded'}
                             </div>
                         </div>
@@ -760,18 +756,18 @@ export const Settings: React.FC<SettingsProps> = ({
                         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500"><Sparkles className="w-5 h-5" /></div>
+                                    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white"><Sparkles className="w-5 h-5" /></div>
                                     <div>
                                         <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Google Gemini</h4>
                                         <p className="text-[9px] text-slate-400 font-mono">Model: 2.5 Pro (Stable)</p>
                                     </div>
                                 </div>
-                                <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${lastAiStatus === 'operational' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${lastAiStatus === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
                                     {lastAiStatus === 'operational' ? 'Ready' : 'Quota Limit'}
                                 </div>
                             </div>
                             <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden flex items-center">
-                                <div className={`h-full rounded-full transition-all duration-500 ${lastAiStatus === 'operational' ? 'bg-indigo-500 w-[15%]' : 'bg-amber-500 w-[95%]'}`}></div>
+                                <div className={`h-full rounded-full transition-all duration-500 ${lastAiStatus === 'operational' ? 'bg-slate-900 dark:bg-white w-[15%]' : 'bg-amber-500 w-[95%]'}`}></div>
                             </div>
                             <p className="text-[8px] text-right text-slate-400 mt-1 font-bold uppercase tracking-wider">Uso Estimado da Cota</p>
                         </div>
@@ -816,14 +812,13 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'privacy' && (
             <div className="space-y-6">
-                <div className="bg-gradient-to-br from-slate-500/10 to-slate-700/10 p-6 rounded-[2.5rem] border border-slate-500/20 text-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                <div className="bg-slate-100 dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
                     {privacyMode ? <EyeOff className="w-10 h-10 text-slate-500 mx-auto mb-3" /> : <Eye className="w-10 h-10 text-slate-500 mx-auto mb-3" />}
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Configurações de Privacidade</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Oculta valores sensíveis da tela para evitar olhares curiosos em público.</p>
                     <button 
                         onClick={() => onSetPrivacyMode(!privacyMode)}
-                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-rose-500 text-white' : 'bg-slate-700 text-white'}`}
+                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-700 text-white'}`}
                     >
                         {privacyMode ? 'Desativar Agora' : 'Ativar Modo Privacidade'}
                     </button>
@@ -834,7 +829,6 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'about' && (
             <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-12 py-10">
                 <div className="text-center relative">
-                    <div className="absolute inset-0 bg-accent blur-[80px] opacity-20 rounded-full"></div>
                     <div className="relative z-10">
                         <div className="w-24 h-24 bg-white dark:bg-slate-900 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl ring-1 ring-slate-900/5 dark:ring-white/10">
                             <Wallet className="w-10 h-10 text-slate-900 dark:text-white" strokeWidth={1.5} />
@@ -866,14 +860,13 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'notifications' && (
             <div className="space-y-6">
-                <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 rounded-[2.5rem] border border-amber-500/20 text-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                    <Bell className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+                <div className="bg-slate-100 dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
+                    <Bell className="w-10 h-10 text-slate-500 mx-auto mb-3" />
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Push Notifications</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Receba alertas em tempo real sobre dividendos e eventos da carteira.</p>
                     <button 
                         onClick={onRequestPushPermission}
-                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${pushEnabled ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
+                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${pushEnabled ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-300 text-white'}`}
                     >
                         {pushEnabled ? 'Ativado ✓' : 'Ativar Notificações'}
                     </button>
@@ -894,9 +887,8 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'data' && (
              <div className="space-y-6">
-                <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-6 rounded-[2.5rem] border border-indigo-500/20 text-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                    <Database className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
+                <div className="bg-slate-100 dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
+                    <Database className="w-10 h-10 text-slate-400 mx-auto mb-3" />
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Backup & Restauração</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 max-w-[250px] mx-auto">Salve uma cópia de segurança dos seus dados ou restaure um backup anterior.</p>
                     <div className="grid grid-cols-2 gap-3">
@@ -930,11 +922,11 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'system' && (
               <div className="space-y-6">
                   <Section title="Perigo">
-                      <div className="p-6 bg-rose-50 dark:bg-rose-500/5 flex flex-col items-center text-center">
-                          <ShieldAlert className="w-10 h-10 text-rose-500 mb-3" />
-                          <h3 className="font-bold text-rose-600 dark:text-rose-400 mb-1">Apagar Tudo</h3>
-                          <p className="text-xs text-rose-400 mb-4 max-w-[200px]">Esta ação removerá todas as transações e configurações permanentemente.</p>
-                          <button onClick={onResetApp} className="px-6 py-3 bg-rose-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest active:scale-95 shadow-lg shadow-rose-500/20">Confirmar Reset</button>
+                      <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center text-center">
+                          <ShieldAlert className="w-10 h-10 text-slate-500 mb-3" />
+                          <h3 className="font-bold text-slate-600 dark:text-slate-400 mb-1">Apagar Tudo</h3>
+                          <p className="text-xs text-slate-400 mb-4 max-w-[200px]">Esta ação removerá todas as transações e configurações permanentemente.</p>
+                          <button onClick={onResetApp} className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold uppercase tracking-widest active:scale-95 shadow-lg">Confirmar Reset</button>
                       </div>
                   </Section>
               </div>
@@ -948,7 +940,7 @@ export const Settings: React.FC<SettingsProps> = ({
         <div className="px-6 py-4 pb-8 min-h-[50vh]">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-500">
+                    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white">
                         <Activity className="w-5 h-5" />
                     </div>
                     <div>
