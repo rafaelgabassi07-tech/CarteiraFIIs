@@ -1,7 +1,7 @@
+
 import React, { useMemo, useState } from 'react';
-import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
-import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, TrendingUp, Calendar, Trophy, CalendarDays, Coins, TrendingDown, Banknote, ChevronRight, Loader2, AreaChart as AreaIcon, CheckCircle2, ShieldCheck, AlertTriangle, ChevronDown, ArrowRight } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, AreaChart, Area } from 'recharts';
+import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface HomeProps {
@@ -34,9 +34,9 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
     const isToday = new Date(dateStr + 'T00:00:00').getTime() === new Date().setHours(0,0,0,0);
     
     if (eventType === 'datacom') {
-        // AMBER / ORANGE for Action Required/Warnings
+        // AMBER / ORANGE for Action Required/Warnings (Data Com)
         return { 
-            bg: 'bg-amber-50 dark:bg-amber-500/5', 
+            bg: 'bg-amber-50 dark:bg-amber-500/10', 
             text: 'text-amber-600 dark:text-amber-500', 
             border: 'border-amber-200 dark:border-amber-500/20',
             icon: CalendarDays,
@@ -44,9 +44,9 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
         };
     }
     
-    // EMERALD / GREEN for Money Incoming
+    // EMERALD / GREEN for Money Incoming (Payments/JCP)
     return {
-        bg: 'bg-emerald-50 dark:bg-emerald-500/5',
+        bg: 'bg-emerald-50 dark:bg-emerald-500/10',
         text: 'text-emerald-600 dark:text-emerald-500',
         border: 'border-emerald-200 dark:border-emerald-500/20',
         icon: Banknote,
@@ -54,7 +54,7 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
     };
 };
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate = 0, portfolioStartDate, invested, balance, totalAppreciation, transactions = [] }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, invested, balance, totalAppreciation, transactions = [] }) => {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
@@ -64,22 +64,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
   const isProfitPositive = totalProfitValue >= 0;
 
-  // Evolution Data & Chart Logic (Simplified for brevity, reusing existing logic structure)
-  const evolutionData = useMemo(() => {
-    if (transactions.length === 0) return [];
-    // ... (Logica de evolução mantida, apenas simplificando o gráfico visualmente)
-    // Para simplificar o exemplo, vamos assumir que data já vem processada ou usar lógica similar ao original
-    // Replicando lógica mínima para não quebrar o gráfico:
-    const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-    let cumulative = 0;
-    return sortedTxs.map(t => {
-        cumulative += (t.type === 'BUY' ? t.quantity * t.price : -t.quantity * t.price);
-        return { date: t.date, value: cumulative, invested: cumulative }; // Placeholder
-    });
-  }, [transactions]);
-
   // Agenda Logic
-  const { upcomingEvents, received, averageMonthly } = useMemo(() => {
+  const { upcomingEvents, received } = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const allEvents: any[] = [];
     let receivedTotal = 0;
@@ -95,7 +81,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         return acc;
     }, []);
 
-    return { upcomingEvents: uniqueEvents, received: receivedTotal, averageMonthly: receivedTotal / 12 };
+    return { upcomingEvents: uniqueEvents, received: receivedTotal };
   }, [dividendReceipts]);
 
   // Allocation Data
@@ -108,42 +94,42 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
   }, [portfolio]);
 
-  const COLORS = ['#0f172a', '#334155', '#475569', '#64748b']; // Slate Shades
+  const COLORS = ['#0f172a', '#334155', '#475569', '#64748b']; 
 
   return (
-    <div className="pt-24 pb-32 px-5 space-y-6 max-w-lg mx-auto">
+    <div className="pt-28 pb-32 px-5 space-y-6 max-w-lg mx-auto">
       
-      {/* 1. HERO CARD: PATRIMONY (Clean, Monochromatic) */}
+      {/* 1. HERO CARD: PATRIMONY */}
       <div className="anim-fade-in-up is-visible">
-        <button onClick={() => setShowSummaryModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 relative overflow-hidden group active:scale-[0.98] transition-all">
+        <button onClick={() => setShowSummaryModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 relative overflow-hidden group active:scale-[0.98] transition-all duration-300">
             <div className="relative z-10">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Patrimônio Total</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-3">Patrimônio Total</span>
                 <div className="flex items-center gap-3 mb-6">
                     <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums">{formatBRL(balance)}</h2>
                     {isAiLoading && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
                 </div>
                 
                 <div className="flex items-center gap-4">
-                    <div className={`px-3 py-1.5 rounded-lg border flex items-center gap-1.5 text-xs font-bold ${isProfitPositive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-100 dark:border-emerald-500/20' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-500 border-rose-100 dark:border-rose-500/20'}`}>
+                    <div className={`px-3 py-1.5 rounded-lg border flex items-center gap-1.5 text-xs font-bold tabular-nums ${isProfitPositive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-100 dark:border-emerald-500/20' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-500 border-rose-100 dark:border-rose-500/20'}`}>
                         {isProfitPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                         {formatPercent(totalProfitPercent)}
                     </div>
-                    <span className="text-xs font-medium text-slate-400">Rentabilidade Geral</span>
+                    <span className="text-xs font-medium text-slate-400">Rentabilidade</span>
                 </div>
             </div>
         </button>
       </div>
 
-      {/* 2. AGENDA CARD (The "Traffic Light" Highlight) */}
+      {/* 2. AGENDA CARD (With improved horizontal scroll) */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '50ms' }}>
-        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm active:scale-[0.98] transition-all group">
-            <div className="flex justify-between items-center mb-6">
+        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] py-6 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm active:scale-[0.98] transition-all duration-300 group overflow-hidden">
+            <div className="flex justify-between items-center mb-6 px-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white">
+                    <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white border border-slate-100 dark:border-white/5">
                         <CalendarDays className="w-6 h-6" strokeWidth={1.5} />
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Agenda de Proventos</h3>
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Agenda</h3>
                         <p className="text-[10px] text-slate-500 font-medium">Próximos eventos</p>
                     </div>
                 </div>
@@ -153,46 +139,49 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
 
             {upcomingEvents.length > 0 ? (
-                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 px-6 -mx-0.5">
                     {upcomingEvents.slice(0, 3).map((event, i) => {
                         const style = getEventStyle(event.eventType, event.date);
                         return (
-                            <div key={i} className={`flex-shrink-0 pl-3 pr-4 py-3 rounded-2xl border ${style.bg} ${style.border} flex items-center gap-3 min-w-[140px]`}>
-                                <div className={`w-8 h-8 rounded-xl bg-white dark:bg-[#020617] flex items-center justify-center ${style.text} shadow-sm`}>
+                            <div key={i} className={`flex-shrink-0 pl-3 pr-4 py-3 rounded-2xl border ${style.bg} ${style.border} flex items-center gap-3 min-w-[150px] shadow-sm`}>
+                                <div className={`w-8 h-8 rounded-xl bg-white dark:bg-[#020617] flex items-center justify-center ${style.text} shadow-sm border border-black/5 dark:border-white/5`}>
                                     <style.icon className="w-4 h-4" />
                                 </div>
                                 <div>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block mb-0.5 ${style.text}`}>{event.ticker}</span>
-                                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 block">
+                                    <span className={`text-[10px] font-black uppercase tracking-wider block mb-0.5 ${style.text}`}>{event.ticker}</span>
+                                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 block tabular-nums">
                                         {event.eventType === 'payment' ? formatBRL(event.totalReceived) : event.date.split('-').reverse().slice(0,2).join('/')}
                                     </span>
                                 </div>
                             </div>
                         );
                     })}
+                    <div className="w-2 shrink-0"></div> {/* Spacer for scroll end */}
                 </div>
             ) : (
-                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl text-center border border-slate-100 dark:border-slate-800">
-                    <p className="text-xs text-slate-400 font-medium">Nenhum evento previsto para os próximos dias.</p>
+                <div className="px-6">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl text-center border border-slate-100 dark:border-slate-800">
+                        <p className="text-xs text-slate-400 font-medium">Nenhum evento previsto.</p>
+                    </div>
                 </div>
             )}
         </button>
       </div>
 
-      {/* 3. RENDA PASSIVA & ALOCAÇÃO (Side by Side) */}
+      {/* 3. RENDA PASSIVA & ALOCAÇÃO */}
       <div className="grid grid-cols-2 gap-4 anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
         {/* Renda */}
-        <button onClick={() => setShowProventosModal(true)} className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm text-left active:scale-[0.98] transition-all">
-            <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-500 mb-4">
+        <button onClick={() => setShowProventosModal(true)} className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm text-left active:scale-[0.98] transition-all duration-300">
+            <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-500 mb-4 border border-emerald-100 dark:border-emerald-500/20">
                 <CircleDollarSign className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renda Passiva</span>
-            <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">{formatBRL(received)}</p>
+            <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight tabular-nums truncate">{formatBRL(received)}</p>
         </button>
 
         {/* Alocação */}
-        <button onClick={() => setShowAllocationModal(true)} className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm text-left active:scale-[0.98] transition-all">
-            <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white mb-4">
+        <button onClick={() => setShowAllocationModal(true)} className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm text-left active:scale-[0.98] transition-all duration-300">
+            <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white mb-4 border border-slate-100 dark:border-white/5">
                 <PieIcon className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Alocação</span>
@@ -204,19 +193,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* --- MODALS (Reusing Styles) --- */}
+      {/* --- MODALS --- */}
       
       {/* Agenda Modal */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
-        <div className="p-8 pb-20">
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Agenda Completa</h2>
+        <div className="p-8 pb-32">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">Agenda Completa</h2>
             <div className="space-y-3">
                 {upcomingEvents.map((e, i) => {
                     const style = getEventStyle(e.eventType, e.date);
                     return (
                         <div key={i} className={`p-4 rounded-3xl border ${style.bg} ${style.border} flex items-center justify-between`}>
                             <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-2xl bg-white dark:bg-[#020617] flex items-center justify-center ${style.text} shadow-sm`}>
+                                <div className={`w-12 h-12 rounded-2xl bg-white dark:bg-[#020617] flex items-center justify-center ${style.text} shadow-sm border border-black/5`}>
                                     <style.icon className="w-6 h-6" />
                                 </div>
                                 <div>
@@ -225,8 +214,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-sm font-black text-slate-900 dark:text-white">{e.date.split('-').reverse().join('/')}</p>
-                                {e.eventType === 'payment' && <p className="text-xs font-medium text-slate-500">{formatBRL(e.totalReceived)}</p>}
+                                <p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{e.date.split('-').reverse().join('/')}</p>
+                                {e.eventType === 'payment' && <p className="text-xs font-medium text-slate-500 tabular-nums">{formatBRL(e.totalReceived)}</p>}
                             </div>
                         </div>
                     );
@@ -237,13 +226,28 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* Renda Modal */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
-         <div className="p-8 pb-20">
-             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Histórico de Renda</h2>
-             <div className="bg-emerald-50 dark:bg-emerald-500/5 p-6 rounded-3xl border border-emerald-100 dark:border-emerald-500/20 text-center mb-6">
-                 <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-1">Total Recebido</p>
-                 <p className="text-3xl font-black text-emerald-700 dark:text-emerald-400">{formatBRL(received)}</p>
+         <div className="p-8 pb-32">
+             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">Histórico de Renda</h2>
+             <div className="bg-emerald-50 dark:bg-emerald-500/5 p-8 rounded-[2rem] border border-emerald-100 dark:border-emerald-500/20 text-center mb-8 shadow-sm">
+                 <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-2">Total Recebido</p>
+                 <p className="text-4xl font-black text-emerald-700 dark:text-emerald-400 tabular-nums tracking-tighter">{formatBRL(received)}</p>
              </div>
-             {/* List would go here - keeping it simple for spec */}
+             {/* Simple List for Context */}
+             <div className="space-y-4">
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2">Detalhamento</p>
+                 {dividendReceipts.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0,10).map((r, i) => (
+                    <div key={i} className="flex justify-between items-center p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-white font-bold text-[10px]">{r.ticker}</div>
+                             <div>
+                                 <p className="text-xs font-bold text-slate-900 dark:text-white">{r.type}</p>
+                                 <p className="text-[10px] text-slate-500">{r.paymentDate.split('-').reverse().join('/')}</p>
+                             </div>
+                        </div>
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-500 tabular-nums">{formatBRL(r.totalReceived)}</span>
+                    </div>
+                 ))}
+             </div>
          </div>
       </SwipeableModal>
 

@@ -10,7 +10,6 @@
     --duration-slow: 600ms;
     --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
     --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    --blur-amount: 0px; /* Blur desativado */
     --color-accent-rgb: 14 165 233;
     --color-accent: #0ea5e9;
   }
@@ -48,28 +47,37 @@
   path:focus {
     outline: none !important;
   }
+
+  /* Utility para esconder scrollbars mas manter funcionalidade */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @layer utilities {
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   .pt-safe { padding-top: env(safe-area-inset-top); }
   
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-  /* Glass effect removed per user request */
-  
-  .privacy-blur .tabular-nums {
-    filter: blur(8px);
-    transition: filter 0.2s ease;
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
   }
-  .privacy-blur .tabular-nums:hover { filter: blur(0); }
 
-  .gpu {
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    perspective: 1000px;
-    will-change: transform, opacity;
+  /* Animação suave para expansão de altura (Accordions) */
+  .expand-content {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.4s var(--ease-out-quint);
+  }
+  .expand-content.open {
+    grid-template-rows: 1fr;
+  }
+  .expand-inner {
+    overflow: hidden;
   }
 }
 
@@ -104,21 +112,4 @@
 .anim-scale-in.is-visible {
   opacity: 1;
   transform: scale3d(1, 1, 1);
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.grid-accordion {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.grid-accordion-open {
-  grid-template-rows: 1fr;
-}
-.grid-accordion-content {
-  overflow: hidden;
 }
