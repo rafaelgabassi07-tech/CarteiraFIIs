@@ -30,10 +30,10 @@
         background-color: var(--bg-solid);
         margin: 0;
         padding: 0;
-        height: 100%;
+        min-height: 100%; /* Changed from height:100% to allow scrolling */
         width: 100%;
         font-family: 'Inter', sans-serif;
-        overflow: hidden;
+        overflow-x: hidden; /* Only prevent horizontal scroll */
       }
       
       #root-splash {
@@ -50,52 +50,51 @@
       /* Logo Container - Flat & Solid */
       .s-logo-box {
         position: relative;
-        width: 88px;
-        height: 88px;
-        border-radius: 24px;
+        width: 96px;
+        height: 96px;
+        border-radius: 28px;
         background-color: var(--card-solid);
         border: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 32px;
-        /* Subtle animation for static html fallback */
-        animation: pulseLogo 3s infinite ease-in-out;
+        margin-bottom: 40px;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
       }
 
       .s-icon-main { 
-        width: 40px; 
-        height: 40px; 
+        width: 44px; 
+        height: 44px; 
         color: var(--text-main); 
       }
       
       /* Typography */
       .s-title {
-        font-size: 28px;
+        font-size: 32px;
         font-weight: 800;
         letter-spacing: -0.04em;
         color: var(--text-main);
-        margin-bottom: 32px;
+        margin-bottom: 0px;
         display: flex;
         align-items: center;
         gap: 0px;
+        line-height: 1;
       }
       .s-title span { color: var(--accent); }
 
-      /* Minimal Progress Bar */
-      .s-bar-container {
-        width: 140px;
-        height: 3px;
-        background-color: var(--card-solid);
-        border-radius: 999px;
-        overflow: hidden;
+      /* Real Loading Animation (Spinner) */
+      .s-loader-container {
+        margin-top: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
-      
-      .s-fill {
-        height: 100%;
-        width: 15%;
-        background-color: var(--accent);
-        border-radius: 999px;
+
+      .s-spinner {
+        width: 28px;
+        height: 28px;
+        color: var(--accent);
+        animation: spin 1s linear infinite;
       }
 
       .s-footer {
@@ -105,19 +104,20 @@
         flex-direction: column;
         align-items: center;
         gap: 8px;
+        opacity: 0.6;
       }
       
       .s-footer-text {
         font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.2em;
+        letter-spacing: 0.25em;
         color: var(--text-muted);
       }
 
-      @keyframes pulseLogo {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(0.96); }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
     </style>
 
@@ -144,17 +144,18 @@
     <!-- Tela Estática (Skeleton) -->
     <div id="root-splash">
         <div class="s-logo-box">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="s-icon-main"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="s-icon-main"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
         </div>
         
         <div class="s-title">Invest<span>FIIs</span></div>
         
-        <div class="s-bar-container">
-            <div class="s-fill"></div>
+        <div class="s-loader-container">
+            <!-- SVG Spinner matching Lucide Loader2 -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="s-spinner"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
         </div>
 
         <div class="s-footer">
-            <span class="s-footer-text">Carregando Carteira</span>
+            <span class="s-footer-text">Iniciando</span>
         </div>
     </div>
 

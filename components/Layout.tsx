@@ -176,7 +176,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         <div className="flex-none p-4 flex justify-center bg-white dark:bg-[#0F1623] border-b border-slate-100 dark:border-slate-800/50">
             <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>
       </div>

@@ -1,56 +1,42 @@
 
 import React, { useEffect, useState } from 'react';
-import { Wallet } from 'lucide-react';
+import { Wallet, Loader2 } from 'lucide-react';
 
 interface SplashScreenProps {
   finishLoading: boolean;
-  realProgress: number;
+  realProgress: number; // Mantido para compatibilidade, mas não usado visualmente
 }
 
-export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realProgress }) => {
+export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading }) => {
   const [shouldRender, setShouldRender] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [displayProgress, setDisplayProgress] = useState(10);
 
   // Remove o HTML estático assim que o React monta para evitar duplicação visual
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const staticSplash = document.getElementById('root-splash');
     if (staticSplash) {
+        // Transição suave do estático para o React
+        staticSplash.style.transition = 'opacity 0.2s';
         staticSplash.style.opacity = '0';
         setTimeout(() => {
             if(staticSplash.parentNode) staticSplash.parentNode.removeChild(staticSplash);
-        }, 300);
+        }, 200);
     }
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  // Suavização da barra de progresso
-  useEffect(() => {
-    const update = () => {
-        setDisplayProgress(prev => {
-            const target = Math.max(prev, realProgress);
-            const diff = target - prev;
-            if (diff <= 0.5) return prev;
-            return prev + (diff * 0.1); 
-        });
-    };
-    const timer = setInterval(update, 16);
-    return () => clearInterval(timer);
-  }, [realProgress]);
-
   // Lógica de saída (Fade out)
   useEffect(() => {
     if (finishLoading) {
-      setDisplayProgress(100);
       const timeout = setTimeout(() => {
         setIsFadingOut(true);
         const removeTimeout = setTimeout(() => {
           setShouldRender(false);
           document.body.style.overflow = ''; // Restaura scroll
-        }, 600); // Tempo da animação de saída
+        }, 600); // Tempo da animação de saída (CSS duration)
         return () => clearTimeout(removeTimeout);
-      }, 500); // Pequeno delay com a barra cheia
+      }, 800); // Garante que o spinner rode por um tempo mínimo para não parecer "glitch"
       return () => clearTimeout(timeout);
     }
   }, [finishLoading]);
@@ -60,7 +46,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
   return (
     <div 
       className={`fixed inset-0 z-[9999] bg-[#02040A] flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${
-        isFadingOut ? 'opacity-0 scale-110 pointer-events-none' : 'opacity-100 scale-100'
+        isFadingOut ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
       }`}
     >
       {/* Container Central */}
@@ -68,46 +54,30 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         
         {/* Logo Box - Solid & Flat */}
         <div className={`
-            relative mb-8 w-[88px] h-[88px] rounded-3xl bg-[#0F1623] border border-slate-800 
-            flex items-center justify-center transition-all duration-700 ease-in-out
-            ${isFadingOut ? 'scale-90 opacity-0' : 'animate-pulse-slow'}
+            relative mb-10 w-24 h-24 rounded-[28px] bg-[#0F1623] border border-slate-800 
+            flex items-center justify-center shadow-[0_0_0_1px_rgba(255,255,255,0.05)]
+            ${isFadingOut ? 'scale-90 opacity-0 transition-all duration-500' : ''}
         `}>
-            <Wallet className="w-10 h-10 text-white" strokeWidth={1.5} />
+            <Wallet className="w-11 h-11 text-white" strokeWidth={1.5} />
         </div>
 
-        {/* Title & Progress */}
-        <div className="text-center space-y-8">
-            <h1 className="text-[28px] font-black text-white tracking-tight flex items-center justify-center gap-0.5 leading-none">
-                Invest<span className="text-sky-500">FIIs</span>
-            </h1>
+        {/* Title */}
+        <h1 className="text-[32px] font-black text-white tracking-tight flex items-center justify-center gap-0.5 leading-none">
+            Invest<span className="text-sky-500">FIIs</span>
+        </h1>
             
-            {/* Progress Track */}
-            <div className="w-[140px] h-[3px] bg-[#0F1623] rounded-full overflow-hidden mx-auto">
-                <div 
-                    className="h-full bg-sky-500 rounded-full transition-all duration-300 ease-out"
-                    style={{ width: `${displayProgress}%` }}
-                />
-            </div>
+        {/* Spinner Animation */}
+        <div className="mt-12">
+             <Loader2 className="w-7 h-7 text-sky-500 animate-spin" strokeWidth={2.5} />
         </div>
       </div>
 
       {/* Footer Text */}
-      <div className="absolute bottom-12 flex flex-col items-center gap-2">
-         <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em] animate-pulse">
-            Carregando Carteira
+      <div className="absolute bottom-12 flex flex-col items-center opacity-60">
+         <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.25em]">
+            Iniciando
          </p>
       </div>
-
-      {/* Custom Keyframes for React Component context if needed */}
-      <style>{`
-        @keyframes pulse-slow {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(0.96); }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-      `}</style>
     </div>
   );
 };
