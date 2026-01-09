@@ -1,14 +1,19 @@
 
-import React, { useMemo } from 'react';
-import { TrendingUp, TrendingDown, Plus } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, Plus, Calendar, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart } from 'lucide-react';
 import * as ReactWindow from 'react-window';
+import { SwipeableModal } from '../components/Layout';
+import { Transaction, AssetType } from '../types';
 
 const List = ReactWindow.VariableSizeList;
 
 const formatBRL = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
+// Componente da Linha da Transação
 const TransactionRow = React.memo(({ index, style, data }: any) => {
   const item = data.items[index];
+  
+  // Cabeçalho de Mês
   if (item.type === 'header') {
       return (
           <div style={style} className="px-2 pt-6 pb-2">
@@ -22,26 +27,53 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
   
   return (
       <div style={style} className="px-1 py-1.5">
-          <div className="bg-white dark:bg-[#0F1623] p-4 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
+          <button 
+            onClick={() => data.onRowClick(t)}
+            className="w-full text-left bg-white dark:bg-[#0F1623] p-4 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm active:scale-[0.98] transition-all hover:border-slate-300 dark:hover:border-slate-700"
+          >
               <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
                       {isBuy ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                   </div>
                   <div>
                       <h4 className="font-black text-sm text-slate-900 dark:text-white">{t.ticker}</h4>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">{t.date.split('-').reverse().slice(0,2).join('/')} • {isBuy ? 'Compra' : 'Venda'}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">{t.date.split('-').reverse().slice(0,2).join('/')}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase ${t.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800'}`}>
+                            {t.assetType === AssetType.FII ? 'FII' : 'Ação'}
+                        </span>
+                      </div>
                   </div>
               </div>
               <div className="text-right">
                   <p className="text-sm font-black text-slate-900 dark:text-white">R$ {formatBRL(t.price * t.quantity)}</p>
-                  <p className="text-[10px] text-slate-400">{t.quantity}x {formatBRL(t.price)}</p>
+                  <p className="text-[10px] text-slate-400 font-medium">{t.quantity}x {formatBRL(t.price)}</p>
               </div>
-          </div>
+          </button>
       </div>
   );
 });
 
-const TransactionsComponent: React.FC<any> = ({ transactions, onAddTransaction }) => {
+interface TransactionsProps {
+    transactions: Transaction[];
+    onAddTransaction: (t: Omit<Transaction, 'id'>) => Promise<void>;
+    onUpdateTransaction: (id: string, t: Partial<Transaction>) => Promise<void>;
+    onRequestDeleteConfirmation: (id: string) => void;
+}
+
+const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onUpdateTransaction, onRequestDeleteConfirmation }) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    
+    // Form States
+    const [ticker, setTicker] = useState('');
+    const [type, setType] = useState<'BUY' | 'SELL'>('BUY');
+    const [assetType, setAssetType] = useState<AssetType>(AssetType.FII);
+    const [quantity, setQuantity] = useState('');
+    const [price, setPrice] = useState('');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+    // Virtualized List Logic
     const { flatTransactions, getItemSize } = useMemo(() => {
         const sorted = [...transactions].sort((a: any,b: any) => b.date.localeCompare(a.date));
         const groups: any = {};
@@ -58,25 +90,211 @@ const TransactionsComponent: React.FC<any> = ({ transactions, onAddTransaction }
         return { flatTransactions: list, getItemSize: (i: number) => list[i].type === 'header' ? 45 : 88 };
     }, [transactions]);
 
+    const handleOpenAdd = () => {
+        setEditingId(null);
+        setTicker('');
+        setType('BUY');
+        setAssetType(AssetType.FII);
+        setQuantity('');
+        setPrice('');
+        setDate(new Date().toISOString().split('T')[0]);
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEdit = (t: Transaction) => {
+        setEditingId(t.id);
+        setTicker(t.ticker);
+        setType(t.type);
+        setAssetType(t.assetType || AssetType.FII);
+        setQuantity(String(t.quantity));
+        setPrice(String(t.price));
+        setDate(t.date.split('T')[0]);
+        setIsModalOpen(true);
+    };
+
+    const handleSave = async () => {
+        if (!ticker || !quantity || !price || !date) return;
+        
+        const payload = {
+            ticker: ticker.toUpperCase(),
+            type,
+            assetType,
+            quantity: Number(quantity.replace(',', '.')),
+            price: Number(price.replace(',', '.')),
+            date
+        };
+
+        setIsModalOpen(false); // Close immediately for UX
+
+        if (editingId) {
+            await onUpdateTransaction(editingId, payload);
+        } else {
+            await onAddTransaction(payload);
+        }
+    };
+
+    const handleDelete = () => {
+        if (editingId) {
+            setIsModalOpen(false);
+            onRequestDeleteConfirmation(editingId);
+        }
+    };
+
     return (
         <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
+            {/* Header Action */}
             <div className="flex items-center justify-between mb-4 px-1">
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Ordens</h2>
-                <button className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform">
-                    <Plus className="w-5 h-5" />
+                <div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Ordens</h2>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Histórico ({transactions.length})</p>
+                </div>
+                <button 
+                    onClick={handleOpenAdd}
+                    className="w-12 h-12 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-transform hover:shadow-xl"
+                >
+                    <Plus className="w-6 h-6" strokeWidth={2.5} />
                 </button>
             </div>
-            <div className="h-[calc(100vh-200px)]">
-                <List 
-                    height={window.innerHeight - 200} 
-                    itemCount={flatTransactions.length} 
-                    itemSize={getItemSize} 
-                    width="100%" 
-                    itemData={{ items: flatTransactions }}
-                >
-                    {TransactionRow}
-                </List>
+
+            {/* List */}
+            <div className="h-[calc(100vh-220px)]">
+                {transactions.length > 0 ? (
+                    <List 
+                        height={window.innerHeight - 220} 
+                        itemCount={flatTransactions.length} 
+                        itemSize={getItemSize} 
+                        width="100%" 
+                        itemData={{ items: flatTransactions, onRowClick: handleOpenEdit }}
+                    >
+                        {TransactionRow}
+                    </List>
+                ) : (
+                    <div className="h-full flex flex-col items-center justify-center opacity-40">
+                        <ArrowRightLeft className="w-16 h-16 mb-4 text-slate-300 dark:text-slate-700" strokeWidth={1} />
+                        <p className="text-sm font-bold text-slate-500">Nenhuma ordem registrada.</p>
+                        <button onClick={handleOpenAdd} className="mt-4 text-xs font-bold text-sky-500 uppercase tracking-widest">Adicionar Primeira</button>
+                    </div>
+                )}
             </div>
+
+            {/* Add/Edit Modal */}
+            <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+                <div className="p-6 pb-12">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                                {editingId ? 'Editar Ordem' : 'Nova Ordem'}
+                            </h2>
+                            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
+                                {editingId ? 'Atualizar registro' : 'Lançar movimentação'}
+                            </p>
+                        </div>
+                        {editingId && (
+                            <button 
+                                onClick={handleDelete}
+                                className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100 dark:border-rose-500/20 active:scale-95"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="space-y-5">
+                        {/* Ticker Input */}
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Ativo (Ticker)</label>
+                            <input 
+                                type="text" 
+                                value={ticker}
+                                onChange={e => setTicker(e.target.value.toUpperCase())}
+                                placeholder="EX: HGLG11"
+                                className="w-full bg-transparent text-2xl font-black text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 outline-none uppercase"
+                                autoFocus={!editingId}
+                            />
+                        </div>
+
+                        {/* Types Toggle Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Buy/Sell */}
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex relative">
+                                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-slate-700 rounded-xl shadow-sm transition-all duration-300 ${type === 'SELL' ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
+                                <button onClick={() => setType('BUY')} className={`relative z-10 flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center transition-colors ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>Compra</button>
+                                <button onClick={() => setType('SELL')} className={`relative z-10 flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center transition-colors ${type === 'SELL' ? 'text-rose-500' : 'text-slate-400'}`}>Venda</button>
+                            </div>
+
+                            {/* FII/Stock */}
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex relative">
+                                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-slate-700 rounded-xl shadow-sm transition-all duration-300 ${assetType === AssetType.STOCK ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
+                                <button onClick={() => setAssetType(AssetType.FII)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-center transition-colors ${assetType === AssetType.FII ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
+                                    <Building2 className="w-3 h-3" /> FII
+                                </button>
+                                <button onClick={() => setAssetType(AssetType.STOCK)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-center transition-colors ${assetType === AssetType.STOCK ? 'text-sky-600 dark:text-sky-400' : 'text-slate-400'}`}>
+                                    <CandlestickChart className="w-3 h-3" /> Ação
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Details Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Hash className="w-3 h-3 text-slate-400" />
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quantidade</label>
+                                </div>
+                                <input 
+                                    type="number" 
+                                    inputMode="numeric"
+                                    value={quantity}
+                                    onChange={e => setQuantity(e.target.value)}
+                                    placeholder="0"
+                                    className="w-full bg-transparent text-xl font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none"
+                                />
+                            </div>
+
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <DollarSign className="w-3 h-3 text-slate-400" />
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preço (Unit)</label>
+                                </div>
+                                <input 
+                                    type="number" 
+                                    inputMode="decimal"
+                                    value={price}
+                                    onChange={e => setPrice(e.target.value)}
+                                    placeholder="0.00"
+                                    className="w-full bg-transparent text-xl font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Date Input */}
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                                <Calendar className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Data da Operação</label>
+                                <input 
+                                    type="date" 
+                                    value={date}
+                                    onChange={e => setDate(e.target.value)}
+                                    className="w-full bg-transparent text-sm font-bold text-slate-900 dark:text-white outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Save Button */}
+                        <button 
+                            onClick={handleSave}
+                            disabled={!ticker || !quantity || !price}
+                            className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all mt-4 ${(!ticker || !quantity || !price) ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'}`}
+                        >
+                            <Save className="w-4 h-4" />
+                            {editingId ? 'Salvar Alterações' : 'Confirmar Ordem'}
+                        </button>
+                    </div>
+                </div>
+            </SwipeableModal>
         </div>
     );
 };
