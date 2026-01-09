@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Eye, EyeOff, Sparkles, TrendingUp, KeyRound, ArrowLeft, MailCheck } from 'lucide-react';
@@ -128,7 +129,7 @@ export const Login: React.FC = () => {
         </div>
 
         {/* Card Principal */}
-        <div className="bg-slate-900/60 backdrop-blur-xl rounded-[2.5rem] border border-white/10 p-1 shadow-2xl anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
+        <div className="bg-slate-900 rounded-[2.5rem] border border-white/10 p-1 shadow-2xl anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
           
           <div className="bg-[#0b1121]/50 rounded-[2.25rem] p-6 sm:p-8 border border-white/5">
             

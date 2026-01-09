@@ -94,7 +94,7 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    return ( <div className="bg-slate-900/90 backdrop-blur-xl text-white text-[10px] font-bold py-2 px-3 rounded-xl shadow-xl z-50 border border-white/10"> <p className="mb-1 opacity-70 tracking-wide uppercase">{label}</p> <p className="text-emerald-400 text-sm tabular-nums">{formatBRL(payload[0].value)}</p> </div> );
+    return ( <div className="bg-slate-900 text-white text-[10px] font-bold py-2 px-3 rounded-xl shadow-xl z-50 border border-white/10"> <p className="mb-1 opacity-70 tracking-wide uppercase">{label}</p> <p className="text-emerald-400 text-sm tabular-nums">{formatBRL(payload[0].value)}</p> </div> );
   }
   return null;
 };
@@ -108,7 +108,7 @@ const EvolutionTooltip = ({ active, payload, label }: any) => {
       const isPositive = appreciation >= 0;
 
       return ( 
-        <div className="bg-slate-900/90 backdrop-blur-xl text-white p-3 rounded-2xl shadow-2xl border border-white/10 z-50 min-w-[160px]">
+        <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-2xl border border-white/10 z-50 min-w-[160px]">
            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">{label}</p>
            
            <div className="space-y-1.5">
@@ -144,7 +144,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [incomeTab, setIncomeTab] = useState<'summary' | 'history' | 'magic'>('summary');
   const [evolutionRange, setEvolutionRange] = useState<'6M' | '1Y' | 'ALL'>('ALL');
   
-  // States for Allocation Modal
   const [allocationTab, setAllocationTab] = useState<'type' | 'segment'>('type');
   const [expandedAllocation, setExpandedAllocation] = useState<string | null>(null);
 
@@ -249,7 +248,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const yieldOnCostPortfolio = useMemo(() => (invested <= 0) ? 0 : (received / invested) * 100, [received, invested]);
   
-  // Enhanced Allocation Data Logic with Drill-down capability
   const { typeData, segmentData, groupedByType, groupedBySegment } = useMemo(() => {
     const typesMap: Record<string, number> = {};
     const segmentsMap: Record<string, number> = {};
@@ -259,13 +257,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     portfolio.forEach(p => { 
         const val = (p.currentPrice || p.averagePrice) * p.quantity; 
         
-        // Type Grouping
         const t = p.assetType === AssetType.FII ? 'FIIs' : 'Ações'; 
         typesMap[t] = (typesMap[t] || 0) + val; 
         if (!groupedType[t]) groupedType[t] = [];
         groupedType[t].push(p);
 
-        // Segment Grouping
         const s = p.segment || 'Outros'; 
         segmentsMap[s] = (segmentsMap[s] || 0) + val; 
         if (!groupedSegment[s]) groupedSegment[s] = [];
@@ -275,7 +271,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const typeData = Object.entries(typesMap).map(([k, v]) => ({ name: k, value: v })).sort((a,b) => b.value - a.value);
     const segmentData = Object.entries(segmentsMap).map(([k, v]) => ({ name: k, value: v })).sort((a,b) => b.value - a.value);
     
-    // Sort items within groups by value desc
     Object.keys(groupedType).forEach(k => groupedType[k].sort((a,b) => ((b.currentPrice||0)*b.quantity) - ((a.currentPrice||0)*a.quantity)));
     Object.keys(groupedSegment).forEach(k => groupedSegment[k].sort((a,b) => ((b.currentPrice||0)*b.quantity) - ((a.currentPrice||0)*a.quantity)));
 
@@ -363,7 +358,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
             <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
           </div>
-          {upcomingEvents.length > 0 ? (<div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mask-linear-fade relative z-10">{upcomingEvents.slice(0, 4).map((event, i) => { const style = getEventStyle(event.eventType, event.date); return ( <div key={i} className={`flex items-center gap-2 bg-white dark:bg-[#0f172a] px-3 py-2 rounded-xl text-[10px] font-bold uppercase whitespace-nowrap shadow-sm min-w-max border ${style.border} ${style.text}`}><div className={`w-1.5 h-1.5 rounded-full ${style.pulse ? 'animate-pulse' : ''} ${style.dot}`}></div><span>{event.ticker}: {event.eventType === 'payment' ? formatBRL(event.totalReceived) : `Data Com`}</span></div> ); })}</div>) : (<div className="inline-block px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-[10px] font-medium text-slate-400">Sua agenda está limpa.</div>)}
+          {upcomingEvents.length > 0 ? (<div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mask-linear-fade relative z-10">{upcomingEvents.slice(0, 4).map((event, i) => { const style = getEventStyle(event.eventType, event.date); return ( <div key={i} className={`flex items-center gap-2 bg-white dark:bg-[#0f172a] px-3 py-2 rounded-xl text-[10px] font-bold uppercase whitespace-nowrap shadow-sm min-w-max border ${style.border} ${style.text}`}><div className={`w-1.5 h-1.5 rounded-full ${style.pulse ? 'animate-pulse' : ''} ${style.dot}`}></div><span>{event.ticker}: {event.eventType === 'payment' ? formatBRL(event.totalReceived) : `Data Com`}</span></div> ); })}</div>) : (<div className="inline-block px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-[10px] font-medium text-slate-400">Sua agenda está limpa.</div>)}
         </button>
       </div>
 
@@ -778,7 +773,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       {/* MODAL RENDA PASSIVA REFINADO (Corrigido Scroll/Fechamento) */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
         <div className="bg-primary-light dark:bg-[#0b1121] min-h-full pb-safe">
-            <div className="sticky top-0 z-20 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md px-6 pt-4 pb-6 border-b border-transparent transition-all">
+            <div className="sticky top-0 z-20 bg-primary-light dark:bg-[#0b1121] px-6 pt-4 pb-6 border-b border-transparent transition-all">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 shadow-sm">

@@ -180,7 +180,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividendRecei
     <div className="pt-24 pb-28 px-5 max-w-lg mx-auto min-h-screen">
       
       {/* Search Header */}
-      <div className="sticky top-24 z-30 pt-2 pb-4 bg-slate-100/95 dark:bg-[#020617]/95 backdrop-blur-md -mx-5 px-5 transition-all">
+      <div className="sticky top-24 z-30 pt-2 pb-4 bg-slate-100 dark:bg-[#020617] -mx-5 px-5 transition-all">
           <div className="relative">
              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                <PieChart className="w-5 h-5" />

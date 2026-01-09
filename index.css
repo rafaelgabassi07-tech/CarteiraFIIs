@@ -10,7 +10,7 @@
     --duration-slow: 600ms;
     --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
     --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    --blur-amount: 8px;
+    --blur-amount: 0px; /* Blur desativado */
     --color-accent-rgb: 14 165 233;
     --color-accent: #0ea5e9;
   }
@@ -57,13 +57,10 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  .glass-effect {
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
+  /* Glass effect removed per user request */
   
   .privacy-blur .tabular-nums {
-    filter: blur(var(--blur-amount));
+    filter: blur(8px);
     transition: filter 0.2s ease;
   }
   .privacy-blur .tabular-nums:hover { filter: blur(0); }

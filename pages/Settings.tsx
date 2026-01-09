@@ -67,10 +67,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const [networkType, setNetworkType] = useState<string>('Unknown');
   const [estLatency, setEstLatency] = useState<number | null>(null);
 
-  // Visual Preferences
-  const [glassMode, setGlassMode] = useState(() => localStorage.getItem('investfiis_glass_mode') !== 'false');
-  const [blurIntensity, setBlurIntensity] = useState<'low' | 'medium' | 'high'>(() => (localStorage.getItem('investfiis_blur_intensity') as any) || 'medium');
-
   const [storageData, setStorageData] = useState({ 
     totalBytes: 0,
     breakdown: { quotes: 0, divs: 0 } 
@@ -190,18 +186,6 @@ export const Settings: React.FC<SettingsProps> = ({
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  // Visual Effects Logic
-  useEffect(() => {
-    localStorage.setItem('investfiis_glass_mode', String(glassMode));
-    document.documentElement.classList.toggle('glass-effect', glassMode);
-  }, [glassMode]);
-
-  useEffect(() => {
-    localStorage.setItem('investfiis_blur_intensity', blurIntensity);
-    const blurMap = { low: '4px', medium: '8px', high: '16px' };
-    document.documentElement.style.setProperty('--blur-amount', blurMap[blurIntensity]);
-  }, [blurIntensity]);
 
   useEffect(() => { localStorage.setItem('investfiis_notify_divs', String(notifyDivs)); }, [notifyDivs]);
   useEffect(() => { localStorage.setItem('investfiis_notify_datacom', String(notifyDataCom)); }, [notifyDataCom]);
@@ -505,16 +489,16 @@ export const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-      {/* PREMIUM GLASS TOAST NOTIFICATION (LOCAL) */}
+      {/* PREMIUM TOAST NOTIFICATION (LOCAL) */}
       {message && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none w-full max-w-sm px-4">
             <div className={`
-              pointer-events-auto mx-auto flex items-center gap-3 p-2 pr-5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl border transition-all duration-300 anim-fade-in-up is-visible
+              pointer-events-auto mx-auto flex items-center gap-3 p-2 pr-5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border transition-all duration-300 anim-fade-in-up is-visible
               ${message.type === 'success' 
                 ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' 
                 : message.type === 'error' 
                   ? 'bg-rose-500/10 border-rose-500/20 shadow-rose-500/10'
-                  : 'bg-[#0f172a]/80 dark:bg-white/80 border-slate-200/20 dark:border-white/20 shadow-black/10'
+                  : 'bg-[#0f172a] dark:bg-white border-slate-200/20 dark:border-white/20 shadow-black/10'
               }
             `}>
                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
@@ -827,10 +811,6 @@ export const Settings: React.FC<SettingsProps> = ({
                       ))}
                   </div>
               </div>
-
-              <Section title="Efeitos & Acessibilidade">
-                  <Toggle label="Efeito Glassmorphism" description="Transparência e desfoque nos elementos" icon={Layers} checked={glassMode} onChange={() => setGlassMode(!glassMode)} />
-              </Section>
             </div>
           )}
 
@@ -848,29 +828,6 @@ export const Settings: React.FC<SettingsProps> = ({
                         {privacyMode ? 'Desativar Agora' : 'Ativar Modo Privacidade'}
                     </button>
                 </div>
-
-                <Section title="Estilo do Desfoque">
-                  <div className="p-4 bg-white dark:bg-[#0f172a] space-y-3">
-                      <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 bg-slate-100 dark:bg-white/10 rounded-lg text-slate-500"><Aperture className="w-4 h-4" /></div>
-                          <div>
-                              <span className="text-sm font-semibold block text-slate-900 dark:text-white">Intensidade do Blur</span>
-                              <p className="text-[10px] text-slate-400 font-medium">Ajuste o quão ilegível os dados ficam</p>
-                          </div>
-                      </div>
-                      <div className="flex bg-slate-50 dark:bg-white/5 p-1 rounded-xl">
-                          {['low', 'medium', 'high'].map((level) => (
-                              <button
-                                key={level}
-                                onClick={() => setBlurIntensity(level as any)}
-                                className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${blurIntensity === level ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
-                              >
-                                {level === 'low' ? 'Suave' : level === 'medium' ? 'Médio' : 'Forte'}
-                              </button>
-                          ))}
-                      </div>
-                  </div>
-              </Section>
             </div>
           )}
 

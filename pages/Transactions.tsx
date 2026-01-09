@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { Transaction, AssetType } from '../types';
 import { Plus, Trash2, Calendar, Search, TrendingUp, TrendingDown, Pencil, Briefcase, Hash, DollarSign, X, Building2, BarChart3 } from 'lucide-react';
@@ -213,7 +214,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
   return (
     <div className="pt-24 pb-28 px-5 max-w-lg mx-auto">
-      <div className="sticky top-24 z-30 pt-2 pb-4 bg-slate-100/95 dark:bg-[#020617]/95 backdrop-blur-md -mx-5 px-5 transition-all">
+      <div className="sticky top-24 z-30 pt-2 pb-4 bg-slate-100 dark:bg-[#020617] -mx-5 px-5 transition-all">
          <div className="flex gap-3">
            <div className="relative flex-1 group">
              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-accent transition-colors" />

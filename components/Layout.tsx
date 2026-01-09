@@ -107,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
         bannerVisible ? 'top-10' : 'top-0'
       } ${
         isScrolled 
-          ? 'bg-white/90 dark:bg-[#020617]/90 backdrop-blur-2xl pt-2 border-b border-slate-200/50 dark:border-white/5 shadow-sm dark:shadow-black/20' 
+          ? 'bg-white dark:bg-[#020617] pt-2 border-b border-slate-200/50 dark:border-white/5 shadow-sm dark:shadow-black/20' 
           : 'bg-transparent pt-4 border-b border-transparent'
       }`}
     >
@@ -200,14 +200,12 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   }, [isOpen]);
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    // Só inicia o drag se o conteúdo interno estiver no topo (scroll zero)
     if (modalRef.current && modalRef.current.scrollTop <= 1) {
       touchStartY.current = e.touches[0].clientY;
       touchStartTime.current = Date.now();
       isDragging.current = true;
       currentDeltaY.current = 0;
       
-      // Resposta tátil imediata
       modalRef.current.style.transition = 'none'; 
       if (backdropRef.current) backdropRef.current.style.transition = 'none';
     }
@@ -219,7 +217,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     const clientY = e.touches[0].clientY;
     const deltaY = clientY - touchStartY.current;
     
-    // Movimento para baixo
     if (deltaY > 0) {
       if (modalRef.current.scrollTop > 5) {
           isDragging.current = false;
@@ -239,12 +236,10 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
                   const progress = Math.min(1, deltaY / (window.innerHeight * 0.4));
                   const opacity = Math.max(0, 1 - progress);
                   backdropRef.current.style.opacity = String(opacity);
-                  backdropRef.current.style.backdropFilter = `blur(${Math.max(0, 8 * (1 - progress))}px)`;
               }
           }
       });
     } else {
-        // Resistência elástica ao puxar para cima
         if (modalRef.current.scrollTop <= 0) {
             if (e.cancelable) e.preventDefault();
             const resistance = Math.pow(Math.abs(deltaY), 0.7); 
@@ -264,23 +259,18 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     const deltaTime = Date.now() - touchStartTime.current;
     const velocity = currentDeltaY.current / deltaTime; 
     
-    // Restaura transição suave com curva iOS-like
     modalRef.current.style.transition = 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
     if (backdropRef.current) {
-        backdropRef.current.style.transition = 'opacity 0.4s ease, backdrop-filter 0.4s ease';
+        backdropRef.current.style.transition = 'opacity 0.4s ease';
     }
 
-    // Gatilho de fechamento: Distância > 140px OU Flick rápido > 0.4
     if (currentDeltaY.current > 140 || (velocity > 0.4 && currentDeltaY.current > 10)) { 
-      // Executa o fechamento com transform para garantir fluidez total
       modalRef.current.style.transform = `translate3d(0, 100%, 0)`;
       setTimeout(onClose, 100);
     } else {
-      // Retorna com mola
       modalRef.current.style.transform = 'translate3d(0, 0, 0)';
       if (backdropRef.current) {
           backdropRef.current.style.opacity = '1';
-          backdropRef.current.style.backdropFilter = 'blur(8px)';
       }
     }
   };
@@ -302,7 +292,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     >
       <div 
         ref={backdropRef}
-        className={`absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm transition-all duration-400 ease-out-quint will-change-[opacity,backdrop-filter] ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute inset-0 bg-black/80 transition-all duration-400 ease-out-quint will-change-[opacity] ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       ></div>
       <div
         ref={modalRef}
@@ -318,7 +308,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             WebkitOverflowScrolling: 'touch'
         }}
       >
-        <div className="sticky top-0 z-[110] flex justify-center pt-4 pb-2 bg-primary-light/95 dark:bg-[#0b1121]/95 backdrop-blur-md touch-none">
+        <div className="sticky top-0 z-[110] flex justify-center pt-4 pb-2 bg-primary-light dark:bg-[#0b1121] touch-none">
             <div className="w-16 h-1 bg-slate-300/50 dark:bg-slate-600/50 rounded-full opacity-80 active:opacity-100 active:scale-x-110 transition-all"></div>
         </div>
         
@@ -349,7 +339,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
       }`}
     >
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        className="absolute inset-0 bg-black/90"
         onClick={onCancel}
       ></div>
       <div 
@@ -397,7 +387,7 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
     <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center pointer-events-none pb-safe">
-      <nav className="pointer-events-auto bg-[#0f172a]/80 dark:bg-[#020617]/80 shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-2 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-2xl gpu ring-1 ring-white/5">
+      <nav className="pointer-events-auto bg-[#0f172a] dark:bg-[#020617] shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-2 rounded-full flex items-center gap-2 border border-white/10 gpu ring-1 ring-white/5">
         {navItems.map(item => {
           const isActive = currentTab === item.id;
           return (
@@ -483,7 +473,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({
           })}
         </div>
         {isUpdatePending && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-[#0b1121]/80 backdrop-blur-lg border-t border-slate-200/50 dark:border-white/5 pb-safe">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-[#0b1121] border-t border-slate-200/50 dark:border-white/5 pb-safe">
              <div className="max-w-lg mx-auto">
               <button 
                 onClick={onUpdate} 
