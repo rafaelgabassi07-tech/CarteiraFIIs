@@ -1,12 +1,17 @@
 
 {
-  "version": "8.2.1",
+  "version": "8.2.2",
   "date": "2025-07-16",
   "notes": [
     {
       "type": "ui",
-      "title": "Correção Visual de IA",
-      "desc": "Corrigido o rótulo do modelo Gemini exibido nas configurações para refletir corretamente o uso do Gemini 2.5 Flash."
+      "title": "Novo Dashboard de Serviços",
+      "desc": "Repaginamos a área de conexões! Acompanhe o status do Supabase, Brapi e Gemini em tempo real com novos cards visuais."
+    },
+    {
+      "type": "perf",
+      "title": "Melhorias de Estabilidade",
+      "desc": "Otimizações na sincronização de dados e feedback visual mais claro durante atualizações."
     }
   ]
 }
