@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
 import { Wallet, CircleDollarSign, PieChart as PieIcon, Sparkles, TrendingUp, Calendar, Trophy, CalendarDays, Coins, TrendingDown, Banknote, ChevronRight, Loader2, AreaChart as AreaIcon, CheckCircle2, ShieldCheck, AlertTriangle, ChevronDown, ArrowRight } from 'lucide-react';
@@ -114,9 +115,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="pt-24 pb-32 px-5 space-y-6 max-w-lg mx-auto">
       
-      {/* 1. HERO CARD: PATRIMONY (Clean, Monochromatic) */}
+      {/* 1. HERO CARD: PATRIMONY (Premium Gradient) */}
       <div className="anim-fade-in-up is-visible">
-        <button onClick={() => setShowSummaryModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-white/5 relative overflow-hidden group active:scale-[0.98] transition-all">
+        <button onClick={() => setShowSummaryModal(true)} className="w-full text-left bg-surface-light dark:bg-surface-dark p-8 rounded-[2.5rem] shadow-card dark:shadow-card-dark border border-slate-200 dark:border-white/5 relative overflow-hidden group active:scale-[0.98] transition-all">
+            {/* Subtle Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white via-transparent to-slate-100 dark:from-white/5 dark:via-transparent dark:to-black/20 opacity-50"></div>
+            
             <div className="relative z-10">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Patrimônio Total</span>
                 <div className="flex items-center gap-3 mb-6">
@@ -125,7 +129,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
                 
                 <div className="flex items-center gap-4">
-                    <div className={`px-3 py-1.5 rounded-lg border flex items-center gap-1.5 text-xs font-bold ${isProfitPositive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-100 dark:border-emerald-500/20' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-500 border-rose-100 dark:border-rose-500/20'}`}>
+                    <div className={`px-3 py-1.5 rounded-lg border flex items-center gap-1.5 text-xs font-bold ${isProfitPositive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-500/20'}`}>
                         {isProfitPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                         {formatPercent(totalProfitPercent)}
                     </div>
@@ -135,12 +139,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* 2. AGENDA CARD (The "Traffic Light" Highlight) */}
+      {/* 2. AGENDA CARD */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '50ms' }}>
-        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-white dark:bg-[#0f172a] p-6 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm active:scale-[0.98] transition-all group">
+        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-surface-light dark:bg-surface-dark p-6 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-card dark:shadow-card-dark active:scale-[0.98] transition-all group">
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white">
+                    <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white border border-slate-100 dark:border-white/5">
                         <CalendarDays className="w-6 h-6" strokeWidth={1.5} />
                     </div>
                     <div>
@@ -159,7 +163,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         const style = getEventStyle(event.eventType, event.date);
                         return (
                             <div key={i} className={`flex-shrink-0 pl-3 pr-4 py-3 rounded-2xl border ${style.bg} ${style.border} flex items-center gap-3 min-w-[140px]`}>
-                                <div className={`w-8 h-8 rounded-xl bg-white dark:bg-[#020617] flex items-center justify-center ${style.text} shadow-sm`}>
+                                <div className={`w-8 h-8 rounded-xl bg-white dark:bg-[#02040A] flex items-center justify-center ${style.text} shadow-sm`}>
                                     <style.icon className="w-4 h-4" />
                                 </div>
                                 <div>
@@ -173,7 +177,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     })}
                 </div>
             ) : (
-                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl text-center border border-slate-100 dark:border-slate-800">
+                <div className="p-4 bg-slate-50 dark:bg-[#02040A] rounded-2xl text-center border border-slate-100 dark:border-white/5">
                     <p className="text-xs text-slate-400 font-medium">Nenhum evento previsto para os próximos dias.</p>
                 </div>
             )}
@@ -183,8 +187,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       {/* 3. RENDA PASSIVA & ALOCAÇÃO (Side by Side) */}
       <div className="grid grid-cols-2 gap-4 anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
         {/* Renda */}
-        <button onClick={() => setShowProventosModal(true)} className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm text-left active:scale-[0.98] transition-all">
-            <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-500 mb-4">
+        <button onClick={() => setShowProventosModal(true)} className="bg-surface-light dark:bg-surface-dark p-5 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-card dark:shadow-card-dark text-left active:scale-[0.98] transition-all">
+            <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-500 mb-4 border border-emerald-100 dark:border-emerald-500/20">
                 <CircleDollarSign className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renda Passiva</span>
@@ -192,8 +196,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
 
         {/* Alocação */}
-        <button onClick={() => setShowAllocationModal(true)} className="bg-white dark:bg-[#0f172a] p-5 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm text-left active:scale-[0.98] transition-all">
-            <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white mb-4">
+        <button onClick={() => setShowAllocationModal(true)} className="bg-surface-light dark:bg-surface-dark p-5 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-card dark:shadow-card-dark text-left active:scale-[0.98] transition-all">
+            <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white mb-4 border border-slate-100 dark:border-white/5">
                 <PieIcon className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Alocação</span>
@@ -217,7 +221,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     return (
                         <div key={i} className={`p-4 rounded-3xl border ${style.bg} ${style.border} flex items-center justify-between`}>
                             <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-2xl bg-white dark:bg-[#020617] flex items-center justify-center ${style.text} shadow-sm`}>
+                                <div className={`w-12 h-12 rounded-2xl bg-white dark:bg-[#02040A] flex items-center justify-center ${style.text} shadow-sm`}>
                                     <style.icon className="w-6 h-6" />
                                 </div>
                                 <div>

@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#020617" />
+    <meta name="theme-color" content="#02040A" />
     <meta name="app-version" content="8.2.0" />
     
     <title>InvestFIIs - FIIs & Ações</title>
@@ -18,7 +18,8 @@
     <style>
       /* CSS Crítico para Splash Screen Premium */
       :root {
-        --bg-dark: #020617;
+        --bg-dark: #02040A;
+        --surface-dark: #0B101A;
         --accent: #0ea5e9;
       }
       
@@ -41,7 +42,7 @@
         align-items: center;
         justify-content: center;
         background-color: var(--bg-dark);
-        background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 60%);
+        background-image: radial-gradient(circle at 50% 0%, #111827 0%, #02040A 70%);
       }
 
       /* Logo Container */
@@ -50,7 +51,7 @@
         width: 96px;
         height: 96px;
         border-radius: 32px;
-        background: #0f172a;
+        background: var(--surface-dark);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -60,7 +61,7 @@
       }
 
       /* Icons */
-      .s-icon-main { width: 40px; height: 40px; color: white; opacity: 0.9; }
+      .s-icon-main { width: 40px; height: 40px; color: white; opacity: 0.95; }
       
       /* Title */
       .s-title {
@@ -136,7 +137,7 @@
     }
     </script>
 </head>
-  <body class="bg-[#020617] text-slate-100 min-h-screen overflow-x-hidden antialiased">
+  <body class="bg-[#02040A] text-slate-100 min-h-screen overflow-x-hidden antialiased">
     
     <!-- Tela Estática Minimalista -->
     <div id="root-splash">
