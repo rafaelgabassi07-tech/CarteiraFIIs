@@ -1,6 +1,6 @@
+
 import React, { useMemo } from 'react';
-import { Transaction, AssetType } from '../types';
-import { TrendingUp, TrendingDown, Plus, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus } from 'lucide-react';
 import * as ReactWindow from 'react-window';
 
 const List = ReactWindow.VariableSizeList;
@@ -22,9 +22,9 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
   
   return (
       <div style={style} className="px-1 py-1.5">
-          <div className="bg-white dark:bg-[#0f172a] p-4 rounded-3xl border border-slate-200 dark:border-white/5 flex items-center justify-between shadow-sm">
+          <div className="bg-white dark:bg-[#0F1623] p-4 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isBuy ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
                       {isBuy ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                   </div>
                   <div>
@@ -42,11 +42,10 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
 });
 
 const TransactionsComponent: React.FC<any> = ({ transactions, onAddTransaction }) => {
-    // Logic mostly reused, just visual update
     const { flatTransactions, getItemSize } = useMemo(() => {
-        const sorted = [...transactions].sort((a,b) => b.date.localeCompare(a.date));
+        const sorted = [...transactions].sort((a: any,b: any) => b.date.localeCompare(a.date));
         const groups: any = {};
-        sorted.forEach(t => {
+        sorted.forEach((t: any) => {
             const k = t.date.substring(0, 7);
             if (!groups[k]) groups[k] = [];
             groups[k].push(t);
@@ -63,7 +62,7 @@ const TransactionsComponent: React.FC<any> = ({ transactions, onAddTransaction }
         <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
             <div className="flex items-center justify-between mb-4 px-1">
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Ordens</h2>
-                <button className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all">
+                <button className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform">
                     <Plus className="w-5 h-5" />
                 </button>
             </div>
