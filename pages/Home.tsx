@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2 } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface HomeProps {
@@ -26,7 +26,7 @@ const formatBRL = (val: any) => {
 
 const formatPercent = (val: any) => {
   const num = typeof val === 'number' ? val : 0;
-  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 };
 
 // Logic for solid styling of event badges
@@ -80,17 +80,44 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return { upcomingEvents: uniqueEvents, received: receivedTotal };
   }, [dividendReceipts]);
 
+  // Income History Logic
+  const incomeHistory = useMemo(() => {
+    const map: Record<string, number> = {};
+    dividendReceipts.forEach(r => {
+        if (r.paymentDate <= new Date().toISOString().split('T')[0]) {
+            const key = r.paymentDate.substring(0, 7); // YYYY-MM
+            map[key] = (map[key] || 0) + r.totalReceived;
+        }
+    });
+    const sorted = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0])); // Descending date
+    const totalMonths = sorted.length || 1;
+    const average = received / (totalMonths > 0 ? totalMonths : 1);
+    
+    // Find max value for bar chart scaling
+    const maxVal = Math.max(...Object.values(map), 0);
+
+    return { history: sorted, average, maxVal };
+  }, [dividendReceipts, received]);
+
   // Allocation Data
   const typeData = useMemo(() => {
-      const map: Record<string, number> = {};
+      let fiisTotal = 0;
+      let stocksTotal = 0;
+      
       portfolio.forEach(p => { 
-          const t = p.assetType === AssetType.FII ? 'FIIs' : 'Ações'; 
-          map[t] = (map[t] || 0) + (p.currentPrice || p.averagePrice) * p.quantity; 
+          const val = (p.currentPrice || p.averagePrice) * p.quantity;
+          if (p.assetType === AssetType.FII) fiisTotal += val;
+          else stocksTotal += val;
       });
-      return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
-  }, [portfolio]);
+      
+      const total = fiisTotal + stocksTotal || 1;
 
-  const COLORS = ['#1e293b', '#64748b', '#94a3b8'];
+      return {
+          fiis: { value: fiisTotal, percent: (fiisTotal / total) * 100 },
+          stocks: { value: stocksTotal, percent: (stocksTotal / total) * 100 },
+          total
+      };
+  }, [portfolio]);
 
   return (
     <div className="pt-24 pb-32 px-5 space-y-5 max-w-lg mx-auto">
@@ -175,11 +202,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white mb-4">
                 <PieIcon className="w-5 h-5" />
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Alocação</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">FIIs vs Ações</span>
             <div className="flex h-2 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 mt-2">
-                {typeData.map((t, i) => (
-                    <div key={i} style={{ width: `${(t.value / balance) * 100}%`, background: COLORS[i] }} />
-                ))}
+                <div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-slate-800 dark:bg-white transition-all duration-1000"></div>
             </div>
         </button>
       </div>
@@ -213,35 +238,134 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
-      {/* Renda Modal */}
+      {/* Renda Modal (Advanced) */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
          <div className="p-6 pb-20">
-             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6 px-2">Histórico de Renda</h2>
-             <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-3xl border border-emerald-100 dark:border-emerald-800/30 text-center mb-6">
-                 <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-1">Total Recebido</p>
-                 <p className="text-3xl font-black text-emerald-700 dark:text-emerald-400">{formatBRL(received)}</p>
+             <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                    <Wallet className="w-6 h-6" strokeWidth={1.5} />
+                </div>
+                <div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Proventos</h2>
+                    <p className="text-xs text-slate-500 font-medium">Histórico de Pagamentos</p>
+                </div>
+             </div>
+             
+             {/* Big Stats */}
+             <div className="grid grid-cols-2 gap-3 mb-8">
+                 <div className="bg-emerald-500 p-5 rounded-[1.5rem] text-white shadow-lg shadow-emerald-500/20">
+                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
+                     <p className="text-2xl font-black">{formatBRL(received)}</p>
+                 </div>
+                 <div className="bg-slate-100 dark:bg-slate-800 p-5 rounded-[1.5rem] border border-slate-200 dark:border-slate-700">
+                     <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Média Mensal</p>
+                     <p className="text-xl font-black text-slate-900 dark:text-white">{formatBRL(incomeHistory.average)}</p>
+                 </div>
+             </div>
+
+             {/* Monthly History List */}
+             <div className="space-y-4">
+                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Evolução Mensal</h3>
+                 {incomeHistory.history.length > 0 ? (
+                     <div className="space-y-3">
+                        {incomeHistory.history.map(([month, val], i) => {
+                            const [year, m] = month.split('-');
+                            const dateObj = new Date(parseInt(year), parseInt(m)-1, 1);
+                            const monthName = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                            const percentage = (val / (incomeHistory.maxVal || 1)) * 100;
+
+                            return (
+                                <div key={month} className="bg-white dark:bg-[#0F1623] p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                                                <Calendar className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 capitalize">{monthName}</span>
+                                        </div>
+                                        <span className="text-sm font-black text-slate-900 dark:text-white">{formatBRL(val)}</span>
+                                    </div>
+                                    {/* Visual Bar */}
+                                    <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div style={{ width: `${percentage}%` }} className="h-full bg-emerald-500 rounded-full"></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                     </div>
+                 ) : (
+                     <div className="text-center py-10 opacity-50">
+                         <p className="text-xs">Nenhum provento registrado ainda.</p>
+                     </div>
+                 )}
              </div>
          </div>
       </SwipeableModal>
 
-      {/* Alocação Modal */}
+      {/* Alocação Modal (Advanced) */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="p-6 pb-20">
-             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6 px-2">Distribuição da Carteira</h2>
-             <div className="space-y-4">
-                {typeData.map((t, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl">
-                        <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 rounded-full" style={{ background: COLORS[i] }}></div>
-                            <span className="font-bold text-slate-900 dark:text-white">{t.name}</span>
+             <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white">
+                    <PieIcon className="w-6 h-6" strokeWidth={1.5} />
+                </div>
+                <div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Diversificação</h2>
+                    <p className="text-xs text-slate-500 font-medium">Composição da Carteira</p>
+                </div>
+             </div>
+
+             {/* DNA Bar Visual */}
+             <div className="mb-8">
+                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2 px-1">
+                     <span className="text-slate-900 dark:text-white">FIIs ({formatPercent(typeData.fiis.percent)})</span>
+                     <span className="text-slate-500 dark:text-slate-400">Ações ({formatPercent(typeData.stocks.percent)})</span>
+                 </div>
+                 <div className="h-4 w-full rounded-full flex overflow-hidden">
+                     <div style={{ width: `${typeData.fiis.percent}%` }} className="bg-slate-900 dark:bg-white h-full transition-all duration-1000"></div>
+                     <div style={{ width: `${typeData.stocks.percent}%` }} className="bg-slate-200 dark:bg-slate-700 h-full transition-all duration-1000"></div>
+                 </div>
+             </div>
+
+             {/* Detail Cards */}
+             <div className="space-y-3">
+                <div className="p-5 rounded-[1.5rem] bg-white dark:bg-[#0F1623] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-slate-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-slate-900 shadow-lg">
+                            <Building2 className="w-6 h-6" strokeWidth={1.5} />
                         </div>
-                        <div className="text-right">
-                            <p className="font-bold text-slate-900 dark:text-white">{formatPercent((t.value / balance) * 100)}</p>
-                            <p className="text-xs text-slate-400">{formatBRL(t.value)}</p>
+                        <div>
+                            <h3 className="font-black text-slate-900 dark:text-white text-lg">FIIs</h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fundos Imobiliários</p>
                         </div>
                     </div>
-                ))}
+                    <div className="text-right">
+                        <p className="text-lg font-black text-slate-900 dark:text-white">{formatBRL(typeData.fiis.value)}</p>
+                        <p className="text-xs font-bold text-slate-500">{formatPercent(typeData.fiis.percent)}</p>
+                    </div>
+                </div>
+
+                <div className="p-5 rounded-[1.5rem] bg-white dark:bg-[#0F1623] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                            <CandlestickChart className="w-6 h-6" strokeWidth={1.5} />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-slate-900 dark:text-white text-lg">Ações</h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mercado de Capitais</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-lg font-black text-slate-900 dark:text-white">{formatBRL(typeData.stocks.value)}</p>
+                        <p className="text-xs font-bold text-slate-500">{formatPercent(typeData.stocks.percent)}</p>
+                    </div>
+                </div>
              </div>
+             
+             {/* Note */}
+             <p className="text-center mt-8 text-[10px] text-slate-400 max-w-[200px] mx-auto leading-relaxed">
+                 Uma carteira diversificada reduz riscos e potencializa ganhos no longo prazo.
+             </p>
          </div>
       </SwipeableModal>
 
