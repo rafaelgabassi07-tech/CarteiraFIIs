@@ -65,7 +65,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ 
   title, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, bannerVisible = false
 }) => {
-  // Removido scroll listener para performance e design sólido
   return (
     <header 
       className={`fixed left-0 right-0 z-40 h-20 flex items-center justify-between px-5 bg-[#F0F2F5] dark:bg-[#02040A] border-b border-slate-200 dark:border-slate-800 transition-all duration-300 ${
@@ -161,21 +160,85 @@ interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 300);
   const modalRef = useRef<HTMLDivElement>(null);
+  
+  // Drag Logic State
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startY = useRef<number>(0);
+  const currentY = useRef<number>(0);
 
-  useEffect(() => { document.body.style.overflow = isOpen ? 'hidden' : ''; return () => { document.body.style.overflow = ''; }; }, [isOpen]);
+  // Lock body scroll when open
+  useEffect(() => { 
+      document.body.style.overflow = isOpen ? 'hidden' : ''; 
+      return () => { document.body.style.overflow = ''; }; 
+  }, [isOpen]);
+
+  // Reset drag when closed
+  useEffect(() => {
+    if (!isOpen) {
+      setDragOffset(0);
+      setIsDragging(false);
+    }
+  }, [isOpen]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    startY.current = e.touches[0].clientY;
+    currentY.current = e.touches[0].clientY;
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const touchY = e.touches[0].clientY;
+    const diff = touchY - startY.current;
+    
+    // Only allow dragging down
+    if (diff > 0) {
+      setDragOffset(diff);
+      // Prevent scrolling the body/modal content while dragging the header
+      if (e.cancelable) e.preventDefault(); 
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    if (dragOffset > 150) { // Threshold to close
+      onClose();
+    } else {
+      setDragOffset(0); // Snap back
+    }
+  };
 
   if (!isMounted) return null;
 
   return createPortal(
     <div className={`fixed inset-0 z-[200] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
-      <div onClick={onClose} className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}></div>
+      <div 
+          onClick={onClose} 
+          className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      ></div>
+      
       <div
         ref={modalRef}
-        className={`relative bg-white dark:bg-[#0F1623] rounded-t-[2rem] h-[90vh] w-full overflow-hidden flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)] transition-transform duration-300 ease-out-quint ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
+        style={{
+            transform: isVisible 
+                ? `translateY(${dragOffset}px)` 
+                : 'translateY(100%)',
+            transition: isDragging ? 'none' : 'transform 300ms cubic-bezier(0.23, 1, 0.32, 1)'
+        }}
+        className={`relative bg-white dark:bg-[#0F1623] rounded-t-[2rem] h-[90vh] w-full overflow-hidden flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)]`}
       >
-        <div className="flex-none p-4 flex justify-center bg-white dark:bg-[#0F1623] border-b border-slate-100 dark:border-slate-800/50">
+        {/* Drag Handle Header */}
+        <div 
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className="flex-none p-4 flex justify-center bg-white dark:bg-[#0F1623] border-b border-slate-100 dark:border-slate-800/50 cursor-grab active:cursor-grabbing touch-none"
+        >
             <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
+        
+        {/* Content Area */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>
