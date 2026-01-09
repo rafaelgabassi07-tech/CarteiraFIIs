@@ -1,12 +1,12 @@
 
 {
-  "version": "8.2.0",
-  "date": "2025-07-15",
+  "version": "8.2.1",
+  "date": "2025-07-16",
   "notes": [
     {
-      "type": "perf",
-      "title": "Gemini 2.5 Flash Ativado",
-      "desc": "Implementação técnica do modelo Gemini 2.5 Flash completada para maior velocidade na auditoria de dividendos."
+      "type": "ui",
+      "title": "Correção Visual de IA",
+      "desc": "Corrigido o rótulo do modelo Gemini exibido nas configurações para refletir corretamente o uso do Gemini 2.5 Flash."
     }
   ]
 }

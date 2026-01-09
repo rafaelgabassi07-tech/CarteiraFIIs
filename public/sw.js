@@ -1,4 +1,5 @@
-const CACHE_NAME = 'investfiis-pwa-v8.2.0';
+
+const CACHE_NAME = 'investfiis-pwa-v8.2.1';
 
 const PRECACHE_ASSETS = [
   './',

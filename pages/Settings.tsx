@@ -748,7 +748,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                     <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white"><Sparkles className="w-5 h-5" /></div>
                                     <div>
                                         <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Google Gemini</h4>
-                                        <p className="text-[9px] text-slate-400 font-mono">Model: 2.5 Pro (Stable)</p>
+                                        <p className="text-[9px] text-slate-400 font-mono">Model: 2.5 Flash (Fast)</p>
                                     </div>
                                 </div>
                                 <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${lastAiStatus === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
