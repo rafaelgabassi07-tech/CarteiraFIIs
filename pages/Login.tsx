@@ -69,15 +69,14 @@ export const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center p-6 bg-[#02040A] relative overflow-hidden font-sans">
       
       {/* Background Ambient Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-sky-500/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-sky-900/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-900/10 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-[420px] flex flex-col gap-6 relative z-10">
         
         {/* Header Logo */}
         <div className="text-center anim-fade-in-up is-visible">
             <div className="relative w-20 h-20 mx-auto mb-6 group cursor-default">
-                <div className="absolute inset-0 bg-gradient-to-tr from-sky-500/20 to-indigo-500/20 rounded-[1.5rem] blur-xl group-hover:blur-2xl transition-all duration-500 opacity-60"></div>
                 <div className="relative w-full h-full bg-[#0F1623] border border-slate-800 rounded-[1.5rem] flex items-center justify-center shadow-2xl">
                     <img src="./logo.svg" alt="Logo" className="w-10 h-10 object-contain opacity-90 group-hover:scale-110 transition-transform duration-500" />
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-sky-500 rounded-lg flex items-center justify-center border-[3px] border-[#02040A] shadow-lg">
@@ -89,8 +88,8 @@ export const Login: React.FC = () => {
             <p className="text-xs text-slate-500 font-bold tracking-widest uppercase">Gestão Inteligente</p>
         </div>
 
-        {/* Main Card */}
-        <div className="bg-[#0F1623]/60 backdrop-blur-xl rounded-[2.5rem] border border-white/5 p-2 shadow-2xl anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
+        {/* Main Card - SOLID */}
+        <div className="bg-[#0F1623] rounded-[2.5rem] border border-slate-800 p-2 shadow-2xl anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
             
             {isVerificationSent ? (
                 <div className="p-8 text-center">
@@ -110,9 +109,9 @@ export const Login: React.FC = () => {
                 <div className="p-6">
                     {/* Animated Segmented Control */}
                     {mode !== 'recovery' && (
-                        <div className="relative flex bg-[#02040A]/50 p-1.5 rounded-2xl mb-8 border border-white/5">
+                        <div className="relative flex bg-[#02040A] p-1.5 rounded-2xl mb-8 border border-slate-800">
                             <div 
-                                className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-slate-800 rounded-xl shadow-lg transition-all duration-300 ease-out-quint ${mode === 'signup' ? 'translate-x-[100%] translate-x-1.5' : 'left-1.5'}`}
+                                className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-slate-800 rounded-xl shadow transition-all duration-300 ease-out-quint ${mode === 'signup' ? 'translate-x-[100%] translate-x-1.5' : 'left-1.5'}`}
                             ></div>
                             <button
                                 onClick={() => toggleMode('signin')}
@@ -161,7 +160,7 @@ export const Login: React.FC = () => {
                                     placeholder="Seu e-mail principal"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-[#02040A] pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-slate-600 outline-none border border-slate-800 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/50 transition-all shadow-inner"
+                                    className="w-full bg-[#02040A] pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-slate-600 outline-none border border-slate-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-inner"
                                     required
                                 />
                             </div>
@@ -173,7 +172,7 @@ export const Login: React.FC = () => {
                                     placeholder="Sua senha secreta"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-[#02040A] pl-12 pr-12 py-4 rounded-2xl text-sm text-white placeholder:text-slate-600 outline-none border border-slate-800 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/50 transition-all shadow-inner"
+                                    className="w-full bg-[#02040A] pl-12 pr-12 py-4 rounded-2xl text-sm text-white placeholder:text-slate-600 outline-none border border-slate-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-inner"
                                     required={mode !== 'recovery'}
                                 />
                                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-slate-600 hover:text-white transition-colors">
@@ -190,7 +189,7 @@ export const Login: React.FC = () => {
                                         placeholder="Confirme a senha"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-[#02040A] pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-slate-600 outline-none border border-slate-800 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-inner"
+                                        className="w-full bg-[#02040A] pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-slate-600 outline-none border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
                                         required={mode === 'signup'}
                                     />
                                 </div>

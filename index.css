@@ -5,8 +5,10 @@
 
 @layer base {
   :root {
-    --duration-normal: 300ms;
+    --duration-fast: 200ms;
+    --duration-normal: 400ms;
     --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
     --color-accent-rgb: 14 165 233;
   }
 
@@ -19,7 +21,7 @@
     @apply bg-[#F0F2F5] dark:bg-[#02040A] text-slate-900 dark:text-slate-100;
   }
   
-  /* Reset de seleção e tap highlight */
+  /* Reset de seleção */
   ::selection {
     background-color: #0ea5e9;
     color: white;
@@ -27,7 +29,7 @@
   
   * { -webkit-overflow-scrolling: touch; }
 
-  /* Utilitários Recharts (Gráficos) */
+  /* Utilitários Recharts */
   .recharts-wrapper, .recharts-surface, path, g, svg {
     outline: none !important;
   }
@@ -40,21 +42,44 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* Animações Simplificadas */
+  /* Animações Sólidas e Performáticas */
   .anim-fade-in {
     opacity: 0;
     animation: fadeIn var(--duration-normal) var(--ease-out-quint) forwards;
+    will-change: opacity;
   }
 
   .anim-fade-in-up {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
     animation: fadeInUp var(--duration-normal) var(--ease-out-quint) forwards;
+    will-change: opacity, transform;
   }
+
+  .anim-scale-in {
+    opacity: 0;
+    transform: scale(0.95);
+    animation: scaleIn var(--duration-fast) var(--ease-out-quint) forwards;
+    will-change: opacity, transform;
+  }
+  
+  .anim-slide-in-right {
+    opacity: 0;
+    transform: translateX(20px);
+    animation: slideInRight var(--duration-normal) var(--ease-out-quint) forwards;
+  }
+
+  /* Stagger delays para listas */
+  .stagger-1 { animation-delay: 50ms; }
+  .stagger-2 { animation-delay: 100ms; }
+  .stagger-3 { animation-delay: 150ms; }
+  .stagger-4 { animation-delay: 200ms; }
 }
 
 @keyframes fadeIn { to { opacity: 1; } }
 @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { to { opacity: 1; transform: scale(1); } }
+@keyframes slideInRight { to { opacity: 1; transform: translateX(0); } }
 
 /* Scrollbars Clean */
 ::-webkit-scrollbar { width: 5px; }

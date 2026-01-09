@@ -114,18 +114,15 @@ export const Settings: React.FC<SettingsProps> = ({
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const notesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Função centralizada de verificação de serviços
   const runServiceCheck = useCallback(async () => {
     setIsServicesChecking(true);
     setHealthStatus({ supabase: 'checking', brapi: 'checking' });
     setEstLatency(null);
 
-    // 1. Connection Info
     // @ts-ignore
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (conn) setNetworkType(conn.effectiveType ? conn.effectiveType.toUpperCase() : (conn.type || 'WIFI'));
     
-    // 2. Cache Info
     const quotesCache = localStorage.getItem('investfiis_v3_quote_cache');
     const qCount = quotesCache ? Object.keys(JSON.parse(quotesCache)).length : 0;
     setCachedItemsCount(prev => ({ ...prev, quotes: qCount }));
@@ -159,15 +156,12 @@ export const Settings: React.FC<SettingsProps> = ({
     setIsServicesChecking(false);
   }, [user]);
 
-  // Efeito para verificar a saúde dos serviços quando a seção é aberta
   useEffect(() => {
     if (activeSection === 'integrations') {
         runServiceCheck();
     }
   }, [activeSection, runServiceCheck]);
 
-
-  // Scroll Reset Effect
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [activeSection]);
@@ -226,7 +220,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleForceSync = async () => { 
       setIsSyncing(true); 
       try {
-        await onSyncAll(false); // Sync normal do cloud
+        await onSyncAll(false);
         showMessage('success', 'Nuvem sincronizada.');
       } catch (e) {
         showMessage('error', 'Erro ao sincronizar nuvem.');
@@ -238,14 +232,11 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleForceMarketUpdate = async () => {
       setIsMarketUpdating(true);
       try {
-          // Limpeza profunda de dados de dividendos/IA antes de atualizar
-          onImportDividends([]); // Limpa estado visual imediatamente
-          localStorage.removeItem('investfiis_v4_div_cache'); // Limpa cache persistente do app
-          localStorage.removeItem('investfiis_gemini_cache_v13_3pro'); // Limpa cache específico do serviço Gemini
-          
-          await new Promise(resolve => setTimeout(resolve, 300)); // Pequeno delay para UI reagir
-
-          await onSyncAll(true); // Force = true limpa caches de mercado/IA (no serviço) e recarrega
+          onImportDividends([]);
+          localStorage.removeItem('investfiis_v4_div_cache');
+          localStorage.removeItem('investfiis_gemini_cache_v13_3pro');
+          await new Promise(resolve => setTimeout(resolve, 300));
+          await onSyncAll(true);
           showMessage('success', 'Dados de mercado recarregados!');
       } catch (e) {
           showMessage('error', 'Falha ao atualizar mercado.');
@@ -312,29 +303,6 @@ export const Settings: React.FC<SettingsProps> = ({
     else { setCheckStatus('latest'); setTimeout(() => setCheckStatus('idle'), 3000); }
   };
 
-  // Helper for Market Status
-  const getMarketStatus = () => {
-    const now = new Date();
-    const utcDay = now.getUTCDay(); // 0 = Domingo, 6 = Sábado
-    const utcHour = now.getUTCHours();
-    
-    // Horário de Brasília é UTC-3 (aproximado)
-    const brHour = (utcHour - 3 + 24) % 24;
-    
-    const isWeekend = utcDay === 0 || utcDay === 6;
-    
-    if (isWeekend) return { label: 'Fechado (FDS)', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-slate-700', icon: Moon };
-    
-    // Mercado B3 aproximado: 10:00 - 17:00 (Pregão) | 17:00 - 18:00 (After)
-    if (brHour >= 10 && brHour < 17) return { label: 'Pregão Aberto', color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: Activity };
-    if (brHour >= 17 && brHour < 18) return { label: 'After-market', color: 'text-amber-500', bg: 'bg-amber-500/10', icon: Clock };
-    
-    return { label: 'Fechado', color: 'text-slate-500', bg: 'bg-slate-200 dark:bg-slate-700', icon: Moon };
-  };
-
-  const marketStatus = getMarketStatus();
-
-  // Diagnostics Logic
   const addLog = (text: string, type: 'info' | 'success' | 'error' | 'warn' = 'info') => {
     setDiagState(prev => ({
         ...prev,
@@ -344,39 +312,30 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const runDiagnostics = async () => {
     setDiagState({ step: 'running', logs: [], latency: null, cloudCount: null, localCount: transactions.length, integrity: null, writeTest: null });
-    
     addLog('Iniciando diagnósticos profundos...');
-    
     if (!navigator.onLine) {
         addLog('Dispositivo offline. Testes cancelados.', 'error');
         setDiagState(prev => ({ ...prev, step: 'error' }));
         return;
     }
-    
     if (!user) {
         addLog('Erro crítico: Usuário não autenticado.', 'error');
         setDiagState(prev => ({ ...prev, step: 'error' }));
         return;
     }
-
     try {
-        // 1. Teste de Latência
         addLog('Testando latência de rede...');
         const start = performance.now();
-        
         const { count, error: countError } = await supabase
             .from('transactions')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id);
-
         const end = performance.now();
         const latency = Math.round(end - start);
-        
         if (countError) throw countError;
         setDiagState(prev => ({ ...prev, latency, cloudCount: count }));
         addLog(`Latência: ${latency}ms. Itens na nuvem: ${count}`, latency < 500 ? 'success' : 'warn');
 
-        // 2. Integridade
         const localCount = transactions.length;
         if (localCount === count) {
             setDiagState(prev => ({ ...prev, integrity: true }));
@@ -386,7 +345,6 @@ export const Settings: React.FC<SettingsProps> = ({
             addLog(`Discrepância detectada! Local: ${localCount} vs Nuvem: ${count}`, 'error');
         }
 
-        // 3. Teste de Escrita (Round Trip)
         addLog('Testando permissões de escrita...');
         const testTx = {
             user_id: user.id,
@@ -397,10 +355,8 @@ export const Settings: React.FC<SettingsProps> = ({
             date: new Date().toISOString(),
             asset_type: 'FII'
         };
-        
         const { data: inserted, error: insertError } = await supabase.from('transactions').insert(testTx).select();
         if (insertError) throw insertError;
-        
         if (inserted && inserted.length > 0) {
             const idToDelete = inserted[0].id;
             const { error: deleteError } = await supabase.from('transactions').delete().eq('id', idToDelete);
@@ -410,10 +366,8 @@ export const Settings: React.FC<SettingsProps> = ({
         } else {
             throw new Error("Falha ao inserir registro de teste");
         }
-
         setDiagState(prev => ({ ...prev, step: 'done' }));
         addLog('Diagnóstico concluído com sucesso.', 'success');
-
     } catch (e: any) {
         console.error(e);
         addLog(`Erro crítico: ${e.message}`, 'error');
@@ -451,8 +405,8 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, colorClass }: any) => (
-    <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:scale-[0.98] transition-all border-b last:border-0 border-slate-200 dark:border-slate-800 group gap-4`}>
+  const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, index = 0 }: any) => (
+    <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:scale-[0.98] transition-all border-b last:border-0 border-slate-200 dark:border-slate-800 group gap-4 anim-fade-in-up`} style={{ animationDelay: `${index * 50}ms` }}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}><Icon className="w-5 h-5" strokeWidth={2.5} /></div>
             <span className={`text-sm font-semibold text-left ${isDestructive ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>{label}</span>
@@ -489,7 +443,6 @@ export const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-      {/* PREMIUM TOAST NOTIFICATION (LOCAL) */}
       {message && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none w-full max-w-sm px-4">
             <div className={`
@@ -499,9 +452,9 @@ export const Settings: React.FC<SettingsProps> = ({
                 'bg-white dark:bg-slate-900 border-l-sky-500 border-y border-r border-slate-100 dark:border-slate-800'}
             `}>
                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                 message.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 
-                 message.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 
-                 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'
+                 message.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400' : 
+                 message.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400' : 
+                 'bg-sky-100 dark:bg-sky-900/10 text-sky-600 dark:text-sky-400'
                }`}>
                  {message.type === 'info' ? <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : 
                   message.type === 'success' ? <Check className="w-4 h-4" strokeWidth={3} /> : 
@@ -535,20 +488,20 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <Section title="Preferências">
-                <MenuItem icon={Palette} label="Aparência" onClick={() => setActiveSection('appearance')} />
-                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Ativado' : ''} />
-                <MenuItem icon={privacyMode ? EyeOff : Eye} label="Privacidade" onClick={() => setActiveSection('privacy')} value={privacyMode ? 'Ativado' : 'Público'} />
+                <MenuItem icon={Palette} label="Aparência" onClick={() => setActiveSection('appearance')} index={1} />
+                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Ativado' : ''} index={2} />
+                <MenuItem icon={privacyMode ? EyeOff : Eye} label="Privacidade" onClick={() => setActiveSection('privacy')} value={privacyMode ? 'Ativado' : 'Público'} index={3} />
             </Section>
 
             <Section title="Dados & Sincronização">
-                <MenuItem icon={Globe} label="Conexões e Serviços" onClick={() => setActiveSection('integrations')} value="Online" />
-                <MenuItem icon={Database} label="Backup e IA Cache" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} />
+                <MenuItem icon={Globe} label="Conexões e Serviços" onClick={() => setActiveSection('integrations')} value="Online" index={4} />
+                <MenuItem icon={Database} label="Backup e IA Cache" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} index={5} />
             </Section>
 
             <Section title="Sistema">
-                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} />
-                <MenuItem icon={Info} label="Sobre o APP" onClick={() => setActiveSection('about')} />
-                <MenuItem icon={ShieldAlert} label="Resetar Aplicativo" onClick={() => setActiveSection('system')} isDestructive />
+                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} index={6} />
+                <MenuItem icon={Info} label="Sobre o APP" onClick={() => setActiveSection('about')} index={7} />
+                <MenuItem icon={ShieldAlert} label="Resetar Aplicativo" onClick={() => setActiveSection('system')} isDestructive index={8} />
             </Section>
             
             <div className="text-center mt-8 opacity-40"><p className="text-[10px] font-bold uppercase tracking-widest">InvestFIIs Ultra</p><p className="text-[9px]">Versão {appVersion}</p></div>
@@ -567,11 +520,8 @@ export const Settings: React.FC<SettingsProps> = ({
               </h2>
           </div>
           
-          {/* --- CONTENT OF SECTIONS --- */}
-          
-          {/* UPDATES SECTION - Kept as is */}
           {activeSection === 'updates' && (
-             <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">
+             <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl anim-scale-in">
                 <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'py-6 border-b border-slate-200 dark:border-slate-800' : 'py-12'}`}>
                     <div className={`relative mb-4 transition-all duration-500 ${isHeaderCompact ? 'scale-75' : 'scale-100'}`}>
                         <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : updateAvailable ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'}`}>
@@ -621,7 +571,7 @@ export const Settings: React.FC<SettingsProps> = ({
                          {releaseNotes.map((note, i) => {
                             const { Icon, color, bg } = getNoteIconAndColor(note.type);
                             return (
-                              <div key={i} className="flex gap-4 items-start">
+                              <div key={i} className="flex gap-4 items-start anim-slide-in-right" style={{ animationDelay: `${i * 100}ms` }}>
                                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${bg} ${color}`}>
                                       <Icon className="w-4 h-4" strokeWidth={2.5} />
                                   </div>
@@ -651,11 +601,8 @@ export const Settings: React.FC<SettingsProps> = ({
              </div>
           )}
 
-          {/* INTEGRATIONS & SERVICES DASHBOARD (ENHANCED) */}
           {activeSection === 'integrations' && (
-            <div className="space-y-6">
-                
-                {/* 1. Network & Status Compact Bar */}
+            <div className="space-y-6 anim-fade-in-up">
                 <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center gap-3">
                         <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
@@ -677,7 +624,6 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </div>
 
-                {/* 2. Primary Actions - Manual Control (RESTORED & PROMINENT) */}
                 <Section title="Controle Manual">
                     <div className="grid grid-cols-2 gap-3">
                         <button 
@@ -710,10 +656,8 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </Section>
 
-                {/* 3. Service Detail Cards (Refined) */}
                 <Section title="Infraestrutura & Serviços">
                     <div className="space-y-3">
-                        {/* Supabase Card */}
                         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white"><Database className="w-5 h-5" /></div>
@@ -727,7 +671,6 @@ export const Settings: React.FC<SettingsProps> = ({
                             </div>
                         </div>
 
-                        {/* Brapi Card */}
                         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white"><BarChart3 className="w-5 h-5" /></div>
@@ -741,7 +684,6 @@ export const Settings: React.FC<SettingsProps> = ({
                             </div>
                         </div>
 
-                        {/* Gemini Card */}
                         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-3">
@@ -763,7 +705,6 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </Section>
 
-                {/* Advanced Diagnostics Button (Secondary) */}
                 <div className="pt-2 pb-6">
                      <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group">
                         <div className="flex items-center gap-3">
@@ -780,7 +721,7 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
 
           {activeSection === 'appearance' && (
-            <div className="space-y-8">
+            <div className="space-y-8 anim-fade-in-up">
               <div>
                   <h3 className="px-4 mb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tema do Sistema</h3>
                   <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-[1.5rem] flex items-center">
@@ -800,7 +741,7 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
 
           {activeSection === 'privacy' && (
-            <div className="space-y-6">
+            <div className="space-y-6 anim-fade-in-up">
                 <div className="bg-slate-100 dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
                     {privacyMode ? <EyeOff className="w-10 h-10 text-slate-500 mx-auto mb-3" /> : <Eye className="w-10 h-10 text-slate-500 mx-auto mb-3" />}
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Configurações de Privacidade</h3>
@@ -816,7 +757,7 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
 
           {activeSection === 'about' && (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-12 py-10">
+            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-12 py-10 anim-scale-in">
                 <div className="text-center relative">
                     <div className="relative z-10">
                         <div className="w-24 h-24 bg-white dark:bg-slate-900 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl ring-1 ring-slate-900/5 dark:ring-white/10">
@@ -842,13 +783,13 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
                 
                 <div className="text-[9px] text-slate-300 dark:text-slate-600 font-mono">
-                    Build 2025.06.29 • Cloud Only
+                    Build 2025.07.16 • Cloud Only
                 </div>
             </div>
           )}
 
           {activeSection === 'notifications' && (
-            <div className="space-y-6">
+            <div className="space-y-6 anim-fade-in-up">
                 <div className="bg-slate-100 dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
                     <Bell className="w-10 h-10 text-slate-500 mx-auto mb-3" />
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Push Notifications</h3>
@@ -875,7 +816,7 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
 
           {activeSection === 'data' && (
-             <div className="space-y-6">
+             <div className="space-y-6 anim-fade-in-up">
                 <div className="bg-slate-100 dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
                     <Database className="w-10 h-10 text-slate-400 mx-auto mb-3" />
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Backup & Restauração</h3>
@@ -909,7 +850,7 @@ export const Settings: React.FC<SettingsProps> = ({
           )}
 
           {activeSection === 'system' && (
-              <div className="space-y-6">
+              <div className="space-y-6 anim-fade-in-up">
                   <Section title="Perigo">
                       <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center text-center">
                           <ShieldAlert className="w-10 h-10 text-slate-500 mb-3" />
@@ -989,6 +930,45 @@ export const Settings: React.FC<SettingsProps> = ({
                         </button>
                     </div>
                 )}
+            </div>
+        </div>
+      </SwipeableModal>
+
+      {/* Terms Modal */}
+      <SwipeableModal isOpen={showTerms} onClose={() => setShowTerms(false)}>
+        <div className="p-8 pb-20">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Termos de Uso</h2>
+            <div className="prose prose-sm dark:prose-invert">
+                <p>Bem-vindo ao InvestFIIs.</p>
+                <p>Este aplicativo é fornecido "como está", sem garantias expressas ou implícitas. Ao utilizá-lo, você concorda que:</p>
+                <ul className="list-disc pl-4 space-y-2 text-slate-600 dark:text-slate-300">
+                    <li>As informações financeiras exibidas são obtidas de fontes públicas e podem conter atrasos ou imprecisões.</li>
+                    <li>Este app não constitui recomendação de investimento.</li>
+                    <li>Você é responsável pela segurança de sua senha e conta.</li>
+                    <li>Os desenvolvedores não se responsabilizam por perdas financeiras decorrentes do uso da ferramenta.</li>
+                </ul>
+                <p className="mt-4 font-bold">Ao continuar, você aceita estes termos.</p>
+            </div>
+        </div>
+      </SwipeableModal>
+
+      {/* Privacy Modal */}
+      <SwipeableModal isOpen={showPrivacy} onClose={() => setShowPrivacy(false)}>
+        <div className="p-8 pb-20">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Política de Privacidade</h2>
+            <div className="prose prose-sm dark:prose-invert">
+                <p>Sua privacidade é nossa prioridade.</p>
+                <h4 className="font-bold mt-4">Coleta de Dados</h4>
+                <p>Coletamos apenas o necessário para o funcionamento do app: seu e-mail (para login) e os dados de transações que você insere manualmente.</p>
+                
+                <h4 className="font-bold mt-4">Armazenamento</h4>
+                <p>Seus dados são armazenados de forma segura na nuvem (Supabase) e protegidos por autenticação.</p>
+                
+                <h4 className="font-bold mt-4">Uso de IA</h4>
+                <p>Ao utilizar funcionalidades de IA (Gemini), dados anônimos de mercado podem ser processados, mas suas informações pessoais nunca são usadas para treinar modelos públicos.</p>
+
+                <h4 className="font-bold mt-4">Seus Direitos</h4>
+                <p>Você pode solicitar a exclusão completa de sua conta e dados a qualquer momento através da opção "Apagar Tudo" nas configurações.</p>
             </div>
         </div>
       </SwipeableModal>
