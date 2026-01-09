@@ -10,7 +10,7 @@ import { Login } from './pages/Login';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, AlertTriangle, Info } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -36,7 +36,7 @@ const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transa
   const targetDate = dateCom.substring(0, 10);
   const targetTicker = ticker.trim().toUpperCase();
   return transactions
-    .filter(t => t.ticker.trim().toUpperCase() === targetTicker && t.date.substring(0, 10) <= targetDate)
+    .filter(t => t.ticker.trim().toUpperCase() === targetTicker && (t.date || '').substring(0, 10) <= targetDate)
     .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
 };
 
@@ -243,11 +243,24 @@ const App: React.FC = () => {
       <CloudStatusBanner status={cloudStatus} />
       {toast && ( 
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-sm px-4">
-            <div className={`flex items-center gap-3 p-3 rounded-full backdrop-blur-xl border anim-fade-in-up is-visible ${toast.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' : 'bg-rose-500/10 border-rose-500/20'}`}>
-               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                 {toast.type === 'info' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            <div className={`
+              flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up is-visible
+              ${toast.type === 'success' ? 'bg-white dark:bg-slate-900 border-l-emerald-500 border-y border-r border-slate-100 dark:border-slate-800' : 
+                toast.type === 'error' ? 'bg-white dark:bg-slate-900 border-l-rose-500 border-y border-r border-slate-100 dark:border-slate-800' :
+                'bg-white dark:bg-slate-900 border-l-sky-500 border-y border-r border-slate-100 dark:border-slate-800'}
+            `}>
+               <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                 toast.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 
+                 toast.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 
+                 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'
+               }`}>
+                 {toast.type === 'info' ? <Info className="w-4 h-4" /> : 
+                  toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : 
+                  <Check className="w-4 h-4" />}
                </div>
-               <div className="min-w-0"><p className="text-[11px] font-bold text-slate-900 dark:text-white leading-tight">{toast.text}</p></div>
+               <div className="min-w-0">
+                 <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.text}</p>
+               </div>
             </div>
         </div> 
       )}

@@ -29,8 +29,8 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// Fixed: Inherit from React.Component to ensure props are correctly typed
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+// Fixed: Inherit from Component (imported) instead of React.Component to ensure props are correctly typed
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null
@@ -46,7 +46,6 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   render(): ReactNode {
     const { hasError, error } = this.state;
-    // Props are now correctly inferred from React.Component
     const { children } = this.props;
 
     if (hasError) {

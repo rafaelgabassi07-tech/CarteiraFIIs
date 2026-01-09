@@ -161,9 +161,18 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         });
     }
 
-    // response.text is a property, not a method. Corrected to handle string | undefined for JSON.parse.
-    const rawText = response.text || "{}";
-    const parsedJson = JSON.parse(rawText);
+    // FIX: Limpeza robusta da string JSON retornada pela IA (remove blocos markdown)
+    let rawText = response.text || "{}";
+    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    let parsedJson;
+    try {
+        parsedJson = JSON.parse(rawText);
+    } catch (parseError) {
+        console.warn("Falha no parse do JSON da IA, tentando correção manual...", parseError);
+        parsedJson = { assets: [] }; // Fallback seguro
+    }
+
     const metadata: any = {};
     const aiDividends: any[] = [];
     
@@ -174,12 +183,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
               type: t.endsWith('11') ? AssetType.FII : AssetType.STOCK,
               segment: asset.segment,
               fundamentals: {
-                  p_vp: normalizeValue(asset.fundamentals.pvp),
-                  dy_12m: normalizeValue(asset.fundamentals.dy),
-                  liquidity: asset.fundamentals.liq,
-                  market_cap: asset.fundamentals.mcap,
-                  sentiment: asset.fundamentals.sentiment,
-                  sentiment_reason: asset.fundamentals.reason,
+                  p_vp: normalizeValue(asset.fundamentals?.pvp),
+                  dy_12m: normalizeValue(asset.fundamentals?.dy),
+                  liquidity: asset.fundamentals?.liq || '-',
+                  market_cap: asset.fundamentals?.mcap || '-',
+                  sentiment: asset.fundamentals?.sentiment || 'Neutro',
+                  sentiment_reason: asset.fundamentals?.reason || 'Sem análise disponível',
                   sources: sources.slice(0, 5)
               },
           };
@@ -202,8 +211,10 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }
     }
 
+    // Salva na nuvem em background (sem await para não travar UI se lento)
     upsertDividendsToCloud(aiDividends);
 
+    // Mescla com dados existentes para evitar perda se a IA falhar parcialmente
     const combined = [...storedDividends];
     aiDividends.forEach(newDiv => {
         const isDuplicate = combined.some(old => 

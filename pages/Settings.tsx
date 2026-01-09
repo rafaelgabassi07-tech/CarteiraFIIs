@@ -493,36 +493,25 @@ export const Settings: React.FC<SettingsProps> = ({
       {message && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none w-full max-w-sm px-4">
             <div className={`
-              pointer-events-auto mx-auto flex items-center gap-3 p-2 pr-5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border transition-all duration-300 anim-fade-in-up is-visible
-              ${message.type === 'success' 
-                ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' 
-                : message.type === 'error' 
-                  ? 'bg-rose-500/10 border-rose-500/20 shadow-rose-500/10'
-                  : 'bg-[#0f172a] dark:bg-white border-slate-200/20 dark:border-white/20 shadow-black/10'
-              }
+              pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up is-visible
+              ${message.type === 'success' ? 'bg-white dark:bg-slate-900 border-l-emerald-500 border-y border-r border-slate-100 dark:border-slate-800' : 
+                message.type === 'error' ? 'bg-white dark:bg-slate-900 border-l-rose-500 border-y border-r border-slate-100 dark:border-slate-800' :
+                'bg-white dark:bg-slate-900 border-l-sky-500 border-y border-r border-slate-100 dark:border-slate-800'}
             `}>
-               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
-                 message.type === 'success' ? 'bg-emerald-500 text-white' :
-                 message.type === 'error' ? 'bg-rose-500 text-white' :
-                 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
+               <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                 message.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 
+                 message.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 
+                 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'
                }`}>
                  {message.type === 'info' ? <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : 
                   message.type === 'success' ? <Check className="w-4 h-4" strokeWidth={3} /> : 
                   <AlertTriangle className="w-4 h-4" strokeWidth={2.5} />}
                </div>
                <div className="min-w-0">
-                 <p className={`text-[11px] font-bold leading-tight ${
-                    message.type === 'success' ? 'text-emerald-700 dark:text-emerald-400' :
-                    message.type === 'error' ? 'text-rose-700 dark:text-rose-400' :
-                    'text-slate-900 dark:text-slate-900'
-                 }`}>
+                 <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
                     {message.type === 'success' ? 'Sucesso' : message.type === 'error' ? 'Atenção' : 'Info'}
                  </p>
-                 <p className={`text-[10px] font-semibold truncate ${
-                    message.type === 'success' ? 'text-emerald-600/80 dark:text-emerald-300/80' :
-                    message.type === 'error' ? 'text-rose-600/80 dark:text-rose-300/80' :
-                    'text-slate-600 dark:text-slate-700'
-                 }`}>
+                 <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate">
                     {message.text}
                  </p>
                </div>
