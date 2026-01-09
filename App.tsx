@@ -166,6 +166,44 @@ const App: React.FC = () => {
     if (session) await fetchTransactionsFromCloud(session, force);
   }, [session, fetchTransactionsFromCloud]);
 
+  // --- CRUD Handlers (Typed for MemoizedTransactions) ---
+  const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
+      if (!session?.user?.id) return;
+      const { error } = await supabase.from('transactions').insert({ ...t, user_id: session.user.id });
+      if (error) {
+        showToast('error', 'Erro ao salvar transação');
+        return;
+      }
+      await fetchTransactionsFromCloud(session);
+  }, [session, fetchTransactionsFromCloud, showToast]);
+
+  const handleUpdateTransaction = useCallback(async (id: string, t: Partial<Transaction>) => {
+      const { error } = await supabase.from('transactions').update(t).eq('id', id);
+      if (error) {
+        showToast('error', 'Erro ao atualizar transação');
+        return;
+      }
+      await fetchTransactionsFromCloud(session);
+  }, [session, fetchTransactionsFromCloud, showToast]);
+
+  const handleDeleteTransaction = useCallback((id: string) => {
+      setConfirmModal({
+          isOpen: true, 
+          title: 'Apagar?', 
+          message: 'Confirmar exclusão desta ordem?', 
+          onConfirm: async () => {
+            const { error } = await supabase.from('transactions').delete().eq('id', id);
+            if (error) {
+                 showToast('error', 'Erro ao excluir');
+            } else {
+                 setConfirmModal(null); 
+                 await fetchTransactionsFromCloud(session);
+            }
+          }
+      });
+  }, [session, fetchTransactionsFromCloud, showToast]);
+  // ----------------------------------------------------
+
   useEffect(() => {
     setLoadingProgress(10);
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -275,7 +313,7 @@ const App: React.FC = () => {
                 <div key={currentTab} className="anim-fade-in is-visible">
                   {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} isAiLoading={isAiLoading} inflationRate={marketIndicators.ipca} portfolioStartDate={marketIndicators.startDate} accentColor={accentColor} />}
                   {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedPortfolioData} />}
-                  {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={(t: any) => supabase.from('transactions').insert({...t, user_id: session.user.id}).then(() => fetchTransactionsFromCloud(session))} onUpdateTransaction={(id: string, t: any) => supabase.from('transactions').update(t).eq('id', id).then(() => fetchTransactionsFromCloud(session))} onRequestDeleteConfirmation={(id: string) => setConfirmModal({isOpen: true, title: 'Apagar?', message: 'Confirmar exclusão?', onConfirm: () => supabase.from('transactions').delete().eq('id', id).then(() => {setConfirmModal(null); fetchTransactionsFromCloud(session);})})} />}
+                  {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} />}
                 </div>
               )}
             </main>
