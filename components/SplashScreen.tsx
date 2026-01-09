@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { TrendingUp } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 
 interface SplashScreenProps {
   finishLoading: boolean;
@@ -9,54 +9,42 @@ interface SplashScreenProps {
 export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realProgress }) => {
   const [shouldRender, setShouldRender] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [displayProgress, setDisplayProgress] = useState(5); // Começa em 5% para combinar com a tela estática
+  const [displayProgress, setDisplayProgress] = useState(10);
 
-  // Lógica de "Handover" (Passagem de bastão da tela estática para a React)
   useEffect(() => {
-    // 1. Bloqueia scroll enquanto carrega
     document.body.style.overflow = 'hidden';
-
-    // 2. Remove a tela estática IMEDIATAMENTE pois este componente é visualmente idêntico
-    // Isso evita qualquer "pulo" ou flash.
     const staticSplash = document.getElementById('root-splash');
     if (staticSplash && staticSplash.parentNode) {
-        staticSplash.style.display = 'none'; // Esconde instantaneamente
+        staticSplash.style.display = 'none';
         setTimeout(() => staticSplash.parentNode?.removeChild(staticSplash), 100);
     }
-
-    // Cleanup: Libera scroll ao desmontar
-    return () => {
-        document.body.style.overflow = 'auto';
-    };
+    return () => { document.body.style.overflow = 'auto'; };
   }, []);
 
-  // Interpolação suave do progresso visual
   useEffect(() => {
     const update = () => {
         setDisplayProgress(prev => {
             const target = Math.max(prev, realProgress);
             const diff = target - prev;
-            if (diff <= 0.1) return prev;
-            return prev + (diff * 0.1); 
+            if (diff <= 0.5) return prev;
+            return prev + (diff * 0.15); 
         });
     };
     const timer = setInterval(update, 16);
     return () => clearInterval(timer);
   }, [realProgress]);
 
-  // Garante 100% e inicia saída final
   useEffect(() => {
     if (finishLoading) {
       setDisplayProgress(100);
-      // Pequeno delay para usuário ver o 100%
       const timeout = setTimeout(() => {
         setIsFadingOut(true);
         const removeTimeout = setTimeout(() => {
           setShouldRender(false);
-          document.body.style.overflow = 'auto'; // Força liberação do scroll
-        }, 700); // Tempo da transição CSS
+          document.body.style.overflow = 'auto';
+        }, 600);
         return () => clearTimeout(removeTimeout);
-      }, 500);
+      }, 400);
       return () => clearTimeout(timeout);
     }
   }, [finishLoading]);
@@ -65,69 +53,34 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
 
   return (
     <div 
-      className={`fixed inset-0 z-[9999] bg-[#020617] flex flex-col items-center justify-center overflow-hidden transition-all duration-700 ease-in-out ${
-        isFadingOut ? 'opacity-0 scale-110 pointer-events-none' : 'opacity-100 scale-100'
+      className={`fixed inset-0 z-[9999] bg-[#020617] flex flex-col items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.87,0,0.13,1)] ${
+        isFadingOut ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
       }`}
+      style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 60%)' }}
     >
-      {/* Background Ambience */}
-      <div className="absolute top-[-20%] left-[-20%] w-[60vw] h-[60vw] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none animate-pulse" />
-      <div className="absolute bottom-[-20%] right-[-20%] w-[60vw] h-[60vw] bg-sky-500/10 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDelay: '1s' }} />
-      
-      {/* Grid Pattern Sutil */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(30,41,59,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(30,41,59,0.1)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
-
-      {/* Main Content */}
       <div className="relative z-10 flex flex-col items-center">
-        
-        {/* App Icon Container */}
-        <div className="relative mb-10 group">
-            {/* Glow Effect behind logo - Animação de entrada suave */}
-            <div className={`absolute inset-0 bg-sky-500 blur-[40px] rounded-full transition-all duration-1000 ${finishLoading ? 'opacity-40 scale-125' : 'opacity-10 scale-100'}`}></div>
-            
-            <div className="relative w-28 h-28 bg-gradient-to-br from-slate-800 to-slate-950 rounded-[2.5rem] flex items-center justify-center shadow-2xl border border-white/10 ring-1 ring-black/50">
-                <div className="relative flex items-center justify-center">
-                    <img 
-                        src="/logo.svg" 
-                        alt="InvestFIIs Logo" 
-                        className={`w-16 h-16 object-contain drop-shadow-2xl transition-all duration-700 ${finishLoading ? 'scale-110' : 'scale-100'}`} 
-                    />
-                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-sky-500 rounded-xl flex items-center justify-center border-[3px] border-[#020617] shadow-lg">
-                        <TrendingUp className="w-4 h-4 text-white" strokeWidth={3} />
-                    </div>
-                </div>
+        <div className="relative mb-8">
+            <div className={`w-24 h-24 bg-[#0f172a] rounded-[2rem] flex items-center justify-center shadow-2xl border border-white/5 ring-1 ring-black/50 transition-all duration-700 ${finishLoading ? 'scale-110 shadow-sky-500/20' : 'scale-100'}`}>
+                <Wallet className="w-10 h-10 text-white opacity-90" strokeWidth={2} />
             </div>
         </div>
 
-        {/* Brand Name */}
         <div className="text-center space-y-6">
-            <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-1">
+            <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-1">
                 Invest<span className="text-sky-500">FIIs</span>
             </h1>
             
-            {/* Loading Bar & Status */}
-            <div className="flex flex-col items-center gap-2 min-w-[140px]">
-                <div className="w-full h-1.5 bg-slate-800/50 rounded-full overflow-hidden border border-white/5">
-                    <div 
-                        className="h-full bg-gradient-to-r from-sky-400 to-indigo-500 rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(14,165,233,0.5)]"
-                        style={{ width: `${displayProgress}%` }}
-                    />
-                </div>
-                
-                <div className="flex items-center justify-between w-full px-1">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest transition-opacity duration-300">
-                        {finishLoading ? 'Iniciando...' : 'Carregando'}
-                    </span>
-                    <span className="text-[9px] font-mono text-slate-600 font-medium tabular-nums">
-                        {Math.round(displayProgress)}%
-                    </span>
-                </div>
+            <div className="w-[120px] h-1 bg-white/5 rounded-full overflow-hidden">
+                <div 
+                    className="h-full bg-white rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                    style={{ width: `${displayProgress}%` }}
+                />
             </div>
         </div>
       </div>
 
-      {/* Footer Version */}
       <div className="absolute bottom-10 opacity-30">
-        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">FIIs & Ações</p>
+        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.25em]">Simples & Funcional</p>
       </div>
     </div>
   );

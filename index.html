@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#020617" />
-    <meta name="app-version" content="7.1.5" />
+    <meta name="app-version" content="8.1.0" />
     
     <title>InvestFIIs - FIIs & Ações</title>
     
@@ -15,20 +15,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-      /* CSS Crítico para Splash Screen Instantânea - Réplica exata do React */
+      /* CSS Crítico para Splash Screen Premium */
       :root {
         --bg-dark: #020617;
         --accent: #0ea5e9;
       }
       
       html, body {
-        background-color: var(--bg-dark); /* Garante fundo escuro imediato */
+        background-color: var(--bg-dark);
         margin: 0;
         padding: 0;
         height: 100%;
         width: 100%;
         font-family: 'Inter', sans-serif;
-        /* Scroll deve ser gerenciado pelo App/React, não bloqueado aqui */
+        overflow: hidden; /* Evita scroll durante carregamento */
       }
       
       #root-splash {
@@ -40,64 +40,32 @@
         align-items: center;
         justify-content: center;
         background-color: var(--bg-dark);
-        transition: opacity 0.5s ease-out;
+        background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 60%);
       }
 
       /* Logo Container */
       .s-logo-box {
         position: relative;
-        width: 112px;
-        height: 112px;
-        border-radius: 40px; /* rounded-[2.5rem] aprox */
-        background: linear-gradient(135deg, #1e293b 0%, #020617 100%);
+        width: 96px;
+        height: 96px;
+        border-radius: 32px;
+        background: #0f172a;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        margin-bottom: 40px;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+        margin-bottom: 32px;
         z-index: 10;
       }
 
-      /* Glow behind logo */
-      .s-logo-glow {
-        position: absolute;
-        width: 112px;
-        height: 112px;
-        border-radius: 50%;
-        background: var(--accent);
-        filter: blur(40px);
-        opacity: 0; /* Começa invisível igual ao React */
-        animation: fadeInGlow 1s ease-out forwards;
-        z-index: 0;
-      }
-
-      @keyframes fadeInGlow { to { opacity: 0.15; } }
-
       /* Icons */
-      .s-icon-main { width: 48px; height: 48px; color: white; }
+      .s-icon-main { width: 40px; height: 40px; color: white; opacity: 0.9; }
       
-      .s-badge {
-        position: absolute;
-        bottom: -8px;
-        right: -8px;
-        width: 32px;
-        height: 32px;
-        background-color: var(--accent);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 3px solid var(--bg-dark);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-      }
-      .s-icon-badge { width: 16px; height: 16px; color: white; }
-
       /* Title */
       .s-title {
-        font-size: 30px;
-        font-weight: 900;
-        letter-spacing: -0.025em;
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
         color: white;
         margin-bottom: 24px;
         z-index: 10;
@@ -109,76 +77,42 @@
 
       /* Progress Bar */
       .s-bar-container {
-        width: 140px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        z-index: 10;
-      }
-      
-      .s-track {
-        width: 100%;
-        height: 6px;
-        background-color: rgba(30, 41, 59, 0.5);
-        border-radius: 9999px;
+        width: 120px;
+        height: 4px;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 999px;
         overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        position: relative;
       }
       
       .s-fill {
         height: 100%;
-        width: 5%; /* Começa com um pouco para indicar atividade */
-        background: linear-gradient(90deg, #38bdf8, #6366f1);
-        border-radius: 9999px;
-        box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
-        transition: width 0.3s ease-out;
+        width: 10%;
+        background: white;
+        border-radius: 999px;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
       }
 
-      .s-meta {
-        width: 100%;
-        display: flex;
-        justify-content: space-between;
-        font-size: 9px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: #64748b;
-        padding: 0 4px;
-      }
-
-      /* Footer */
       .s-footer {
         position: absolute;
         bottom: 40px;
         font-size: 9px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.2em;
-        color: #64748b;
-        opacity: 0.3;
+        letter-spacing: 0.25em;
+        color: #475569;
         z-index: 10;
       }
 
-      /* Background Blobs */
-      .s-blob {
+      /* Background Effects */
+      .s-glow {
         position: absolute;
-        border-radius: 50%;
-        filter: blur(100px);
-        opacity: 0.1;
-        z-index: 0;
-      }
-      .s-blob-1 { top: -20%; left: -20%; width: 60vw; height: 60vw; background: #6366f1; }
-      .s-blob-2 { bottom: -20%; right: -20%; width: 60vw; height: 60vw; background: #0ea5e9; }
-      
-      /* Grid Pattern */
-      .s-grid {
-        position: absolute;
-        inset: 0;
-        background-image: linear-gradient(to right, rgba(30,41,59,0.1) 1px, transparent 1px),
-                          linear-gradient(to bottom, rgba(30,41,59,0.1) 1px, transparent 1px);
-        background-size: 24px 24px;
-        z-index: 0;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100vw;
+        height: 100vw;
+        background: radial-gradient(circle, rgba(14, 165, 233, 0.03) 0%, transparent 70%);
         pointer-events: none;
       }
     </style>
@@ -201,33 +135,23 @@
     }
     </script>
 </head>
-  <body class="bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100 min-h-screen overflow-x-hidden antialiased">
+  <body class="bg-[#020617] text-slate-100 min-h-screen overflow-x-hidden antialiased">
     
-    <!-- Tela Estática (Réplica Exata do Componente React) -->
+    <!-- Tela Estática Minimalista -->
     <div id="root-splash">
-        <div class="s-blob s-blob-1"></div>
-        <div class="s-blob s-blob-2"></div>
-        <div class="s-grid"></div>
+        <div class="s-glow"></div>
         
         <div class="s-logo-box">
-            <div class="s-logo-glow"></div>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="s-icon-main"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
-            <div class="s-badge">
-               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="s-icon-badge"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>
-            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="s-icon-main"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
         </div>
         
         <div class="s-title">Invest<span>FIIs</span></div>
         
         <div class="s-bar-container">
-            <div class="s-track"><div class="s-fill"></div></div>
-            <div class="s-meta">
-                <span>Iniciando...</span>
-                <span>0%</span>
-            </div>
+            <div class="s-fill"></div>
         </div>
 
-        <div class="s-footer">FIIs & Ações</div>
+        <div class="s-footer">Simples & Funcional</div>
     </div>
 
     <div id="root"></div>
