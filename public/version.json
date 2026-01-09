@@ -1,17 +1,12 @@
 
 {
-  "version": "8.1.0",
-  "date": "2025-07-10",
+  "version": "8.2.0",
+  "date": "2025-07-15",
   "notes": [
     {
       "type": "perf",
-      "title": "Gemini 2.5 Flash",
-      "desc": "Migração para o novo modelo Gemini 2.5 Flash para maior agilidade nas respostas."
-    },
-    {
-      "type": "feat",
-      "title": "Grounding Ativado",
-      "desc": "Confirmação do uso do Google Search para validação de dados reais da B3."
+      "title": "Gemini 2.5 Flash Ativado",
+      "desc": "Implementação técnica do modelo Gemini 2.5 Flash completada para maior velocidade na auditoria de dividendos."
     }
   ]
 }

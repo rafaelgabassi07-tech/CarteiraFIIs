@@ -10,10 +10,10 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Updated cache key to reflect model change.
-const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v13_3pro'; 
-// Updated to Gemini 3 Pro Preview as per guidelines for complex reasoning/audit tasks.
-const LOCKED_MODEL_ID = "gemini-3-pro-preview";
+// Updated cache key to reflect model change to Flash 2.5.
+const GEMINI_CACHE_KEY = 'investfiis_gemini_cache_v14_25flash'; 
+// Updated to Gemini 2.5 Flash for speed and efficiency.
+const LOCKED_MODEL_ID = "gemini-2.5-flash";
 
 const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
