@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 // Componente para exibir quando houver erro de configuração das chaves do Supabase
@@ -33,10 +33,10 @@ interface ErrorBoundaryState {
 /**
  * ErrorBoundary: Standard React class implementation to catch JavaScript errors anywhere in their child component tree.
  */
-// Fix: Use React.Component and provide a constructor to ensure props are correctly initialized and recognized by the TypeScript compiler.
-// Added explicit state property declaration and used direct React imports to ensure proper type inference for class component members.
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  public state: ErrorBoundaryState = {
+// Fix: Use React.Component explicitly and provide a constructor to ensure props are correctly initialized and recognized by the TypeScript compiler.
+// This resolves the error where 'this.props' was reported as non-existent on the ErrorBoundary type.
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public override state: ErrorBoundaryState = {
     hasError: false,
     error: null
   };

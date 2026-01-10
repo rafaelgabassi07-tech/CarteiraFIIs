@@ -26,9 +26,10 @@
     will-change: transform, opacity;
   }
 
+  /* CRITICAL: transform: none resets the containing block for fixed elements */
   body.app-revealed #root {
     opacity: 1;
-    transform: scale(1);
+    transform: none;
   }
   
   ::selection {

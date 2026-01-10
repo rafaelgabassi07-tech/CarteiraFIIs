@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox } from 'lucide-react';
@@ -66,50 +67,52 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 h-20 flex items-center justify-between px-5 transition-all duration-300 border-b border-zinc-200 dark:border-zinc-800 bg-primary-light/80 dark:bg-primary-dark/80 backdrop-blur-xl ${
-        bannerVisible ? 'top-8' : 'top-0'
-      }`}
+      className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-5 transition-all duration-300 border-b border-zinc-200 dark:border-zinc-800 bg-primary-light/80 dark:bg-primary-dark/80 backdrop-blur-xl ${
+        bannerVisible ? 'h-28 pt-8' : 'h-20 pt-safe'
+      } top-0`}
     >
-      <div className="flex items-center gap-3 w-full">
-        {showBack ? (
-          <div className="flex items-center gap-3 w-full anim-slide-in-right">
-            <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-surface-dark text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-transform">
-              <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
-            </button>
-            <h1 className="text-lg font-bold text-zinc-900 dark:text-white">Voltar</h1>
-          </div>
-        ) : (
-          <div className="flex flex-col anim-fade-in">
-              <div className="flex items-center gap-2">
-                  {isRefreshing && <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />}
-                  <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight flex items-baseline gap-1">
-                    {title}
-                    <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-                  </h1>
-              </div>
-          </div>
-        )}
-      </div>
+      <div className="flex items-center justify-between h-14 mb-1">
+        <div className="flex items-center gap-3 w-full">
+          {showBack ? (
+            <div className="flex items-center gap-3 w-full anim-slide-in-right">
+              <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-surface-dark text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-transform">
+                <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
+              </button>
+              <h1 className="text-lg font-bold text-zinc-900 dark:text-white">Voltar</h1>
+            </div>
+          ) : (
+            <div className="flex flex-col anim-fade-in">
+                <div className="flex items-center gap-2">
+                    {isRefreshing && <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />}
+                    <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight flex items-baseline gap-1">
+                      {title}
+                      <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+                    </h1>
+                </div>
+            </div>
+          )}
+        </div>
 
-      <div className="flex items-center gap-3">
-        {updateAvailable && !showBack && (
-          <button onClick={onUpdateClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-500 text-white active:scale-95 transition-transform shadow-sm">
-            <Download className="w-5 h-5 animate-bounce" strokeWidth={2.5} />
-          </button>
-        )}
-        {onNotificationClick && !showBack && (
-          <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-surface-dark text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-            <Bell className="w-5 h-5" strokeWidth={2} />
-            {notificationCount > 0 && 
-              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
-            }
-          </button>
-        )}
-        {!showBack && onSettingsClick && (
-          <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-surface-dark text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-            <Settings className="w-5 h-5" strokeWidth={2} />
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {updateAvailable && !showBack && (
+            <button onClick={onUpdateClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-500 text-white active:scale-95 transition-transform shadow-sm">
+              <Download className="w-5 h-5 animate-bounce" strokeWidth={2.5} />
+            </button>
+          )}
+          {onNotificationClick && !showBack && (
+            <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-surface-dark text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              <Bell className="w-5 h-5" strokeWidth={2} />
+              {notificationCount > 0 && 
+                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
+              }
+            </button>
+          )}
+          {!showBack && onSettingsClick && (
+            <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-surface-dark text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              <Settings className="w-5 h-5" strokeWidth={2} />
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );
@@ -128,8 +131,8 @@ const navItems = [
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-6">
-      <nav className="bg-white/70 dark:bg-zinc-900/70 backdrop-blur-2xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[2.5rem] shadow-2xl overflow-hidden p-2">
+    <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+      <nav className="pointer-events-auto bg-white/70 dark:bg-zinc-900/70 backdrop-blur-2xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[2.5rem] shadow-2xl overflow-hidden p-2 w-full max-w-sm mx-6">
         <div className="flex items-center justify-around h-14">
           {navItems.map(item => {
             const isActive = currentTab === item.id;
