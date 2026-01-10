@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Trophy, Clock, Target } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface HomeProps {
@@ -51,6 +51,18 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
     };
 };
 
+const getDaysUntil = (dateStr: string) => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const target = new Date(dateStr + 'T00:00:00');
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Hoje';
+    if (diffDays === 1) return 'Amanhã';
+    return `Em ${diffDays} dias`;
+};
+
 const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, invested, balance, totalAppreciation, transactions = [] }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
@@ -80,42 +92,57 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return { upcomingEvents: uniqueEvents, received: receivedTotal };
   }, [dividendReceipts]);
 
-  // Income History Logic
-  const incomeHistory = useMemo(() => {
+  // Income History & Best Payer Logic
+  const { history, average, maxVal, bestPayer } = useMemo(() => {
     const map: Record<string, number> = {};
+    const payerMap: Record<string, number> = {};
+
     dividendReceipts.forEach(r => {
+        // Build History
         if (r.paymentDate <= new Date().toISOString().split('T')[0]) {
             const key = r.paymentDate.substring(0, 7); // YYYY-MM
             map[key] = (map[key] || 0) + r.totalReceived;
+            
+            // Build Best Payer
+            payerMap[r.ticker] = (payerMap[r.ticker] || 0) + r.totalReceived;
         }
     });
     const sorted = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0])); // Descending date
     const totalMonths = sorted.length || 1;
     const average = received / (totalMonths > 0 ? totalMonths : 1);
-    
-    // Find max value for bar chart scaling
     const maxVal = Math.max(...Object.values(map), 0);
 
-    return { history: sorted, average, maxVal };
+    // Find Best Payer
+    const sortedPayers = Object.entries(payerMap).sort((a, b) => b[1] - a[1]);
+    const bestPayer = sortedPayers.length > 0 ? { ticker: sortedPayers[0][0], value: sortedPayers[0][1] } : null;
+
+    return { history: sorted, average, maxVal, bestPayer };
   }, [dividendReceipts, received]);
 
-  // Allocation Data
-  const typeData = useMemo(() => {
+  // Allocation & Top Assets Data
+  const { typeData, topAssets } = useMemo(() => {
       let fiisTotal = 0;
       let stocksTotal = 0;
       
-      portfolio.forEach(p => { 
+      const enriched = portfolio.map(p => {
           const val = (p.currentPrice || p.averagePrice) * p.quantity;
           if (p.assetType === AssetType.FII) fiisTotal += val;
           else stocksTotal += val;
+          return { ...p, totalValue: val };
       });
       
       const total = fiisTotal + stocksTotal || 1;
+      
+      // Top 3 Assets by Value
+      const sortedAssets = [...enriched].sort((a, b) => b.totalValue - a.totalValue).slice(0, 3);
 
       return {
-          fiis: { value: fiisTotal, percent: (fiisTotal / total) * 100 },
-          stocks: { value: stocksTotal, percent: (stocksTotal / total) * 100 },
-          total
+          typeData: {
+            fiis: { value: fiisTotal, percent: (fiisTotal / total) * 100 },
+            stocks: { value: stocksTotal, percent: (stocksTotal / total) * 100 },
+            total
+          },
+          topAssets: sortedAssets
       };
   }, [portfolio]);
 
@@ -125,18 +152,31 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       {/* 1. HERO CARD (Solid Dark Mode optimized) */}
       <div className="anim-fade-in-up is-visible">
         <div className="w-full bg-white dark:bg-[#0F1623] p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 relative overflow-hidden">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Patrimônio Total</span>
+            <div className="flex justify-between items-start mb-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Patrimônio Total</span>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full uppercase tracking-wider">Tempo Real</span>
+            </div>
+            
             <div className="flex items-center gap-3 mb-6">
                 <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums">{formatBRL(balance)}</h2>
                 {isAiLoading && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 mb-6">
                 <div className={`px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-bold ${isProfitPositive ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400'}`}>
                     {isProfitPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                     {formatPercent(totalProfitPercent)}
                 </div>
-                <span className="text-xs font-medium text-slate-400">Rentabilidade Global</span>
+                <span className="text-xs font-medium text-slate-400">Retorno Global</span>
+            </div>
+
+            {/* Informação Extra: Valor Aplicado */}
+            <div className="pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Wallet className="w-3 h-3 text-slate-400" />
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Valor Aplicado</span>
+                </div>
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatBRL(invested)}</span>
             </div>
         </div>
       </div>
@@ -151,7 +191,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Agenda</h3>
-                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Próximos Eventos</p>
+                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">
+                            {upcomingEvents.length} {upcomingEvents.length === 1 ? 'Evento Previsto' : 'Eventos Previstos'}
+                        </p>
                     </div>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
@@ -189,22 +231,42 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       {/* 3. RENDA PASSIVA & ALOCAÇÃO */}
       <div className="grid grid-cols-2 gap-4 anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
         {/* Renda */}
-        <button onClick={() => setShowProventosModal(true)} className="bg-white dark:bg-[#0F1623] p-5 rounded-[2rem] border border-slate-200 dark:border-slate-800 text-left active:scale-[0.98] transition-transform hover:border-slate-300 dark:hover:border-slate-700">
-            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4">
-                <CircleDollarSign className="w-5 h-5" />
+        <button onClick={() => setShowProventosModal(true)} className="bg-white dark:bg-[#0F1623] p-5 rounded-[2rem] border border-slate-200 dark:border-slate-800 text-left active:scale-[0.98] transition-transform hover:border-slate-300 dark:hover:border-slate-700 flex flex-col justify-between h-full">
+            <div>
+                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4">
+                    <CircleDollarSign className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renda Passiva</span>
+                <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-tight mb-3">{formatBRL(received)}</p>
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renda Passiva</span>
-            <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">{formatBRL(received)}</p>
+            
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Média Mensal</p>
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(average)}</p>
+            </div>
         </button>
 
         {/* Alocação */}
-        <button onClick={() => setShowAllocationModal(true)} className="bg-white dark:bg-[#0F1623] p-5 rounded-[2rem] border border-slate-200 dark:border-slate-800 text-left active:scale-[0.98] transition-transform hover:border-slate-300 dark:hover:border-slate-700">
-            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white mb-4">
-                <PieIcon className="w-5 h-5" />
+        <button onClick={() => setShowAllocationModal(true)} className="bg-white dark:bg-[#0F1623] p-5 rounded-[2rem] border border-slate-200 dark:border-slate-800 text-left active:scale-[0.98] transition-transform hover:border-slate-300 dark:hover:border-slate-700 flex flex-col justify-between h-full">
+            <div>
+                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white mb-4">
+                    <PieIcon className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Diversificação</span>
+                <div className="flex h-2 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 mt-2 mb-3">
+                    <div style={{ width: `${typeData.typeData.fiis.percent}%` }} className="h-full bg-slate-800 dark:bg-white transition-all duration-1000"></div>
+                </div>
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">FIIs vs Ações</span>
-            <div className="flex h-2 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 mt-2">
-                <div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-slate-800 dark:bg-white transition-all duration-1000"></div>
+
+            <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between items-center text-[9px] font-medium">
+                    <span className="text-slate-500">FIIs</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatBRL(typeData.typeData.fiis.value)}</span>
+                </div>
+                <div className="flex justify-between items-center text-[9px] font-medium">
+                    <span className="text-slate-500">Ações</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{formatBRL(typeData.typeData.stocks.value)}</span>
+                </div>
             </div>
         </button>
       </div>
@@ -228,8 +290,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 </div>
                             </div>
                             <div className="text-right">
+                                <div className="flex items-center justify-end gap-1 mb-0.5 text-[10px] font-bold text-slate-400">
+                                    <Clock className="w-3 h-3" />
+                                    <span>{getDaysUntil(e.date)}</span>
+                                </div>
                                 <p className="text-sm font-black text-slate-900 dark:text-white">{e.date.split('-').reverse().join('/')}</p>
-                                {e.eventType === 'payment' && <p className="text-xs font-medium text-slate-500">{formatBRL(e.totalReceived)}</p>}
+                                {e.eventType === 'payment' && <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{formatBRL(e.totalReceived)}</p>}
                             </div>
                         </div>
                     );
@@ -252,27 +318,43 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              </div>
              
              {/* Big Stats */}
-             <div className="grid grid-cols-2 gap-3 mb-8">
+             <div className="grid grid-cols-2 gap-3 mb-6">
                  <div className="bg-emerald-500 p-5 rounded-[1.5rem] text-white shadow-lg shadow-emerald-500/20">
                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
                      <p className="text-2xl font-black">{formatBRL(received)}</p>
                  </div>
                  <div className="bg-slate-100 dark:bg-slate-800 p-5 rounded-[1.5rem] border border-slate-200 dark:border-slate-700">
                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Média Mensal</p>
-                     <p className="text-xl font-black text-slate-900 dark:text-white">{formatBRL(incomeHistory.average)}</p>
+                     <p className="text-xl font-black text-slate-900 dark:text-white">{formatBRL(average)}</p>
                  </div>
              </div>
+
+            {/* Best Payer Card */}
+            {bestPayer && (
+                <div className="mb-8 p-4 bg-slate-50 dark:bg-[#02040A] rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/20 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                            <Trophy className="w-5 h-5" />
+                         </div>
+                         <div>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Maior Pagador</p>
+                             <p className="text-sm font-black text-slate-900 dark:text-white">{bestPayer.ticker}</p>
+                         </div>
+                    </div>
+                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(bestPayer.value)}</span>
+                </div>
+            )}
 
              {/* Monthly History List */}
              <div className="space-y-4">
                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Evolução Mensal</h3>
-                 {incomeHistory.history.length > 0 ? (
+                 {history.length > 0 ? (
                      <div className="space-y-3">
-                        {incomeHistory.history.map(([month, val], i) => {
+                        {history.map(([month, val], i) => {
                             const [year, m] = month.split('-');
                             const dateObj = new Date(parseInt(year), parseInt(m)-1, 1);
                             const monthName = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-                            const percentage = (val / (incomeHistory.maxVal || 1)) * 100;
+                            const percentage = (val / (maxVal || 1)) * 100;
 
                             return (
                                 <div key={month} className="bg-white dark:bg-[#0F1623] p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -318,17 +400,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              {/* DNA Bar Visual */}
              <div className="mb-8">
                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2 px-1">
-                     <span className="text-slate-900 dark:text-white">FIIs ({formatPercent(typeData.fiis.percent)})</span>
-                     <span className="text-slate-500 dark:text-slate-400">Ações ({formatPercent(typeData.stocks.percent)})</span>
+                     <span className="text-slate-900 dark:text-white">FIIs ({formatPercent(typeData.typeData.fiis.percent)})</span>
+                     <span className="text-slate-500 dark:text-slate-400">Ações ({formatPercent(typeData.typeData.stocks.percent)})</span>
                  </div>
                  <div className="h-4 w-full rounded-full flex overflow-hidden">
-                     <div style={{ width: `${typeData.fiis.percent}%` }} className="bg-slate-900 dark:bg-white h-full transition-all duration-1000"></div>
-                     <div style={{ width: `${typeData.stocks.percent}%` }} className="bg-slate-200 dark:bg-slate-700 h-full transition-all duration-1000"></div>
+                     <div style={{ width: `${typeData.typeData.fiis.percent}%` }} className="bg-slate-900 dark:bg-white h-full transition-all duration-1000"></div>
+                     <div style={{ width: `${typeData.typeData.stocks.percent}%` }} className="bg-slate-200 dark:bg-slate-700 h-full transition-all duration-1000"></div>
                  </div>
              </div>
 
              {/* Detail Cards */}
-             <div className="space-y-3">
+             <div className="space-y-3 mb-8">
                 <div className="p-5 rounded-[1.5rem] bg-white dark:bg-[#0F1623] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-slate-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-slate-900 shadow-lg">
@@ -340,8 +422,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-lg font-black text-slate-900 dark:text-white">{formatBRL(typeData.fiis.value)}</p>
-                        <p className="text-xs font-bold text-slate-500">{formatPercent(typeData.fiis.percent)}</p>
+                        <p className="text-lg font-black text-slate-900 dark:text-white">{formatBRL(typeData.typeData.fiis.value)}</p>
+                        <p className="text-xs font-bold text-slate-500">{formatPercent(typeData.typeData.fiis.percent)}</p>
                     </div>
                 </div>
 
@@ -356,11 +438,34 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-lg font-black text-slate-900 dark:text-white">{formatBRL(typeData.stocks.value)}</p>
-                        <p className="text-xs font-bold text-slate-500">{formatPercent(typeData.stocks.percent)}</p>
+                        <p className="text-lg font-black text-slate-900 dark:text-white">{formatBRL(typeData.typeData.stocks.value)}</p>
+                        <p className="text-xs font-bold text-slate-500">{formatPercent(typeData.typeData.stocks.percent)}</p>
                     </div>
                 </div>
              </div>
+
+             {/* Top Assets List */}
+             {topAssets.length > 0 && (
+                <div className="bg-slate-50 dark:bg-[#0F1623] rounded-[1.5rem] p-5 border border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Target className="w-4 h-4 text-slate-400" />
+                        <h4 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Top 3 Maiores Posições</h4>
+                    </div>
+                    <div className="space-y-3">
+                        {topAssets.map((asset, idx) => (
+                            <div key={asset.ticker} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                        {idx + 1}
+                                    </span>
+                                    <span className="text-sm font-bold text-slate-900 dark:text-white">{asset.ticker}</span>
+                                </div>
+                                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{formatBRL((asset.currentPrice || asset.averagePrice) * asset.quantity)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+             )}
              
              {/* Note */}
              <p className="text-center mt-8 text-[10px] text-slate-400 max-w-[200px] mx-auto leading-relaxed">
