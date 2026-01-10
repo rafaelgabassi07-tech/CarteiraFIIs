@@ -17,11 +17,11 @@ export default {
       colors: {
         // Fintech Palette
         primary: { 
-          light: '#F2F5F9', // Cool Grey Light Background
+          light: '#FFFFFF', // Pure White for Sunlight visibility
           dark: '#02040A'   // Deep Navy/Black Background
         }, 
         surface: {
-          light: '#FFFFFF',
+          light: '#F8FAFC', // Very light gray for slight separation
           dark: '#0B101A'   // Lighter Navy for cards
         },
         accent: 'rgb(var(--color-accent-rgb) / <alpha-value>)', 
@@ -34,7 +34,7 @@ export default {
       },
       boxShadow: {
         'glow': '0 0 20px -5px var(--color-accent)',
-        'card': '0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 0 1px rgba(0,0,0,0.1)',
+        'card': '0 1px 2px 0 rgba(0, 0, 0, 0.05)', // Sharper shadow
         'card-dark': '0 4px 20px -5px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255,255,255,0.1)',
       }
     }

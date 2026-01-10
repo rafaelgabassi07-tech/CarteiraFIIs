@@ -18,7 +18,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
-    @apply bg-[#F0F2F5] dark:bg-[#02040A] text-slate-900 dark:text-slate-100;
+    /* Aplica o background definido no tailwind.config (primary.light = white) */
+    @apply bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100;
   }
   
   /* Reset de seleção */
