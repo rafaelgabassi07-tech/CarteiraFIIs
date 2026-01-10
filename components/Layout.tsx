@@ -132,7 +132,7 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-      <nav className="pointer-events-auto bg-white/70 dark:bg-zinc-900/70 backdrop-blur-2xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[2.5rem] shadow-2xl overflow-hidden p-2 w-full max-w-sm mx-6">
+      <nav className="pointer-events-auto bg-white/80 dark:bg-zinc-900/80 backdrop-blur-2xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden p-2 w-full max-w-sm mx-6">
         <div className="flex items-center justify-around h-14">
           {navItems.map(item => {
             const isActive = currentTab === item.id;

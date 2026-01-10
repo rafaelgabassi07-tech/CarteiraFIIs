@@ -17,19 +17,23 @@
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
     @apply bg-primary-light dark:bg-[#020617] text-zinc-900 dark:text-zinc-100;
+    /* Garante que o body ocupa a tela toda para o scroll natural */
+    min-height: 100%;
   }
 
+  /* 
+     CRÍTICO: Removemos transform e will-change do #root.
+     Qualquer transform no elemento pai de um 'position: fixed' faz com que 
+     o elemento se comporte como 'position: absolute' em relação ao pai,
+     fazendo a barra de navegação "sumir" ao rolar a página.
+  */
   #root {
-    transition: transform 0.8s var(--ease-out-quint), opacity 0.6s var(--ease-out-quint);
+    transition: opacity 0.6s var(--ease-out-quint);
     opacity: 0;
-    transform: scale(0.96);
-    will-change: transform, opacity;
   }
 
-  /* CRITICAL: transform: none resets the containing block for fixed elements */
   body.app-revealed #root {
     opacity: 1;
-    transform: none;
   }
   
   ::selection {
