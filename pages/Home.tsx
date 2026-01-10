@@ -30,8 +30,16 @@ const formatPercent = (val: any) => {
   return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 };
 
-// Cores para o gráfico de pizza
-const COLORS = ['#0ea5e9', '#10b981', '#6366f1', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'];
+// Cores refinadas e harmoniosas (Professional Palette)
+const COLORS = [
+    '#3b82f6', // Blue 500
+    '#6366f1', // Indigo 500
+    '#10b981', // Emerald 500
+    '#f59e0b', // Amber 500
+    '#8b5cf6', // Violet 500
+    '#ec4899', // Pink 500
+    '#06b6d4'  // Cyan 500
+];
 
 // Logic for solid styling of event badges (Harmonized with Zinc)
 const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
@@ -40,20 +48,20 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
     if (eventType === 'datacom') {
         return { 
             // Base neutra com acento Amber
-            containerClass: 'bg-zinc-50 dark:bg-zinc-900 border-l-[3px] border-l-amber-400 border-y border-r border-zinc-100 dark:border-zinc-800',
+            containerClass: 'bg-amber-50 dark:bg-amber-950/20 border-l-[3px] border-l-amber-400 border-y border-r border-amber-100 dark:border-amber-900',
             iconClass: 'text-amber-500',
-            textClass: 'text-zinc-500 dark:text-zinc-400',
-            valueClass: 'text-zinc-700 dark:text-zinc-300 font-medium',
+            textClass: 'text-amber-700 dark:text-amber-300',
+            valueClass: 'text-amber-800 dark:text-amber-200 font-medium',
             icon: CalendarDays,
             label: isToday ? 'Data Com Hoje' : 'Data Com'
         };
     }
     return {
         // Base neutra com acento Emerald
-        containerClass: 'bg-zinc-50 dark:bg-zinc-900 border-l-[3px] border-l-emerald-500 border-y border-r border-zinc-100 dark:border-zinc-800',
+        containerClass: 'bg-emerald-50 dark:bg-emerald-950/20 border-l-[3px] border-l-emerald-500 border-y border-r border-emerald-100 dark:border-emerald-900',
         iconClass: 'text-emerald-500',
-        textClass: 'text-zinc-500 dark:text-zinc-400',
-        valueClass: 'text-emerald-600 dark:text-emerald-400 font-bold',
+        textClass: 'text-emerald-700 dark:text-emerald-300',
+        valueClass: 'text-emerald-800 dark:text-emerald-200 font-bold',
         icon: Banknote,
         label: isToday ? 'Cai Hoje' : 'Pagamento'
     };
@@ -181,9 +189,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="pt-24 pb-32 px-5 space-y-5 max-w-lg mx-auto">
       
-      {/* 1. HERO CARD */}
+      {/* 1. HERO CARD - Gradient for Hierarchy */}
       <div className="anim-fade-in-up is-visible">
-        <div className="w-full bg-surface-light dark:bg-surface-dark p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark">
+        <div className="w-full bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark">
             <div className="flex justify-between items-start mb-4">
                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">Patrimônio Total</span>
                 {isAiLoading && <Loader2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400 animate-spin" />}
@@ -193,7 +201,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter tabular-nums leading-none mb-1">{formatBRL(balance)}</h2>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 pt-5 border-t border-zinc-100 dark:border-zinc-800">
+            <div className="grid grid-cols-2 gap-4 pt-5 border-t border-zinc-200 dark:border-zinc-800/50">
                 {/* Investment Cost */}
                 <div>
                     <span className="flex items-center gap-1.5 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">
@@ -221,12 +229,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </div>
 
-      {/* 2. AGENDA CARD */}
+      {/* 2. AGENDA CARD - Clean Look with colored badges */}
       <div className="anim-fade-in-up is-visible" style={{ animationDelay: '50ms' }}>
         <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-surface-light dark:bg-surface-dark p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 active:scale-[0.98] transition-transform group hover:border-zinc-300 dark:hover:border-zinc-700 shadow-card dark:shadow-card-dark">
             <div className="flex justify-between items-center mb-5">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white">
+                    <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
                         <CalendarDays className="w-5 h-5" strokeWidth={2} />
                     </div>
                     <div>
@@ -269,12 +277,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* 3. RENDA PASSIVA & ALOCAÇÃO */}
+      {/* 3. RENDA PASSIVA & ALOCAÇÃO - Colored Icons */}
       <div className="grid grid-cols-2 gap-4 anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
         {/* Renda */}
         <button onClick={() => setShowProventosModal(true)} className="bg-surface-light dark:bg-surface-dark p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-left active:scale-[0.98] transition-transform hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full relative overflow-hidden shadow-card dark:shadow-card-dark">
             <div>
-                <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-600 dark:text-zinc-400 mb-4">
+                <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-4 border border-emerald-100 dark:border-emerald-900/30">
                     <CircleDollarSign className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-1">Renda Passiva</span>
@@ -298,19 +306,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         {/* Alocação */}
         <button onClick={() => setShowAllocationModal(true)} className="bg-surface-light dark:bg-surface-dark p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-left active:scale-[0.98] transition-transform hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-card dark:shadow-card-dark">
             <div>
-                <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white mb-4">
+                <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mb-4 border border-blue-100 dark:border-blue-900/30">
                     <PieIcon className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-1">Diversificação</span>
                 
-                {/* Visual Bar */}
+                {/* Visual Bar - Uses Indigo for FIIs, Sky for Stocks */}
                 <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 mt-2 mb-2">
-                    <div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-zinc-900 dark:bg-white transition-all duration-1000"></div>
+                    <div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-1000"></div>
+                    <div style={{ width: `${typeData.stocks.percent}%` }} className="h-full bg-sky-500 dark:bg-sky-400 transition-all duration-1000"></div>
                 </div>
                 
                 <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest">
-                    <span className="text-zinc-900 dark:text-white">FIIs {Math.round(typeData.fiis.percent)}%</span>
-                    <span className="text-zinc-500 dark:text-zinc-400">Ações {Math.round(typeData.stocks.percent)}%</span>
+                    <span className="text-indigo-600 dark:text-indigo-400">FIIs {Math.round(typeData.fiis.percent)}%</span>
+                    <span className="text-sky-600 dark:text-sky-400">Ações {Math.round(typeData.stocks.percent)}%</span>
                 </div>
             </div>
 
@@ -376,7 +385,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              
              {/* Big Stats */}
              <div className="grid grid-cols-2 gap-3 mb-6">
-                 <div className="bg-emerald-500 p-5 rounded-[1.5rem] text-white shadow-lg">
+                 <div className="bg-emerald-500 p-5 rounded-[1.5rem] text-white shadow-lg shadow-emerald-500/20">
                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
                      <p className="text-2xl font-black">{formatBRL(received)}</p>
                  </div>
@@ -390,7 +399,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             {bestPayer && (
                 <div className="mb-8 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                         <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950/40 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
                             <Trophy className="w-5 h-5" />
                          </div>
                          <div>
@@ -507,7 +516,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="p-6 pb-20">
              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-900 dark:text-white">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
                     <PieIcon className="w-6 h-6" strokeWidth={1.5} />
                 </div>
                 <div>
@@ -519,12 +528,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              {/* DNA Bar Visual (Simple) */}
              <div className="mb-8">
                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2 px-1">
-                     <span className="text-zinc-900 dark:text-white">FIIs ({formatPercent(typeData.fiis.percent)})</span>
-                     <span className="text-zinc-500 dark:text-zinc-400">Ações ({formatPercent(typeData.stocks.percent)})</span>
+                     <span className="text-indigo-600 dark:text-indigo-400">FIIs ({formatPercent(typeData.fiis.percent)})</span>
+                     <span className="text-sky-600 dark:text-sky-400">Ações ({formatPercent(typeData.stocks.percent)})</span>
                  </div>
                  <div className="h-4 w-full rounded-full flex overflow-hidden">
-                     <div style={{ width: `${typeData.fiis.percent}%` }} className="bg-zinc-900 dark:bg-white h-full transition-all duration-1000"></div>
-                     <div style={{ width: `${typeData.stocks.percent}%` }} className="bg-zinc-200 dark:bg-zinc-700 h-full transition-all duration-1000"></div>
+                     <div style={{ width: `${typeData.fiis.percent}%` }} className="bg-indigo-600 dark:bg-indigo-500 h-full transition-all duration-1000"></div>
+                     <div style={{ width: `${typeData.stocks.percent}%` }} className="bg-sky-500 dark:bg-sky-400 h-full transition-all duration-1000"></div>
                  </div>
              </div>
 
@@ -576,35 +585,35 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
              {/* Detail Cards */}
              <div className="space-y-3 mb-8">
-                <div className="p-5 rounded-[1.5rem] bg-surface-light dark:bg-surface-dark border border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <div className="p-5 rounded-[1.5rem] bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-zinc-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-zinc-900 shadow-lg">
+                        <div className="w-12 h-12 bg-white dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
                             <Building2 className="w-6 h-6" strokeWidth={1.5} />
                         </div>
                         <div>
-                            <h3 className="font-black text-zinc-900 dark:text-white text-lg">FIIs</h3>
-                            <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Fundos Imobiliários</p>
+                            <h3 className="font-black text-indigo-900 dark:text-indigo-100 text-lg">FIIs</h3>
+                            <p className="text-[10px] font-bold text-indigo-600/60 dark:text-indigo-400/60 uppercase tracking-widest">Fundos Imobiliários</p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(typeData.fiis.value)}</p>
-                        <p className="text-xs font-bold text-zinc-500">{formatPercent(typeData.fiis.percent)}</p>
+                        <p className="text-lg font-black text-indigo-900 dark:text-indigo-100">{formatBRL(typeData.fiis.value)}</p>
+                        <p className="text-xs font-bold text-indigo-500 dark:text-indigo-400">{formatPercent(typeData.fiis.percent)}</p>
                     </div>
                 </div>
 
-                <div className="p-5 rounded-[1.5rem] bg-surface-light dark:bg-surface-dark border border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <div className="p-5 rounded-[1.5rem] bg-sky-50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-900/30 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                        <div className="w-12 h-12 bg-white dark:bg-sky-900/50 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
                             <CandlestickChart className="w-6 h-6" strokeWidth={1.5} />
                         </div>
                         <div>
-                            <h3 className="font-black text-zinc-900 dark:text-white text-lg">Ações</h3>
-                            <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Mercado de Capitais</p>
+                            <h3 className="font-black text-sky-900 dark:text-sky-100 text-lg">Ações</h3>
+                            <p className="text-[10px] font-bold text-sky-600/60 dark:text-sky-400/60 uppercase tracking-widest">Mercado de Capitais</p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(typeData.stocks.value)}</p>
-                        <p className="text-xs font-bold text-zinc-500">{formatPercent(typeData.stocks.percent)}</p>
+                        <p className="text-lg font-black text-sky-900 dark:text-sky-100">{formatBRL(typeData.stocks.value)}</p>
+                        <p className="text-xs font-bold text-sky-500 dark:text-sky-400">{formatPercent(typeData.stocks.percent)}</p>
                     </div>
                 </div>
              </div>

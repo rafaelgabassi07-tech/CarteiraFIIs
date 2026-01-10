@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Save, Download, Upload, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, RefreshCw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Box, Layers, Gauge, Info, Wallet, RotateCcw, Activity, Cloud, Loader2, Calendar, Target, TrendingUp, Search, ExternalLink, LogIn, LogOut, User, Mail, FileText, ScrollText, Aperture, CreditCard, Star, ArrowRightLeft, Clock, BarChart3, Signal, Zap } from 'lucide-react';
+import { Save, Download, Upload, AlertTriangle, CheckCircle2, Globe, Database, ShieldAlert, ChevronRight, ArrowLeft, Bell, ToggleLeft, ToggleRight, Sun, Moon, Monitor, RefreshCcw, RefreshCw, Eye, EyeOff, Palette, Rocket, Check, Sparkles, Box, Layers, Gauge, Info, Wallet, RotateCcw, Activity, Cloud, Loader2, Calendar, Target, TrendingUp, Search, ExternalLink, LogIn, LogOut, User, Mail, FileText, ScrollText, Aperture, CreditCard, Star, ArrowRightLeft, Clock, BarChart3, Signal, Zap, Lock, Smartphone } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote, ReleaseNoteType } from '../types';
 import { ThemeType } from '../App';
 import { supabase } from '../services/supabase';
@@ -405,10 +405,12 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, index = 0 }: any) => (
+  const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, index = 0, colorClass }: any) => (
     <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:scale-[0.98] transition-all border-b last:border-0 border-zinc-200 dark:border-zinc-800 group gap-4 anim-fade-in-up`} style={{ animationDelay: `${index * 50}ms` }}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}><Icon className="w-5 h-5" strokeWidth={2.5} /></div>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : (colorClass || 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400')}`}>
+                <Icon className="w-5 h-5" strokeWidth={2.5} />
+            </div>
             <span className={`text-sm font-semibold text-left ${isDestructive ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-200'}`}>{label}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -479,7 +481,7 @@ export const Settings: React.FC<SettingsProps> = ({
                <div className="rounded-[2rem] overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
                  <div className="p-6 space-y-4">
                      <div className="flex items-center gap-4">
-                         <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-900 dark:text-white"><User className="w-6 h-6" /></div>
+                         <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center shadow-sm border border-indigo-100 dark:border-indigo-900/50"><User className="w-6 h-6" /></div>
                          <div className="overflow-hidden"><h3 className="font-bold text-zinc-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-zinc-500 truncate">{user ? user.email : 'Carregando...'}</p></div>
                      </div>
                      <button onClick={() => setShowLogoutConfirm(true)} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
@@ -488,20 +490,74 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <Section title="Preferências">
-                <MenuItem icon={Palette} label="Aparência" onClick={() => setActiveSection('appearance')} index={1} />
-                <MenuItem icon={Bell} label="Notificações" onClick={() => setActiveSection('notifications')} value={pushEnabled ? 'Ativado' : ''} index={2} />
-                <MenuItem icon={privacyMode ? EyeOff : Eye} label="Privacidade" onClick={() => setActiveSection('privacy')} value={privacyMode ? 'Ativado' : 'Público'} index={3} />
+                <MenuItem 
+                    icon={Palette} 
+                    label="Aparência" 
+                    onClick={() => setActiveSection('appearance')} 
+                    index={1} 
+                    colorClass="bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400"
+                />
+                <MenuItem 
+                    icon={Bell} 
+                    label="Notificações" 
+                    onClick={() => setActiveSection('notifications')} 
+                    value={pushEnabled ? 'Ativado' : ''} 
+                    index={2} 
+                    colorClass="bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
+                />
+                <MenuItem 
+                    icon={privacyMode ? EyeOff : Eye} 
+                    label="Privacidade" 
+                    onClick={() => setActiveSection('privacy')} 
+                    value={privacyMode ? 'Ativado' : 'Público'} 
+                    index={3} 
+                    colorClass="bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400"
+                />
             </Section>
 
             <Section title="Dados & Sincronização">
-                <MenuItem icon={Globe} label="Conexões e Serviços" onClick={() => setActiveSection('integrations')} value="Online" index={4} />
-                <MenuItem icon={Database} label="Backup e IA Cache" onClick={() => setActiveSection('data')} value={formatBytes(storageData.totalBytes)} index={5} />
+                <MenuItem 
+                    icon={Globe} 
+                    label="Conexões e Serviços" 
+                    onClick={() => setActiveSection('integrations')} 
+                    value="Online" 
+                    index={4} 
+                    colorClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                />
+                <MenuItem 
+                    icon={Database} 
+                    label="Backup e IA Cache" 
+                    onClick={() => setActiveSection('data')} 
+                    value={formatBytes(storageData.totalBytes)} 
+                    index={5} 
+                    colorClass="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+                />
             </Section>
 
             <Section title="Sistema">
-                <MenuItem icon={RefreshCcw} label="Atualizações" onClick={() => setActiveSection('updates')} hasUpdate={updateAvailable} value={`v${appVersion}`} index={6} />
-                <MenuItem icon={Info} label="Sobre o APP" onClick={() => setActiveSection('about')} index={7} />
-                <MenuItem icon={ShieldAlert} label="Resetar Aplicativo" onClick={() => setActiveSection('system')} isDestructive index={8} />
+                <MenuItem 
+                    icon={RefreshCcw} 
+                    label="Atualizações" 
+                    onClick={() => setActiveSection('updates')} 
+                    hasUpdate={updateAvailable} 
+                    value={`v${appVersion}`} 
+                    index={6} 
+                    colorClass="bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"
+                />
+                <MenuItem 
+                    icon={Info} 
+                    label="Sobre o APP" 
+                    onClick={() => setActiveSection('about')} 
+                    index={7} 
+                    colorClass="bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                />
+                <MenuItem 
+                    icon={ShieldAlert} 
+                    label="Resetar Aplicativo" 
+                    onClick={() => setActiveSection('system')} 
+                    isDestructive 
+                    index={8} 
+                />
             </Section>
             
             <div className="text-center mt-8 opacity-40"><p className="text-[10px] font-bold uppercase tracking-widest">InvestFIIs Ultra</p><p className="text-[9px]">Versão {appVersion}</p></div>
@@ -660,7 +716,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     <div className="space-y-3">
                         <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white"><Database className="w-5 h-5" /></div>
+                                <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400"><Database className="w-5 h-5" /></div>
                                 <div>
                                     <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Supabase Cloud</h4>
                                     <p className="text-[9px] text-zinc-400 font-mono">AWS sa-east-1 • WSS</p>
@@ -673,7 +729,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
                         <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white"><BarChart3 className="w-5 h-5" /></div>
+                                <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/10 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400"><BarChart3 className="w-5 h-5" /></div>
                                 <div>
                                     <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Brapi Finance</h4>
                                     <p className="text-[9px] text-zinc-400 font-mono">Delay 15m • Cache: {cachedItemsCount.quotes}</p>
@@ -687,7 +743,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white"><Sparkles className="w-5 h-5" /></div>
+                                    <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/10 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400"><Sparkles className="w-5 h-5" /></div>
                                     <div>
                                         <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Google Gemini</h4>
                                         <p className="text-[9px] text-zinc-400 font-mono">Model: 2.5 Flash (Fast)</p>
@@ -698,7 +754,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                 </div>
                             </div>
                             <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden flex items-center">
-                                <div className={`h-full rounded-full transition-all duration-500 ${lastAiStatus === 'operational' ? 'bg-zinc-900 dark:bg-white w-[15%]' : 'bg-amber-500 w-[95%]'}`}></div>
+                                <div className={`h-full rounded-full transition-all duration-500 ${lastAiStatus === 'operational' ? 'bg-indigo-500 w-[15%]' : 'bg-amber-500 w-[95%]'}`}></div>
                             </div>
                             <p className="text-[8px] text-right text-zinc-400 mt-1 font-bold uppercase tracking-wider">Uso Estimado da Cota</p>
                         </div>
@@ -708,7 +764,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 <div className="pt-2 pb-6">
                      <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group">
                         <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-zinc-200 dark:bg-zinc-700 text-zinc-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
+                            <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-900/10 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
                             <div className="text-left">
                                 <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 block uppercase tracking-wide">Diagnóstico Avançado</span>
                                 <span className="text-[9px] text-zinc-400">Logs técnicos e testes de integridade</span>
@@ -743,7 +799,7 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'privacy' && (
             <div className="space-y-6 anim-fade-in-up">
                 <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 text-center relative overflow-hidden">
-                    {privacyMode ? <EyeOff className="w-10 h-10 text-zinc-500 mx-auto mb-3" /> : <Eye className="w-10 h-10 text-zinc-500 mx-auto mb-3" />}
+                    {privacyMode ? <EyeOff className="w-10 h-10 text-teal-500 mx-auto mb-3" /> : <Eye className="w-10 h-10 text-teal-500 mx-auto mb-3" />}
                     <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Configurações de Privacidade</h3>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 max-w-[200px] mx-auto">Oculta valores sensíveis da tela para evitar olhares curiosos em público.</p>
                     <button 
@@ -791,7 +847,7 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'notifications' && (
             <div className="space-y-6 anim-fade-in-up">
                 <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 text-center relative overflow-hidden">
-                    <Bell className="w-10 h-10 text-zinc-500 mx-auto mb-3" />
+                    <Bell className="w-10 h-10 text-amber-500 mx-auto mb-3" />
                     <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Push Notifications</h3>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 max-w-[200px] mx-auto">Receba alertas em tempo real sobre dividendos e eventos da carteira.</p>
                     <button 
@@ -818,7 +874,7 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'data' && (
              <div className="space-y-6 anim-fade-in-up">
                 <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 text-center relative overflow-hidden">
-                    <Database className="w-10 h-10 text-zinc-400 mx-auto mb-3" />
+                    <Database className="w-10 h-10 text-blue-500 mx-auto mb-3" />
                     <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Backup & Restauração</h3>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 max-w-[250px] mx-auto">Salve uma cópia de segurança dos seus dados ou restaure um backup anterior.</p>
                     <div className="grid grid-cols-2 gap-3">
@@ -852,11 +908,11 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'system' && (
               <div className="space-y-6 anim-fade-in-up">
                   <Section title="Perigo">
-                      <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 flex flex-col items-center text-center">
-                          <ShieldAlert className="w-10 h-10 text-zinc-500 mb-3" />
-                          <h3 className="font-bold text-zinc-600 dark:text-zinc-400 mb-1">Apagar Tudo</h3>
-                          <p className="text-xs text-zinc-400 mb-4 max-w-[200px]">Esta ação removerá todas as transações e configurações permanentemente.</p>
-                          <button onClick={onResetApp} className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-bold uppercase tracking-widest active:scale-95 shadow-lg">Confirmar Reset</button>
+                      <div className="p-6 bg-rose-50 dark:bg-rose-900/10 flex flex-col items-center text-center">
+                          <ShieldAlert className="w-10 h-10 text-rose-500 mb-3" />
+                          <h3 className="font-bold text-rose-700 dark:text-rose-400 mb-1">Apagar Tudo</h3>
+                          <p className="text-xs text-rose-600/70 dark:text-rose-400/70 mb-4 max-w-[200px]">Esta ação removerá todas as transações e configurações permanentemente.</p>
+                          <button onClick={onResetApp} className="px-6 py-3 bg-rose-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest active:scale-95 shadow-lg shadow-rose-500/20">Confirmar Reset</button>
                       </div>
                   </Section>
               </div>
