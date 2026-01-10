@@ -8,12 +8,23 @@ interface PortfolioProps {
   portfolio: AssetPosition[];
   dividendReceipts?: DividendReceipt[];
   balance?: number;
+  invested?: number;
+  totalDividendsReceived?: number;
+  salesGain?: number;
+  privacyMode?: boolean;
 }
 
-const formatBRL = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const formatPercent = (val: number) => `${val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}%`;
+const formatBRL = (val: number, privacy = false) => {
+  if (privacy) return 'R$ ••••••';
+  return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
 
-const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number, onViewDetails: (asset: AssetPosition) => void }> = ({ asset, totalValue, onViewDetails }) => {
+const formatPercent = (val: number, privacy = false) => {
+  if (privacy) return '•••%';
+  return `${val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}%`;
+};
+
+const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number, privacyMode?: boolean }> = ({ asset, totalValue, privacyMode = false }) => {
   const [expanded, setExpanded] = useState(false);
   
   const currentVal = (asset.currentPrice || asset.averagePrice) * asset.quantity;
@@ -52,10 +63,10 @@ const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number, onViewDeta
             </div>
 
             <div className="text-right">
-                <p className="text-sm font-black text-zinc-900 dark:text-white leading-none mb-1">{formatBRL(currentVal)}</p>
+                <p className="text-sm font-black text-zinc-900 dark:text-white leading-none mb-1">{formatBRL(currentVal, privacyMode)}</p>
                 <div className={`flex items-center justify-end gap-1 text-[10px] font-bold ${isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                     {isPos ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                    {formatPercent(deltaPercent)}
+                    {formatPercent(deltaPercent, privacyMode)}
                 </div>
             </div>
         </button>
@@ -68,11 +79,11 @@ const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number, onViewDeta
                 <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
                         <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest mb-1">Preço Médio</p>
-                        <p className="text-xs font-black text-zinc-700 dark:text-zinc-200">{formatBRL(asset.averagePrice)}</p>
+                        <p className="text-xs font-black text-zinc-700 dark:text-zinc-200">{formatBRL(asset.averagePrice, privacyMode)}</p>
                     </div>
                     <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
                         <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest mb-1">Preço Atual</p>
-                        <p className="text-xs font-black text-zinc-700 dark:text-zinc-200">{formatBRL(asset.currentPrice || 0)}</p>
+                        <p className="text-xs font-black text-zinc-700 dark:text-zinc-200">{formatBRL(asset.currentPrice || 0, privacyMode)}</p>
                     </div>
                 </div>
 
@@ -90,7 +101,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number, onViewDeta
                         Resultado Total
                     </span>
                     <span className={`text-sm font-black ${isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                        {isPos ? '+' : ''}{formatBRL(delta)}
+                        {isPos ? '+' : ''}{formatBRL(delta, privacyMode)}
                     </span>
                 </div>
             </div>
@@ -99,7 +110,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number, onViewDeta
   );
 };
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0 }) => {
+const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0, privacyMode = false }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<'ALL' | AssetType>('ALL');
 
@@ -145,7 +156,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0 }
             <div className="space-y-3">
                 {filtered.length > 0 ? (
                     filtered.map(asset => (
-                        <AssetCard key={asset.ticker} asset={asset} totalValue={balance} onViewDetails={() => {}} />
+                        <AssetCard key={asset.ticker} asset={asset} totalValue={balance} privacyMode={privacyMode} />
                     ))
                 ) : (
                     <div className="text-center py-20 opacity-50">

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 // Componente para exibir quando houver erro de configuração das chaves do Supabase
@@ -22,7 +22,7 @@ const ConfigurationError: React.FC = () => (
 );
 
 interface ErrorBoundaryProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -34,24 +34,26 @@ interface ErrorBoundaryState {
  * ErrorBoundary: Standard React class implementation to catch JavaScript errors anywhere in their child component tree.
  */
 // Fix: Use React.Component and provide a constructor to ensure props are correctly initialized and recognized by the TypeScript compiler.
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+// Added explicit state property declaration and used direct React imports to ensure proper type inference for class component members.
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null
+  };
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  render(): React.ReactNode {
+  render(): ReactNode {
     const { hasError, error } = this.state;
 
     if (hasError) {

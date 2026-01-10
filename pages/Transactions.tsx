@@ -7,7 +7,10 @@ import { Transaction, AssetType } from '../types';
 
 const List = ReactWindow.VariableSizeList;
 
-const formatBRL = (val: number) => val.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+const formatBRL = (val: number, privacy = false) => {
+  if (privacy) return '••••••';
+  return val.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+};
 
 // Componente da Linha da Transação
 const TransactionRow = React.memo(({ index, style, data }: any) => {
@@ -24,6 +27,7 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
 
   const t = item.data;
   const isBuy = t.type === 'BUY';
+  const privacyMode = data.privacyMode;
   
   return (
       <div style={style} className="px-1 py-1.5">
@@ -46,8 +50,8 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
                   </div>
               </div>
               <div className="text-right">
-                  <p className="text-sm font-black text-zinc-900 dark:text-white">R$ {formatBRL(t.price * t.quantity)}</p>
-                  <p className="text-[10px] text-zinc-400 font-medium">{t.quantity}x {formatBRL(t.price)}</p>
+                  <p className="text-sm font-black text-zinc-900 dark:text-white">R$ {formatBRL(t.price * t.quantity, privacyMode)}</p>
+                  <p className="text-[10px] text-zinc-400 font-medium">{t.quantity}x {formatBRL(t.price, privacyMode)}</p>
               </div>
           </button>
       </div>
@@ -59,9 +63,10 @@ interface TransactionsProps {
     onAddTransaction: (t: Omit<Transaction, 'id'>) => Promise<void>;
     onUpdateTransaction: (id: string, t: Partial<Transaction>) => Promise<void>;
     onRequestDeleteConfirmation: (id: string) => void;
+    privacyMode?: boolean;
 }
 
-const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onUpdateTransaction, onRequestDeleteConfirmation }) => {
+const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onUpdateTransaction, onRequestDeleteConfirmation, privacyMode = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     
@@ -165,7 +170,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         itemCount={flatTransactions.length} 
                         itemSize={getItemSize} 
                         width="100%" 
-                        itemData={{ items: flatTransactions, onRowClick: handleOpenEdit }}
+                        itemData={{ items: flatTransactions, onRowClick: handleOpenEdit, privacyMode }}
                     >
                         {TransactionRow}
                     </List>
