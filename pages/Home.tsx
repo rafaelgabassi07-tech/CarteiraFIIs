@@ -273,12 +273,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 
                 {/* Visual Bar */}
                 <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 mt-2 mb-2">
-                    <div style={{ width: `${typeData.typeData.fiis.percent}%` }} className="h-full bg-slate-900 dark:bg-white transition-all duration-1000"></div>
+                    <div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-slate-900 dark:bg-white transition-all duration-1000"></div>
                 </div>
                 
                 <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest">
-                    <span className="text-slate-900 dark:text-white">FIIs {Math.round(typeData.typeData.fiis.percent)}%</span>
-                    <span className="text-slate-500 dark:text-slate-400">Ações {Math.round(typeData.typeData.stocks.percent)}%</span>
+                    <span className="text-slate-900 dark:text-white">FIIs {Math.round(typeData.fiis.percent)}%</span>
+                    <span className="text-slate-500 dark:text-slate-400">Ações {Math.round(typeData.stocks.percent)}%</span>
                 </div>
             </div>
 
@@ -289,7 +289,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </p>
                     <div className="flex justify-between items-baseline">
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{topAssets[0].ticker}</span>
-                        <span className="text-[9px] font-medium text-slate-600 dark:text-slate-500">{formatPercent((topAssets[0].totalValue / typeData.typeData.total) * 100)}</span>
+                        <span className="text-[9px] font-medium text-slate-600 dark:text-slate-500">{formatPercent((topAssets[0].totalValue / typeData.total) * 100)}</span>
                     </div>
                 </div>
             )}
@@ -425,12 +425,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              {/* DNA Bar Visual */}
              <div className="mb-8">
                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2 px-1">
-                     <span className="text-slate-900 dark:text-white">FIIs ({formatPercent(typeData.typeData.fiis.percent)})</span>
-                     <span className="text-slate-500 dark:text-slate-400">Ações ({formatPercent(typeData.typeData.stocks.percent)})</span>
+                     <span className="text-slate-900 dark:text-white">FIIs ({formatPercent(typeData.fiis.percent)})</span>
+                     <span className="text-slate-500 dark:text-slate-400">Ações ({formatPercent(typeData.stocks.percent)})</span>
                  </div>
                  <div className="h-4 w-full rounded-full flex overflow-hidden">
-                     <div style={{ width: `${typeData.typeData.fiis.percent}%` }} className="bg-slate-900 dark:bg-white h-full transition-all duration-1000"></div>
-                     <div style={{ width: `${typeData.typeData.stocks.percent}%` }} className="bg-slate-200 dark:bg-slate-700 h-full transition-all duration-1000"></div>
+                     <div style={{ width: `${typeData.fiis.percent}%` }} className="bg-slate-900 dark:bg-white h-full transition-all duration-1000"></div>
+                     <div style={{ width: `${typeData.stocks.percent}%` }} className="bg-slate-200 dark:bg-slate-700 h-full transition-all duration-1000"></div>
                  </div>
              </div>
 
@@ -447,8 +447,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-lg font-black text-slate-900 dark:text-white">{formatBRL(typeData.typeData.fiis.value)}</p>
-                        <p className="text-xs font-bold text-slate-500">{formatPercent(typeData.typeData.fiis.percent)}</p>
+                        <p className="text-lg font-black text-slate-900 dark:text-white">{formatBRL(typeData.fiis.value)}</p>
+                        <p className="text-xs font-bold text-slate-500">{formatPercent(typeData.fiis.percent)}</p>
                     </div>
                 </div>
 
@@ -463,8 +463,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-lg font-black text-slate-900 dark:text-white">{formatBRL(typeData.typeData.stocks.value)}</p>
-                        <p className="text-xs font-bold text-slate-500">{formatPercent(typeData.typeData.stocks.percent)}</p>
+                        <p className="text-lg font-black text-slate-900 dark:text-white">{formatBRL(typeData.stocks.value)}</p>
+                        <p className="text-xs font-bold text-slate-500">{formatPercent(typeData.stocks.percent)}</p>
                     </div>
                 </div>
              </div>
