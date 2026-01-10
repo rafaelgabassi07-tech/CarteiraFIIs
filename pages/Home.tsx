@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Trophy, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Trophy, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
@@ -398,11 +398,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
             )}
 
-             {/* Monthly History List (Drill-down Drill-down) */}
+             {/* Monthly History List (Drill-down Improved) */}
              <div className="space-y-4">
                  <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest px-2">Evolução Mensal</h3>
                  {history.length > 0 ? (
-                     <div className="space-y-3">
+                     <div className="space-y-4">
                         {history.map(([month, val], i) => {
                             const [year, m] = month.split('-');
                             const dateObj = new Date(parseInt(year), parseInt(m)-1, 1);
@@ -412,54 +412,78 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             const monthlyDetails = receiptsByMonth[month] || [];
 
                             return (
-                                <div key={month} className="overflow-hidden transition-all duration-300">
+                                <div 
+                                    key={month} 
+                                    className={`group rounded-[1.5rem] transition-all duration-300 border overflow-hidden ${isExpanded ? 'bg-white dark:bg-slate-900 border-emerald-500/50 shadow-lg scale-[1.02] z-10 ring-1 ring-emerald-500/20' : 'bg-surface-light dark:bg-surface-dark border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}
+                                >
                                     <button 
                                         onClick={() => toggleMonthExpand(month)}
-                                        className={`w-full bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border flex flex-col gap-2 transition-all ${isExpanded ? 'border-emerald-500/30 ring-1 ring-emerald-500/30' : 'border-slate-200 dark:border-slate-800'}`}
+                                        className="w-full p-5 flex flex-col gap-2 relative"
                                     >
-                                        <div className="w-full flex justify-between items-end">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isExpanded ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
-                                                    <Calendar className="w-4 h-4" />
+                                        <div className="w-full flex justify-between items-center relative z-10">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-inner border border-white/5 ${isExpanded ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                                                    <Calendar className="w-5 h-5" strokeWidth={2} />
                                                 </div>
                                                 <div className="text-left">
-                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 capitalize block">{monthName}</span>
-                                                    {isExpanded && <span className="text-[9px] text-slate-400 font-medium">Toque para fechar</span>}
+                                                    <span className={`text-sm font-black capitalize block leading-tight ${isExpanded ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-200'}`}>{monthName}</span>
+                                                    {isExpanded ? (
+                                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                                                            <ChevronUp className="w-3 h-3" /> Detalhes
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                                            {monthlyDetails.length} {monthlyDetails.length === 1 ? 'pagamento' : 'pagamentos'}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-sm font-black text-slate-900 dark:text-white block">{formatBRL(val)}</span>
-                                                <div className="flex justify-end mt-1">
-                                                     {isExpanded ? <ChevronUp className="w-3 h-3 text-slate-400" /> : <ChevronDown className="w-3 h-3 text-slate-400" />}
-                                                </div>
+                                                <span className={`text-base font-black block ${isExpanded ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{formatBRL(val)}</span>
                                             </div>
                                         </div>
-                                        {/* Visual Bar */}
-                                        <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1">
-                                            <div style={{ width: `${percentage}%` }} className="h-full bg-emerald-500 rounded-full"></div>
-                                        </div>
+                                        
+                                        {/* Progress Bar Background */}
+                                        {!isExpanded && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-100 dark:bg-slate-800/50">
+                                                <div style={{ width: `${percentage}%` }} className="h-full bg-emerald-500 opacity-60 rounded-r-full"></div>
+                                            </div>
+                                        )}
                                     </button>
                                     
                                     {/* Expanded Detail View */}
                                     {isExpanded && (
-                                        <div className="mt-2 ml-4 pl-4 border-l-2 border-slate-100 dark:border-slate-800 space-y-2 anim-scale-in">
-                                            {monthlyDetails
-                                                .reduce((acc: any[], r) => {
-                                                    const exist = acc.find(i => i.ticker === r.ticker);
-                                                    if(exist) exist.totalReceived += r.totalReceived;
-                                                    else acc.push({...r});
-                                                    return acc;
-                                                }, [])
-                                                .sort((a,b) => b.totalReceived - a.totalReceived)
-                                                .map((detail: any, idx: number) => (
-                                                <div key={idx} className="flex justify-between items-center pr-2 py-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{detail.ticker}</span>
+                                        <div className="px-5 pb-5 anim-fade-in">
+                                            <div className="h-px w-full bg-slate-100 dark:bg-slate-800 mb-4"></div>
+                                            <div className="space-y-2">
+                                                {monthlyDetails
+                                                    .reduce((acc: any[], r) => {
+                                                        const exist = acc.find(i => i.ticker === r.ticker);
+                                                        if(exist) exist.totalReceived += r.totalReceived;
+                                                        else acc.push({...r});
+                                                        return acc;
+                                                    }, [])
+                                                    .sort((a,b) => b.totalReceived - a.totalReceived)
+                                                    .map((detail: any, idx: number) => (
+                                                    <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-[10px] font-black text-slate-600 dark:text-slate-300 shadow-sm border border-slate-100 dark:border-slate-600">
+                                                                {detail.ticker.substring(0,2)}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                                                    {detail.ticker}
+                                                                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-300 font-medium uppercase tracking-wider">{detail.type || 'DIV'}</span>
+                                                                </p>
+                                                                <p className="text-[10px] text-slate-400 font-medium">Dia {new Date(detail.paymentDate).getUTCDate()}</p>
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg">
+                                                            {formatBRL(detail.totalReceived)}
+                                                        </span>
                                                     </div>
-                                                    <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{formatBRL(detail.totalReceived)}</span>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
