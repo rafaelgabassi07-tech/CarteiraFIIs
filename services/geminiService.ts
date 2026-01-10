@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
 import { supabase } from "./supabase";
@@ -10,9 +9,9 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Chave de cache atualizada para a versão otimizada com Google Search
-const GEMINI_CACHE_KEY = 'investfiis_gemini_v16_25flash_search'; 
-const LOCKED_MODEL_ID = "gemini-2.5-flash";
+// Fix: Use 'gemini-3-flash-preview' for general text and search tasks as per guidelines.
+const GEMINI_CACHE_KEY = 'investfiis_gemini_v17_3flash_search'; 
+const LOCKED_MODEL_ID = "gemini-3-flash-preview";
 
 const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
@@ -55,7 +54,7 @@ const fetchStoredDividends = async (tickers: string[]): Promise<DividendReceipt[
             ticker: d.ticker,
             type: d.type,
             dateCom: d.date_com,
-            paymentDate: d.payment_date,
+            payment_date: d.payment_date,
             rate: Number(d.rate),
             quantityOwned: 0,
             totalReceived: 0
@@ -103,6 +102,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   if (!process.env.API_KEY) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
 
   try {
+    // Fix: Initialize GoogleGenAI client according to recommended guidelines.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const todayISO = new Date().toISOString().split('T')[0];
     const storedDividends = await fetchStoredDividends(uniqueTickers);
@@ -162,6 +162,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     `;
 
     // 3. Chamada à API (Google Search Enable)
+    // Fix: Using generateContent directly with model and grounding tool configuration.
     const response = await ai.models.generateContent({
         model: LOCKED_MODEL_ID, 
         contents: prompt,
@@ -185,6 +186,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     }
 
     // 5. Parse Seguro do JSON
+    // Fix: response.text is a property, not a method.
     let rawText = response.text || "{}";
     rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
 
@@ -262,7 +264,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     return finalData;
 
   } catch (error: any) {
-    console.error("Gemini 2.5 Flash Search Error:", error);
+    console.error("Gemini 3 Flash Search Error:", error);
     const stored = await fetchStoredDividends(uniqueTickers);
     return { dividends: stored, metadata: {}, error: error.message };
   }

@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 h-20 flex items-center justify-between px-5 transition-all duration-300 border-b border-zinc-200 dark:border-zinc-800 bg-primary-light dark:bg-primary-dark ${
+      className={`fixed left-0 right-0 z-40 h-20 flex items-center justify-between px-5 transition-all duration-300 border-b border-zinc-200 dark:border-zinc-800 bg-primary-light/80 dark:bg-primary-dark/80 backdrop-blur-xl ${
         bannerVisible ? 'top-8' : 'top-0'
       }`}
     >
@@ -122,15 +122,15 @@ interface BottomNavProps {
 }
 
 const navItems = [
-  { id: 'home', icon: Home, label: 'Visão Geral' },
+  { id: 'home', icon: Home, label: 'Início' },
   { id: 'portfolio', icon: PieChart, label: 'Custódia' },
-  { id: 'transactions', icon: ArrowRightLeft, label: 'Histórico' },
+  { id: 'transactions', icon: ArrowRightLeft, label: 'Ordens' },
 ];
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50">
-      <nav className="bg-white dark:bg-surface-dark border-t border-zinc-200 dark:border-zinc-800 pb-[env(safe-area-inset-bottom)] pt-2 px-6 shadow-none">
+      <nav className="bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 pb-[env(safe-area-inset-bottom)] pt-2 px-6">
         <div className="flex items-center justify-between h-16 max-w-lg mx-auto">
           {navItems.map(item => {
             const isActive = currentTab === item.id;
@@ -139,34 +139,17 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 className={`
-                  group relative flex flex-col items-center justify-center w-full h-full gap-1.5 transition-all duration-300 ease-out-quint outline-none
+                  group relative flex flex-col items-center justify-center w-full h-full gap-1 transition-all duration-300 outline-none
                   active:scale-90
                 `}
               >
-                {/* Active Indicator (Solid) */}
-                <div className={`absolute top-1 w-12 h-8 rounded-full bg-sky-50 dark:bg-sky-900 transition-all duration-300 ${isActive ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}></div>
-
-                <div className={`
-                  relative z-10 transition-all duration-300
-                  ${isActive ? 'text-sky-600 dark:text-sky-400 -translate-y-0.5' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}
-                `}>
-                  <item.icon 
-                    className={`w-6 h-6 transition-all duration-300 ${isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} 
-                  />
+                <div className={`absolute top-1 w-12 h-8 rounded-full transition-all duration-300 ${isActive ? 'bg-sky-50 dark:bg-sky-900/30 opacity-100 scale-100' : 'opacity-0 scale-50'}`}></div>
+                <div className={`relative z-10 transition-all duration-300 ${isActive ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400 dark:text-zinc-600 group-hover:text-zinc-600 dark:group-hover:text-zinc-400'}`}>
+                  <item.icon className={`w-6 h-6 ${isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} />
                 </div>
-                
-                <span className={`
-                  text-[10px] font-bold tracking-wide transition-all duration-300
-                  ${isActive ? 'text-sky-600 dark:text-sky-400 opacity-100 translate-y-0' : 'text-zinc-400 opacity-0 translate-y-2 hidden'}
-                `}>
+                <span className={`text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${isActive ? 'text-sky-600 dark:text-sky-400 opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
                   {item.label}
                 </span>
-                
-                {/* Dot for inactive state */}
-                 <span className={`
-                  w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700 transition-all duration-300 absolute bottom-3
-                  ${!isActive ? 'opacity-0' : 'opacity-0'}
-                `}></span>
               </button>
             );
           })}
@@ -190,13 +173,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       return () => { document.body.style.overflow = ''; }; 
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      setDragOffset(0);
-      setIsDragging(false);
-    }
-  }, [isOpen]);
-
   const handleTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY;
     setIsDragging(true);
@@ -214,11 +190,8 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 
   const handleTouchEnd = () => {
     setIsDragging(false);
-    if (dragOffset > 150) {
-      onClose();
-    } else {
-      setDragOffset(0);
-    }
+    if (dragOffset > 150) { onClose(); }
+    setDragOffset(0);
   };
 
   if (!isMounted) return null;
@@ -227,29 +200,27 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     <div className={`fixed inset-0 z-[200] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
       <div 
           onClick={onClose} 
-          className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-[2px] transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       ></div>
       
       <div
         ref={modalRef}
         style={{
-            transform: isVisible 
-                ? `translateY(${dragOffset}px)` 
-                : 'translateY(100%)',
-            transition: isDragging ? 'none' : 'transform 300ms cubic-bezier(0.23, 1, 0.32, 1)'
+            transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
+            transition: isDragging ? 'none' : 'transform 400ms cubic-bezier(0.23, 1, 0.32, 1)'
         }}
-        className={`relative bg-surface-light dark:bg-surface-dark rounded-t-[2rem] h-[90vh] w-full overflow-hidden flex flex-col shadow-2xl`}
+        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-[2.5rem] h-[92vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_30px_rgba(0,0,0,0.12)] dark:shadow-none border-t border-zinc-200 dark:border-zinc-800`}
       >
         <div 
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            className="flex-none p-4 flex justify-center bg-surface-light dark:bg-surface-dark border-b border-zinc-100 dark:border-zinc-800 cursor-grab active:cursor-grabbing touch-none"
+            className="flex-none p-4 flex justify-center bg-transparent cursor-grab active:cursor-grabbing touch-none"
         >
-            <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full"></div>
+            <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
         </div>
         
-        <div className="flex-1 overflow-y-auto overscroll-contain bg-surface-light dark:bg-surface-dark">
+        <div className="flex-1 overflow-y-auto overscroll-contain pb-safe">
           {children}
         </div>
       </div>
@@ -263,14 +234,16 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
   if (!isMounted) return null;
   return createPortal(
     <div className={`fixed inset-0 z-[1000] flex items-center justify-center p-6 ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
-      <div className={`absolute inset-0 bg-black/80 transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
-      <div className={`relative bg-surface-light dark:bg-surface-dark rounded-2xl w-full max-w-xs p-6 text-center shadow-2xl transition-all duration-300 border border-zinc-200 dark:border-zinc-800 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
-        <div className="mx-auto w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4 text-zinc-900 dark:text-white"><AlertTriangle className="w-6 h-6" /></div>
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">{title}</h3>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 font-medium">{message}</p>
+      <div className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-sm transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
+      <div className={`relative bg-white dark:bg-zinc-900 rounded-[2rem] w-full max-w-xs p-6 text-center shadow-2xl transition-all duration-300 border border-zinc-100 dark:border-zinc-800 ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-4 opacity-0'}`}>
+        <div className="mx-auto w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-5 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30">
+          <AlertTriangle className="w-7 h-7" strokeWidth={2.5} />
+        </div>
+        <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2 tracking-tight">{title}</h3>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed font-medium">{message}</p>
         <div className="grid grid-cols-2 gap-3">
-          <button onClick={onCancel} className="py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
-          <button onClick={onConfirm} className="py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 transition-transform active:scale-95">Confirmar</button>
+          <button onClick={onCancel} className="py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+          <button onClick={onConfirm} className="py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 active:scale-95 transition-transform shadow-lg">Confirmar</button>
         </div>
       </div>
     </div>, document.body
@@ -279,39 +252,74 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
 
 export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes = [], isUpdatePending, onUpdate, isUpdating, progress }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-      <div className="p-6 pb-24">
-        <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-zinc-900 dark:text-white"><Gift className="w-8 h-8" /></div>
-            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Novidades v{version}</h2>
+      <div className="p-8 pb-24">
+        <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+              <Gift className="w-10 h-10" strokeWidth={1.5} />
+            </div>
+            <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-2">Novidades</h2>
+            <div className="inline-block px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-black uppercase tracking-widest text-zinc-500">Versão {version}</div>
         </div>
         <div className="space-y-4">
           {notes.map((note: any, i: number) => (
-              <div key={i} className="flex gap-4 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                  <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 shadow-sm"><Star className="w-5 h-5" /></div>
-                  <div><h4 className="font-bold text-zinc-900 dark:text-white">{note.title}</h4><p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{note.desc}</p></div>
+              <div key={i} className="flex gap-4 p-5 bg-zinc-50 dark:bg-zinc-800/40 rounded-3xl border border-zinc-200 dark:border-zinc-800 group transition-all hover:bg-white dark:hover:bg-zinc-800">
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 shadow-sm">
+                    <Star className="w-6 h-6 text-amber-500" strokeWidth={2} />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-zinc-900 dark:text-white tracking-tight">{note.title}</h4>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed font-medium">{note.desc}</p>
+                  </div>
               </div>
           ))}
         </div>
-        {isUpdatePending && <button onClick={onUpdate} disabled={isUpdating} className="w-full mt-10 py-4 bg-zinc-900 dark:bg-white text-white dark:text-[#02040A] rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">{isUpdating ? `Atualizando ${progress}%` : 'Atualizar Agora'}</button>}
+        {isUpdatePending && (
+          <button 
+            onClick={onUpdate} 
+            disabled={isUpdating} 
+            className="w-full mt-10 py-5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+          >
+            {isUpdating ? (
+              <> <Loader2 className="w-5 h-5 animate-spin" /> <span>Atualizando {progress}%</span> </>
+            ) : (
+              <> <Download className="w-5 h-5" /> <span>Instalar Atualização</span> </>
+            )}
+          </button>
+        )}
       </div>
     </SwipeableModal>
 );
 
 export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notifications, onClear }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-6 pb-24">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-black text-zinc-900 dark:text-white">Notificações</h2>
-                {notifications.length > 0 && <button onClick={onClear} className="text-xs font-bold text-rose-500 uppercase tracking-wider flex items-center gap-1 active:scale-95 transition-transform"><Trash2 className="w-3 h-3" /> Limpar</button>}
+        <div className="p-8 pb-24">
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Notificações</h2>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Avisos e Pagamentos</p>
+                </div>
+                {notifications.length > 0 && (
+                  <button onClick={onClear} className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center border border-rose-100 dark:border-rose-900/30 active:scale-90 transition-transform">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
             </div>
             {notifications.length === 0 ? (
-                <div className="text-center py-20 opacity-40"><Inbox className="w-16 h-16 mx-auto mb-4" /><p className="text-sm font-bold">Tudo limpo por aqui</p></div>
+                <div className="text-center py-20 opacity-40">
+                  <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Inbox className="w-10 h-10 text-zinc-300 dark:text-zinc-600" strokeWidth={1} />
+                  </div>
+                  <p className="text-sm font-black text-zinc-500 uppercase tracking-widest">Nada por aqui</p>
+                </div>
             ) : (
                 <div className="space-y-3">
                     {notifications.map((n: any, i: number) => (
-                        <div key={n.id} className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
-                            <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{n.title}</h4>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{n.message}</p>
+                        <div key={n.id} className="p-5 bg-zinc-50 dark:bg-zinc-800/40 rounded-3xl border border-zinc-200 dark:border-zinc-800 anim-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+                            <h4 className="font-black text-zinc-900 dark:text-white tracking-tight">{n.title}</h4>
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed font-medium">{n.message}</p>
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-4">
+                              {new Date(n.timestamp).toLocaleDateString('pt-BR')} às {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
                         </div>
                     ))}
                 </div>
