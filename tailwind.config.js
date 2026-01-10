@@ -15,14 +15,14 @@ export default {
     extend: {
       fontFamily: { sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'] },
       colors: {
-        // Fintech Palette
+        // Fintech Palette Refined
         primary: { 
-          light: '#FFFFFF', // Pure White for Sunlight visibility
-          dark: '#02040A'   // Deep Navy/Black Background
+          light: '#F8FAFC', // Slate 50 (Soft Background)
+          dark: '#020617'   // Slate 950 (Deep Background)
         }, 
         surface: {
-          light: '#F8FAFC', // Very light gray for slight separation
-          dark: '#0B101A'   // Lighter Navy for cards
+          light: '#FFFFFF', // Pure White (Cards)
+          dark: '#0F172A'   // Slate 900 (Dark Cards)
         },
         accent: 'rgb(var(--color-accent-rgb) / <alpha-value>)', 
       },
@@ -34,8 +34,8 @@ export default {
       },
       boxShadow: {
         'glow': '0 0 20px -5px var(--color-accent)',
-        'card': '0 1px 2px 0 rgba(0, 0, 0, 0.05)', // Sharper shadow
-        'card-dark': '0 4px 20px -5px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255,255,255,0.1)',
+        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)', // Soft shadow
+        'card-dark': '0 0 0 1px rgba(255,255,255,0.05), 0 4px 6px -1px rgba(0, 0, 0, 0.3)',
       }
     }
   },

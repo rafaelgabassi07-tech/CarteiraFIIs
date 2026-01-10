@@ -29,7 +29,7 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
       <div style={style} className="px-1 py-1.5">
           <button 
             onClick={() => data.onRowClick(t)}
-            className="w-full text-left bg-white dark:bg-[#0F1623] p-4 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm active:scale-[0.98] transition-all hover:border-slate-300 dark:hover:border-slate-700"
+            className="w-full text-left bg-surface-light dark:bg-surface-dark p-4 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm active:scale-[0.98] transition-all hover:border-slate-300 dark:hover:border-slate-700"
           >
               <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>

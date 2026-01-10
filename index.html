@@ -4,7 +4,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#FFFFFF" />
+    
+    <!-- Dynamic Theme Color for Browser Bar -->
+    <meta name="theme-color" content="#F8FAFC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)" />
+    
     <meta name="app-version" content="8.2.1" />
     
     <title>InvestFIIs - FIIs & Ações</title>
@@ -16,22 +20,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-      /* CSS Crítico - High Contrast Init */
+      /* CSS Crítico - Soft Modern Init */
       :root {
-        --bg-solid: #FFFFFF; /* Pure White */
-        --card-solid: #F8FAFC; 
+        --bg-solid: #F8FAFC; /* Slate 50 */
+        --card-solid: #FFFFFF; 
         --border-color: #E2E8F0;
         --accent: #0ea5e9;
-        --text-main: #0F172A; /* Slate 900 */
+        --text-main: #0F172A; 
         --text-muted: #64748B;
       }
       
-      /* Dark mode override via media query if needed by system, 
-         but default is High Contrast Light for sunlight visibility */
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg-solid: #02040A;
-          --card-solid: #0F1623;
+          --bg-solid: #020617; /* Slate 950 */
+          --card-solid: #0F172A; /* Slate 900 */
           --border-color: #1E293B;
           --text-main: #F8FAFC;
         }
@@ -70,7 +72,7 @@
         align-items: center;
         justify-content: center;
         margin-bottom: 40px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
       }
 
       .s-icon-main { 
@@ -148,7 +150,7 @@
     }
     </script>
 </head>
-  <body class="bg-white dark:bg-[#02040A] text-slate-900 dark:text-slate-100 min-h-screen overflow-x-hidden antialiased">
+  <body class="bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100 min-h-screen overflow-x-hidden antialiased selection:bg-sky-500 selection:text-white">
     
     <div id="root-splash">
         <div class="s-logo-box">

@@ -67,14 +67,14 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 h-20 flex items-center justify-between px-5 bg-white dark:bg-[#02040A] border-b border-slate-100 dark:border-slate-800 transition-all duration-300 ${
+      className={`fixed left-0 right-0 z-40 h-20 flex items-center justify-between px-5 transition-all duration-300 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 bg-primary-light/80 dark:bg-primary-dark/80 ${
         bannerVisible ? 'top-8' : 'top-0'
       }`}
     >
       <div className="flex items-center gap-3 w-full">
         {showBack ? (
           <div className="flex items-center gap-3 w-full anim-slide-in-right">
-            <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-[#0F1623] text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 active:scale-95 transition-transform">
+            <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-surface-dark text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 active:scale-95 transition-transform">
               <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
             </button>
             <h1 className="text-lg font-bold text-slate-900 dark:text-white">Voltar</h1>
@@ -99,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
         {onNotificationClick && !showBack && (
-          <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-[#0F1623] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 active:scale-95 transition-transform shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800">
+          <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-surface-dark text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 active:scale-95 transition-transform shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800">
             <Bell className="w-5 h-5" strokeWidth={2} />
             {notificationCount > 0 && 
               <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
@@ -107,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
         {!showBack && onSettingsClick && (
-          <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-[#0F1623] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 active:scale-95 transition-transform shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800">
+          <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-surface-dark text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 active:scale-95 transition-transform shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800">
             <Settings className="w-5 h-5" strokeWidth={2} />
           </button>
         )}
@@ -130,7 +130,7 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50">
-      <nav className="bg-white dark:bg-[#0F1623] border-t border-slate-100 dark:border-slate-800 pb-[env(safe-area-inset-bottom)] pt-2 px-6 shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.02)] dark:shadow-none">
+      <nav className="bg-white/90 dark:bg-surface-dark/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom)] pt-2 px-6 shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.02)] dark:shadow-none">
         <div className="flex items-center justify-between h-16 max-w-lg mx-auto">
           {navItems.map(item => {
             const isActive = currentTab === item.id;
@@ -238,13 +238,13 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
                 : 'translateY(100%)',
             transition: isDragging ? 'none' : 'transform 300ms cubic-bezier(0.23, 1, 0.32, 1)'
         }}
-        className={`relative bg-white dark:bg-[#0F1623] rounded-t-[2rem] h-[90vh] w-full overflow-hidden flex flex-col shadow-2xl`}
+        className={`relative bg-surface-light dark:bg-surface-dark rounded-t-[2rem] h-[90vh] w-full overflow-hidden flex flex-col shadow-2xl`}
       >
         <div 
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            className="flex-none p-4 flex justify-center bg-white dark:bg-[#0F1623] border-b border-slate-100 dark:border-slate-800 cursor-grab active:cursor-grabbing touch-none"
+            className="flex-none p-4 flex justify-center bg-surface-light dark:bg-surface-dark border-b border-slate-100 dark:border-slate-800 cursor-grab active:cursor-grabbing touch-none"
         >
             <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -264,7 +264,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
   return createPortal(
     <div className={`fixed inset-0 z-[1000] flex items-center justify-center p-6 ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
       <div className={`absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
-      <div className={`relative bg-white dark:bg-[#0F1623] rounded-2xl w-full max-w-xs p-6 text-center shadow-2xl transition-all duration-300 border border-slate-200 dark:border-slate-800 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
+      <div className={`relative bg-surface-light dark:bg-surface-dark rounded-2xl w-full max-w-xs p-6 text-center shadow-2xl transition-all duration-300 border border-slate-200 dark:border-slate-800 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
         <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 text-slate-900 dark:text-white"><AlertTriangle className="w-6 h-6" /></div>
         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 font-medium">{message}</p>
