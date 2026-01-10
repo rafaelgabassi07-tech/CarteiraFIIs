@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React from 'react';
 import { ServerOff } from 'lucide-react';
 
 // Componente para exibir quando houver erro de configuração das chaves do Supabase
@@ -22,7 +22,7 @@ const ConfigurationError: React.FC = () => (
 );
 
 interface ErrorBoundaryProps {
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -31,26 +31,27 @@ interface ErrorBoundaryState {
 }
 
 /**
- * ErrorBoundary: Use Component from 'react' to ensure generics are correctly mapped to state and props.
- * This approach avoids shadowing issues and ensures 'this.props' is correctly inherited.
+ * ErrorBoundary: Standard React class implementation to catch JavaScript errors anywhere in their child component tree.
  */
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Explicitly declare the state property to ensure it's recognized.
-  public state: ErrorBoundaryState = {
-    hasError: false,
-    error: null
-  };
+// Fix: Use React.Component and provide a constructor to ensure props are correctly initialized and recognized by the TypeScript compiler.
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  render(): ReactNode {
-    // Correctly accessing state from the class instance.
+  render(): React.ReactNode {
     const { hasError, error } = this.state;
 
     if (hasError) {
@@ -68,7 +69,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       );
     }
 
-    // Correctly accessing props from the class instance.
     return this.props.children;
   }
 }

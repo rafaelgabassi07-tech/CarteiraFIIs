@@ -1,5 +1,4 @@
-
-const CACHE_NAME = 'investfiis-pwa-v8.2.2';
+const CACHE_NAME = 'investfiis-pwa-v8.2.3';
 
 const PRECACHE_ASSETS = [
   './',
@@ -38,11 +37,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Bypass non-GET
   if (event.request.method !== 'GET') return;
 
-  // 2. Cache de Logos de Ativos (Brapi/Cloudfront)
-  // Estratégia: Cache First (Logos mudam raramente)
   if (url.href.includes('brapi.dev') || url.href.includes('cloudfront.net') || url.href.includes('static.statusinvest')) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
@@ -59,7 +55,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Navigation: Network First
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => caches.match('./index.html'))
@@ -67,7 +62,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Local Assets: Stale-While-Revalidate
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {

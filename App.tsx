@@ -15,7 +15,10 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.2.2'; 
+// Define and export ThemeType to fix missing export error in Settings.tsx and missing name in App.tsx
+export type ThemeType = 'light' | 'dark' | 'system';
+
+const APP_VERSION = '8.2.3'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -28,8 +31,6 @@ const STORAGE_KEYS = {
   PUSH_ENABLED: 'investfiis_push_enabled',
   NOTIF_HISTORY: 'investfiis_notification_history_v2' 
 };
-
-export type ThemeType = 'light' | 'dark' | 'system';
 
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!dateCom || dateCom.length < 10) return 0;
@@ -108,7 +109,10 @@ const App: React.FC = () => {
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
     setToast(null);
-    setTimeout(() => { setToast({ type, text }); toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3500); }, 50);
+    setTimeout(() => { 
+      setToast({ type, text }); 
+      toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3500); 
+    }, 50);
   }, []);
 
   const syncMarketData = useCallback(async (force = false, txsToUse: Transaction[], initialLoad = false) => {
@@ -117,8 +121,6 @@ const App: React.FC = () => {
     setIsRefreshing(true);
     if (initialLoad) setLoadingProgress(50);
     try {
-      // BRAPI FETCH - Tenta buscar mesmo sem verificação prévia de ENV no componente
-      // O Serviço agora lida com a ausência da chave e logs de erro
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
@@ -168,7 +170,6 @@ const App: React.FC = () => {
     if (session) await fetchTransactionsFromCloud(session, force);
   }, [session, fetchTransactionsFromCloud]);
 
-  // --- CRUD Handlers (Typed for MemoizedTransactions) ---
   const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
       if (!session?.user?.id) return;
       const { error } = await supabase.from('transactions').insert({ ...t, user_id: session.user.id });
@@ -204,7 +205,6 @@ const App: React.FC = () => {
           }
       });
   }, [session, fetchTransactionsFromCloud, showToast]);
-  // ----------------------------------------------------
 
   useEffect(() => {
     setLoadingProgress(10);
@@ -308,14 +308,25 @@ const App: React.FC = () => {
       {session && !appLoading && (
         <>
             <Header title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} isRefreshing={isRefreshing || isAiLoading} updateAvailable={updateManager.isUpdateAvailable} onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} />
-            <main className="max-w-screen-md mx-auto pt-2">
+            <main className="max-w-screen-md mx-auto pt-2 pb-32 min-h-screen">
               {showSettings ? (
                 <Settings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} onShowChangelog={() => updateManager.setShowChangelog(true)} pushEnabled={pushEnabled} onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={handleSyncAll} lastAiStatus={lastAiStatus as any} onForceUpdate={() => window.location.reload()} currentVersionDate={updateManager.currentVersionDate} />
               ) : (
                 <div key={currentTab} className="anim-fade-in is-visible">
-                  {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} isAiLoading={isAiLoading} inflationRate={marketIndicators.ipca} portfolioStartDate={marketIndicators.startDate} accentColor={accentColor} />}
-                  {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedPortfolioData} />}
-                  {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} />}
+                  {currentTab === 'home' && (
+                    <MemoizedHome 
+                      {...memoizedPortfolioData} 
+                      transactions={transactions} 
+                      totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
+                      isAiLoading={isAiLoading} 
+                      inflationRate={marketIndicators.ipca} 
+                      portfolioStartDate={marketIndicators.startDate} 
+                      accentColor={accentColor} 
+                      privacyMode={privacyMode}
+                    />
+                  )}
+                  {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedPortfolioData} privacyMode={privacyMode} />}
+                  {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                 </div>
               )}
             </main>
