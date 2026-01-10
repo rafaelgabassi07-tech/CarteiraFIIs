@@ -1,5 +1,5 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
 import { supabase } from "./supabase";
 
@@ -55,7 +55,7 @@ const fetchStoredDividends = async (tickers: string[]): Promise<DividendReceipt[
             ticker: d.ticker,
             type: d.type,
             dateCom: d.date_com,
-            paymentDate: d.payment_date, // Corrigido de payment_date para paymentDate
+            paymentDate: d.payment_date,
             rate: Number(d.rate),
             quantityOwned: 0,
             totalReceived: 0
@@ -103,79 +103,88 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   if (!process.env.API_KEY) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
 
   try {
-    // Fix: Initialize GoogleGenAI client according to recommended guidelines.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const todayISO = new Date().toISOString().split('T')[0];
     const storedDividends = await fetchStoredDividends(uniqueTickers);
 
-    // 2. Instrução de Sistema Otimizada para Busca (Grounding)
+    // 2. Instrução de Sistema Otimizada
     const systemInstruction = `
     VOCÊ É UM AGENTE DE DADOS DE MERCADO FINANCEIRO (B3).
-    SUA FUNÇÃO: Usar a ferramenta "GoogleSearch" para buscar dados oficiais em tempo real.
+    SUA FUNÇÃO: Usar a ferramenta "GoogleSearch" para buscar dados oficiais em tempo real sobre FIIs e Ações Brasileiras.
     
-    MÉTODO DE TRABALHO:
-    1. RECEBA a lista de ativos.
-    2. EXECUTE buscas no Google para encontrar: Dividendos recentes, P/VP, DY e Segmento.
-    3. COMPILE os resultados encontrados diretamente em um JSON único.
-    
-    FONTES PRIORITÁRIAS: Status Invest, Fundamentus, Clube FII, B3, Investidor10.
+    OBJETIVO: Retornar um JSON estruturado com metadados e histórico de proventos.
     `;
 
-    // Prompt desenhado para "forçar" o uso eficiente da tool de busca
     const prompt = `
     ATIVOS SOLICITADOS: ${uniqueTickers.join(', ')}
-    PERÍODO DE INTERESSE: ${startDate || '2024-01-01'} até ${todayISO}.
+    PERÍODO DE INTERESSE: ${startDate || '2024-01-01'} até hoje.
 
-    Execute buscas estratégicas no Google para obter os seguintes dados (Grounding):
+    Busque:
     1. "IPCA acumulado 12 meses Brasil hoje"
-    2. Para cada ativo (${uniqueTickers.join(' ')}):
-       - "Ultimos proventos anunciados ${uniqueTickers.join(' ')} data com pagamento valor"
-       - "P/VP Dividend Yield atual ${uniqueTickers.join(' ')}"
-       - "Segmento de atuação ${uniqueTickers.join(' ')}"
-
-    OUTPUT JSON (Strict Schema):
-    {
-      "sys": { "ipca_12m": number },
-      "assets": [
-        {
-          "ticker": "string",
-          "segment": "string",
-          "type": "FII" | "ACAO",
-          "fundamentals": {
-            "pvp": number,      
-            "dy": number,       
-            "mcap": "string",   
-            "liq": "string",   
-            "sentiment": "Otimista" | "Neutro" | "Pessimista",
-            "reason": "string"
-          },
-          "history": [
-            { 
-              "com": "YYYY-MM-DD",
-              "pay": "YYYY-MM-DD",
-              "val": number,
-              "type": "DIV" | "JCP" | "REND"
-            }
-          ]
-        }
-      ]
-    }
+    2. Para cada ativo: Dividendos recentes, P/VP, DY e Segmento.
     `;
 
-    // 3. Chamada à API (Google Search Enable)
-    // Fix: Using generateContent directly with model and grounding tool configuration.
-    // Removed responseMimeType as it is not recommended with googleSearch grounding.
+    // 3. Definição do Schema (Structured Output) para garantir JSON válido
+    const marketDataSchema = {
+      type: Type.OBJECT,
+      properties: {
+        sys: {
+          type: Type.OBJECT,
+          properties: {
+            ipca_12m: { type: Type.NUMBER, description: "IPCA acumulado 12 meses (ex: 4.5)" }
+          }
+        },
+        assets: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              ticker: { type: Type.STRING },
+              segment: { type: Type.STRING },
+              type: { type: Type.STRING, description: "FII ou ACAO" },
+              fundamentals: {
+                type: Type.OBJECT,
+                properties: {
+                  pvp: { type: Type.NUMBER, nullable: true },
+                  dy: { type: Type.NUMBER, nullable: true },
+                  mcap: { type: Type.STRING, nullable: true },
+                  liq: { type: Type.STRING, nullable: true },
+                  sentiment: { type: Type.STRING, nullable: true },
+                  reason: { type: Type.STRING, nullable: true }
+                },
+                nullable: true
+              },
+              history: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    com: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
+                    pay: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
+                    val: { type: Type.NUMBER, description: "Valor do provento" },
+                    type: { type: Type.STRING, description: "DIV, JCP ou REND" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+
+    // 4. Chamada à API com Schema e Tools
     const response = await ai.models.generateContent({
         model: LOCKED_MODEL_ID, 
         contents: prompt,
         config: {
             systemInstruction,
             tools: [{googleSearch: {}}], // Ativa o grounding no Google Search
-            temperature: 0.1, // Deterministico para dados
+            temperature: 0.1,
+            responseMimeType: "application/json", // Obrigatório para usar responseSchema
+            responseSchema: marketDataSchema
         },
     });
     
-    // 4. Tratamento de Fontes (Grounding Metadata)
+    // 5. Tratamento de Fontes (Grounding Metadata)
     const sources: {title: string, uri: string}[] = [];
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     if (chunks) {
@@ -186,25 +195,17 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         });
     }
 
-    // 5. Parse Seguro do JSON
-    // Fix: response.text is a property, not a method. Extract JSON even if wrapped in text or markdown.
-    let rawText = response.text || "{}";
-    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-
-    let parsedJson;
+    // 6. Parse Seguro do JSON (Agora garantido pelo Schema)
+    let parsedJson: any = { assets: [] };
     try {
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            parsedJson = JSON.parse(jsonMatch[0]);
-        } else {
-            parsedJson = JSON.parse(rawText);
+        if (response.text) {
+             parsedJson = JSON.parse(response.text);
         }
     } catch (parseError) {
-        console.warn("Gemini: Erro no parse JSON, tentando recuperação...", parseError);
-        parsedJson = { assets: [] }; 
+        console.warn("Gemini: Erro no parse JSON, mesmo com Schema.", parseError);
     }
 
-    // 6. Mapeamento
+    // 7. Mapeamento
     const metadata: any = {};
     const aiDividends: any[] = [];
     
@@ -244,7 +245,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }
     }
 
-    // 7. Sincronização
+    // 8. Sincronização
     upsertDividendsToCloud(aiDividends);
 
     const combined = [...storedDividends];
