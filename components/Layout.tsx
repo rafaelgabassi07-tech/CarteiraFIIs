@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-5 transition-all duration-300 border-b border-zinc-200 dark:border-zinc-800 bg-primary-light/80 dark:bg-[#020617]/80 backdrop-blur-xl ${
+      className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-5 transition-all duration-300 border-b border-zinc-200 dark:border-zinc-800 bg-primary-light dark:bg-[#020617] ${
         bannerVisible ? 'h-28 pt-8' : 'h-20 pt-safe'
       } top-0`}
     >

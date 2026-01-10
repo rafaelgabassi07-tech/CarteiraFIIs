@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 const ConfigurationError: React.FC = () => (
@@ -29,17 +29,13 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Fix: Initialize state as a class property to ensure TypeScript recognizes it on the instance correctly.
+// Fix: Extending React.Component directly ensures inherited properties like 'props' and 'state' are correctly recognized by TypeScript.
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Fix: Standard initialization for state in TypeScript class components.
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null
   };
-
-  // Added: Explicit constructor to ensure 'this.props' is correctly typed and accessible in all environments.
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-  }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
@@ -50,9 +46,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   render(): ReactNode {
-    // Fix: Access state and props via 'this' to correctly resolve inherited properties.
+    // Fix: Accessing state and props via 'this' to correctly resolve inherited properties.
     const { hasError, error } = this.state;
-    // Updated: Ensuring children is correctly destructured from this.props which is now explicitly initialized.
     const { children } = this.props;
 
     if (hasError) {
