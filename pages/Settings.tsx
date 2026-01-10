@@ -42,21 +42,6 @@ interface SettingsProps {
   onForceUpdate: () => void;
 }
 
-// Helper function to get the title for each settings section
-const getSectionTitle = (section: string) => {
-  switch (section) {
-    case 'appearance': return 'Aparência e Tema';
-    case 'notifications': return 'Notificações';
-    case 'privacy': return 'Privacidade';
-    case 'integrations': return 'Status dos Serviços';
-    case 'data': return 'Backup e Memória';
-    case 'updates': return 'Sistema & Updates';
-    case 'about': return 'Sobre o Projeto';
-    case 'system': return 'Resetar Aplicativo';
-    default: return 'Ajustes';
-  }
-};
-
 export const Settings: React.FC<SettingsProps> = ({ 
   user, onLogout,
   transactions, onImportTransactions,
@@ -93,10 +78,14 @@ export const Settings: React.FC<SettingsProps> = ({
   const [notifyMarket, setNotifyMarket] = useState(() => localStorage.getItem('investfiis_notify_market') === 'true');
   const [notifyUpdates, setNotifyUpdates] = useState(() => localStorage.getItem('investfiis_notify_updates') !== 'false');
   
+  // Settings States
   const [isSyncing, setIsSyncing] = useState(false);
   const [isMarketUpdating, setIsMarketUpdating] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  
+  // Diagnostics State
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [diagState, setDiagState] = useState<{
     step: 'idle' | 'running' | 'done' | 'error';
@@ -116,40 +105,14 @@ export const Settings: React.FC<SettingsProps> = ({
     writeTest: null
   });
 
+  // Modal States
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showForceUpdateConfirm, setShowForceUpdateConfirm] = useState(false);
+  
+  // State for Updates screen animation
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const notesContainerRef = useRef<HTMLDivElement>(null);
-
-  // Function to handle file restoration from JSON backup
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-        if (json.transactions) {
-          onImportTransactions(json.transactions);
-        }
-        if (json.geminiDividends) {
-          onImportDividends(json.geminiDividends);
-        }
-        showMessage('success', 'Backup restaurado com sucesso!');
-      } catch (err) {
-        console.error("Erro ao restaurar backup:", err);
-        showMessage('error', 'Arquivo de backup inválido.');
-      }
-    };
-    reader.readAsText(file);
-    
-    // Reset the input value so the same file can be selected again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
 
   const runServiceCheck = useCallback(async () => {
     setIsServicesChecking(true);
@@ -165,38 +128,125 @@ export const Settings: React.FC<SettingsProps> = ({
     setCachedItemsCount(prev => ({ ...prev, quotes: qCount }));
 
     const start = performance.now();
+    
     const checkSupabase = async (): Promise<ServiceStatus> => {
         if (!user?.id) return 'error';
         const { error } = await supabase.from('transactions').select('id', { count: 'exact', head: true });
         return error ? 'error' : 'operational';
     };
+
     const checkBrapi = async (): Promise<ServiceStatus> => {
         try {
             if (!process.env.BRAPI_TOKEN) return 'error';
             const res = await fetch(`https://brapi.dev/api/quote/PETR4?token=${process.env.BRAPI_TOKEN}`);
             return res.ok ? 'operational' : 'degraded';
-        } catch { return 'error'; }
+        } catch {
+            return 'error';
+        }
     };
+
     const [supabaseResult, brapiResult] = await Promise.all([checkSupabase(), checkBrapi()]);
     const end = performance.now();
+    
     setEstLatency(Math.round(end - start));
-    setHealthStatus({ supabase: supabaseResult, brapi: brapiResult });
+    setHealthStatus({
+        supabase: supabaseResult,
+        brapi: brapiResult
+    });
     setIsServicesChecking(false);
   }, [user]);
 
   useEffect(() => {
-    if (activeSection === 'integrations') runServiceCheck();
+    if (activeSection === 'integrations') {
+        runServiceCheck();
+    }
   }, [activeSection, runServiceCheck]);
 
-  useEffect(() => { window.scrollTo(0, 0); }, [activeSection]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (updateAvailable) setCheckStatus('available');
+  }, [updateAvailable]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => { localStorage.setItem('investfiis_notify_divs', String(notifyDivs)); }, [notifyDivs]);
+  useEffect(() => { localStorage.setItem('investfiis_notify_datacom', String(notifyDataCom)); }, [notifyDataCom]);
+  useEffect(() => { localStorage.setItem('investfiis_notify_goals', String(notifyGoals)); }, [notifyGoals]);
+  useEffect(() => { localStorage.setItem('investfiis_notify_market', String(notifyMarket)); }, [notifyMarket]);
+  useEffect(() => { localStorage.setItem('investfiis_notify_updates', String(notifyUpdates)); }, [notifyUpdates]);
+
+  const formatBytes = (bytes: number, decimals = 1) => {
+    if (!+bytes) return '0 B';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+  };
+
+  const calculateStorage = () => {
+    const getKeySize = (key: string) => {
+        const item = localStorage.getItem(key);
+        return item ? new Blob([item]).size : 0;
+    };
+    setStorageData({
+        totalBytes: getKeySize('investfiis_v3_quote_cache') + getKeySize('investfiis_v4_div_cache'),
+        breakdown: { 
+            quotes: getKeySize('investfiis_v3_quote_cache'), 
+            divs: getKeySize('investfiis_v4_div_cache') 
+        }
+    });
+  };
+
+  useEffect(() => { calculateStorage(); }, [geminiDividends, activeSection, message]);
 
   const showMessage = (type: 'success' | 'error' | 'info', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
   };
+  
+  const handleForceSync = async () => { 
+      setIsSyncing(true); 
+      try {
+        await onSyncAll(false);
+        showMessage('success', 'Nuvem sincronizada.');
+      } catch (e) {
+        showMessage('error', 'Erro ao sincronizar nuvem.');
+      } finally {
+        setIsSyncing(false); 
+      }
+  };
 
-  const handleClearQuoteCache = () => { localStorage.removeItem('investfiis_v3_quote_cache'); showMessage('success', 'Cache limpo.'); };
-  const handleClearDivCache = () => { localStorage.removeItem('investfiis_v4_div_cache'); onImportDividends([]); showMessage('success', 'Dados de IA limpos.'); };
+  const handleForceMarketUpdate = async () => {
+      setIsMarketUpdating(true);
+      try {
+          onImportDividends([]);
+          localStorage.removeItem('investfiis_v4_div_cache');
+          localStorage.removeItem('investfiis_gemini_cache_v13_3pro');
+          await new Promise(resolve => setTimeout(resolve, 300));
+          await onSyncAll(true);
+          showMessage('success', 'Dados de mercado recarregados!');
+      } catch (e) {
+          showMessage('error', 'Falha ao atualizar mercado.');
+      } finally {
+          setIsMarketUpdating(false);
+      }
+  };
+
+  const handleClearQuoteCache = () => { localStorage.removeItem('investfiis_v3_quote_cache'); calculateStorage(); showMessage('success', 'Cache limpo.'); };
+  const handleClearDivCache = () => { localStorage.removeItem('investfiis_v4_div_cache'); onImportDividends([]); calculateStorage(); showMessage('success', 'Dados de IA limpos.'); };
 
   const handleExport = () => {
     const blob = new Blob([JSON.stringify({ transactions, geminiDividends, version: appVersion, exportDate: new Date().toISOString() }, null, 2)], { type: "application/json" });
@@ -207,114 +257,296 @@ export const Settings: React.FC<SettingsProps> = ({
     showMessage('success', 'Backup exportado!');
   };
 
+  const handleImportClick = () => fileInputRef.current?.click();
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFileToRestore(file);
+    }
+    e.target.value = '';
+  };
+
+  const handleConfirmRestore = () => {
+    if (!fileToRestore) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const json = JSON.parse(ev.target?.result as string);
+        if (typeof json !== 'object' || json === null || !Array.isArray(json.transactions)) {
+          showMessage('error', 'Arquivo de backup inválido ou corrompido.');
+          return;
+        }
+        onImportTransactions(json.transactions);
+        if (json.geminiDividends && Array.isArray(json.geminiDividends)) {
+          onImportDividends(json.geminiDividends);
+        }
+      } catch {
+        showMessage('error', 'Erro ao processar o arquivo de backup.');
+      } finally {
+        setFileToRestore(null);
+      }
+    };
+    reader.onerror = () => {
+       showMessage('error', 'Não foi possível ler o arquivo.');
+       setFileToRestore(null);
+    };
+    reader.readAsText(fileToRestore);
+  };
+
   const handleCheckUpdate = async () => {
     if (updateAvailable) { onShowChangelog(); return; }
+    if (!navigator.onLine) { setCheckStatus('offline'); setTimeout(() => setCheckStatus('idle'), 3000); return; }
     setCheckStatus('checking');
     const [_, hasUpdate] = await Promise.all([new Promise(r => setTimeout(r, 2000)), onCheckUpdates()]);
     if (hasUpdate) setCheckStatus('available');
     else { setCheckStatus('latest'); setTimeout(() => setCheckStatus('idle'), 3000); }
   };
 
+  const addLog = (text: string, type: 'info' | 'success' | 'error' | 'warn' = 'info') => {
+    setDiagState(prev => ({
+        ...prev,
+        logs: [...prev.logs, { id: Date.now(), text, type }]
+    }));
+  };
+
+  const runDiagnostics = async () => {
+    setDiagState({ step: 'running', logs: [], latency: null, cloudCount: null, localCount: transactions.length, integrity: null, writeTest: null });
+    addLog('Iniciando diagnósticos profundos...');
+    if (!navigator.onLine) {
+        addLog('Dispositivo offline. Testes cancelados.', 'error');
+        setDiagState(prev => ({ ...prev, step: 'error' }));
+        return;
+    }
+    if (!user) {
+        addLog('Erro crítico: Usuário não autenticado.', 'error');
+        setDiagState(prev => ({ ...prev, step: 'error' }));
+        return;
+    }
+    try {
+        addLog('Testando latência de rede...');
+        const start = performance.now();
+        const { count, error: countError } = await supabase
+            .from('transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+        const end = performance.now();
+        const latency = Math.round(end - start);
+        if (countError) throw countError;
+        setDiagState(prev => ({ ...prev, latency, cloudCount: count }));
+        addLog(`Latência: ${latency}ms. Itens na nuvem: ${count}`, latency < 500 ? 'success' : 'warn');
+
+        const localCount = transactions.length;
+        if (localCount === count) {
+            setDiagState(prev => ({ ...prev, integrity: true }));
+            addLog('Integridade de contagem: OK', 'success');
+        } else {
+            setDiagState(prev => ({ ...prev, integrity: false }));
+            addLog(`Discrepância detectada! Local: ${localCount} vs Nuvem: ${count}`, 'error');
+        }
+
+        addLog('Testando permissões de escrita...');
+        const testTx = {
+            user_id: user.id,
+            ticker: 'DIAG_TEST',
+            type: 'BUY',
+            quantity: 0,
+            price: 0,
+            date: new Date().toISOString(),
+            asset_type: 'FII'
+        };
+        const { data: inserted, error: insertError } = await supabase.from('transactions').insert(testTx).select();
+        if (insertError) throw insertError;
+        if (inserted && inserted.length > 0) {
+            const idToDelete = inserted[0].id;
+            const { error: deleteError } = await supabase.from('transactions').delete().eq('id', idToDelete);
+            if (deleteError) throw deleteError;
+            setDiagState(prev => ({ ...prev, writeTest: true }));
+            addLog('Teste de escrita e remoção: Sucesso', 'success');
+        } else {
+            throw new Error("Falha ao inserir registro de teste");
+        }
+        setDiagState(prev => ({ ...prev, step: 'done' }));
+        addLog('Diagnóstico concluído com sucesso.', 'success');
+    } catch (e: any) {
+        console.error(e);
+        addLog(`Erro crítico: ${e.message}`, 'error');
+        setDiagState(prev => ({ ...prev, step: 'error' }));
+    }
+  };
+
+  const getSectionTitle = (section: string) => {
+    switch(section) {
+        case 'notifications': return 'Notificações';
+        case 'appearance': return 'Aparência';
+        case 'privacy': return 'Privacidade';
+        case 'integrations': return 'Conexões e Serviços';
+        case 'data': return 'Alocação e Backup';
+        case 'system': return 'Sistema';
+        case 'updates': return 'Atualizações';
+        case 'about': return 'Sobre o App';
+        default: return 'Ajustes';
+    }
+  };
+
+  const handleScroll = () => {
+    if (notesContainerRef.current) {
+      setIsHeaderCompact(notesContainerRef.current.scrollTop > 20);
+    }
+  };
+
+  const getNoteIconAndColor = (type: ReleaseNoteType) => {
+    switch (type) {
+      case 'feat': return { Icon: Sparkles, color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-100 dark:bg-zinc-800' };
+      case 'fix': return { Icon: Check, color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-100 dark:bg-zinc-800' };
+      case 'ui': return { Icon: Palette, color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-100 dark:bg-zinc-800' };
+      case 'perf': return { Icon: Zap, color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-100 dark:bg-zinc-800' };
+      default: return { Icon: Star, color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-50 dark:bg-white/10' };
+    }
+  };
+
   const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, index = 0, colorClass }: any) => (
     <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:scale-[0.98] transition-all border-b last:border-0 border-zinc-200 dark:border-zinc-800 group gap-4 anim-fade-in-up`} style={{ animationDelay: `${index * 50}ms` }}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 ${isDestructive ? 'bg-rose-500/10 text-rose-500' : (colorClass || 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400')}`}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : (colorClass || 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400')}`}>
                 <Icon className="w-5 h-5" strokeWidth={2.5} />
             </div>
-            <span className={`text-sm font-bold text-left ${isDestructive ? 'text-rose-500' : 'text-zinc-800 dark:text-zinc-200'}`}>{label}</span>
+            <span className={`text-sm font-semibold text-left ${isDestructive ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-200'}`}>{label}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-            {value && <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{value}</span>}
-            {hasUpdate && <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>}
+            {value && <span className="text-xs font-medium text-zinc-400 whitespace-nowrap">{value}</span>}
+            {hasUpdate && <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>}
             <ChevronRight className="w-4 h-4 text-zinc-300" />
         </div>
     </button>
   );
 
   const Section = ({ title, children }: any) => (
-    <div className="mb-8 anim-fade-in-up is-visible">
-        {title && <h3 className="px-5 mb-3 text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{title}</h3>}
-        <div className="rounded-[2rem] overflow-hidden shadow-card dark:shadow-card-dark border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">{children}</div>
+    <div className="mb-6 anim-fade-in-up is-visible">
+        {title && <h3 className="px-4 mb-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">{title}</h3>}
+        <div className="rounded-3xl overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800">{children}</div>
+    </div>
+  );
+
+  const Toggle = ({ label, checked, onChange, icon: Icon, description }: any) => (
+    <div onClick={onChange} className={`flex items-center justify-between p-4 rounded-3xl cursor-pointer active:scale-[0.99] transition-all border border-zinc-200 dark:border-zinc-800 ${checked ? 'bg-white dark:bg-zinc-900 shadow-sm' : 'bg-zinc-50 dark:bg-zinc-800/30'}`}>
+        <div className="flex items-center gap-3">
+          {Icon && <div className={`p-2 rounded-lg ${checked ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'}`}><Icon className="w-4 h-4" strokeWidth={2.2} /></div>}
+          <div>
+            <span className={`text-sm font-semibold block ${checked ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>{label}</span>
+            {description && <p className="text-[10px] text-zinc-400 font-medium leading-tight mt-0.5">{description}</p>}
+          </div>
+        </div>
+        <div className={`transition-all duration-300 ${checked ? 'text-zinc-900 dark:text-white' : 'text-zinc-300 dark:text-zinc-600'}`}>
+            {checked ? <ToggleRight className="w-9 h-9" /> : <ToggleLeft className="w-9 h-9" />}
+        </div>
     </div>
   );
 
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
+      {message && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none w-full max-w-sm px-4">
+            <div className={`
+              pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up is-visible
+              ${message.type === 'success' ? 'bg-white dark:bg-zinc-900 border-l-emerald-500 border-y border-r border-zinc-100 dark:border-zinc-800' : 
+                message.type === 'error' ? 'bg-white dark:bg-zinc-900 border-l-rose-500 border-y border-r border-zinc-100 dark:border-zinc-800' :
+                'bg-white dark:bg-zinc-900 border-l-sky-500 border-y border-r border-zinc-100 dark:border-zinc-800'}
+            `}>
+               <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                 message.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400' : 
+                 message.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400' : 
+                 'bg-sky-100 dark:bg-sky-900/10 text-sky-600 dark:text-sky-400'
+               }`}>
+                 {message.type === 'info' ? <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : 
+                  message.type === 'success' ? <Check className="w-4 h-4" strokeWidth={3} /> : 
+                  <AlertTriangle className="w-4 h-4" strokeWidth={2.5} />}
+               </div>
+               <div className="min-w-0">
+                 <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">
+                    {message.type === 'success' ? 'Sucesso' : message.type === 'error' ? 'Atenção' : 'Info'}
+                 </p>
+                 <p className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 truncate">
+                    {message.text}
+                 </p>
+               </div>
+            </div>
+        </div> 
+      )}
+
       {activeSection === 'menu' ? (
         <>
-            <div className="mb-8 anim-fade-in-up is-visible">
-               <h3 className="px-5 mb-3 text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Conta</h3>
-               <div className="rounded-[2rem] overflow-hidden shadow-card dark:shadow-card-dark border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-                 <div className="p-6 space-y-5">
+            <div className="mb-6 anim-fade-in-up is-visible">
+               <h3 className="px-4 mb-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Conta Cloud</h3>
+               <div className="rounded-[2rem] overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                 <div className="p-6 space-y-4">
                      <div className="flex items-center gap-4">
-                         <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center border border-indigo-100 dark:border-indigo-900/30"><User className="w-7 h-7" /></div>
-                         <div className="overflow-hidden">
-                             <h3 className="font-black text-zinc-900 dark:text-white truncate">Investidor Cloud</h3>
-                             <p className="text-xs text-zinc-500 truncate font-medium">{user ? user.email : 'Carregando...'}</p>
-                         </div>
+                         <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center shadow-sm border border-indigo-100 dark:border-indigo-900/50"><User className="w-6 h-6" /></div>
+                         <div className="overflow-hidden"><h3 className="font-bold text-zinc-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-zinc-500 truncate">{user ? user.email : 'Carregando...'}</p></div>
                      </div>
-                     <button onClick={() => setShowLogoutConfirm(true)} className="w-full py-4 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 font-black text-[10px] uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Desconectar Conta</button>
+                     <button onClick={() => setShowLogoutConfirm(true)} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
                  </div>
                </div>
             </div>
 
-            <Section title="Interface">
+            <Section title="Preferências">
                 <MenuItem 
                     icon={Palette} 
-                    label="Aparência e Tema" 
+                    label="Aparência" 
                     onClick={() => setActiveSection('appearance')} 
                     index={1} 
-                    colorClass="bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400"
+                    colorClass="bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400"
                 />
                 <MenuItem 
                     icon={Bell} 
                     label="Notificações" 
                     onClick={() => setActiveSection('notifications')} 
-                    value={pushEnabled ? 'On' : 'Off'} 
+                    value={pushEnabled ? 'Ativado' : ''} 
                     index={2} 
-                    colorClass="bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
+                    colorClass="bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
                 />
                 <MenuItem 
                     icon={privacyMode ? EyeOff : Eye} 
                     label="Privacidade" 
                     onClick={() => setActiveSection('privacy')} 
-                    value={privacyMode ? 'Ativo' : ''} 
+                    value={privacyMode ? 'Ativado' : 'Público'} 
                     index={3} 
-                    colorClass="bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400"
+                    colorClass="bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400"
                 />
             </Section>
 
-            <Section title="Dados & Serviços">
+            <Section title="Dados & Sincronização">
                 <MenuItem 
-                    icon={Signal} 
-                    label="Status dos Serviços" 
+                    icon={Globe} 
+                    label="Conexões e Serviços" 
                     onClick={() => setActiveSection('integrations')} 
-                    value="OK" 
+                    value="Online" 
                     index={4} 
-                    colorClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
+                    colorClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
                 />
                 <MenuItem 
                     icon={Database} 
-                    label="Backup e Memória" 
+                    label="Backup e IA Cache" 
                     onClick={() => setActiveSection('data')} 
+                    value={formatBytes(storageData.totalBytes)} 
                     index={5} 
-                    colorClass="bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+                    colorClass="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
                 />
             </Section>
 
-            <Section title="Suporte">
+            <Section title="Sistema">
                 <MenuItem 
                     icon={RefreshCcw} 
-                    label="Sistema & Updates" 
+                    label="Atualizações" 
                     onClick={() => setActiveSection('updates')} 
                     hasUpdate={updateAvailable} 
                     value={`v${appVersion}`} 
                     index={6} 
-                    colorClass="bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400"
+                    colorClass="bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"
                 />
                 <MenuItem 
                     icon={Info} 
-                    label="Sobre o Projeto" 
+                    label="Sobre o APP" 
                     onClick={() => setActiveSection('about')} 
                     index={7} 
                     colorClass="bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
@@ -327,70 +559,498 @@ export const Settings: React.FC<SettingsProps> = ({
                     index={8} 
                 />
             </Section>
+            
+            <div className="text-center mt-8 opacity-40"><p className="text-[10px] font-bold uppercase tracking-widest">InvestFIIs Ultra</p><p className="text-[9px]">Versão {appVersion}</p></div>
         </>
       ) : (
-        <div className="anim-fade-in is-visible">
-          <div className="flex items-center gap-3 mb-8 px-1">
-              <button onClick={() => setActiveSection('menu')} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-900 dark:text-white hover:bg-zinc-200 transition-all active:scale-90"><ArrowLeft className="w-5 h-5" strokeWidth={3} /></button>
-              <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{getSectionTitle(activeSection)}</h2>
+        <div className="anim-fade-in is-visible pt-2">
+          <div className="flex items-center gap-3 mb-6 px-1">
+              <button 
+                onClick={() => setActiveSection('menu')} 
+                className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-all active:scale-95"
+              >
+                  <ArrowLeft className="w-4 h-4" strokeWidth={3} />
+              </button>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">
+                  {getSectionTitle(activeSection)}
+              </h2>
           </div>
           
+          {activeSection === 'updates' && (
+             <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-xl anim-scale-in">
+                <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'py-6 border-b border-zinc-200 dark:border-zinc-800' : 'py-12'}`}>
+                    <div className={`relative mb-4 transition-all duration-500 ${isHeaderCompact ? 'scale-75' : 'scale-100'}`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400' : updateAvailable ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white'}`}>
+                            {checkStatus === 'checking' ? (
+                                <Loader2 className="w-8 h-8 animate-spin" strokeWidth={2} />
+                            ) : updateAvailable ? (
+                                <Download className="w-8 h-8 animate-bounce" strokeWidth={2} />
+                            ) : (
+                                <CheckCircle2 className="w-8 h-8" strokeWidth={2} />
+                            )}
+                        </div>
+                    </div>
+                    
+                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight mb-1">
+                        {checkStatus === 'checking' ? 'Buscando...' : updateAvailable ? 'Nova Versão Disponível' : 'Tudo Atualizado'}
+                    </h2>
+                    
+                    <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-6">
+                        {updateAvailable ? `Versão ${availableVersion} pronta para instalar.` : `Você está na versão ${appVersion}`}
+                    </p>
+
+                    <button 
+                        onClick={handleCheckUpdate}
+                        disabled={checkStatus === 'checking'}
+                        className={`group relative overflow-hidden px-8 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center gap-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900`}
+                    >
+                        <span className="relative z-10 flex items-center gap-2">
+                            {checkStatus === 'checking' ? 'Verificando...' : updateAvailable ? 'Atualizar Agora' : 'Buscar Atualizações'}
+                        </span>
+                    </button>
+                    {lastChecked && (
+                        <p className="text-[10px] text-zinc-400 mt-3 opacity-60 font-mono">
+                            Última verificação: {new Date(lastChecked).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                    )}
+                </div>
+                
+                <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 overscroll-contain">
+                   <div className="flex items-center gap-2 px-2">
+                       <Sparkles className="w-4 h-4 text-zinc-500" />
+                       <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                           Novidades da Versão
+                       </h3>
+                   </div>
+                   {(releaseNotes && releaseNotes.length > 0) ? (
+                      <div className="space-y-4">
+                         {releaseNotes.map((note, i) => {
+                            const { Icon, color, bg } = getNoteIconAndColor(note.type);
+                            return (
+                              <div key={i} className="flex gap-4 items-start anim-slide-in-right" style={{ animationDelay: `${i * 100}ms` }}>
+                                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${bg} ${color}`}>
+                                      <Icon className="w-4 h-4" strokeWidth={2.5} />
+                                  </div>
+                                  <div className="pt-1">
+                                      <h4 className="text-sm font-bold text-zinc-900 dark:text-white leading-tight mb-1">{note.title}</h4>
+                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">{note.desc}</p>
+                                  </div>
+                              </div>
+                            );
+                         })}
+                      </div>
+                   ) : (
+                       <div className="text-center py-10 opacity-50">
+                           <p className="text-xs text-zinc-400">Nenhuma nota de atualização disponível.</p>
+                       </div>
+                   )}
+                   
+                   <div className="pt-8 border-t border-zinc-200 dark:border-zinc-800 mt-4">
+                       <button 
+                           onClick={() => setShowForceUpdateConfirm(true)}
+                           className="w-full text-center text-[10px] font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 uppercase tracking-widest py-2"
+                       >
+                           Problemas? Reinstalar App
+                       </button>
+                   </div>
+                </div>
+             </div>
+          )}
+
+          {activeSection === 'integrations' && (
+            <div className="space-y-6 anim-fade-in-up">
+                <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+                        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 uppercase tracking-wider">{isOnline ? 'Sistema Online' : 'Offline'}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 text-[10px] font-mono text-zinc-400">
+                            <span className="flex items-center gap-1.5"><Signal className="w-3 h-3" /> {networkType}</span>
+                            <div className="h-3 w-[1px] bg-zinc-200 dark:bg-zinc-700"></div>
+                            <span className="flex items-center gap-1.5"><Gauge className="w-3 h-3" /> {estLatency ? `${estLatency}ms` : '-'}</span>
+                        </div>
+                        <button 
+                            onClick={runServiceCheck} 
+                            disabled={isServicesChecking}
+                            className={`w-6 h-6 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-700 dark:hover:text-white transition-all active:scale-95 ${isServicesChecking ? 'animate-spin' : ''}`}
+                        >
+                            <RefreshCw className="w-3 h-3" />
+                        </button>
+                    </div>
+                </div>
+
+                <Section title="Controle Manual">
+                    <div className="grid grid-cols-2 gap-3">
+                        <button 
+                            onClick={handleForceMarketUpdate}
+                            disabled={isMarketUpdating}
+                            className="bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:scale-95 text-zinc-700 dark:text-zinc-300 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center gap-2 transition-all group"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                {isMarketUpdating ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+                            </div>
+                            <div className="text-center">
+                                <span className="text-[10px] font-black uppercase tracking-wider block mb-0.5">Atualizar Mercado</span>
+                                <span className="text-[9px] opacity-70 block leading-tight">Forçar nova busca completa</span>
+                            </div>
+                        </button>
+
+                        <button 
+                            onClick={handleForceSync}
+                            disabled={isSyncing}
+                            className="bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:scale-95 text-zinc-700 dark:text-zinc-300 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center gap-2 transition-all group"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Cloud className="w-5 h-5" />}
+                            </div>
+                            <div className="text-center">
+                                <span className="text-[10px] font-black uppercase tracking-wider block mb-0.5">Sincronizar Nuvem</span>
+                                <span className="text-[9px] opacity-70 block leading-tight">Backup instantâneo</span>
+                            </div>
+                        </button>
+                    </div>
+                </Section>
+
+                <Section title="Infraestrutura & Serviços">
+                    <div className="space-y-3">
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400"><Database className="w-5 h-5" /></div>
+                                <div>
+                                    <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Supabase Cloud</h4>
+                                    <p className="text-[9px] text-zinc-400 font-mono">AWS sa-east-1 • WSS</p>
+                                </div>
+                            </div>
+                            <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.supabase === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : healthStatus.supabase === 'checking' ? 'bg-zinc-100 text-zinc-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                {healthStatus.supabase === 'operational' ? 'Online' : healthStatus.supabase === 'checking' ? 'Checking...' : 'Error'}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/10 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400"><BarChart3 className="w-5 h-5" /></div>
+                                <div>
+                                    <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Brapi Finance</h4>
+                                    <p className="text-[9px] text-zinc-400 font-mono">Delay 15m • Cache: {cachedItemsCount.quotes}</p>
+                                </div>
+                            </div>
+                            <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.brapi === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : healthStatus.brapi === 'checking' ? 'bg-zinc-100 text-zinc-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                {healthStatus.brapi === 'operational' ? 'Connected' : healthStatus.brapi === 'checking' ? 'Pinging...' : 'Degraded'}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/10 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400"><Sparkles className="w-5 h-5" /></div>
+                                    <div>
+                                        <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Google Gemini</h4>
+                                        <p className="text-[9px] text-zinc-400 font-mono">Model: 2.5 Flash (Fast)</p>
+                                    </div>
+                                </div>
+                                <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${lastAiStatus === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                    {lastAiStatus === 'operational' ? 'Ready' : 'Quota Limit'}
+                                </div>
+                            </div>
+                            <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden flex items-center">
+                                <div className={`h-full rounded-full transition-all duration-500 ${lastAiStatus === 'operational' ? 'bg-indigo-500 w-[15%]' : 'bg-amber-500 w-[95%]'}`}></div>
+                            </div>
+                            <p className="text-[8px] text-right text-zinc-400 mt-1 font-bold uppercase tracking-wider">Uso Estimado da Cota</p>
+                        </div>
+                    </div>
+                </Section>
+
+                <div className="pt-2 pb-6">
+                     <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-900/10 text-red-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
+                            <div className="text-left">
+                                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 block uppercase tracking-wide">Diagnóstico Avançado</span>
+                                <span className="text-[9px] text-zinc-400">Logs técnicos e testes de integridade</span>
+                            </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                </div>
+            </div>
+          )}
+
           {activeSection === 'appearance' && (
-            <div className="space-y-6">
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-card">
-                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-6">Selecione o Modo</h3>
-                    <div className="grid grid-cols-3 gap-3">
-                        {[{ id: 'light', icon: Sun, label: 'Claro' }, { id: 'dark', icon: Moon, label: 'Escuro' }, { id: 'system', icon: Monitor, label: 'Auto' }].map((mode) => (
-                            <button 
-                                key={mode.id} 
-                                onClick={() => onSetTheme(mode.id as ThemeType)} 
-                                className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${theme === mode.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-lg scale-105' : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 border-zinc-200 dark:border-zinc-700'}`}
-                            >
-                                <mode.icon className="w-6 h-6 mb-2" strokeWidth={2.5} />
-                                <span className="text-[10px] font-black uppercase tracking-wider">{mode.label}</span>
-                            </button>
-                        ))}
+            <div className="space-y-8 anim-fade-in-up">
+              <div>
+                  <h3 className="px-4 mb-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Tema do Sistema</h3>
+                  <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-[1.5rem] flex items-center">
+                      {[{ id: 'light', icon: Sun, label: 'Claro' }, { id: 'dark', icon: Moon, label: 'Escuro' }, { id: 'system', icon: Monitor, label: 'Auto' }].map((mode) => (
+                          <button 
+                            key={mode.id} 
+                            onClick={() => onSetTheme(mode.id as ThemeType)} 
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[1.2rem] transition-all duration-300 ${theme === mode.id ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm scale-[1.02]' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'}`}
+                          >
+                              <mode.icon className="w-4 h-4" strokeWidth={2.5} />
+                              <span className="text-[10px] font-bold uppercase tracking-wider">{mode.label}</span>
+                          </button>
+                      ))}
+                  </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'privacy' && (
+            <div className="space-y-6 anim-fade-in-up">
+                <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 text-center relative overflow-hidden">
+                    {privacyMode ? <EyeOff className="w-10 h-10 text-teal-500 mx-auto mb-3" /> : <Eye className="w-10 h-10 text-teal-500 mx-auto mb-3" />}
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Configurações de Privacidade</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 max-w-[200px] mx-auto">Oculta valores sensíveis da tela para evitar olhares curiosos em público.</p>
+                    <button 
+                        onClick={() => onSetPrivacyMode(!privacyMode)}
+                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-zinc-700 text-white'}`}
+                    >
+                        {privacyMode ? 'Desativar Agora' : 'Ativar Modo Privacidade'}
+                    </button>
+                </div>
+            </div>
+          )}
+
+          {activeSection === 'about' && (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-12 py-10 anim-scale-in">
+                <div className="text-center relative">
+                    <div className="relative z-10">
+                        <div className="w-24 h-24 bg-white dark:bg-zinc-900 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl ring-1 ring-zinc-900/5 dark:ring-white/10">
+                            <Wallet className="w-10 h-10 text-zinc-900 dark:text-white" strokeWidth={1.5} />
+                        </div>
+                        <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight mb-2">InvestFIIs</h2>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">v{appVersion} Pro</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-6 w-full max-w-xs text-center">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
+                        Feito com paixão para simplificar sua jornada de investimentos. Focado em privacidade, performance e elegância.
+                    </p>
+                    
+                    <div className="flex justify-center gap-8 pt-4 border-t border-zinc-200 dark:border-zinc-800 w-3/4 mx-auto">
+                        <button onClick={() => setShowTerms(true)} className="text-[10px] font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-white uppercase tracking-widest transition-colors">Termos</button>
+                        <button onClick={() => setShowPrivacy(true)} className="text-[10px] font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-white uppercase tracking-widest transition-colors">Privacidade</button>
+                    </div>
+                </div>
+                
+                <div className="text-[9px] text-zinc-300 dark:text-zinc-600 font-mono">
+                    Build 2025.07.16 • Cloud Only
+                </div>
+            </div>
+          )}
+
+          {activeSection === 'notifications' && (
+            <div className="space-y-6 anim-fade-in-up">
+                <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 text-center relative overflow-hidden">
+                    <Bell className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Push Notifications</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 max-w-[200px] mx-auto">Receba alertas em tempo real sobre dividendos e eventos da carteira.</p>
+                    <button 
+                        onClick={onRequestPushPermission}
+                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${pushEnabled ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-zinc-300 text-white'}`}
+                    >
+                        {pushEnabled ? 'Ativado ✓' : 'Ativar Notificações'}
+                    </button>
+                    {pushEnabled && <p className="text-[9px] text-zinc-400 mt-2 font-medium">Toque novamente para desativar</p>}
+                </div>
+
+                <div className="mb-6 anim-fade-in-up is-visible">
+                    <h3 className="px-4 mb-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Alertas Específicos</h3>
+                    <div className="rounded-3xl overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800 space-y-3 p-3 bg-white dark:bg-zinc-900">
+                        <Toggle label="Pagamentos Recebidos" description="Quando o dinheiro cair na conta" icon={BadgeDollarSignIcon} checked={notifyDivs} onChange={() => setNotifyDivs(!notifyDivs)} />
+                        <Toggle label="Data Com" description="Avisar no último dia para garantir proventos" icon={Calendar} checked={notifyDataCom} onChange={() => setNotifyDataCom(!notifyDataCom)} />
+                        <Toggle label="Metas Atingidas" description="Magic Number e objetivos de renda" icon={Target} checked={notifyGoals} onChange={() => setNotifyGoals(!notifyGoals)} />
+                        <Toggle label="Atualizações do App" description="Novas versões e melhorias" icon={Rocket} checked={notifyUpdates} onChange={() => setNotifyUpdates(!notifyUpdates)} />
                     </div>
                 </div>
             </div>
           )}
 
           {activeSection === 'data' && (
-            <div className="space-y-6">
-                <div className="bg-blue-500 p-8 rounded-[2.5rem] text-white shadow-xl shadow-blue-500/20 text-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-8 opacity-10"><Database className="w-32 h-32" /></div>
-                    <Database className="w-12 h-12 mx-auto mb-4" />
-                    <h3 className="text-xl font-black mb-2">Backup de Segurança</h3>
-                    <p className="text-xs font-medium opacity-80 mb-6">Mantenha seus dados seguros fora da nuvem.</p>
-                    <div className="flex gap-3">
-                        <button onClick={handleExport} className="flex-1 py-4 bg-white text-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform">Exportar JSON</button>
-                        <button onClick={() => fileInputRef.current?.click()} className="flex-1 py-4 bg-blue-600 text-white border border-white/20 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform">Restaurar</button>
+             <div className="space-y-6 anim-fade-in-up">
+                <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 text-center relative overflow-hidden">
+                    <Database className="w-10 h-10 text-blue-500 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Backup & Restauração</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 max-w-[250px] mx-auto">Salve uma cópia de segurança dos seus dados ou restaure um backup anterior.</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button onClick={handleExport} className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 p-4 rounded-3xl flex flex-col items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+                            <Download className="w-5 h-5" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Exportar</span>
+                        </button>
+                        <button onClick={handleImportClick} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white p-4 rounded-3xl flex flex-col items-center justify-center gap-2 border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-all">
+                            <Upload className="w-5 h-5" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Importar</span>
+                        </button>
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                     </div>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
                 </div>
-                
-                <Section title="Gerenciamento de Cache">
-                    <div className="p-2 space-y-1">
-                        <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-4 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Cotações da Brapi</span>
-                            <span className="text-[10px] font-mono text-zinc-400">Limpar</span>
+
+                 <Section title="Gerenciamento de Cache">
+                    <div className="bg-white dark:bg-zinc-900 p-4 space-y-2">
+                        <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Limpar Cache de Cotações</span>
+                            <span className="text-xs text-zinc-400 font-mono">{formatBytes(storageData.breakdown.quotes)}</span>
                         </button>
-                        <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-4 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Inteligência Artificial</span>
-                            <span className="text-[10px] font-mono text-zinc-400">Limpar</span>
+                        <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Limpar Dados de IA (Gemini)</span>
+                            <span className="text-xs text-zinc-400 font-mono">{formatBytes(storageData.breakdown.divs)}</span>
                         </button>
                     </div>
-                </Section>
-            </div>
+                 </Section>
+             </div>
+          )}
+
+          {activeSection === 'system' && (
+              <div className="space-y-6 anim-fade-in-up">
+                  <Section title="Perigo">
+                      <div className="p-6 bg-rose-50 dark:bg-rose-900/10 flex flex-col items-center text-center">
+                          <ShieldAlert className="w-10 h-10 text-rose-500 mb-3" />
+                          <h3 className="font-bold text-rose-700 dark:text-rose-400 mb-1">Apagar Tudo</h3>
+                          <p className="text-xs text-rose-600/70 dark:text-rose-400/70 mb-4 max-w-[200px]">Esta ação removerá todas as transações e configurações permanentemente.</p>
+                          <button onClick={onResetApp} className="px-6 py-3 bg-rose-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest active:scale-95 shadow-lg shadow-rose-500/20">Confirmar Reset</button>
+                      </div>
+                  </Section>
+              </div>
           )}
         </div>
       )}
 
-      {/* Reutilizando ConfirmationModals etc do arquivo original... */}
+      {/* Cloud Diagnostics Modal */}
+      <SwipeableModal isOpen={showDiagnostics} onClose={() => setShowDiagnostics(false)}>
+        <div className="px-6 py-4 pb-8 min-h-[50vh]">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-900 dark:text-white">
+                        <Activity className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Diagnóstico</h3>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Saúde da Nuvem</p>
+                    </div>
+                </div>
+                {diagState.step !== 'running' && (
+                    <button onClick={runDiagnostics} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-200 transition-colors">Re-testar</button>
+                )}
+            </div>
+
+            <div className="space-y-4 font-mono text-xs">
+                {/* Console Log */}
+                <div className="bg-zinc-900 rounded-xl p-4 min-h-[200px] max-h-[300px] overflow-y-auto border border-zinc-800 shadow-inner">
+                    {diagState.logs.length === 0 ? (
+                        <span className="text-zinc-500 animate-pulse">Aguardando início...</span>
+                    ) : (
+                        diagState.logs.map(log => (
+                            <div key={log.id} className={`mb-1.5 flex gap-2 ${
+                                log.type === 'error' ? 'text-rose-400' :
+                                log.type === 'success' ? 'text-emerald-400' :
+                                log.type === 'warn' ? 'text-amber-400' :
+                                'text-zinc-300'
+                            }`}>
+                                <span className="opacity-50">[{new Date(log.id).toLocaleTimeString('pt-BR', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'})}]</span>
+                                <span>{log.text}</span>
+                            </div>
+                        ))
+                    )}
+                    {diagState.step === 'running' && <div className="mt-2 h-1 w-4 bg-emerald-500 animate-pulse"></div>}
+                </div>
+
+                {/* Summary Cards */}
+                {diagState.step !== 'idle' && (
+                    <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
+                        <div className={`p-4 rounded-2xl border ${diagState.latency && diagState.latency < 500 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-800'}`}>
+                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Latência</p>
+                            <p className="text-xl font-black">{diagState.latency ? `${diagState.latency}ms` : '...'}</p>
+                        </div>
+                        <div className={`p-4 rounded-2xl border ${diagState.integrity === false ? 'bg-rose-500/10 border-rose-500/20' : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-800'}`}>
+                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Sincronia</p>
+                            <p className="text-xl font-black">{diagState.cloudCount !== null ? `${diagState.localCount}/${diagState.cloudCount}` : '...'}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Actions */}
+                {diagState.integrity === false && (
+                    <div className="p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20 text-center anim-fade-in-up is-visible">
+                        <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                        <p className="text-amber-500 font-bold mb-3">Discrepância Detectada</p>
+                        <button 
+                            onClick={() => { setShowDiagnostics(false); onSyncAll(true); }}
+                            className="w-full py-3 bg-amber-500 text-white rounded-xl font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                        >
+                            <ArrowRightLeft className="w-4 h-4" /> Forçar Ressincronização
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+      </SwipeableModal>
+
+      {/* Terms Modal */}
+      <SwipeableModal isOpen={showTerms} onClose={() => setShowTerms(false)}>
+        <div className="p-8 pb-20">
+            <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-6">Termos de Uso</h2>
+            <div className="prose prose-sm dark:prose-invert">
+                <p>Bem-vindo ao InvestFIIs.</p>
+                <p>Este aplicativo é fornecido "como está", sem garantias expressas ou implícitas. Ao utilizá-lo, você concorda que:</p>
+                <ul className="list-disc pl-4 space-y-2 text-zinc-600 dark:text-zinc-300">
+                    <li>As informações financeiras exibidas são obtidas de fontes públicas e podem conter atrasos ou imprecisões.</li>
+                    <li>Este app não constitui recomendação de investimento.</li>
+                    <li>Você é responsável pela segurança de sua senha e conta.</li>
+                    <li>Os desenvolvedores não se responsabilizam por perdas financeiras decorrentes do uso da ferramenta.</li>
+                </ul>
+                <p className="mt-4 font-bold">Ao continuar, você aceita estes termos.</p>
+            </div>
+        </div>
+      </SwipeableModal>
+
+      {/* Privacy Modal */}
+      <SwipeableModal isOpen={showPrivacy} onClose={() => setShowPrivacy(false)}>
+        <div className="p-8 pb-20">
+            <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-6">Política de Privacidade</h2>
+            <div className="prose prose-sm dark:prose-invert">
+                <p>Sua privacidade é nossa prioridade.</p>
+                <h4 className="font-bold mt-4">Coleta de Dados</h4>
+                <p>Coletamos apenas o necessário para o funcionamento do app: seu e-mail (para login) e os dados de transações que você insere manualmente.</p>
+                
+                <h4 className="font-bold mt-4">Armazenamento</h4>
+                <p>Seus dados são armazenados de forma segura na nuvem (Supabase) e protegidos por autenticação.</p>
+                
+                <h4 className="font-bold mt-4">Uso de IA</h4>
+                <p>Ao utilizar funcionalidades de IA (Gemini), dados anônimos de mercado podem ser processados, mas suas informações pessoais nunca são usadas para treinar modelos públicos.</p>
+
+                <h4 className="font-bold mt-4">Seus Direitos</h4>
+                <p>Você pode solicitar a exclusão completa de sua conta e dados a qualquer momento através da opção "Apagar Tudo" nas configurações.</p>
+            </div>
+        </div>
+      </SwipeableModal>
+
+      {/* Force Update Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showForceUpdateConfirm}
+        title="Reinstalar App"
+        message="Isso limpará o cache do navegador e recarregará a versão mais recente do servidor. Útil se o app estiver travado ou com comportamento estranho. Deseja continuar?"
+        onConfirm={() => { onForceUpdate(); setShowForceUpdateConfirm(false); }}
+        onCancel={() => setShowForceUpdateConfirm(false)}
+      />
+
+      <ConfirmationModal
+        isOpen={!!fileToRestore}
+        title="Restaurar Backup"
+        message="Atenção: Restaurar um backup substituirá TODOS os seus dados atuais. Esta ação não pode ser desfeita. Deseja continuar?"
+        onConfirm={handleConfirmRestore}
+        onCancel={() => setFileToRestore(null)}
+      />
+
+      {/* Logout Confirmation Modal */}
       <ConfirmationModal
         isOpen={showLogoutConfirm}
         title="Sair da Conta"
-        message="Deseja realmente desconectar? Você precisará entrar novamente para acessar seus dados."
+        message="Deseja realmente desconectar sua conta? Seus dados locais serão limpos para segurança e você precisará fazer login novamente."
         onConfirm={() => { setShowLogoutConfirm(false); onLogout(); }}
         onCancel={() => setShowLogoutConfirm(false)}
       />
