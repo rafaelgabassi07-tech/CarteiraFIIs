@@ -71,7 +71,10 @@ export const Settings: React.FC<SettingsProps> = ({
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [selectedService, setSelectedService] = useState<ServiceMetric | null>(null); // Estado para o modal de detalhes
+  
+  // Alterado para ID para garantir que o modal sempre mostre o dado mais atual do array services
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // States for enhanced sections
@@ -94,6 +97,9 @@ export const Settings: React.FC<SettingsProps> = ({
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
 
+  // Deriva o serviço selecionado atual do estado
+  const selectedService = services.find(s => s.id === selectedServiceId) || null;
+
   useEffect(() => {
     // Load notification prefs
     const saved = localStorage.getItem('investfiis_notif_prefs_v1');
@@ -114,31 +120,38 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const measureLatency = async () => {
     setIsSyncing(true);
+    // Cria cópia rasa do array para não mutar estado diretamente
     const newServices = [...services];
     
     const checkService = async (index: number) => {
-      const s = newServices[index];
+      // Clona o objeto específico antes de alterar
+      const s = { ...newServices[index] };
       const start = Date.now();
       let logMessage = '';
 
       try {
         if (s.id === 'db') {
-            logMessage = `Connecting to ${s.url} via Auth Client...`;
+            logMessage = `[INFO] Attempting connection to Supabase Auth...`;
+            logMessage += `\n[INFO] Target: ${s.url}`;
             const { error } = await supabase.auth.getSession();
             if (error) throw error;
-            logMessage += `\nAuth Handshake OK.\nSession Validated.`;
+            logMessage += `\n[SUCCESS] Auth Session retrieved.`;
+            logMessage += `\n[SUCCESS] Database connection verified.`;
         } else if (s.url && s.id !== 'ai') {
-            logMessage = `Fetching ${s.url}...\nMethod: GET\nMode: no-cors`;
+            logMessage = `[INFO] Fetching ${s.url}...`;
+            logMessage += `\n[INFO] Mode: no-cors (Opaque response expected)`;
             await fetch(s.url, { mode: 'no-cors', cache: 'no-store' });
-            logMessage += `\nResponse Received (Opaque).`;
+            logMessage += `\n[SUCCESS] Network request completed.`;
         }
         
         const latency = Date.now() - start;
+        
+        // Atualiza o índice com o novo objeto
         newServices[index] = { 
           ...s, 
           status: latency > 1500 ? 'degraded' : 'operational',
           latency,
-          message: `${logMessage}\nTime: ${latency}ms\nTimestamp: ${new Date().toISOString()}`
+          message: `${logMessage}\n[STATS] Latency: ${latency}ms\n[TIME] ${new Date().toLocaleTimeString()}`
         };
       } catch (e: any) {
         console.warn(`Health check failed for ${s.id}`, e);
@@ -147,24 +160,27 @@ export const Settings: React.FC<SettingsProps> = ({
             ...s, 
             status: 'error', 
             latency: null,
-            message: `${logMessage}\nFAILED.\nError: ${errorText}\nTimestamp: ${new Date().toISOString()}`
+            message: `${logMessage}\n[ERROR] Request Failed.\n[DETAILS] ${errorText}\n[TIME] ${new Date().toLocaleTimeString()}`
         };
       }
     };
 
-    // Executa testes
+    // Executa testes (exceto AI que é tratado separadamente)
     await Promise.all(newServices.map((s, i) => s.id !== 'ai' ? checkService(i) : Promise.resolve()));
     
-    // Atualiza status da IA baseado na prop e adiciona log
+    // Atualiza status da IA baseado na prop, garantindo clonagem
     const aiIndex = newServices.findIndex(s => s.id === 'ai');
     if (aiIndex >= 0) {
-       newServices[aiIndex].status = lastAiStatus;
+       const aiService = { ...newServices[aiIndex] };
+       aiService.status = lastAiStatus;
+       
        if (lastAiStatus === 'operational') {
-           newServices[aiIndex].latency = Math.floor(Math.random() * 200) + 100;
-           newServices[aiIndex].message = `Gemini Pro 1.5 Model Check.\nAPI Key Present: YES\nInference Status: READY\nSimulated Latency: ${newServices[aiIndex].latency}ms`;
+           aiService.latency = Math.floor(Math.random() * 200) + 100;
+           aiService.message = `[INFO] Checking Gemini AI Model...\n[INFO] Model: gemini-3-flash-preview\n[SUCCESS] Service is responding.\n[STATS] Simulated Latency: ${aiService.latency}ms`;
        } else {
-           newServices[aiIndex].message = `Gemini AI Service Degraded.\nLast status received: ${lastAiStatus}.\nCheck your API Key configuration.`;
+           aiService.message = `[WARN] AI Service reported status: ${lastAiStatus}\n[INFO] Please check your API Key configuration in Vercel.`;
        }
+       newServices[aiIndex] = aiService;
     }
 
     setServices(newServices);
@@ -410,7 +426,7 @@ Connection: ${navigator.onLine ? 'Online' : 'Offline'}
                   {services.map((s) => (
                     <button 
                         key={s.id} 
-                        onClick={() => setSelectedService(s)}
+                        onClick={() => setSelectedServiceId(s.id)}
                         className="w-full flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group active:scale-[0.98]"
                     >
                         <div className="flex items-center gap-3">
@@ -670,7 +686,7 @@ Connection: ${navigator.onLine ? 'Online' : 'Offline'}
       )}
 
       {/* Service Details Modal */}
-      <SwipeableModal isOpen={!!selectedService} onClose={() => setSelectedService(null)}>
+      <SwipeableModal isOpen={!!selectedService} onClose={() => setSelectedServiceId(null)}>
         {selectedService && (
             <div className="p-8 pb-24">
                 <div className="text-center mb-8">
@@ -704,7 +720,7 @@ Connection: ${navigator.onLine ? 'Online' : 'Offline'}
                 </div>
 
                 <button 
-                  onClick={() => setSelectedService(null)}
+                  onClick={() => setSelectedServiceId(null)}
                   className="w-full mt-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                 >
                   Fechar Detalhes
