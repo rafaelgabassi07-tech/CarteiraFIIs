@@ -33,23 +33,27 @@ const formatPercent = (val: any) => {
 // Cores para o gráfico de pizza
 const COLORS = ['#0ea5e9', '#10b981', '#6366f1', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'];
 
-// Logic for solid styling of event badges (Avoid transparent overlays)
+// Logic for solid styling of event badges (Harmonized with Zinc)
 const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string) => {
     const isToday = new Date(dateStr + 'T00:00:00').getTime() === new Date().setHours(0,0,0,0);
     
     if (eventType === 'datacom') {
         return { 
-            bg: 'bg-amber-50 dark:bg-amber-950', 
-            text: 'text-amber-700 dark:text-amber-400', 
-            border: 'border-amber-100 dark:border-amber-900',
+            // Base neutra com acento Amber
+            containerClass: 'bg-zinc-50 dark:bg-zinc-900 border-l-[3px] border-l-amber-400 border-y border-r border-zinc-100 dark:border-zinc-800',
+            iconClass: 'text-amber-500',
+            textClass: 'text-zinc-500 dark:text-zinc-400',
+            valueClass: 'text-zinc-700 dark:text-zinc-300 font-medium',
             icon: CalendarDays,
             label: isToday ? 'Data Com Hoje' : 'Data Com'
         };
     }
     return {
-        bg: 'bg-emerald-50 dark:bg-emerald-950', 
-        text: 'text-emerald-700 dark:text-emerald-400', 
-        border: 'border-emerald-100 dark:border-emerald-900',
+        // Base neutra com acento Emerald
+        containerClass: 'bg-zinc-50 dark:bg-zinc-900 border-l-[3px] border-l-emerald-500 border-y border-r border-zinc-100 dark:border-zinc-800',
+        iconClass: 'text-emerald-500',
+        textClass: 'text-zinc-500 dark:text-zinc-400',
+        valueClass: 'text-emerald-600 dark:text-emerald-400 font-bold',
         icon: Banknote,
         label: isToday ? 'Cai Hoje' : 'Pagamento'
     };
@@ -232,7 +236,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </p>
                     </div>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+                <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700 transition-colors">
                     <ArrowRight className="w-4 h-4" />
                 </div>
             </div>
@@ -242,15 +246,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     {upcomingEvents.slice(0, 4).map((event, i) => {
                         const style = getEventStyle(event.eventType, event.date);
                         return (
-                            <div key={i} className={`flex-shrink-0 p-3 rounded-xl border ${style.bg} ${style.border} min-w-[120px]`}>
+                            <div key={i} className={`flex-shrink-0 p-3 pr-4 rounded-xl ${style.containerClass} min-w-[130px]`}>
                                 <div className="flex justify-between items-start mb-2">
-                                    <span className={`text-[9px] font-black uppercase tracking-wider ${style.text}`}>{event.ticker}</span>
-                                    <style.icon className={`w-3 h-3 ${style.text}`} />
+                                    <span className={`text-[10px] font-black uppercase tracking-wider text-zinc-900 dark:text-white`}>{event.ticker}</span>
+                                    <style.icon className={`w-3.5 h-3.5 ${style.iconClass}`} />
                                 </div>
-                                <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-200 block">
+                                <span className={`text-xs block ${style.valueClass}`}>
                                     {event.eventType === 'payment' ? formatBRL(event.totalReceived) : event.date.split('-').reverse().slice(0,2).join('/')}
                                 </span>
-                                <span className={`text-[9px] font-medium opacity-80 block mt-0.5 ${style.text}`}>
+                                <span className={`text-[9px] font-medium block mt-0.5 ${style.textClass}`}>
                                      {getDaysUntil(event.date)}
                                 </span>
                             </div>
@@ -332,23 +336,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 {upcomingEvents.map((e, i) => {
                     const style = getEventStyle(e.eventType, e.date);
                     return (
-                        <div key={i} className={`p-4 rounded-2xl bg-surface-light dark:bg-surface-dark border border-zinc-200 dark:border-zinc-800 flex items-center justify-between`}>
+                        <div key={i} className={`p-4 rounded-2xl flex items-center justify-between ${style.containerClass}`}>
                             <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${style.bg} ${style.text}`}>
-                                    <style.icon className="w-6 h-6" />
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 shadow-sm ${style.iconClass}`}>
+                                    <style.icon className="w-5 h-5" />
                                 </div>
                                 <div>
                                     <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase">{e.ticker}</h4>
-                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${style.text}`}>{style.label}</p>
+                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${style.textClass}`}>{style.label}</p>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="flex items-center justify-end gap-1 mb-0.5 text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
+                                <div className="flex items-center justify-end gap-1 mb-0.5 text-[10px] font-bold text-zinc-400">
                                     <Clock className="w-3 h-3" />
                                     <span>{getDaysUntil(e.date)}</span>
                                 </div>
                                 <p className="text-sm font-black text-zinc-900 dark:text-white">{e.date.split('-').reverse().join('/')}</p>
-                                {e.eventType === 'payment' && <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{formatBRL(e.totalReceived)}</p>}
+                                {e.eventType === 'payment' && <p className={`text-xs ${style.valueClass}`}>{formatBRL(e.totalReceived)}</p>}
                             </div>
                         </div>
                     );
