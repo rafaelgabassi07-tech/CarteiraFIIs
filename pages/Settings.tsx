@@ -1,14 +1,13 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   ChevronRight, ArrowLeft, Bell, Sun, Moon, Monitor, RefreshCw, 
   Eye, EyeOff, Palette, Rocket, Database, ShieldAlert, Info, 
   User, LogOut, Download, Upload, Loader2, Signal, Check, 
-  AlertTriangle, ShieldCheck, Zap, Globe, Github
+  AlertTriangle, Zap, Globe, Github, Smartphone
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ReleaseNote } from '../types';
 import { ThemeType } from '../App';
-import { supabase } from '../services/supabase';
 import { ConfirmationModal } from '../components/Layout';
 
 type ServiceStatus = 'operational' | 'degraded' | 'error' | 'checking' | 'unknown';
@@ -28,35 +27,36 @@ interface SettingsProps {
   privacyMode: boolean;
   onSetPrivacyMode: (enabled: boolean) => void;
   appVersion: string;
-  availableVersion?: string | null;
   updateAvailable: boolean;
   onCheckUpdates: () => Promise<boolean>;
   onShowChangelog: () => void;
-  releaseNotes?: ReleaseNote[];
   pushEnabled: boolean;
   onRequestPushPermission: () => void;
-  lastSyncTime?: Date | null;
   onSyncAll: (force: boolean) => Promise<void>;
   currentVersionDate: string | null;
   lastAiStatus: ServiceStatus;
+  // Adicionado para bater com as props do App.tsx
+  onForceUpdate: () => void; 
 }
 
 export const Settings: React.FC<SettingsProps> = ({ 
   user, onLogout, transactions, onImportTransactions, geminiDividends, 
   onImportDividends, onResetApp, theme, onSetTheme, privacyMode, 
   onSetPrivacyMode, appVersion, updateAvailable, onCheckUpdates, 
-  onShowChangelog, pushEnabled, onRequestPushPermission, lastSyncTime, 
+  onShowChangelog, pushEnabled, onRequestPushPermission,
   onSyncAll, currentVersionDate, lastAiStatus 
 }) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'appearance' | 'privacy' | 'notifications' | 'services' | 'data' | 'updates' | 'about' | 'reset'>('menu');
-  const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  // Fixed: added 'info' to the allowed toast types to match update check results.
+  const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const showToast = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
+  // Fixed: updated showToast signature to include 'info' type.
+  const showToast = (type: 'success' | 'error' | 'info', text: string) => {
+    setToast({ type, text });
+    setTimeout(() => setToast(null), 3000);
   };
 
   const handleExport = () => {
@@ -65,7 +65,7 @@ export const Settings: React.FC<SettingsProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `backup_investfiis_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `investfiis_backup.json`;
     a.click();
     showToast('success', 'Backup exportado!');
   };
@@ -80,31 +80,30 @@ export const Settings: React.FC<SettingsProps> = ({
         if (json.transactions) {
           onImportTransactions(json.transactions);
           if (json.dividends) onImportDividends(json.dividends);
-          showToast('success', 'Dados importados com sucesso!');
+          showToast('success', 'Backup restaurado!');
           setActiveSection('menu');
         }
       } catch (err) {
-        showToast('error', 'Arquivo de backup inválido.');
+        showToast('error', 'Arquivo inválido.');
       }
     };
     reader.readAsText(file);
   };
 
-  // Componente de Item de Menu Moderno
   const SettingItem = ({ icon: Icon, label, value, color, onClick, isLast = false, badge }: any) => (
     <button 
       onClick={onClick}
       className={`w-full flex items-center justify-between p-4 bg-white dark:bg-zinc-900 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors ${!isLast ? 'border-b border-zinc-100 dark:border-zinc-800' : ''}`}
     >
       <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
-          <Icon className="w-4 h-4" />
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
+          <Icon className="w-5 h-5" />
         </div>
         <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{label}</span>
       </div>
       <div className="flex items-center gap-2">
         {value && <span className="text-xs font-medium text-zinc-400">{value}</span>}
-        {badge && <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></div>}
+        {badge && <div className="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse"></div>}
         <ChevronRight className="w-4 h-4 text-zinc-300" />
       </div>
     </button>
@@ -112,7 +111,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const Group = ({ title, children }: any) => (
     <div className="mb-6">
-      <h3 className="px-4 mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">{title}</h3>
+      <h3 className="px-4 mb-2 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400">{title}</h3>
       <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
         {children}
       </div>
@@ -125,64 +124,70 @@ export const Settings: React.FC<SettingsProps> = ({
         <div className="flex items-center gap-4 mb-8">
           <button 
             onClick={() => setActiveSection('menu')}
-            className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-900 dark:text-white"
+            className="w-10 h-10 rounded-full bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h2 className="text-xl font-black text-zinc-900 dark:text-white">
-            {activeSection === 'appearance' && 'Aparência'}
-            {activeSection === 'privacy' && 'Privacidade'}
-            {activeSection === 'notifications' && 'Notificações'}
-            {activeSection === 'services' && 'Serviços'}
-            {activeSection === 'data' && 'Backup'}
-            {activeSection === 'updates' && 'Sistema'}
-            {activeSection === 'about' && 'Sobre'}
-            {activeSection === 'reset' && 'Resetar'}
-          </h2>
+          <div>
+            <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-1">
+              {activeSection === 'appearance' && 'Aparência'}
+              {activeSection === 'privacy' && 'Privacidade'}
+              {activeSection === 'notifications' && 'Notificações'}
+              {activeSection === 'services' && 'Conexões'}
+              {activeSection === 'data' && 'Backup'}
+              {activeSection === 'updates' && 'Sistema'}
+              {activeSection === 'about' && 'Sobre'}
+              {activeSection === 'reset' && 'Atenção'}
+            </h2>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ajustes</p>
+          </div>
         </div>
 
-        {/* Sub-pages Content */}
         {activeSection === 'appearance' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { id: 'light', icon: Sun, label: 'Claro' },
-                { id: 'dark', icon: Moon, label: 'Escuro' },
-                { id: 'system', icon: Monitor, label: 'Auto' }
-              ].map(m => (
-                <button 
-                  key={m.id}
-                  onClick={() => onSetTheme(m.id as ThemeType)}
-                  className={`flex flex-col items-center p-4 rounded-2xl border transition-all ${theme === m.id ? 'bg-sky-500 border-sky-500 text-white shadow-lg' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500'}`}
-                >
-                  <m.icon className="w-6 h-6 mb-2" />
-                  <span className="text-[10px] font-bold uppercase">{m.label}</span>
-                </button>
-              ))}
-            </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { id: 'light', icon: Sun, label: 'Claro' },
+              { id: 'dark', icon: Moon, label: 'Escuro' },
+              { id: 'system', icon: Monitor, label: 'Auto' }
+            ].map(m => (
+              <button 
+                key={m.id}
+                onClick={() => onSetTheme(m.id as ThemeType)}
+                className={`flex flex-col items-center p-5 rounded-2xl border transition-all ${theme === m.id ? 'bg-sky-500 border-sky-500 text-white shadow-lg scale-105' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}
+              >
+                <m.icon className="w-6 h-6 mb-2" />
+                <span className="text-[10px] font-black uppercase tracking-wider">{m.label}</span>
+              </button>
+            ))}
           </div>
         )}
 
         {activeSection === 'services' && (
           <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-800 space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Conexões Ativas</span>
-              <button onClick={() => onSyncAll(true)} disabled={isSyncing} className={`p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 ${isSyncing ? 'animate-spin' : ''}`}>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serviços Cloud</span>
+              <button 
+                onClick={() => { setIsSyncing(true); onSyncAll(true).finally(() => setIsSyncing(false)); }} 
+                disabled={isSyncing} 
+                className={`p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500 ${isSyncing ? 'animate-spin' : ''}`}
+              >
                 <RefreshCw className="w-4 h-4" />
               </button>
             </div>
             {[
-              { label: 'Supabase Cloud', status: 'operational', icon: Globe, color: 'text-emerald-500' },
-              { label: 'Brapi Quotes API', status: 'operational', icon: Signal, color: 'text-blue-500' },
-              { label: 'Gemini AI Analysis', status: lastAiStatus, icon: Zap, color: 'text-amber-500' }
+              { label: 'Supabase Database', status: 'operational', icon: Globe, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950' },
+              { label: 'Brapi Market API', status: 'operational', icon: Signal, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950' },
+              { label: 'Gemini AI Analysis', status: lastAiStatus, icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950' }
             ].map(s => (
-              <div key={s.label} className="flex items-center justify-between py-2">
+              <div key={s.label} className="flex items-center justify-between p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
                 <div className="flex items-center gap-3">
-                  <s.icon className={`w-5 h-5 ${s.color}`} />
-                  <span className="text-sm font-semibold">{s.label}</span>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${s.bg} ${s.color}`}>
+                    <s.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{s.label}</span>
                 </div>
-                <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${s.status === 'operational' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                  {s.status === 'operational' ? 'Online' : 'Erro'}
+                <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${s.status === 'operational' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                  {s.status === 'operational' ? 'OK' : 'Falha'}
                 </div>
               </div>
             ))}
@@ -190,64 +195,69 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'data' && (
-          <div className="space-y-3">
-            <button onClick={handleExport} className="w-full p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center">
-                  <Download className="w-5 h-5" />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-bold">Exportar Backup</p>
-                  <p className="text-[10px] text-zinc-400 font-medium">Salvar dados em JSON</p>
-                </div>
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-100 dark:border-zinc-800 text-center">
+              <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Database className="w-8 h-8" />
               </div>
-              <ChevronRight className="w-4 h-4 text-zinc-300" />
-            </button>
-            <button onClick={() => fileInputRef.current?.click()} className="w-full p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 flex items-center justify-center">
-                  <Upload className="w-5 h-5" />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-bold">Importar Backup</p>
-                  <p className="text-[10px] text-zinc-400 font-medium">Restaurar de arquivo</p>
-                </div>
+              <h3 className="text-lg font-black mb-2">Segurança dos Dados</h3>
+              <p className="text-xs text-zinc-500 mb-8 leading-relaxed">Seus dados são sincronizados na nuvem, mas você pode baixar uma cópia física em JSON a qualquer momento.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={handleExport} className="py-4 bg-blue-500 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all">Exportar</button>
+                <button onClick={() => fileInputRef.current?.click()} className="py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all">Importar</button>
               </div>
-              <ChevronRight className="w-4 h-4 text-zinc-300" />
-            </button>
-            <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
+              <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
+            </div>
           </div>
         )}
 
         {activeSection === 'privacy' && (
           <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-100 dark:border-zinc-800 text-center">
-            <div className={`w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center ${privacyMode ? 'bg-emerald-100 text-emerald-600' : 'bg-zinc-100 text-zinc-400'}`}>
-              {privacyMode ? <EyeOff className="w-8 h-8" /> : <Eye className="w-8 h-8" />}
+            <div className={`w-20 h-20 mx-auto mb-6 rounded-3xl flex items-center justify-center ${privacyMode ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+              {privacyMode ? <EyeOff className="w-10 h-10" /> : <Eye className="w-10 h-10" />}
             </div>
-            <h3 className="text-lg font-bold mb-2">Ocultar Patrimônio</h3>
-            <p className="text-xs text-zinc-500 mb-8 px-4">Quando ativado, os valores financeiros na tela inicial serão substituídos por asteriscos.</p>
+            <h3 className="text-xl font-black mb-2">Modo Privacidade</h3>
+            <p className="text-xs text-zinc-500 mb-8 leading-relaxed px-4">Oculta todos os valores monetários na tela de início. Ideal para consultar sua carteira em locais públicos.</p>
             <button 
-              /* Fix: Use correct function name 'onSetPrivacyMode' instead of 'onSetSetPrivacyMode' */
               onClick={() => onSetPrivacyMode(!privacyMode)}
-              className={`w-full py-4 rounded-xl font-bold text-xs uppercase tracking-widest ${privacyMode ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
+              className={`w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}
             >
-              {privacyMode ? 'Desativar' : 'Ativar Proteção'}
+              {privacyMode ? 'Desativar Proteção' : 'Ativar Proteção'}
             </button>
           </div>
         )}
 
+        {activeSection === 'updates' && (
+          <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-100 dark:border-zinc-800 text-center">
+            <div className="w-16 h-16 bg-sky-50 dark:bg-sky-900/20 text-sky-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Rocket className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-black mb-1">Versão v{appVersion}</h3>
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-8">{currentVersionDate || 'Branch Estável'}</p>
+            <div className="space-y-3">
+              <button 
+                onClick={() => onCheckUpdates().then(has => showToast(has ? 'success' : 'info', has ? 'Novo update disponível!' : 'Você já está na última versão.'))}
+                className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95"
+              >
+                Checar Atualizações
+              </button>
+              <button onClick={onShowChangelog} className="w-full py-4 text-[10px] font-black uppercase text-zinc-400 hover:text-zinc-900 dark:hover:text-white">Ver Notas da Versão</button>
+            </div>
+          </div>
+        )}
+
         {activeSection === 'reset' && (
-          <div className="bg-rose-50 dark:bg-rose-950/20 p-8 rounded-3xl border border-rose-100 dark:border-rose-900/30 text-center">
-            <div className="w-16 h-16 bg-rose-500 text-white mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg shadow-rose-500/20">
+          <div className="bg-rose-50 dark:bg-rose-950/30 p-8 rounded-3xl border border-rose-100 dark:border-rose-900/30 text-center">
+            <div className="w-16 h-16 bg-rose-500 text-white mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-xl shadow-rose-500/20">
               <ShieldAlert className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-rose-600 dark:text-rose-400 mb-2">Limpeza de Cache</h3>
-            <p className="text-xs text-rose-600/60 dark:text-rose-400/60 mb-8 px-4">Isso removerá apenas os dados locais (tema, login e cache). Seus dados na nuvem estão protegidos.</p>
+            <h3 className="text-xl font-black text-rose-600 dark:text-rose-400 mb-2">Limpeza do App</h3>
+            <p className="text-xs text-rose-600/60 dark:text-rose-400/60 mb-8 leading-relaxed">Isso apagará apenas as preferências locais (tema, login e cache). Seus dados na nuvem continuam seguros e intactos.</p>
             <button 
               onClick={onResetApp}
-              className="w-full py-4 bg-rose-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-xl shadow-rose-500/20"
+              className="w-full py-4 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-rose-500/20 active:scale-95"
             >
-              Confirmar Reset
+              Confirmar Reset Local
             </button>
           </div>
         )}
@@ -256,13 +266,13 @@ export const Settings: React.FC<SettingsProps> = ({
           <div className="space-y-6">
             <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-100 dark:border-zinc-800 text-center">
               <img src="./logo.svg" alt="InvestFIIs" className="w-20 h-20 mx-auto mb-6" />
-              <h2 className="text-2xl font-black mb-1">InvestFIIs Pro</h2>
-              <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-6">Versão Estável</p>
-              <p className="text-sm text-zinc-500 leading-relaxed">Desenvolvido para investidores que buscam simplicidade e performance na gestão de dividendos.</p>
+              <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-1">InvestFIIs Pro</h2>
+              <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-6">Built for Investors</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">Focado em performance e simplicidade para gestão de dividendos na B3.</p>
             </div>
-            <div className="flex justify-center gap-6">
-              <button className="text-zinc-400 hover:text-sky-500 transition-colors"><Github className="w-5 h-5" /></button>
-              <button className="text-zinc-400 hover:text-sky-500 transition-colors"><Globe className="w-5 h-5" /></button>
+            <div className="flex justify-center gap-4">
+              <button className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500"><Github className="w-5 h-5" /></button>
+              <button className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500"><Globe className="w-5 h-5" /></button>
             </div>
           </div>
         )}
@@ -273,28 +283,31 @@ export const Settings: React.FC<SettingsProps> = ({
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto anim-fade-in">
       
-      {/* Profile Card Slim */}
+      {/* Profile Header Slim */}
       <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/20 text-sky-600 rounded-2xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded-2xl flex items-center justify-center border border-sky-100 dark:border-sky-800">
             <User className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white leading-none mb-1">
+            <h3 className="text-sm font-black text-zinc-900 dark:text-white leading-none mb-1">
               {user?.email?.split('@')[0]}
             </h3>
-            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Sessão Ativa</p>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Sincronizado</p>
+            </div>
           </div>
         </div>
         <button 
           onClick={() => setShowLogoutConfirm(true)}
-          className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/10 text-rose-500 flex items-center justify-center"
+          className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center active:scale-90 transition-transform"
         >
           <LogOut className="w-5 h-5" />
         </button>
       </div>
 
-      <Group title="Preferências">
+      <Group title="Interface">
         <SettingItem 
           icon={Palette} 
           label="Aparência" 
@@ -305,24 +318,24 @@ export const Settings: React.FC<SettingsProps> = ({
         <SettingItem 
           icon={Eye} 
           label="Privacidade" 
-          value={privacyMode ? 'Protegido' : 'Padrão'}
+          value={privacyMode ? 'Ativo' : 'Padrão'}
           color="bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400"
           onClick={() => setActiveSection('privacy')} 
         />
         <SettingItem 
           icon={Bell} 
           label="Notificações" 
-          value={pushEnabled ? 'Ligado' : 'Desligado'}
+          value={pushEnabled ? 'On' : 'Off'}
           color="bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400"
           onClick={() => setActiveSection('notifications')} 
           isLast
         />
       </Group>
 
-      <Group title="Dados & Serviços">
+      <Group title="Infraestrutura">
         <SettingItem 
           icon={Signal} 
-          label="Status dos Serviços" 
+          label="Status das Conexões" 
           value="Online"
           color="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
           onClick={() => setActiveSection('services')} 
@@ -336,7 +349,7 @@ export const Settings: React.FC<SettingsProps> = ({
         />
       </Group>
 
-      <Group title="Aplicativo">
+      <Group title="Sobre o App">
         <SettingItem 
           icon={Rocket} 
           label="Versão do Sistema" 
@@ -347,7 +360,7 @@ export const Settings: React.FC<SettingsProps> = ({
         />
         <SettingItem 
           icon={Info} 
-          label="Sobre o Projeto" 
+          label="Sobre o InvestFIIs" 
           color="bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
           onClick={() => setActiveSection('about')} 
         />
@@ -361,11 +374,13 @@ export const Settings: React.FC<SettingsProps> = ({
       </Group>
 
       {/* Footer Toast */}
-      {message && (
+      {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[2000] anim-fade-in-up is-visible">
-          <div className={`px-6 py-3 rounded-2xl shadow-xl font-bold text-xs flex items-center gap-2 ${message.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-            {message.type === 'success' ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-            {message.text}
+          {/* Updated: added conditional background class to support 'info' toast type. */}
+          <div className={`px-5 py-2.5 rounded-2xl shadow-xl font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 ${toast.type === 'success' ? 'bg-emerald-500 text-white' : toast.type === 'info' ? 'bg-sky-500 text-white' : 'bg-rose-500 text-white'}`}>
+            {/* Updated: added conditional icon logic for 'info' toast type. */}
+            {toast.type === 'success' ? <Check className="w-3.5 h-3.5" /> : toast.type === 'info' ? <Info className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+            {toast.text}
           </div>
         </div>
       )}
@@ -373,7 +388,7 @@ export const Settings: React.FC<SettingsProps> = ({
       <ConfirmationModal 
         isOpen={showLogoutConfirm} 
         title="Encerrar Sessão" 
-        message="Seus dados estão seguros na nuvem. Deseja realmente sair?" 
+        message="Seus dados estão seguros na nuvem. Deseja realmente sair da conta?" 
         onConfirm={() => { setShowLogoutConfirm(false); onLogout(); }} 
         onCancel={() => setShowLogoutConfirm(false)} 
       />
