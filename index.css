@@ -5,9 +5,15 @@
 
 @layer base {
   :root {
-    --duration-fast: 200ms;
+    --duration-fast: 150ms;
     --duration-normal: 400ms;
-    --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+    --duration-slow: 700ms;
+    
+    /* Spring-like Easing Curves */
+    --ease-out-mola: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --ease-out-soft: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out-expo: cubic-bezier(1, 0, 0, 1);
+    
     --color-accent-rgb: 14 165 233;
   }
 
@@ -16,6 +22,7 @@
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    scroll-behavior: smooth;
   }
 
   body { 
@@ -26,12 +33,8 @@
     @apply bg-primary-light dark:bg-[#020617] text-zinc-900 dark:text-zinc-100;
   }
 
-  /* 
-     CRITICAL: No transforms on #root. 
-     Transforms create a new stacking context that turns 'fixed' into 'absolute'.
-  */
   #root {
-    transition: opacity 0.6s var(--ease-out-quint);
+    transition: opacity var(--duration-slow) var(--ease-out-soft);
     opacity: 0;
     min-height: 100vh;
     display: flex;
@@ -40,11 +43,6 @@
 
   body.app-revealed #root {
     opacity: 1;
-  }
-  
-  ::selection {
-    background-color: #0ea5e9;
-    color: white;
   }
 }
 
@@ -55,21 +53,47 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+  /* New Global Animations */
   .anim-fade-in {
-    opacity: 0;
-    animation: fadeIn var(--duration-normal) var(--ease-out-quint) forwards;
+    animation: fadeIn var(--duration-normal) var(--ease-out-soft) forwards;
   }
 
-  .anim-fade-in-up {
+  .anim-slide-up {
     opacity: 0;
-    transform: translateY(12px);
-    animation: fadeInUp var(--duration-normal) var(--ease-out-quint) forwards;
+    transform: translateY(20px);
+    animation: slideUp var(--duration-normal) var(--ease-out-soft) forwards;
+  }
+
+  .anim-scale-in {
+    opacity: 0;
+    transform: scale(0.95);
+    animation: scaleIn var(--duration-normal) var(--ease-out-mola) forwards;
+  }
+
+  .anim-page-enter {
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
+    animation: pageEnter 0.5s var(--ease-out-soft) forwards;
+  }
+
+  .anim-stagger-item {
+    opacity: 0;
+    transform: translateY(15px);
+    animation: slideUp var(--duration-normal) var(--ease-out-soft) forwards;
+  }
+
+  /* Interaction Utility */
+  .press-effect {
+    @apply transition-transform duration-75 active:scale-95;
   }
 }
 
-@keyframes fadeIn { to { opacity: 1; } }
-@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { to { opacity: 1; transform: scale(1); } }
+@keyframes pageEnter { to { opacity: 1; transform: scale(1) translateY(0); } }
 
+/* Custom Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 .dark ::-webkit-scrollbar-thumb { background: #1e293b; }

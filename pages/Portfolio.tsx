@@ -24,7 +24,7 @@ const formatPercent = (val: number, privacy = false) => {
   return `${val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}%`;
 };
 
-const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number, privacyMode?: boolean }> = ({ asset, totalValue, privacyMode = false }) => {
+const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number, index: number, privacyMode?: boolean }> = ({ asset, totalValue, index, privacyMode = false }) => {
   const [expanded, setExpanded] = useState(false);
   
   const currentVal = (asset.currentPrice || asset.averagePrice) * asset.quantity;
@@ -35,10 +35,13 @@ const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number, privacyMod
   const allocation = totalValue > 0 ? (currentVal / totalValue) * 100 : 0;
 
   return (
-    <div className={`bg-surface-light dark:bg-surface-dark rounded-[1.5rem] border transition-all duration-300 overflow-hidden ${expanded ? 'border-zinc-300 dark:border-zinc-700 shadow-xl scale-[1.02] z-10' : 'border-zinc-200 dark:border-zinc-800 shadow-card dark:shadow-card-dark'}`}>
+    <div 
+        className={`bg-surface-light dark:bg-surface-dark rounded-[1.5rem] border transition-all duration-300 overflow-hidden anim-stagger-item ${expanded ? 'border-zinc-300 dark:border-zinc-700 shadow-xl scale-[1.02] z-10' : 'border-zinc-200 dark:border-zinc-800 shadow-card dark:shadow-card-dark'}`}
+        style={{ animationDelay: `${index * 50}ms` }}
+    >
         
         {/* HEADER (Always Visible) */}
-        <button onClick={() => setExpanded(!expanded)} className="w-full p-4 flex items-center justify-between group active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors">
+        <button onClick={() => setExpanded(!expanded)} className="w-full p-4 flex items-center justify-between group press-effect">
             <div className="flex items-center gap-3">
                 {/* Logo/Icon Box */}
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black shadow-inner border border-zinc-100 dark:border-zinc-800 ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400' : 'bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400'}`}>
@@ -123,9 +126,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0, 
     }, [portfolio, searchTerm, filterType]);
 
     return (
-        <div className="pt-24 pb-32 px-5 max-w-lg mx-auto min-h-screen">
+        <div className="pt-24 pb-32 px-5 max-w-lg mx-auto min-h-screen overflow-x-hidden">
              {/* Header Controls */}
-             <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-none border-b border-zinc-200 dark:border-zinc-800 py-2 -mx-5 px-5 mb-4 shadow-sm">
+             <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-none border-b border-zinc-200 dark:border-zinc-800 py-2 -mx-5 px-5 mb-4 shadow-sm anim-fade-in">
                  <div className="flex gap-2 mb-3">
                      <div className="flex-1 relative group">
                         <Search className="absolute left-4 top-3.5 w-4 h-4 text-zinc-400 group-focus-within:text-sky-500 transition-colors" />
@@ -155,11 +158,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0, 
             {/* List */}
             <div className="space-y-3">
                 {filtered.length > 0 ? (
-                    filtered.map(asset => (
-                        <AssetCard key={asset.ticker} asset={asset} totalValue={balance} privacyMode={privacyMode} />
+                    filtered.map((asset, index) => (
+                        <AssetCard key={asset.ticker} asset={asset} index={index} totalValue={balance} privacyMode={privacyMode} />
                     ))
                 ) : (
-                    <div className="text-center py-20 opacity-50">
+                    <div className="text-center py-20 opacity-50 anim-fade-in">
                         <PieChart className="w-16 h-16 mx-auto mb-4 text-zinc-300 dark:text-zinc-700" strokeWidth={1} />
                         <p className="text-sm font-bold text-zinc-500">Nenhum ativo encontrado.</p>
                     </div>

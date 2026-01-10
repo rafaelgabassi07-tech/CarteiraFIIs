@@ -19,7 +19,7 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
   // Cabeçalho de Mês
   if (item.type === 'header') {
       return (
-          <div style={style} className="px-2 pt-6 pb-2">
+          <div style={style} className="px-2 pt-6 pb-2 anim-fade-in">
               <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{item.monthKey}</h3>
           </div>
       );
@@ -29,11 +29,12 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
   const isBuy = t.type === 'BUY';
   const privacyMode = data.privacyMode;
   
+  // Fix: Merged duplicate style attributes into a single style object to prevent JSX validation errors
   return (
-      <div style={style} className="px-1 py-1.5">
+      <div className="px-1 py-1.5 anim-stagger-item" style={{ ...style, animationDelay: `${(index % 10) * 30}ms` }}>
           <button 
             onClick={() => data.onRowClick(t)}
-            className="w-full text-left bg-surface-light dark:bg-surface-dark p-4 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-sm active:scale-[0.98] transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
+            className="w-full text-left bg-surface-light dark:bg-surface-dark p-4 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-sm press-effect hover:border-zinc-300 dark:hover:border-zinc-700"
           >
               <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
@@ -129,7 +130,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             date
         };
 
-        setIsModalOpen(false); // Close immediately for UX
+        setIsModalOpen(false); 
 
         if (editingId) {
             await onUpdateTransaction(editingId, payload);
@@ -146,9 +147,9 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     };
 
     return (
-        <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-            {/* Header Action - Simplified without Duplicate Title */}
-            <div className="flex items-center justify-between mb-6 px-1">
+        <div className="pt-24 pb-32 px-5 max-w-lg mx-auto overflow-x-hidden">
+            {/* Header Action */}
+            <div className="flex items-center justify-between mb-6 px-1 anim-fade-in">
                 <div>
                     <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
                         {transactions.length} {transactions.length === 1 ? 'Ordem Registrada' : 'Ordens Registradas'}
@@ -156,7 +157,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 </div>
                 <button 
                     onClick={handleOpenAdd}
-                    className="w-12 h-12 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-transform hover:shadow-xl"
+                    className="w-12 h-12 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl flex items-center justify-center shadow-lg press-effect hover:shadow-xl anim-scale-in"
                 >
                     <Plus className="w-6 h-6" strokeWidth={2.5} />
                 </button>
@@ -175,7 +176,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         {TransactionRow}
                     </List>
                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center opacity-40">
+                    <div className="h-full flex flex-col items-center justify-center opacity-40 anim-fade-in">
                         <ArrowRightLeft className="w-16 h-16 mb-4 text-zinc-300 dark:text-zinc-700" strokeWidth={1} />
                         <p className="text-sm font-bold text-zinc-500">Nenhuma ordem registrada.</p>
                         <button onClick={handleOpenAdd} className="mt-4 text-xs font-bold text-sky-500 uppercase tracking-widest">Adicionar Primeira</button>
@@ -186,7 +187,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             {/* Add/Edit Modal */}
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <div className="p-6 pb-12">
-                    <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center justify-between mb-8 anim-slide-up">
                         <div>
                             <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
                                 {editingId ? 'Editar Ordem' : 'Nova Ordem'}
@@ -198,7 +199,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         {editingId && (
                             <button 
                                 onClick={handleDelete}
-                                className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100 dark:border-rose-500/20 active:scale-95"
+                                className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100 dark:border-rose-500/20 press-effect"
                             >
                                 <Trash2 className="w-5 h-5" />
                             </button>
@@ -207,7 +208,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
                     <div className="space-y-5">
                         {/* Ticker Input */}
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '100ms' }}>
                             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block">Ativo (Ticker)</label>
                             <input 
                                 type="text" 
@@ -220,17 +221,17 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         </div>
 
                         {/* Types Toggle Grid */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-4 anim-slide-up" style={{ animationDelay: '150ms' }}>
                             {/* Buy/Sell */}
                             <div className="bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex relative">
-                                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ${type === 'SELL' ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
+                                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ease-out-soft ${type === 'SELL' ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
                                 <button onClick={() => setType('BUY')} className={`relative z-10 flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center transition-colors ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>Compra</button>
                                 <button onClick={() => setType('SELL')} className={`relative z-10 flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center transition-colors ${type === 'SELL' ? 'text-rose-500' : 'text-zinc-400'}`}>Venda</button>
                             </div>
 
                             {/* FII/Stock */}
                             <div className="bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex relative">
-                                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ${assetType === AssetType.STOCK ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
+                                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ease-out-soft ${assetType === AssetType.STOCK ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
                                 <button onClick={() => setAssetType(AssetType.FII)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-center transition-colors ${assetType === AssetType.FII ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>
                                     <Building2 className="w-3 h-3" /> FII
                                 </button>
@@ -241,7 +242,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         </div>
 
                         {/* Details Grid */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-4 anim-slide-up" style={{ animationDelay: '200ms' }}>
                             <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Hash className="w-3 h-3 text-zinc-400" />
@@ -274,7 +275,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         </div>
 
                         {/* Date Input */}
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center gap-4">
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center gap-4 anim-slide-up" style={{ animationDelay: '250ms' }}>
                             <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
                                 <Calendar className="w-5 h-5" />
                             </div>
@@ -293,7 +294,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         <button 
                             onClick={handleSave}
                             disabled={!ticker || !quantity || !price}
-                            className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all mt-4 ${(!ticker || !quantity || !price) ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'}`}
+                            className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg press-effect mt-4 anim-slide-up ${(!ticker || !quantity || !price) ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'}`}
+                            style={{ animationDelay: '300ms' }}
                         >
                             <Save className="w-4 h-4" />
                             {editingId ? 'Salvar Alterações' : 'Confirmar Ordem'}

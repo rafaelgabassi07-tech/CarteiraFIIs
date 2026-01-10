@@ -15,7 +15,6 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-// Define and export ThemeType to fix missing export error in Settings.tsx and missing name in App.tsx
 export type ThemeType = 'light' | 'dark' | 'system';
 
 const APP_VERSION = '8.2.3'; 
@@ -284,7 +283,7 @@ const App: React.FC = () => {
       {toast && ( 
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-sm px-4">
             <div className={`
-              flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up is-visible
+              flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up
               ${toast.type === 'success' ? 'bg-white dark:bg-slate-900 border-l-emerald-500 border-y border-r border-slate-100 dark:border-slate-800' : 
                 toast.type === 'error' ? 'bg-white dark:bg-slate-900 border-l-rose-500 border-y border-r border-slate-100 dark:border-slate-800' :
                 'bg-white dark:bg-slate-900 border-l-sky-500 border-y border-r border-slate-100 dark:border-slate-800'}
@@ -310,9 +309,11 @@ const App: React.FC = () => {
             <Header title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} isRefreshing={isRefreshing || isAiLoading} updateAvailable={updateManager.isUpdateAvailable} onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} />
             <main className="max-w-screen-md mx-auto pt-2 pb-32 min-h-screen">
               {showSettings ? (
-                <Settings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} onShowChangelog={() => updateManager.setShowChangelog(true)} pushEnabled={pushEnabled} onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={handleSyncAll} lastAiStatus={lastAiStatus as any} onForceUpdate={() => window.location.reload()} currentVersionDate={updateManager.currentVersionDate} />
+                <div className="anim-page-enter">
+                  <Settings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} onShowChangelog={() => updateManager.setShowChangelog(true)} pushEnabled={pushEnabled} onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={handleSyncAll} lastAiStatus={lastAiStatus as any} onForceUpdate={() => window.location.reload()} currentVersionDate={updateManager.currentVersionDate} />
+                </div>
               ) : (
-                <div key={currentTab} className="anim-fade-in is-visible">
+                <div key={currentTab} className="anim-page-enter">
                   {currentTab === 'home' && (
                     <MemoizedHome 
                       {...memoizedPortfolioData} 
