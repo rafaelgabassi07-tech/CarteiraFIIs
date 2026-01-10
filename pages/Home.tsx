@@ -233,7 +233,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         {/* Renda */}
         <button onClick={() => setShowProventosModal(true)} className="bg-white dark:bg-[#0F1623] p-5 rounded-[2rem] border border-slate-200 dark:border-slate-800 text-left active:scale-[0.98] transition-transform hover:border-slate-300 dark:hover:border-slate-700 flex flex-col justify-between h-full">
             <div>
-                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4">
+                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white mb-4">
                     <CircleDollarSign className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renda Passiva</span>
