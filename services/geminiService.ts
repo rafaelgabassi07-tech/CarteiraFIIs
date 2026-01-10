@@ -54,7 +54,7 @@ const fetchStoredDividends = async (tickers: string[]): Promise<DividendReceipt[
             ticker: d.ticker,
             type: d.type,
             dateCom: d.date_com,
-            payment_date: d.payment_date,
+            paymentDate: d.payment_date, // Corrigido de payment_date para paymentDate
             rate: Number(d.rate),
             quantityOwned: 0,
             totalReceived: 0

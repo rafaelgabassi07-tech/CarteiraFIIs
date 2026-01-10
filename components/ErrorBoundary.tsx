@@ -1,4 +1,5 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 // Componente para exibir quando houver erro de configuração das chaves do Supabase
@@ -30,20 +31,15 @@ interface ErrorBoundaryState {
 }
 
 /**
- * Fixed ErrorBoundary: Use React.Component to ensure generics are correctly mapped to state and props.
- * This resolves "Property 'state' does not exist on type 'ErrorBoundary'" and 
- * "Property 'props' does not exist on type 'ErrorBoundary'" TypeScript errors.
+ * ErrorBoundary: Use Component from 'react' to ensure generics are correctly mapped to state and props.
+ * This approach avoids shadowing issues and ensures 'this.props' is correctly inherited.
  */
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Explicitly declare the state property to satisfy the compiler and ensure it's recognized.
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Explicitly declare the state property to ensure it's recognized.
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null
   };
-
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-  }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
