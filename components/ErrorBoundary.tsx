@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ServerOff } from 'lucide-react';
 
 const ConfigurationError: React.FC = () => (
@@ -28,8 +28,8 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// Fix: Explicitly extend React.Component to resolve 'props' property error in TypeScript
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+// Fix: Explicitly extend Component to resolve 'props' property error
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null

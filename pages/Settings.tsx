@@ -287,7 +287,11 @@ Connection: ${navigator.onLine ? 'Online' : 'Offline'}
                             key={c.hex}
                             onClick={() => onSetAccentColor(c.hex)}
                             className={`w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center ${accentColor === c.hex ? 'scale-125 shadow-lg ring-2 ring-offset-2 ring-offset-zinc-50 dark:ring-offset-zinc-900' : 'hover:scale-110 opacity-70 hover:opacity-100'}`}
-                            style={{ backgroundColor: c.hex, boxShadow: accentColor === c.hex ? `0 4px 12px ${c.hex}66` : 'none', ringColor: c.hex }}
+                            style={{ 
+                                backgroundColor: c.hex, 
+                                boxShadow: accentColor === c.hex ? `0 4px 12px ${c.hex}66` : 'none',
+                                ['--tw-ring-color' as any]: c.hex 
+                            }}
                         >
                             {accentColor === c.hex && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
                         </button>
