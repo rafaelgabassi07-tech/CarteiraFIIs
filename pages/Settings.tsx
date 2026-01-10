@@ -397,45 +397,45 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const getNoteIconAndColor = (type: ReleaseNoteType) => {
     switch (type) {
-      case 'feat': return { Icon: Sparkles, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800' };
-      case 'fix': return { Icon: Check, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800' };
-      case 'ui': return { Icon: Palette, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800' };
-      case 'perf': return { Icon: Zap, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800' };
-      default: return { Icon: Star, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-white/10' };
+      case 'feat': return { Icon: Sparkles, color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-100 dark:bg-zinc-800' };
+      case 'fix': return { Icon: Check, color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-100 dark:bg-zinc-800' };
+      case 'ui': return { Icon: Palette, color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-100 dark:bg-zinc-800' };
+      case 'perf': return { Icon: Zap, color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-100 dark:bg-zinc-800' };
+      default: return { Icon: Star, color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-50 dark:bg-white/10' };
     }
   };
 
   const MenuItem = ({ icon: Icon, label, value, onClick, isDestructive, hasUpdate, index = 0 }: any) => (
-    <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:scale-[0.98] transition-all border-b last:border-0 border-slate-200 dark:border-slate-800 group gap-4 anim-fade-in-up`} style={{ animationDelay: `${index * 50}ms` }}>
+    <button onClick={onClick} className={`w-full flex items-center justify-between p-4 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:scale-[0.98] transition-all border-b last:border-0 border-zinc-200 dark:border-zinc-800 group gap-4 anim-fade-in-up`} style={{ animationDelay: `${index * 50}ms` }}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}><Icon className="w-5 h-5" strokeWidth={2.5} /></div>
-            <span className={`text-sm font-semibold text-left ${isDestructive ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>{label}</span>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isDestructive ? 'bg-rose-500/10 text-rose-500' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}><Icon className="w-5 h-5" strokeWidth={2.5} /></div>
+            <span className={`text-sm font-semibold text-left ${isDestructive ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-200'}`}>{label}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-            {value && <span className="text-xs font-medium text-slate-400 whitespace-nowrap">{value}</span>}
+            {value && <span className="text-xs font-medium text-zinc-400 whitespace-nowrap">{value}</span>}
             {hasUpdate && <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>}
-            <ChevronRight className="w-4 h-4 text-slate-300" />
+            <ChevronRight className="w-4 h-4 text-zinc-300" />
         </div>
     </button>
   );
 
   const Section = ({ title, children }: any) => (
     <div className="mb-6 anim-fade-in-up is-visible">
-        {title && <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</h3>}
-        <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">{children}</div>
+        {title && <h3 className="px-4 mb-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">{title}</h3>}
+        <div className="rounded-3xl overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800">{children}</div>
     </div>
   );
 
   const Toggle = ({ label, checked, onChange, icon: Icon, description }: any) => (
-    <div onClick={onChange} className={`flex items-center justify-between p-4 rounded-3xl cursor-pointer active:scale-[0.99] transition-all border border-slate-200 dark:border-slate-800 ${checked ? 'bg-white dark:bg-slate-900 shadow-sm' : 'bg-slate-50 dark:bg-slate-800/30'}`}>
+    <div onClick={onChange} className={`flex items-center justify-between p-4 rounded-3xl cursor-pointer active:scale-[0.99] transition-all border border-zinc-200 dark:border-zinc-800 ${checked ? 'bg-white dark:bg-zinc-900 shadow-sm' : 'bg-zinc-50 dark:bg-zinc-800/30'}`}>
         <div className="flex items-center gap-3">
-          {Icon && <div className={`p-2 rounded-lg ${checked ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'}`}><Icon className="w-4 h-4" strokeWidth={2.2} /></div>}
+          {Icon && <div className={`p-2 rounded-lg ${checked ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'}`}><Icon className="w-4 h-4" strokeWidth={2.2} /></div>}
           <div>
-            <span className={`text-sm font-semibold block ${checked ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{label}</span>
-            {description && <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">{description}</p>}
+            <span className={`text-sm font-semibold block ${checked ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>{label}</span>
+            {description && <p className="text-[10px] text-zinc-400 font-medium leading-tight mt-0.5">{description}</p>}
           </div>
         </div>
-        <div className={`transition-all duration-300 ${checked ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-slate-600'}`}>
+        <div className={`transition-all duration-300 ${checked ? 'text-zinc-900 dark:text-white' : 'text-zinc-300 dark:text-zinc-600'}`}>
             {checked ? <ToggleRight className="w-9 h-9" /> : <ToggleLeft className="w-9 h-9" />}
         </div>
     </div>
@@ -447,9 +447,9 @@ export const Settings: React.FC<SettingsProps> = ({
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none w-full max-w-sm px-4">
             <div className={`
               pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up is-visible
-              ${message.type === 'success' ? 'bg-white dark:bg-slate-900 border-l-emerald-500 border-y border-r border-slate-100 dark:border-slate-800' : 
-                message.type === 'error' ? 'bg-white dark:bg-slate-900 border-l-rose-500 border-y border-r border-slate-100 dark:border-slate-800' :
-                'bg-white dark:bg-slate-900 border-l-sky-500 border-y border-r border-slate-100 dark:border-slate-800'}
+              ${message.type === 'success' ? 'bg-white dark:bg-zinc-900 border-l-emerald-500 border-y border-r border-zinc-100 dark:border-zinc-800' : 
+                message.type === 'error' ? 'bg-white dark:bg-zinc-900 border-l-rose-500 border-y border-r border-zinc-100 dark:border-zinc-800' :
+                'bg-white dark:bg-zinc-900 border-l-sky-500 border-y border-r border-zinc-100 dark:border-zinc-800'}
             `}>
                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
                  message.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400' : 
@@ -461,10 +461,10 @@ export const Settings: React.FC<SettingsProps> = ({
                   <AlertTriangle className="w-4 h-4" strokeWidth={2.5} />}
                </div>
                <div className="min-w-0">
-                 <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                 <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">
                     {message.type === 'success' ? 'Sucesso' : message.type === 'error' ? 'Atenção' : 'Info'}
                  </p>
-                 <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+                 <p className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 truncate">
                     {message.text}
                  </p>
                </div>
@@ -475,12 +475,12 @@ export const Settings: React.FC<SettingsProps> = ({
       {activeSection === 'menu' ? (
         <>
             <div className="mb-6 anim-fade-in-up is-visible">
-               <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Conta Cloud</h3>
-               <div className="rounded-[2rem] overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+               <h3 className="px-4 mb-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Conta Cloud</h3>
+               <div className="rounded-[2rem] overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
                  <div className="p-6 space-y-4">
                      <div className="flex items-center gap-4">
-                         <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white"><User className="w-6 h-6" /></div>
-                         <div className="overflow-hidden"><h3 className="font-bold text-slate-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-slate-500 truncate">{user ? user.email : 'Carregando...'}</p></div>
+                         <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-900 dark:text-white"><User className="w-6 h-6" /></div>
+                         <div className="overflow-hidden"><h3 className="font-bold text-zinc-900 dark:text-white truncate">Conectado</h3><p className="text-xs text-zinc-500 truncate">{user ? user.email : 'Carregando...'}</p></div>
                      </div>
                      <button onClick={() => setShowLogoutConfirm(true)} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 font-bold text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-sm border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><LogOut className="w-4 h-4" /> Sair da Conta</button>
                  </div>
@@ -511,20 +511,20 @@ export const Settings: React.FC<SettingsProps> = ({
           <div className="flex items-center gap-3 mb-6 px-1">
               <button 
                 onClick={() => setActiveSection('menu')} 
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all active:scale-95"
+                className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-all active:scale-95"
               >
                   <ArrowLeft className="w-4 h-4" strokeWidth={3} />
               </button>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">
                   {getSectionTitle(activeSection)}
               </h2>
           </div>
           
           {activeSection === 'updates' && (
-             <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl anim-scale-in">
-                <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'py-6 border-b border-slate-200 dark:border-slate-800' : 'py-12'}`}>
+             <div className="h-[calc(100dvh-140px)] flex flex-col bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-xl anim-scale-in">
+                <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-500 ease-out-quint ${isHeaderCompact ? 'py-6 border-b border-zinc-200 dark:border-zinc-800' : 'py-12'}`}>
                     <div className={`relative mb-4 transition-all duration-500 ${isHeaderCompact ? 'scale-75' : 'scale-100'}`}>
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : updateAvailable ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'}`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-700 ${checkStatus === 'checking' ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400' : updateAvailable ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white'}`}>
                             {checkStatus === 'checking' ? (
                                 <Loader2 className="w-8 h-8 animate-spin" strokeWidth={2} />
                             ) : updateAvailable ? (
@@ -535,25 +535,25 @@ export const Settings: React.FC<SettingsProps> = ({
                         </div>
                     </div>
                     
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
+                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight mb-1">
                         {checkStatus === 'checking' ? 'Buscando...' : updateAvailable ? 'Nova Versão Disponível' : 'Tudo Atualizado'}
                     </h2>
                     
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6">
+                    <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-6">
                         {updateAvailable ? `Versão ${availableVersion} pronta para instalar.` : `Você está na versão ${appVersion}`}
                     </p>
 
                     <button 
                         onClick={handleCheckUpdate}
                         disabled={checkStatus === 'checking'}
-                        className={`group relative overflow-hidden px-8 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900`}
+                        className={`group relative overflow-hidden px-8 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.15em] transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center gap-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900`}
                     >
                         <span className="relative z-10 flex items-center gap-2">
                             {checkStatus === 'checking' ? 'Verificando...' : updateAvailable ? 'Atualizar Agora' : 'Buscar Atualizações'}
                         </span>
                     </button>
                     {lastChecked && (
-                        <p className="text-[10px] text-slate-400 mt-3 opacity-60 font-mono">
+                        <p className="text-[10px] text-zinc-400 mt-3 opacity-60 font-mono">
                             Última verificação: {new Date(lastChecked).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                     )}
@@ -561,8 +561,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 
                 <div ref={notesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 overscroll-contain">
                    <div className="flex items-center gap-2 px-2">
-                       <Sparkles className="w-4 h-4 text-slate-500" />
-                       <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                       <Sparkles className="w-4 h-4 text-zinc-500" />
+                       <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
                            Novidades da Versão
                        </h3>
                    </div>
@@ -576,8 +576,8 @@ export const Settings: React.FC<SettingsProps> = ({
                                       <Icon className="w-4 h-4" strokeWidth={2.5} />
                                   </div>
                                   <div className="pt-1">
-                                      <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight mb-1">{note.title}</h4>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{note.desc}</p>
+                                      <h4 className="text-sm font-bold text-zinc-900 dark:text-white leading-tight mb-1">{note.title}</h4>
+                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">{note.desc}</p>
                                   </div>
                               </div>
                             );
@@ -585,14 +585,14 @@ export const Settings: React.FC<SettingsProps> = ({
                       </div>
                    ) : (
                        <div className="text-center py-10 opacity-50">
-                           <p className="text-xs text-slate-400">Nenhuma nota de atualização disponível.</p>
+                           <p className="text-xs text-zinc-400">Nenhuma nota de atualização disponível.</p>
                        </div>
                    )}
                    
-                   <div className="pt-8 border-t border-slate-200 dark:border-slate-800 mt-4">
+                   <div className="pt-8 border-t border-zinc-200 dark:border-zinc-800 mt-4">
                        <button 
                            onClick={() => setShowForceUpdateConfirm(true)}
-                           className="w-full text-center text-[10px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 uppercase tracking-widest py-2"
+                           className="w-full text-center text-[10px] font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 uppercase tracking-widest py-2"
                        >
                            Problemas? Reinstalar App
                        </button>
@@ -603,21 +603,21 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'integrations' && (
             <div className="space-y-6 anim-fade-in-up">
-                <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex items-center gap-3">
                         <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">{isOnline ? 'Sistema Online' : 'Offline'}</span>
+                        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 uppercase tracking-wider">{isOnline ? 'Sistema Online' : 'Offline'}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400">
+                        <div className="flex items-center gap-3 text-[10px] font-mono text-zinc-400">
                             <span className="flex items-center gap-1.5"><Signal className="w-3 h-3" /> {networkType}</span>
-                            <div className="h-3 w-[1px] bg-slate-200 dark:bg-slate-700"></div>
+                            <div className="h-3 w-[1px] bg-zinc-200 dark:bg-zinc-700"></div>
                             <span className="flex items-center gap-1.5"><Gauge className="w-3 h-3" /> {estLatency ? `${estLatency}ms` : '-'}</span>
                         </div>
                         <button 
                             onClick={runServiceCheck} 
                             disabled={isServicesChecking}
-                            className={`w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-white transition-all active:scale-95 ${isServicesChecking ? 'animate-spin' : ''}`}
+                            className={`w-6 h-6 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-700 dark:hover:text-white transition-all active:scale-95 ${isServicesChecking ? 'animate-spin' : ''}`}
                         >
                             <RefreshCw className="w-3 h-3" />
                         </button>
@@ -629,9 +629,9 @@ export const Settings: React.FC<SettingsProps> = ({
                         <button 
                             onClick={handleForceMarketUpdate}
                             disabled={isMarketUpdating}
-                            className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 text-slate-700 dark:text-slate-300 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-2 transition-all group"
+                            className="bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:scale-95 text-zinc-700 dark:text-zinc-300 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center gap-2 transition-all group"
                         >
-                            <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                                 {isMarketUpdating ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
                             </div>
                             <div className="text-center">
@@ -643,9 +643,9 @@ export const Settings: React.FC<SettingsProps> = ({
                         <button 
                             onClick={handleForceSync}
                             disabled={isSyncing}
-                            className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 text-slate-700 dark:text-slate-300 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-2 transition-all group"
+                            className="bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 active:scale-95 text-zinc-700 dark:text-zinc-300 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center gap-2 transition-all group"
                         >
-                            <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                                 {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Cloud className="w-5 h-5" />}
                             </div>
                             <div className="text-center">
@@ -658,63 +658,63 @@ export const Settings: React.FC<SettingsProps> = ({
 
                 <Section title="Infraestrutura & Serviços">
                     <div className="space-y-3">
-                        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex items-center justify-between">
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white"><Database className="w-5 h-5" /></div>
+                                <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white"><Database className="w-5 h-5" /></div>
                                 <div>
-                                    <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Supabase Cloud</h4>
-                                    <p className="text-[9px] text-slate-400 font-mono">AWS sa-east-1 • WSS</p>
+                                    <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Supabase Cloud</h4>
+                                    <p className="text-[9px] text-zinc-400 font-mono">AWS sa-east-1 • WSS</p>
                                 </div>
                             </div>
-                            <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.supabase === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : healthStatus.supabase === 'checking' ? 'bg-slate-100 text-slate-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                            <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.supabase === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : healthStatus.supabase === 'checking' ? 'bg-zinc-100 text-zinc-500' : 'bg-rose-500/10 text-rose-500'}`}>
                                 {healthStatus.supabase === 'operational' ? 'Online' : healthStatus.supabase === 'checking' ? 'Checking...' : 'Error'}
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex items-center justify-between">
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white"><BarChart3 className="w-5 h-5" /></div>
+                                <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white"><BarChart3 className="w-5 h-5" /></div>
                                 <div>
-                                    <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Brapi Finance</h4>
-                                    <p className="text-[9px] text-slate-400 font-mono">Delay 15m • Cache: {cachedItemsCount.quotes}</p>
+                                    <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Brapi Finance</h4>
+                                    <p className="text-[9px] text-zinc-400 font-mono">Delay 15m • Cache: {cachedItemsCount.quotes}</p>
                                 </div>
                             </div>
-                            <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.brapi === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : healthStatus.brapi === 'checking' ? 'bg-slate-100 text-slate-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                            <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${healthStatus.brapi === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : healthStatus.brapi === 'checking' ? 'bg-zinc-100 text-zinc-500' : 'bg-rose-500/10 text-rose-500'}`}>
                                 {healthStatus.brapi === 'operational' ? 'Connected' : healthStatus.brapi === 'checking' ? 'Pinging...' : 'Degraded'}
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white"><Sparkles className="w-5 h-5" /></div>
+                                    <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white"><Sparkles className="w-5 h-5" /></div>
                                     <div>
-                                        <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Google Gemini</h4>
-                                        <p className="text-[9px] text-slate-400 font-mono">Model: 2.5 Flash (Fast)</p>
+                                        <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Google Gemini</h4>
+                                        <p className="text-[9px] text-zinc-400 font-mono">Model: 2.5 Flash (Fast)</p>
                                     </div>
                                 </div>
                                 <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${lastAiStatus === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
                                     {lastAiStatus === 'operational' ? 'Ready' : 'Quota Limit'}
                                 </div>
                             </div>
-                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden flex items-center">
-                                <div className={`h-full rounded-full transition-all duration-500 ${lastAiStatus === 'operational' ? 'bg-slate-900 dark:bg-white w-[15%]' : 'bg-amber-500 w-[95%]'}`}></div>
+                            <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden flex items-center">
+                                <div className={`h-full rounded-full transition-all duration-500 ${lastAiStatus === 'operational' ? 'bg-zinc-900 dark:bg-white w-[15%]' : 'bg-amber-500 w-[95%]'}`}></div>
                             </div>
-                            <p className="text-[8px] text-right text-slate-400 mt-1 font-bold uppercase tracking-wider">Uso Estimado da Cota</p>
+                            <p className="text-[8px] text-right text-zinc-400 mt-1 font-bold uppercase tracking-wider">Uso Estimado da Cota</p>
                         </div>
                     </div>
                 </Section>
 
                 <div className="pt-2 pb-6">
-                     <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group">
+                     <button onClick={() => { setShowDiagnostics(true); runDiagnostics(); }} className="w-full flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group">
                         <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
+                            <div className="w-9 h-9 rounded-lg bg-zinc-200 dark:bg-zinc-700 text-zinc-500 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="w-5 h-5" /></div>
                             <div className="text-left">
-                                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block uppercase tracking-wide">Diagnóstico Avançado</span>
-                                <span className="text-[9px] text-slate-400">Logs técnicos e testes de integridade</span>
+                                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 block uppercase tracking-wide">Diagnóstico Avançado</span>
+                                <span className="text-[9px] text-zinc-400">Logs técnicos e testes de integridade</span>
                             </div>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
+                        <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:translate-x-1 transition-transform" />
                     </button>
                 </div>
             </div>
@@ -723,13 +723,13 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'appearance' && (
             <div className="space-y-8 anim-fade-in-up">
               <div>
-                  <h3 className="px-4 mb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tema do Sistema</h3>
-                  <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-[1.5rem] flex items-center">
+                  <h3 className="px-4 mb-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Tema do Sistema</h3>
+                  <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-[1.5rem] flex items-center">
                       {[{ id: 'light', icon: Sun, label: 'Claro' }, { id: 'dark', icon: Moon, label: 'Escuro' }, { id: 'system', icon: Monitor, label: 'Auto' }].map((mode) => (
                           <button 
                             key={mode.id} 
                             onClick={() => onSetTheme(mode.id as ThemeType)} 
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[1.2rem] transition-all duration-300 ${theme === mode.id ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[1.2rem] transition-all duration-300 ${theme === mode.id ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm scale-[1.02]' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'}`}
                           >
                               <mode.icon className="w-4 h-4" strokeWidth={2.5} />
                               <span className="text-[10px] font-bold uppercase tracking-wider">{mode.label}</span>
@@ -742,13 +742,13 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'privacy' && (
             <div className="space-y-6 anim-fade-in-up">
-                <div className="bg-slate-100 dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
-                    {privacyMode ? <EyeOff className="w-10 h-10 text-slate-500 mx-auto mb-3" /> : <Eye className="w-10 h-10 text-slate-500 mx-auto mb-3" />}
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Configurações de Privacidade</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Oculta valores sensíveis da tela para evitar olhares curiosos em público.</p>
+                <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 text-center relative overflow-hidden">
+                    {privacyMode ? <EyeOff className="w-10 h-10 text-zinc-500 mx-auto mb-3" /> : <Eye className="w-10 h-10 text-zinc-500 mx-auto mb-3" />}
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Configurações de Privacidade</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 max-w-[200px] mx-auto">Oculta valores sensíveis da tela para evitar olhares curiosos em público.</p>
                     <button 
                         onClick={() => onSetPrivacyMode(!privacyMode)}
-                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-700 text-white'}`}
+                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-zinc-700 text-white'}`}
                     >
                         {privacyMode ? 'Desativar Agora' : 'Ativar Modo Privacidade'}
                     </button>
@@ -760,29 +760,29 @@ export const Settings: React.FC<SettingsProps> = ({
             <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-12 py-10 anim-scale-in">
                 <div className="text-center relative">
                     <div className="relative z-10">
-                        <div className="w-24 h-24 bg-white dark:bg-slate-900 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl ring-1 ring-slate-900/5 dark:ring-white/10">
-                            <Wallet className="w-10 h-10 text-slate-900 dark:text-white" strokeWidth={1.5} />
+                        <div className="w-24 h-24 bg-white dark:bg-zinc-900 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl ring-1 ring-zinc-900/5 dark:ring-white/10">
+                            <Wallet className="w-10 h-10 text-zinc-900 dark:text-white" strokeWidth={1.5} />
                         </div>
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">InvestFIIs</h2>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
+                        <h2 className="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight mb-2">InvestFIIs</h2>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">v{appVersion} Pro</span>
+                            <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">v{appVersion} Pro</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="space-y-6 w-full max-w-xs text-center">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
                         Feito com paixão para simplificar sua jornada de investimentos. Focado em privacidade, performance e elegância.
                     </p>
                     
-                    <div className="flex justify-center gap-8 pt-4 border-t border-slate-200 dark:border-slate-800 w-3/4 mx-auto">
-                        <button onClick={() => setShowTerms(true)} className="text-[10px] font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest transition-colors">Termos</button>
-                        <button onClick={() => setShowPrivacy(true)} className="text-[10px] font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest transition-colors">Privacidade</button>
+                    <div className="flex justify-center gap-8 pt-4 border-t border-zinc-200 dark:border-zinc-800 w-3/4 mx-auto">
+                        <button onClick={() => setShowTerms(true)} className="text-[10px] font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-white uppercase tracking-widest transition-colors">Termos</button>
+                        <button onClick={() => setShowPrivacy(true)} className="text-[10px] font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-white uppercase tracking-widest transition-colors">Privacidade</button>
                     </div>
                 </div>
                 
-                <div className="text-[9px] text-slate-300 dark:text-slate-600 font-mono">
+                <div className="text-[9px] text-zinc-300 dark:text-zinc-600 font-mono">
                     Build 2025.07.16 • Cloud Only
                 </div>
             </div>
@@ -790,22 +790,22 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'notifications' && (
             <div className="space-y-6 anim-fade-in-up">
-                <div className="bg-slate-100 dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
-                    <Bell className="w-10 h-10 text-slate-500 mx-auto mb-3" />
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Push Notifications</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-[200px] mx-auto">Receba alertas em tempo real sobre dividendos e eventos da carteira.</p>
+                <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 text-center relative overflow-hidden">
+                    <Bell className="w-10 h-10 text-zinc-500 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Push Notifications</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 max-w-[200px] mx-auto">Receba alertas em tempo real sobre dividendos e eventos da carteira.</p>
                     <button 
                         onClick={onRequestPushPermission}
-                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${pushEnabled ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-300 text-white'}`}
+                        className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all ${pushEnabled ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-zinc-300 text-white'}`}
                     >
                         {pushEnabled ? 'Ativado ✓' : 'Ativar Notificações'}
                     </button>
-                    {pushEnabled && <p className="text-[9px] text-slate-400 mt-2 font-medium">Toque novamente para desativar</p>}
+                    {pushEnabled && <p className="text-[9px] text-zinc-400 mt-2 font-medium">Toque novamente para desativar</p>}
                 </div>
 
                 <div className="mb-6 anim-fade-in-up is-visible">
-                    <h3 className="px-4 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Alertas Específicos</h3>
-                    <div className="rounded-3xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 space-y-3 p-3 bg-white dark:bg-slate-900">
+                    <h3 className="px-4 mb-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Alertas Específicos</h3>
+                    <div className="rounded-3xl overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800 space-y-3 p-3 bg-white dark:bg-zinc-900">
                         <Toggle label="Pagamentos Recebidos" description="Quando o dinheiro cair na conta" icon={BadgeDollarSignIcon} checked={notifyDivs} onChange={() => setNotifyDivs(!notifyDivs)} />
                         <Toggle label="Data Com" description="Avisar no último dia para garantir proventos" icon={Calendar} checked={notifyDataCom} onChange={() => setNotifyDataCom(!notifyDataCom)} />
                         <Toggle label="Metas Atingidas" description="Magic Number e objetivos de renda" icon={Target} checked={notifyGoals} onChange={() => setNotifyGoals(!notifyGoals)} />
@@ -817,16 +817,16 @@ export const Settings: React.FC<SettingsProps> = ({
 
           {activeSection === 'data' && (
              <div className="space-y-6 anim-fade-in-up">
-                <div className="bg-slate-100 dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 text-center relative overflow-hidden">
-                    <Database className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Backup & Restauração</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 max-w-[250px] mx-auto">Salve uma cópia de segurança dos seus dados ou restaure um backup anterior.</p>
+                <div className="bg-zinc-100 dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 text-center relative overflow-hidden">
+                    <Database className="w-10 h-10 text-zinc-400 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Backup & Restauração</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 max-w-[250px] mx-auto">Salve uma cópia de segurança dos seus dados ou restaure um backup anterior.</p>
                     <div className="grid grid-cols-2 gap-3">
-                        <button onClick={handleExport} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-4 rounded-3xl flex flex-col items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+                        <button onClick={handleExport} className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 p-4 rounded-3xl flex flex-col items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
                             <Download className="w-5 h-5" />
                             <span className="text-[10px] font-bold uppercase tracking-widest">Exportar</span>
                         </button>
-                        <button onClick={handleImportClick} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white p-4 rounded-3xl flex flex-col items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 active:scale-95 transition-all">
+                        <button onClick={handleImportClick} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white p-4 rounded-3xl flex flex-col items-center justify-center gap-2 border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-all">
                             <Upload className="w-5 h-5" />
                             <span className="text-[10px] font-bold uppercase tracking-widest">Importar</span>
                         </button>
@@ -835,14 +835,14 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
 
                  <Section title="Gerenciamento de Cache">
-                    <div className="bg-white dark:bg-slate-900 p-4 space-y-2">
-                        <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800">
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Cache de Cotações</span>
-                            <span className="text-xs text-slate-400 font-mono">{formatBytes(storageData.breakdown.quotes)}</span>
+                    <div className="bg-white dark:bg-zinc-900 p-4 space-y-2">
+                        <button onClick={handleClearQuoteCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Limpar Cache de Cotações</span>
+                            <span className="text-xs text-zinc-400 font-mono">{formatBytes(storageData.breakdown.quotes)}</span>
                         </button>
-                        <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800">
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Limpar Dados de IA (Gemini)</span>
-                            <span className="text-xs text-slate-400 font-mono">{formatBytes(storageData.breakdown.divs)}</span>
+                        <button onClick={handleClearDivCache} className="w-full flex justify-between items-center p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Limpar Dados de IA (Gemini)</span>
+                            <span className="text-xs text-zinc-400 font-mono">{formatBytes(storageData.breakdown.divs)}</span>
                         </button>
                     </div>
                  </Section>
@@ -852,11 +852,11 @@ export const Settings: React.FC<SettingsProps> = ({
           {activeSection === 'system' && (
               <div className="space-y-6 anim-fade-in-up">
                   <Section title="Perigo">
-                      <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center text-center">
-                          <ShieldAlert className="w-10 h-10 text-slate-500 mb-3" />
-                          <h3 className="font-bold text-slate-600 dark:text-slate-400 mb-1">Apagar Tudo</h3>
-                          <p className="text-xs text-slate-400 mb-4 max-w-[200px]">Esta ação removerá todas as transações e configurações permanentemente.</p>
-                          <button onClick={onResetApp} className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold uppercase tracking-widest active:scale-95 shadow-lg">Confirmar Reset</button>
+                      <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 flex flex-col items-center text-center">
+                          <ShieldAlert className="w-10 h-10 text-zinc-500 mb-3" />
+                          <h3 className="font-bold text-zinc-600 dark:text-zinc-400 mb-1">Apagar Tudo</h3>
+                          <p className="text-xs text-zinc-400 mb-4 max-w-[200px]">Esta ação removerá todas as transações e configurações permanentemente.</p>
+                          <button onClick={onResetApp} className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-bold uppercase tracking-widest active:scale-95 shadow-lg">Confirmar Reset</button>
                       </div>
                   </Section>
               </div>
@@ -869,31 +869,31 @@ export const Settings: React.FC<SettingsProps> = ({
         <div className="px-6 py-4 pb-8 min-h-[50vh]">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white">
+                    <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-900 dark:text-white">
                         <Activity className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-tight">Diagnóstico</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saúde da Nuvem</p>
+                        <h3 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-tight">Diagnóstico</h3>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Saúde da Nuvem</p>
                     </div>
                 </div>
                 {diagState.step !== 'running' && (
-                    <button onClick={runDiagnostics} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-colors">Re-testar</button>
+                    <button onClick={runDiagnostics} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-200 transition-colors">Re-testar</button>
                 )}
             </div>
 
             <div className="space-y-4 font-mono text-xs">
                 {/* Console Log */}
-                <div className="bg-slate-900 rounded-xl p-4 min-h-[200px] max-h-[300px] overflow-y-auto border border-slate-800 shadow-inner">
+                <div className="bg-zinc-900 rounded-xl p-4 min-h-[200px] max-h-[300px] overflow-y-auto border border-zinc-800 shadow-inner">
                     {diagState.logs.length === 0 ? (
-                        <span className="text-slate-500 animate-pulse">Aguardando início...</span>
+                        <span className="text-zinc-500 animate-pulse">Aguardando início...</span>
                     ) : (
                         diagState.logs.map(log => (
                             <div key={log.id} className={`mb-1.5 flex gap-2 ${
                                 log.type === 'error' ? 'text-rose-400' :
                                 log.type === 'success' ? 'text-emerald-400' :
                                 log.type === 'warn' ? 'text-amber-400' :
-                                'text-slate-300'
+                                'text-zinc-300'
                             }`}>
                                 <span className="opacity-50">[{new Date(log.id).toLocaleTimeString('pt-BR', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'})}]</span>
                                 <span>{log.text}</span>
@@ -906,11 +906,11 @@ export const Settings: React.FC<SettingsProps> = ({
                 {/* Summary Cards */}
                 {diagState.step !== 'idle' && (
                     <div className="grid grid-cols-2 gap-3 anim-fade-in-up is-visible">
-                        <div className={`p-4 rounded-2xl border ${diagState.latency && diagState.latency < 500 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800'}`}>
+                        <div className={`p-4 rounded-2xl border ${diagState.latency && diagState.latency < 500 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-800'}`}>
                             <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Latência</p>
                             <p className="text-xl font-black">{diagState.latency ? `${diagState.latency}ms` : '...'}</p>
                         </div>
-                        <div className={`p-4 rounded-2xl border ${diagState.integrity === false ? 'bg-rose-500/10 border-rose-500/20' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800'}`}>
+                        <div className={`p-4 rounded-2xl border ${diagState.integrity === false ? 'bg-rose-500/10 border-rose-500/20' : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-800'}`}>
                             <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Sincronia</p>
                             <p className="text-xl font-black">{diagState.cloudCount !== null ? `${diagState.localCount}/${diagState.cloudCount}` : '...'}</p>
                         </div>
@@ -937,11 +937,11 @@ export const Settings: React.FC<SettingsProps> = ({
       {/* Terms Modal */}
       <SwipeableModal isOpen={showTerms} onClose={() => setShowTerms(false)}>
         <div className="p-8 pb-20">
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Termos de Uso</h2>
+            <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-6">Termos de Uso</h2>
             <div className="prose prose-sm dark:prose-invert">
                 <p>Bem-vindo ao InvestFIIs.</p>
                 <p>Este aplicativo é fornecido "como está", sem garantias expressas ou implícitas. Ao utilizá-lo, você concorda que:</p>
-                <ul className="list-disc pl-4 space-y-2 text-slate-600 dark:text-slate-300">
+                <ul className="list-disc pl-4 space-y-2 text-zinc-600 dark:text-zinc-300">
                     <li>As informações financeiras exibidas são obtidas de fontes públicas e podem conter atrasos ou imprecisões.</li>
                     <li>Este app não constitui recomendação de investimento.</li>
                     <li>Você é responsável pela segurança de sua senha e conta.</li>
@@ -955,7 +955,7 @@ export const Settings: React.FC<SettingsProps> = ({
       {/* Privacy Modal */}
       <SwipeableModal isOpen={showPrivacy} onClose={() => setShowPrivacy(false)}>
         <div className="p-8 pb-20">
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Política de Privacidade</h2>
+            <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-6">Política de Privacidade</h2>
             <div className="prose prose-sm dark:prose-invert">
                 <p>Sua privacidade é nossa prioridade.</p>
                 <h4 className="font-bold mt-4">Coleta de Dados</h4>

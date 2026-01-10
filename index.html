@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
     <!-- Dynamic Theme Color for Browser Bar -->
-    <meta name="theme-color" content="#F8FAFC" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
     
     <meta name="app-version" content="8.2.1" />
     
@@ -20,22 +20,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-      /* CSS Crítico - Soft Modern Init */
+      /* CSS Crítico - Solid Gray Init */
       :root {
-        --bg-solid: #F8FAFC; /* Slate 50 */
+        --bg-solid: #F4F4F5; /* Zinc 100 */
         --card-solid: #FFFFFF; 
-        --border-color: #E2E8F0;
+        --border-color: #E4E4E7; /* Zinc 200 */
         --accent: #0ea5e9;
-        --text-main: #0F172A; 
-        --text-muted: #64748B;
+        --text-main: #18181b; /* Zinc 900 */
+        --text-muted: #71717a; /* Zinc 500 */
       }
       
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg-solid: #020617; /* Slate 950 */
-          --card-solid: #0F172A; /* Slate 900 */
-          --border-color: #1E293B;
-          --text-main: #F8FAFC;
+          --bg-solid: #09090b; /* Zinc 950 */
+          --card-solid: #18181b; /* Zinc 900 */
+          --border-color: #27272a; /* Zinc 800 */
+          --text-main: #FAFAFA; /* Zinc 50 */
         }
       }
       
@@ -72,7 +72,7 @@
         align-items: center;
         justify-content: center;
         margin-bottom: 40px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       }
 
       .s-icon-main { 
@@ -150,7 +150,7 @@
     }
     </script>
 </head>
-  <body class="bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100 min-h-screen overflow-x-hidden antialiased selection:bg-sky-500 selection:text-white">
+  <body class="bg-primary-light dark:bg-primary-dark text-zinc-900 dark:text-zinc-100 min-h-screen overflow-x-hidden antialiased selection:bg-sky-500 selection:text-white">
     
     <div id="root-splash">
         <div class="s-logo-box">
