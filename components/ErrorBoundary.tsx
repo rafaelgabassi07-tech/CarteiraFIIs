@@ -33,8 +33,8 @@ interface ErrorBoundaryState {
 /**
  * ErrorBoundary: Standard React class implementation to catch JavaScript errors anywhere in their child component tree.
  */
-// Fix: Import Component directly and remove the 'override' modifier on state to ensure correct inheritance recognition by the compiler.
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+// Fix: Explicitly extending React.Component to ensure 'this.props' is correctly identified by the compiler.
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null

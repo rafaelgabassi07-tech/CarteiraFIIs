@@ -11,25 +11,31 @@
     --color-accent-rgb: 14 165 233;
   }
 
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
   body { 
     -webkit-tap-highlight-color: transparent; 
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
     @apply bg-primary-light dark:bg-[#020617] text-zinc-900 dark:text-zinc-100;
-    /* Garante que o body ocupa a tela toda para o scroll natural */
-    min-height: 100%;
   }
 
   /* 
-     CRÍTICO: Removemos transform e will-change do #root.
-     Qualquer transform no elemento pai de um 'position: fixed' faz com que 
-     o elemento se comporte como 'position: absolute' em relação ao pai,
-     fazendo a barra de navegação "sumir" ao rolar a página.
+     CRITICAL: No transforms on #root. 
+     Transforms create a new stacking context that turns 'fixed' into 'absolute'.
   */
   #root {
     transition: opacity 0.6s var(--ease-out-quint);
     opacity: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 
   body.app-revealed #root {
@@ -48,12 +54,6 @@
   
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-  /* Performance Trick: Only render what is visible for long lists */
-  .optimize-list {
-    content-visibility: auto;
-    contain-intrinsic-size: 0 500px;
-  }
 
   .anim-fade-in {
     opacity: 0;
