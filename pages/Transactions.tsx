@@ -29,7 +29,6 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
   const isBuy = t.type === 'BUY';
   const privacyMode = data.privacyMode;
   
-  // Fix: Merged duplicate style attributes into a single style object to prevent JSX validation errors
   return (
       <div className="px-1 py-1.5 anim-stagger-item" style={{ ...style, animationDelay: `${(index % 10) * 30}ms` }}>
           <button 
@@ -147,9 +146,9 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     };
 
     return (
-        <div className="pt-24 pb-32 px-5 max-w-lg mx-auto overflow-x-hidden">
+        <div className="anim-fade-in">
             {/* Header Action */}
-            <div className="flex items-center justify-between mb-6 px-1 anim-fade-in">
+            <div className="flex items-center justify-between mb-6 px-1 pt-4">
                 <div>
                     <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
                         {transactions.length} {transactions.length === 1 ? 'Ordem Registrada' : 'Ordens Registradas'}
@@ -167,7 +166,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             <div className="h-[calc(100vh-220px)]">
                 {transactions.length > 0 ? (
                     <List 
-                        height={window.innerHeight - 220} 
+                        height={window.innerHeight - 240} 
                         itemCount={flatTransactions.length} 
                         itemSize={getItemSize} 
                         width="100%" 

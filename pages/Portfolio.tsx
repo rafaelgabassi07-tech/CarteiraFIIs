@@ -126,10 +126,10 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0, 
     }, [portfolio, searchTerm, filterType]);
 
     return (
-        <div className="pt-24 pb-32 px-5 max-w-lg mx-auto min-h-screen overflow-x-hidden">
+        <div className="anim-fade-in">
              {/* Header Controls */}
-             <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-none border-b border-zinc-200 dark:border-zinc-800 py-2 -mx-5 px-5 mb-4 shadow-sm anim-fade-in">
-                 <div className="flex gap-2 mb-3">
+             <div className="sticky top-[52px] z-30 bg-primary-light dark:bg-[#020617] py-4 -mx-5 px-5 mb-4 anim-fade-in border-b border-zinc-100 dark:border-zinc-800/50">
+                 <div className="flex gap-2 mb-4">
                      <div className="flex-1 relative group">
                         <Search className="absolute left-4 top-3.5 w-4 h-4 text-zinc-400 group-focus-within:text-sky-500 transition-colors" />
                         <input 
@@ -156,7 +156,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0, 
              </div>
             
             {/* List */}
-            <div className="space-y-3">
+            <div className="space-y-3 pb-4">
                 {filtered.length > 0 ? (
                     filtered.map((asset, index) => (
                         <AssetCard key={asset.ticker} asset={asset} index={index} totalValue={balance} privacyMode={privacyMode} />
