@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox } from 'lucide-react';
@@ -129,9 +128,9 @@ const navItems = [
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50">
-      <nav className="bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 pb-[env(safe-area-inset-bottom)] pt-2 px-6">
-        <div className="flex items-center justify-between h-16 max-w-lg mx-auto">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-6">
+      <nav className="bg-white/70 dark:bg-zinc-900/70 backdrop-blur-2xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[2.5rem] shadow-2xl overflow-hidden p-2">
+        <div className="flex items-center justify-around h-14">
           {navItems.map(item => {
             const isActive = currentTab === item.id;
             return (
@@ -139,15 +138,27 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 className={`
-                  group relative flex flex-col items-center justify-center w-full h-full gap-1 transition-all duration-300 outline-none
+                  relative flex flex-col items-center justify-center h-full px-6 transition-all duration-500 outline-none group
                   active:scale-90
                 `}
               >
-                <div className={`absolute top-1 w-12 h-8 rounded-full transition-all duration-300 ${isActive ? 'bg-sky-50 dark:bg-sky-900/30 opacity-100 scale-100' : 'opacity-0 scale-50'}`}></div>
-                <div className={`relative z-10 transition-all duration-300 ${isActive ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400 dark:text-zinc-600 group-hover:text-zinc-600 dark:group-hover:text-zinc-400'}`}>
-                  <item.icon className={`w-6 h-6 ${isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} />
+                {/* Active Indicator Background */}
+                <div className={`
+                  absolute inset-y-1 inset-x-2 rounded-2xl transition-all duration-500 ease-out-quint
+                  ${isActive ? 'bg-sky-500/10 dark:bg-sky-500/20 scale-100 opacity-100' : 'scale-75 opacity-0'}
+                `}></div>
+                
+                <div className={`
+                  relative z-10 transition-all duration-500 transform
+                  ${isActive ? 'text-sky-600 dark:text-sky-400 scale-110' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600'}
+                `}>
+                  <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} />
                 </div>
-                <span className={`text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${isActive ? 'text-sky-600 dark:text-sky-400 opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
+                
+                <span className={`
+                  relative z-10 text-[8px] font-black uppercase tracking-[0.2em] mt-1 transition-all duration-500
+                  ${isActive ? 'text-sky-600 dark:text-sky-400 opacity-100 translate-y-0' : 'opacity-0 translate-y-1 h-0 overflow-hidden'}
+                `}>
                   {item.label}
                 </span>
               </button>

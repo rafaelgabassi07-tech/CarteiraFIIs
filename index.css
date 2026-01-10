@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,7 +7,6 @@
     --duration-fast: 200ms;
     --duration-normal: 400ms;
     --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
-    --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
     --color-accent-rgb: 14 165 233;
   }
 
@@ -18,21 +16,24 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
-    /* Aplica o background definido no tailwind.config (primary.light = white) */
-    @apply bg-primary-light dark:bg-primary-dark text-slate-900 dark:text-slate-100;
+    @apply bg-primary-light dark:bg-[#020617] text-zinc-900 dark:text-zinc-100;
+  }
+
+  #root {
+    transition: transform 0.8s var(--ease-out-quint), opacity 0.6s var(--ease-out-quint);
+    opacity: 0;
+    transform: scale(0.96);
+    will-change: transform, opacity;
+  }
+
+  body.app-revealed #root {
+    opacity: 1;
+    transform: scale(1);
   }
   
-  /* Reset de seleção */
   ::selection {
     background-color: #0ea5e9;
     color: white;
-  }
-  
-  * { -webkit-overflow-scrolling: touch; }
-
-  /* Utilitários Recharts */
-  .recharts-wrapper, .recharts-surface, path, g, svg {
-    outline: none !important;
   }
 }
 
@@ -43,47 +44,27 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* Animações Sólidas e Performáticas */
+  /* Performance Trick: Only render what is visible for long lists */
+  .optimize-list {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 500px;
+  }
+
   .anim-fade-in {
     opacity: 0;
     animation: fadeIn var(--duration-normal) var(--ease-out-quint) forwards;
-    will-change: opacity;
   }
 
   .anim-fade-in-up {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(12px);
     animation: fadeInUp var(--duration-normal) var(--ease-out-quint) forwards;
-    will-change: opacity, transform;
   }
-
-  .anim-scale-in {
-    opacity: 0;
-    transform: scale(0.95);
-    animation: scaleIn var(--duration-fast) var(--ease-out-quint) forwards;
-    will-change: opacity, transform;
-  }
-  
-  .anim-slide-in-right {
-    opacity: 0;
-    transform: translateX(20px);
-    animation: slideInRight var(--duration-normal) var(--ease-out-quint) forwards;
-  }
-
-  /* Stagger delays para listas */
-  .stagger-1 { animation-delay: 50ms; }
-  .stagger-2 { animation-delay: 100ms; }
-  .stagger-3 { animation-delay: 150ms; }
-  .stagger-4 { animation-delay: 200ms; }
 }
 
 @keyframes fadeIn { to { opacity: 1; } }
 @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
-@keyframes scaleIn { to { opacity: 1; transform: scale(1); } }
-@keyframes slideInRight { to { opacity: 1; transform: translateX(0); } }
 
-/* Scrollbars Clean */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-.dark ::-webkit-scrollbar-thumb { background: #334155; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.dark ::-webkit-scrollbar-thumb { background: #1e293b; }
