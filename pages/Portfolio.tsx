@@ -129,15 +129,16 @@ const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number }> = ({ ass
 const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0 }) => {
   return (
     <div className="pt-24 pb-32 px-5 max-w-lg mx-auto min-h-screen">
-       {/* Page Header */}
+       {/* Page Header - Simplified without Duplicate Title */}
        <div className="mb-6 px-1 flex items-end justify-between">
            <div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">Custódia</h2>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Meus Ativos ({portfolio.length})</p>
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                    {portfolio.length} {portfolio.length === 1 ? 'Ativo' : 'Ativos'} na Carteira
+                </p>
            </div>
            <div className="text-right">
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Patrimônio</span>
-                <span className="text-base font-black text-slate-900 dark:text-white tracking-tight">{formatBRL(balance)}</span>
+                <span className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{formatBRL(balance)}</span>
            </div>
        </div>
 

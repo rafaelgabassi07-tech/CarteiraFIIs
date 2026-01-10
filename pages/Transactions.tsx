@@ -142,11 +142,12 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
     return (
         <div className="pt-24 pb-32 px-5 max-w-lg mx-auto">
-            {/* Header Action */}
-            <div className="flex items-center justify-between mb-4 px-1">
+            {/* Header Action - Simplified without Duplicate Title */}
+            <div className="flex items-center justify-between mb-6 px-1">
                 <div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Ordens</h2>
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Histórico ({transactions.length})</p>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                        {transactions.length} {transactions.length === 1 ? 'Ordem Registrada' : 'Ordens Registradas'}
+                    </p>
                 </div>
                 <button 
                     onClick={handleOpenAdd}
