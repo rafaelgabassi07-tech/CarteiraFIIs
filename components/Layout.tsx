@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-5 transition-all duration-300 border-b border-zinc-200 dark:border-zinc-800 bg-primary-light dark:bg-[#020617] ${
+      className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-4 transition-all duration-300 border-b border-zinc-200 dark:border-zinc-800 bg-primary-light dark:bg-[#020617] ${
         bannerVisible ? 'h-28 pt-8' : 'h-20 pt-safe'
       } top-0`}
     >
@@ -93,23 +93,23 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {updateAvailable && !showBack && (
-            <button onClick={onUpdateClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-sky-500 text-white active:scale-95 transition-transform shadow-sm">
-              <Download className="w-5 h-5 animate-bounce" strokeWidth={2.5} />
+            <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-sky-500 text-white active:scale-95 transition-transform shadow-sm">
+              <Download className="w-4 h-4 animate-bounce" strokeWidth={2.5} />
             </button>
           )}
           {onNotificationClick && !showBack && (
-            <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              <Bell className="w-5 h-5" strokeWidth={2} />
+            <button onClick={onNotificationClick} className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              <Bell className="w-4 h-4" strokeWidth={2} />
               {notificationCount > 0 && 
-                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
               }
             </button>
           )}
           {!showBack && onSettingsClick && (
-            <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              <Settings className="w-5 h-5" strokeWidth={2} />
+            <button onClick={onSettingsClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              <Settings className="w-4 h-4" strokeWidth={2} />
             </button>
           )}
         </div>
@@ -132,8 +132,8 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-      <nav className="pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[2.5rem] shadow-[0_8px_32px_rgb(0,0,0,0.15)] overflow-hidden p-2 w-full max-w-sm mx-6">
-        <div className="flex items-center justify-around h-14">
+      <nav className="pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[2rem] shadow-[0_8px_32px_rgb(0,0,0,0.15)] overflow-hidden p-1.5 w-full max-w-sm mx-4">
+        <div className="flex items-center justify-around h-12">
           {navItems.map(item => {
             const isActive = currentTab === item.id;
             return (
@@ -146,7 +146,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
                 `}
               >
                 <div className={`
-                  absolute inset-y-1 inset-x-2 rounded-2xl transition-all duration-500 ease-out-quint
+                  absolute inset-y-1 inset-x-2 rounded-xl transition-all duration-500 ease-out-quint
                   ${isActive ? 'bg-sky-500/10 dark:bg-sky-500/20 scale-100 opacity-100' : 'scale-75 opacity-0'}
                 `}></div>
                 
@@ -158,7 +158,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
                 </div>
                 
                 <span className={`
-                  relative z-10 text-[8px] font-black uppercase tracking-[0.2em] mt-1 transition-all duration-500
+                  relative z-10 text-[8px] font-black uppercase tracking-[0.2em] mt-0.5 transition-all duration-500
                   ${isActive ? 'text-sky-600 dark:text-sky-400 opacity-100 translate-y-0' : 'opacity-0 translate-y-1 h-0 overflow-hidden'}
                 `}>
                   {item.label}

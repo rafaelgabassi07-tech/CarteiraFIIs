@@ -19,7 +19,7 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
   // Cabeçalho de Mês
   if (item.type === 'header') {
       return (
-          <div style={style} className="px-2 pt-6 pb-2 anim-fade-in">
+          <div style={style} className="px-2 pt-5 pb-2 anim-fade-in">
               <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{item.monthKey}</h3>
           </div>
       );
@@ -30,20 +30,20 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
   const privacyMode = data.privacyMode;
   
   return (
-      <div className="px-1 py-1.5 anim-stagger-item" style={{ ...style, animationDelay: `${(index % 10) * 30}ms` }}>
+      <div className="px-0.5 py-1 anim-stagger-item" style={{ ...style, animationDelay: `${(index % 10) * 30}ms` }}>
           <button 
             onClick={() => data.onRowClick(t)}
-            className="w-full text-left bg-surface-light dark:bg-surface-dark p-4 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-sm press-effect hover:border-zinc-300 dark:hover:border-zinc-700"
+            className="w-full text-left bg-surface-light dark:bg-surface-dark p-3.5 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-sm press-effect hover:border-zinc-300 dark:hover:border-zinc-700"
           >
-              <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
-                      {isBuy ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+              <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
+                      {isBuy ? <TrendingUp className="w-4.5 h-4.5" /> : <TrendingDown className="w-4.5 h-4.5" />}
                   </div>
                   <div>
                       <h4 className="font-black text-sm text-zinc-900 dark:text-white">{t.ticker}</h4>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[10px] font-bold text-zinc-400 uppercase">{t.date.split('-').reverse().slice(0,2).join('/')}</span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase ${t.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800'}`}>
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase ${t.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800'}`}>
                             {t.assetType === AssetType.FII ? 'FII' : 'Ação'}
                         </span>
                       </div>
@@ -92,7 +92,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             list.push({ type: 'header', monthKey: k });
             groups[k].forEach((t: any) => list.push({ type: 'item', data: t }));
         });
-        return { flatTransactions: list, getItemSize: (i: number) => list[i].type === 'header' ? 45 : 88 };
+        return { flatTransactions: list, getItemSize: (i: number) => list[i].type === 'header' ? 40 : 80 }; // Reduced heights
     }, [transactions]);
 
     const handleOpenAdd = () => {
@@ -148,7 +148,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     return (
         <div className="anim-fade-in">
             {/* Header Action */}
-            <div className="flex items-center justify-between mb-6 px-1 pt-4">
+            <div className="flex items-center justify-between mb-4 px-1 pt-2">
                 <div>
                     <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
                         {transactions.length} {transactions.length === 1 ? 'Ordem Registrada' : 'Ordens Registradas'}
@@ -156,9 +156,9 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 </div>
                 <button 
                     onClick={handleOpenAdd}
-                    className="w-12 h-12 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl flex items-center justify-center shadow-lg press-effect hover:shadow-xl anim-scale-in"
+                    className="w-11 h-11 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl flex items-center justify-center shadow-lg press-effect hover:shadow-xl anim-scale-in"
                 >
-                    <Plus className="w-6 h-6" strokeWidth={2.5} />
+                    <Plus className="w-5 h-5" strokeWidth={2.5} />
                 </button>
             </div>
 
@@ -166,7 +166,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             <div className="h-[calc(100vh-220px)]">
                 {transactions.length > 0 ? (
                     <List 
-                        height={window.innerHeight - 240} 
+                        height={window.innerHeight - 200} 
                         itemCount={flatTransactions.length} 
                         itemSize={getItemSize} 
                         width="100%" 

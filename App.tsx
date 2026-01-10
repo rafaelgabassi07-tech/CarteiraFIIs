@@ -307,7 +307,8 @@ const App: React.FC = () => {
       {session && !appLoading && (
         <>
             <Header title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} isRefreshing={isRefreshing || isAiLoading} updateAvailable={updateManager.isUpdateAvailable} onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} />
-            <main className="max-w-md mx-auto pt-20 pb-32 min-h-screen px-5">
+            {/* Main Container - Ajustado para max-w-xl e px-4 para melhor aproveitamento */}
+            <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
               {showSettings ? (
                 <div className="anim-page-enter pt-4">
                   <Settings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} onShowChangelog={() => updateManager.setShowChangelog(true)} pushEnabled={pushEnabled} onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={handleSyncAll} lastAiStatus={lastAiStatus as any} onForceUpdate={() => window.location.reload()} currentVersionDate={updateManager.currentVersionDate} />

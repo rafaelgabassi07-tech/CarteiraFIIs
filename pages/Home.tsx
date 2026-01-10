@@ -161,19 +161,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   };
 
   return (
-    <div className="pt-24 pb-32 px-5 space-y-5 max-w-lg mx-auto overflow-x-hidden">
+    <div className="space-y-3 pb-8">
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        <div className="w-full bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark">
-            <div className="flex justify-between items-start mb-4">
+        <div className="w-full bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark">
+            <div className="flex justify-between items-start mb-3">
                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">Patrimônio Total</span>
                 {isAiLoading && <Loader2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400 animate-spin" />}
             </div>
             
-            <div className="mb-8">
+            <div className="mb-6">
                 <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter tabular-nums leading-none mb-1">{formatBRL(balance, privacyMode)}</h2>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 pt-5 border-t border-zinc-200 dark:border-zinc-800/50">
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-800/50">
                 <div>
                     <span className="flex items-center gap-1.5 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">
                         <Wallet className="w-3 h-3" /> Valor Aplicado
@@ -200,11 +200,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </div>
 
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
-        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-surface-light dark:bg-surface-dark p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 shadow-card dark:shadow-card-dark">
-            <div className="flex justify-between items-center mb-5">
+        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-surface-light dark:bg-surface-dark p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 shadow-card dark:shadow-card-dark">
+            <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
-                        <CalendarDays className="w-5 h-5" strokeWidth={2} />
+                    <div className="w-9 h-9 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
+                        <CalendarDays className="w-4.5 h-4.5" strokeWidth={2} />
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Agenda</h3>
@@ -213,20 +213,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </p>
                     </div>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700 transition-colors">
-                    <ArrowRight className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700 transition-colors">
+                    <ArrowRight className="w-3.5 h-3.5" />
                 </div>
             </div>
 
             {upcomingEvents.length > 0 ? (
-                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
                     {upcomingEvents.slice(0, 4).map((event, i) => {
                         const style = getEventStyle(event.eventType, event.date);
                         return (
-                            <div key={i} className={`flex-shrink-0 p-3 pr-4 rounded-xl ${style.containerClass} min-w-[130px] anim-scale-in`} style={{ animationDelay: `${200 + (i * 50)}ms` }}>
-                                <div className="flex justify-between items-start mb-2">
+                            <div key={i} className={`flex-shrink-0 p-2.5 pr-3.5 rounded-xl ${style.containerClass} min-w-[120px] anim-scale-in`} style={{ animationDelay: `${200 + (i * 50)}ms` }}>
+                                <div className="flex justify-between items-start mb-1.5">
                                     <span className={`text-[10px] font-black uppercase tracking-wider text-zinc-900 dark:text-white`}>{event.ticker}</span>
-                                    <style.icon className={`w-3.5 h-3.5 ${style.iconClass}`} />
+                                    <style.icon className={`w-3 h-3 ${style.iconClass}`} />
                                 </div>
                                 <span className={`text-xs block ${style.valueClass}`}>
                                     {event.eventType === 'payment' ? formatBRL(event.totalReceived, privacyMode) : event.date.split('-').reverse().slice(0,2).join('/')}
@@ -239,26 +239,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     })}
                 </div>
             ) : (
-                <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl text-center border border-zinc-200 dark:border-zinc-800 border-dashed">
+                <div className="p-2 bg-zinc-50 dark:bg-zinc-900 rounded-xl text-center border border-zinc-200 dark:border-zinc-800 border-dashed">
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Nenhum evento previsto para os próximos dias.</p>
                 </div>
             )}
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 anim-stagger-item" style={{ animationDelay: '200ms' }}>
-        <button onClick={() => setShowProventosModal(true)} className="bg-surface-light dark:bg-surface-dark p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full relative overflow-hidden shadow-card dark:shadow-card-dark">
+      <div className="grid grid-cols-2 gap-3 anim-stagger-item" style={{ animationDelay: '200ms' }}>
+        <button onClick={() => setShowProventosModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full relative overflow-hidden shadow-card dark:shadow-card-dark">
             <div>
-                <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-4 border border-emerald-100 dark:border-emerald-900/30">
-                    <CircleDollarSign className="w-5 h-5" />
+                <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-3 border border-emerald-100 dark:border-emerald-900/30">
+                    <CircleDollarSign className="w-4.5 h-4.5" />
                 </div>
-                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-1">Renda Passiva</span>
-                <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-tight mb-1">{formatBRL(received, privacyMode)}</p>
+                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-0.5">Renda Passiva</span>
+                <p className="text-base font-black text-zinc-900 dark:text-white tracking-tight leading-tight mb-0.5">{formatBRL(received, privacyMode)}</p>
                 <p className="text-[9px] font-medium text-zinc-500 dark:text-zinc-400">Média: {formatBRL(average, privacyMode)}/mês</p>
             </div>
             
             {bestPayer && (
-                <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800">
                     <p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
                         <Trophy className="w-3 h-3 text-amber-500" /> Maior Pagador
                     </p>
@@ -270,12 +270,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             )}
         </button>
 
-        <button onClick={() => setShowAllocationModal(true)} className="bg-surface-light dark:bg-surface-dark p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-card dark:shadow-card-dark">
+        <button onClick={() => setShowAllocationModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-card dark:shadow-card-dark">
             <div>
-                <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mb-4 border border-blue-100 dark:border-blue-900/30">
-                    <PieIcon className="w-5 h-5" />
+                <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/30">
+                    <PieIcon className="w-4.5 h-4.5" />
                 </div>
-                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-1">Diversificação</span>
+                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-0.5">Diversificação</span>
                 <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 mt-2 mb-2">
                     <div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-1000"></div>
                     <div style={{ width: `${typeData.stocks.percent}%` }} className="h-full bg-sky-500 dark:bg-sky-400 transition-all duration-1000"></div>
@@ -287,7 +287,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
 
             {topAssets.length > 0 && (
-                 <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                 <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800">
                     <p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
                         <Target className="w-3 h-3 text-sky-500" /> Maior Posição
                     </p>
