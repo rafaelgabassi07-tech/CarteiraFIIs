@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
 import { supabase } from "./supabase";
@@ -163,13 +164,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
     // 3. Chamada à API (Google Search Enable)
     // Fix: Using generateContent directly with model and grounding tool configuration.
+    // Removed responseMimeType as it is not recommended with googleSearch grounding.
     const response = await ai.models.generateContent({
         model: LOCKED_MODEL_ID, 
         contents: prompt,
         config: {
             systemInstruction,
             tools: [{googleSearch: {}}], // Ativa o grounding no Google Search
-            responseMimeType: "application/json",
             temperature: 0.1, // Deterministico para dados
         },
     });
@@ -186,13 +187,18 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     }
 
     // 5. Parse Seguro do JSON
-    // Fix: response.text is a property, not a method.
+    // Fix: response.text is a property, not a method. Extract JSON even if wrapped in text or markdown.
     let rawText = response.text || "{}";
     rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
 
     let parsedJson;
     try {
-        parsedJson = JSON.parse(rawText);
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            parsedJson = JSON.parse(jsonMatch[0]);
+        } else {
+            parsedJson = JSON.parse(rawText);
+        }
     } catch (parseError) {
         console.warn("Gemini: Erro no parse JSON, tentando recuperação...", parseError);
         parsedJson = { assets: [] }; 
