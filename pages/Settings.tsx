@@ -21,7 +21,7 @@ interface ServiceMetric {
   icon: any;
   status: ServiceStatus;
   latency: number | null;
-  message?: string; // Log detalhado do erro ou sucesso
+  message?: string;
 }
 
 interface SettingsProps {
@@ -71,13 +71,10 @@ export const Settings: React.FC<SettingsProps> = ({
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  
-  // Alterado para ID para garantir que o modal sempre mostre o dado mais atual do array services
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // States for enhanced sections
   const [notificationPrefs, setNotificationPrefs] = useState({
     dividends: true,
     prices: false,
@@ -97,11 +94,9 @@ export const Settings: React.FC<SettingsProps> = ({
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
 
-  // Deriva o serviço selecionado atual do estado
   const selectedService = services.find(s => s.id === selectedServiceId) || null;
 
   useEffect(() => {
-    // Load notification prefs
     const saved = localStorage.getItem('investfiis_notif_prefs_v1');
     if (saved) {
       try { setNotificationPrefs(JSON.parse(saved)); } catch {}
@@ -120,33 +115,26 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const measureLatency = async () => {
     setIsSyncing(true);
-    // Cria cópia rasa do array para não mutar estado diretamente
     const newServices = [...services];
     
     const checkService = async (index: number) => {
-      // Clona o objeto específico antes de alterar
       const s = { ...newServices[index] };
       const start = Date.now();
       let logMessage = '';
 
       try {
         if (s.id === 'db') {
-            logMessage = `[INFO] Attempting connection to Supabase Auth...`;
-            logMessage += `\n[INFO] Target: ${s.url}`;
+            logMessage = `[INFO] Connecting to Supabase Auth...\n[TARGET] ${s.url}`;
             const { error } = await supabase.auth.getSession();
             if (error) throw error;
-            logMessage += `\n[SUCCESS] Auth Session retrieved.`;
-            logMessage += `\n[SUCCESS] Database connection verified.`;
+            logMessage += `\n[OK] Auth Handshake successful.\n[OK] Session verified.`;
         } else if (s.url && s.id !== 'ai') {
-            logMessage = `[INFO] Fetching ${s.url}...`;
-            logMessage += `\n[INFO] Mode: no-cors (Opaque response expected)`;
+            logMessage = `[INFO] Pinging ${s.url}...\n[MODE] no-cors (Opaque)`;
             await fetch(s.url, { mode: 'no-cors', cache: 'no-store' });
-            logMessage += `\n[SUCCESS] Network request completed.`;
+            logMessage += `\n[OK] Response received.`;
         }
         
         const latency = Date.now() - start;
-        
-        // Atualiza o índice com o novo objeto
         newServices[index] = { 
           ...s, 
           status: latency > 1500 ? 'degraded' : 'operational',
@@ -160,25 +148,23 @@ export const Settings: React.FC<SettingsProps> = ({
             ...s, 
             status: 'error', 
             latency: null,
-            message: `${logMessage}\n[ERROR] Request Failed.\n[DETAILS] ${errorText}\n[TIME] ${new Date().toLocaleTimeString()}`
+            message: `${logMessage}\n[ERROR] Connection failed.\n[DETAILS] ${errorText}\n[TIME] ${new Date().toLocaleTimeString()}`
         };
       }
     };
 
-    // Executa testes (exceto AI que é tratado separadamente)
     await Promise.all(newServices.map((s, i) => s.id !== 'ai' ? checkService(i) : Promise.resolve()));
     
-    // Atualiza status da IA baseado na prop, garantindo clonagem
+    // AI Status Mockup/Check
     const aiIndex = newServices.findIndex(s => s.id === 'ai');
     if (aiIndex >= 0) {
        const aiService = { ...newServices[aiIndex] };
        aiService.status = lastAiStatus;
-       
        if (lastAiStatus === 'operational') {
            aiService.latency = Math.floor(Math.random() * 200) + 100;
-           aiService.message = `[INFO] Checking Gemini AI Model...\n[INFO] Model: gemini-3-flash-preview\n[SUCCESS] Service is responding.\n[STATS] Simulated Latency: ${aiService.latency}ms`;
+           aiService.message = `[INFO] Gemini AI Model Status\n[MODEL] gemini-3-flash-preview\n[STATUS] Ready for inference.\n[LATENCY] ${aiService.latency}ms (estimated)`;
        } else {
-           aiService.message = `[WARN] AI Service reported status: ${lastAiStatus}\n[INFO] Please check your API Key configuration in Vercel.`;
+           aiService.message = `[WARN] AI Service Status: ${lastAiStatus}\n[INFO] Check API configuration.`;
        }
        newServices[aiIndex] = aiService;
     }
@@ -219,16 +205,7 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleCopyDebug = () => {
-    const info = `
-App: InvestFIIs v${appVersion}
-Date: ${new Date().toISOString()}
-User: ${user?.id}
-Theme: ${theme}
-Accent: ${accentColor}
-User Agent: ${navigator.userAgent}
-Display: ${window.innerWidth}x${window.innerHeight}
-Connection: ${navigator.onLine ? 'Online' : 'Offline'}
-    `.trim();
+    const info = `App: InvestFIIs v${appVersion}\nDate: ${new Date().toISOString()}\nUser: ${user?.id}\nTheme: ${theme}\nOnline: ${navigator.onLine}`;
     navigator.clipboard.writeText(info);
     showToast('success', 'Info copiada!');
   };
@@ -276,12 +253,8 @@ Connection: ${navigator.onLine ? 'Online' : 'Offline'}
     </div>
   );
 
-  // --- Render Sub-Pages ---
-
-  if (activeSection !== 'menu') {
-    return (
-      <div className="anim-fade-in space-y-4">
-        {/* Sub-page Header */}
+  const renderSubPage = () => (
+    <div className="anim-fade-in space-y-4">
         <div className="flex items-center gap-3 mb-2">
           <button 
             onClick={() => setActiveSection('menu')}
@@ -345,12 +318,6 @@ Connection: ${navigator.onLine ? 'Online' : 'Offline'}
                     ))}
                  </div>
             </div>
-            
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 text-center">
-                <p className="text-[10px] text-zinc-400">
-                    O tema se aplica a todos os gráficos e botões principais.
-                </p>
-            </div>
           </div>
         )}
 
@@ -386,18 +353,6 @@ Connection: ${navigator.onLine ? 'Online' : 'Offline'}
                             description="Alertas de alta/baixa superior a 5%"
                             isOn={notificationPrefs.prices}
                             onToggle={() => saveNotifPrefs({...notificationPrefs, prices: !notificationPrefs.prices})}
-                         />
-                         <ToggleItem 
-                            label="Resumo Semanal" 
-                            description="Performance da carteira toda sexta-feira"
-                            isOn={notificationPrefs.weekly}
-                            onToggle={() => saveNotifPrefs({...notificationPrefs, weekly: !notificationPrefs.weekly})}
-                         />
-                         <ToggleItem 
-                            label="Novidades do App" 
-                            description="Changelogs e melhorias do sistema"
-                            isOn={notificationPrefs.updates}
-                            onToggle={() => saveNotifPrefs({...notificationPrefs, updates: !notificationPrefs.updates})}
                          />
                      </div>
                  )}
@@ -468,7 +423,7 @@ Connection: ${navigator.onLine ? 'Online' : 'Offline'}
                 <div>
                     <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-100">Modo Offline Habilitado</h4>
                     <p className="text-[10px] text-indigo-700/70 dark:text-indigo-300/70 mt-0.5 leading-relaxed">
-                        Mesmo se os serviços caírem, você pode acessar seus dados locais e visualizar seu saldo atualizado.
+                        Mesmo se os serviços caírem, você pode acessar seus dados locais.
                     </p>
                 </div>
             </div>
@@ -577,105 +532,106 @@ Connection: ${navigator.onLine ? 'Online' : 'Offline'}
             </div>
           </div>
         )}
-      </div>
-    );
-  }
-
-  // --- Main Menu ---
+    </div>
+  );
 
   return (
     <div className="anim-fade-in space-y-4">
-      {/* Profile Header Slim */}
-      <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between mb-2">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded-xl flex items-center justify-center border border-sky-100 dark:border-sky-800">
-            <User className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-xs font-black text-zinc-900 dark:text-white leading-none mb-1">
-              {user?.email?.split('@')[0]}
-            </h3>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Sincronizado</p>
+      {activeSection === 'menu' ? (
+        <>
+          <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded-xl flex items-center justify-center border border-sky-100 dark:border-sky-800">
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-black text-zinc-900 dark:text-white leading-none mb-1">
+                  {user?.email?.split('@')[0]}
+                </h3>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Sincronizado</p>
+                </div>
+              </div>
             </div>
+            <button 
+              onClick={() => setShowLogoutConfirm(true)}
+              className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center active:scale-90 transition-transform"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
-        </div>
-        <button 
-          onClick={() => setShowLogoutConfirm(true)}
-          className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center active:scale-90 transition-transform"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
-      </div>
 
-      <Group title="Interface">
-        <SettingItem 
-          icon={Palette} 
-          label="Aparência" 
-          value={theme === 'light' ? 'Claro' : theme === 'dark' ? 'Escuro' : 'Auto'}
-          color="bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400"
-          onClick={() => setActiveSection('appearance')} 
-        />
-        <SettingItem 
-          icon={Eye} 
-          label="Privacidade" 
-          value={privacyMode ? 'Ativo' : 'Padrão'}
-          color="bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400"
-          onClick={() => setActiveSection('privacy')} 
-        />
-        <SettingItem 
-          icon={Bell} 
-          label="Notificações" 
-          value={pushEnabled ? 'On' : 'Off'}
-          color="bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400"
-          onClick={() => setActiveSection('notifications')} 
-          isLast
-        />
-      </Group>
+          <Group title="Interface">
+            <SettingItem 
+              icon={Palette} 
+              label="Aparência" 
+              value={theme === 'light' ? 'Claro' : theme === 'dark' ? 'Escuro' : 'Auto'}
+              color="bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400"
+              onClick={() => setActiveSection('appearance')} 
+            />
+            <SettingItem 
+              icon={Eye} 
+              label="Privacidade" 
+              value={privacyMode ? 'Ativo' : 'Padrão'}
+              color="bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400"
+              onClick={() => setActiveSection('privacy')} 
+            />
+            <SettingItem 
+              icon={Bell} 
+              label="Notificações" 
+              value={pushEnabled ? 'On' : 'Off'}
+              color="bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400"
+              onClick={() => setActiveSection('notifications')} 
+              isLast
+            />
+          </Group>
 
-      <Group title="Infraestrutura">
-        <SettingItem 
-          icon={Signal} 
-          label="Status das Conexões" 
-          value="Verificar"
-          color="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
-          onClick={() => setActiveSection('services')} 
-        />
-        <SettingItem 
-          icon={Database} 
-          label="Backup e Importação" 
-          color="bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
-          onClick={() => setActiveSection('data')} 
-          isLast
-        />
-      </Group>
+          <Group title="Infraestrutura">
+            <SettingItem 
+              icon={Signal} 
+              label="Status das Conexões" 
+              value="Verificar"
+              color="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
+              onClick={() => setActiveSection('services')} 
+            />
+            <SettingItem 
+              icon={Database} 
+              label="Backup e Importação" 
+              color="bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+              onClick={() => setActiveSection('data')} 
+              isLast
+            />
+          </Group>
 
-      <Group title="Sobre o App">
-        <SettingItem 
-          icon={Rocket} 
-          label="Versão do Sistema" 
-          value={`v${appVersion}`}
-          badge={updateAvailable}
-          color="bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400"
-          onClick={() => setActiveSection('updates')} 
-        />
-        <SettingItem 
-          icon={Info} 
-          label="Sobre o InvestFIIs" 
-          color="bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-          onClick={() => setActiveSection('about')} 
-        />
-        <SettingItem 
-          icon={ShieldAlert} 
-          label="Resetar Aplicativo" 
-          color="bg-rose-50 text-rose-500 dark:bg-rose-900/10"
-          onClick={() => setActiveSection('reset')} 
-          isLast
-        />
-      </Group>
+          <Group title="Sobre o App">
+            <SettingItem 
+              icon={Rocket} 
+              label="Versão do Sistema" 
+              value={`v${appVersion}`}
+              badge={updateAvailable}
+              color="bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400"
+              onClick={() => setActiveSection('updates')} 
+            />
+            <SettingItem 
+              icon={Info} 
+              label="Sobre o InvestFIIs" 
+              color="bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+              onClick={() => setActiveSection('about')} 
+            />
+            <SettingItem 
+              icon={ShieldAlert} 
+              label="Resetar Aplicativo" 
+              color="bg-rose-50 text-rose-500 dark:bg-rose-900/10"
+              onClick={() => setActiveSection('reset')} 
+              isLast
+            />
+          </Group>
+        </>
+      ) : (
+        renderSubPage()
+      )}
 
-      {/* Footer Toast */}
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[2000] anim-fade-in-up is-visible">
           <div className={`px-5 py-2.5 rounded-2xl shadow-xl font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 ${toast.type === 'success' ? 'bg-emerald-500 text-white' : toast.type === 'info' ? 'bg-sky-500 text-white' : 'bg-rose-500 text-white'}`}>
@@ -685,7 +641,7 @@ Connection: ${navigator.onLine ? 'Online' : 'Offline'}
         </div>
       )}
 
-      {/* Service Details Modal */}
+      {/* Service Details Modal - Always rendered in DOM structure */}
       <SwipeableModal isOpen={!!selectedService} onClose={() => setSelectedServiceId(null)}>
         {selectedService && (
             <div className="p-8 pb-24">
