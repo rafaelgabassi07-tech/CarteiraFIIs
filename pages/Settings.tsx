@@ -313,21 +313,23 @@ export const Settings: React.FC<SettingsProps> = ({
                                 </p>
                             </div>
                         </div>
-                        <div className="text-right">
-                             {s.latency !== null ? (
-                                 <span className={`text-[10px] font-bold ${s.latency < 200 ? 'text-emerald-500' : s.latency < 800 ? 'text-amber-500' : 'text-rose-500'}`}>
-                                     {s.latency}ms
-                                 </span>
-                             ) : (
-                                 <span className="text-[10px] text-zinc-400">-</span>
-                             )}
-                             <div className="flex items-center justify-end gap-1 mt-1">
-                                 <div className={`w-1.5 h-1.5 rounded-full ${s.status === 'operational' ? 'bg-emerald-500 animate-pulse' : s.status === 'degraded' ? 'bg-amber-500' : s.status === 'error' ? 'bg-rose-500' : 'bg-zinc-300'}`}></div>
-                                 <span className="text-[8px] font-black uppercase tracking-wider text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
-                                     {s.status === 'operational' ? 'Online' : s.status === 'checking' ? 'Testando' : s.status}
-                                 </span>
-                                 <ChevronRight className="w-3 h-3 text-zinc-300 dark:text-zinc-600 ml-1" />
+                        <div className="flex items-center gap-3">
+                             <div className="text-right">
+                                  {s.latency !== null ? (
+                                      <span className={`block text-[10px] font-bold ${s.latency < 200 ? 'text-emerald-500' : s.latency < 800 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                          {s.latency}ms
+                                      </span>
+                                  ) : (
+                                      <span className="block text-[10px] text-zinc-400">-</span>
+                                  )}
+                                  <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                                      <div className={`w-1.5 h-1.5 rounded-full ${s.status === 'operational' ? 'bg-emerald-500 animate-pulse' : s.status === 'degraded' ? 'bg-amber-500' : s.status === 'error' ? 'bg-rose-500' : 'bg-zinc-300'}`}></div>
+                                      <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
+                                          {s.status === 'operational' ? 'Online' : s.status === 'checking' ? 'Testando' : s.status}
+                                      </span>
+                                  </div>
                              </div>
+                             <ChevronRight className="w-4 h-4 text-zinc-300 dark:text-zinc-600" />
                         </div>
                     </button>
                   ))}

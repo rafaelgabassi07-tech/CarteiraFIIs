@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#020617;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#27272a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#09090b;stop-opacity:1" />
     </linearGradient>
     <linearGradient id="accent" x1="0%" y1="100%" x2="100%" y2="0%">
       <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
@@ -20,9 +20,9 @@
   <!-- Conteúdo Centralizado (Dentro da Safe Zone de 80%) -->
   <g transform="translate(56, 56) scale(0.78)">
     <!-- Barras (Representando FIIs/Solidez) -->
-    <rect x="60" y="280" width="60" height="120" rx="16" fill="#334155" opacity="0.6" />
-    <rect x="160" y="200" width="60" height="200" rx="16" fill="#334155" opacity="0.8" />
-    <rect x="260" y="120" width="60" height="280" rx="16" fill="#334155" opacity="1" />
+    <rect x="60" y="280" width="60" height="120" rx="16" fill="#52525b" opacity="0.6" />
+    <rect x="160" y="200" width="60" height="200" rx="16" fill="#52525b" opacity="0.8" />
+    <rect x="260" y="120" width="60" height="280" rx="16" fill="#52525b" opacity="1" />
     
     <!-- Linha de Tendência (Representando Ações/Crescimento) -->
     <path d="M40 320 C 140 320, 180 180, 420 80" 
