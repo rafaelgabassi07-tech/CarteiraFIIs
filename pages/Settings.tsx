@@ -1,14 +1,15 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   ChevronRight, ArrowLeft, Bell, Sun, Moon, Monitor, RefreshCw, 
   Eye, EyeOff, Palette, Rocket, Database, ShieldAlert, Info, 
   User, LogOut, Check, AlertTriangle, Globe, Github, Smartphone, Copy, CheckCircle2,
-  Wifi, Activity, XCircle, Terminal
+  Wifi, Activity, XCircle, Terminal, Trash2, Filter
 } from 'lucide-react';
-import { Transaction, DividendReceipt, ServiceMetric } from '../types';
+import { Transaction, DividendReceipt, ServiceMetric, LogEntry } from '../types';
 import { ThemeType } from '../App';
 import { ConfirmationModal, SwipeableModal } from '../components/Layout';
+import { logger } from '../services/logger';
 
 interface SettingsProps {
   user: any;
@@ -62,6 +63,11 @@ export const Settings: React.FC<SettingsProps> = ({
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   
+  // States para o Logger
+  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logFilter, setLogFilter] = useState<'all' | 'error'>('all');
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [notificationPrefs, setNotificationPrefs] = useState({
@@ -73,6 +79,17 @@ export const Settings: React.FC<SettingsProps> = ({
 
   // Encontra o serviço selecionado no array recebido via props
   const selectedService = services.find(s => s.id === selectedServiceId) || null;
+
+  // Subscribe to logger
+  useEffect(() => {
+      const unsubscribe = logger.subscribe(setLogs);
+      return unsubscribe;
+  }, []);
+
+  const filteredLogs = useMemo(() => {
+      if (logFilter === 'all') return logs;
+      return logs.filter(l => l.level === 'error');
+  }, [logs, logFilter]);
 
   useEffect(() => {
     const saved = localStorage.getItem('investfiis_notif_prefs_v1');
@@ -126,6 +143,12 @@ export const Settings: React.FC<SettingsProps> = ({
     const info = `App: InvestFIIs v${appVersion}\nDate: ${new Date().toISOString()}\nUser: ${user?.id}\nTheme: ${theme}\nOnline: ${navigator.onLine}`;
     navigator.clipboard.writeText(info);
     showToast('success', 'Info copiada!');
+  };
+
+  const handleCopyLogs = () => {
+      const logText = logs.map(l => `[${new Date(l.timestamp).toISOString()}] [${l.level.toUpperCase()}] ${l.message}`).join('\n');
+      navigator.clipboard.writeText(logText);
+      showToast('success', 'Logs copiados para transferência');
   };
 
   const SettingItem = ({ icon: Icon, label, value, color, onClick, isLast = false, badge }: any) => (
@@ -335,6 +358,24 @@ export const Settings: React.FC<SettingsProps> = ({
                   ))}
               </div>
             </div>
+            
+            <button 
+                onClick={() => setShowLogs(true)}
+                className="w-full p-4 rounded-[1.5rem] bg-zinc-950 dark:bg-black border border-zinc-800 flex items-center justify-between group press-effect"
+            >
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-zinc-400 border border-zinc-800">
+                        <Terminal className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                        <h4 className="text-xs font-bold text-white mb-0.5">Console de Logs</h4>
+                        <p className="text-[10px] text-zinc-500 font-mono">
+                            {logs.length} registro(s) • {logs.filter(l => l.level === 'error').length} erro(s)
+                        </p>
+                    </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
+            </button>
             
             <div className="p-4 rounded-[1.5rem] bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-white dark:bg-indigo-900/50 flex items-center justify-center shrink-0 text-indigo-500">
@@ -603,6 +644,57 @@ export const Settings: React.FC<SettingsProps> = ({
                 </button>
             </div>
         )}
+      </SwipeableModal>
+
+      {/* MODAL DE CONSOLE DE LOGS */}
+      <SwipeableModal isOpen={showLogs} onClose={() => setShowLogs(false)}>
+         <div className="flex flex-col h-full bg-zinc-950">
+             {/* Header do Terminal */}
+             <div className="flex-none p-4 flex items-center justify-between border-b border-zinc-800">
+                 <div className="flex items-center gap-2">
+                     <Terminal className="w-5 h-5 text-emerald-500" />
+                     <span className="text-sm font-bold text-white font-mono">system.log</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                     <button 
+                        onClick={() => setLogFilter(logFilter === 'all' ? 'error' : 'all')}
+                        className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-colors ${logFilter === 'error' ? 'bg-rose-500/20 text-rose-500' : 'text-zinc-500 hover:text-white'}`}
+                     >
+                         <Filter className="w-4 h-4" />
+                     </button>
+                     <button onClick={handleCopyLogs} className="p-2 text-zinc-500 hover:text-white transition-colors">
+                         <Copy className="w-4 h-4" />
+                     </button>
+                     <button onClick={() => logger.clear()} className="p-2 text-zinc-500 hover:text-rose-500 transition-colors">
+                         <Trash2 className="w-4 h-4" />
+                     </button>
+                 </div>
+             </div>
+
+             {/* Corpo do Log */}
+             <div className="flex-1 overflow-y-auto p-4 space-y-1.5 font-mono text-[10px]">
+                 {filteredLogs.length === 0 ? (
+                     <div className="h-full flex flex-col items-center justify-center text-zinc-700">
+                         <Info className="w-8 h-8 mb-2 opacity-50" />
+                         <p>Nenhum registro encontrado.</p>
+                     </div>
+                 ) : (
+                     filteredLogs.map(l => (
+                         <div key={l.id} className="flex gap-2 break-all border-b border-zinc-900/50 pb-1.5">
+                             <span className="text-zinc-600 shrink-0">
+                                 {new Date(l.timestamp).toLocaleTimeString('pt-BR', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit', fractionalSecondDigits: 3 } as any)}
+                             </span>
+                             <span className={`uppercase font-bold shrink-0 w-10 text-center ${l.level === 'error' ? 'text-rose-500 bg-rose-500/10' : l.level === 'warn' ? 'text-amber-500 bg-amber-500/10' : l.level === 'debug' ? 'text-sky-500' : 'text-emerald-500'}`}>
+                                 {l.level.substring(0,4)}
+                             </span>
+                             <span className={`flex-1 ${l.level === 'error' ? 'text-rose-400' : l.level === 'warn' ? 'text-amber-300' : 'text-zinc-300'}`}>
+                                 {l.message}
+                             </span>
+                         </div>
+                     ))
+                 )}
+             </div>
+         </div>
       </SwipeableModal>
 
       <ConfirmationModal 
