@@ -10,9 +10,9 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Fix: Use 'gemini-3-flash-preview' for general text and search tasks as per guidelines.
-const GEMINI_CACHE_KEY = 'investfiis_gemini_v17_3flash_search'; 
-const LOCKED_MODEL_ID = "gemini-3-flash-preview";
+// Updated to Gemini 2.5 Flash as requested
+const GEMINI_CACHE_KEY = 'investfiis_gemini_v18_25flash_search'; 
+const LOCKED_MODEL_ID = "gemini-2.5-flash-preview";
 
 // Robust API Key Retrieval
 const getApiKey = () => {
@@ -287,7 +287,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     return finalData;
 
   } catch (error: any) {
-    console.error("Gemini 3 Flash Search Error:", error);
+    console.error("Gemini 2.5 Flash Search Error:", error);
     const stored = await fetchStoredDividends(uniqueTickers);
     return { dividends: stored, metadata: {}, error: error.message };
   }
