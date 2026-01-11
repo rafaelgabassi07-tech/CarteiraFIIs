@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Trophy, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
@@ -101,9 +101,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return { upcomingEvents: uniqueEvents, received: receivedTotal };
   }, [dividendReceipts]);
 
-  const { history, average, maxVal, bestPayer, receiptsByMonth } = useMemo(() => {
+  const { history, average, maxVal, receiptsByMonth } = useMemo(() => {
     const map: Record<string, number> = {};
-    const payerMap: Record<string, number> = {};
     const receiptsByMonthMap: Record<string, DividendReceipt[]> = {};
 
     dividendReceipts.forEach(r => {
@@ -112,17 +111,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             map[key] = (map[key] || 0) + r.totalReceived;
             if (!receiptsByMonthMap[key]) receiptsByMonthMap[key] = [];
             receiptsByMonthMap[key].push(r);
-            payerMap[r.ticker] = (payerMap[r.ticker] || 0) + r.totalReceived;
         }
     });
     const sorted = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
     const totalMonths = sorted.length || 1;
     const average = received / (totalMonths > 0 ? totalMonths : 1);
     const maxVal = Math.max(...Object.values(map), 0);
-    const sortedPayers = Object.entries(payerMap).sort((a, b) => b[1] - a[1]);
-    const bestPayer = sortedPayers.length > 0 ? { ticker: sortedPayers[0][0], value: sortedPayers[0][1] } : null;
 
-    return { history: sorted, average, maxVal, bestPayer, receiptsByMonth: receiptsByMonthMap };
+    return { history: sorted, average, maxVal, receiptsByMonth: receiptsByMonthMap };
   }, [dividendReceipts, received]);
 
   const { typeData, topAssets, segmentsData } = useMemo(() => {
@@ -256,18 +252,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 <p className="text-base font-black text-zinc-900 dark:text-white tracking-tight leading-tight mb-0.5">{formatBRL(received, privacyMode)}</p>
                 <p className="text-[9px] font-medium text-zinc-500 dark:text-zinc-400">Média: {formatBRL(average, privacyMode)}/mês</p>
             </div>
-            
-            {bestPayer && (
-                <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800">
-                    <p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                        <Trophy className="w-3 h-3 text-amber-500" /> Maior Pagador
-                    </p>
-                    <div className="flex justify-between items-baseline">
-                        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">{bestPayer.ticker}</span>
-                        <span className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400">{formatBRL(bestPayer.value, privacyMode)}</span>
-                    </div>
-                </div>
-            )}
         </button>
 
         <button onClick={() => setShowAllocationModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-card dark:shadow-card-dark">
@@ -354,21 +338,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(average, privacyMode)}</p>
                  </div>
              </div>
-
-            {bestPayer && (
-                <div className="mb-8 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between anim-slide-up" style={{ animationDelay: '200ms' }}>
-                    <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950/40 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
-                            <Trophy className="w-5 h-5" />
-                         </div>
-                         <div>
-                             <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Maior Pagador</p>
-                             <p className="text-sm font-black text-zinc-900 dark:text-white">{bestPayer.ticker}</p>
-                         </div>
-                    </div>
-                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(bestPayer.value, privacyMode)}</span>
-                </div>
-            )}
 
              <div className="space-y-4">
                  <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-2 anim-slide-up" style={{ animationDelay: '300ms' }}>Evolução Mensal</h3>
