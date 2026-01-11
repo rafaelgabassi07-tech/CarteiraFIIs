@@ -481,15 +481,39 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
              </div>
 
-             <div className="mb-8 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2 px-1">
-                     <span className="text-indigo-600 dark:text-indigo-400">FIIs ({formatPercent(typeData.fiis.percent, privacyMode)})</span>
-                     <span className="text-sky-600 dark:text-sky-400">Ações ({formatPercent(typeData.stocks.percent, privacyMode)})</span>
-                 </div>
-                 <div className="h-4 w-full rounded-full flex overflow-hidden">
-                     <div style={{ width: `${typeData.fiis.percent}%` }} className="bg-indigo-600 dark:bg-indigo-500 h-full transition-all duration-1000"></div>
-                     <div style={{ width: `${typeData.stocks.percent}%` }} className="bg-sky-500 dark:bg-sky-400 h-full transition-all duration-1000"></div>
-                 </div>
+             {/* FIIs e Ações Cards movidos para o topo e removida barra duplicada */}
+             <div className="space-y-3 mb-8 anim-slide-up" style={{ animationDelay: '100ms' }}>
+                <div className="p-5 rounded-[1.5rem] bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+                            <Building2 className="w-6 h-6" strokeWidth={1.5} />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-indigo-900 dark:text-indigo-100 text-lg">FIIs</h3>
+                            <p className="text-[10px] font-bold text-indigo-600/60 dark:text-indigo-400/60 uppercase tracking-widest">Fundos Imobiliários</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-lg font-black text-indigo-900 dark:text-indigo-100">{formatBRL(typeData.fiis.value, privacyMode)}</p>
+                        <p className="text-xs font-bold text-indigo-500 dark:text-indigo-400">{formatPercent(typeData.fiis.percent, privacyMode)}</p>
+                    </div>
+                </div>
+
+                <div className="p-5 rounded-[1.5rem] bg-sky-50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-900/30 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white dark:bg-sky-900/50 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
+                            <CandlestickChart className="w-6 h-6" strokeWidth={1.5} />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-sky-900 dark:text-sky-100 text-lg">Ações</h3>
+                            <p className="text-[10px] font-bold text-sky-600/60 dark:text-sky-400/60 uppercase tracking-widest">Mercado de Capitais</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-lg font-black text-sky-900 dark:text-sky-100">{formatBRL(typeData.stocks.value, privacyMode)}</p>
+                        <p className="text-xs font-bold text-sky-500 dark:text-sky-400">{formatPercent(typeData.stocks.percent, privacyMode)}</p>
+                    </div>
+                </div>
              </div>
 
              {segmentsData.length > 0 && (
@@ -535,42 +559,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
              )}
 
-             <div className="space-y-3 mb-8 anim-slide-up" style={{ animationDelay: '300ms' }}>
-                <div className="p-5 rounded-[1.5rem] bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-white dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
-                            <Building2 className="w-6 h-6" strokeWidth={1.5} />
-                        </div>
-                        <div>
-                            <h3 className="font-black text-indigo-900 dark:text-indigo-100 text-lg">FIIs</h3>
-                            <p className="text-[10px] font-bold text-indigo-600/60 dark:text-indigo-400/60 uppercase tracking-widest">Fundos Imobiliários</p>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-lg font-black text-indigo-900 dark:text-indigo-100">{formatBRL(typeData.fiis.value, privacyMode)}</p>
-                        <p className="text-xs font-bold text-indigo-500 dark:text-indigo-400">{formatPercent(typeData.fiis.percent, privacyMode)}</p>
-                    </div>
-                </div>
-
-                <div className="p-5 rounded-[1.5rem] bg-sky-50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-900/30 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-white dark:bg-sky-900/50 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
-                            <CandlestickChart className="w-6 h-6" strokeWidth={1.5} />
-                        </div>
-                        <div>
-                            <h3 className="font-black text-sky-900 dark:text-sky-100 text-lg">Ações</h3>
-                            <p className="text-[10px] font-bold text-sky-600/60 dark:text-sky-400/60 uppercase tracking-widest">Mercado de Capitais</p>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-lg font-black text-sky-900 dark:text-sky-100">{formatBRL(typeData.stocks.value, privacyMode)}</p>
-                        <p className="text-xs font-bold text-sky-500 dark:text-sky-400">{formatPercent(typeData.stocks.percent, privacyMode)}</p>
-                    </div>
-                </div>
-             </div>
-
              {topAssets.length > 0 && (
-                <div className="bg-zinc-50 dark:bg-zinc-900 rounded-[1.5rem] p-5 border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '400ms' }}>
+                <div className="bg-zinc-50 dark:bg-zinc-900 rounded-[1.5rem] p-5 border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '300ms' }}>
                     <div className="flex items-center gap-2 mb-4">
                         <Target className="w-4 h-4 text-zinc-400" />
                         <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Top 3 Maiores Posições</h4>
