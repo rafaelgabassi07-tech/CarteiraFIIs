@@ -1,12 +1,23 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-// As credenciais agora são lidas do ambiente, tornando o app seguro e configurável.
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
+// Função segura para obter variáveis de ambiente em diferentes contextos (Vercel, Local, Vite)
+const getEnv = (key: string, viteKey: string) => {
+    // 1. Tenta via Vite (import.meta.env)
+    const viteVal = (import.meta as any).env?.[viteKey];
+    if (viteVal) return viteVal;
 
-// Validação em runtime: Se as chaves estiverem vazias, o cliente lançará erro
-// apenas quando for utilizado ou inicializado, permitindo que o React carregue
-// o ErrorBoundary antes do crash fatal do script.
+    // 2. Tenta via process.env (substituído pelo Vite define em build time)
+    try {
+        return process.env[key];
+    } catch {
+        return undefined;
+    }
+};
+
+const SUPABASE_URL = getEnv('SUPABASE_URL', 'VITE_SUPABASE_URL') || '';
+const SUPABASE_KEY = getEnv('SUPABASE_KEY', 'VITE_SUPABASE_KEY') || '';
+
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.warn("Supabase credentials missing. App will likely fail during auth/sync.");
 }

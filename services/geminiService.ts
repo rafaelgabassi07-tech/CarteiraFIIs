@@ -14,6 +14,21 @@ export interface UnifiedMarketData {
 const GEMINI_CACHE_KEY = 'investfiis_gemini_v17_3flash_search'; 
 const LOCKED_MODEL_ID = "gemini-3-flash-preview";
 
+// Robust API Key Retrieval
+const getApiKey = () => {
+    // 1. Tenta via Vite (padrão moderno)
+    const viteKey = (import.meta as any).env?.VITE_API_KEY;
+    if (viteKey) return viteKey;
+    
+    // 2. Tenta via define/process.env (fallback build/vercel)
+    // O try/catch previne ReferenceError se process não existir no browser e não tiver sido substituído
+    try {
+        return process.env.API_KEY;
+    } catch {
+        return undefined;
+    }
+};
+
 const normalizeDate = (dateStr: any): string => {
   if (!dateStr) return '';
   const s = String(dateStr).trim();
@@ -100,10 +115,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
     } catch (e) {}
   }
 
-  if (!process.env.API_KEY) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
+  const apiKey = getApiKey();
+  if (!apiKey) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const storedDividends = await fetchStoredDividends(uniqueTickers);
 
     // 2. Instrução de Sistema Otimizada

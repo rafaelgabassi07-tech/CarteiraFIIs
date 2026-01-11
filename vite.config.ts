@@ -3,7 +3,16 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
+  // Carrega variáveis de .env, .env.local, etc.
   const env = loadEnv(mode, '.', '');
+  
+  // No Vercel/Node, as variáveis de sistema estão em process.env.
+  // O loadEnv nem sempre pega variáveis de sistema que não estão em arquivos .env,
+  // então fazemos um fallback explícito.
+  const getEnvVar = (key: string, viteKey: string) => {
+    return JSON.stringify(env[key] || process.env[key] || env[viteKey] || process.env[viteKey] || '');
+  };
+
   return {
     base: './', // Garante caminhos relativos corretos
     plugins: [react()],
@@ -21,18 +30,16 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             // Separa as bibliotecas mais pesadas (vendors) em chunks dedicados.
-            // Isso melhora o cache do navegador, já que essas bibliotecas mudam com menos frequência que o código da aplicação.
             if (id.includes('node_modules')) {
               if (id.includes('recharts')) {
-                return 'vendor-recharts'; // Chunk específico para a biblioteca de gráficos
+                return 'vendor-recharts'; 
               }
               if (id.includes('@supabase')) {
-                return 'vendor-supabase'; // Chunk para o Supabase client
+                return 'vendor-supabase'; 
               }
               if (id.includes('lucide-react')) {
-                return 'vendor-lucide'; // Chunk para a biblioteca de ícones
+                return 'vendor-lucide'; 
               }
-              // Agrupa o restante das dependências em um chunk genérico
               return 'vendor-core';
             }
           },
@@ -40,10 +47,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      'process.env.API_KEY': JSON.stringify(env.API_KEY || env.VITE_API_KEY),
-      'process.env.BRAPI_TOKEN': JSON.stringify(env.BRAPI_TOKEN || env.VITE_BRAPI_TOKEN),
-      'process.env.SUPABASE_URL': JSON.stringify(env.SUPABASE_URL || env.VITE_SUPABASE_URL),
-      'process.env.SUPABASE_KEY': JSON.stringify(env.SUPABASE_KEY || env.VITE_SUPABASE_KEY)
+      'process.env.API_KEY': getEnvVar('API_KEY', 'VITE_API_KEY'),
+      'process.env.BRAPI_TOKEN': getEnvVar('BRAPI_TOKEN', 'VITE_BRAPI_TOKEN'),
+      'process.env.SUPABASE_URL': getEnvVar('SUPABASE_URL', 'VITE_SUPABASE_URL'),
+      'process.env.SUPABASE_KEY': getEnvVar('SUPABASE_KEY', 'VITE_SUPABASE_KEY')
     }
   };
 });
