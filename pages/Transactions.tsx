@@ -117,6 +117,22 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         setIsModalOpen(true);
     };
 
+    const handleTickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value.toUpperCase();
+        setTicker(val);
+        
+        // Inferência inteligente de tipo baseada no ticker
+        // Se termina com 11 ou 11B, provavelmente é FII (ou Unit, mas assumimos FII como padrão user-friendly)
+        // Se termina com 3, 4, 5, 6, provavelmente é Ação
+        if (!editingId) { // Apenas para novas inserções para não sobrescrever edição
+            if (val.endsWith('11') || val.endsWith('11B')) {
+                setAssetType(AssetType.FII);
+            } else if (['3', '4', '5', '6'].some(end => val.endsWith(end))) {
+                setAssetType(AssetType.STOCK);
+            }
+        }
+    };
+
     const handleSave = async () => {
         if (!ticker || !quantity || !price || !date) return;
         
@@ -212,7 +228,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             <input 
                                 type="text" 
                                 value={ticker}
-                                onChange={e => setTicker(e.target.value.toUpperCase())}
+                                onChange={handleTickerChange}
                                 placeholder="EX: HGLG11"
                                 className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-300 dark:placeholder:text-zinc-700 outline-none uppercase"
                                 autoFocus={!editingId}

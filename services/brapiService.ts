@@ -5,7 +5,7 @@ const BRAPI_TOKEN = (import.meta as any).env?.VITE_BRAPI_TOKEN || process.env.BR
 
 /**
  * Busca cotações de ativos na API da Brapi.
- * Configurado para requisições individuais por ativo (Ativo por Ativo).
+ * Lógica: Requisições individuais em paralelo (Promise.all) para evitar que erro em um ticker trave o lote todo.
  */
 export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote[], error?: string }> => {
   if (!tickers || tickers.length === 0) {
@@ -16,44 +16,39 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
     return { quotes: [], error: "Brapi token missing" };
   }
 
+  // Remove duplicatas e limpa espaços
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
   
   try {
-    const allQuotes: BrapiQuote[] = [];
-
-    // Mapeia cada ticker para uma promessa de busca individual
     const quotePromises = uniqueTickers.map(async (ticker) => {
-      try {
-        const url = `https://brapi.dev/api/quote/${ticker}?token=${BRAPI_TOKEN}`;
-        const response = await fetch(url);
-        
-        if (response.ok) {
-          const data = await response.json();
-          // A API retorna um array 'results' mesmo para consultas individuais
-          if (data.results && data.results.length > 0) {
-            return data.results[0] as BrapiQuote;
-          }
+        try {
+            const response = await fetch(`https://brapi.dev/api/quote/${ticker}?token=${BRAPI_TOKEN}`);
+            
+            if (!response.ok) {
+                console.warn(`Brapi error for ${ticker}: ${response.status}`);
+                return null;
+            }
+
+            const data = await response.json();
+            
+            // Brapi retorna { results: [...] }
+            if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+                return data.results[0] as BrapiQuote;
+            }
+            return null;
+        } catch (innerError) {
+            console.warn(`Falha na requisição individual para ${ticker}`, innerError);
+            return null;
         }
-        return null;
-      } catch (err) {
-        console.warn(`Erro ao buscar cotação individual para ${ticker}:`, err);
-        return null;
-      }
     });
 
-    // Aguarda todas as requisições individuais serem concluídas
     const results = await Promise.all(quotePromises);
+    const validQuotes = results.filter((q): q is BrapiQuote => q !== null);
 
-    // Filtra apenas os resultados que retornaram dados válidos
-    results.forEach(quote => {
-      if (quote) {
-        allQuotes.push(quote);
-      }
-    });
-    
-    return { quotes: allQuotes };
+    return { quotes: validQuotes };
+
   } catch (e: any) {
-    console.error("Brapi Service Global Error:", e);
-    return { quotes: [], error: "Erro crítico ao carregar cotações" };
+    console.error("Brapi Service Error:", e);
+    return { quotes: [], error: "Erro ao processar fila de cotações" };
   }
 };
