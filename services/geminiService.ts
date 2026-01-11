@@ -10,9 +10,10 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Using Gemini 1.5 Flash (Stable Production Version) as requested to avoid Preview/Experimental errors
-const GEMINI_CACHE_KEY = 'investfiis_gemini_v20_15flash_stable_search'; 
-const LOCKED_MODEL_ID = "gemini-1.5-flash";
+// Configuração Estrita: Gemini 2.5 Flash
+// ID definido explicitamente conforme solicitação do usuário: "gemini-2.5-flash"
+const GEMINI_CACHE_KEY = 'investfiis_gemini_v23_25flash_strict_search'; 
+const LOCKED_MODEL_ID = "gemini-2.5-flash";
 
 // Robust API Key Retrieval
 const getApiKey = () => {
@@ -21,7 +22,6 @@ const getApiKey = () => {
     if (viteKey) return viteKey;
     
     // 2. Tenta via define/process.env (fallback build/vercel)
-    // O try/catch previne ReferenceError se process não existir no browser e não tiver sido substituído
     try {
         return process.env.API_KEY;
     } catch {
