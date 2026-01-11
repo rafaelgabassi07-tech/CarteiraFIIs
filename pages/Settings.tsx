@@ -3,26 +3,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   ChevronRight, ArrowLeft, Bell, Sun, Moon, Monitor, RefreshCw, 
   Eye, EyeOff, Palette, Rocket, Database, ShieldAlert, Info, 
-  User, LogOut, Download, Upload, Loader2, Signal, Check, 
-  AlertTriangle, Zap, Globe, Github, Smartphone, Copy, CheckCircle2,
-  Wifi, Activity, Server, XCircle, Terminal
+  User, LogOut, Check, AlertTriangle, Globe, Github, Smartphone, Copy, CheckCircle2,
+  Wifi, Activity, XCircle, Terminal
 } from 'lucide-react';
-import { Transaction, DividendReceipt } from '../types';
+import { Transaction, DividendReceipt, ServiceMetric } from '../types';
 import { ThemeType } from '../App';
 import { ConfirmationModal, SwipeableModal } from '../components/Layout';
-import { supabase } from '../services/supabase';
-
-type ServiceStatus = 'operational' | 'degraded' | 'error' | 'checking' | 'unknown';
-
-interface ServiceMetric {
-  id: string;
-  label: string;
-  url?: string;
-  icon: any;
-  status: ServiceStatus;
-  latency: number | null;
-  message?: string;
-}
 
 interface SettingsProps {
   user: any;
@@ -46,8 +32,11 @@ interface SettingsProps {
   onRequestPushPermission: () => void;
   onSyncAll: (force: boolean) => Promise<void>;
   currentVersionDate: string | null;
-  lastAiStatus: ServiceStatus;
   onForceUpdate: () => void; 
+  // Novos props
+  services: ServiceMetric[];
+  onCheckConnection: () => Promise<void>;
+  isCheckingConnection: boolean;
 }
 
 const ACCENT_COLORS = [
@@ -65,11 +54,11 @@ export const Settings: React.FC<SettingsProps> = ({
   onImportDividends, onResetApp, theme, onSetTheme, privacyMode, 
   onSetPrivacyMode, appVersion, updateAvailable, onCheckUpdates, 
   onShowChangelog, pushEnabled, onRequestPushPermission,
-  onSyncAll, currentVersionDate, lastAiStatus, accentColor, onSetAccentColor
+  onSyncAll, currentVersionDate, accentColor, onSetAccentColor,
+  services, onCheckConnection, isCheckingConnection
 }) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'appearance' | 'privacy' | 'notifications' | 'services' | 'data' | 'updates' | 'about' | 'reset'>('menu');
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   
@@ -82,18 +71,7 @@ export const Settings: React.FC<SettingsProps> = ({
     updates: true
   });
 
-  const getSupabaseUrl = () => {
-     const url = (import.meta as any).env?.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-     return url || 'https://supabase.com';
-  };
-
-  const [services, setServices] = useState<ServiceMetric[]>([
-    { id: 'db', label: 'Supabase Database', url: getSupabaseUrl(), icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
-    { id: 'market', label: 'Brapi Market Data', url: 'https://brapi.dev', icon: Activity, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
-    { id: 'ai', label: 'Gemini AI Inference', icon: Zap, status: lastAiStatus, latency: null, message: 'Serviço interno de IA.' },
-    { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
-  ]);
-
+  // Encontra o serviço selecionado no array recebido via props
   const selectedService = services.find(s => s.id === selectedServiceId) || null;
 
   useEffect(() => {
@@ -111,66 +89,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const showToast = (type: 'success' | 'error' | 'info', text: string) => {
     setToast({ type, text });
     setTimeout(() => setToast(null), 3000);
-  };
-
-  const measureLatency = async () => {
-    setIsSyncing(true);
-    const newServices = [...services];
-    
-    const checkService = async (index: number) => {
-      const s = { ...newServices[index] };
-      const start = Date.now();
-      let logMessage = '';
-
-      try {
-        if (s.id === 'db') {
-            logMessage = `[INFO] Connecting to Supabase Auth...\n[TARGET] ${s.url}`;
-            const { error } = await supabase.auth.getSession();
-            if (error) throw error;
-            logMessage += `\n[OK] Auth Handshake successful.\n[OK] Session verified.`;
-        } else if (s.url && s.id !== 'ai') {
-            logMessage = `[INFO] Pinging ${s.url}...\n[MODE] no-cors (Opaque)`;
-            await fetch(s.url, { mode: 'no-cors', cache: 'no-store' });
-            logMessage += `\n[OK] Response received.`;
-        }
-        
-        const latency = Date.now() - start;
-        newServices[index] = { 
-          ...s, 
-          status: latency > 1500 ? 'degraded' : 'operational',
-          latency,
-          message: `${logMessage}\n[STATS] Latency: ${latency}ms\n[TIME] ${new Date().toLocaleTimeString()}`
-        };
-      } catch (e: any) {
-        console.warn(`Health check failed for ${s.id}`, e);
-        const errorText = e instanceof Error ? e.message : JSON.stringify(e);
-        newServices[index] = { 
-            ...s, 
-            status: 'error', 
-            latency: null,
-            message: `${logMessage}\n[ERROR] Connection failed.\n[DETAILS] ${errorText}\n[TIME] ${new Date().toLocaleTimeString()}`
-        };
-      }
-    };
-
-    await Promise.all(newServices.map((s, i) => s.id !== 'ai' ? checkService(i) : Promise.resolve()));
-    
-    // AI Status Mockup/Check
-    const aiIndex = newServices.findIndex(s => s.id === 'ai');
-    if (aiIndex >= 0) {
-       const aiService = { ...newServices[aiIndex] };
-       aiService.status = lastAiStatus;
-       if (lastAiStatus === 'operational') {
-           aiService.latency = Math.floor(Math.random() * 200) + 100;
-           aiService.message = `[INFO] Gemini AI Model Status\n[MODEL] gemini-3-flash-preview\n[STATUS] Ready for inference.\n[LATENCY] ${aiService.latency}ms (estimated)`;
-       } else {
-           aiService.message = `[WARN] AI Service Status: ${lastAiStatus}\n[INFO] Check API configuration.`;
-       }
-       newServices[aiIndex] = aiService;
-    }
-
-    setServices(newServices);
-    setIsSyncing(false);
   };
 
   const handleExport = () => {
@@ -368,12 +286,12 @@ export const Settings: React.FC<SettingsProps> = ({
                     <p className="text-[10px] text-zinc-500">Toque em um card para ver logs</p>
                 </div>
                 <button 
-                  onClick={measureLatency} 
-                  disabled={isSyncing} 
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform ${isSyncing ? 'opacity-70' : ''}`}
+                  onClick={onCheckConnection} 
+                  disabled={isCheckingConnection} 
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform ${isCheckingConnection ? 'opacity-70' : ''}`}
                 >
-                  <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                  {isSyncing ? 'Testando...' : 'Testar Conexão'}
+                  <RefreshCw className={`w-3 h-3 ${isCheckingConnection ? 'animate-spin' : ''}`} />
+                  {isCheckingConnection ? 'Verificando...' : 'Re-testar'}
                 </button>
               </div>
 
@@ -406,7 +324,7 @@ export const Settings: React.FC<SettingsProps> = ({
                              <div className="flex items-center justify-end gap-1 mt-1">
                                  <div className={`w-1.5 h-1.5 rounded-full ${s.status === 'operational' ? 'bg-emerald-500 animate-pulse' : s.status === 'degraded' ? 'bg-amber-500' : s.status === 'error' ? 'bg-rose-500' : 'bg-zinc-300'}`}></div>
                                  <span className="text-[8px] font-black uppercase tracking-wider text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
-                                     {s.status === 'operational' ? 'Online' : s.status}
+                                     {s.status === 'operational' ? 'Online' : s.status === 'checking' ? 'Testando' : s.status}
                                  </span>
                                  <ChevronRight className="w-3 h-3 text-zinc-300 dark:text-zinc-600 ml-1" />
                              </div>
@@ -589,9 +507,10 @@ export const Settings: React.FC<SettingsProps> = ({
 
           <Group title="Infraestrutura">
             <SettingItem 
-              icon={Signal} 
+              icon={Activity} 
               label="Status das Conexões" 
-              value="Verificar"
+              value="Monitorando"
+              badge={services.some(s => s.status !== 'operational' && s.status !== 'unknown')}
               color="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
               onClick={() => setActiveSection('services')} 
             />
@@ -641,7 +560,6 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
       )}
 
-      {/* Service Details Modal - Always rendered in DOM structure */}
       <SwipeableModal isOpen={!!selectedService} onClose={() => setSelectedServiceId(null)}>
         {selectedService && (
             <div className="p-8 pb-24">

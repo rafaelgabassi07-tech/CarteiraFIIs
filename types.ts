@@ -103,3 +103,16 @@ export interface EvolutionPoint {
     value: number;
     monthlyInflationCost: number;
 }
+
+// Novos tipos para o sistema de saúde
+export type ServiceStatus = 'operational' | 'degraded' | 'error' | 'checking' | 'unknown';
+
+export interface ServiceMetric {
+  id: string;
+  label: string;
+  url?: string;
+  icon?: any; // Mantido como any para compatibilidade com lucide-react icons passados como ref/componente
+  status: ServiceStatus;
+  latency: number | null;
+  message?: string;
+}
