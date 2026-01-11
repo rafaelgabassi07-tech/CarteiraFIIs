@@ -116,14 +116,3 @@ export interface ServiceMetric {
   latency: number | null;
   message?: string;
 }
-
-// Logger Types
-export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-
-export interface LogEntry {
-  id: string;
-  timestamp: number;
-  level: LogLevel;
-  message: string;
-  data?: any[];
-}
