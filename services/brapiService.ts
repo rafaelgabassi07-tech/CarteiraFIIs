@@ -1,7 +1,22 @@
 
 import { BrapiQuote } from '../types';
 
-const BRAPI_TOKEN = (import.meta as any).env?.VITE_BRAPI_TOKEN || process.env.BRAPI_TOKEN;
+// Função segura para obter o Token
+const getBrapiToken = () => {
+    // 1. Tenta via Vite
+    const vite = (import.meta as any).env?.VITE_BRAPI_TOKEN;
+    if (vite) return vite;
+    
+    // 2. Tenta via Process (Vite define substitui isso por string estática)
+    // O try/catch previne "ReferenceError: process is not defined" se a substituição falhar
+    try {
+        return process.env.BRAPI_TOKEN;
+    } catch {
+        return undefined;
+    }
+};
+
+const BRAPI_TOKEN = getBrapiToken();
 
 /**
  * Busca cotações de ativos na API da Brapi.
@@ -13,6 +28,7 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
   }
   
   if (!BRAPI_TOKEN) {
+    console.warn("Brapi token missing");
     return { quotes: [], error: "Brapi token missing" };
   }
 
