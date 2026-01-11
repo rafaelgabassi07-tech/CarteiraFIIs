@@ -1,17 +1,17 @@
 
 {
-  "version": "8.2.2",
-  "date": "2025-07-16",
+  "version": "8.2.3",
+  "date": "2025-07-20",
   "notes": [
     {
-      "type": "ui",
-      "title": "Novo Dashboard de Serviços",
-      "desc": "Repaginamos a área de conexões! Acompanhe o status do Supabase, Brapi e Gemini em tempo real com novos cards visuais."
+      "type": "perf",
+      "title": "Sistema de Atualização Otimizado",
+      "desc": "Refatoração completa do mecanismo de updates para garantir entregas mais rápidas e estáveis."
     },
     {
-      "type": "perf",
-      "title": "Melhorias de Estabilidade",
-      "desc": "Otimizações na sincronização de dados e feedback visual mais claro durante atualizações."
+      "type": "ui",
+      "title": "Modal de Diversificação",
+      "desc": "Layout simplificado e informações redundantes removidas para uma leitura mais clara."
     }
   ]
 }
