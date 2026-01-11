@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.2.3'; 
+const APP_VERSION = '8.2.4'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -264,18 +264,39 @@ const App: React.FC = () => {
 
   const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
       if (!session?.user?.id) return;
-      const { error } = await supabase.from('transactions').insert({ ...t, user_id: session.user.id });
+      
+      const dbPayload = {
+          ticker: t.ticker,
+          type: t.type,
+          quantity: t.quantity,
+          price: t.price,
+          date: t.date,
+          asset_type: t.assetType, // Correct mapping: camelCase -> snake_case
+          user_id: session.user.id
+      };
+
+      const { error } = await supabase.from('transactions').insert(dbPayload);
       if (error) {
-        showToast('error', 'Erro ao salvar transação');
+        console.error("Supabase Insert Error:", error);
+        showToast('error', `Erro ao salvar: ${error.message || 'Falha na conexão'}`);
         return;
       }
       await fetchTransactionsFromCloud(session);
   }, [session, fetchTransactionsFromCloud, showToast]);
 
   const handleUpdateTransaction = useCallback(async (id: string, t: Partial<Transaction>) => {
-      const { error } = await supabase.from('transactions').update(t).eq('id', id);
+      const dbPayload: any = {};
+      if (t.ticker !== undefined) dbPayload.ticker = t.ticker;
+      if (t.type !== undefined) dbPayload.type = t.type;
+      if (t.quantity !== undefined) dbPayload.quantity = t.quantity;
+      if (t.price !== undefined) dbPayload.price = t.price;
+      if (t.date !== undefined) dbPayload.date = t.date;
+      if (t.assetType !== undefined) dbPayload.asset_type = t.assetType; // Correct mapping
+
+      const { error } = await supabase.from('transactions').update(dbPayload).eq('id', id);
       if (error) {
-        showToast('error', 'Erro ao atualizar transação');
+        console.error("Supabase Update Error:", error);
+        showToast('error', `Erro ao atualizar: ${error.message || 'Falha na conexão'}`);
         return;
       }
       await fetchTransactionsFromCloud(session);
