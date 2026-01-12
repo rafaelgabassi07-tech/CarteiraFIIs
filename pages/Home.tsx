@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
@@ -30,7 +30,7 @@ const formatBRL = (val: any, privacy = false) => {
 const formatPercent = (val: any, privacy = false) => {
   if (privacy) return '•••%';
   const num = typeof val === 'number' ? val : 0;
-  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
 const COLORS = [
@@ -72,7 +72,7 @@ const getDaysUntil = (dateStr: string) => {
     return `Em ${diffDays} dias`;
 };
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate = 0, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -101,25 +101,47 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return { upcomingEvents: uniqueEvents, received: receivedTotal };
   }, [dividendReceipts]);
 
-  const { history, average, maxVal, receiptsByMonth } = useMemo(() => {
+  const { history, average, maxVal, receiptsByMonth, realYieldMetrics } = useMemo(() => {
     const map: Record<string, number> = {};
     const receiptsByMonthMap: Record<string, DividendReceipt[]> = {};
+    const today = new Date();
+    let sum12m = 0;
 
     dividendReceipts.forEach(r => {
-        if (r.paymentDate <= new Date().toISOString().split('T')[0]) {
+        const pDate = new Date(r.paymentDate + 'T00:00:00');
+        
+        // Dados para gráfico mensal (apenas pagos até hoje)
+        if (r.paymentDate <= today.toISOString().split('T')[0]) {
             const key = r.paymentDate.substring(0, 7);
             map[key] = (map[key] || 0) + r.totalReceived;
             if (!receiptsByMonthMap[key]) receiptsByMonthMap[key] = [];
             receiptsByMonthMap[key].push(r);
         }
+
+        // Cálculo Renda 12 Meses (Trailing 12m)
+        const diffMonths = (today.getFullYear() - pDate.getFullYear()) * 12 + (today.getMonth() - pDate.getMonth());
+        if (diffMonths >= 0 && diffMonths <= 11) {
+            sum12m += r.totalReceived;
+        }
     });
+
     const sorted = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
     const totalMonths = sorted.length || 1;
     const average = received / (totalMonths > 0 ? totalMonths : 1);
     const maxVal = Math.max(...Object.values(map), 0);
 
-    return { history: sorted, average, maxVal, receiptsByMonth: receiptsByMonthMap };
-  }, [dividendReceipts, received]);
+    // Métricas Renda vs IPCA
+    const userDy = invested > 0 ? (sum12m / invested) * 100 : 0;
+    const realReturn = userDy - (inflationRate || 0);
+
+    return { 
+        history: sorted, 
+        average, 
+        maxVal, 
+        receiptsByMonth: receiptsByMonthMap,
+        realYieldMetrics: { userDy, realReturn, sum12m }
+    };
+  }, [dividendReceipts, received, invested, inflationRate]);
 
   const { typeData, topAssets, segmentsData } = useMemo(() => {
       let fiisTotal = 0;
@@ -337,6 +359,57 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
                      <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(average, privacyMode)}</p>
                  </div>
+             </div>
+
+             {/* RENDA vs IPCA CARD */}
+             <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 p-5 mb-6 anim-slide-up" style={{ animationDelay: '200ms' }}>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <Scale className="w-4 h-4 text-zinc-400" />
+                        <h4 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Renda vs IPCA (12 Meses)</h4>
+                    </div>
+                    {isAiLoading ? (
+                        <Loader2 className="w-3 h-3 text-zinc-400 animate-spin" />
+                    ) : (
+                        <div className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${realYieldMetrics.realReturn >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900'}`}>
+                            {realYieldMetrics.realReturn >= 0 ? 'Ganho Real' : 'Perda Real'}
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex items-end justify-between mb-2">
+                    <div>
+                        <p className="text-2xl font-black text-zinc-900 dark:text-white flex items-baseline gap-1">
+                            {formatPercent(Math.abs(realYieldMetrics.realReturn), privacyMode)}
+                            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">
+                                {realYieldMetrics.realReturn >= 0 ? 'Acima da Inflação' : 'Abaixo da Inflação'}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+
+                {/* Progress Bar Visual */}
+                <div className="relative h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
+                    {/* Benchmark Marker (IPCA) */}
+                    <div className="absolute top-0 bottom-0 bg-zinc-300 dark:bg-zinc-600 z-10 w-[2px]" style={{ left: `${Math.min((inflationRate / 15) * 100, 100)}%` }}></div>
+                    
+                    {/* User Yield Bar */}
+                    <div 
+                        className={`absolute top-0 bottom-0 rounded-full transition-all duration-1000 ${realYieldMetrics.realReturn >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                        style={{ width: `${Math.min((realYieldMetrics.userDy / 15) * 100, 100)}%` }}
+                    ></div>
+                </div>
+
+                <div className="flex justify-between items-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
+                    <div className="flex items-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full ${realYieldMetrics.realReturn >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                        <span>Sua Carteira: {formatPercent(realYieldMetrics.userDy, privacyMode)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
+                        <span>IPCA 12m: {formatPercent(inflationRate, privacyMode)}</span>
+                    </div>
+                </div>
              </div>
 
              <div className="space-y-4">
