@@ -11,7 +11,10 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
   useEffect(() => {
     if (isOpen) {
       setIsMounted(true);
-      requestAnimationFrame(() => setIsVisible(true));
+      // Double RAF ensures the browser has painted the mounted state before applying the visible class
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+      });
     } else {
       setIsVisible(false);
       const timer = setTimeout(() => setIsMounted(false), duration);
@@ -175,7 +178,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
 interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: React.ReactNode; }
 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
-  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 300);
+  // Aumentamos a duração para 500ms para acomodar a nova curva de física "Apple-like"
+  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 500);
   const modalRef = useRef<HTMLDivElement>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -213,27 +217,29 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     <div className={`fixed inset-0 z-[200] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
       <div 
           onClick={onClose} 
-          className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-[2px] transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-[3px] transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       ></div>
       
       <div
         ref={modalRef}
         style={{
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
-            transition: isDragging ? 'none' : 'transform 400ms cubic-bezier(0.23, 1, 0.32, 1)'
+            // Physics: cubic-bezier(0.19, 1, 0.22, 1) provides a very snappy start and a soft, slow settling (premium feel)
+            transition: isDragging ? 'none' : 'transform 500ms cubic-bezier(0.19, 1, 0.22, 1)'
         }}
-        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-[2.5rem] h-[92vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_30px_rgba(0,0,0,0.2)] border-t border-zinc-200 dark:border-zinc-800`}
+        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-[2.5rem] h-[92vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_40px_rgba(0,0,0,0.3)] border-t border-zinc-200 dark:border-zinc-800 will-change-transform`}
       >
         <div 
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            className="flex-none p-4 flex justify-center bg-transparent cursor-grab active:cursor-grabbing touch-none"
+            className="flex-none p-4 flex justify-center bg-transparent cursor-grab active:cursor-grabbing touch-none z-10"
         >
             <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
         </div>
         
-        <div className="flex-1 overflow-y-auto overscroll-contain pb-safe">
+        {/* Content Stagger: Fade in content slightly after modal starts moving to prevent visual jitter */}
+        <div className={`flex-1 overflow-y-auto overscroll-contain pb-safe transition-opacity duration-500 delay-100 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
           {children}
         </div>
       </div>
@@ -243,20 +249,20 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 
 interface ConfirmationModalProps { isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; }
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
-  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 200);
+  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 250);
   if (!isMounted) return null;
   return createPortal(
     <div className={`fixed inset-0 z-[1000] flex items-center justify-center p-6 ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
-      <div className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-sm transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
-      <div className={`relative bg-white dark:bg-zinc-900 rounded-[2rem] w-full max-w-xs p-6 text-center shadow-2xl transition-all duration-300 border border-zinc-100 dark:border-zinc-800 ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-4 opacity-0'}`}>
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-5 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30">
-          <AlertTriangle className="w-7 h-7" strokeWidth={2.5} />
+      <div className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-sm transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
+      <div className={`relative bg-white dark:bg-zinc-900 rounded-[2.5rem] w-full max-w-xs p-8 text-center shadow-2xl transition-all duration-500 cubic-bezier(0.19, 1, 0.22, 1) border border-zinc-100 dark:border-zinc-800 ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-8 opacity-0'}`}>
+        <div className="mx-auto w-16 h-16 rounded-3xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-6 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 shadow-sm">
+          <AlertTriangle className="w-8 h-8" strokeWidth={2.5} />
         </div>
-        <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2 tracking-tight">{title}</h3>
+        <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-3 tracking-tight">{title}</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed font-medium">{message}</p>
         <div className="grid grid-cols-2 gap-3">
-          <button onClick={onCancel} className="py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
-          <button onClick={onConfirm} className="py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 active:scale-95 transition-transform shadow-lg">Confirmar</button>
+          <button onClick={onCancel} className="py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+          <button onClick={onConfirm} className="py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 active:scale-95 transition-transform shadow-lg">Confirmar</button>
         </div>
       </div>
     </div>, document.body

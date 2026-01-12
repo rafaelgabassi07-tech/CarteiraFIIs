@@ -9,9 +9,10 @@
     --duration-normal: 400ms;
     --duration-slow: 700ms;
     
-    /* Spring-like Easing Curves */
+    /* Spring-like Easing Curves Refined */
     --ease-out-mola: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    --ease-out-soft: cubic-bezier(0.23, 1, 0.32, 1);
+    /* Updated for a smoother "Apple-like" sheet settle */
+    --ease-out-soft: cubic-bezier(0.19, 1, 0.22, 1); 
     --ease-in-out-expo: cubic-bezier(1, 0, 0, 1);
     
     --color-accent-rgb: 14 165 233;
