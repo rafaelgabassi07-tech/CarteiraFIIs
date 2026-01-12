@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
@@ -30,7 +30,7 @@ const formatBRL = (val: any, privacy = false) => {
 const formatPercent = (val: any, privacy = false) => {
   if (privacy) return '•••%';
   const num = typeof val === 'number' ? val : 0;
-  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 };
 
 const COLORS = [
@@ -78,6 +78,13 @@ const getInflationVerdict = (realReturn: number) => {
     if (realReturn >= 0) return { title: "Proteção Patrimonial", desc: "Bom. Você está blindado contra a inflação e ganhando poder de compra.", color: "text-sky-500", bg: "bg-sky-500" };
     if (realReturn >= -2) return { title: "Erosão Leve", desc: "Atenção. Seus dividendos quase cobrem a inflação, mas ainda há perda real.", color: "text-amber-500", bg: "bg-amber-500" };
     return { title: "Destruição de Valor", desc: "Crítico. A inflação está consumindo seu patrimônio mais rápido do que ele rende.", color: "text-rose-500", bg: "bg-rose-500" };
+};
+
+// Lógica de Avaliação de Diversificação
+const getDiversificationVerdict = (topAssetShare: number, topSegmentShare: number) => {
+    if (topAssetShare > 25 || topSegmentShare > 45) return { title: "Concentração Alta", desc: "Risco elevado. Sua carteira depende muito de poucos ativos ou setores.", color: "text-rose-500", bg: "bg-rose-500", border: "border-rose-500/20" };
+    if (topAssetShare > 15 || topSegmentShare > 30) return { title: "Diversificação Moderada", desc: "Equilíbrio razoável, mas atenção para não aumentar posições dominantes.", color: "text-amber-500", bg: "bg-amber-500", border: "border-amber-500/20" };
+    return { title: "Alta Diversificação", desc: "Excelente! Seu patrimônio está bem distribuído, diluindo riscos específicos.", color: "text-emerald-500", bg: "bg-emerald-500", border: "border-emerald-500/20" };
 };
 
 const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate = 0, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
@@ -165,7 +172,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     };
   }, [dividendReceipts, received, invested, inflationRate]);
 
-  const { typeData, topAssets, segmentsData } = useMemo(() => {
+  const { typeData, topAssets, segmentsData, concentrationMetrics } = useMemo(() => {
       let fiisTotal = 0;
       let stocksTotal = 0;
       const segmentsMap: Record<string, number> = {};
@@ -184,6 +191,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
       const sortedAssets = [...enriched].sort((a, b) => b.totalValue - a.totalValue).slice(0, 3);
+      
+      // Concentration Metrics
+      const topAssetShare = sortedAssets.length > 0 ? (sortedAssets[0].totalValue / total) * 100 : 0;
+      const topSegmentShare = segmentsData.length > 0 ? (segmentsData[0].value / total) * 100 : 0;
+      const top3Share = sortedAssets.reduce((acc, curr) => acc + curr.totalValue, 0) / total * 100;
 
       return {
           typeData: {
@@ -192,7 +204,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             total
           },
           topAssets: sortedAssets,
-          segmentsData
+          segmentsData,
+          concentrationMetrics: { topAssetShare, topSegmentShare, top3Share }
       };
   }, [portfolio]);
 
@@ -201,6 +214,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   };
 
   const verdict = getInflationVerdict(realYieldMetrics.realReturn);
+  const diversificationVerdict = getDiversificationVerdict(concentrationMetrics.topAssetShare, concentrationMetrics.topSegmentShare);
 
   return (
     <div className="space-y-3 pb-8">
@@ -682,120 +696,131 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
+      {/* NOVO MODAL DE ALOCAÇÃO COM VEREDITO E GRÁFICOS MELHORADOS */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="p-6 pb-20">
-             <div className="flex items-center gap-4 mb-8 anim-slide-up">
+             <div className="flex items-center gap-4 mb-6 anim-slide-up">
                 <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
                     <PieIcon className="w-6 h-6" strokeWidth={1.5} />
                 </div>
                 <div>
                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Diversificação</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Composição da Carteira</p>
+                    <p className="text-xs text-zinc-500 font-medium">Raio-X da Carteira</p>
                 </div>
              </div>
 
-             {/* FIIs e Ações Cards movidos para o topo e removida barra duplicada */}
-             <div className="space-y-3 mb-8 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                <div className="p-5 rounded-[1.5rem] bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-white dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
-                            <Building2 className="w-6 h-6" strokeWidth={1.5} />
-                        </div>
-                        <div>
-                            <h3 className="font-black text-indigo-900 dark:text-indigo-100 text-lg">FIIs</h3>
-                            <p className="text-[10px] font-bold text-indigo-600/60 dark:text-indigo-400/60 uppercase tracking-widest">Fundos Imobiliários</p>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-lg font-black text-indigo-900 dark:text-indigo-100">{formatBRL(typeData.fiis.value, privacyMode)}</p>
-                        <p className="text-xs font-bold text-indigo-500 dark:text-indigo-400">{formatPercent(typeData.fiis.percent, privacyMode)}</p>
-                    </div>
-                </div>
-
-                <div className="p-5 rounded-[1.5rem] bg-sky-50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-900/30 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-white dark:bg-sky-900/50 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
-                            <CandlestickChart className="w-6 h-6" strokeWidth={1.5} />
-                        </div>
-                        <div>
-                            <h3 className="font-black text-sky-900 dark:text-sky-100 text-lg">Ações</h3>
-                            <p className="text-[10px] font-bold text-sky-600/60 dark:text-sky-400/60 uppercase tracking-widest">Mercado de Capitais</p>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-lg font-black text-sky-900 dark:text-sky-100">{formatBRL(typeData.stocks.value, privacyMode)}</p>
-                        <p className="text-xs font-bold text-sky-500 dark:text-sky-400">{formatPercent(typeData.stocks.percent, privacyMode)}</p>
-                    </div>
-                </div>
+             {/* VEREDITO DE DIVERSIFICAÇÃO */}
+             <div className={`p-6 rounded-[2rem] mb-6 anim-slide-up bg-surface-light dark:bg-zinc-800/40 border-2 ${diversificationVerdict.border}`} style={{ animationDelay: '100ms' }}>
+                 <div className="flex items-center gap-2 mb-2">
+                     <div className="w-2 h-2 rounded-full bg-current animate-pulse text-inherit"></div>
+                     <span className={`text-[10px] font-black uppercase tracking-widest ${diversificationVerdict.color}`}>Diagnóstico</span>
+                 </div>
+                 <h3 className={`text-xl font-black mb-1.5 ${diversificationVerdict.color}`}>{diversificationVerdict.title}</h3>
+                 <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                     {diversificationVerdict.desc}
+                 </p>
              </div>
 
+             {/* GRÁFICO 1: ASSET CLASS SPLIT (BAR CHART) */}
+             <div className="mb-6 p-5 bg-zinc-50 dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '200ms' }}>
+                 <div className="flex items-center justify-between mb-4">
+                     <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                        <LayoutGrid className="w-3 h-3" /> Distribuição por Classe
+                     </h3>
+                     <span className="text-[9px] font-bold text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 rounded-md">{typeData.total > 0 ? '100%' : '0%'}</span>
+                 </div>
+                 
+                 {/* Visual Bar */}
+                 <div className="flex h-12 w-full rounded-2xl overflow-hidden mb-4 shadow-sm">
+                    <div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-indigo-500 flex items-center justify-center text-white text-[10px] font-black transition-all duration-1000 relative group">
+                        {typeData.fiis.percent > 15 && 'FIIs'}
+                    </div>
+                    <div style={{ width: `${typeData.stocks.percent}%` }} className="h-full bg-sky-500 flex items-center justify-center text-white text-[10px] font-black transition-all duration-1000 relative group">
+                        {typeData.stocks.percent > 15 && 'Ações'}
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-3">
+                     <div className="p-3 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700">
+                         <div className="flex items-center gap-2 mb-1">
+                             <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                             <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase">FIIs</span>
+                         </div>
+                         <p className="text-sm font-black text-zinc-900 dark:text-white">{formatPercent(typeData.fiis.percent, privacyMode)}</p>
+                         <p className="text-[9px] text-zinc-400">{formatBRL(typeData.fiis.value, privacyMode)}</p>
+                     </div>
+                     <div className="p-3 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700">
+                         <div className="flex items-center gap-2 mb-1">
+                             <div className="w-2 h-2 rounded-full bg-sky-500"></div>
+                             <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase">Ações</span>
+                         </div>
+                         <p className="text-sm font-black text-zinc-900 dark:text-white">{formatPercent(typeData.stocks.percent, privacyMode)}</p>
+                         <p className="text-[9px] text-zinc-400">{formatBRL(typeData.stocks.value, privacyMode)}</p>
+                     </div>
+                 </div>
+             </div>
+
+             {/* GRÁFICO 2: SEGMENTOS (HORIZONTAL BARS) */}
              {segmentsData.length > 0 && (
-                <div className="mb-8 p-4 bg-surface-light dark:bg-surface-dark rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '200ms' }}>
+                <div className="mb-6 p-5 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '300ms' }}>
                     <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Layers className="w-3 h-3" /> Distribuição por Segmento
+                        <Layers className="w-3 h-3" /> Top Segmentos
                     </h3>
-                    <div className="h-64 w-full relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={segmentsData}
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                    stroke="none"
-                                >
-                                    {segmentsData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <RechartsTooltip 
-                                    formatter={(value: number) => formatBRL(value, privacyMode)}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Segmentos</span>
-                        </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 mt-4">
-                        {segmentsData.slice(0, 6).map((entry, index) => (
-                            <div key={index} className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
-                                <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-300 truncate max-w-[100px]">{entry.name}</span>
-                                <span className="text-[9px] text-zinc-400 ml-auto">{formatPercent((entry.value / typeData.total) * 100, privacyMode)}</span>
+                    <div className="space-y-3">
+                        {segmentsData.slice(0, 5).map((seg, idx) => (
+                            <div key={seg.name} className="relative">
+                                <div className="flex justify-between text-[10px] font-bold text-zinc-600 dark:text-zinc-300 mb-1 z-10 relative">
+                                    <span>{seg.name}</span>
+                                    <span>{formatPercent((seg.value / typeData.total) * 100, privacyMode)}</span>
+                                </div>
+                                <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full rounded-full" 
+                                        style={{ 
+                                            width: `${(seg.value / typeData.total) * 100}%`,
+                                            backgroundColor: COLORS[idx % COLORS.length]
+                                        }}
+                                    ></div>
+                                </div>
                             </div>
                         ))}
                     </div>
                 </div>
              )}
 
-             {topAssets.length > 0 && (
-                <div className="bg-zinc-50 dark:bg-zinc-900 rounded-[1.5rem] p-5 border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '300ms' }}>
-                    <div className="flex items-center gap-2 mb-4">
-                        <Target className="w-4 h-4 text-zinc-400" />
-                        <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Top 3 Maiores Posições</h4>
-                    </div>
-                    <div className="space-y-3">
-                        {topAssets.map((asset, idx) => (
-                            <div key={asset.ticker} className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <span className="w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-300">
-                                        {idx + 1}
-                                    </span>
-                                    <span className="text-sm font-bold text-zinc-900 dark:text-white">{asset.ticker}</span>
-                                </div>
-                                <span className="text-sm font-medium text-zinc-600 dark:text-zinc-300">{formatBRL((asset.currentPrice || asset.averagePrice) * asset.quantity, privacyMode)}</span>
-                            </div>
-                        ))}
-                    </div>
+             {/* GRÁFICO 3: RISCO DE CONCENTRAÇÃO */}
+             <div className="bg-zinc-50 dark:bg-zinc-900 rounded-[1.5rem] p-5 border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '400ms' }}>
+                <div className="flex items-center gap-2 mb-4">
+                    <Target className="w-4 h-4 text-rose-400" />
+                    <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Risco de Concentração (Top 3)</h4>
                 </div>
-             )}
+
+                <div className="flex h-12 rounded-xl overflow-hidden mb-3 border border-zinc-200 dark:border-zinc-800">
+                     {/* Top 3 Share */}
+                     <div style={{ width: `${concentrationMetrics.top3Share}%` }} className="bg-rose-500/10 dark:bg-rose-500/20 flex items-center justify-center relative border-r border-rose-500/30">
+                         <span className="text-[10px] font-black text-rose-600 dark:text-rose-400">
+                             {formatPercent(concentrationMetrics.top3Share, privacyMode)}
+                         </span>
+                         <span className="absolute bottom-1 text-[8px] font-bold text-rose-500 uppercase tracking-wider">Top 3</span>
+                     </div>
+                     {/* Rest Share */}
+                     <div style={{ width: `${100 - concentrationMetrics.top3Share}%` }} className="bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center relative">
+                         <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                             {formatPercent(100 - concentrationMetrics.top3Share, privacyMode)}
+                         </span>
+                         <span className="absolute bottom-1 text-[8px] font-bold text-emerald-500 uppercase tracking-wider">Restante</span>
+                     </div>
+                </div>
+
+                <p className="text-[9px] text-zinc-500 dark:text-zinc-400 leading-relaxed text-center px-4">
+                    {concentrationMetrics.top3Share > 50 
+                        ? "Cuidado: Mais da metade do seu patrimônio está em apenas 3 ativos." 
+                        : "Sua carteira possui uma boa distribuição de risco entre os principais ativos."}
+                </p>
+            </div>
              
              <p className="text-center mt-8 text-[10px] text-zinc-400 max-w-[200px] mx-auto leading-relaxed">
-                 Uma carteira diversificada reduz riscos e potencializa ganhos no longo prazo.
+                 A diversificação é a única "almoço grátis" do mercado financeiro.
              </p>
          </div>
       </SwipeableModal>
