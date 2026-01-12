@@ -180,6 +180,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-3 pb-8">
+      {/* 1. Patrimonio Total */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
         <div className="w-full bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark">
             <div className="flex justify-between items-start mb-3">
@@ -217,6 +218,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </div>
 
+      {/* 2. Agenda */}
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
         <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-surface-light dark:bg-surface-dark p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 shadow-card dark:shadow-card-dark">
             <div className="flex justify-between items-center mb-4">
@@ -263,7 +265,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             )}
         </button>
       </div>
-
+      
+      {/* 3. Grid Buttons */}
       <div className="grid grid-cols-2 gap-3 anim-stagger-item" style={{ animationDelay: '200ms' }}>
         <button onClick={() => setShowProventosModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full relative overflow-hidden shadow-card dark:shadow-card-dark">
             <div>
@@ -304,6 +307,66 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
             )}
         </button>
+      </div>
+
+      {/* 4. Renda vs IPCA (Ganho Real) - MOVIDO PARA CÁ PARA DAR DESTAQUE */}
+      <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
+         <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 p-5 shadow-card dark:shadow-card-dark relative overflow-hidden">
+             {/* Background Mesh Gradient for premium feel */}
+             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+
+             <div className="flex items-center justify-between mb-4 relative z-10">
+                 <div className="flex items-center gap-2">
+                     <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-500 border border-indigo-100 dark:border-indigo-900/30">
+                          <Scale className="w-4 h-4" />
+                     </div>
+                     <div>
+                         <h3 className="text-sm font-black text-zinc-900 dark:text-white leading-none">Ganho Real</h3>
+                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">Rentabilidade vs IPCA 12m</p>
+                     </div>
+                 </div>
+                 
+                  {/* Tag de Status */}
+                  <div className={`px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${realYieldMetrics.realReturn >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30'}`}>
+                     {realYieldMetrics.realReturn >= 0 ? 'Positivo' : 'Negativo'}
+                  </div>
+             </div>
+
+             {/* Main Values */}
+             <div className="flex items-end gap-2 mb-4 relative z-10">
+                  <span className={`text-3xl font-black tracking-tight ${realYieldMetrics.realReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                     {realYieldMetrics.realReturn > 0 ? '+' : ''}{formatPercent(realYieldMetrics.realReturn, privacyMode)}
+                  </span>
+                  <span className="text-xs font-bold text-zinc-400 mb-1.5 uppercase tracking-wide">Acima da inflação</span>
+             </div>
+
+             {/* Bars Comparison */}
+             <div className="space-y-3 relative z-10">
+                 {/* User Bar */}
+                 <div>
+                     <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                         <span>Sua Carteira (DY)</span>
+                         <span className="text-zinc-900 dark:text-white">{formatPercent(realYieldMetrics.userDy, privacyMode)}</span>
+                     </div>
+                     <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                         <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min((realYieldMetrics.userDy / 15) * 100, 100)}%` }}></div>
+                     </div>
+                 </div>
+
+                 {/* IPCA Bar */}
+                  <div>
+                     <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                         <span>IPCA (Inflação)</span>
+                         <span className="text-zinc-900 dark:text-white">{formatPercent(inflationRate, privacyMode)}</span>
+                     </div>
+                     <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                         <div className="h-full bg-zinc-400 dark:bg-zinc-600 rounded-full transition-all duration-1000" style={{ width: `${Math.min((inflationRate / 15) * 100, 100)}%` }}></div>
+                     </div>
+                 </div>
+             </div>
+             
+             {isAiLoading && <div className="absolute top-4 right-4"><Loader2 className="w-3 h-3 text-zinc-300 animate-spin"/></div>}
+         </div>
       </div>
 
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
@@ -361,56 +424,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
-             {/* RENDA vs IPCA CARD */}
-             <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 p-5 mb-6 anim-slide-up" style={{ animationDelay: '200ms' }}>
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <Scale className="w-4 h-4 text-zinc-400" />
-                        <h4 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Renda vs IPCA (12 Meses)</h4>
-                    </div>
-                    {isAiLoading ? (
-                        <Loader2 className="w-3 h-3 text-zinc-400 animate-spin" />
-                    ) : (
-                        <div className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${realYieldMetrics.realReturn >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900'}`}>
-                            {realYieldMetrics.realReturn >= 0 ? 'Ganho Real' : 'Perda Real'}
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex items-end justify-between mb-2">
-                    <div>
-                        <p className="text-2xl font-black text-zinc-900 dark:text-white flex items-baseline gap-1">
-                            {formatPercent(Math.abs(realYieldMetrics.realReturn), privacyMode)}
-                            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">
-                                {realYieldMetrics.realReturn >= 0 ? 'Acima da Inflação' : 'Abaixo da Inflação'}
-                            </span>
-                        </p>
-                    </div>
-                </div>
-
-                {/* Progress Bar Visual */}
-                <div className="relative h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
-                    {/* Benchmark Marker (IPCA) */}
-                    <div className="absolute top-0 bottom-0 bg-zinc-300 dark:bg-zinc-600 z-10 w-[2px]" style={{ left: `${Math.min((inflationRate / 15) * 100, 100)}%` }}></div>
-                    
-                    {/* User Yield Bar */}
-                    <div 
-                        className={`absolute top-0 bottom-0 rounded-full transition-all duration-1000 ${realYieldMetrics.realReturn >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                        style={{ width: `${Math.min((realYieldMetrics.userDy / 15) * 100, 100)}%` }}
-                    ></div>
-                </div>
-
-                <div className="flex justify-between items-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
-                    <div className="flex items-center gap-1.5">
-                        <div className={`w-1.5 h-1.5 rounded-full ${realYieldMetrics.realReturn >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-                        <span>Sua Carteira: {formatPercent(realYieldMetrics.userDy, privacyMode)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
-                        <span>IPCA 12m: {formatPercent(inflationRate, privacyMode)}</span>
-                    </div>
-                </div>
-             </div>
+             {/* REMOVIDO DAQUI E COLOCADO NO DASHBOARD PRINCIPAL */}
 
              <div className="space-y-4">
                  <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-2 anim-slide-up" style={{ animationDelay: '300ms' }}>Evolução Mensal</h3>
