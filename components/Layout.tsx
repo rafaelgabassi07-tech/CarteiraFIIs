@@ -133,37 +133,56 @@ const navItems = [
 ];
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
+  const activeIndex = navItems.findIndex(item => item.id === currentTab);
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-      <nav className="pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[2rem] shadow-[0_8px_32px_rgb(0,0,0,0.15)] overflow-hidden p-1.5 w-full max-w-sm mx-4">
-        <div className="flex items-center justify-around h-12">
-          {navItems.map(item => {
+      <nav className="pointer-events-auto bg-white/85 dark:bg-zinc-900/85 backdrop-blur-[20px] border border-white/20 dark:border-zinc-800/60 rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[22rem] mx-6 relative overflow-hidden">
+        
+        {/* Sliding Active Indicator */}
+        {/* A largura é calculada como (100% / 3) menos as margens para encaixar perfeitamente */}
+        <div 
+            className="absolute top-1.5 bottom-1.5 w-[calc(33.33%-0.25rem)] bg-white dark:bg-zinc-800 rounded-[2rem] shadow-[0_2px_10px_rgba(0,0,0,0.08)] dark:shadow-black/50 border border-zinc-100 dark:border-zinc-700/50 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] will-change-transform z-0"
+            style={{ 
+                left: '0.125rem', // Offset inicial leve
+                transform: `translateX(calc(${activeIndex} * 100% + ${activeIndex * 0.25}rem))` // Move 100% da largura + gap
+            }}
+        >
+            {/* Inner Glow for Premium Feel */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-sky-500/10 dark:to-sky-400/5 rounded-[2rem]"></div>
+        </div>
+
+        {/* Buttons Grid */}
+        <div className="relative z-10 grid grid-cols-3 h-14">
+          {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className={`
-                  relative flex flex-col items-center justify-center h-full px-6 transition-all duration-500 outline-none group
-                  active:scale-90
-                `}
+                className="flex flex-col items-center justify-center relative outline-none select-none active:scale-90 transition-transform duration-200 group"
               >
-                <div className={`
-                  absolute inset-y-1 inset-x-2 rounded-xl transition-all duration-500 ease-out-quint
-                  ${isActive ? 'bg-sky-500/10 dark:bg-sky-500/20 scale-100 opacity-100' : 'scale-75 opacity-0'}
-                `}></div>
-                
-                <div className={`
-                  relative z-10 transition-all duration-500 transform
-                  ${isActive ? 'text-sky-600 dark:text-sky-400 scale-110' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600'}
-                `}>
-                  <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} />
+                {/* Icon Wrapper with Pop Animation */}
+                <div className={`relative transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isActive ? '-translate-y-1.5' : 'translate-y-1 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-400'}`}>
+                    
+                    {/* Active Glow Behind Icon */}
+                    <div className={`absolute inset-0 bg-sky-400/40 blur-lg rounded-full transition-all duration-500 ${isActive ? 'opacity-100 scale-150' : 'opacity-0 scale-0'}`}></div>
+                    
+                    <item.icon 
+                        className={`w-6 h-6 relative z-10 transition-all duration-500 ${
+                            isActive 
+                                ? 'text-sky-600 dark:text-sky-400 stroke-[2.5px] scale-110 drop-shadow-sm' 
+                                : 'stroke-[2px]'
+                        }`} 
+                    />
                 </div>
                 
-                <span className={`
-                  relative z-10 text-[8px] font-black uppercase tracking-[0.2em] mt-0.5 transition-all duration-500
-                  ${isActive ? 'text-sky-600 dark:text-sky-400 opacity-100 translate-y-0' : 'opacity-0 translate-y-1 h-0 overflow-hidden'}
-                `}>
+                {/* Label Slide Up Animation */}
+                <span className={`absolute bottom-2 text-[9px] font-black uppercase tracking-wider transition-all duration-500 ease-out ${
+                    isActive 
+                        ? 'opacity-100 translate-y-0 text-zinc-900 dark:text-white' 
+                        : 'opacity-0 translate-y-3 pointer-events-none'
+                }`}>
                   {item.label}
                 </span>
               </button>
