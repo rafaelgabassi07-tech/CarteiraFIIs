@@ -4,7 +4,7 @@ import {
   ChevronRight, ArrowLeft, Bell, Sun, Moon, Monitor, RefreshCw, 
   Eye, EyeOff, Palette, Rocket, Database, ShieldAlert, Info, 
   User, LogOut, Check, AlertTriangle, Globe, Github, Smartphone, Copy, CheckCircle2,
-  Wifi, Activity, XCircle, Terminal, Trash2, Filter
+  Wifi, Activity, XCircle, Terminal, Trash2, Filter, Eraser
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ServiceMetric, LogEntry } from '../types';
 import { ThemeType } from '../App';
@@ -212,7 +212,7 @@ export const Settings: React.FC<SettingsProps> = ({
               {activeSection === 'data' && 'Backup & Dados'}
               {activeSection === 'updates' && 'Sistema'}
               {activeSection === 'about' && 'Sobre'}
-              {activeSection === 'reset' && 'Atenção'}
+              {activeSection === 'reset' && 'Manutenção'}
             </h2>
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ajustes</p>
           </div>
@@ -444,17 +444,19 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'reset' && (
-          <div className="bg-rose-50 dark:bg-rose-950/30 p-6 rounded-[1.5rem] border border-rose-100 dark:border-rose-900/30 text-center">
-            <div className="w-14 h-14 bg-rose-500 text-white mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-xl shadow-rose-500/20">
-              <ShieldAlert className="w-7 h-7" />
+          <div className="bg-amber-50 dark:bg-amber-950/30 p-6 rounded-[1.5rem] border border-amber-100 dark:border-amber-900/30 text-center">
+            <div className="w-14 h-14 bg-amber-500 text-white mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-xl shadow-amber-500/20">
+              <Eraser className="w-7 h-7" />
             </div>
-            <h3 className="text-lg font-black text-rose-600 dark:text-rose-400 mb-1">Limpeza do App</h3>
-            <p className="text-xs text-rose-600/60 dark:text-rose-400/60 mb-6 leading-relaxed">Apaga preferências locais (tema, login). Seus dados na nuvem continuam seguros.</p>
+            <h3 className="text-lg font-black text-amber-600 dark:text-amber-400 mb-1">Limpar Cachê</h3>
+            <p className="text-xs text-amber-600/60 dark:text-amber-400/60 mb-6 leading-relaxed">
+                Corrige problemas de interface apagando dados temporários. Suas ordens na nuvem não serão afetadas, mas você precisará fazer login novamente.
+            </p>
             <button 
               onClick={onResetApp}
-              className="w-full py-3.5 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-rose-500/20 active:scale-95"
+              className="w-full py-3.5 bg-amber-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-amber-500/20 active:scale-95"
             >
-              Confirmar Reset Local
+              Apagar Dados Locais
             </button>
           </div>
         )}
@@ -582,9 +584,9 @@ export const Settings: React.FC<SettingsProps> = ({
               onClick={() => setActiveSection('about')} 
             />
             <SettingItem 
-              icon={ShieldAlert} 
-              label="Resetar Aplicativo" 
-              color="bg-rose-50 text-rose-500 dark:bg-rose-900/10"
+              icon={Eraser} 
+              label="Limpar Cachê" 
+              color="bg-amber-50 text-amber-500 dark:bg-amber-900/10"
               onClick={() => setActiveSection('reset')} 
               isLast
             />
