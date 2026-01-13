@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ServiceMetric, LogEntry } from '../types';
 import { ThemeType } from '../App';
-import { ConfirmationModal, SwipeableModal } from '../components/Layout';
+import { ConfirmationModal, SwipeableModal, Toast } from '../components/Layout';
 import { logger } from '../services/logger';
 
 interface SettingsProps {
@@ -495,135 +495,6 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
           </div>
         )}
-    </div>
-  );
-
-  return (
-    <div className="anim-fade-in space-y-4">
-      {/* GLOBAL TOP TOAST NOTIFICATION FOR SETTINGS (REUSED STYLE) */}
-      {toast && ( 
-        <div className="fixed top-4 left-4 right-4 z-[3000] flex justify-center pointer-events-none anim-slide-up">
-            <div className={`
-              pointer-events-auto flex items-center gap-3 p-4 rounded-2xl shadow-2xl border transition-all duration-300
-              ${toast.type === 'success' ? 'bg-white/95 dark:bg-zinc-900/95 border-emerald-100 dark:border-emerald-900/30 text-zinc-900 dark:text-white' : 
-                toast.type === 'error' ? 'bg-white/95 dark:bg-zinc-900/95 border-rose-100 dark:border-rose-900/30 text-zinc-900 dark:text-white' :
-                'bg-white/95 dark:bg-zinc-900/95 border-sky-100 dark:border-sky-900/30 text-zinc-900 dark:text-white'}
-              backdrop-blur-md max-w-sm w-full
-            `}>
-               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
-                 toast.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 border-emerald-100 dark:border-emerald-900/30' : 
-                 toast.type === 'error' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 border-rose-100 dark:border-rose-900/30' : 
-                 'bg-sky-50 dark:bg-sky-900/20 text-sky-500 border-sky-100 dark:border-sky-900/30'
-               }`}>
-                 {toast.type === 'info' ? <Info className="w-5 h-5" strokeWidth={2} /> : 
-                  toast.type === 'error' ? <AlertTriangle className="w-5 h-5" strokeWidth={2} /> : 
-                  <CheckCircle2 className="w-5 h-5" strokeWidth={2} />}
-               </div>
-               <div className="min-w-0 flex-1">
-                 <h4 className="text-sm font-black tracking-tight leading-none mb-1">
-                    {toast.type === 'success' ? 'Sucesso' : toast.type === 'error' ? 'Atenção' : 'Informação'}
-                 </h4>
-                 <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 leading-tight">{toast.text}</p>
-               </div>
-            </div>
-        </div> 
-      )}
-
-      {activeSection === 'menu' ? (
-        <>
-          <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded-lg flex items-center justify-center border border-sky-100 dark:border-sky-800">
-                <User className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-zinc-900 dark:text-white leading-none mb-1">
-                  {user?.email?.split('@')[0]}
-                </h3>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Sincronizado</p>
-                </div>
-              </div>
-            </div>
-            <button 
-              onClick={() => setShowLogoutConfirm(true)}
-              className="w-9 h-9 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center active:scale-90 transition-transform"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-
-          <Group title="Interface">
-            <SettingItem 
-              icon={Palette} 
-              label="Aparência" 
-              value={theme === 'light' ? 'Claro' : theme === 'dark' ? 'Escuro' : 'Auto'}
-              color="bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400"
-              onClick={() => setActiveSection('appearance')} 
-            />
-            <SettingItem 
-              icon={Eye} 
-              label="Privacidade" 
-              value={privacyMode ? 'Ativo' : 'Padrão'}
-              color="bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400"
-              onClick={() => setActiveSection('privacy')} 
-            />
-            <SettingItem 
-              icon={Bell} 
-              label="Notificações" 
-              value={pushEnabled ? 'On' : 'Off'}
-              color="bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400"
-              onClick={() => setActiveSection('notifications')} 
-              isLast
-            />
-          </Group>
-
-          <Group title="Infraestrutura">
-            <SettingItem 
-              icon={Activity} 
-              label="Status das Conexões" 
-              value="Monitorando"
-              badge={services.some(s => s.status !== 'operational' && s.status !== 'unknown')}
-              color="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
-              onClick={() => setActiveSection('services')} 
-            />
-            <SettingItem 
-              icon={Database} 
-              label="Backup e Importação" 
-              color="bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
-              onClick={() => setActiveSection('data')} 
-              isLast
-            />
-          </Group>
-
-          <Group title="Sobre o App">
-            <SettingItem 
-              icon={Rocket} 
-              label="Versão do Sistema" 
-              value={`v${appVersion}`}
-              badge={updateAvailable}
-              color="bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400"
-              onClick={() => setActiveSection('updates')} 
-            />
-            <SettingItem 
-              icon={Info} 
-              label="Sobre o InvestFIIs" 
-              color="bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-              onClick={() => setActiveSection('about')} 
-            />
-            <SettingItem 
-              icon={Eraser} 
-              label="Limpar Cachê" 
-              color="bg-amber-50 text-amber-500 dark:bg-amber-900/10"
-              onClick={() => setActiveSection('reset')} 
-              isLast
-            />
-          </Group>
-        </>
-      ) : (
-        renderSubPage()
-      )}
 
       <SwipeableModal isOpen={!!selectedService} onClose={() => setSelectedServiceId(null)}>
         {selectedService && (
@@ -726,6 +597,9 @@ export const Settings: React.FC<SettingsProps> = ({
         onConfirm={() => { setShowLogoutConfirm(false); onLogout(); }} 
         onCancel={() => setShowLogoutConfirm(false)} 
       />
+      
+      {/* GLOBAL TOP TOAST NOTIFICATION FOR SETTINGS (REUSED STYLE) */}
+      {toast && <Toast type={toast.type} text={toast.text} />}
     </div>
   );
 };

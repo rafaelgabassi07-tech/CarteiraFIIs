@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal } from './components/Layout';
+import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, Toast } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
@@ -10,7 +10,7 @@ import { Login } from './pages/Login';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ServiceStatus } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { Check, Loader2, AlertTriangle, Info, Database, Activity, Zap, Globe, CheckCircle2 } from 'lucide-react';
+import { Database, Activity, Zap, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -396,39 +396,14 @@ const App: React.FC = () => {
       <CloudStatusBanner status={cloudStatus} />
       
       {/* GLOBAL TOP TOAST NOTIFICATION */}
-      {toast && ( 
-        <div className="fixed top-4 left-4 right-4 z-[3000] flex justify-center pointer-events-none anim-slide-up">
-            <div className={`
-              pointer-events-auto flex items-center gap-3 p-4 rounded-2xl shadow-2xl border transition-all duration-300
-              ${toast.type === 'success' ? 'bg-white/95 dark:bg-zinc-900/95 border-emerald-100 dark:border-emerald-900/30 text-zinc-900 dark:text-white' : 
-                toast.type === 'error' ? 'bg-white/95 dark:bg-zinc-900/95 border-rose-100 dark:border-rose-900/30 text-zinc-900 dark:text-white' :
-                'bg-white/95 dark:bg-zinc-900/95 border-sky-100 dark:border-sky-900/30 text-zinc-900 dark:text-white'}
-              backdrop-blur-md max-w-sm w-full
-            `}>
-               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
-                 toast.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 border-emerald-100 dark:border-emerald-900/30' : 
-                 toast.type === 'error' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 border-rose-100 dark:border-rose-900/30' : 
-                 'bg-sky-50 dark:bg-sky-900/20 text-sky-500 border-sky-100 dark:border-sky-900/30'
-               }`}>
-                 {toast.type === 'info' ? <Info className="w-5 h-5" strokeWidth={2} /> : 
-                  toast.type === 'error' ? <AlertTriangle className="w-5 h-5" strokeWidth={2} /> : 
-                  <CheckCircle2 className="w-5 h-5" strokeWidth={2} />}
-               </div>
-               <div className="min-w-0 flex-1">
-                 <h4 className="text-sm font-black tracking-tight leading-none mb-1">
-                    {toast.type === 'success' ? 'Sucesso' : toast.type === 'error' ? 'Atenção' : 'Informação'}
-                 </h4>
-                 <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 leading-tight">{toast.text}</p>
-               </div>
-            </div>
-        </div> 
-      )}
+      {toast && <Toast type={toast.type} text={toast.text} />}
 
       {session && !appLoading && (
         <>
             <Header title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} isRefreshing={isRefreshing || isAiLoading} updateAvailable={updateManager.isUpdateAvailable} onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} />
-            {/* Main Container - Ajustado para max-w-xl e px-4 para melhor aproveitamento */}
-            <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
+            
+            {/* Main Container - Adjusted Padding for Banner */}
+            <main className={`max-w-xl mx-auto pb-28 min-h-screen px-4 transition-all duration-300 ${cloudStatus !== 'hidden' ? 'pt-32' : 'pt-[5.5rem]'}`}>
               {showSettings ? (
                 <div className="anim-page-enter pt-4">
                   <Settings 

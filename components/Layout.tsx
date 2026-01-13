@@ -50,6 +50,38 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
   );
 };
 
+export const Toast: React.FC<{ type: 'success' | 'error' | 'info'; text: string }> = ({ type, text }) => {
+  // Use Portal to escape any transforms/overflows/layout shifts from parent containers
+  return createPortal(
+    <div className="fixed top-4 left-4 right-4 z-[3000] flex justify-center pointer-events-none anim-slide-up">
+        <div className={`
+          pointer-events-auto flex items-center gap-3 p-4 rounded-2xl shadow-2xl border transition-all duration-300
+          ${type === 'success' ? 'bg-white/95 dark:bg-zinc-900/95 border-emerald-100 dark:border-emerald-900/30 text-zinc-900 dark:text-white' : 
+            type === 'error' ? 'bg-white/95 dark:bg-zinc-900/95 border-rose-100 dark:border-rose-900/30 text-zinc-900 dark:text-white' :
+            'bg-white/95 dark:bg-zinc-900/95 border-sky-100 dark:border-sky-900/30 text-zinc-900 dark:text-white'}
+          backdrop-blur-md max-w-sm w-full
+        `}>
+           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
+             type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 border-emerald-100 dark:border-emerald-900/30' : 
+             type === 'error' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 border-rose-100 dark:border-rose-900/30' : 
+             'bg-sky-50 dark:bg-sky-900/20 text-sky-500 border-sky-100 dark:border-sky-900/30'
+           }`}>
+             {type === 'info' ? <Info className="w-5 h-5" strokeWidth={2} /> : 
+              type === 'error' ? <AlertTriangle className="w-5 h-5" strokeWidth={2} /> : 
+              <CheckCircle2 className="w-5 h-5" strokeWidth={2} />}
+           </div>
+           <div className="min-w-0 flex-1">
+             <h4 className="text-sm font-black tracking-tight leading-none mb-1">
+                {type === 'success' ? 'Sucesso' : type === 'error' ? 'Atenção' : 'Informação'}
+             </h4>
+             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 leading-tight">{text}</p>
+           </div>
+        </div>
+    </div>,
+    document.body
+  );
+};
+
 interface HeaderProps {
   title: string;
   onSettingsClick?: () => void;
