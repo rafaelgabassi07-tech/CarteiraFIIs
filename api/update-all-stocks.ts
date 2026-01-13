@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -31,18 +30,24 @@ async function scrapeTickerData(ticker: string) {
              const response = await axios.get('http://api.scraperapi.com', {
                 params: {
                     api_key: process.env.SCRAPER_API_KEY,
-                    url: targetUrl
+                    url: targetUrl,
+                    render: 'true'
                 },
-                timeout: 20000 // Proxy pode ser mais lento
+                timeout: 30000 // Aumentado para 30s pois render=true é mais lento
             });
             html = response.data;
         } else {
+             // Headers aprimorados para evitar Cloudflare no acesso direto
              const response = await axios.get(targetUrl, {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Referer': 'https://www.google.com.br/',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
                 },
-                timeout: 8000
+                timeout: 10000
             });
             html = response.data;
         }
@@ -123,12 +128,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Remove duplicatas
     const uniqueTickers = [...new Set(transactions.map((t: any) => t.ticker))];
     
-    // Limite reduzido no modo proxy para economizar créditos e tempo (o proxy é mais lento)
-    // Se não tiver proxy, tentamos mais, mas arriscando timeout
-    const batchSize = process.env.SCRAPER_API_KEY ? 10 : 15;
+    // ATENÇÃO: Reduzido para 5 para evitar Timeout de 10s da Vercel Free ao usar Proxy
+    const batchSize = process.env.SCRAPER_API_KEY ? 5 : 8;
+    
+    // Podemos pegar ativos aleatórios ou os primeiros. 
+    // Idealmente, você salvaria um 'last_update' no DB e pegaria os mais antigos.
+    // Aqui pegamos os primeiros 'batchSize' apenas como exemplo.
     const batch = uniqueTickers.slice(0, batchSize); 
 
-    console.log(`[Cron] Iniciando atualização para ${batch.length} ativos...`);
+    console.log(`[Cron] Iniciando atualização para ${batch.length} ativos (Batch Limit: ${batchSize})...`);
 
     // 2. Executa em Paralelo
     const results = await Promise.all(batch.map(ticker => scrapeTickerData(ticker)));

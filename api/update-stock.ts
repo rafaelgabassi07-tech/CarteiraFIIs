@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -49,22 +48,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // LÓGICA ANTI-BLOQUEIO (Proxy vs Direto)
     if (process.env.SCRAPER_API_KEY) {
         // Modo Robusto: Usa ScraperAPI para rotacionar IP e evitar Cloudflare
-        console.log(`[Proxy] Usando ScraperAPI para evitar bloqueio...`);
+        // render=true força o ScraperAPI a usar um browser headless, passando por desafios JS do Cloudflare
+        console.log(`[Proxy] Usando ScraperAPI (render=true) para evitar bloqueio...`);
         const response = await axios.get('http://api.scraperapi.com', {
             params: {
                 api_key: process.env.SCRAPER_API_KEY,
-                url: targetUrl
+                url: targetUrl,
+                render: 'true' 
             }
         });
         html = response.data;
     } else {
-        // Modo Fallback: Tenta acesso direto fingindo ser um browser (Pode dar 403 na Vercel)
-        console.log(`[Direct] Tentando acesso direto (sem proxy)...`);
+        // Modo Fallback: Tenta acesso direto fingindo ser um browser
+        console.log(`[Direct] Tentando acesso direto com Headers aprimorados...`);
         const response = await axios.get(targetUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            }
+                'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Referer': 'https://www.google.com.br/', // O "Pulo do Gato": finge vir do Google
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            },
+            timeout: 10000 // Aumentado levemente para dar chance ao handshake
         });
         html = response.data;
     }
