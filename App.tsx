@@ -92,6 +92,7 @@ const App: React.FC = () => {
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.5, startDate: '' }; } catch { return { ipca: 4.5, startDate: '' }; } });
   
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isScraping, setIsScraping] = useState(false); // Novo estado para o scraper manual
   const [lastAiStatus, setLastAiStatus] = useState<'operational' | 'degraded' | 'error' | 'unknown'>('unknown');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>({});
@@ -273,6 +274,49 @@ const App: React.FC = () => {
       // Recarrega a página para reinicializar o estado limpo
       window.location.reload();
   }, []);
+
+  // Lógica para acionar o Scraper manualmente para todos os ativos
+  const handleManualScraperTrigger = async () => {
+      if (transactions.length === 0) {
+          showToast('info', 'Você precisa ter ativos cadastrados.');
+          return;
+      }
+      
+      setIsScraping(true);
+      const uniqueTickers = [...new Set(transactions.map(t => t.ticker))];
+      let processed = 0;
+      
+      showToast('info', `Iniciando atualização de ${uniqueTickers.length} ativos...`);
+
+      try {
+          // Dispara requisições sequenciais ou em pequenos lotes para não sobrecarregar
+          // Como é Vercel, podemos disparar em paralelo, mas limitamos para evitar rate-limit do browser
+          const promises = uniqueTickers.map(async (ticker) => {
+             try {
+               await fetch(`/api/update-stock?ticker=${ticker}`);
+               processed++;
+             } catch (e) { 
+               console.error(`Falha ao atualizar ${ticker}`, e); 
+             }
+          });
+
+          await Promise.all(promises);
+          
+          if (processed > 0) {
+              showToast('success', `${processed} ativos atualizados via Scraper!`);
+              // Recarrega os dados do banco para a tela
+              await handleSyncAll(true);
+          } else {
+              showToast('error', 'Falha ao conectar com o servidor de atualização.');
+          }
+
+      } catch (e) {
+          showToast('error', 'Erro durante a atualização manual.');
+          console.error(e);
+      } finally {
+          setIsScraping(false);
+      }
+  };
 
   const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
       if (!session?.user?.id) return;
@@ -460,7 +504,20 @@ const App: React.FC = () => {
 
       {session && !appLoading && (
         <>
-            <Header title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} isRefreshing={isRefreshing || isAiLoading} updateAvailable={updateManager.isUpdateAvailable} onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} />
+            <Header 
+                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} 
+                showBack={showSettings} 
+                onBack={() => setShowSettings(false)} 
+                onSettingsClick={() => setShowSettings(true)} 
+                isRefreshing={isRefreshing || isAiLoading || isScraping} 
+                updateAvailable={updateManager.isUpdateAvailable} 
+                onUpdateClick={() => updateManager.setShowChangelog(true)} 
+                onNotificationClick={() => setShowNotifications(true)} 
+                notificationCount={notifications.filter(n=>!n.read).length} 
+                appVersion={APP_VERSION} 
+                bannerVisible={cloudStatus !== 'hidden'} 
+                onRefreshClick={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
+            />
             {/* Main Container - Ajustado para max-w-xl e px-4 para melhor aproveitamento */}
             <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
               {showSettings ? (

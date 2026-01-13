@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw } from 'lucide-react';
 
 // Utility for smooth visibility transitions
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -63,10 +63,11 @@ interface HeaderProps {
   onUpdateClick?: () => void;
   appVersion?: string;
   bannerVisible?: boolean;
+  onRefreshClick?: () => void; // Novo prop para o botão manual
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  title, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, bannerVisible = false
+  title, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, bannerVisible = false, onRefreshClick
 }) => {
   return (
     <header 
@@ -97,6 +98,16 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onRefreshClick && !showBack && (
+            <button 
+                onClick={onRefreshClick} 
+                disabled={isRefreshing}
+                className="w-9 h-9 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform hover:bg-zinc-50 dark:hover:bg-zinc-800/50 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} strokeWidth={2} />
+            </button>
+          )}
+
           {updateAvailable && !showBack && (
             <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-sky-500 text-white active:scale-95 transition-transform shadow-lg shadow-sky-500/30">
               <Download className="w-4 h-4 animate-bounce" strokeWidth={2.5} />
