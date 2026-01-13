@@ -9,30 +9,31 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Busca IPCA acumulado 12 meses através da nossa API interna (Proxy)
-// Isso resolve problemas de CORS e adiciona fallbacks automáticos.
+// Busca IPCA acumulado 12 meses
 const fetchInflationData = async (): Promise<number> => {
     const FALLBACK_IPCA = 4.62;
     try {
-        // Chama a Serverless Function local
+        // Tenta a API interna
         const response = await fetch('/api/indicators', { 
-            headers: { 'Accept': 'application/json' }
+            headers: { 'Accept': 'application/json' },
+            // Timeout curto para não travar a UI se a API local não existir
+            signal: AbortSignal.timeout(3000) 
         });
         
         if (!response.ok) {
-            console.warn("Internal API returned non-200. Using fallback.");
+            // Em dev local sem Vercel, isso vai dar 404. É esperado.
+            // console.warn("API de indicadores indisponível, usando fallback.");
             return FALLBACK_IPCA;
         }
         
         const data = await response.json();
-        
         if (data && typeof data.value === 'number') {
             return data.value;
         }
         
         return FALLBACK_IPCA;
     } catch (e) {
-        console.warn("Erro ao conectar com API interna:", e);
+        // Erro de rede, timeout ou json inválido
         return FALLBACK_IPCA;
     }
 };
@@ -79,7 +80,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   assetType = AssetType.FII;
               }
 
-              // Normaliza a chave para UPPERCASE para garantir match com transactions
               const normalizedTicker = m.ticker.trim().toUpperCase();
 
               metadata[normalizedTicker] = {
@@ -101,7 +101,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           });
       }
 
-      // 3. Busca Indicadores Macro (Via API Proxy)
+      // 3. Busca Indicadores Macro (Async)
       const ipca = await fetchInflationData();
 
       return { 
