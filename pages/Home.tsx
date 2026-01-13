@@ -1,9 +1,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Snowflake } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Snowflake, Zap } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ComposedChart, Line, Area } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -118,6 +118,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const today = new Date();
     let sum12m = 0;
 
+    // Agrupamento por mês
     dividendReceipts.forEach(r => {
         const pDate = new Date(r.paymentDate + 'T00:00:00');
         
@@ -136,30 +137,38 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         }
     });
 
-    const sorted = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
+    const sorted = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0])); // Decrescente para lista
     const totalMonths = sorted.length || 1;
     const average = received / (totalMonths > 0 ? totalMonths : 1);
     const maxVal = Math.max(...Object.values(map), 0);
 
-    // Métricas Renda vs IPCA
+    // --- LÓGICA DE GANHO REAL (HISTÓRICO) ---
+    // Estimativa de inflação mensal (simplificada: média geométrica do IPCA anual)
+    const monthlyInflationRate = Math.pow(1 + (inflationRate || 0)/100, 1/12) - 1;
+    
+    // Preparar dados para o gráfico de barras comparativo (Últimos 12 meses cronológicos)
+    const sortedAsc = Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).slice(-12);
+    
+    let cumulativeInflationCost = 0;
+    
+    const comparisonChartData = sortedAsc.map(([month, val]) => {
+        const [y, m] = month.split('-');
+        // Custo da inflação naquele mês = Investido * Inflação Mensal
+        // (Simplificação: usa investido atual, para precisão maior precisaria de histórico de PL)
+        const monthlyCost = invested * monthlyInflationRate;
+        cumulativeInflationCost += monthlyCost;
+
+        return {
+            name: `${m}/${y.substring(2)}`,
+            dividend: val,
+            inflation: monthlyCost,
+            realResult: val - monthlyCost
+        };
+    });
+
     const userDy = invested > 0 ? (sum12m / invested) * 100 : 0;
     const realReturn = userDy - (inflationRate || 0);
-
-    // Cálculos de Erosão e Ganho Real Monetário
-    const inflationCost = invested * (inflationRate / 100); // Quanto o principal perdeu
-    const netRealIncome = sum12m - inflationCost; // O que sobrou dos dividendos após cobrir a perda do principal
-
-    // Magic Number (Quantas cotas "médias" os dividendos compraram)
-    const avgAssetPrice = portfolio.length > 0 
-        ? portfolio.reduce((acc, curr) => acc + curr.averagePrice, 0) / portfolio.length 
-        : 100;
-    
-    const magicNumber = avgAssetPrice > 0 ? sum12m / avgAssetPrice : 0;
-
-    const chartData = [
-        { name: 'Sua Renda (DY)', value: userDy, fill: '#10b981' }, // Emerald
-        { name: 'Inflação (IPCA)', value: inflationRate, fill: '#f43f5e' } // Rose
-    ];
+    const netRealIncome = sum12m - cumulativeInflationCost; // Resultado líquido real aproximado
 
     return { 
         history: sorted, 
@@ -170,10 +179,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             userDy, 
             realReturn, 
             sum12m, 
-            inflationCost,
+            cumulativeInflationCost, 
             netRealIncome,
-            magicNumber,
-            chartData
+            comparisonChartData
         }
     };
   }, [dividendReceipts, received, invested, inflationRate, portfolio]);
@@ -220,15 +228,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   };
 
   // Custom Tooltip for Recharts
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white dark:bg-zinc-800 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700">
-          <p className="text-xs font-black text-zinc-900 dark:text-white mb-0.5">{payload[0].name}</p>
-          <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
-            {payload[0].value.toFixed(2)}%
-            {payload[0].payload.value && ` (${formatBRL(payload[0].payload.value, privacyMode)})`} 
-          </p>
+        <div className="bg-white dark:bg-zinc-800 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 min-w-[150px]">
+           <p className="text-xs font-black text-zinc-900 dark:text-white mb-2">{label}</p>
+           {payload.map((entry: any, index: number) => (
+             <div key={index} className="flex justify-between items-center gap-3 text-[10px] mb-1">
+                <span className="font-bold" style={{ color: entry.color }}>{entry.name}:</span>
+                <span className="font-mono text-zinc-600 dark:text-zinc-300">
+                    {typeof entry.value === 'number' && entry.value > 100 
+                        ? formatBRL(entry.value, privacyMode)
+                        : entry.value.toFixed(2)
+                    }
+                </span>
+             </div>
+           ))}
         </div>
       );
     }
@@ -401,9 +416,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <span className="text-xs font-bold text-zinc-400 mb-1.5 uppercase tracking-wide">Acima da inflação</span>
              </div>
 
-             {/* Bars Comparison */}
+             {/* Progress Bar Visual for Yield vs IPCA */}
              <div className="space-y-3 relative z-10">
-                 {/* User Bar */}
                  <div>
                      <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                          <span>Sua Carteira (DY)</span>
@@ -411,17 +425,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </div>
                      <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                          <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min((realYieldMetrics.userDy / 15) * 100, 100)}%` }}></div>
-                     </div>
-                 </div>
-
-                 {/* IPCA Bar */}
-                  <div>
-                     <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                         <span>IPCA (Inflação)</span>
-                         <span className="text-zinc-900 dark:text-white">{formatPercent(inflationRate, privacyMode)}</span>
-                     </div>
-                     <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                         <div className="h-full bg-zinc-400 dark:bg-zinc-600 rounded-full transition-all duration-1000" style={{ width: `${Math.min((inflationRate / 15) * 100, 100)}%` }}></div>
                      </div>
                  </div>
              </div>
@@ -476,46 +479,50 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
                 <div>
                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Raio-X da Inflação</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Análise de Poder de Compra</p>
+                    <p className="text-xs text-zinc-500 font-medium">Histórico de Corrosão Financeira</p>
                 </div>
              </div>
 
-             {/* SEÇÃO 1: GRÁFICO COMPARATIVO (BARRAS) */}
+             {/* SEÇÃO 1: GRÁFICO COMPARATIVO BARRAS (DIVIDENDOS VS CUSTO IPCA) */}
              <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                 <div className="flex items-center gap-2 mb-4 px-2">
-                     <BarChart3 className="w-3 h-3 text-zinc-400" />
-                     <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-                        Renda vs IPCA (12 Meses)
-                     </h3>
+                 <div className="flex items-center justify-between mb-4 px-2">
+                     <div className="flex items-center gap-2">
+                        <BarChart3 className="w-3 h-3 text-zinc-400" />
+                        <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                            Batalha Mensal: Renda vs Inflação
+                        </h3>
+                     </div>
                  </div>
                  
-                 <div className="h-48 w-full">
+                 <div className="h-56 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={realYieldMetrics.chartData} layout="horizontal" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                        <BarChart data={realYieldMetrics.comparisonChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b33" />
-                            <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
-                            <YAxis hide />
+                            <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#71717a' }} tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fontSize: 9, fill: '#71717a' }} tickLine={false} axisLine={false} />
                             <RechartsTooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
-                            <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={50} />
+                            <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                            <Bar name="Recebido" dataKey="dividend" fill="#10b981" radius={[4, 4, 0, 0]} barSize={8} />
+                            <Bar name="Custo IPCA" dataKey="inflation" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={8} />
                         </BarChart>
                     </ResponsiveContainer>
                  </div>
-                 
-                 <div className={`mt-2 text-center text-xs font-bold ${realYieldMetrics.realReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                     {realYieldMetrics.realReturn >= 0 ? 'Você venceu a inflação!' : 'A inflação superou seus rendimentos.'}
+                 <div className="mt-2 flex items-center gap-2 justify-center">
+                     <div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span className="text-[9px] text-zinc-500">Dividendos</span>
+                     <div className="w-2 h-2 bg-rose-500 rounded-full ml-2"></div><span className="text-[9px] text-zinc-500">Corrosão (IPCA)</span>
                  </div>
              </div>
 
-             {/* SEÇÃO 2: MATEMÁTICA DA EROSÃO */}
+             {/* SEÇÃO 2: MATEMÁTICA DA EROSÃO (TOTAL) */}
              <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-[2rem] p-5 border border-zinc-200 dark:border-zinc-800 anim-slide-up mb-6" style={{ animationDelay: '200ms' }}>
                  <div className="flex items-center gap-2 mb-4">
                      <ShieldCheck className="w-4 h-4 text-zinc-400" />
-                     <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Matemática da Inflação</h4>
+                     <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Matemática da Erosão (12 Meses)</h4>
                  </div>
 
                  <div className="space-y-3">
                      <div className="flex justify-between items-center p-3 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700">
-                         <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">Total Proventos</span>
+                         <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">Proventos Nominais</span>
                          <span className="text-sm font-black text-emerald-500">+{formatBRL(realYieldMetrics.sum12m, privacyMode)}</span>
                      </div>
                      <div className="flex justify-center">
@@ -523,10 +530,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </div>
                      <div className="flex justify-between items-center p-3 bg-white dark:bg-zinc-800 rounded-xl border border-rose-100 dark:border-rose-900/20">
                          <div>
-                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 block">Custo da Inflação</span>
-                            <span className="text-[9px] text-zinc-400">Perda de poder do principal</span>
+                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 block">Corrosão Inflacionária</span>
+                            <span className="text-[9px] text-zinc-400">Perda de valor do dinheiro</span>
                          </div>
-                         <span className="text-sm font-black text-rose-500">-{formatBRL(realYieldMetrics.inflationCost, privacyMode)}</span>
+                         <span className="text-sm font-black text-rose-500">-{formatBRL(realYieldMetrics.cumulativeInflationCost, privacyMode)}</span>
                      </div>
                      <div className="h-px bg-zinc-200 dark:bg-zinc-700 my-2 border-dashed"></div>
                      <div className="flex justify-between items-center px-3">
@@ -538,27 +545,27 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
-             {/* SEÇÃO 3: O NÚMERO MÁGICO (CREATIVE ADDITION) */}
-             <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] p-6 text-white anim-slide-up shadow-lg shadow-indigo-500/20 relative overflow-hidden" style={{ animationDelay: '300ms' }}>
-                 <Snowflake className="absolute -right-6 -bottom-6 w-32 h-32 text-white/10 rotate-12" />
+             {/* SEÇÃO 3: IDEIA CRIATIVA - PODER DE COMPRA (Quantas cotas são 'reais'?) */}
+             <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[2rem] p-6 text-white anim-slide-up shadow-lg shadow-indigo-500/20 relative overflow-hidden" style={{ animationDelay: '300ms' }}>
+                 <Zap className="absolute -right-4 -bottom-4 w-24 h-24 text-white/10 -rotate-12" />
                  
                  <div className="relative z-10">
-                     <div className="flex items-center gap-2 mb-2">
+                     <div className="flex items-center gap-2 mb-3">
                          <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
                              <Coins className="w-4 h-4 text-white" />
                          </div>
-                         <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">Efeito Bola de Neve</h4>
+                         <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">Poder de Compra Real</h4>
                      </div>
                      
-                     <div className="my-4">
-                         <span className="text-5xl font-black tracking-tighter">
-                             {Math.floor(realYieldMetrics.magicNumber)}
-                         </span>
-                         <span className="text-lg font-bold text-white/80 ml-2">novas cotas</span>
+                     <div className="flex items-baseline gap-1 my-2">
+                        <span className="text-4xl font-black tracking-tighter">
+                             {Math.floor(invested > 0 ? (realYieldMetrics.netRealIncome / (invested/portfolio.length || 100)) : 0)}
+                        </span>
+                        <span className="text-sm font-bold text-white/80">cotas "reais"</span>
                      </div>
                      
-                     <p className="text-xs font-medium text-white/90 leading-relaxed max-w-[90%]">
-                         Seus dividendos dos últimos 12 meses foram suficientes para comprar <strong>{Math.floor(realYieldMetrics.magicNumber)} cotas médias</strong> da sua carteira, sem tirar nada do bolso.
+                     <p className="text-xs font-medium text-white/90 leading-relaxed max-w-[90%] mb-4">
+                         Descontando a inflação, este é o número de cotas que você realmente "ganhou" de graça. O restante serviu apenas para manter seu patrimônio empatado.
                      </p>
                  </div>
              </div>
@@ -566,7 +573,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              <div className="mt-8 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
                  <Info className="w-5 h-5 text-blue-500 shrink-0" />
                  <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed">
-                     <strong>Nota Técnica:</strong> O "Custo da Inflação" representa quanto o seu valor investido ({formatBRL(invested, privacyMode)}) precisaria render apenas para manter o mesmo poder de compra do ano anterior (IPCA {inflationRate}%).
+                     <strong>Nota:</strong> O cálculo mensal assume que seu patrimônio total sofreu a inflação mensal proporcional, corroendo parte dos proventos recebidos naquele mês.
                  </p>
              </div>
          </div>

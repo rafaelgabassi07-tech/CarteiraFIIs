@@ -450,7 +450,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
             <h3 className="text-lg font-black text-amber-600 dark:text-amber-400 mb-1">Limpar Cachê</h3>
             <p className="text-xs text-amber-600/60 dark:text-amber-400/60 mb-6 leading-relaxed">
-                Corrige problemas de interface apagando dados temporários. Suas ordens na nuvem não serão afetadas, mas você precisará fazer login novamente.
+                Corrige problemas de interface apagando dados temporários. Suas ordens na nuvem não serão afetadas e sua sessão permanecerá ativa.
             </p>
             <button 
               onClick={onResetApp}

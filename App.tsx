@@ -427,7 +427,14 @@ const App: React.FC = () => {
                 <div className="anim-page-enter pt-4">
                   <Settings 
                       onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} 
-                      geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} 
+                      geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} 
+                      onResetApp={() => { 
+                          // Smart cache clear: removes app specific keys but keeps Auth
+                          Object.keys(localStorage).forEach(key => {
+                            if (key.startsWith('investfiis_')) localStorage.removeItem(key);
+                          });
+                          window.location.reload(); 
+                      }} 
                       theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} 
                       privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} 
                       updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
