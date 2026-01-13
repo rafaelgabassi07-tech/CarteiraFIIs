@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, Toast } from './components/Layout';
+import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
@@ -10,7 +10,7 @@ import { Login } from './pages/Login';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ServiceStatus } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { Database, Activity, Zap, Globe } from 'lucide-react';
+import { Check, Loader2, AlertTriangle, Info, Database, Activity, Zap, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -394,28 +394,40 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-primary-light dark:bg-primary-dark">
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       <CloudStatusBanner status={cloudStatus} />
-      
-      {/* GLOBAL TOP TOAST NOTIFICATION */}
-      {toast && <Toast type={toast.type} text={toast.text} />}
+      {toast && ( 
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-sm px-4">
+            <div className={`
+              flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up
+              ${toast.type === 'success' ? 'bg-white dark:bg-slate-900 border-l-emerald-500 border-y border-r border-slate-100 dark:border-slate-800' : 
+                toast.type === 'error' ? 'bg-white dark:bg-slate-900 border-l-rose-500 border-y border-r border-slate-100 dark:border-slate-800' :
+                'bg-white dark:bg-slate-900 border-l-sky-500 border-y border-r border-slate-100 dark:border-slate-800'}
+            `}>
+               <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                 toast.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 
+                 toast.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 
+                 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'
+               }`}>
+                 {toast.type === 'info' ? <Info className="w-4 h-4" /> : 
+                  toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : 
+                  <Check className="w-4 h-4" />}
+               </div>
+               <div className="min-w-0">
+                 <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.text}</p>
+               </div>
+            </div>
+        </div> 
+      )}
 
       {session && !appLoading && (
         <>
             <Header title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} isRefreshing={isRefreshing || isAiLoading} updateAvailable={updateManager.isUpdateAvailable} onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} />
-            
-            {/* Main Container - Adjusted Padding for Banner */}
-            <main className={`max-w-xl mx-auto pb-28 min-h-screen px-4 transition-all duration-300 ${cloudStatus !== 'hidden' ? 'pt-32' : 'pt-[5.5rem]'}`}>
+            {/* Main Container - Ajustado para max-w-xl e px-4 para melhor aproveitamento */}
+            <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
               {showSettings ? (
                 <div className="anim-page-enter pt-4">
                   <Settings 
                       onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} 
-                      geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} 
-                      onResetApp={() => { 
-                          // Smart cache clear: removes app specific keys but keeps Auth
-                          Object.keys(localStorage).forEach(key => {
-                            if (key.startsWith('investfiis_')) localStorage.removeItem(key);
-                          });
-                          window.location.reload(); 
-                      }} 
+                      geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} 
                       theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} 
                       privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} 
                       updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 

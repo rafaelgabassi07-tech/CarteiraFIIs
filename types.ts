@@ -56,10 +56,6 @@ export interface BrapiQuote {
   longName: string;
   regularMarketPrice: number;
   logourl: string;
-  historicalDataPrice?: {
-      date: number;
-      close: number;
-  }[];
 }
 
 export interface BrapiResponse {
@@ -106,8 +102,6 @@ export interface EvolutionPoint {
     adjusted: number;
     value: number;
     monthlyInflationCost: number;
-    patrimony?: number; // Valor de Mercado Total na data
-    costBasis?: number; // Custo Total na data
 }
 
 // Novos tipos para o sistema de saúde

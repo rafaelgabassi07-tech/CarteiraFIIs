@@ -1,10 +1,9 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Snowflake, Zap, History, LineChart, ChevronRight, Trophy, Repeat } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ComposedChart, Line, Area, AreaChart } from 'recharts';
-import { getHistoricalBatch } from '../services/brapiService';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -31,7 +30,7 @@ const formatBRL = (val: any, privacy = false) => {
 const formatPercent = (val: any, privacy = false) => {
   if (privacy) return '•••%';
   const num = typeof val === 'number' ? val : 0;
-  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 };
 
 // Cores vibrantes para os gráficos
@@ -83,53 +82,24 @@ const getDaysUntil = (dateStr: string) => {
     return `Em ${diffDays} dias`;
 };
 
+// Lógica de Avaliação do Ganho Real
+const getInflationVerdict = (realReturn: number) => {
+    if (realReturn >= 4) return { title: "Gerador de Riqueza", desc: "Excelente! Sua carteira está multiplicando seu poder de compra agressivamente.", color: "text-emerald-500", bg: "bg-emerald-500" };
+    if (realReturn >= 0) return { title: "Proteção Patrimonial", desc: "Bom. Você está blindado contra a inflação e ganhando poder de compra.", color: "text-sky-500", bg: "bg-sky-500" };
+    if (realReturn >= -2) return { title: "Erosão Leve", desc: "Atenção. Seus dividendos quase cobrem a inflação, mas ainda há perda real.", color: "text-amber-500", bg: "bg-amber-500" };
+    return { title: "Destruição de Valor", desc: "Crítico. A inflação está consumindo seu patrimônio mais rápido do que ele rende.", color: "text-rose-500", bg: "bg-rose-500" };
+};
+
 const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate = 0, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRealYieldModal, setShowRealYieldModal] = useState(false);
-  const [showEvolutionModal, setShowEvolutionModal] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
-  
-  // States para Evolução Patrimonial
-  const [evolutionData, setEvolutionData] = useState<EvolutionPoint[]>([]);
-  const [isEvolutionLoading, setIsEvolutionLoading] = useState(false);
 
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
   const isProfitPositive = totalProfitValue >= 0;
-
-  // Calculos Avançados para o Modal de Patrimônio
-  const advancedMetrics = useMemo(() => {
-      // 1. Melhor Ativo (Maior Valorização Nominal)
-      let bestAsset = { ticker: '-', gain: 0, percent: 0 };
-      let portfolioAveragePrice = 0;
-      let totalQty = 0;
-
-      portfolio.forEach(p => {
-          const gain = ((p.currentPrice || 0) - p.averagePrice) * p.quantity;
-          const gainPercent = p.averagePrice > 0 ? (((p.currentPrice || 0) - p.averagePrice) / p.averagePrice) * 100 : 0;
-          
-          if (gain > bestAsset.gain) {
-              bestAsset = { ticker: p.ticker, gain, percent: gainPercent };
-          }
-          portfolioAveragePrice += (p.currentPrice || 0) * p.quantity;
-          totalQty += p.quantity;
-      });
-      
-      // 3. Yield On Cost (Global)
-      const yieldOnCost = invested > 0 ? (totalDividendsReceived / invested) * 100 : 0;
-
-      // 4. Projeção 12 Meses (Baseado na média atual)
-      const monthlyAvg = totalDividendsReceived / (new Date().getMonth() + 1 || 1);
-      const projectedIncome = monthlyAvg * 12;
-
-      return {
-          bestAsset,
-          yieldOnCost,
-          projectedIncome
-      };
-  }, [portfolio, totalDividendsReceived, invested]);
 
   const { upcomingEvents, received } = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -150,216 +120,57 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return { upcomingEvents: uniqueEvents, received: receivedTotal };
   }, [dividendReceipts]);
 
-  // Função para construir o gráfico de evolução
-  const fetchEvolutionData = async () => {
-      if (evolutionData.length > 0) return; // Já carregado
-      if (transactions.length === 0) return;
-
-      setIsEvolutionLoading(true);
-      try {
-          const tickers = Array.from(new Set(transactions.map(t => t.ticker)));
-          // Busca histórico de 2 anos (ou 5 se precisar)
-          const historyMap = await getHistoricalBatch(tickers, '2y', '1mo');
-          
-          // Constrói linha do tempo mensal
-          const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-          const firstDate = new Date(sortedTxs[0].date);
-          const now = new Date();
-          const timeline: EvolutionPoint[] = [];
-          
-          let currentPointer = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
-          
-          while (currentPointer <= now) {
-              const monthEnd = new Date(currentPointer.getFullYear(), currentPointer.getMonth() + 1, 0);
-              const dateStr = monthEnd.toISOString().split('T')[0];
-              const displayDate = `${monthEnd.getMonth() + 1}/${monthEnd.getFullYear().toString().slice(2)}`;
-              
-              // Filtra transações até o final deste mês
-              const txsUntilNow = sortedTxs.filter(t => t.date <= dateStr);
-              
-              // Calcula Posição (Qty) e Preço Médio (Investido)
-              const positionMap: Record<string, { qty: number, avg: number }> = {};
-              
-              txsUntilNow.forEach(t => {
-                  if (!positionMap[t.ticker]) positionMap[t.ticker] = { qty: 0, avg: 0 };
-                  const p = positionMap[t.ticker];
-                  
-                  if (t.type === 'BUY') {
-                      p.avg = ((p.qty * p.avg) + (t.quantity * t.price)) / (p.qty + t.quantity);
-                      p.qty += t.quantity;
-                  } else {
-                      p.qty -= t.quantity;
-                  }
-              });
-
-              let totalInvested = 0;
-              let totalPatrimony = 0;
-
-              Object.entries(positionMap).forEach(([ticker, pos]) => {
-                  if (pos.qty > 0.0001) {
-                      totalInvested += pos.qty * pos.avg;
-                      
-                      // Busca preço histórico
-                      const hist = historyMap[ticker]?.historicalDataPrice;
-                      if (hist) {
-                          // Encontra o preço mais próximo da data do loop
-                          const targetTime = monthEnd.getTime() / 1000;
-                          const closest = hist.reduce((prev, curr) => 
-                              Math.abs(curr.date - targetTime) < Math.abs(prev.date - targetTime) ? curr : prev
-                          );
-                          totalPatrimony += pos.qty * closest.close;
-                      } else {
-                          // Fallback se não tiver histórico: usa preço médio (assume sem variação)
-                          totalPatrimony += pos.qty * pos.avg;
-                      }
-                  }
-              });
-
-              if (totalInvested > 0) {
-                  timeline.push({
-                      rawDate: dateStr,
-                      date: displayDate,
-                      invested: totalInvested,
-                      patrimony: totalPatrimony,
-                      adjusted: 0, value: 0, monthlyInflationCost: 0 // Legacy fields ignored
-                  });
-              }
-
-              currentPointer.setMonth(currentPointer.getMonth() + 1);
-          }
-          setEvolutionData(timeline);
-
-      } catch (e) {
-          console.error("Evolution Error", e);
-      } finally {
-          setIsEvolutionLoading(false);
-      }
-  };
-
-  useEffect(() => {
-      if (showEvolutionModal) {
-          fetchEvolutionData();
-      }
-  }, [showEvolutionModal]);
-
-  // Lógica Avançada de Histórico e Inflação (Desde o Início)
   const { history, average, maxVal, receiptsByMonth, realYieldMetrics } = useMemo(() => {
     const map: Record<string, number> = {};
     const receiptsByMonthMap: Record<string, DividendReceipt[]> = {};
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    
     let sum12m = 0;
 
-    // 1. Mapa de Dividendos Recebidos (Agregado por Mês)
     dividendReceipts.forEach(r => {
         const pDate = new Date(r.paymentDate + 'T00:00:00');
-        if (r.paymentDate <= todayStr) {
+        
+        // Dados para gráfico mensal (apenas pagos até hoje)
+        if (r.paymentDate <= today.toISOString().split('T')[0]) {
             const key = r.paymentDate.substring(0, 7);
             map[key] = (map[key] || 0) + r.totalReceived;
             if (!receiptsByMonthMap[key]) receiptsByMonthMap[key] = [];
             receiptsByMonthMap[key].push(r);
         }
-        
-        // Cálculo Renda 12m
+
+        // Cálculo Renda 12 Meses (Trailing 12m)
         const diffMonths = (today.getFullYear() - pDate.getFullYear()) * 12 + (today.getMonth() - pDate.getMonth());
         if (diffMonths >= 0 && diffMonths <= 11) {
             sum12m += r.totalReceived;
         }
     });
 
-    const sortedHistory = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
-    const totalMonthsWithReceipts = sortedHistory.length || 1;
-    const average = received / (totalMonthsWithReceipts > 0 ? totalMonthsWithReceipts : 1);
+    const sorted = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
+    const totalMonths = sorted.length || 1;
+    const average = received / (totalMonths > 0 ? totalMonths : 1);
     const maxVal = Math.max(...Object.values(map), 0);
 
-    // 2. Timeline Completa (Desde a primeira transação)
-    let timelineStart = new Date();
-    timelineStart.setMonth(timelineStart.getMonth() - 11); // Fallback padrão
-    
-    if (transactions.length > 0) {
-        // Encontra a data mais antiga
-        const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-        if (sortedTxs[0]) {
-            timelineStart = new Date(sortedTxs[0].date + 'T00:00:00');
-        }
-    }
+    // Métricas Renda vs IPCA
+    const userDy = invested > 0 ? (sum12m / invested) * 100 : 0;
+    const realReturn = userDy - (inflationRate || 0);
 
-    // Taxa de inflação mensal aproximada
-    const monthlyInflationRate = Math.pow(1 + (inflationRate || 0)/100, 1/12) - 1;
-    const fullHistoryData: any[] = [];
-    
-    let pointer = new Date(timelineStart);
-    pointer.setDate(1); // Normaliza para o dia 1 do mês inicial
-    
-    const endPointer = new Date();
-    endPointer.setDate(2); // Garante que o loop inclua o mês atual
-
-    while (pointer <= endPointer) {
-        const y = pointer.getFullYear();
-        const m = String(pointer.getMonth() + 1).padStart(2, '0');
-        const monthKey = `${y}-${m}`;
-        
-        // Calcular patrimônio investido ATÉ o final deste mês específico na iteração
-        const lastDayOfMonth = new Date(y, pointer.getMonth() + 1, 0).toISOString().split('T')[0];
-        
-        const investedAtMonth = transactions
-            .filter(t => t.date <= lastDayOfMonth)
-            .reduce((acc, t) => t.type === 'BUY' ? acc + (t.price * t.quantity) : acc - (t.price * t.quantity), 0);
-
-        const monthlyDividends = map[monthKey] || 0;
-        
-        // Cálculos de Erosão
-        const patrimonyErosion = investedAtMonth * monthlyInflationRate;
-        const dividendErosion = monthlyDividends * monthlyInflationRate;
-        
-        const nominalYield = investedAtMonth > 0 ? (monthlyDividends / investedAtMonth) * 100 : 0;
-        const inflationYield = monthlyInflationRate * 100;
-        
-        // --- Lógica para Gráfico Empilhado (Mesma Barra) ---
-        
-        const erosionPartPercent = Math.min(nominalYield, inflationYield);
-        const realPartPercent = Math.max(0, nominalYield - inflationYield);
-
-        if (investedAtMonth > 0 || monthlyDividends > 0) {
-            fullHistoryData.push({
-                monthKey,
-                label: `${m}/${y.toString().substring(2)}`,
-                fullLabel: `${m}/${y}`,
-                invested: investedAtMonth,
-                dividend: monthlyDividends,
-                
-                patrimonyErosion, // Valor monetário perdido do principal
-                dividendErosion,  // Valor monetário perdido do dividendo
-                realGainValue: monthlyDividends - patrimonyErosion, // Resultado Líquido Real (Dividendo - Perda Inflacionária do Principal)
-                
-                // Dados para o Gráfico
-                nominalYield,
-                inflationYield,
-                erosionPartPercent,
-                realPartPercent,
-            });
-        }
-
-        pointer.setMonth(pointer.getMonth() + 1);
-    }
-
-    // Métricas Agregadas Atuais
-    const currentDy = invested > 0 ? (sum12m / invested) * 100 : 0;
-    const realReturn = currentDy - (inflationRate || 0);
+    // Cálculos Financeiros para o Modal Detalhado
+    const inflationCost = invested * (inflationRate / 100);
+    const dividendCoverage = inflationCost > 0 ? (sum12m / inflationCost) * 100 : 100;
 
     return { 
-        history: sortedHistory, 
+        history: sorted, 
         average, 
         maxVal, 
         receiptsByMonth: receiptsByMonthMap,
         realYieldMetrics: { 
-            userDy: currentDy, 
+            userDy, 
             realReturn, 
-            timeline: fullHistoryData
+            sum12m, 
+            inflationCost,
+            dividendCoverage
         }
     };
-  }, [dividendReceipts, received, invested, inflationRate, portfolio, transactions]);
+  }, [dividendReceipts, received, invested, inflationRate]);
 
   const { typeData, topAssets, segmentsData, classChartData } = useMemo(() => {
       let fiisTotal = 0;
@@ -402,86 +213,30 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       setExpandedMonth(expandedMonth === monthKey ? null : monthKey);
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const verdict = getInflationVerdict(realYieldMetrics.realReturn);
+
+  // Custom Tooltip for Recharts
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
-      // Reconstitui o Yield Nominal somando as partes para mostrar no tooltip
-      const real = payload.find((p:any) => p.name === 'realPartPercent')?.value || 0;
-      const erosion = payload.find((p:any) => p.name === 'erosionPartPercent')?.value || 0;
-      const nominal = real + erosion;
-
       return (
-        <div className="bg-white dark:bg-zinc-800 p-3 rounded-lg shadow-xl border border-zinc-200 dark:border-zinc-700 min-w-[150px]">
-           <p className="text-xs font-black text-zinc-900 dark:text-white mb-2">{label}</p>
-           
-           <div className="flex justify-between items-center gap-3 text-[10px] mb-1">
-              <span className="font-bold text-zinc-500">Yield Nominal:</span>
-              <span className="font-mono text-zinc-900 dark:text-white font-bold">{nominal.toFixed(2)}%</span>
-           </div>
-           
-           <div className="h-px bg-zinc-100 dark:bg-zinc-700 my-1.5"></div>
-
-           <div className="flex justify-between items-center gap-3 text-[10px] mb-1">
-              <span className="font-bold text-rose-500">Inflação (IPCA):</span>
-              <span className="font-mono text-rose-500">-{erosion.toFixed(2)}%</span>
-           </div>
-           <div className="flex justify-between items-center gap-3 text-[10px]">
-              <span className="font-bold text-emerald-500">Ganho Real:</span>
-              <span className="font-mono text-emerald-500">+{real.toFixed(2)}%</span>
-           </div>
+        <div className="bg-white dark:bg-zinc-800 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700">
+          <p className="text-xs font-black text-zinc-900 dark:text-white mb-0.5">{payload[0].name}</p>
+          <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
+            {formatBRL(payload[0].value, privacyMode)} ({formatPercent((payload[0].value / typeData.total) * 100)})
+          </p>
         </div>
       );
     }
     return null;
   };
 
-  const EvolutionTooltip = ({ active, payload, label }: any) => {
-      if (active && payload && payload.length) {
-          const invested = payload.find((p:any) => p.dataKey === 'invested')?.value || 0;
-          const patrimony = payload.find((p:any) => p.dataKey === 'patrimony')?.value || 0;
-          const diff = patrimony - invested;
-          const diffPerc = invested > 0 ? (diff/invested)*100 : 0;
-
-          return (
-            <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-800 min-w-[160px]">
-               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">{label}</p>
-               
-               <div className="space-y-1 mb-2">
-                   <div className="flex justify-between gap-3 text-xs">
-                       <span className="font-bold text-emerald-600 dark:text-emerald-400">Patrimônio</span>
-                       <span className="font-mono font-bold text-zinc-900 dark:text-white">{formatBRL(patrimony, privacyMode)}</span>
-                   </div>
-                   <div className="flex justify-between gap-3 text-xs">
-                       <span className="font-bold text-zinc-500">Aportado</span>
-                       <span className="font-mono font-medium text-zinc-500">{formatBRL(invested, privacyMode)}</span>
-                   </div>
-               </div>
-               
-               <div className={`pt-2 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center ${diff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                   <span className="text-[10px] font-bold uppercase">Resultado</span>
-                   <div className="text-right">
-                       <span className="block text-xs font-black">{formatBRL(diff, privacyMode)}</span>
-                       <span className="block text-[9px] font-bold">{diffPerc > 0 ? '+' : ''}{diffPerc.toFixed(2)}%</span>
-                   </div>
-               </div>
-            </div>
-          );
-      }
-      return null;
-  };
-
   return (
     <div className="space-y-3 pb-8">
       {/* 1. Patrimonio Total */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        <button 
-            onClick={() => setShowEvolutionModal(true)}
-            className="w-full text-left bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark group press-effect"
-        >
+        <div className="w-full bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark">
             <div className="flex justify-between items-start mb-3">
-                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block flex items-center gap-2">
-                    Patrimônio Total 
-                    <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </span>
+                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">Patrimônio Total</span>
                 {isAiLoading && <Loader2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400 animate-spin" />}
             </div>
             
@@ -512,15 +267,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
             </div>
-        </button>
+        </div>
       </div>
 
       {/* 2. Agenda */}
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
-        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 shadow-card dark:shadow-card-dark">
+        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-surface-light dark:bg-surface-dark p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 shadow-card dark:shadow-card-dark">
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
+                    <div className="w-9 h-9 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
                         <CalendarDays className="w-4.5 h-4.5" strokeWidth={2} />
                     </div>
                     <div>
@@ -536,11 +291,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
 
             {upcomingEvents.length > 0 ? (
-                <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 mask-linear-fade">
+                <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
                     {upcomingEvents.slice(0, 4).map((event, i) => {
                         const style = getEventStyle(event.eventType, event.date);
                         return (
-                            <div key={i} className={`flex-shrink-0 p-2.5 pr-3.5 rounded-lg ${style.containerClass} min-w-[120px] anim-scale-in`} style={{ animationDelay: `${200 + (i * 50)}ms` }}>
+                            <div key={i} className={`flex-shrink-0 p-2.5 pr-3.5 rounded-xl ${style.containerClass} min-w-[120px] anim-scale-in`} style={{ animationDelay: `${200 + (i * 50)}ms` }}>
                                 <div className="flex justify-between items-start mb-1.5">
                                     <span className={`text-[10px] font-black uppercase tracking-wider text-zinc-900 dark:text-white`}>{event.ticker}</span>
                                     <style.icon className={`w-3 h-3 ${style.iconClass}`} />
@@ -556,7 +311,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     })}
                 </div>
             ) : (
-                <div className="p-2 bg-zinc-50 dark:bg-zinc-900 rounded-lg text-center border border-zinc-200 dark:border-zinc-800 border-dashed">
+                <div className="p-2 bg-zinc-50 dark:bg-zinc-900 rounded-xl text-center border border-zinc-200 dark:border-zinc-800 border-dashed">
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Nenhum evento previsto para os próximos dias.</p>
                 </div>
             )}
@@ -565,9 +320,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       
       {/* 3. Grid Buttons */}
       <div className="grid grid-cols-2 gap-3 anim-stagger-item" style={{ animationDelay: '200ms' }}>
-        <button onClick={() => setShowProventosModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full relative overflow-hidden shadow-card dark:shadow-card-dark">
+        <button onClick={() => setShowProventosModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full relative overflow-hidden shadow-card dark:shadow-card-dark">
             <div>
-                <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center mb-3 border border-emerald-100 dark:border-emerald-900/30">
+                <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-3 border border-emerald-100 dark:border-emerald-900/30">
                     <CircleDollarSign className="w-4.5 h-4.5" />
                 </div>
                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-0.5">Renda Passiva</span>
@@ -576,9 +331,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </button>
 
-        <button onClick={() => setShowAllocationModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-card dark:shadow-card-dark">
+        <button onClick={() => setShowAllocationModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-card dark:shadow-card-dark">
             <div>
-                <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/30">
+                <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/30">
                     <PieIcon className="w-4.5 h-4.5" />
                 </div>
                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-0.5">Diversificação</span>
@@ -610,7 +365,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
          <button 
             onClick={() => setShowRealYieldModal(true)}
-            className="w-full bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-card dark:shadow-card-dark relative overflow-hidden text-left press-effect group focus:outline-none"
+            className="w-full bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 p-5 shadow-card dark:shadow-card-dark relative overflow-hidden text-left press-effect group"
          >
              {/* Background Mesh Gradient for premium feel */}
              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none group-hover:bg-emerald-500/20 transition-all duration-500"></div>
@@ -641,8 +396,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <span className="text-xs font-bold text-zinc-400 mb-1.5 uppercase tracking-wide">Acima da inflação</span>
              </div>
 
-             {/* Progress Bar Visual for Yield vs IPCA */}
+             {/* Bars Comparison */}
              <div className="space-y-3 relative z-10">
+                 {/* User Bar */}
                  <div>
                      <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                          <span>Sua Carteira (DY)</span>
@@ -650,6 +406,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </div>
                      <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                          <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min((realYieldMetrics.userDy / 15) * 100, 100)}%` }}></div>
+                     </div>
+                 </div>
+
+                 {/* IPCA Bar */}
+                  <div>
+                     <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                         <span>IPCA (Inflação)</span>
+                         <span className="text-zinc-900 dark:text-white">{formatPercent(inflationRate, privacyMode)}</span>
+                     </div>
+                     <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                         <div className="h-full bg-zinc-400 dark:bg-zinc-600 rounded-full transition-all duration-1000" style={{ width: `${Math.min((inflationRate / 15) * 100, 100)}%` }}></div>
                      </div>
                  </div>
              </div>
@@ -670,9 +437,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 {upcomingEvents.map((e, i) => {
                     const style = getEventStyle(e.eventType, e.date);
                     return (
-                        <div key={i} className={`p-4 rounded-xl flex items-center justify-between anim-slide-up ${style.containerClass}`} style={{ animationDelay: `${i * 50}ms` }}>
+                        <div key={i} className={`p-4 rounded-2xl flex items-center justify-between anim-slide-up ${style.containerClass}`} style={{ animationDelay: `${i * 50}ms` }}>
                             <div className="flex items-center gap-4">
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 shadow-sm ${style.iconClass}`}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 shadow-sm ${style.iconClass}`}>
                                     <style.icon className="w-5 h-5" />
                                 </div>
                                 <div>
@@ -695,237 +462,136 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
-      {/* MODAL DETALHADO DE INFLAÇÃO VS RENDA (REFORMULADO) */}
+      {/* MODAL DETALHADO DE INFLAÇÃO VS RENDA (SEM IA, APENAS LÓGICA FINANCEIRA) */}
       <SwipeableModal isOpen={showRealYieldModal} onClose={() => setShowRealYieldModal(false)}>
          <div className="p-6 pb-20">
              <div className="flex items-center gap-4 mb-6 anim-slide-up">
-                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center text-indigo-500 border border-indigo-100 dark:border-indigo-900/30">
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-500 border border-indigo-100 dark:border-indigo-900/30">
                     <Scale className="w-6 h-6" strokeWidth={1.5} />
                 </div>
                 <div>
                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Raio-X da Inflação</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Histórico de Corrosão Financeira</p>
+                    <p className="text-xs text-zinc-500 font-medium">Análise de Poder de Compra</p>
                 </div>
              </div>
 
-             {/* SEÇÃO 1: GRÁFICO EMPILHADO (UMA BARRA, DIVIDIDA) */}
-             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                 <div className="flex items-center justify-between mb-4 px-2">
-                     <div className="flex items-center gap-2">
-                        <BarChart3 className="w-3 h-3 text-zinc-400" />
-                        <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-                            Yield Nominal: Inflação (Vermelho) vs Real (Verde)
-                        </h3>
-                     </div>
+             {/* VEREDITO */}
+             <div className={`p-6 rounded-[2rem] mb-6 anim-slide-up bg-surface-light dark:bg-zinc-800/40 border-2 ${realYieldMetrics.realReturn >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20'}`} style={{ animationDelay: '100ms' }}>
+                 <div className="flex items-center gap-2 mb-2">
+                     <div className={`w-2 h-2 rounded-full ${verdict.bg} animate-pulse`}></div>
+                     <span className={`text-[10px] font-black uppercase tracking-widest ${verdict.color}`}>Veredito Financeiro</span>
                  </div>
+                 <h3 className={`text-xl font-black mb-1.5 ${verdict.color}`}>{verdict.title}</h3>
+                 <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                     {verdict.desc}
+                 </p>
+             </div>
+
+             <div className="space-y-4">
                  
-                 <div className="h-56 w-full overflow-x-auto no-scrollbar">
-                    {/* Container com largura mínima para garantir que muitas barras não fiquem espremidas se o histórico for longo */}
-                    <div style={{ minWidth: `${Math.max(100, realYieldMetrics.timeline.length * 50)}px`, height: '100%', outline: 'none' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart 
-                                data={realYieldMetrics.timeline} 
-                                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                                barGap={2}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b33" />
-                                <XAxis dataKey="label" tick={{ fontSize: 10, fontWeight: 600, fill: '#71717a' }} tickLine={false} axisLine={false} interval={0} />
-                                <YAxis tick={{ fontSize: 10, fontWeight: 600, fill: '#71717a' }} tickLine={false} axisLine={false} />
-                                <RechartsTooltip cursor={{ fill: '#f4f4f5', opacity: 0.1 }} content={<CustomTooltip />} />
-                                
-                                {/* Stacked Bars: Same StackId makes them share the same bar */}
-                                <Bar name="erosionPartPercent" dataKey="erosionPartPercent" stackId="a" fill="#f43f5e" radius={[0, 0, 3, 3]} barSize={28} />
-                                <Bar name="realPartPercent" dataKey="realPartPercent" stackId="a" fill="#10b981" radius={[3, 3, 0, 0]} barSize={28} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                 </div>
-                 <div className="mt-2 flex items-center gap-4 justify-center">
-                     <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-rose-500 rounded-full"></div><span className="text-[9px] text-zinc-500 font-bold uppercase">Corrosão (IPCA)</span></div>
-                     <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div><span className="text-[9px] text-zinc-500 font-bold uppercase">Ganho Real</span></div>
-                 </div>
-             </div>
-
-             {/* SEÇÃO 2: HISTÓRICO DETALHADO (Tabela Técnica) */}
-             <div className="bg-white dark:bg-zinc-900 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 anim-slide-up mb-6 shadow-sm" style={{ animationDelay: '200ms' }}>
-                 <div className="p-4 bg-zinc-50 dark:bg-zinc-800/30 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                     <div className="flex items-center gap-2">
-                        <History className="w-4 h-4 text-zinc-400" />
-                        <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Diário da Corrosão</h4>
-                     </div>
-                     <div className="text-[9px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-2 py-0.5 rounded border border-rose-100 dark:border-rose-900/30">
-                         IPCA Acumulado
+                 {/* CARTÃO: O CUSTO INVISÍVEL */}
+                 <div className="bg-zinc-50 dark:bg-zinc-900 rounded-[1.5rem] p-5 border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '200ms' }}>
+                     <div className="flex items-start gap-3">
+                         <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center shrink-0">
+                             <TrendingDown className="w-5 h-5" />
+                         </div>
+                         <div className="flex-1">
+                             <h4 className="text-sm font-black text-zinc-900 dark:text-white mb-1">O Custo Invisível</h4>
+                             <p className="text-xs text-zinc-500 leading-relaxed mb-3">
+                                 Para manter o mesmo poder de compra de um ano atrás, seu patrimônio precisaria ter crescido este valor apenas para "empatar" com o IPCA.
+                             </p>
+                             <div className="p-3 bg-white dark:bg-black rounded-xl border border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Perda Nominal</span>
+                                 <span className="text-sm font-black text-rose-500">-{formatBRL(realYieldMetrics.inflationCost, privacyMode)}</span>
+                             </div>
+                         </div>
                      </div>
                  </div>
 
-                 {/* Sticky Header Table Layout */}
-                 <div className="max-h-[400px] overflow-y-auto no-scrollbar relative">
-                     <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-zinc-50/90 dark:bg-zinc-900/90 text-[9px] font-black uppercase text-zinc-500 dark:text-zinc-400 tracking-widest sticky top-0 z-10 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
-                         <span className="col-span-3">Período</span>
-                         <span className="col-span-5 text-right">Inflação (R$)</span>
-                         <span className="col-span-4 text-right">Real (R$)</span>
-                     </div>
-                     
-                     <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        {realYieldMetrics.timeline.slice().reverse().map((item: any, idx: number) => {
-                             const totalLoss = item.patrimonyErosion + item.dividendErosion;
-                             const isPositive = item.realGainValue >= 0;
+                 {/* CARTÃO: ESCUDO DE DIVIDENDOS */}
+                 <div className="bg-zinc-50 dark:bg-zinc-900 rounded-[1.5rem] p-5 border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '300ms' }}>
+                     <div className="flex items-start gap-3">
+                         <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-500 flex items-center justify-center shrink-0">
+                             <ShieldCheck className="w-5 h-5" />
+                         </div>
+                         <div className="flex-1">
+                             <h4 className="text-sm font-black text-zinc-900 dark:text-white mb-1">Escudo de Dividendos</h4>
+                             <p className="text-xs text-zinc-500 leading-relaxed mb-3">
+                                 Quanto da inflação foi "paga" apenas com a renda passiva recebida, sem precisar vender ativos.
+                             </p>
                              
-                             return (
-                                 <div key={idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group">
-                                     <div className="col-span-3 flex flex-col">
-                                         <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-200 font-mono">{item.fullLabel}</span>
-                                     </div>
-                                     
-                                     <div className="col-span-5 text-right flex flex-col justify-center">
-                                         <span className="text-[11px] font-mono font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-transparent rounded px-1 -mr-1">
-                                            -{formatBRL(totalLoss, privacyMode).replace('R$', '')}
-                                         </span>
-                                     </div>
-                                     
-                                     <div className="col-span-4 text-right flex justify-end items-center gap-1.5">
-                                         <span className={`text-[11px] font-black font-mono ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                             {formatBRL(item.realGainValue, privacyMode).replace('R$', '')}
-                                         </span>
-                                         {isPositive ? 
-                                            <ArrowUpRight className="w-3 h-3 text-emerald-500 opacity-50 group-hover:opacity-100" /> : 
-                                            <ArrowDownRight className="w-3 h-3 text-rose-500 opacity-50 group-hover:opacity-100" />
-                                         }
-                                     </div>
-                                 </div>
-                             );
-                        })}
+                             <div className="mb-2 flex justify-between items-end">
+                                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Cobertura</span>
+                                 <span className={`text-lg font-black ${realYieldMetrics.dividendCoverage >= 100 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                     {Math.min(realYieldMetrics.dividendCoverage, 999).toFixed(0)}%
+                                 </span>
+                             </div>
+                             
+                             {/* Progress Bar Visual */}
+                             <div className="h-3 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden relative">
+                                 <div 
+                                    className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ${realYieldMetrics.dividendCoverage >= 100 ? 'bg-emerald-500' : 'bg-amber-500'}`} 
+                                    style={{ width: `${Math.min(realYieldMetrics.dividendCoverage, 100)}%` }}
+                                 ></div>
+                                 {/* Marcador de 100% */}
+                                 <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white/20 z-10"></div>
+                             </div>
+                             <p className="text-[9px] text-zinc-400 mt-2 text-right">
+                                 {realYieldMetrics.dividendCoverage >= 100 ? 'Sua renda superou a inflação.' : `Faltaram ${formatBRL(realYieldMetrics.inflationCost - realYieldMetrics.sum12m, privacyMode)} para cobrir a inflação.`}
+                             </p>
+                         </div>
                      </div>
                  </div>
+
+                 {/* CARTÃO: DY REAL */}
+                 <div className="bg-zinc-900 dark:bg-black rounded-[1.5rem] p-5 border border-zinc-800 anim-slide-up text-white" style={{ animationDelay: '400ms' }}>
+                     <div className="flex items-center justify-between mb-4">
+                         <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center">
+                                 <Coins className="w-5 h-5 text-zinc-400" />
+                             </div>
+                             <div>
+                                 <h4 className="text-sm font-black text-white">Yield Real</h4>
+                                 <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Descontando IPCA</p>
+                             </div>
+                         </div>
+                         <div className={`px-2 py-1 rounded-lg text-xs font-black ${realYieldMetrics.realReturn >= 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                             {realYieldMetrics.realReturn > 0 ? '+' : ''}{formatPercent(realYieldMetrics.realReturn)}
+                         </div>
+                     </div>
+                     <div className="grid grid-cols-3 gap-2 text-center divide-x divide-zinc-800">
+                         <div>
+                             <p className="text-[9px] text-zinc-500 font-bold uppercase mb-1">Nominal</p>
+                             <p className="text-xs font-bold text-zinc-300">{formatPercent(realYieldMetrics.userDy)}</p>
+                         </div>
+                         <div>
+                             <p className="text-[9px] text-zinc-500 font-bold uppercase mb-1">IPCA 12m</p>
+                             <p className="text-xs font-bold text-rose-400">-{formatPercent(inflationRate)}</p>
+                         </div>
+                         <div>
+                             <p className="text-[9px] text-zinc-500 font-bold uppercase mb-1">Real</p>
+                             <p className={`text-xs font-black ${realYieldMetrics.realReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                 {formatPercent(realYieldMetrics.realReturn)}
+                             </p>
+                         </div>
+                     </div>
+                 </div>
+
              </div>
 
-             <div className="mt-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
+             <div className="mt-8 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
                  <Info className="w-5 h-5 text-blue-500 shrink-0" />
                  <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed">
-                     <strong>Matemática da Corrosão:</strong> O gráfico exibe seu Yield Nominal mensal dividido. A parte vermelha representa a % que foi consumida pela inflação do período. A parte verde é o ganho real. A tabela acima detalha o valor monetário exato que a inflação retirou do seu patrimônio principal e dos seus dividendos mês a mês.
+                     <strong>Nota Técnica:</strong> O cálculo considera o IPCA acumulado de 12 meses ({inflationRate}%) sobre o valor total investido ({formatBRL(invested, privacyMode)}), comparando com o total de proventos recebidos no mesmo período ({formatBRL(realYieldMetrics.sum12m, privacyMode)}).
                  </p>
              </div>
          </div>
       </SwipeableModal>
 
-      {/* MODAL DE EVOLUÇÃO PATRIMONIAL (Agora chamado de Patrimônio Total) */}
-      <SwipeableModal isOpen={showEvolutionModal} onClose={() => setShowEvolutionModal(false)}>
-          <div className="p-6 pb-20">
-              <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
-                      <LineChart className="w-6 h-6" />
-                  </div>
-                  <div>
-                      <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Patrimônio Total</h2>
-                      <p className="text-xs text-zinc-500 font-medium">Evolução do Valor de Mercado</p>
-                  </div>
-              </div>
-
-              {isEvolutionLoading ? (
-                  <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                      <Loader2 className="w-8 h-8 animate-spin text-zinc-400 mb-2" />
-                      <p className="text-xs font-bold text-zinc-500">Reconstruindo histórico...</p>
-                  </div>
-              ) : evolutionData.length > 0 ? (
-                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 anim-slide-up">
-                      <div className="h-64 w-full" style={{ outline: 'none' }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={evolutionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                  <defs>
-                                      <linearGradient id="colorPatrimony" x1="0" y1="0" x2="0" y2="1">
-                                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                      </linearGradient>
-                                  </defs>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b33" />
-                                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#71717a' }} axisLine={false} tickLine={false} minTickGap={30} />
-                                  <YAxis tick={{ fontSize: 10, fill: '#71717a' }} axisLine={false} tickLine={false} tickFormatter={(val) => `R$${val/1000}k`} />
-                                  <RechartsTooltip content={<EvolutionTooltip />} cursor={{ stroke: '#71717a', strokeWidth: 1, strokeDasharray: '3 3' }} />
-                                  
-                                  {/* Linha de Aportes (Tracejada) */}
-                                  <Area 
-                                      type="monotone" 
-                                      dataKey="invested" 
-                                      stroke="#71717a" 
-                                      strokeWidth={2} 
-                                      strokeDasharray="4 4"
-                                      fill="transparent" 
-                                      activeDot={false}
-                                  />
-                                  
-                                  {/* Montanha de Patrimônio */}
-                                  <Area 
-                                      type="monotone" 
-                                      dataKey="patrimony" 
-                                      stroke="#10b981" 
-                                      strokeWidth={3} 
-                                      fillOpacity={1} 
-                                      fill="url(#colorPatrimony)" 
-                                  />
-                              </AreaChart>
-                          </ResponsiveContainer>
-                      </div>
-                      
-                      <div className="mt-4 flex justify-center gap-6">
-                          <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                              <span className="text-[10px] font-bold uppercase text-zinc-500">Patrimônio</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                              <div className="w-3 h-1 bg-zinc-400 rounded-full"></div>
-                              <span className="text-[10px] font-bold uppercase text-zinc-500">Total Aportado</span>
-                          </div>
-                      </div>
-                  </div>
-              ) : (
-                  <div className="text-center py-20 text-zinc-400">
-                      <p className="text-xs">Dados insuficientes para gerar histórico.</p>
-                  </div>
-              )}
-
-              {/* DETALHAMENTO DE RESULTADO (YoC & Projection) */}
-              <div className="mt-6 space-y-4 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                  
-                  {/* GRID DE MÉTRICAS AVANÇADAS */}
-                  <div className="grid grid-cols-2 gap-3">
-                      {/* YoC */}
-                      <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 relative overflow-hidden">
-                          <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block mb-1">Yield on Cost (YoC)</span>
-                          <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300 tracking-tight">
-                              {formatPercent(advancedMetrics.yieldOnCost, privacyMode)}
-                          </div>
-                          <p className="text-[9px] text-emerald-600/60 dark:text-emerald-400/60 font-medium mt-1">Retorno sobre custo real</p>
-                      </div>
-
-                      {/* Projeção Anual */}
-                      <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 relative overflow-hidden">
-                          <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase block mb-1">Projeção 12m</span>
-                          <div className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
-                              {formatBRL(advancedMetrics.projectedIncome, privacyMode)}
-                          </div>
-                          <p className="text-[9px] text-zinc-400 font-medium mt-1">Renda Passiva Estimada</p>
-                      </div>
-                  </div>
-                  
-                  {/* Top Asset Compact (Optional Context) */}
-                  <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 flex items-center justify-between">
-                        <div>
-                            <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase block mb-1">Carregador do Piano</span>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-lg font-black text-amber-700 dark:text-amber-300">{advancedMetrics.bestAsset.ticker}</span>
-                                <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">+{formatPercent(advancedMetrics.bestAsset.percent)}</span>
-                            </div>
-                        </div>
-                        <Trophy className="w-5 h-5 text-amber-500" />
-                  </div>
-              </div>
-          </div>
-      </SwipeableModal>
-
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
          <div className="p-6 pb-20">
              <div className="flex items-center gap-4 mb-8 anim-slide-up">
-                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                     <Wallet className="w-6 h-6" strokeWidth={1.5} />
                 </div>
                 <div>
@@ -934,13 +600,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
              </div>
              
-             {/* HEADER GRID: TOTAL + AVERAGE */}
              <div className="grid grid-cols-2 gap-3 mb-6 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                 <div className="bg-emerald-500 p-5 rounded-xl text-white shadow-lg shadow-emerald-500/20">
+                 <div className="bg-emerald-500 p-5 rounded-[1.5rem] text-white shadow-lg shadow-emerald-500/20">
                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
                      <p className="text-2xl font-black">{formatBRL(received, privacyMode)}</p>
                  </div>
-                 <div className="bg-zinc-100 dark:bg-zinc-800 p-5 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                 <div className="bg-zinc-100 dark:bg-zinc-800 p-5 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-700">
                      <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
                      <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(average, privacyMode)}</p>
                  </div>
@@ -961,7 +626,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             return (
                                 <div 
                                     key={month} 
-                                    className={`group rounded-xl transition-all duration-300 border overflow-hidden anim-slide-up ${isExpanded ? 'bg-white dark:bg-zinc-900 border-emerald-500 shadow-lg scale-[1.02] z-10' : 'bg-surface-light dark:bg-surface-dark border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+                                    className={`group rounded-[1.5rem] transition-all duration-300 border overflow-hidden anim-slide-up ${isExpanded ? 'bg-white dark:bg-zinc-900 border-emerald-500 shadow-lg scale-[1.02] z-10' : 'bg-surface-light dark:bg-surface-dark border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
                                     style={{ animationDelay: `${400 + (i * 50)}ms` }}
                                 >
                                     <button 
@@ -970,7 +635,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     >
                                         <div className="w-full flex justify-between items-center relative z-10">
                                             <div className="flex items-center gap-4">
-                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors border border-zinc-100 dark:border-zinc-800 ${isExpanded ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors border border-zinc-100 dark:border-zinc-800 ${isExpanded ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
                                                     <Calendar className="w-5 h-5" strokeWidth={2} />
                                                 </div>
                                                 <div className="text-left">
@@ -1011,7 +676,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                     }, [])
                                                     .sort((a,b) => b.totalReceived - a.totalReceived)
                                                     .map((detail: any, idx: number) => (
-                                                    <div key={idx} className="flex justify-between items-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-700 transition-colors">
+                                                    <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-700 transition-colors">
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-700 flex items-center justify-center text-[10px] font-black text-zinc-600 dark:text-zinc-300 border border-zinc-100 dark:border-zinc-600">
                                                                 {detail.ticker.substring(0,2)}
@@ -1049,7 +714,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="p-6 pb-20">
              <div className="flex items-center gap-4 mb-6 anim-slide-up">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
                     <PieIcon className="w-6 h-6" strokeWidth={1.5} />
                 </div>
                 <div>
@@ -1059,7 +724,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              </div>
 
              {/* GRÁFICO 1: CLASSES DE ATIVOS (DONUT) */}
-             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '100ms' }}>
+             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '100ms' }}>
                  <div className="flex items-center gap-2 mb-2 px-2">
                      <LayoutGrid className="w-3 h-3 text-zinc-400" />
                      <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
@@ -1067,7 +732,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </h3>
                  </div>
                  
-                 <div className="h-48 w-full relative" style={{ outline: 'none' }}>
+                 <div className="h-48 w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
@@ -1094,14 +759,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                  {/* Legend / List for Classes */}
                  <div className="grid grid-cols-2 gap-3 mt-2">
-                     <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 flex items-center justify-between">
+                     <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 flex items-center justify-between">
                          <div className="flex items-center gap-2">
                              <div className="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>
                              <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">FIIs</span>
                          </div>
                          <span className="text-xs font-black text-zinc-900 dark:text-white">{formatPercent(typeData.fiis.percent, privacyMode)}</span>
                      </div>
-                     <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 flex items-center justify-between">
+                     <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 flex items-center justify-between">
                          <div className="flex items-center gap-2">
                              <div className="w-2.5 h-2.5 rounded-full bg-sky-500"></div>
                              <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">Ações</span>
@@ -1113,7 +778,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
              {/* GRÁFICO 2: SETORES (PIE CHART) */}
              {segmentsData.length > 0 && (
-                <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
+                <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
                     <div className="flex items-center gap-2 mb-2 px-2">
                         <Layers className="w-3 h-3 text-zinc-400" />
                         <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
@@ -1121,7 +786,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </h3>
                     </div>
                     
-                    <div className="h-56 w-full" style={{ outline: 'none' }}>
+                    <div className="h-56 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
@@ -1160,7 +825,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              )}
 
              {/* TOP ASSETS LIST */}
-             <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-xl p-5 border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '300ms' }}>
+             <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-[2rem] p-5 border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '300ms' }}>
                 <div className="flex items-center gap-2 mb-4">
                     <Target className="w-4 h-4 text-rose-400" />
                     <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Maiores Posições</h4>

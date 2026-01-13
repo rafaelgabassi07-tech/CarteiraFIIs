@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, Wallet, Calendar, Rocket, Info, CheckCircle2, X } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox } from 'lucide-react';
 
 // Utility for smooth visibility transitions
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -50,38 +50,6 @@ export const CloudStatusBanner: React.FC<{ status: 'disconnected' | 'connected' 
   );
 };
 
-export const Toast: React.FC<{ type: 'success' | 'error' | 'info'; text: string }> = ({ type, text }) => {
-  // Use Portal to escape any transforms/overflows/layout shifts from parent containers
-  return createPortal(
-    <div className="fixed top-4 left-4 right-4 z-[3000] flex justify-center pointer-events-none anim-slide-up">
-        <div className={`
-          pointer-events-auto flex items-center gap-3 p-4 rounded-2xl shadow-2xl border transition-all duration-300
-          ${type === 'success' ? 'bg-white/95 dark:bg-zinc-900/95 border-emerald-100 dark:border-emerald-900/30 text-zinc-900 dark:text-white' : 
-            type === 'error' ? 'bg-white/95 dark:bg-zinc-900/95 border-rose-100 dark:border-rose-900/30 text-zinc-900 dark:text-white' :
-            'bg-white/95 dark:bg-zinc-900/95 border-sky-100 dark:border-sky-900/30 text-zinc-900 dark:text-white'}
-          backdrop-blur-md max-w-sm w-full
-        `}>
-           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
-             type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 border-emerald-100 dark:border-emerald-900/30' : 
-             type === 'error' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 border-rose-100 dark:border-rose-900/30' : 
-             'bg-sky-50 dark:bg-sky-900/20 text-sky-500 border-sky-100 dark:border-sky-900/30'
-           }`}>
-             {type === 'info' ? <Info className="w-5 h-5" strokeWidth={2} /> : 
-              type === 'error' ? <AlertTriangle className="w-5 h-5" strokeWidth={2} /> : 
-              <CheckCircle2 className="w-5 h-5" strokeWidth={2} />}
-           </div>
-           <div className="min-w-0 flex-1">
-             <h4 className="text-sm font-black tracking-tight leading-none mb-1">
-                {type === 'success' ? 'Sucesso' : type === 'error' ? 'Atenção' : 'Informação'}
-             </h4>
-             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 leading-tight">{text}</p>
-           </div>
-        </div>
-    </div>,
-    document.body
-  );
-};
-
 interface HeaderProps {
   title: string;
   onSettingsClick?: () => void;
@@ -110,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3 w-full">
           {showBack ? (
             <div className="flex items-center gap-3 w-full anim-slide-in-right">
-              <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform">
+              <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform">
                 <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
               </button>
               <h1 className="text-lg font-bold text-zinc-900 dark:text-white">Voltar</h1>
@@ -130,12 +98,12 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="flex items-center gap-2">
           {updateAvailable && !showBack && (
-            <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-lg bg-sky-500 text-white active:scale-95 transition-transform shadow-sm">
+            <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-sky-500 text-white active:scale-95 transition-transform shadow-sm">
               <Download className="w-4 h-4 animate-bounce" strokeWidth={2.5} />
             </button>
           )}
           {onNotificationClick && !showBack && (
-            <button onClick={onNotificationClick} className="relative w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700">
+            <button onClick={onNotificationClick} className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700">
               <Bell className="w-4 h-4" strokeWidth={2} />
               {notificationCount > 0 && 
                 <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
@@ -143,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
           {!showBack && onSettingsClick && (
-            <button onClick={onSettingsClick} className="w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700">
+            <button onClick={onSettingsClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700">
               <Settings className="w-4 h-4" strokeWidth={2} />
             </button>
           )}
@@ -168,39 +136,55 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   const activeIndex = navItems.findIndex(item => item.id === currentTab);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-      <nav className="pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[20rem] mx-6 relative overflow-hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+      <nav className="pointer-events-auto bg-white/85 dark:bg-zinc-900/85 backdrop-blur-[20px] border border-white/20 dark:border-zinc-800/60 rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[22rem] mx-6 relative overflow-hidden">
         
         {/* Sliding Active Indicator */}
+        {/* A largura é calculada como (100% / 3) menos as margens para encaixar perfeitamente */}
         <div 
-            className="absolute top-1.5 bottom-1.5 w-[calc(33.33%-0.25rem)] bg-zinc-100 dark:bg-zinc-800 rounded-xl shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] will-change-transform z-0"
+            className="absolute top-1.5 bottom-1.5 w-[calc(33.33%-0.25rem)] bg-white dark:bg-zinc-800 rounded-[2rem] shadow-[0_2px_10px_rgba(0,0,0,0.08)] dark:shadow-black/50 border border-zinc-100 dark:border-zinc-700/50 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] will-change-transform z-0"
             style={{ 
-                left: '0.125rem',
-                transform: `translateX(calc(${activeIndex} * 100% + ${activeIndex * 0.25}rem))` 
+                left: '0.125rem', // Offset inicial leve
+                transform: `translateX(calc(${activeIndex} * 100% + ${activeIndex * 0.25}rem))` // Move 100% da largura + gap
             }}
-        ></div>
+        >
+            {/* Inner Glow for Premium Feel */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-sky-500/10 dark:to-sky-400/5 rounded-[2rem]"></div>
+        </div>
 
         {/* Buttons Grid */}
-        <div className="relative z-10 grid grid-cols-3 h-12">
+        <div className="relative z-10 grid grid-cols-3 h-14">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className="flex flex-col items-center justify-center relative outline-none select-none active:scale-95 transition-transform duration-200 group"
+                className="flex flex-col items-center justify-center relative outline-none select-none active:scale-90 transition-transform duration-200 group"
               >
-                <div className={`relative transition-all duration-300 ${isActive ? 'text-sky-600 dark:text-sky-400 -translate-y-0.5' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}`}>
+                {/* Icon Wrapper with Pop Animation */}
+                <div className={`relative transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isActive ? '-translate-y-1.5' : 'translate-y-1 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-400'}`}>
+                    
+                    {/* Active Glow Behind Icon */}
+                    <div className={`absolute inset-0 bg-sky-400/40 blur-lg rounded-full transition-all duration-500 ${isActive ? 'opacity-100 scale-150' : 'opacity-0 scale-0'}`}></div>
+                    
                     <item.icon 
-                        className={`w-5 h-5 relative z-10 transition-all duration-300 ${isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} 
+                        className={`w-6 h-6 relative z-10 transition-all duration-500 ${
+                            isActive 
+                                ? 'text-sky-600 dark:text-sky-400 stroke-[2.5px] scale-110 drop-shadow-sm' 
+                                : 'stroke-[2px]'
+                        }`} 
                     />
                 </div>
                 
-                {isActive && (
-                    <span className="absolute bottom-1 text-[8px] font-black uppercase tracking-wider text-zinc-900 dark:text-white anim-scale-in">
-                    {item.label}
-                    </span>
-                )}
+                {/* Label Slide Up Animation */}
+                <span className={`absolute bottom-2 text-[9px] font-black uppercase tracking-wider transition-all duration-500 ease-out ${
+                    isActive 
+                        ? 'opacity-100 translate-y-0 text-zinc-900 dark:text-white' 
+                        : 'opacity-0 translate-y-3 pointer-events-none'
+                }`}>
+                  {item.label}
+                </span>
               </button>
             );
           })}
@@ -213,6 +197,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
 interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: React.ReactNode; }
 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
+  // Aumentamos a duração para 500ms para acomodar a nova curva de física "Apple-like"
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 500);
   const modalRef = useRef<HTMLDivElement>(null);
   const [dragOffset, setDragOffset] = useState(0);
@@ -251,26 +236,28 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     <div className={`fixed inset-0 z-[200] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
       <div 
           onClick={onClose} 
-          className={`absolute inset-0 bg-zinc-950/40 dark:bg-black/70 backdrop-blur-[2px] transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-[3px] transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       ></div>
       
       <div
         ref={modalRef}
         style={{
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
+            // Physics: cubic-bezier(0.19, 1, 0.22, 1) provides a very snappy start and a soft, slow settling (premium feel)
             transition: isDragging ? 'none' : 'transform 500ms cubic-bezier(0.19, 1, 0.22, 1)'
         }}
-        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-2xl h-[94vh] w-full overflow-hidden flex flex-col shadow-2xl border-t border-zinc-200 dark:border-zinc-800 will-change-transform`}
+        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-[2.5rem] h-[92vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_40px_rgba(0,0,0,0.3)] border-t border-zinc-200 dark:border-zinc-800 will-change-transform`}
       >
         <div 
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            className="flex-none p-3 flex justify-center bg-transparent cursor-grab active:cursor-grabbing touch-none z-10"
+            className="flex-none p-4 flex justify-center bg-transparent cursor-grab active:cursor-grabbing touch-none z-10"
         >
-            <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full"></div>
+            <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
         </div>
         
+        {/* Content Stagger: Fade in content slightly after modal starts moving to prevent visual jitter */}
         <div className={`flex-1 overflow-y-auto overscroll-contain pb-safe transition-opacity duration-500 delay-100 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
           {children}
         </div>
@@ -286,15 +273,15 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
   return createPortal(
     <div className={`fixed inset-0 z-[1000] flex items-center justify-center p-6 ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
       <div className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-sm transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
-      <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-xs p-6 text-center shadow-2xl transition-all duration-500 cubic-bezier(0.19, 1, 0.22, 1) border border-zinc-100 dark:border-zinc-800 ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-4 opacity-0'}`}>
-        <div className="mx-auto w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-4 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 shadow-sm">
-          <AlertTriangle className="w-6 h-6" strokeWidth={2.5} />
+      <div className={`relative bg-white dark:bg-zinc-900 rounded-[2.5rem] w-full max-w-xs p-8 text-center shadow-2xl transition-all duration-500 cubic-bezier(0.19, 1, 0.22, 1) border border-zinc-100 dark:border-zinc-800 ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-8 opacity-0'}`}>
+        <div className="mx-auto w-16 h-16 rounded-3xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-6 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 shadow-sm">
+          <AlertTriangle className="w-8 h-8" strokeWidth={2.5} />
         </div>
-        <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-2 tracking-tight">{title}</h3>
-        <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed font-medium">{message}</p>
+        <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-3 tracking-tight">{title}</h3>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed font-medium">{message}</p>
         <div className="grid grid-cols-2 gap-3">
-          <button onClick={onCancel} className="py-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
-          <button onClick={onConfirm} className="py-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 active:scale-95 transition-transform shadow-lg">Confirmar</button>
+          <button onClick={onCancel} className="py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+          <button onClick={onConfirm} className="py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 active:scale-95 transition-transform shadow-lg">Confirmar</button>
         </div>
       </div>
     </div>, document.body
@@ -303,23 +290,23 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
 
 export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes = [], isUpdatePending, onUpdate, isUpdating, progress }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-      <div className="p-6 pb-24">
-        <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
-              <Gift className="w-8 h-8" strokeWidth={1.5} />
+      <div className="p-8 pb-24">
+        <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+              <Gift className="w-10 h-10" strokeWidth={1.5} />
             </div>
-            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-2">Novidades</h2>
-            <div className="inline-block px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-[10px] font-black uppercase tracking-widest text-zinc-500">Versão {version}</div>
+            <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-2">Novidades</h2>
+            <div className="inline-block px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-black uppercase tracking-widest text-zinc-500">Versão {version}</div>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {notes.map((note: any, i: number) => (
-              <div key={i} className="flex gap-4 p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200 dark:border-zinc-800 group transition-all hover:bg-white dark:hover:bg-zinc-800">
-                  <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 shadow-sm">
-                    <Star className="w-5 h-5 text-amber-500" strokeWidth={2} />
+              <div key={i} className="flex gap-4 p-5 bg-zinc-50 dark:bg-zinc-800/40 rounded-3xl border border-zinc-200 dark:border-zinc-800 group transition-all hover:bg-white dark:hover:bg-zinc-800">
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 shadow-sm">
+                    <Star className="w-6 h-6 text-amber-500" strokeWidth={2} />
                   </div>
                   <div>
-                    <h4 className="font-black text-zinc-900 dark:text-white tracking-tight text-sm">{note.title}</h4>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed font-medium">{note.desc}</p>
+                    <h4 className="font-black text-zinc-900 dark:text-white tracking-tight">{note.title}</h4>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed font-medium">{note.desc}</p>
                   </div>
               </div>
           ))}
@@ -328,12 +315,12 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes 
           <button 
             onClick={onUpdate} 
             disabled={isUpdating} 
-            className="w-full mt-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+            className="w-full mt-10 py-5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
           >
             {isUpdating ? (
-              <> <Loader2 className="w-4 h-4 animate-spin" /> <span>Atualizando {progress}%</span> </>
+              <> <Loader2 className="w-5 h-5 animate-spin" /> <span>Atualizando {progress}%</span> </>
             ) : (
-              <> <Download className="w-4 h-4" /> <span>Instalar Atualização</span> </>
+              <> <Download className="w-5 h-5" /> <span>Instalar Atualização</span> </>
             )}
           </button>
         )}
@@ -341,93 +328,38 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes 
     </SwipeableModal>
 );
 
-const getNotificationStyle = (type: string, category?: string) => {
-    if (category === 'payment') return { 
-        icon: Wallet, 
-        color: 'text-emerald-500', 
-        bg: 'bg-emerald-50 dark:bg-emerald-900/20', 
-        border: 'border-emerald-100 dark:border-emerald-900/30' 
-    };
-    if (category === 'datacom') return { 
-        icon: Calendar, 
-        color: 'text-amber-500', 
-        bg: 'bg-amber-50 dark:bg-amber-900/20', 
-        border: 'border-amber-100 dark:border-amber-900/30' 
-    };
-    if (type === 'update') return { 
-        icon: Rocket, 
-        color: 'text-sky-500', 
-        bg: 'bg-sky-50 dark:bg-sky-900/20', 
-        border: 'border-sky-100 dark:border-sky-900/30' 
-    };
-    if (type === 'warning') return { 
-        icon: AlertTriangle, 
-        color: 'text-rose-500', 
-        bg: 'bg-rose-50 dark:bg-rose-900/20', 
-        border: 'border-rose-100 dark:border-rose-900/30' 
-    };
-    // Default Info
-    return { 
-        icon: Info, 
-        color: 'text-zinc-500', 
-        bg: 'bg-zinc-50 dark:bg-zinc-800', 
-        border: 'border-zinc-200 dark:border-zinc-700' 
-    };
-};
-
 export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notifications, onClear }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-6 pb-24">
-            <div className="flex justify-between items-center mb-6">
+        <div className="p-8 pb-24">
+            <div className="flex justify-between items-center mb-8">
                 <div>
-                  <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Notificações</h2>
+                  <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Notificações</h2>
                   <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Avisos e Pagamentos</p>
                 </div>
                 {notifications.length > 0 && (
-                  <button onClick={onClear} className="w-9 h-9 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center border border-rose-100 dark:border-rose-900/30 active:scale-90 transition-transform">
-                    <Trash2 className="w-4 h-4" />
+                  <button onClick={onClear} className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center border border-rose-100 dark:border-rose-900/30 active:scale-90 transition-transform">
+                    <Trash2 className="w-5 h-5" />
                   </button>
                 )}
             </div>
             {notifications.length === 0 ? (
                 <div className="text-center py-20 opacity-40">
-                  <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-200 dark:border-zinc-700">
-                    <Inbox className="w-8 h-8 text-zinc-300 dark:text-zinc-600" strokeWidth={1} />
+                  <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Inbox className="w-10 h-10 text-zinc-300 dark:text-zinc-600" strokeWidth={1} />
                   </div>
-                  <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">Tudo limpo por aqui</p>
+                  <p className="text-sm font-black text-zinc-500 uppercase tracking-widest">Nada por aqui</p>
                 </div>
             ) : (
                 <div className="space-y-3">
-                    {notifications.map((n: any, i: number) => {
-                        const style = getNotificationStyle(n.type, n.category);
-                        return (
-                            <div 
-                                key={n.id} 
-                                className={`flex items-start gap-4 p-4 rounded-xl border transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${style.bg} ${style.border} bg-opacity-40 dark:bg-opacity-20 anim-fade-in-up`} 
-                                style={{ animationDelay: `${i * 50}ms` }}
-                            >
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 shadow-sm bg-white dark:bg-zinc-800 border ${style.border} ${style.color}`}>
-                                    <style.icon className="w-5 h-5" strokeWidth={2} />
-                                </div>
-                                
-                                <div className="flex-1">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight leading-none">{n.title}</h4>
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest shrink-0 ml-2">
-                                            {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-zinc-600 dark:text-zinc-300 font-medium leading-relaxed">{n.message}</p>
-                                    <div className="mt-2 flex items-center gap-1.5 opacity-60">
-                                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
-                                            {new Date(n.timestamp).toLocaleDateString('pt-BR')}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {notifications.map((n: any, i: number) => (
+                        <div key={n.id} className="p-5 bg-zinc-50 dark:bg-zinc-800/40 rounded-3xl border border-zinc-200 dark:border-zinc-800 anim-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+                            <h4 className="font-black text-zinc-900 dark:text-white tracking-tight">{n.title}</h4>
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed font-medium">{n.message}</p>
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-4">
+                              {new Date(n.timestamp).toLocaleDateString('pt-BR')} às {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>

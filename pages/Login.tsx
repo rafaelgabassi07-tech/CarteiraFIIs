@@ -75,7 +75,7 @@ export const Login: React.FC = () => {
         {/* Header Logo */}
         <div className="text-center anim-fade-in-up is-visible">
             <div className="relative w-20 h-20 mx-auto mb-6 group cursor-default">
-                <div className="relative w-full h-full bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center shadow-2xl">
+                <div className="relative w-full h-full bg-zinc-900 border border-zinc-800 rounded-[1.5rem] flex items-center justify-center shadow-2xl">
                     <img src="./logo.svg" alt="Logo" className="w-10 h-10 object-contain opacity-90 group-hover:scale-110 transition-transform duration-500" />
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-sky-500 rounded-lg flex items-center justify-center border-[3px] border-zinc-950 shadow-lg">
                         <TrendingUp className="w-3 h-3 text-white" strokeWidth={3} />
@@ -87,7 +87,7 @@ export const Login: React.FC = () => {
         </div>
 
         {/* Main Card - SOLID */}
-        <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-2 shadow-2xl anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
+        <div className="bg-zinc-900 rounded-[2.5rem] border border-zinc-800 p-2 shadow-2xl anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
             
             {isVerificationSent ? (
                 <div className="p-8 text-center">
@@ -98,7 +98,7 @@ export const Login: React.FC = () => {
                     <p className="text-sm text-zinc-400 mb-8 leading-relaxed">Enviamos um link de confirmação para <strong>{email}</strong>. Clique nele para ativar sua conta.</p>
                     <button 
                         onClick={() => { setIsVerificationSent(false); setMode('signin'); }}
-                        className="w-full py-4 rounded-xl bg-zinc-800 text-white font-bold text-xs uppercase tracking-widest active:scale-95 transition-transform hover:bg-zinc-700"
+                        className="w-full py-4 rounded-2xl bg-zinc-800 text-white font-bold text-xs uppercase tracking-widest active:scale-95 transition-transform hover:bg-zinc-700"
                     >
                         Voltar ao Login
                     </button>
@@ -107,9 +107,9 @@ export const Login: React.FC = () => {
                 <div className="p-6">
                     {/* Animated Segmented Control */}
                     {mode !== 'recovery' && (
-                        <div className="relative flex bg-zinc-950 p-1.5 rounded-xl mb-8 border border-zinc-800">
+                        <div className="relative flex bg-zinc-950 p-1.5 rounded-2xl mb-8 border border-zinc-800">
                             <div 
-                                className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-zinc-800 rounded-lg shadow transition-all duration-300 ease-out-quint ${mode === 'signup' ? 'translate-x-[100%] translate-x-1.5' : 'left-1.5'}`}
+                                className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-zinc-800 rounded-xl shadow transition-all duration-300 ease-out-quint ${mode === 'signup' ? 'translate-x-[100%] translate-x-1.5' : 'left-1.5'}`}
                             ></div>
                             <button
                                 onClick={() => toggleMode('signin')}
@@ -158,7 +158,7 @@ export const Login: React.FC = () => {
                                     placeholder="Seu e-mail principal"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-zinc-950 pl-12 pr-4 py-4 rounded-xl text-sm text-white placeholder:text-zinc-600 outline-none border border-zinc-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-inner"
+                                    className="w-full bg-zinc-950 pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-600 outline-none border border-zinc-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-inner"
                                     required
                                 />
                             </div>
@@ -170,7 +170,7 @@ export const Login: React.FC = () => {
                                     placeholder="Sua senha secreta"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-zinc-950 pl-12 pr-12 py-4 rounded-xl text-sm text-white placeholder:text-zinc-600 outline-none border border-zinc-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-inner"
+                                    className="w-full bg-zinc-950 pl-12 pr-12 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-600 outline-none border border-zinc-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-inner"
                                     required={mode !== 'recovery'}
                                 />
                                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-zinc-600 hover:text-white transition-colors">
@@ -187,7 +187,7 @@ export const Login: React.FC = () => {
                                         placeholder="Confirme a senha"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-zinc-950 pl-12 pr-4 py-4 rounded-xl text-sm text-white placeholder:text-zinc-600 outline-none border border-zinc-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
+                                        className="w-full bg-zinc-950 pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-600 outline-none border border-zinc-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
                                         required={mode === 'signup'}
                                     />
                                 </div>
@@ -206,7 +206,7 @@ export const Login: React.FC = () => {
                             <button 
                                 type="submit" 
                                 disabled={loading} 
-                                className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-[0.15em] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-sky-500/20 ${
+                                className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.15em] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-sky-500/20 ${
                                     mode === 'recovery' 
                                     ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20' 
                                     : 'bg-white text-zinc-950 hover:bg-zinc-200'

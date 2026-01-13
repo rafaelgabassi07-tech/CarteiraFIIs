@@ -4,11 +4,11 @@ import {
   ChevronRight, ArrowLeft, Bell, Sun, Moon, Monitor, RefreshCw, 
   Eye, EyeOff, Palette, Rocket, Database, ShieldAlert, Info, 
   User, LogOut, Check, AlertTriangle, Globe, Github, Smartphone, Copy, CheckCircle2,
-  Wifi, Activity, XCircle, Terminal, Trash2, Filter, Eraser
+  Wifi, Activity, XCircle, Terminal, Trash2, Filter
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ServiceMetric, LogEntry } from '../types';
 import { ThemeType } from '../App';
-import { ConfirmationModal, SwipeableModal, Toast } from '../components/Layout';
+import { ConfirmationModal, SwipeableModal } from '../components/Layout';
 import { logger } from '../services/logger';
 
 interface SettingsProps {
@@ -157,7 +157,7 @@ export const Settings: React.FC<SettingsProps> = ({
       className={`w-full flex items-center justify-between p-3.5 bg-white dark:bg-zinc-900 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors ${!isLast ? 'border-b border-zinc-100 dark:border-zinc-800' : ''}`}
     >
       <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${color}`}>
           <Icon className="w-4 h-4" />
         </div>
         <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{label}</span>
@@ -171,7 +171,7 @@ export const Settings: React.FC<SettingsProps> = ({
   );
 
   const ToggleItem = ({ label, description, isOn, onToggle }: any) => (
-    <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+    <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
         <div>
             <h4 className="text-sm font-bold text-zinc-900 dark:text-white">{label}</h4>
             {description && <p className="text-[10px] text-zinc-500 font-medium mt-0.5">{description}</p>}
@@ -188,7 +188,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const Group = ({ title, children }: any) => (
     <div className="mb-4">
       <h3 className="px-3 mb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400">{title}</h3>
-      <div className="bg-white dark:bg-zinc-900 rounded-xl overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
         {children}
       </div>
     </div>
@@ -212,7 +212,7 @@ export const Settings: React.FC<SettingsProps> = ({
               {activeSection === 'data' && 'Backup & Dados'}
               {activeSection === 'updates' && 'Sistema'}
               {activeSection === 'about' && 'Sobre'}
-              {activeSection === 'reset' && 'Manutenção'}
+              {activeSection === 'reset' && 'Atenção'}
             </h2>
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ajustes</p>
           </div>
@@ -231,7 +231,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       <button 
                         key={m.id}
                         onClick={() => onSetTheme(m.id as ThemeType)}
-                        className={`flex flex-col items-center p-4 rounded-xl border transition-all duration-300 ${theme === m.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-xl scale-105' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}
+                        className={`flex flex-col items-center p-4 rounded-[1.5rem] border transition-all duration-300 ${theme === m.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-xl scale-105' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}
                       >
                         <m.icon className="w-6 h-6 mb-2" strokeWidth={2} />
                         <span className="text-[10px] font-black uppercase tracking-wider">{m.label}</span>
@@ -242,7 +242,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
             <div className="space-y-3">
                  <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Cor de Destaque</h3>
-                 <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl border border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                 <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
                     {ACCENT_COLORS.map((c) => (
                         <button
                             key={c.hex}
@@ -264,8 +264,8 @@ export const Settings: React.FC<SettingsProps> = ({
 
         {activeSection === 'notifications' && (
              <div className="space-y-4">
-                 <div className="bg-sky-50 dark:bg-sky-900/20 p-5 rounded-xl border border-sky-100 dark:border-sky-900/30 flex items-center gap-4">
-                     <div className="w-12 h-12 bg-white dark:bg-sky-900/50 rounded-xl flex items-center justify-center text-sky-500 shadow-sm">
+                 <div className="bg-sky-50 dark:bg-sky-900/20 p-5 rounded-[1.5rem] border border-sky-100 dark:border-sky-900/30 flex items-center gap-4">
+                     <div className="w-12 h-12 bg-white dark:bg-sky-900/50 rounded-2xl flex items-center justify-center text-sky-500 shadow-sm">
                          <Bell className="w-6 h-6" />
                      </div>
                      <div className="flex-1">
@@ -302,7 +302,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
         {activeSection === 'services' && (
           <div className="space-y-4">
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-xl border border-zinc-100 dark:border-zinc-800 space-y-4">
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 space-y-4">
               <div className="flex justify-between items-center mb-2">
                 <div>
                     <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Saúde do Sistema</h3>
@@ -323,10 +323,10 @@ export const Settings: React.FC<SettingsProps> = ({
                     <button 
                         key={s.id} 
                         onClick={() => setSelectedServiceId(s.id)}
-                        className="w-full flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group active:scale-[0.98]"
+                        className="w-full flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group active:scale-[0.98]"
                     >
                         <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${s.status === 'operational' ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : s.status === 'degraded' ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600' : s.status === 'error' ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-600' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${s.status === 'operational' ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : s.status === 'degraded' ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600' : s.status === 'error' ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-600' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
                                 <s.icon className="w-4 h-4" />
                             </div>
                             <div className="text-left">
@@ -361,10 +361,10 @@ export const Settings: React.FC<SettingsProps> = ({
             
             <button 
                 onClick={() => setShowLogs(true)}
-                className="w-full p-4 rounded-xl bg-zinc-950 dark:bg-black border border-zinc-800 flex items-center justify-between group press-effect"
+                className="w-full p-4 rounded-[1.5rem] bg-zinc-950 dark:bg-black border border-zinc-800 flex items-center justify-between group press-effect"
             >
                 <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-zinc-900 flex items-center justify-center text-zinc-400 border border-zinc-800">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-zinc-400 border border-zinc-800">
                         <Terminal className="w-5 h-5" />
                     </div>
                     <div className="text-left">
@@ -377,7 +377,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
             </button>
             
-            <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex gap-3">
+            <div className="p-4 rounded-[1.5rem] bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-white dark:bg-indigo-900/50 flex items-center justify-center shrink-0 text-indigo-500">
                     <Wifi className="w-4 h-4" />
                 </div>
@@ -393,15 +393,15 @@ export const Settings: React.FC<SettingsProps> = ({
 
         {activeSection === 'data' && (
           <div className="space-y-4">
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 text-center">
               <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Database className="w-7 h-7" />
               </div>
               <h3 className="text-lg font-black mb-1">Backup Seguro</h3>
               <p className="text-xs text-zinc-500 mb-6 leading-relaxed px-4">Seus dados são sincronizados na nuvem, mas você pode baixar uma cópia física JSON.</p>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={handleExport} className="py-3.5 bg-blue-500 text-white rounded-lg font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all">Exportar</button>
-                <button onClick={() => fileInputRef.current?.click()} className="py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all">Importar</button>
+                <button onClick={handleExport} className="py-3.5 bg-blue-500 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all">Exportar</button>
+                <button onClick={() => fileInputRef.current?.click()} className="py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all">Importar</button>
               </div>
               <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
             </div>
@@ -409,7 +409,7 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'privacy' && (
-          <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 text-center">
             <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center transition-all duration-300 ${privacyMode ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20 scale-110' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
               {privacyMode ? <EyeOff className="w-8 h-8" /> : <Eye className="w-8 h-8" />}
             </div>
@@ -417,7 +417,7 @@ export const Settings: React.FC<SettingsProps> = ({
             <p className="text-xs text-zinc-500 mb-6 leading-relaxed px-4">Oculta todos os valores monetários na tela de início. Ideal para locais públicos.</p>
             <button 
               onClick={() => onSetPrivacyMode(!privacyMode)}
-              className={`w-full py-4 rounded-lg font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}
+              className={`w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}
             >
               {privacyMode ? 'Desativar Proteção' : 'Ativar Proteção'}
             </button>
@@ -425,7 +425,7 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'updates' && (
-          <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 text-center">
             <div className="w-14 h-14 bg-sky-50 dark:bg-sky-900/20 text-sky-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Rocket className="w-7 h-7" />
             </div>
@@ -434,7 +434,7 @@ export const Settings: React.FC<SettingsProps> = ({
             <div className="space-y-3">
               <button 
                 onClick={() => onCheckUpdates().then(has => showToast(has ? 'success' : 'info', has ? 'Novo update disponível!' : 'Você já está na última versão.'))}
-                className="w-full py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95"
+                className="w-full py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95"
               >
                 Checar Atualizações
               </button>
@@ -444,38 +444,36 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'reset' && (
-          <div className="bg-amber-50 dark:bg-amber-950/30 p-6 rounded-xl border border-amber-100 dark:border-amber-900/30 text-center">
-            <div className="w-14 h-14 bg-amber-500 text-white mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-xl shadow-amber-500/20">
-              <Eraser className="w-7 h-7" />
+          <div className="bg-rose-50 dark:bg-rose-950/30 p-6 rounded-[1.5rem] border border-rose-100 dark:border-rose-900/30 text-center">
+            <div className="w-14 h-14 bg-rose-500 text-white mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-xl shadow-rose-500/20">
+              <ShieldAlert className="w-7 h-7" />
             </div>
-            <h3 className="text-lg font-black text-amber-600 dark:text-amber-400 mb-1">Limpar Cachê</h3>
-            <p className="text-xs text-amber-600/60 dark:text-amber-400/60 mb-6 leading-relaxed">
-                Corrige problemas de interface apagando dados temporários. Suas ordens na nuvem não serão afetadas e sua sessão permanecerá ativa.
-            </p>
+            <h3 className="text-lg font-black text-rose-600 dark:text-rose-400 mb-1">Limpeza do App</h3>
+            <p className="text-xs text-rose-600/60 dark:text-rose-400/60 mb-6 leading-relaxed">Apaga preferências locais (tema, login). Seus dados na nuvem continuam seguros.</p>
             <button 
               onClick={onResetApp}
-              className="w-full py-3.5 bg-amber-500 text-white rounded-lg font-black text-[10px] uppercase tracking-widest shadow-xl shadow-amber-500/20 active:scale-95"
+              className="w-full py-3.5 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-rose-500/20 active:scale-95"
             >
-              Apagar Dados Locais
+              Confirmar Reset Local
             </button>
           </div>
         )}
 
         {activeSection === 'about' && (
           <div className="space-y-4">
-            <div className="bg-white dark:bg-zinc-900 p-8 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
+            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 text-center">
               <img src="./logo.svg" alt="InvestFIIs" className="w-16 h-16 mx-auto mb-4" />
               <h2 className="text-xl font-black text-zinc-900 dark:text-white mb-1">InvestFIIs Pro</h2>
               <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-4">Built for Investors</p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-6">Focado em performance, design e simplicidade para a gestão inteligente de dividendos na B3.</p>
               
               <div className="flex justify-center gap-3">
-                 <a href="#" className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"><Github className="w-5 h-5" /></a>
-                 <a href="#" className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"><Globe className="w-5 h-5" /></a>
+                 <a href="#" className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"><Github className="w-5 h-5" /></a>
+                 <a href="#" className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"><Globe className="w-5 h-5" /></a>
               </div>
             </div>
 
-            <div className="bg-zinc-900 dark:bg-black p-5 rounded-xl text-left relative overflow-hidden group">
+            <div className="bg-zinc-900 dark:bg-black p-5 rounded-[1.5rem] text-left relative overflow-hidden group">
                 <div className="relative z-10">
                     <h4 className="text-xs font-bold text-white mb-2 flex items-center gap-2">
                         <Smartphone className="w-3 h-3" /> Info de Debug
@@ -495,12 +493,121 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
           </div>
         )}
+    </div>
+  );
+
+  return (
+    <div className="anim-fade-in space-y-4">
+      {activeSection === 'menu' ? (
+        <>
+          <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded-xl flex items-center justify-center border border-sky-100 dark:border-sky-800">
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-black text-zinc-900 dark:text-white leading-none mb-1">
+                  {user?.email?.split('@')[0]}
+                </h3>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Sincronizado</p>
+                </div>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowLogoutConfirm(true)}
+              className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center active:scale-90 transition-transform"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+
+          <Group title="Interface">
+            <SettingItem 
+              icon={Palette} 
+              label="Aparência" 
+              value={theme === 'light' ? 'Claro' : theme === 'dark' ? 'Escuro' : 'Auto'}
+              color="bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400"
+              onClick={() => setActiveSection('appearance')} 
+            />
+            <SettingItem 
+              icon={Eye} 
+              label="Privacidade" 
+              value={privacyMode ? 'Ativo' : 'Padrão'}
+              color="bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400"
+              onClick={() => setActiveSection('privacy')} 
+            />
+            <SettingItem 
+              icon={Bell} 
+              label="Notificações" 
+              value={pushEnabled ? 'On' : 'Off'}
+              color="bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400"
+              onClick={() => setActiveSection('notifications')} 
+              isLast
+            />
+          </Group>
+
+          <Group title="Infraestrutura">
+            <SettingItem 
+              icon={Activity} 
+              label="Status das Conexões" 
+              value="Monitorando"
+              badge={services.some(s => s.status !== 'operational' && s.status !== 'unknown')}
+              color="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
+              onClick={() => setActiveSection('services')} 
+            />
+            <SettingItem 
+              icon={Database} 
+              label="Backup e Importação" 
+              color="bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+              onClick={() => setActiveSection('data')} 
+              isLast
+            />
+          </Group>
+
+          <Group title="Sobre o App">
+            <SettingItem 
+              icon={Rocket} 
+              label="Versão do Sistema" 
+              value={`v${appVersion}`}
+              badge={updateAvailable}
+              color="bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400"
+              onClick={() => setActiveSection('updates')} 
+            />
+            <SettingItem 
+              icon={Info} 
+              label="Sobre o InvestFIIs" 
+              color="bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+              onClick={() => setActiveSection('about')} 
+            />
+            <SettingItem 
+              icon={ShieldAlert} 
+              label="Resetar Aplicativo" 
+              color="bg-rose-50 text-rose-500 dark:bg-rose-900/10"
+              onClick={() => setActiveSection('reset')} 
+              isLast
+            />
+          </Group>
+        </>
+      ) : (
+        renderSubPage()
+      )}
+
+      {toast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[2000] anim-fade-in-up is-visible">
+          <div className={`px-5 py-2.5 rounded-2xl shadow-xl font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 ${toast.type === 'success' ? 'bg-emerald-500 text-white' : toast.type === 'info' ? 'bg-sky-500 text-white' : 'bg-rose-500 text-white'}`}>
+            {toast.type === 'success' ? <Check className="w-3.5 h-3.5" /> : toast.type === 'info' ? <Info className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+            {toast.text}
+          </div>
+        </div>
+      )}
 
       <SwipeableModal isOpen={!!selectedService} onClose={() => setSelectedServiceId(null)}>
         {selectedService && (
             <div className="p-8 pb-24">
                 <div className="text-center mb-8">
-                    <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl ${selectedService.status === 'operational' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900' : selectedService.status === 'error' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700'}`}>
+                    <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-xl ${selectedService.status === 'operational' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900' : selectedService.status === 'error' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700'}`}>
                         {selectedService.status === 'operational' ? <CheckCircle2 className="w-10 h-10" /> : selectedService.status === 'error' ? <XCircle className="w-10 h-10" /> : <Activity className="w-10 h-10" />}
                     </div>
                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight mb-2">{selectedService.label}</h2>
@@ -513,12 +620,12 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
 
                 <div className="space-y-4">
-                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-200 dark:border-zinc-800">
                          <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Endpoint</h4>
                          <p className="text-sm font-mono font-medium text-zinc-700 dark:text-zinc-300 break-all">{selectedService.url || 'Internal Service'}</p>
                     </div>
 
-                    <div className="p-5 bg-zinc-950 rounded-xl border border-zinc-800 shadow-inner overflow-hidden">
+                    <div className="p-5 bg-zinc-950 rounded-2xl border border-zinc-800 shadow-inner overflow-hidden">
                          <div className="flex items-center gap-2 mb-3 pb-3 border-b border-zinc-800">
                              <Terminal className="w-4 h-4 text-zinc-500" />
                              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Logs de Conexão</span>
@@ -531,7 +638,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
                 <button 
                   onClick={() => setSelectedServiceId(null)}
-                  className="w-full mt-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                  className="w-full mt-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                 >
                   Fechar Detalhes
                 </button>
@@ -597,9 +704,6 @@ export const Settings: React.FC<SettingsProps> = ({
         onConfirm={() => { setShowLogoutConfirm(false); onLogout(); }} 
         onCancel={() => setShowLogoutConfirm(false)} 
       />
-      
-      {/* GLOBAL TOP TOAST NOTIFICATION FOR SETTINGS (REUSED STYLE) */}
-      {toast && <Toast type={toast.type} text={toast.text} />}
     </div>
   );
 };

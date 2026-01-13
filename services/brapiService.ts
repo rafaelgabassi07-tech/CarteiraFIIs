@@ -68,34 +68,3 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
     return { quotes: [], error: "Erro ao processar fila de cotações" };
   }
 };
-
-/**
- * Busca histórico de cotações para múltiplos ativos.
- * Usa o endpoint de lista com parametro range e interval.
- */
-export const getHistoricalBatch = async (tickers: string[], range = '2y', interval = '1mo'): Promise<Record<string, BrapiQuote>> => {
-    if (!tickers || tickers.length === 0) return {};
-    if (!BRAPI_TOKEN) return {};
-
-    const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
-    // Brapi suporta virgula: quote/PETR4,VALE3?range=...
-    const tickerStr = uniqueTickers.join(',');
-
-    try {
-        const response = await fetch(`https://brapi.dev/api/quote/${tickerStr}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}`);
-        if (!response.ok) return {};
-        
-        const data = await response.json();
-        const map: Record<string, BrapiQuote> = {};
-        
-        if (data.results && Array.isArray(data.results)) {
-            data.results.forEach((r: BrapiQuote) => {
-                map[r.symbol] = r;
-            });
-        }
-        return map;
-    } catch (e) {
-        console.error("Brapi History Batch Error:", e);
-        return {};
-    }
-};
