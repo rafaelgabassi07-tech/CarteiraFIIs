@@ -10,7 +10,7 @@ import { Login } from './pages/Login';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ServiceStatus } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { Check, Loader2, AlertTriangle, Info, Database, Activity, Zap, Globe } from 'lucide-react';
+import { Check, Loader2, AlertTriangle, Info, Database, Activity, Zap, Globe, CheckCircle2 } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -394,25 +394,31 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-primary-light dark:bg-primary-dark">
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       <CloudStatusBanner status={cloudStatus} />
+      
+      {/* GLOBAL TOP TOAST NOTIFICATION */}
       {toast && ( 
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-sm px-4">
+        <div className="fixed top-4 left-4 right-4 z-[3000] flex justify-center pointer-events-none anim-slide-up">
             <div className={`
-              flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up
-              ${toast.type === 'success' ? 'bg-white dark:bg-slate-900 border-l-emerald-500 border-y border-r border-slate-100 dark:border-slate-800' : 
-                toast.type === 'error' ? 'bg-white dark:bg-slate-900 border-l-rose-500 border-y border-r border-slate-100 dark:border-slate-800' :
-                'bg-white dark:bg-slate-900 border-l-sky-500 border-y border-r border-slate-100 dark:border-slate-800'}
+              pointer-events-auto flex items-center gap-3 p-4 rounded-2xl shadow-2xl border transition-all duration-300
+              ${toast.type === 'success' ? 'bg-white/95 dark:bg-zinc-900/95 border-emerald-100 dark:border-emerald-900/30 text-zinc-900 dark:text-white' : 
+                toast.type === 'error' ? 'bg-white/95 dark:bg-zinc-900/95 border-rose-100 dark:border-rose-900/30 text-zinc-900 dark:text-white' :
+                'bg-white/95 dark:bg-zinc-900/95 border-sky-100 dark:border-sky-900/30 text-zinc-900 dark:text-white'}
+              backdrop-blur-md max-w-sm w-full
             `}>
-               <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                 toast.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 
-                 toast.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 
-                 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'
+               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
+                 toast.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 border-emerald-100 dark:border-emerald-900/30' : 
+                 toast.type === 'error' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 border-rose-100 dark:border-rose-900/30' : 
+                 'bg-sky-50 dark:bg-sky-900/20 text-sky-500 border-sky-100 dark:border-sky-900/30'
                }`}>
-                 {toast.type === 'info' ? <Info className="w-4 h-4" /> : 
-                  toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : 
-                  <Check className="w-4 h-4" />}
+                 {toast.type === 'info' ? <Info className="w-5 h-5" strokeWidth={2} /> : 
+                  toast.type === 'error' ? <AlertTriangle className="w-5 h-5" strokeWidth={2} /> : 
+                  <CheckCircle2 className="w-5 h-5" strokeWidth={2} />}
                </div>
-               <div className="min-w-0">
-                 <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.text}</p>
+               <div className="min-w-0 flex-1">
+                 <h4 className="text-sm font-black tracking-tight leading-none mb-1">
+                    {toast.type === 'success' ? 'Sucesso' : toast.type === 'error' ? 'Atenção' : 'Informação'}
+                 </h4>
+                 <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 leading-tight">{toast.text}</p>
                </div>
             </div>
         </div> 

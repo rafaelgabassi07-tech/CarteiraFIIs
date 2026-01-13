@@ -243,10 +243,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [showEvolutionModal]);
 
   // Lógica Avançada de Histórico e Inflação (Desde o Início)
-  const { history, average, maxVal, receiptsByMonth, realYieldMetrics, topPayer } = useMemo(() => {
+  const { history, average, maxVal, receiptsByMonth, realYieldMetrics } = useMemo(() => {
     const map: Record<string, number> = {};
     const receiptsByMonthMap: Record<string, DividendReceipt[]> = {};
-    const assetTotalDivs: Record<string, number> = {};
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     
@@ -260,9 +259,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             map[key] = (map[key] || 0) + r.totalReceived;
             if (!receiptsByMonthMap[key]) receiptsByMonthMap[key] = [];
             receiptsByMonthMap[key].push(r);
-            
-            // Soma por Ativo para achar o Top Payer
-            assetTotalDivs[r.ticker] = (assetTotalDivs[r.ticker] || 0) + r.totalReceived;
         }
         
         // Cálculo Renda 12m
@@ -276,10 +272,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const totalMonthsWithReceipts = sortedHistory.length || 1;
     const average = received / (totalMonthsWithReceipts > 0 ? totalMonthsWithReceipts : 1);
     const maxVal = Math.max(...Object.values(map), 0);
-
-    // Calcular Top Payer
-    const topPayerEntry = Object.entries(assetTotalDivs).reduce((a, b) => a[1] > b[1] ? a : b, ['-', 0]);
-    const topPayer = { ticker: topPayerEntry[0], total: topPayerEntry[1] };
 
     // 2. Timeline Completa (Desde a primeira transação)
     let timelineStart = new Date();
@@ -365,8 +357,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             userDy: currentDy, 
             realReturn, 
             timeline: fullHistoryData
-        },
-        topPayer
+        }
     };
   }, [dividendReceipts, received, invested, inflationRate, portfolio, transactions]);
 
@@ -944,7 +935,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              </div>
              
              {/* HEADER GRID: TOTAL + AVERAGE */}
-             <div className="grid grid-cols-2 gap-3 mb-3 anim-slide-up" style={{ animationDelay: '100ms' }}>
+             <div className="grid grid-cols-2 gap-3 mb-6 anim-slide-up" style={{ animationDelay: '100ms' }}>
                  <div className="bg-emerald-500 p-5 rounded-xl text-white shadow-lg shadow-emerald-500/20">
                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
                      <p className="text-2xl font-black">{formatBRL(received, privacyMode)}</p>
@@ -952,31 +943,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  <div className="bg-zinc-100 dark:bg-zinc-800 p-5 rounded-xl border border-zinc-200 dark:border-zinc-700">
                      <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
                      <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(average, privacyMode)}</p>
-                 </div>
-             </div>
-
-             {/* SUB GRID: TOP PAYER + RECORD */}
-             <div className="grid grid-cols-2 gap-3 mb-6 anim-slide-up" style={{ animationDelay: '200ms' }}>
-                 <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-xl border border-indigo-100 dark:border-indigo-900/30 flex flex-col justify-between">
-                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest">Maior Pagador</span>
-                        <Trophy className="w-3 h-3 text-indigo-500" />
-                     </div>
-                     <div>
-                         <p className="text-base font-black text-indigo-700 dark:text-indigo-300">{topPayer.ticker}</p>
-                         <p className="text-[10px] font-bold text-indigo-500/70">{formatBRL(topPayer.total, privacyMode)}</p>
-                     </div>
-                 </div>
-
-                 <div className="p-4 bg-sky-50 dark:bg-sky-900/10 rounded-xl border border-sky-100 dark:border-sky-900/30 flex flex-col justify-between">
-                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-[9px] font-bold text-sky-500 uppercase tracking-widest">Recorde Mensal</span>
-                        <TrendingUp className="w-3 h-3 text-sky-500" />
-                     </div>
-                     <div>
-                         <p className="text-base font-black text-sky-700 dark:text-sky-300">{formatBRL(maxVal, privacyMode)}</p>
-                         {/* Opcional: Mostrar qual mês foi o recorde se desejado */}
-                     </div>
                  </div>
              </div>
 

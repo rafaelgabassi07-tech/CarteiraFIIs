@@ -500,6 +500,35 @@ export const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="anim-fade-in space-y-4">
+      {/* GLOBAL TOP TOAST NOTIFICATION FOR SETTINGS (REUSED STYLE) */}
+      {toast && ( 
+        <div className="fixed top-4 left-4 right-4 z-[3000] flex justify-center pointer-events-none anim-slide-up">
+            <div className={`
+              pointer-events-auto flex items-center gap-3 p-4 rounded-2xl shadow-2xl border transition-all duration-300
+              ${toast.type === 'success' ? 'bg-white/95 dark:bg-zinc-900/95 border-emerald-100 dark:border-emerald-900/30 text-zinc-900 dark:text-white' : 
+                toast.type === 'error' ? 'bg-white/95 dark:bg-zinc-900/95 border-rose-100 dark:border-rose-900/30 text-zinc-900 dark:text-white' :
+                'bg-white/95 dark:bg-zinc-900/95 border-sky-100 dark:border-sky-900/30 text-zinc-900 dark:text-white'}
+              backdrop-blur-md max-w-sm w-full
+            `}>
+               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
+                 toast.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 border-emerald-100 dark:border-emerald-900/30' : 
+                 toast.type === 'error' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 border-rose-100 dark:border-rose-900/30' : 
+                 'bg-sky-50 dark:bg-sky-900/20 text-sky-500 border-sky-100 dark:border-sky-900/30'
+               }`}>
+                 {toast.type === 'info' ? <Info className="w-5 h-5" strokeWidth={2} /> : 
+                  toast.type === 'error' ? <AlertTriangle className="w-5 h-5" strokeWidth={2} /> : 
+                  <CheckCircle2 className="w-5 h-5" strokeWidth={2} />}
+               </div>
+               <div className="min-w-0 flex-1">
+                 <h4 className="text-sm font-black tracking-tight leading-none mb-1">
+                    {toast.type === 'success' ? 'Sucesso' : toast.type === 'error' ? 'Atenção' : 'Informação'}
+                 </h4>
+                 <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 leading-tight">{toast.text}</p>
+               </div>
+            </div>
+        </div> 
+      )}
+
       {activeSection === 'menu' ? (
         <>
           <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between mb-2">
@@ -594,15 +623,6 @@ export const Settings: React.FC<SettingsProps> = ({
         </>
       ) : (
         renderSubPage()
-      )}
-
-      {toast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[2000] anim-fade-in-up is-visible">
-          <div className={`px-5 py-2.5 rounded-2xl shadow-xl font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 ${toast.type === 'success' ? 'bg-emerald-500 text-white' : toast.type === 'info' ? 'bg-sky-500 text-white' : 'bg-rose-500 text-white'}`}>
-            {toast.type === 'success' ? <Check className="w-3.5 h-3.5" /> : toast.type === 'info' ? <Info className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-            {toast.text}
-          </div>
-        </div>
       )}
 
       <SwipeableModal isOpen={!!selectedService} onClose={() => setSelectedServiceId(null)}>
