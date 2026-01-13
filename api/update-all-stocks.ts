@@ -4,35 +4,31 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 
-// Inicializa o cliente Supabase
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '',
   process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || ''
 );
 
-// Lógica de Scraping Centralizada
+const KNOWN_STOCKS_11 = ['TAEE11', 'KLBN11', 'ALUP11', 'SAPR11', 'SANB11', 'BPAC11', 'TIET11', 'BBSE11', 'BIDI11', 'ENGI11', 'SULA11', 'CPFE11', 'IGTI11', 'ITUB11', 'BBDC11'];
+
 async function scrapeTickerData(ticker: string) {
     try {
         const stock = ticker.toUpperCase().trim();
         let typePath = 'acoes';
         let assetType = 'ACAO';
         
-        if (stock.endsWith('11') || stock.endsWith('11B')) {
+        if ((stock.endsWith('11') || stock.endsWith('11B')) && !KNOWN_STOCKS_11.includes(stock)) {
             typePath = 'fiis';
             assetType = 'FII';
+        } else if (stock.endsWith('33') || stock.endsWith('34')) {
+            typePath = 'bdrs';
+            assetType = 'ACAO';
         }
 
         const targetUrl = `https://investidor10.com.br/${typePath}/${stock.toLowerCase()}/`;
         
         let html;
-        const headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Cache-Control': 'no-cache'
-        };
+        const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' };
 
         if (process.env.SCRAPER_API_KEY) {
              const response = await axios.get('http://api.scraperapi.com', {
@@ -47,97 +43,62 @@ async function scrapeTickerData(ticker: string) {
 
         const $ = cheerio.load(html);
 
-        // --- 1. Fundamentos ---
-        const getFundamentalValue = (labels: string[]) => {
-            let valFound = 0;
-            $('span, div, p').each((_, el) => {
-                const text = $(el).text().trim().toUpperCase();
-                if (labels.some(l => text === l.toUpperCase())) {
-                     const card = $(el).closest('div[class*="card"]');
-                     let v = card.find('.value').text().trim();
-                     if(v) { valFound = parseMoney(v); return false; }
-                }
-            });
-            return valFound;
-        };
+        const parseVal = (s: string) => parseFloat(s.replace(/[R$\%\s.]/g, '').replace(',', '.')) || 0;
 
-        const cotacao = getFundamentalValue(["Cotação", "Valor Atual", "Preço"]);
-        const pvp = getFundamentalValue(["P/VP", "P/VPA"]);
-        const dy = getFundamentalValue(["DY", "Dividend Yield", "DY (12M)"]);
-        
-        // --- 2. Segmento (Lógica Aprimorada) ---
+        let cotacao = parseVal($('._card-body span:contains("Cotação")').closest('.card').find('._card-body span').last().text()) || parseVal($('.quotation-price').first().text());
+        let pvp = parseVal($('div[title="P/VP"] .value').text());
+        let dy = parseVal($('div[title="Dividend Yield"] .value').text());
+
         let segment = 'Geral';
-        const segmentEl = $('.segment-data .value, .sector-data .value').first();
-        if (segmentEl.length) {
-            segment = segmentEl.text().trim();
-        } else {
-            $('div.cell').each((_, el) => {
-                const label = $(el).find('.name').text().trim().toLowerCase();
-                if (label === 'segmento') {
-                    const val = $(el).find('.value').text().trim();
-                    if (val) segment = val;
-                }
-            });
-            if (segment === 'Geral') {
-                 const labelSpan = $('span:contains("Segmento"), span:contains("Setor")').first();
-                 if (labelSpan.length) {
-                     const nextText = labelSpan.next().text().trim();
-                     if (nextText && nextText.length > 2) segment = nextText;
-                 }
-            }
+        const segmentSelectors = ['.segment-data .value', '.sector-data .value', 'div.cell:contains("Segmento") .value', 'div.cell:contains("Setor") .value'];
+        for (const sel of segmentSelectors) {
+            const txt = $(sel).first().text().trim();
+            if (txt && txt.length > 2 && !txt.includes(':')) { segment = txt; break; }
         }
 
-        // Atualiza Metadata
         await supabase.from('ativos_metadata').upsert({
             ticker: stock, type: assetType, segment, current_price: cotacao, pvp, dy_12m: dy, updated_at: new Date()
         });
 
-        // --- 3. Proventos (Regex Inteligente) ---
         const dividendsToUpsert: any[] = [];
         const processedKeys = new Set();
-        
-        $('table tr').each((_, tr) => {
-            const cols = $(tr).find('td');
-            if (cols.length >= 3) {
-                let tipo = '';
-                let dataCom: string | null = null;
-                let dataPag: string | null = null;
-                let valor = 0;
 
-                cols.each((_, td) => {
-                    const text = $(td).text().trim();
-                    const textLower = text.toLowerCase();
-                    
-                    if (textLower.includes('jcp') || textLower.includes('juros')) tipo = 'JCP';
-                    else if (textLower.includes('dividendo')) tipo = 'DIV';
-                    else if (textLower.includes('rendimento')) tipo = 'REND';
+        $('table').each((_, table) => {
+            const headerMap: Record<string, number> = {};
+            $(table).find('thead th').each((idx, th) => {
+                const txt = $(th).text().toLowerCase().trim();
+                if (txt.includes('com') || txt.includes('base')) headerMap.com = idx;
+                if (txt.includes('pagamento')) headerMap.pag = idx;
+                if (txt.includes('valor')) headerMap.val = idx;
+                if (txt.includes('tipo')) headerMap.type = idx;
+            });
 
-                    if (/\d{2}\/\d{2}\/\d{4}/.test(text)) {
-                        const parsedDate = parseDate(text);
-                        if (parsedDate) {
-                            if (!dataCom) dataCom = parsedDate;
-                            else if (!dataPag) dataPag = parsedDate;
+            if (headerMap.com !== undefined && headerMap.val !== undefined) {
+                $(table).find('tbody tr').each((_, tr) => {
+                    const tds = $(tr).find('td');
+                    if (tds.length < 2) return;
+
+                    const dateComRaw = $(tds[headerMap.com]).text().trim();
+                    const valRaw = $(tds[headerMap.val]).text().trim();
+                    const datePagRaw = headerMap.pag !== undefined ? $(tds[headerMap.pag]).text().trim() : '';
+                    const typeRaw = headerMap.type !== undefined ? $(tds[headerMap.type]).text().trim() : '';
+
+                    const dateCom = parseDate(dateComRaw);
+                    const datePag = parseDate(datePagRaw) || dateCom;
+                    const val = parseVal(valRaw);
+
+                    let tipo = 'DIV';
+                    if (typeRaw.toLowerCase().includes('jcp')) tipo = 'JCP';
+                    else if (typeRaw.toLowerCase().includes('rendimento')) tipo = 'REND';
+
+                    if (dateCom && val > 0) {
+                        const key = `${stock}-${tipo}-${dateCom}-${datePag}-${val}`;
+                        if (!processedKeys.has(key)) {
+                            dividendsToUpsert.push({ ticker: stock, type: tipo, date_com: dateCom, payment_date: datePag, rate: val });
+                            processedKeys.add(key);
                         }
                     }
-
-                    if ((text.includes(',') || text.includes('.')) && !text.includes('%') && /\d/.test(text)) {
-                        const v = parseMoney(text);
-                        if (v > 0 && v < 1000) valor = v;
-                    }
                 });
-
-                if (!dataPag && dataCom) dataPag = dataCom;
-                if (!tipo) tipo = assetType === 'FII' ? 'REND' : 'DIV';
-
-                if (valor > 0 && dataCom && dataPag) {
-                    const uniqueKey = `${stock}-${tipo}-${dataCom}-${dataPag}-${valor}`;
-                    if (!processedKeys.has(uniqueKey)) {
-                        dividendsToUpsert.push({
-                            ticker: stock, type: tipo, date_com: dataCom, payment_date: dataPag, rate: valor
-                        });
-                        processedKeys.add(uniqueKey);
-                    }
-                }
             }
         });
 
@@ -155,13 +116,7 @@ async function scrapeTickerData(ticker: string) {
     }
 }
 
-function parseMoney(str: string) {
-    if (!str) return 0;
-    const clean = str.replace('R$', '').replace('%', '').replace(/\./g, '').replace(',', '.').trim();
-    return parseFloat(clean) || 0;
-}
-
-function parseDate(str: string) {
+function parseDate(str: string): string | null {
     if (!str || str.length < 8) return null;
     const match = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
     if (match) return `${match[3]}-${match[2]}-${match[1]}`;
@@ -179,11 +134,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (error) throw error;
 
     const uniqueTickers = [...new Set((transactions || []).map((t: any) => t.ticker))];
-    const batchSize = 3;
+    const batchSize = 3; 
     const batch = uniqueTickers.slice(0, batchSize); 
 
     console.log(`[Cron] Atualizando lote de ${batch.length} ativos...`);
-
     const results = await Promise.all(batch.map((ticker: unknown) => scrapeTickerData(ticker as string)));
 
     return res.status(200).json({ success: true, processed: results.length, results });
