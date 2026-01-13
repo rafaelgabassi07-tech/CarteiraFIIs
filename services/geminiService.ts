@@ -9,12 +9,9 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Busca IPCA acumulado 12 meses
+// Busca IPCA acumulado 12 meses (Fallback para BrasilAPI)
 const fetchInflationData = async (): Promise<number> => {
-    // Valor fallback recente (IPCA acumulado 12m - ref mid-2025)
-    // Atualize este valor periodicamente se a API falhar constantemente
     const FALLBACK_IPCA = 4.62;
-
     try {
         const response = await fetch('https://brasilapi.com.br/api/taxas/v1', { 
             cache: 'force-cache',
@@ -27,13 +24,11 @@ const fetchInflationData = async (): Promise<number> => {
         }
         
         const data = await response.json();
-        // A API retorna um array. Ex: [{ nome: 'IPCA', valor: 4.50 }, ...]
         const ipcaObj = data.find((item: any) => item.nome === 'IPCA');
         
         if (ipcaObj && !isNaN(Number(ipcaObj.valor))) {
             return Number(ipcaObj.valor);
         }
-
         return FALLBACK_IPCA;
     } catch (e) {
         console.warn("Erro ao buscar inflação (Network/CORS), usando fallback:", e);
@@ -47,7 +42,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
 
   try {
-      // 1. Busca Dividendos
+      // 1. Busca Dividendos Históricos e Futuros no Supabase (Fonte: Scraper)
       const { data: dividendsData, error: divError } = await supabase
             .from('market_dividends')
             .select('*')
@@ -62,11 +57,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             dateCom: d.date_com, 
             paymentDate: d.payment_date,
             rate: Number(d.rate),
-            quantityOwned: 0, 
-            totalReceived: 0
+            quantityOwned: 0, // Será calculado no App.tsx
+            totalReceived: 0 // Será calculado no App.tsx
       }));
 
-      // 2. Busca Metadata (Fundamentos e Segmentos)
+      // 2. Busca Metadata (Fundamentos e Segmentos) no Supabase (Fonte: Scraper)
+      // Nota: O Scraper popula esta tabela.
       const { data: metaData, error: metaError } = await supabase
             .from('ativos_metadata')
             .select('*')
@@ -98,7 +94,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           });
       }
 
-      // 3. Busca Indicadores Macro (Inflação)
+      // 3. Busca Indicadores Macro
       const ipca = await fetchInflationData();
 
       return { 

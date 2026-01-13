@@ -7,17 +7,17 @@ import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ServiceStatus } from './types';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
-import { Check, Loader2, AlertTriangle, Info, Database, Activity, Zap, Globe } from 'lucide-react';
+import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.2.8'; 
+const APP_VERSION = '8.3.0'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -29,27 +29,23 @@ const STORAGE_KEYS = {
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
   NOTIF_HISTORY: 'investfiis_notification_history_v2',
-  METADATA: 'investfiis_metadata_v1' // Novo cache para metadados (segmentos)
+  METADATA: 'investfiis_metadata_v2' // Versão atualizada do cache
 };
 
 // Arredonda para 2 casas decimais
 const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
 /**
- * Calcula a quantidade de ativos que o usuário possuía em uma data específica (Data Com).
- * Comparação simplificada de strings para evitar problemas de timezone.
+ * Calcula quantidade em Data Com
  */
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!dateCom || dateCom.length < 10) return 0;
-  
-  // O banco retorna YYYY-MM-DD. As transações também salvam YYYY-MM-DD.
   const targetDate = dateCom.substring(0, 10); 
   const targetTicker = ticker.trim().toUpperCase();
 
   return transactions
     .filter(t => {
         const txDate = (t.date || '').substring(0, 10);
-        // Se a compra foi feita ATÉ o dia da Data Com (inclusive), conta.
         return t.ticker.trim().toUpperCase() === targetTicker && txDate <= targetDate;
     })
     .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
@@ -103,7 +99,7 @@ const App: React.FC = () => {
   const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.5, startDate: '' }; } catch { return { ipca: 4.5, startDate: '' }; } });
   
-  // Persistence for Metadata (Fixes disappearing segments)
+  // METADATA STORE: Segura Segmento, P/VP, DY vindos do Scraper/Supabase
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => {
       try { const s = localStorage.getItem(STORAGE_KEYS.METADATA); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
@@ -119,12 +115,14 @@ const App: React.FC = () => {
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
 
+  // Persistência Local
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.NOTIF_HISTORY, JSON.stringify(notifications.slice(0, 50))); }, [notifications]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.METADATA, JSON.stringify(assetsMetadata)); }, [assetsMetadata]);
 
+  // Efeitos de Tema
   useEffect(() => {
     const root = window.document.documentElement;
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -137,6 +135,7 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
   }, [accentColor]);
 
+  // Monitoramento de Saúde
   const checkServiceHealth = useCallback(async () => {
     setIsCheckingServices(true);
     const newServices = [...services]; 
@@ -187,6 +186,7 @@ const App: React.FC = () => {
       }
   }, [session]); 
 
+  // UI Helpers
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
     setToast(null);
@@ -196,12 +196,17 @@ const App: React.FC = () => {
     }, 50);
   }, []);
 
+  // CORE: Sincronização de Dados
+  // 1. Busca Cotações (Brapi) -> Preço
+  // 2. Busca Metadata (Supabase) -> Segmento, PVP, DY, Dividendos
   const syncMarketData = useCallback(async (force = false, txsToUse: Transaction[], initialLoad = false) => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) return;
     setIsRefreshing(true);
     if (initialLoad) setLoadingProgress(50);
+    
     try {
+      // 1. Cotações (BRAPI)
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
@@ -210,6 +215,7 @@ const App: React.FC = () => {
       if (initialLoad) setLoadingProgress(70); 
       
       setIsAiLoading(true);
+      // 2. Dados Fundamentais e Proventos (SUPABASE - Populado pelo Scraper)
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
       const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
       
@@ -217,11 +223,10 @@ const App: React.FC = () => {
           setGeminiDividends(aiData.dividends);
       }
       if (Object.keys(aiData.metadata).length > 0) {
-          // Merge with existing to avoid overwriting unrelated keys if any
+          // Merge inteligente para não sobrescrever dados se a API falhar parcialmente
           setAssetsMetadata(prev => ({...prev, ...aiData.metadata}));
       }
       
-      // ATUALIZAÇÃO DO IPCA ADICIONADA AQUI
       if (aiData.indicators) {
          setMarketIndicators({ 
              ipca: aiData.indicators.ipca_cumulative, 
@@ -267,6 +272,9 @@ const App: React.FC = () => {
       window.location.reload();
   }, []);
 
+  // MANUAL SCRAPER TRIGGER
+  // Dispara a API Serverless para varrer o Investidor10 e atualizar o Supabase.
+  // Em seguida, força um sync do Frontend para pegar os dados novos do Supabase.
   const handleManualScraperTrigger = async () => {
       if (transactions.length === 0) {
           showToast('info', 'Cadastre ativos primeiro.');
@@ -276,12 +284,11 @@ const App: React.FC = () => {
       const uniqueTickers = [...new Set(transactions.map(t => t.ticker))];
       
       // Batch Processing to avoid rate limits
-      // Processa 3 ativos por vez
       const BATCH_SIZE = 3;
       let processed = 0;
       let cachedCount = 0;
       
-      showToast('info', `Verificando ${uniqueTickers.length} ativos...`);
+      showToast('info', `Atualizando ${uniqueTickers.length} ativos...`);
 
       try {
           for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
@@ -289,8 +296,7 @@ const App: React.FC = () => {
               
               await Promise.all(batch.map(async (ticker) => {
                  try {
-                   // A API agora verifica o cache do banco antes de ir para o site externo.
-                   // ADICIONADO &force=true AQUI
+                   // Chama API Serverless com force=true
                    const res = await fetch(`/api/update-stock?ticker=${ticker}&force=true`);
                    if (res.ok) {
                        const data = await res.json();
@@ -300,17 +306,15 @@ const App: React.FC = () => {
                  } catch (e) { console.error(`Falha ao atualizar ${ticker}`, e); }
               }));
               
-              // Pequeno delay entre lotes para ser gentil com a rede
               if (i + BATCH_SIZE < uniqueTickers.length) {
                   await new Promise(resolve => setTimeout(resolve, 800));
               }
           }
           
           if (processed > 0) {
-              // Mesmo com force=true, se o backend falhar no scraping e usar cache fallback, ele avisaria.
-              const fromCacheMsg = cachedCount > 0 ? ` (${cachedCount} via cache)` : '';
-              showToast('success', `${processed} ativos atualizados!`);
-              await handleSyncAll(true);
+              showToast('success', 'Dados atualizados! Sincronizando...');
+              // Após o scraping, precisamos puxar os novos dados do Supabase
+              await syncMarketData(true, transactions); 
           } else {
               showToast('error', 'Falha ao conectar com servidor.');
           }
@@ -366,11 +370,10 @@ const App: React.FC = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
-    // Filtro mais permissivo para proventos:
     const receipts = geminiDividends.map(d => {
         const qty = getQuantityOnDate(d.ticker, d.dateCom, sortedTxs);
         return { ...d, quantityOwned: qty, totalReceived: qty * d.rate };
-    }).filter(r => r.totalReceived > 0.0001); // Mantém apenas se recebeu algo
+    }).filter(r => r.totalReceived > 0.0001); 
 
     const divPaidMap: Record<string, number> = {};
     let totalDividendsReceived = 0;
@@ -402,16 +405,24 @@ const App: React.FC = () => {
 
     const finalPortfolio = Object.values(positions)
         .filter(p => p.quantity > 0.001)
-        .map(p => ({ 
-            ...p, 
-            totalDividends: divPaidMap[p.ticker] || 0, 
-            segment: assetsMetadata[p.ticker]?.segment || 'Geral', 
-            currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice, 
-            dailyChange: quotes[p.ticker]?.regularMarketChangePercent || 0, 
-            logoUrl: quotes[p.ticker]?.logourl, 
-            assetType: assetsMetadata[p.ticker]?.type || p.assetType, 
-            ...assetsMetadata[p.ticker]?.fundamentals 
-        }));
+        .map(p => {
+            // Lógica Central de Fonte de Dados
+            // Preço -> Brapi (quotes)
+            // Segmento, P/VP, DY -> Metadata (assetsMetadata/Scraper)
+            const meta = assetsMetadata[p.ticker] || {};
+            const quote = quotes[p.ticker] || {};
+
+            return { 
+                ...p, 
+                totalDividends: divPaidMap[p.ticker] || 0, 
+                segment: meta.segment || 'Geral', 
+                currentPrice: quote.regularMarketPrice || p.averagePrice, 
+                dailyChange: quote.regularMarketChangePercent || 0, 
+                logoUrl: quote.logourl, 
+                assetType: meta.type || p.assetType, 
+                ...meta.fundamentals 
+            };
+        });
 
     const invested = round(finalPortfolio.reduce((a, p) => a + (p.averagePrice * p.quantity), 0));
     const balance = round(finalPortfolio.reduce((a, p) => a + ((p.currentPrice || p.averagePrice) * p.quantity), 0));

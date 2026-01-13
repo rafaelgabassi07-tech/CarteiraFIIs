@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     if (KNOWN_ETFS.includes(stock)) {
         typePath = 'etfs';
-        assetType = 'ETF'; // Você pode mapear para STOCK se preferir simplificar
+        assetType = 'ETF'; 
     } else if ((stock.endsWith('11') || stock.endsWith('11B')) && !KNOWN_STOCKS_11.includes(stock)) {
         typePath = 'fiis';
         assetType = 'FII';
@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const targetUrl = `https://investidor10.com.br/${typePath}/${stock.toLowerCase()}/`;
     
-    // Headers anti-bot melhorados
+    // Headers anti-bot
     const headers = { 
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -81,30 +81,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
     };
 
-    // 3. Fundamentos
+    // 3. Fundamentos (Fallback para quando Brapi não tem)
     let cotacao = parseVal($('._card-body span:contains("Cotação")').closest('.card').find('._card-body span').last().text());
     if(!cotacao) cotacao = parseVal($('.quotation-price').first().text());
     
     let pvp = parseVal($('div[title="P/VP"] .value').text());
     let dy = parseVal($('div[title="Dividend Yield"] .value').text());
 
-    // 4. Segmento
+    // 4. Segmento - Lógica Aprimorada
     let segment = 'Geral';
-    const segmentSelectors = ['.segment-data .value', '.sector-data .value', 'div.cell:contains("Segmento") .value'];
+    // Prioriza .segment-data (FIIs) e .sector-data (Ações)
+    const segmentSelectors = [
+        '.segment-data .value', 
+        '.sector-data .value', 
+        'div.cell:contains("Segmento") .value',
+        'div.cell:contains("Setor") .value'
+    ];
+    
     for (const sel of segmentSelectors) {
         const txt = $(sel).first().text().trim();
-        if (txt && txt.length > 2) { segment = txt; break; }
+        if (txt && txt.length > 2 && !txt.includes('-')) { 
+            segment = txt; 
+            break; 
+        }
     }
 
+    // Salva Metadados no Supabase
     await supabase.from('ativos_metadata').upsert({
         ticker: stock, type: assetType, segment, current_price: cotacao, pvp, dy_12m: dy, updated_at: new Date()
     }, { onConflict: 'ticker' });
 
-    // 5. Proventos (Híbrido: Header-based + Fallback Row Scan)
+    // 5. Proventos
     const dividendsToUpsert: any[] = [];
     const processedKeys = new Set();
 
-    // Método A: Tabelas com Cabeçalho
     $('table').each((_, table) => {
         const headerMap: Record<string, number> = {};
         $(table).find('thead th').each((idx, th) => {
@@ -140,37 +150,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
     });
 
-    // Método B: Fallback (Se encontrou pouco, varre tudo)
-    if (dividendsToUpsert.length < 2) {
-        $('tr').each((_, tr) => {
-             const txt = $(tr).text();
-             // Procura linha que tenha data (DD/MM/AAAA) e dinheiro (R$ X,XX ou X,XX)
-             if (/\d{2}\/\d{2}\/\d{4}/.test(txt) && /[0-9],[0-9]/.test(txt)) {
-                 const tds = $(tr).find('td');
-                 let dCom: string | null = null;
-                 let val = 0;
-                 let tipo = 'DIV';
-
-                 tds.each((_, td) => {
-                     const t = $(td).text().trim();
-                     const asDate = parseDate(t);
-                     if (asDate && !dCom) dCom = asDate;
-                     const asVal = parseVal(t);
-                     if (asVal > 0 && asVal < 500 && t.includes(',')) val = asVal; // Sanity check < 500
-                     if (t.toLowerCase().includes('jcp')) tipo = 'JCP';
-                 });
-
-                 if (dCom && val > 0) {
-                      const key = `${stock}-${tipo}-${dCom}-${dCom}-${val}`;
-                      if (!processedKeys.has(key)) {
-                          dividendsToUpsert.push({ ticker: stock, type: tipo, date_com: dCom, payment_date: dCom, rate: val });
-                          processedKeys.add(key);
-                      }
-                 }
-             }
-        });
-    }
-
     if (dividendsToUpsert.length > 0) {
         await supabase.from('market_dividends').upsert(dividendsToUpsert, {
             onConflict: 'ticker, type, date_com, payment_date, rate', ignoreDuplicates: true
@@ -180,6 +159,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ 
         success: true, 
         ticker: stock, 
+        segment: segment,
         fundamentals: { price: cotacao, pvp, dy },
         dividends_found: dividendsToUpsert.length
     });
