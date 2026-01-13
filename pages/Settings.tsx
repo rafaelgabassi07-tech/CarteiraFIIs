@@ -11,6 +11,7 @@ import { ThemeType } from '../App';
 import { ConfirmationModal, SwipeableModal } from '../components/Layout';
 import { logger } from '../services/logger';
 import { parseB3Excel } from '../services/excelService';
+import { supabase } from '../services/supabase';
 
 interface SettingsProps {
   user: any;
@@ -35,7 +36,6 @@ interface SettingsProps {
   onSyncAll: (force: boolean) => Promise<void>;
   currentVersionDate: string | null;
   onForceUpdate: () => void; 
-  // Novos props
   services: ServiceMetric[];
   onCheckConnection: () => Promise<void>;
   isCheckingConnection: boolean;
@@ -80,10 +80,8 @@ export const Settings: React.FC<SettingsProps> = ({
     updates: true
   });
 
-  // Encontra o serviço selecionado no array recebido via props
   const selectedService = services.find(s => s.id === selectedServiceId) || null;
 
-  // Subscribe to logger
   useEffect(() => {
       const unsubscribe = logger.subscribe(setLogs);
       return unsubscribe;
@@ -147,30 +145,74 @@ export const Settings: React.FC<SettingsProps> = ({
       if (!file) return;
       setIsImporting(true);
       try {
-          const newTransactions = await parseB3Excel(file);
-          if (newTransactions.length === 0) {
-              showToast('error', 'Nenhuma transação identificada. Verifique o layout da planilha.');
+          const { transactions: newTxs, dividends: newDivs } = await parseB3Excel(file);
+          
+          if (newTxs.length === 0 && newDivs.length === 0) {
+              showToast('error', 'Nenhum dado válido identificado na planilha.');
           } else {
-              // Mescla com as existentes evitando duplicatas exatas de ID se houver, 
-              // mas para excel geralmente geramos novos IDs. 
-              // O ideal seria verificar duplicatas por ticker/data/qtd/preço.
-              // Aqui vamos apenas adicionar por simplicidade.
-              
-              // Filtra duplicatas lógicas simples (mesmo dia, ticker, qtd, preço)
+              // 1. Processar Transações (Salvar no Supabase para persistência)
               const existingSig = new Set(transactions.map(t => `${t.ticker}-${t.date}-${t.quantity}-${t.price}-${t.type}`));
-              const toAdd = newTransactions.filter(t => !existingSig.has(`${t.ticker}-${t.date}-${t.quantity}-${t.price}-${t.type}`));
+              const txsToAdd = newTxs.filter(t => !existingSig.has(`${t.ticker}-${t.date}-${t.quantity}-${t.price}-${t.type}`));
               
-              if (toAdd.length > 0) {
-                  onImportTransactions([...transactions, ...toAdd]);
-                  showToast('success', `${toAdd.length} ordens importadas!`);
+              if (txsToAdd.length > 0 && user?.id) {
+                  // Prepara payload para o banco
+                  const dbPayload = txsToAdd.map(t => ({
+                      ticker: t.ticker,
+                      type: t.type,
+                      quantity: t.quantity,
+                      price: t.price,
+                      date: t.date,
+                      asset_type: t.assetType, 
+                      user_id: user.id
+                  }));
+                  
+                  // Salva na nuvem
+                  const { error } = await supabase.from('transactions').insert(dbPayload);
+                  
+                  if (error) {
+                      console.error('Erro ao salvar importação:', error);
+                      showToast('error', 'Erro ao salvar ordens na nuvem.');
+                  } else {
+                      // Atualiza estado local imediatamente para feedback visual
+                      onImportTransactions([...transactions, ...txsToAdd]);
+                  }
+              }
+
+              // 2. Processar Dividendos (Mesclar com estado local)
+              // Verifica duplicatas baseadas em Data e Valor
+              const combinedDivs = [...geminiDividends];
+              let divsAddedCount = 0;
+              
+              newDivs.forEach(d => {
+                  const exists = combinedDivs.some(existing => 
+                      existing.ticker === d.ticker && 
+                      existing.paymentDate === d.paymentDate && 
+                      Math.abs(existing.totalReceived - d.totalReceived) < 0.05 // Margem de erro centavos
+                  );
+                  if (!exists) {
+                      combinedDivs.push(d);
+                      divsAddedCount++;
+                  }
+              });
+
+              if (divsAddedCount > 0) {
+                  onImportDividends(combinedDivs);
+              }
+
+              const msgParts = [];
+              if (txsToAdd.length > 0) msgParts.push(`${txsToAdd.length} ordens`);
+              if (divsAddedCount > 0) msgParts.push(`${divsAddedCount} proventos`);
+              
+              if (msgParts.length > 0) {
+                  showToast('success', `Importado: ${msgParts.join(' e ')}!`);
                   setActiveSection('menu');
               } else {
-                  showToast('info', 'Todas as ordens do arquivo já existem.');
+                  showToast('info', 'Dados já existem na carteira.');
               }
           }
       } catch (error) {
           console.error(error);
-          showToast('error', 'Erro ao ler arquivo Excel.');
+          showToast('error', 'Erro ao ler arquivo. Verifique o formato.');
       } finally {
           setIsImporting(false);
           if (excelInputRef.current) excelInputRef.current.value = '';
