@@ -1,3 +1,4 @@
+
 export {};
 
 declare global {
@@ -5,6 +6,7 @@ declare global {
     interface ProcessEnv {
       API_KEY: string;
       BRAPI_TOKEN: string;
+      SCRAPER_API_KEY?: string;
       [key: string]: string | undefined;
     }
   }
