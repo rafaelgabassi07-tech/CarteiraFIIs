@@ -39,15 +39,18 @@ async function scrapeTickerData(ticker: string) {
             });
             html = response.data;
         } else {
+             // Headers Otimizados para "Direct Mode"
              const response = await axios.get(targetUrl, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                     'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
                     'Referer': 'https://www.google.com.br/',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
                     'Cache-Control': 'no-cache'
                 },
-                timeout: 12000
+                timeout: 15000
             });
             html = response.data;
         }
@@ -86,28 +89,49 @@ async function scrapeTickerData(ticker: string) {
 
         // --- Seletores de Proventos ---
         const dividendsToUpsert: any[] = [];
-        $('#table-dividends-history tbody tr').each((_, element) => {
-            const cols = $(element).find('td');
-            if (cols.length >= 4) {
-                const tipoRaw = $(cols[0]).text().trim(); 
-                const dataCom = parseDate($(cols[1]).text().trim());
-                const dataPagamento = parseDate($(cols[2]).text().trim());
-                const valor = parseMoney($(cols[3]).text().trim());
+        
+        // Busca genérica por tabelas com headers de proventos
+        $('table').each((_, table) => {
+            const headersText = $(table).find('thead').text().toLowerCase();
+            if (headersText.includes('com') && headersText.includes('pagamento')) {
+                const headerMap: any = { tipo: 0, dataCom: 1, dataPag: 2, valor: 3 };
+                
+                $(table).find('thead th').each((idx, th) => {
+                    const h = $(th).text().trim().toLowerCase();
+                    if (h.includes('tipo')) headerMap.tipo = idx;
+                    if (h.includes('com') || h.includes('base')) headerMap.dataCom = idx;
+                    if (h.includes('pagamento')) headerMap.dataPag = idx;
+                    if (h.includes('valor')) headerMap.valor = idx;
+                });
 
-                let tipo = 'DIV';
-                const tLower = tipoRaw.toLowerCase();
-                if (tLower.includes('juros') || tLower.includes('jcp')) tipo = 'JCP';
-                else if (tLower.includes('rendimento')) tipo = 'REND';
+                $(table).find('tbody tr').each((_, tr) => {
+                    const cols = $(tr).find('td');
+                    if (cols.length >= 4) {
+                        const tipoRaw = $(cols[headerMap.tipo]).text().trim();
+                        const dataComRaw = $(cols[headerMap.dataCom]).text().trim();
+                        const dataPagRaw = $(cols[headerMap.dataPag]).text().trim();
+                        const valorRaw = $(cols[headerMap.valor]).text().trim();
 
-                if (valor > 0 && dataCom && dataPagamento) {
-                    dividendsToUpsert.push({
-                        ticker: stock,
-                        type: tipo,
-                        date_com: dataCom,
-                        payment_date: dataPagamento,
-                        rate: valor
-                    });
-                }
+                        const dataCom = parseDate(dataComRaw);
+                        const dataPagamento = parseDate(dataPagRaw);
+                        const valor = parseMoney(valorRaw);
+
+                        let tipo = 'DIV';
+                        const tLower = tipoRaw.toLowerCase();
+                        if (tLower.includes('juros') || tLower.includes('jcp')) tipo = 'JCP';
+                        else if (tLower.includes('rendimento')) tipo = 'REND';
+
+                        if (valor > 0 && dataCom && dataPagamento) {
+                            dividendsToUpsert.push({
+                                ticker: stock,
+                                type: tipo,
+                                date_com: dataCom,
+                                payment_date: dataPagamento,
+                                rate: valor
+                            });
+                        }
+                    }
+                });
             }
         });
 
@@ -134,7 +158,7 @@ function parseMoney(str: string) {
 }
 
 function parseDate(str: string) {
-    if (!str || str === '-') return null;
+    if (!str || str === '-' || str.includes('-')) return null;
     const parts = str.split('/');
     if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
     return null;
@@ -144,6 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CRON Security
   const authHeader = req.headers['authorization'];
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      // Opcional: Descomentar para produção rigorosa
       // return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -157,12 +182,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const uniqueTickers = [...new Set(transactions.map((t: any) => t.ticker))];
     
-    // Batch Size Limitado (Vercel Timeout Constraints)
-    // Se usar Proxy, limitamos mais pois é mais lento
-    const batchSize = process.env.SCRAPER_API_KEY ? 4 : 8;
+    // Batch Size Limitado (Sem proxy, Vercel pode bloquear requests muito rápidos para o mesmo host)
+    const batchSize = process.env.SCRAPER_API_KEY ? 4 : 5;
     const batch = uniqueTickers.slice(0, batchSize); 
 
-    console.log(`[Cron] Atualizando lote de ${batch.length} ativos...`);
+    console.log(`[Cron] Atualizando lote de ${batch.length} ativos (Modo: ${process.env.SCRAPER_API_KEY ? 'Proxy' : 'Direto'})...`);
 
     // 2. Executa
     const results = await Promise.all(batch.map(ticker => scrapeTickerData(ticker)));

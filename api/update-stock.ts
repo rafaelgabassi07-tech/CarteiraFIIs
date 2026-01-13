@@ -54,18 +54,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let typePath = 'acoes';
     let assetType = 'ACAO';
     
-    // Regra simples para FIIs
     if (stock.endsWith('11') || stock.endsWith('11B') || stock.endsWith('33') || stock.endsWith('34')) {
         typePath = 'fiis';
         assetType = 'FII';
     }
 
     const targetUrl = `https://investidor10.com.br/${typePath}/${stock.toLowerCase()}/`;
-    console.log(`[Scraper] Buscando fundamentos para: ${stock}`);
+    console.log(`[Scraper] Buscando fundamentos para: ${stock} (Modo: ${process.env.SCRAPER_API_KEY ? 'Proxy' : 'Direto'})`);
 
     let html;
+    
+    // Headers ultra-realistas para evitar bloqueio 403 sem proxy
     const headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0'
     };
 
     if (process.env.SCRAPER_API_KEY) {
@@ -82,25 +93,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const $ = cheerio.load(html);
 
     // --- 1. Extração Robusta de Fundamentos ---
-    // Procura o elemento que contém o RÓTULO (ex: "P/VP"), sobe para o pai (CARD) e busca o VALOR.
     const getCardValue = (searchTerms: string[]) => {
         let foundValue = 0;
-        
-        // Seleciona todos os spans/divs/p que podem conter o título
         $('span, div, p').each((_, el) => {
             const text = $(el).text().trim().toUpperCase();
-            
-            // Verifica se o texto é exatamente um dos termos procurados
             if (searchTerms.some(term => text === term.toUpperCase())) {
-                // Encontrou o rótulo. Agora procura o valor no contexto próximo.
-                // Estratégia: Subir até encontrar um container de "card" e buscar a classe ".value" ou similar
                 const card = $(el).closest('div[class*="card"]'); 
-                
                 if (card.length) {
-                    // Tenta achar classe .value
                     let valStr = card.find('[class*="value"]').first().text().trim();
-                    
-                    // Se não achar .value, tenta achar um span irmão que tenha números
                     if (!valStr) {
                          card.find('span').each((_, span) => {
                              const t = $(span).text().trim();
@@ -109,10 +109,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                              }
                          });
                     }
-
                     if (valStr) {
                         foundValue = parseMoney(valStr);
-                        return false; // Break loop
+                        return false; 
                     }
                 }
             }
@@ -129,7 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const segmentEl = $('.segment-data .value, .sector-data .value, span:contains("Segmento") + span, span:contains("Setor") + span').first();
     if (segmentEl.length) segment = segmentEl.text().trim();
 
-    console.log(`[Dados Extraídos] ${stock} -> P/VP: ${pvp}, DY: ${dy}, Preço: ${cotacao}, Seg: ${segment}`);
+    console.log(`[Dados Extraídos] ${stock} -> P/VP: ${pvp}, DY: ${dy}, Preço: ${cotacao}`);
 
     // Salva Metadata
     const { error: metaError } = await supabase.from('ativos_metadata').upsert({
@@ -138,8 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (metaError) console.error("Erro salvando metadata:", metaError);
 
-
-    // --- 2. Extração de Proventos (Lógica Mantida e Reforçada) ---
+    // --- 2. Extração de Proventos ---
     const dividendsToUpsert: any[] = [];
     
     $('table').each((_, table) => {
@@ -204,9 +202,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 function parseMoney(str: string) {
     if (!str) return 0;
-    // Remove R$, %, espaços
     let clean = str.replace(/[R$\%\s]/g, '').trim();
-    // Investidor10 usa virgula como decimal "1.200,50" -> "1200.50"
     clean = clean.replace(/\./g, '').replace(',', '.');
     return parseFloat(clean) || 0;
 }
