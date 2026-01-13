@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // --- 0. Verificação de Cache (Economia de Requisições) ---
+    // --- 0. Verificação de Cache ---
     if (force !== 'true') {
         const { data: cached } = await supabase
             .from('ativos_metadata')
@@ -54,17 +54,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let typePath = 'acoes';
     let assetType = 'ACAO';
     
+    // Detecção básica de tipo pela URL
     if (stock.endsWith('11') || stock.endsWith('11B') || stock.endsWith('33') || stock.endsWith('34')) {
         typePath = 'fiis';
         assetType = 'FII';
     }
 
     const targetUrl = `https://investidor10.com.br/${typePath}/${stock.toLowerCase()}/`;
-    console.log(`[Scraper] Buscando fundamentos para: ${stock} (Modo: ${process.env.SCRAPER_API_KEY ? 'Proxy' : 'Direto'})`);
+    console.log(`[Scraper] Buscando dados para: ${stock}`);
 
     let html;
     
-    // Headers ultra-realistas para evitar bloqueio 403 sem proxy
+    // Headers para evitar bloqueio 403 (WAF bypass)
     const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -75,8 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Cache-Control': 'max-age=0'
+        'Cache-Control': 'no-cache'
     };
 
     if (process.env.SCRAPER_API_KEY) {
@@ -92,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const $ = cheerio.load(html);
 
-    // --- 1. Extração Robusta de Fundamentos ---
+    // --- 1. Extração de Fundamentos (P/VP, DY, Cotação) ---
     const getCardValue = (searchTerms: string[]) => {
         let foundValue = 0;
         $('span, div, p').each((_, el) => {
@@ -104,9 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     if (!valStr) {
                          card.find('span').each((_, span) => {
                              const t = $(span).text().trim();
-                             if (/^\d+[.,]\d+/.test(t) || t.includes('R$') || t.includes('%')) {
-                                 valStr = t;
-                             }
+                             if (/^\d+[.,]\d+/.test(t) || t.includes('R$') || t.includes('%')) valStr = t;
                          });
                     }
                     if (valStr) {
@@ -123,12 +121,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const pvp = getCardValue(["P/VP", "P/VPA", "VPA"]);
     const dy = getCardValue(["DY", "Dividend Yield", "DY (12M)"]);
     
-    // Extração de Segmento
+    // --- 2. Extração de Segmento ---
     let segment = 'Geral';
-    const segmentEl = $('.segment-data .value, .sector-data .value, span:contains("Segmento") + span, span:contains("Setor") + span').first();
-    if (segmentEl.length) segment = segmentEl.text().trim();
+    // Tenta achar pelo label "Segmento" ou "Setor" e pega o próximo span/valor
+    const segmentLabel = $('span:contains("Segmento"), span:contains("Setor")').first();
+    if (segmentLabel.length) {
+        // Tenta pegar o irmão, ou o valor dentro de um container pai
+        let segText = segmentLabel.next().text().trim(); 
+        if (!segText) segText = segmentLabel.parent().find('.value').text().trim();
+        if (segText) segment = segText;
+    } else {
+        // Fallback para classes conhecidas
+        const segEl = $('.segment-data .value, .sector-data .value').first();
+        if (segEl.length) segment = segEl.text().trim();
+    }
 
-    console.log(`[Dados Extraídos] ${stock} -> P/VP: ${pvp}, DY: ${dy}, Preço: ${cotacao}`);
+    console.log(`[Fundamentos] ${stock} -> P/VP: ${pvp}, DY: ${dy}, Seg: ${segment}`);
 
     // Salva Metadata
     const { error: metaError } = await supabase.from('ativos_metadata').upsert({
@@ -137,13 +145,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (metaError) console.error("Erro salvando metadata:", metaError);
 
-    // --- 2. Extração de Proventos ---
+    // --- 3. Extração de Proventos (Tabelas) ---
     const dividendsToUpsert: any[] = [];
     
+    // Itera sobre TODAS as tabelas encontradas para achar a de proventos
     $('table').each((_, table) => {
         const headersText = $(table).find('thead').text().toLowerCase();
-        if (headersText.includes('com') && headersText.includes('pagamento')) {
-            const headerMap: any = { tipo: 0, dataCom: 1, dataPag: 2, valor: 3 };
+        
+        // Verifica se é uma tabela de proventos pelos cabeçalhos
+        if ((headersText.includes('com') || headersText.includes('base')) && (headersText.includes('pagamento') || headersText.includes('valor'))) {
+            
+            // Mapeia índices das colunas dinamicamente
+            const headerMap: any = { tipo: -1, dataCom: -1, dataPag: -1, valor: -1 };
             
             $(table).find('thead th').each((idx, th) => {
                 const h = $(th).text().trim().toLowerCase();
@@ -153,30 +166,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (h.includes('valor')) headerMap.valor = idx;
             });
 
-            $(table).find('tbody tr').each((_, tr) => {
-                const cols = $(tr).find('td');
-                if (cols.length >= 4) {
-                    const tipoRaw = $(cols[headerMap.tipo]).text().trim();
-                    const dataComRaw = $(cols[headerMap.dataCom]).text().trim();
-                    const dataPagRaw = $(cols[headerMap.dataPag]).text().trim();
-                    const valorRaw = $(cols[headerMap.valor]).text().trim();
+            if (headerMap.dataCom !== -1 && headerMap.valor !== -1) {
+                $(table).find('tbody tr').each((_, tr) => {
+                    const cols = $(tr).find('td');
+                    if (cols.length >= 3) {
+                        const tipoRaw = headerMap.tipo !== -1 ? $(cols[headerMap.tipo]).text().trim() : 'Rendimento';
+                        const dataComRaw = $(cols[headerMap.dataCom]).text().trim();
+                        // Data Pagamento as vezes é vazia (anunciado mas não pago)
+                        const dataPagRaw = headerMap.dataPag !== -1 ? $(cols[headerMap.dataPag]).text().trim() : dataComRaw; 
+                        const valorRaw = $(cols[headerMap.valor]).text().trim();
 
-                    const dataCom = parseDate(dataComRaw);
-                    const dataPagamento = parseDate(dataPagRaw);
-                    const valor = parseMoney(valorRaw);
+                        const dataCom = parseDate(dataComRaw);
+                        const dataPagamento = parseDate(dataPagRaw) || dataCom; // Fallback para data com se não tiver pag
+                        const valor = parseMoney(valorRaw);
 
-                    let tipo = 'DIV';
-                    const tLower = tipoRaw.toLowerCase();
-                    if (tLower.includes('jcp') || tLower.includes('juros')) tipo = 'JCP';
-                    else if (tLower.includes('rendimento')) tipo = 'REND';
+                        let tipo = 'DIV';
+                        const tLower = tipoRaw.toLowerCase();
+                        if (tLower.includes('jcp') || tLower.includes('juros')) tipo = 'JCP';
+                        else if (tLower.includes('rendimento')) tipo = 'REND';
 
-                    if (valor > 0 && dataCom && dataPagamento) {
-                        dividendsToUpsert.push({
-                            ticker: stock, type: tipo, date_com: dataCom, payment_date: dataPagamento, rate: valor
-                        });
+                        // Só adiciona se tiver dados válidos e valor > 0
+                        if (valor > 0 && dataCom && dataPagamento) {
+                            dividendsToUpsert.push({
+                                ticker: stock, type: tipo, date_com: dataCom, payment_date: dataPagamento, rate: valor
+                            });
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     });
 
@@ -202,13 +219,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 function parseMoney(str: string) {
     if (!str) return 0;
+    // Remove R$, %, espaços
     let clean = str.replace(/[R$\%\s]/g, '').trim();
+    // Padrão brasileiro: 1.200,50 -> remove ponto, troca virgula por ponto
     clean = clean.replace(/\./g, '').replace(',', '.');
     return parseFloat(clean) || 0;
 }
 
 function parseDate(str: string) {
-    if (!str || str.includes('-')) return null;
+    if (!str || str.includes('-') && str.length > 10) return null; // Ignora se já for formato ISO ou texto estranho
+    // Espera DD/MM/YYYY
     const parts = str.split('/');
     if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
     return null;

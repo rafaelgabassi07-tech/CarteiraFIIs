@@ -9,6 +9,26 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
+// Busca IPCA acumulado 12 meses via BrasilAPI (Dados Oficiais)
+const fetchInflationData = async (): Promise<number> => {
+    try {
+        // Busca taxa SELIC e IPCA (Taxas V1 da BrasilAPI)
+        // Se a BrasilAPI falhar, usamos um fallback aproximado do IPCA atual (4.5%)
+        const response = await fetch('https://brasilapi.com.br/api/taxas/v1', { cache: 'force-cache' });
+        if (!response.ok) return 4.5;
+        
+        const data = await response.json();
+        // A API retorna um array, ex: [{ nome: 'Selic', valor: 10.75 }, { nome: 'CDI', valor: 10.65 }, { nome: 'IPCA', valor: 4.50 }]
+        // O valor do IPCA na BrasilAPI geralmente é o acumulado 12 meses ou a meta.
+        const ipcaObj = data.find((item: any) => item.nome === 'IPCA');
+        
+        return ipcaObj ? Number(ipcaObj.valor) : 4.5;
+    } catch (e) {
+        console.warn("Erro ao buscar inflação, usando fallback", e);
+        return 4.5;
+    }
+};
+
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
@@ -34,7 +54,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
-      // 2. Busca Metadata (Fundamentos)
+      // 2. Busca Metadata (Fundamentos e Segmentos)
       const { data: metaData, error: metaError } = await supabase
             .from('ativos_metadata')
             .select('*')
@@ -55,10 +75,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   segment: m.segment || 'Geral',
                   type: assetType,
                   fundamentals: {
-                      // IMPORTANTE: Mapeamento direto das colunas do banco
                       p_vp: Number(m.pvp) || 0,
                       dy_12m: Number(m.dy_12m) || 0,
-                      // O scraper agora salva current_price, podemos usar se a Brapi falhar
                       market_cap: m.current_price ? String(m.current_price) : undefined, 
                       sentiment: 'Neutro',
                       sentiment_reason: `Dados atualizados em ${new Date(m.updated_at).toLocaleDateString()}`,
@@ -68,10 +86,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           });
       }
 
+      // 3. Busca Indicadores Macro (Inflação)
+      const ipca = await fetchInflationData();
+
       return { 
           dividends, 
           metadata, 
-          indicators: { ipca_cumulative: 0, start_date_used: startDate || '' }
+          indicators: { ipca_cumulative: ipca, start_date_used: startDate || '' }
       };
 
   } catch (error: any) {

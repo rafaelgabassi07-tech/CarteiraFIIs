@@ -274,8 +274,9 @@ const App: React.FC = () => {
               
               await Promise.all(batch.map(async (ticker) => {
                  try {
-                   // A API agora verifica o cache do banco antes de ir para o site externo
-                   const res = await fetch(`/api/update-stock?ticker=${ticker}`);
+                   // A API agora verifica o cache do banco antes de ir para o site externo.
+                   // ADICIONADO &force=true AQUI
+                   const res = await fetch(`/api/update-stock?ticker=${ticker}&force=true`);
                    if (res.ok) {
                        const data = await res.json();
                        processed++;
@@ -291,8 +292,9 @@ const App: React.FC = () => {
           }
           
           if (processed > 0) {
+              // Mesmo com force=true, se o backend falhar no scraping e usar cache fallback, ele avisaria.
               const fromCacheMsg = cachedCount > 0 ? ` (${cachedCount} via cache)` : '';
-              showToast('success', `${processed} ativos processados${fromCacheMsg}!`);
+              showToast('success', `${processed} ativos atualizados!`);
               await handleSyncAll(true);
           } else {
               showToast('error', 'Falha ao conectar com servidor.');
