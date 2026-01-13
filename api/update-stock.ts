@@ -85,14 +85,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let cotacao = parseVal($('._card-body span:contains("Cotação")').closest('.card').find('._card-body span').last().text());
     if(!cotacao) cotacao = parseVal($('.quotation-price').first().text());
     
-    // P/VP e DY: Tenta múltiplos seletores
+    // P/VP e DY
     let pvp = parseVal($('div[title="P/VP"] .value').text());
-    if (!pvp) pvp = parseVal($('.vp-value').text()); // Seletor alternativo
+    if (!pvp) pvp = parseVal($('.vp-value').text());
 
     let dy = parseVal($('div[title="Dividend Yield"] .value').text());
-    if (!dy) dy = parseVal($('.dy-value').text()); // Seletor alternativo
+    if (!dy) dy = parseVal($('.dy-value').text());
 
-    // 4. Segmento - Lógica Aprimorada (Busca Textual)
+    // 4. Segmento - Lógica Aprimorada e Limpeza
     let segment = 'Geral';
     
     // Estratégia 1: Seletores Específicos
@@ -102,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (txt && txt.length > 2) { segment = txt; break; }
     }
 
-    // Estratégia 2: Busca por Label em Cards (Mais genérico e robusto)
+    // Estratégia 2: Busca Genérica
     if (segment === 'Geral') {
         $('div.cell, div.card, div.data-item, li').each((_, el) => {
             const label = $(el).find('.title, .name, span:first-child, strong').text().trim().toLowerCase();
@@ -110,18 +110,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const val = $(el).find('.value, .detail, span:last-child').text().trim();
                 if (val && val.length > 2 && !val.includes('...')) {
                     segment = val;
-                    return false; // Break loop
+                    return false; 
                 }
             }
         });
     }
 
-    // Salva Metadados no Supabase
+    // Limpeza Profunda do Segmento (Remove números "1.", caracteres estranhos, espaços extras)
+    if (segment && segment !== 'Geral') {
+        // Remove números iniciais (ex: "1. Bancos" -> "Bancos")
+        segment = segment.replace(/^[\d\s.-]+/, '');
+        // Remove múltiplos espaços
+        segment = segment.replace(/\s+/g, ' ');
+        // Capitaliza corretamente (Primeira letra maiúscula, resto minúscula se estiver tudo gritando)
+        if (segment === segment.toUpperCase()) {
+            segment = segment.charAt(0) + segment.slice(1).toLowerCase();
+        }
+        segment = segment.trim();
+    }
+
+    // Salva Metadados
     await supabase.from('ativos_metadata').upsert({
         ticker: stock, type: assetType, segment, current_price: cotacao, pvp, dy_12m: dy, updated_at: new Date()
     }, { onConflict: 'ticker' });
 
-    // 5. Proventos
+    // 5. Proventos - Lógica Ampliada para Ações
     const dividendsToUpsert: any[] = [];
     const processedKeys = new Set();
 
@@ -129,27 +142,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const headerMap: Record<string, number> = {};
         $(table).find('thead th').each((idx, th) => {
             const txt = $(th).text().toLowerCase().trim();
-            if (txt.includes('com') || txt.includes('base')) headerMap.com = idx;
-            if (txt.includes('pagamento')) headerMap.pag = idx;
+            // Amplia termos de busca para colunas
+            if (txt.includes('com') || txt.includes('base') || txt.includes('data')) headerMap.com = idx;
+            if (txt.includes('pagamento') || txt.includes('pag')) headerMap.pag = idx;
             if (txt.includes('valor')) headerMap.val = idx;
             if (txt.includes('tipo')) headerMap.type = idx;
         });
 
+        // Se encontrou pelo menos Data Com e Valor
         if (headerMap.com !== undefined && headerMap.val !== undefined) {
             $(table).find('tbody tr').each((_, tr) => {
                 const tds = $(tr).find('td');
                 if (tds.length < 2) return;
                 
-                const dateCom = parseDate($(tds[headerMap.com]).text().trim());
+                const dateComText = $(tds[headerMap.com]).text().trim();
+                const dateCom = parseDate(dateComText);
                 const val = parseVal($(tds[headerMap.val]).text().trim());
-                const datePag = (headerMap.pag !== undefined ? parseDate($(tds[headerMap.pag]).text().trim()) : null) || dateCom;
+                
+                // Data Pagamento: Se estiver vazia ou com traço (comum em ações), usa Data Com como base
+                let datePagText = headerMap.pag !== undefined ? $(tds[headerMap.pag]).text().trim() : '';
+                let datePag = parseDate(datePagText);
+                
+                // Se não tem data de pagamento definida (ex: "-"), assume provisionado (usa Data Com)
+                if (!datePag && dateCom) datePag = dateCom; 
                 
                 let tipo = 'DIV';
                 const typeRaw = headerMap.type !== undefined ? $(tds[headerMap.type]).text().toLowerCase() : '';
                 if (typeRaw.includes('jcp') || typeRaw.includes('juros')) tipo = 'JCP';
                 else if (typeRaw.includes('rendimento')) tipo = 'REND';
 
-                if (dateCom && val > 0) {
+                if (dateCom && val > 0 && datePag) {
+                    // Chave única composta para evitar duplicatas
                     const key = `${stock}-${tipo}-${dateCom}-${datePag}-${val}`;
                     if (!processedKeys.has(key)) {
                         dividendsToUpsert.push({ ticker: stock, type: tipo, date_com: dateCom, payment_date: datePag, rate: val });

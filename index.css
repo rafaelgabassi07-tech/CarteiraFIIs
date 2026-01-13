@@ -44,6 +44,17 @@
   body.app-revealed #root {
     opacity: 1;
   }
+
+  /* Removes default outline on Recharts/SVG elements when clicked */
+  *:focus {
+    outline: none;
+  }
+  
+  .recharts-sector:focus,
+  .recharts-surface:focus,
+  .recharts-wrapper:focus {
+    outline: none !important;
+  }
 }
 
 @layer utilities {

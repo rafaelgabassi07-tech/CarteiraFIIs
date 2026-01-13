@@ -87,7 +87,7 @@ const getInflationVerdict = (realReturn: number) => {
     return { title: "Destruição de Valor", desc: "Crítico. A inflação está consumindo seu patrimônio mais rápido do que ele rende.", color: "text-rose-500", bg: "bg-rose-500" };
 };
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate = 0, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate = 4.62, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -154,13 +154,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const average = received / (totalMonths > 0 ? totalMonths : 1);
     const maxVal = Math.max(...Object.values(map), 0);
 
+    // Ensure inflationRate is a number
+    const safeInflation = Number(inflationRate) || 0;
     const userDy = invested > 0 ? (sum12m / invested) * 100 : 0;
-    const realReturn = userDy - (inflationRate || 0);
-    const inflationCost = invested * (inflationRate / 100);
+    const realReturn = userDy - safeInflation;
+    const inflationCost = invested * (safeInflation / 100);
     const dividendCoverage = inflationCost > 0 ? (sum12m / inflationCost) * 100 : 100;
 
     const last12MonthsData: MonthlyInflationData[] = [];
-    const monthlyInflationRate = Math.pow(1 + (inflationRate || 0) / 100, 1 / 12) - 1;
+    const monthlyInflationRate = Math.pow(1 + (safeInflation) / 100, 1 / 12) - 1;
     
     for (let i = 11; i >= 0; i--) {
         const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
@@ -473,10 +475,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <div>
                      <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                          <span>IPCA (Inflação)</span>
-                         <span className="text-zinc-900 dark:text-white">{formatPercent(inflationRate, privacyMode)}</span>
+                         <span className="text-zinc-900 dark:text-white">{formatPercent(Number(inflationRate) || 0, privacyMode)}</span>
                      </div>
                      <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                         <div className="h-full bg-zinc-400 dark:bg-zinc-600 rounded-full transition-all duration-1000" style={{ width: `${Math.min((inflationRate / 15) * 100, 100)}%` }}></div>
+                         <div className="h-full bg-zinc-400 dark:bg-zinc-600 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((Number(inflationRate) || 0) / 15) * 100, 100)}%` }}></div>
                      </div>
                  </div>
              </div>
@@ -858,7 +860,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              </div>
              <div className="mt-8 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
                  <Info className="w-5 h-5 text-blue-500 shrink-0" />
-                 <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed"><strong>Nota Técnica:</strong> O cálculo considera a inflação mensal composta derivada do acumulado de 12 meses ({inflationRate}%) aplicada sobre o valor investido atual ({formatBRL(invested, privacyMode)}).</p>
+                 <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed"><strong>Nota Técnica:</strong> O cálculo considera a inflação mensal composta derivada do acumulado de 12 meses ({Number(inflationRate || 0).toFixed(2)}%) aplicada sobre o valor investido atual ({formatBRL(invested, privacyMode)}).</p>
              </div>
          </div>
       </SwipeableModal>
