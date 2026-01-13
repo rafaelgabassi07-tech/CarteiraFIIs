@@ -36,7 +36,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, totalValue: number, index: num
 
   return (
     <div 
-        className={`bg-surface-light dark:bg-surface-dark rounded-[1.5rem] border transition-all duration-300 overflow-hidden anim-stagger-item ${expanded ? 'border-zinc-300 dark:border-zinc-700 shadow-xl scale-[1.02] z-10' : 'border-zinc-200 dark:border-zinc-800 shadow-card dark:shadow-card-dark'}`}
+        className={`bg-surface-light dark:bg-surface-dark rounded-xl border transition-all duration-300 overflow-hidden anim-stagger-item ${expanded ? 'border-zinc-300 dark:border-zinc-700 shadow-xl scale-[1.02] z-10' : 'border-zinc-200 dark:border-zinc-800 shadow-card dark:shadow-card-dark'}`}
         style={{ animationDelay: `${index * 50}ms` }}
     >
         

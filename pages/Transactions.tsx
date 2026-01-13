@@ -33,7 +33,7 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
       <div className="px-0.5 py-1 anim-stagger-item" style={{ ...style, animationDelay: `${(index % 10) * 30}ms` }}>
           <button 
             onClick={() => data.onRowClick(t)}
-            className="w-full text-left bg-surface-light dark:bg-surface-dark p-3.5 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-sm press-effect hover:border-zinc-300 dark:hover:border-zinc-700"
+            className="w-full text-left bg-surface-light dark:bg-surface-dark p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-sm press-effect hover:border-zinc-300 dark:hover:border-zinc-700"
           >
               <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>

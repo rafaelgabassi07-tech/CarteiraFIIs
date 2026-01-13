@@ -137,19 +137,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-      <nav className="pointer-events-auto bg-white/85 dark:bg-zinc-900/85 backdrop-blur-[20px] border border-white/20 dark:border-zinc-800/60 rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[22rem] mx-6 relative overflow-hidden">
+      <nav className="pointer-events-auto bg-white/85 dark:bg-zinc-900/85 backdrop-blur-[20px] border border-white/20 dark:border-zinc-800/60 rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[22rem] mx-6 relative overflow-hidden">
         
         {/* Sliding Active Indicator */}
-        {/* A largura é calculada como (100% / 3) menos as margens para encaixar perfeitamente */}
         <div 
-            className="absolute top-1.5 bottom-1.5 w-[calc(33.33%-0.25rem)] bg-white dark:bg-zinc-800 rounded-[2rem] shadow-[0_2px_10px_rgba(0,0,0,0.08)] dark:shadow-black/50 border border-zinc-100 dark:border-zinc-700/50 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] will-change-transform z-0"
+            className="absolute top-1.5 bottom-1.5 w-[calc(33.33%-0.25rem)] bg-white dark:bg-zinc-800 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.08)] dark:shadow-black/50 border border-zinc-100 dark:border-zinc-700/50 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] will-change-transform z-0"
             style={{ 
                 left: '0.125rem', // Offset inicial leve
                 transform: `translateX(calc(${activeIndex} * 100% + ${activeIndex * 0.25}rem))` // Move 100% da largura + gap
             }}
         >
             {/* Inner Glow for Premium Feel */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-sky-500/10 dark:to-sky-400/5 rounded-[2rem]"></div>
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-sky-500/10 dark:to-sky-400/5 rounded-xl"></div>
         </div>
 
         {/* Buttons Grid */}
@@ -246,7 +245,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             // Physics: cubic-bezier(0.19, 1, 0.22, 1) provides a very snappy start and a soft, slow settling (premium feel)
             transition: isDragging ? 'none' : 'transform 500ms cubic-bezier(0.19, 1, 0.22, 1)'
         }}
-        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-[2.5rem] h-[92vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_40px_rgba(0,0,0,0.3)] border-t border-zinc-200 dark:border-zinc-800 will-change-transform`}
+        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-3xl h-[92vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_40px_rgba(0,0,0,0.3)] border-t border-zinc-200 dark:border-zinc-800 will-change-transform`}
       >
         <div 
             onTouchStart={handleTouchStart}
@@ -273,15 +272,15 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
   return createPortal(
     <div className={`fixed inset-0 z-[1000] flex items-center justify-center p-6 ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
       <div className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-sm transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
-      <div className={`relative bg-white dark:bg-zinc-900 rounded-[2.5rem] w-full max-w-xs p-8 text-center shadow-2xl transition-all duration-500 cubic-bezier(0.19, 1, 0.22, 1) border border-zinc-100 dark:border-zinc-800 ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-8 opacity-0'}`}>
-        <div className="mx-auto w-16 h-16 rounded-3xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-6 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 shadow-sm">
+      <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-xs p-8 text-center shadow-2xl transition-all duration-500 cubic-bezier(0.19, 1, 0.22, 1) border border-zinc-100 dark:border-zinc-800 ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-8 opacity-0'}`}>
+        <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-6 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 shadow-sm">
           <AlertTriangle className="w-8 h-8" strokeWidth={2.5} />
         </div>
         <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-3 tracking-tight">{title}</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed font-medium">{message}</p>
         <div className="grid grid-cols-2 gap-3">
-          <button onClick={onCancel} className="py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
-          <button onClick={onConfirm} className="py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 active:scale-95 transition-transform shadow-lg">Confirmar</button>
+          <button onClick={onCancel} className="py-4 rounded-xl text-[10px] font-black uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+          <button onClick={onConfirm} className="py-4 rounded-xl text-[10px] font-black uppercase tracking-widest bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 active:scale-95 transition-transform shadow-lg">Confirmar</button>
         </div>
       </div>
     </div>, document.body
@@ -292,7 +291,7 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes 
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
       <div className="p-8 pb-24">
         <div className="text-center mb-10">
-            <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+            <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
               <Gift className="w-10 h-10" strokeWidth={1.5} />
             </div>
             <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-2">Novidades</h2>
@@ -300,8 +299,8 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes 
         </div>
         <div className="space-y-4">
           {notes.map((note: any, i: number) => (
-              <div key={i} className="flex gap-4 p-5 bg-zinc-50 dark:bg-zinc-800/40 rounded-3xl border border-zinc-200 dark:border-zinc-800 group transition-all hover:bg-white dark:hover:bg-zinc-800">
-                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 shadow-sm">
+              <div key={i} className="flex gap-4 p-5 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-200 dark:border-zinc-800 group transition-all hover:bg-white dark:hover:bg-zinc-800">
+                  <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 shadow-sm">
                     <Star className="w-6 h-6 text-amber-500" strokeWidth={2} />
                   </div>
                   <div>
@@ -315,7 +314,7 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes 
           <button 
             onClick={onUpdate} 
             disabled={isUpdating} 
-            className="w-full mt-10 py-5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+            className="w-full mt-10 py-5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
           >
             {isUpdating ? (
               <> <Loader2 className="w-5 h-5 animate-spin" /> <span>Atualizando {progress}%</span> </>
@@ -352,7 +351,7 @@ export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notificatio
             ) : (
                 <div className="space-y-3">
                     {notifications.map((n: any, i: number) => (
-                        <div key={n.id} className="p-5 bg-zinc-50 dark:bg-zinc-800/40 rounded-3xl border border-zinc-200 dark:border-zinc-800 anim-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+                        <div key={n.id} className="p-5 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
                             <h4 className="font-black text-zinc-900 dark:text-white tracking-tight">{n.title}</h4>
                             <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed font-medium">{n.message}</p>
                             <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-4">

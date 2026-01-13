@@ -171,7 +171,7 @@ export const Settings: React.FC<SettingsProps> = ({
   );
 
   const ToggleItem = ({ label, description, isOn, onToggle }: any) => (
-    <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
+    <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
         <div>
             <h4 className="text-sm font-bold text-zinc-900 dark:text-white">{label}</h4>
             {description && <p className="text-[10px] text-zinc-500 font-medium mt-0.5">{description}</p>}
@@ -188,7 +188,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const Group = ({ title, children }: any) => (
     <div className="mb-4">
       <h3 className="px-3 mb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400">{title}</h3>
-      <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
         {children}
       </div>
     </div>
@@ -231,7 +231,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       <button 
                         key={m.id}
                         onClick={() => onSetTheme(m.id as ThemeType)}
-                        className={`flex flex-col items-center p-4 rounded-[1.5rem] border transition-all duration-300 ${theme === m.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-xl scale-105' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}
+                        className={`flex flex-col items-center p-4 rounded-2xl border transition-all duration-300 ${theme === m.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-xl scale-105' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}
                       >
                         <m.icon className="w-6 h-6 mb-2" strokeWidth={2} />
                         <span className="text-[10px] font-black uppercase tracking-wider">{m.label}</span>
@@ -242,7 +242,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
             <div className="space-y-3">
                  <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Cor de Destaque</h3>
-                 <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                 <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
                     {ACCENT_COLORS.map((c) => (
                         <button
                             key={c.hex}
@@ -264,7 +264,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
         {activeSection === 'notifications' && (
              <div className="space-y-4">
-                 <div className="bg-sky-50 dark:bg-sky-900/20 p-5 rounded-[1.5rem] border border-sky-100 dark:border-sky-900/30 flex items-center gap-4">
+                 <div className="bg-sky-50 dark:bg-sky-900/20 p-5 rounded-2xl border border-sky-100 dark:border-sky-900/30 flex items-center gap-4">
                      <div className="w-12 h-12 bg-white dark:bg-sky-900/50 rounded-2xl flex items-center justify-center text-sky-500 shadow-sm">
                          <Bell className="w-6 h-6" />
                      </div>
@@ -302,7 +302,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
         {activeSection === 'services' && (
           <div className="space-y-4">
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 space-y-4">
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 space-y-4">
               <div className="flex justify-between items-center mb-2">
                 <div>
                     <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Saúde do Sistema</h3>
@@ -323,7 +323,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     <button 
                         key={s.id} 
                         onClick={() => setSelectedServiceId(s.id)}
-                        className="w-full flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group active:scale-[0.98]"
+                        className="w-full flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group active:scale-[0.98]"
                     >
                         <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${s.status === 'operational' ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : s.status === 'degraded' ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600' : s.status === 'error' ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-600' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
@@ -361,7 +361,7 @@ export const Settings: React.FC<SettingsProps> = ({
             
             <button 
                 onClick={() => setShowLogs(true)}
-                className="w-full p-4 rounded-[1.5rem] bg-zinc-950 dark:bg-black border border-zinc-800 flex items-center justify-between group press-effect"
+                className="w-full p-4 rounded-2xl bg-zinc-950 dark:bg-black border border-zinc-800 flex items-center justify-between group press-effect"
             >
                 <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-zinc-400 border border-zinc-800">
@@ -377,7 +377,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
             </button>
             
-            <div className="p-4 rounded-[1.5rem] bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex gap-3">
+            <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-white dark:bg-indigo-900/50 flex items-center justify-center shrink-0 text-indigo-500">
                     <Wifi className="w-4 h-4" />
                 </div>
@@ -393,7 +393,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
         {activeSection === 'data' && (
           <div className="space-y-4">
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 text-center">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
               <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Database className="w-7 h-7" />
               </div>
@@ -409,7 +409,7 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'privacy' && (
-          <div className="bg-white dark:bg-zinc-900 p-6 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 text-center">
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
             <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center transition-all duration-300 ${privacyMode ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20 scale-110' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
               {privacyMode ? <EyeOff className="w-8 h-8" /> : <Eye className="w-8 h-8" />}
             </div>
@@ -425,7 +425,7 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'updates' && (
-          <div className="bg-white dark:bg-zinc-900 p-6 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 text-center">
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
             <div className="w-14 h-14 bg-sky-50 dark:bg-sky-900/20 text-sky-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Rocket className="w-7 h-7" />
             </div>
@@ -444,7 +444,7 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'reset' && (
-          <div className="bg-rose-50 dark:bg-rose-950/30 p-6 rounded-[1.5rem] border border-rose-100 dark:border-rose-900/30 text-center">
+          <div className="bg-rose-50 dark:bg-rose-950/30 p-6 rounded-2xl border border-rose-100 dark:border-rose-900/30 text-center">
             <div className="w-14 h-14 bg-rose-500 text-white mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-xl shadow-rose-500/20">
               <ShieldAlert className="w-7 h-7" />
             </div>
@@ -461,7 +461,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
         {activeSection === 'about' && (
           <div className="space-y-4">
-            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 text-center">
+            <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
               <img src="./logo.svg" alt="InvestFIIs" className="w-16 h-16 mx-auto mb-4" />
               <h2 className="text-xl font-black text-zinc-900 dark:text-white mb-1">InvestFIIs Pro</h2>
               <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-4">Built for Investors</p>
@@ -473,7 +473,7 @@ export const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
 
-            <div className="bg-zinc-900 dark:bg-black p-5 rounded-[1.5rem] text-left relative overflow-hidden group">
+            <div className="bg-zinc-900 dark:bg-black p-5 rounded-2xl text-left relative overflow-hidden group">
                 <div className="relative z-10">
                     <h4 className="text-xs font-bold text-white mb-2 flex items-center gap-2">
                         <Smartphone className="w-3 h-3" /> Info de Debug
@@ -500,7 +500,7 @@ export const Settings: React.FC<SettingsProps> = ({
     <div className="anim-fade-in space-y-4">
       {activeSection === 'menu' ? (
         <>
-          <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between mb-2">
+          <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-sky-50 dark:bg-sky-900/30 text-sky-600 rounded-xl flex items-center justify-center border border-sky-100 dark:border-sky-800">
                 <User className="w-5 h-5" />
