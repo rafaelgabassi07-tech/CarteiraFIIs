@@ -1,9 +1,9 @@
-
-import React, { useMemo, useState } from 'react';
-import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Snowflake, Zap, History } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Snowflake, Zap, History, LineChart, ChevronRight } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ComposedChart, Line, Area } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ComposedChart, Line, Area, AreaChart } from 'recharts';
+import { getHistoricalBatch } from '../services/brapiService';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -87,7 +87,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRealYieldModal, setShowRealYieldModal] = useState(false);
+  const [showEvolutionModal, setShowEvolutionModal] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  
+  // States para Evolução Patrimonial
+  const [evolutionData, setEvolutionData] = useState<EvolutionPoint[]>([]);
+  const [isEvolutionLoading, setIsEvolutionLoading] = useState(false);
 
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
@@ -111,6 +116,98 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
     return { upcomingEvents: uniqueEvents, received: receivedTotal };
   }, [dividendReceipts]);
+
+  // Função para construir o gráfico de evolução
+  const fetchEvolutionData = async () => {
+      if (evolutionData.length > 0) return; // Já carregado
+      if (transactions.length === 0) return;
+
+      setIsEvolutionLoading(true);
+      try {
+          const tickers = Array.from(new Set(transactions.map(t => t.ticker)));
+          // Busca histórico de 2 anos (ou 5 se precisar)
+          const historyMap = await getHistoricalBatch(tickers, '2y', '1mo');
+          
+          // Constrói linha do tempo mensal
+          const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+          const firstDate = new Date(sortedTxs[0].date);
+          const now = new Date();
+          const timeline: EvolutionPoint[] = [];
+          
+          let currentPointer = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+          
+          while (currentPointer <= now) {
+              const monthEnd = new Date(currentPointer.getFullYear(), currentPointer.getMonth() + 1, 0);
+              const dateStr = monthEnd.toISOString().split('T')[0];
+              const displayDate = `${monthEnd.getMonth() + 1}/${monthEnd.getFullYear().toString().slice(2)}`;
+              
+              // Filtra transações até o final deste mês
+              const txsUntilNow = sortedTxs.filter(t => t.date <= dateStr);
+              
+              // Calcula Posição (Qty) e Preço Médio (Investido)
+              const positionMap: Record<string, { qty: number, avg: number }> = {};
+              
+              txsUntilNow.forEach(t => {
+                  if (!positionMap[t.ticker]) positionMap[t.ticker] = { qty: 0, avg: 0 };
+                  const p = positionMap[t.ticker];
+                  
+                  if (t.type === 'BUY') {
+                      p.avg = ((p.qty * p.avg) + (t.quantity * t.price)) / (p.qty + t.quantity);
+                      p.qty += t.quantity;
+                  } else {
+                      p.qty -= t.quantity;
+                  }
+              });
+
+              let totalInvested = 0;
+              let totalPatrimony = 0;
+
+              Object.entries(positionMap).forEach(([ticker, pos]) => {
+                  if (pos.qty > 0.0001) {
+                      totalInvested += pos.qty * pos.avg;
+                      
+                      // Busca preço histórico
+                      const hist = historyMap[ticker]?.historicalDataPrice;
+                      if (hist) {
+                          // Encontra o preço mais próximo da data do loop
+                          const targetTime = monthEnd.getTime() / 1000;
+                          const closest = hist.reduce((prev, curr) => 
+                              Math.abs(curr.date - targetTime) < Math.abs(prev.date - targetTime) ? curr : prev
+                          );
+                          totalPatrimony += pos.qty * closest.close;
+                      } else {
+                          // Fallback se não tiver histórico: usa preço médio (assume sem variação)
+                          totalPatrimony += pos.qty * pos.avg;
+                      }
+                  }
+              });
+
+              if (totalInvested > 0) {
+                  timeline.push({
+                      rawDate: dateStr,
+                      date: displayDate,
+                      invested: totalInvested,
+                      patrimony: totalPatrimony,
+                      adjusted: 0, value: 0, monthlyInflationCost: 0 // Legacy fields ignored
+                  });
+              }
+
+              currentPointer.setMonth(currentPointer.getMonth() + 1);
+          }
+          setEvolutionData(timeline);
+
+      } catch (e) {
+          console.error("Evolution Error", e);
+      } finally {
+          setIsEvolutionLoading(false);
+      }
+  };
+
+  useEffect(() => {
+      if (showEvolutionModal) {
+          fetchEvolutionData();
+      }
+  }, [showEvolutionModal]);
 
   // Lógica Avançada de Histórico e Inflação (Desde o Início)
   const { history, average, maxVal, receiptsByMonth, realYieldMetrics } = useMemo(() => {
@@ -304,6 +401,41 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return null;
   };
 
+  const EvolutionTooltip = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+          const invested = payload.find((p:any) => p.dataKey === 'invested')?.value || 0;
+          const patrimony = payload.find((p:any) => p.dataKey === 'patrimony')?.value || 0;
+          const diff = patrimony - invested;
+          const diffPerc = invested > 0 ? (diff/invested)*100 : 0;
+
+          return (
+            <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-800 min-w-[160px]">
+               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">{label}</p>
+               
+               <div className="space-y-1 mb-2">
+                   <div className="flex justify-between gap-3 text-xs">
+                       <span className="font-bold text-emerald-600 dark:text-emerald-400">Patrimônio</span>
+                       <span className="font-mono font-bold text-zinc-900 dark:text-white">{formatBRL(patrimony, privacyMode)}</span>
+                   </div>
+                   <div className="flex justify-between gap-3 text-xs">
+                       <span className="font-bold text-zinc-500">Aportado</span>
+                       <span className="font-mono font-medium text-zinc-500">{formatBRL(invested, privacyMode)}</span>
+                   </div>
+               </div>
+               
+               <div className={`pt-2 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center ${diff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                   <span className="text-[10px] font-bold uppercase">Resultado</span>
+                   <div className="text-right">
+                       <span className="block text-xs font-black">{formatBRL(diff, privacyMode)}</span>
+                       <span className="block text-[9px] font-bold">{diffPerc > 0 ? '+' : ''}{diffPerc.toFixed(2)}%</span>
+                   </div>
+               </div>
+            </div>
+          );
+      }
+      return null;
+  };
+
   return (
     <div className="space-y-3 pb-8">
       {/* 1. Patrimonio Total */}
@@ -435,7 +567,29 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* 4. Renda vs IPCA (Ganho Real) */}
+      {/* 4. Evolução Patrimonial (Novo Card) */}
+      <div className="anim-stagger-item" style={{ animationDelay: '250ms' }}>
+          <button 
+            onClick={() => setShowEvolutionModal(true)}
+            className="w-full bg-gradient-to-br from-indigo-500 to-indigo-600 dark:from-indigo-600 dark:to-indigo-800 p-5 rounded-xl text-left shadow-lg shadow-indigo-500/20 group relative overflow-hidden"
+          >
+              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-soft-light"></div>
+              <div className="relative z-10 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                          <LineChart className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                          <h3 className="text-sm font-black text-white">Evolução Patrimonial</h3>
+                          <p className="text-[10px] text-white/70 font-medium uppercase tracking-widest">Crescimento vs Aportes</p>
+                      </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-white/70 group-hover:translate-x-1 transition-transform" />
+              </div>
+          </button>
+      </div>
+
+      {/* 5. Renda vs IPCA (Ganho Real) */}
       <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
          <button 
             onClick={() => setShowRealYieldModal(true)}
@@ -635,6 +789,83 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </p>
              </div>
          </div>
+      </SwipeableModal>
+
+      {/* MODAL DE EVOLUÇÃO PATRIMONIAL */}
+      <SwipeableModal isOpen={showEvolutionModal} onClose={() => setShowEvolutionModal(false)}>
+          <div className="p-6 pb-20">
+              <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+                      <LineChart className="w-6 h-6" />
+                  </div>
+                  <div>
+                      <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Evolução</h2>
+                      <p className="text-xs text-zinc-500 font-medium">Patrimônio vs Aportes</p>
+                  </div>
+              </div>
+
+              {isEvolutionLoading ? (
+                  <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                      <Loader2 className="w-8 h-8 animate-spin text-zinc-400 mb-2" />
+                      <p className="text-xs font-bold text-zinc-500">Reconstruindo histórico...</p>
+                  </div>
+              ) : evolutionData.length > 0 ? (
+                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 anim-slide-up">
+                      <div className="h-64 w-full" style={{ outline: 'none' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={evolutionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                  <defs>
+                                      <linearGradient id="colorPatrimony" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                      </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b33" />
+                                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#71717a' }} axisLine={false} tickLine={false} minTickGap={30} />
+                                  <YAxis tick={{ fontSize: 10, fill: '#71717a' }} axisLine={false} tickLine={false} tickFormatter={(val) => `R$${val/1000}k`} />
+                                  <RechartsTooltip content={<EvolutionTooltip />} cursor={{ stroke: '#71717a', strokeWidth: 1, strokeDasharray: '3 3' }} />
+                                  
+                                  {/* Linha de Aportes (Tracejada) */}
+                                  <Area 
+                                      type="monotone" 
+                                      dataKey="invested" 
+                                      stroke="#71717a" 
+                                      strokeWidth={2} 
+                                      strokeDasharray="4 4"
+                                      fill="transparent" 
+                                      activeDot={false}
+                                  />
+                                  
+                                  {/* Montanha de Patrimônio */}
+                                  <Area 
+                                      type="monotone" 
+                                      dataKey="patrimony" 
+                                      stroke="#10b981" 
+                                      strokeWidth={3} 
+                                      fillOpacity={1} 
+                                      fill="url(#colorPatrimony)" 
+                                  />
+                              </AreaChart>
+                          </ResponsiveContainer>
+                      </div>
+                      
+                      <div className="mt-4 flex justify-center gap-6">
+                          <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                              <span className="text-[10px] font-bold uppercase text-zinc-500">Patrimônio</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                              <div className="w-3 h-1 bg-zinc-400 rounded-full"></div>
+                              <span className="text-[10px] font-bold uppercase text-zinc-500">Total Aportado</span>
+                          </div>
+                      </div>
+                  </div>
+              ) : (
+                  <div className="text-center py-20 text-zinc-400">
+                      <p className="text-xs">Dados insuficientes para gerar histórico.</p>
+                  </div>
+              )}
+          </div>
       </SwipeableModal>
 
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>

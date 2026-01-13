@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Plus, Calendar, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, Calendar, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Wand2, Calculator } from 'lucide-react';
 import * as ReactWindow from 'react-window';
 import { SwipeableModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
@@ -68,6 +68,7 @@ interface TransactionsProps {
 
 const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onUpdateTransaction, onRequestDeleteConfirmation, privacyMode = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     
     // Form States
@@ -77,6 +78,11 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [quantity, setQuantity] = useState('');
     const [price, setPrice] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+    // Split States
+    const [splitTicker, setSplitTicker] = useState('');
+    const [splitRatio, setSplitRatio] = useState('10');
+    const [splitDate, setSplitDate] = useState(new Date().toISOString().split('T')[0]);
 
     // Virtualized List Logic
     const { flatTransactions, getItemSize } = useMemo(() => {
@@ -122,9 +128,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         setTicker(val);
         
         // Inferência inteligente de tipo baseada no ticker
-        // Se termina com 11 ou 11B, provavelmente é FII (ou Unit, mas assumimos FII como padrão user-friendly)
-        // Se termina com 3, 4, 5, 6, provavelmente é Ação
-        if (!editingId) { // Apenas para novas inserções para não sobrescrever edição
+        if (!editingId) {
             if (val.endsWith('11') || val.endsWith('11B')) {
                 setAssetType(AssetType.FII);
             } else if (['3', '4', '5', '6'].some(end => val.endsWith(end))) {
@@ -161,6 +165,34 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         }
     };
 
+    const handleSplit = async () => {
+        if (!splitTicker || !splitRatio) return;
+        
+        const ratio = parseFloat(splitRatio);
+        if (isNaN(ratio) || ratio <= 0) return;
+
+        const targetTicker = splitTicker.toUpperCase();
+        const txsToUpdate = transactions.filter(t => t.ticker === targetTicker && t.date <= splitDate);
+
+        if (txsToUpdate.length === 0) {
+            setIsSplitModalOpen(false);
+            return;
+        }
+
+        setIsSplitModalOpen(false);
+
+        // Processa em "Batch" (iterando um a um, já que a interface de update é singular)
+        // Em um backend real, enviariamos tudo junto.
+        for (const tx of txsToUpdate) {
+            await onUpdateTransaction(tx.id, {
+                quantity: tx.quantity * ratio,
+                price: tx.price / ratio
+            });
+        }
+    };
+
+    const uniqueTickers = useMemo(() => Array.from(new Set(transactions.map(t => t.ticker))), [transactions]);
+
     return (
         <div className="anim-fade-in">
             {/* Header Action */}
@@ -170,12 +202,20 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         {transactions.length} {transactions.length === 1 ? 'Ordem Registrada' : 'Ordens Registradas'}
                     </p>
                 </div>
-                <button 
-                    onClick={handleOpenAdd}
-                    className="w-11 h-11 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl flex items-center justify-center shadow-lg press-effect hover:shadow-xl anim-scale-in"
-                >
-                    <Plus className="w-5 h-5" strokeWidth={2.5} />
-                </button>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => { setSplitTicker(''); setSplitRatio('10'); setIsSplitModalOpen(true); }}
+                        className="w-11 h-11 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shadow-sm press-effect border border-indigo-100 dark:border-indigo-800"
+                    >
+                        <Wand2 className="w-5 h-5" strokeWidth={2} />
+                    </button>
+                    <button 
+                        onClick={handleOpenAdd}
+                        className="w-11 h-11 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl flex items-center justify-center shadow-lg press-effect hover:shadow-xl anim-scale-in"
+                    >
+                        <Plus className="w-5 h-5" strokeWidth={2.5} />
+                    </button>
+                </div>
             </div>
 
             {/* List */}
@@ -314,6 +354,75 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         >
                             <Save className="w-4 h-4" />
                             {editingId ? 'Salvar Alterações' : 'Confirmar Ordem'}
+                        </button>
+                    </div>
+                </div>
+            </SwipeableModal>
+
+            {/* SPLIT / INPLIT MODAL */}
+            <SwipeableModal isOpen={isSplitModalOpen} onClose={() => setIsSplitModalOpen(false)}>
+                <div className="p-6 pb-12">
+                    <div className="flex items-center gap-4 mb-8">
+                        <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-900/30">
+                            <Wand2 className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Desdobramento</h2>
+                            <p className="text-xs text-zinc-500 font-medium">Ajuste de Quantidade/Preço</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30 mb-6 flex gap-3">
+                        <Calculator className="w-5 h-5 text-amber-500 shrink-0" />
+                        <p className="text-[10px] text-amber-800 dark:text-amber-200 leading-relaxed font-medium">
+                            Essa ferramenta ajustará automaticamente todas as ordens anteriores à data selecionada. 
+                            <strong>Ex: Split 1:10</strong> multiplica a quantidade por 10 e divide o preço por 10.
+                        </p>
+                    </div>
+
+                    <div className="space-y-5">
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block">Selecione o Ativo</label>
+                            <select 
+                                value={splitTicker}
+                                onChange={e => setSplitTicker(e.target.value)}
+                                className="w-full bg-transparent text-lg font-bold text-zinc-900 dark:text-white outline-none"
+                            >
+                                <option value="" disabled>Escolher...</option>
+                                {uniqueTickers.map(t => (
+                                    <option key={t} value={t}>{t}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block">Fator (Ex: 10)</label>
+                                <input 
+                                    type="number" 
+                                    value={splitRatio}
+                                    onChange={e => setSplitRatio(e.target.value)}
+                                    placeholder="10"
+                                    className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white outline-none"
+                                />
+                            </div>
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block">Até a Data</label>
+                                <input 
+                                    type="date" 
+                                    value={splitDate}
+                                    onChange={e => setSplitDate(e.target.value)}
+                                    className="w-full bg-transparent text-sm font-bold text-zinc-900 dark:text-white outline-none mt-1"
+                                />
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={handleSplit}
+                            disabled={!splitTicker || !splitRatio}
+                            className={`w-full py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg press-effect mt-2 ${(!splitTicker || !splitRatio) ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-500'}`}
+                        >
+                            Aplicar Ajuste
                         </button>
                     </div>
                 </div>
