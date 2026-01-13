@@ -180,7 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
     }
 
-    function processRow(elements: cheerio.Cheerio<cheerio.Element>, fullText: string) {
+    function processRow(elements: cheerio.Cheerio<any>, fullText: string) {
         const datesFound: string[] = [];
         let valueFound = 0;
 
