@@ -9,31 +9,30 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Busca IPCA acumulado 12 meses diretamente do Banco Central (Série 13522)
+// Busca IPCA acumulado 12 meses através da nossa API interna (Proxy)
+// Isso resolve problemas de CORS e adiciona fallbacks automáticos.
 const fetchInflationData = async (): Promise<number> => {
-    const FALLBACK_IPCA = 4.62; // Valor de segurança caso a API falhe
+    const FALLBACK_IPCA = 4.62;
     try {
-        // Série 13522: IPCA - acumulado 12 meses - Fonte: SGS/BCB
-        const response = await fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json', { 
-            cache: 'no-store',
+        // Chama a Serverless Function local
+        const response = await fetch('/api/indicators', { 
             headers: { 'Accept': 'application/json' }
         });
         
         if (!response.ok) {
-            console.warn("BCB API returned non-200. Using fallback IPCA.");
+            console.warn("Internal API returned non-200. Using fallback.");
             return FALLBACK_IPCA;
         }
         
         const data = await response.json();
-        // Esperado: [{ data: "dd/mm/aaaa", valor: "4.62" }]
-        if (data && Array.isArray(data) && data.length > 0 && data[0].valor) {
-            const val = parseFloat(data[0].valor);
-            if (!isNaN(val)) return val;
+        
+        if (data && typeof data.value === 'number') {
+            return data.value;
         }
         
         return FALLBACK_IPCA;
     } catch (e) {
-        console.warn("Erro ao buscar inflação (Network/CORS), usando fallback:", e);
+        console.warn("Erro ao conectar com API interna:", e);
         return FALLBACK_IPCA;
     }
 };
@@ -98,7 +97,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           });
       }
 
-      // 3. Busca Indicadores Macro (BCB)
+      // 3. Busca Indicadores Macro (Via API Proxy)
       const ipca = await fetchInflationData();
 
       return { 
