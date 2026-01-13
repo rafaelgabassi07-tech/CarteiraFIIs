@@ -260,6 +260,18 @@ const App: React.FC = () => {
     if (session) await fetchTransactionsFromCloud(session, force);
   }, [session, fetchTransactionsFromCloud]);
 
+  // Função para Reset Inteligente (Sem Deslogar)
+  const handleSoftReset = useCallback(() => {
+      // Itera sobre as chaves e remove tudo, exceto chaves do Supabase (autenticação)
+      Object.keys(localStorage).forEach(key => {
+          if (!key.startsWith('sb-') && !key.includes('supabase')) {
+              localStorage.removeItem(key);
+          }
+      });
+      // Recarrega a página para reinicializar o estado limpo
+      window.location.reload();
+  }, []);
+
   const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
       if (!session?.user?.id) return;
       
@@ -439,7 +451,7 @@ const App: React.FC = () => {
                 <div className="anim-page-enter pt-4">
                   <Settings 
                       onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} 
-                      geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} 
+                      geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={handleSoftReset} 
                       theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} 
                       privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} 
                       updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 

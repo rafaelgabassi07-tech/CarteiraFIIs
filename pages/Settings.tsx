@@ -517,7 +517,9 @@ export const Settings: React.FC<SettingsProps> = ({
               <ShieldAlert className="w-7 h-7" />
             </div>
             <h3 className="text-lg font-black text-rose-600 dark:text-rose-400 mb-1">Limpeza do App</h3>
-            <p className="text-xs text-rose-600/60 dark:text-rose-400/60 mb-6 leading-relaxed">Apaga preferências locais (tema, login). Seus dados na nuvem continuam seguros.</p>
+            <p className="text-xs text-rose-600/60 dark:text-rose-400/60 mb-6 leading-relaxed">
+              Apaga cache, preferências e dados temporários. Sua conta permanece conectada e os dados na nuvem seguros.
+            </p>
             <button 
               onClick={onResetApp}
               className="w-full py-3.5 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-rose-500/20 active:scale-95"
