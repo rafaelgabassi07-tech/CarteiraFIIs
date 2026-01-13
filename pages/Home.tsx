@@ -21,6 +21,14 @@ interface HomeProps {
   privacyMode?: boolean;
 }
 
+interface MonthlyInflationData {
+    month: string;
+    fullDate: string;
+    dividends: number;
+    inflation: number;
+    net: number;
+}
+
 const formatBRL = (val: any, privacy = false) => {
   if (privacy) return 'R$ ••••••';
   const num = typeof val === 'number' ? val : 0;
@@ -120,7 +128,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     });
     
     const uniqueEvents = allEvents.sort((a, b) => a.date.localeCompare(b.date)).reduce((acc: any[], current) => {
-        if (!acc.find(i => i.date === current.date && i.ticker === current.ticker && i.eventType === current.eventType)) acc.push(current);
+        if (!acc.find((i: any) => i.date === current.date && i.ticker === current.ticker && i.eventType === current.eventType)) acc.push(current);
         return acc;
     }, []);
 
@@ -175,7 +183,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const dividendCoverage = inflationCost > 0 ? (sum12m / inflationCost) * 100 : 100;
 
     // Geração de dados mês a mês para os últimos 12 meses
-    const last12MonthsData = [];
+    const last12MonthsData: MonthlyInflationData[] = [];
     const monthlyInflationRate = Math.pow(1 + (inflationRate || 0) / 100, 1 / 12) - 1;
     
     for (let i = 11; i >= 0; i--) {
@@ -201,8 +209,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         receiptsByMonth: receiptsByMonthMap,
         realYieldMetrics: { userDy, realReturn, sum12m, inflationCost, dividendCoverage },
         last12MonthsData,
-        provisionedMap,
-        provisionedTotal,
+        provisionedMap: provMap, // Explicitly returned
+        provisionedTotal: provTotal,
         sortedProvisionedMonths
     };
   }, [dividendReceipts, received, invested, inflationRate]);
@@ -210,20 +218,30 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const { typeData, topAssets, segmentsData, classChartData, assetsChartData } = useMemo(() => {
       let fiisTotal = 0;
       let stocksTotal = 0;
-      const segmentsMap: Record<string, number> = {};
+      // Agora o mapa guarda valor E lista de tickers
+      const segmentsMap: Record<string, { value: number; tickers: string[] }> = {};
       
       const enriched = portfolio.map(p => {
           const val = (p.currentPrice || p.averagePrice) * p.quantity;
           if (p.assetType === AssetType.FII) fiisTotal += val;
           else stocksTotal += val;
+          
           const segName = p.segment || 'Outros';
-          segmentsMap[segName] = (segmentsMap[segName] || 0) + val;
+          
+          if (!segmentsMap[segName]) {
+              segmentsMap[segName] = { value: 0, tickers: [] };
+          }
+          segmentsMap[segName].value += val;
+          if (!segmentsMap[segName].tickers.includes(p.ticker)) {
+              segmentsMap[segName].tickers.push(p.ticker);
+          }
+          
           return { ...p, totalValue: val };
       });
       
       const total = fiisTotal + stocksTotal || 1;
       const segmentsData = Object.entries(segmentsMap)
-        .map(([name, value]) => ({ name, value }))
+        .map(([name, data]) => ({ name, value: data.value, tickers: data.tickers }))
         .sort((a, b) => b.value - a.value);
       
       const sortedByValue = [...enriched].sort((a, b) => b.totalValue - a.totalValue);
@@ -401,7 +419,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
             {upcomingEvents.length > 0 ? (
                 <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
-                    {upcomingEvents.slice(0, 4).map((event, i) => {
+                    {upcomingEvents.slice(0, 4).map((event: any, i: number) => {
                         const style = getEventStyle(event.eventType, event.date);
                         return (
                             <div key={i} className={`flex-shrink-0 p-2.5 pr-3.5 rounded-xl ${style.containerClass} min-w-[120px] anim-scale-in`} style={{ animationDelay: `${200 + (i * 50)}ms` }}>
@@ -544,7 +562,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         <div className="p-6 pb-20">
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-6 px-2">Agenda Completa</h2>
             <div className="space-y-3">
-                {upcomingEvents.map((e, i) => {
+                {upcomingEvents.map((e: any, i: number) => {
                     const style = getEventStyle(e.eventType, e.date);
                     return (
                         <div key={i} className={`p-4 rounded-2xl flex items-center justify-between anim-slide-up ${style.containerClass}`} style={{ animationDelay: `${i * 50}ms` }}>
@@ -604,10 +622,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          <CalendarClock className="w-3 h-3" /> Provisionados (Futuros)
                      </h3>
                      <div className="space-y-2">
-                        {sortedProvisionedMonths.map((month) => {
+                        {sortedProvisionedMonths.map((month: string) => {
                             const [year, m] = month.split('-');
                             const monthName = new Date(parseInt(year), parseInt(m)-1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-                            const monthTotal = provisionedMap[month].reduce((acc, r) => acc + r.totalReceived, 0);
+                            const monthTotal = provisionedMap[month].reduce((acc: number, r: DividendReceipt) => acc + r.totalReceived, 0);
 
                             return (
                                 <div key={month} className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl overflow-hidden">
@@ -616,7 +634,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                          <span className="text-sm font-black text-amber-700 dark:text-amber-300">{formatBRL(monthTotal, privacyMode)}</span>
                                      </div>
                                      <div className="p-2 space-y-1">
-                                         {provisionedMap[month].map((detail, idx) => (
+                                         {provisionedMap[month].map((detail: DividendReceipt, idx: number) => (
                                              <div key={idx} className="flex justify-between items-center p-2 rounded-xl bg-white/50 dark:bg-zinc-900/50">
                                                   <div className="flex items-center gap-2">
                                                       <span className="text-xs font-bold text-zinc-900 dark:text-white">{detail.ticker}</span>
@@ -641,7 +659,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-2 anim-slide-up" style={{ animationDelay: '300ms' }}>Histórico Realizado</h3>
                  {history.length > 0 ? (
                      <div className="space-y-4">
-                        {history.map(([month, val], i) => {
+                        {history.map(([month, val]: [string, number], i: number) => {
                             const [year, m] = month.split('-');
                             const dateObj = new Date(parseInt(year), parseInt(m)-1, 1);
                             const monthName = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -695,8 +713,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                             <div className="space-y-2">
                                                 {/* Detalhamento de cada pagamento individual (Sem agrupar, para mostrar JCP e Dividendo separados) */}
                                                 {monthlyDetails
-                                                    .sort((a,b) => b.totalReceived - a.totalReceived)
-                                                    .map((detail, idx) => (
+                                                    .sort((a: DividendReceipt, b: DividendReceipt) => b.totalReceived - a.totalReceived)
+                                                    .map((detail: DividendReceipt, idx: number) => (
                                                     <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-700 transition-colors">
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-700 flex items-center justify-center text-[10px] font-black text-zinc-600 dark:text-zinc-300 border border-zinc-100 dark:border-zinc-600">
@@ -836,7 +854,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             <div key={index} className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
                                 <div className="flex items-center gap-2.5 overflow-hidden">
                                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                                    <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 truncate max-w-[150px]">{entry.name}</span>
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 truncate max-w-[150px]">{entry.name}</span>
+                                        <span className="text-[9px] text-zinc-400 truncate max-w-[150px]">{entry.tickers.join(', ')}</span>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <span className="text-[10px] text-zinc-400 font-medium">{formatBRL(entry.value, privacyMode)}</span>
@@ -969,7 +990,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              <div className="space-y-4 anim-slide-up" style={{ animationDelay: '300ms' }}>
                  <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Detalhamento Mensal</h3>
                  <div className="space-y-2">
-                     {last12MonthsData.slice().reverse().map((item, i) => {
+                     {last12MonthsData.slice().reverse().map((item: MonthlyInflationData, i: number) => {
                          const isPositive = item.net >= 0;
                          return (
                              <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
