@@ -1,3 +1,4 @@
+
 import { read, utils } from 'xlsx';
 import { Transaction, AssetType } from '../types';
 
@@ -8,38 +9,56 @@ const parseBrNumber = (val: any): number => {
   if (typeof val === 'number') return val;
   if (!val) return 0;
   // Remove R$, espaços e converte formato BR para float JS
-  const str = String(val).trim().replace('R$', '').trim();
+  let str = String(val).trim().replace('R$', '').trim();
+  
+  // Trata números entre parênteses ou com sinal negativo no final (comum em contabilidade)
+  const isNegative = str.includes('(') || str.endsWith('-');
+  str = str.replace(/[()]/g, '').replace(/-$/, '');
+
   if (str === '') return 0;
   
+  let num = 0;
   // Se tiver pontos e virgulas (ex: 1.000,50)
   if (str.includes('.') && str.includes(',')) {
-    return parseFloat(str.replace(/\./g, '').replace(',', '.'));
+    num = parseFloat(str.replace(/\./g, '').replace(',', '.'));
   }
   // Se tiver apenas virgula (ex: 100,50)
-  if (str.includes(',')) {
-    return parseFloat(str.replace(',', '.'));
+  else if (str.includes(',')) {
+    num = parseFloat(str.replace(',', '.'));
   }
-  return parseFloat(str);
+  else {
+    num = parseFloat(str);
+  }
+
+  return isNegative ? -Math.abs(num) : num;
 };
 
 /**
  * Converte data DD/MM/YYYY para YYYY-MM-DD
  */
 const parseBrDate = (val: any): string => {
-  if (!val) return new Date().toISOString().split('T')[0];
+  if (!val) return '';
   
-  // Se já for objeto Date (Excel às vezes devolve assim)
+  // Se já for objeto Date
   if (val instanceof Date) {
       return val.toISOString().split('T')[0];
   }
 
   const str = String(val).trim();
+  
   // Formato DD/MM/YYYY
-  if (str.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-      const [day, month, year] = str.split('/');
+  const matchBR = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (matchBR) {
+      const day = matchBR[1].padStart(2, '0');
+      const month = matchBR[2].padStart(2, '0');
+      const year = matchBR[3];
       return `${year}-${month}-${day}`;
   }
-  return str; // Retorna como está se não reconhecer
+  
+  // Tenta formato ISO direto YYYY-MM-DD
+  if (str.match(/^\d{4}-\d{2}-\d{2}/)) return str.substring(0, 10);
+
+  return ''; 
 };
 
 /**
@@ -47,10 +66,33 @@ const parseBrDate = (val: any): string => {
  */
 const inferAssetType = (ticker: string): AssetType => {
   const t = ticker.trim().toUpperCase();
-  if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('33')) {
-    return AssetType.FII; // Assumindo FII/ETF/BDR como FII por simplificação, ou poderia criar lógica mais complexa
+  if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('33') || t.endsWith('34')) {
+    return AssetType.FII; // Assumindo FII/ETF/BDR como FII por simplificação
   }
   return AssetType.STOCK;
+};
+
+/**
+ * Extrai o Ticker limpo de descrições longas da B3
+ * Ex: "HGLG11 - CSHG LOGISTICA" -> "HGLG11"
+ * Ex: "FII HGLG11" -> "HGLG11"
+ */
+const extractTicker = (raw: string): string => {
+    if (!raw) return '';
+    const clean = raw.trim().toUpperCase();
+    
+    // Padrão comum: Ticker no início seguido de hífen ou espaço
+    // Ex: WEGE3 - WEG S/A
+    const matchStart = clean.match(/^([A-Z0-9]{4,6}[0-9]{1,2}B?)\s*[- ]/);
+    if (matchStart) return matchStart[1];
+
+    // Padrão B3 novo: Descrição completa onde o ticker pode estar no meio ou início
+    // Tenta encontrar padrão de ticker isolado (XXXX3, XXXX4, XXXX11, XXXX11B)
+    const matchCode = clean.match(/\b([A-Z]{4}[0-9]{1,2}B?)\b/);
+    if (matchCode) return matchCode[1];
+
+    // Fallback: retorna a primeira palavra
+    return clean.split(' ')[0];
 };
 
 export const parseB3Excel = async (file: File): Promise<Transaction[]> => {
@@ -66,7 +108,7 @@ export const parseB3Excel = async (file: File): Promise<Transaction[]> => {
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Converte para JSON bruto (array de arrays ou array de objetos)
+        // Converte para JSON bruto
         const jsonData: any[] = utils.sheet_to_json(worksheet, { defval: '' });
 
         const transactions: Transaction[] = [];
@@ -74,66 +116,96 @@ export const parseB3Excel = async (file: File): Promise<Transaction[]> => {
         for (const row of jsonData) {
           // Normaliza chaves para minúsculo para facilitar comparação
           const keys = Object.keys(row).reduce((acc, k) => {
-              acc[k.toLowerCase().trim()] = k; // guarda a chave original mapeada pela lowercase
+              acc[k.toLowerCase().trim()] = k; 
               return acc;
           }, {} as Record<string, string>);
 
-          // Tenta identificar colunas do padrão B3 (Área do Investidor - Extrato de Negociação)
-          // Colunas comuns: "Data do Negócio", "Movimentação", "Código de Negociação", "Quantidade", "Preço", "Valor"
+          // --- ESTRATÉGIA DE DETECÇÃO --- //
           
-          let dateStr = '';
-          let typeStr = '';
-          let tickerStr = '';
-          let quantity = 0;
-          let price = 0;
-
-          // 1. DATA
-          const dateKey = keys['data do negócio'] || keys['data'] || keys['data pregão'];
-          if (dateKey) dateStr = parseBrDate(row[dateKey]);
-
-          // 2. MOVIMENTAÇÃO (Compra/Venda)
-          const typeKey = keys['tipo de movimentação'] || keys['movimentação'] || keys['tipo'] || keys['natureza'];
-          if (typeKey) typeStr = String(row[typeKey]).toLowerCase();
-
-          // 3. TICKER (Código)
-          // Na B3 nova muitas vezes vem "Código de Negociação". As vezes "Produto".
-          const tickerKey = keys['código de negociação'] || keys['código'] || keys['ativo'] || keys['ticker'] || keys['produto'];
-          if (tickerKey) {
-             const rawTicker = String(row[tickerKey]);
-             // Tenta extrair apenas o código se vier "WEGE3 - WEG S.A."
-             const match = rawTicker.match(/^([A-Z0-9]{4,6})/); 
-             tickerStr = match ? match[0] : rawTicker.split('-')[0].trim();
+          // 1. Identificar se a linha é um PROVENTO (Dividendo, JCP, Rendimento)
+          // Se for, ignoramos, pois o app foca em transações de compra/venda (Custódia)
+          const typeVal = String(row[keys['movimentação'] || keys['tipo de movimentação'] || keys['histórico'] || ''] || '').toLowerCase();
+          
+          if (typeVal.includes('dividendo') || typeVal.includes('juros') || typeVal.includes('rendimento') || typeVal.includes('jcp')) {
+              continue;
           }
 
-          // 4. QUANTIDADE
-          const qtyKey = keys['quantidade'] || keys['qtd'] || keys['qtde'];
-          if (qtyKey) quantity = parseBrNumber(row[qtyKey]);
+          // 2. Mapeamento de Colunas
+          
+          // DATA
+          const dateKey = keys['data do negócio'] || keys['data'] || keys['data pregão'] || keys['dt. negociação'];
+          let dateStr = parseBrDate(row[dateKey]);
+          if (!dateStr) continue; // Sem data, linha inválida
 
-          // 5. PREÇO
-          const priceKey = keys['preço'] || keys['preço unitário'] || keys['preco'];
-          if (priceKey) price = parseBrNumber(row[priceKey]);
+          // QUANTIDADE (Essencial para ser uma ordem)
+          const qtyKey = keys['quantidade'] || keys['qtd'] || keys['qtde'] || keys['executada'];
+          let quantity = parseBrNumber(row[qtyKey]);
+          
+          // PREÇO (Essencial)
+          const priceKey = keys['preço'] || keys['preço unitário'] || keys['preco'] || keys['preço médio'];
+          let price = parseBrNumber(row[priceKey]);
 
-          // Validação Básica
-          if (tickerStr && quantity > 0 && price > 0 && dateStr) {
-              const type = typeStr.includes('venda') ? 'SELL' : 'BUY';
-              
-              // Filtra apenas Compra e Venda (ignora aluguel, leilão, etc se não for explícito)
-              if (typeStr.includes('compra') || typeStr.includes('venda') || typeStr === 'c' || typeStr === 'v') {
-                  transactions.push({
-                      id: crypto.randomUUID(),
-                      ticker: tickerStr.toUpperCase(),
-                      type,
-                      quantity,
-                      price,
-                      date: dateStr,
-                      assetType: inferAssetType(tickerStr)
-                  });
+          // TICKER
+          const tickerKey = keys['código de negociação'] || keys['código'] || keys['ativo'] || keys['ticker'] || keys['produto'] || keys['papel'];
+          let tickerStr = extractTicker(String(row[tickerKey] || ''));
+
+          // VALOR TOTAL (Para fallback de tipo)
+          const totalKey = keys['valor'] || keys['valor da operação'] || keys['valor total'] || keys['crédito/débito'];
+          let totalValue = parseBrNumber(row[totalKey]);
+
+          // --- VALIDAÇÃO E LÓGICA --- //
+
+          // Se não achou Quantidade ou Preço, tenta inferir se for um extrato simples
+          // (Alguns extratos B3 antigos tinham formato diferente)
+          if (quantity === 0 && totalValue !== 0 && price !== 0) {
+              quantity = Math.abs(totalValue / price);
+          }
+
+          // Validação Crítica: Para ser uma transação de custódia, precisamos de Ticker, Qtd e Preço.
+          if (!tickerStr || quantity <= 0 || price <= 0) {
+              continue; 
+          }
+
+          // Determinar TIPO (Compra vs Venda)
+          let type: 'BUY' | 'SELL' = 'BUY'; // Default
+
+          if (typeVal.includes('venda') || typeVal === 'v' || typeVal.includes('sell')) {
+              type = 'SELL';
+          } else if (typeVal.includes('compra') || typeVal === 'c' || typeVal.includes('buy')) {
+              type = 'BUY';
+          } else {
+              // Se não estiver explícito no texto (ex: "Liquidação"), tenta pelo sinal do Valor Financeiro
+              // Na B3: Débito (Negativo) = Compra, Crédito (Positivo) = Venda
+              if (totalKey) {
+                  if (String(row[totalKey]).toUpperCase().includes('D')) { // Débito
+                      type = 'BUY';
+                  } else if (String(row[totalKey]).toUpperCase().includes('C')) { // Crédito
+                      type = 'SELL';
+                  } else if (totalValue < 0) {
+                      type = 'BUY';
+                  } else if (totalValue > 0) {
+                      type = 'SELL';
+                  }
               }
           }
+
+          // Filtra operações "Liquidação" que não são compra/venda de ativos (ex: liquidação de proventos)
+          // Se passou pela validação de Quantidade > 0 e Preço > 0, é muito provável que seja uma ordem real.
+          
+          transactions.push({
+              id: crypto.randomUUID(),
+              ticker: tickerStr,
+              type,
+              quantity: Math.floor(quantity), // Garante inteiro
+              price: Math.abs(price), // Garante positivo
+              date: dateStr,
+              assetType: inferAssetType(tickerStr)
+          });
         }
 
         resolve(transactions);
       } catch (err) {
+        console.error("Excel Parse Error:", err);
         reject(err);
       }
     };
