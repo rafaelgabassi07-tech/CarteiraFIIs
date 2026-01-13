@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
 import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Snowflake, Zap, History, LineChart, ChevronRight } from 'lucide-react';
@@ -87,7 +88,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRealYieldModal, setShowRealYieldModal] = useState(false);
-  const [showEvolutionModal, setShowEvolutionModal] = useState(false);
+  // Reutilizamos este state para o modal do "Patrimônio Total" que contém a evolução
+  const [showPatrimonyModal, setShowPatrimonyModal] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   
   // States para Evolução Patrimonial
@@ -204,10 +206,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   };
 
   useEffect(() => {
-      if (showEvolutionModal) {
+      if (showPatrimonyModal) {
           fetchEvolutionData();
       }
-  }, [showEvolutionModal]);
+  }, [showPatrimonyModal]);
 
   // Lógica Avançada de Histórico e Inflação (Desde o Início)
   const { history, average, maxVal, receiptsByMonth, realYieldMetrics } = useMemo(() => {
@@ -438,11 +440,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-3 pb-8">
-      {/* 1. Patrimonio Total */}
+      {/* 1. Patrimonio Total (Agora Clicável para abrir Evolução) */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        <div className="w-full bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark">
+        <button 
+            onClick={() => setShowPatrimonyModal(true)}
+            className="w-full text-left bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark group press-effect"
+        >
             <div className="flex justify-between items-start mb-3">
-                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">Patrimônio Total</span>
+                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block flex items-center gap-2">
+                    Patrimônio Total 
+                    <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </span>
                 {isAiLoading && <Loader2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400 animate-spin" />}
             </div>
             
@@ -473,7 +481,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
             </div>
-        </div>
+        </button>
       </div>
 
       {/* 2. Agenda */}
@@ -567,29 +575,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* 4. Evolução Patrimonial (Novo Card) */}
-      <div className="anim-stagger-item" style={{ animationDelay: '250ms' }}>
-          <button 
-            onClick={() => setShowEvolutionModal(true)}
-            className="w-full bg-gradient-to-br from-indigo-500 to-indigo-600 dark:from-indigo-600 dark:to-indigo-800 p-5 rounded-xl text-left shadow-lg shadow-indigo-500/20 group relative overflow-hidden"
-          >
-              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-soft-light"></div>
-              <div className="relative z-10 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                          <LineChart className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                          <h3 className="text-sm font-black text-white">Evolução Patrimonial</h3>
-                          <p className="text-[10px] text-white/70 font-medium uppercase tracking-widest">Crescimento vs Aportes</p>
-                      </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-white/70 group-hover:translate-x-1 transition-transform" />
-              </div>
-          </button>
-      </div>
-
-      {/* 5. Renda vs IPCA (Ganho Real) */}
+      {/* 4. Renda vs IPCA (Ganho Real) */}
       <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
          <button 
             onClick={() => setShowRealYieldModal(true)}
@@ -791,16 +777,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* MODAL DE EVOLUÇÃO PATRIMONIAL */}
-      <SwipeableModal isOpen={showEvolutionModal} onClose={() => setShowEvolutionModal(false)}>
+      {/* MODAL DE EVOLUÇÃO PATRIMONIAL (Agora chamado de Patrimônio Total) */}
+      <SwipeableModal isOpen={showPatrimonyModal} onClose={() => setShowPatrimonyModal(false)}>
           <div className="p-6 pb-20">
               <div className="flex items-center gap-4 mb-6">
                   <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
                       <LineChart className="w-6 h-6" />
                   </div>
                   <div>
-                      <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Evolução</h2>
-                      <p className="text-xs text-zinc-500 font-medium">Patrimônio vs Aportes</p>
+                      <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Patrimônio Total</h2>
+                      <p className="text-xs text-zinc-500 font-medium">Evolução do Valor de Mercado</p>
                   </div>
               </div>
 

@@ -1,6 +1,6 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Plus, Calendar, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Wand2, Calculator } from 'lucide-react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { TrendingUp, TrendingDown, Plus, Calendar, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Wand2, Calculator, Search, ChevronDown } from 'lucide-react';
 import * as ReactWindow from 'react-window';
 import { SwipeableModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
@@ -83,6 +83,9 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [splitTicker, setSplitTicker] = useState('');
     const [splitRatio, setSplitRatio] = useState('10');
     const [splitDate, setSplitDate] = useState(new Date().toISOString().split('T')[0]);
+    // Split Search Logic
+    const [splitSearchQuery, setSplitSearchQuery] = useState('');
+    const [isSplitSearchOpen, setIsSplitSearchOpen] = useState(false);
 
     // Virtualized List Logic
     const { flatTransactions, getItemSize } = useMemo(() => {
@@ -191,7 +194,20 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         }
     };
 
+    const handleOpenSplit = () => {
+        setSplitTicker('');
+        setSplitSearchQuery('');
+        setSplitRatio('10');
+        setIsSplitModalOpen(true);
+        setIsSplitSearchOpen(false);
+    };
+
     const uniqueTickers = useMemo(() => Array.from(new Set(transactions.map(t => t.ticker))), [transactions]);
+    
+    const filteredSplitTickers = useMemo(() => {
+        if (!splitSearchQuery) return uniqueTickers;
+        return uniqueTickers.filter(t => t.includes(splitSearchQuery.toUpperCase()));
+    }, [uniqueTickers, splitSearchQuery]);
 
     return (
         <div className="anim-fade-in">
@@ -204,7 +220,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
-                        onClick={() => { setSplitTicker(''); setSplitRatio('10'); setIsSplitModalOpen(true); }}
+                        onClick={handleOpenSplit}
                         className="w-11 h-11 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shadow-sm press-effect border border-indigo-100 dark:border-indigo-800"
                     >
                         <Wand2 className="w-5 h-5" strokeWidth={2} />
@@ -381,18 +397,51 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
 
                     <div className="space-y-5">
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                        {/* Custom Select with Search (Combobox) */}
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 relative">
                             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block">Selecione o Ativo</label>
-                            <select 
-                                value={splitTicker}
-                                onChange={e => setSplitTicker(e.target.value)}
-                                className="w-full bg-transparent text-lg font-bold text-zinc-900 dark:text-white outline-none"
-                            >
-                                <option value="" disabled>Escolher...</option>
-                                {uniqueTickers.map(t => (
-                                    <option key={t} value={t}>{t}</option>
-                                ))}
-                            </select>
+                            
+                            <div className="relative">
+                                <div className="flex items-center">
+                                    <Search className="absolute left-0 w-4 h-4 text-zinc-400" />
+                                    <input 
+                                        type="text"
+                                        value={splitSearchQuery}
+                                        onChange={e => { setSplitSearchQuery(e.target.value.toUpperCase()); setIsSplitSearchOpen(true); }}
+                                        onFocus={() => setIsSplitSearchOpen(true)}
+                                        placeholder={splitTicker || "Buscar ativo..."}
+                                        className="w-full bg-transparent pl-6 pr-8 text-lg font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
+                                    />
+                                    <button 
+                                        onClick={() => setIsSplitSearchOpen(!isSplitSearchOpen)}
+                                        className="absolute right-0 p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                                    >
+                                        <ChevronDown className={`w-4 h-4 transition-transform ${isSplitSearchOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                </div>
+
+                                {isSplitSearchOpen && (
+                                    <div className="absolute top-full left-[-1rem] right-[-1rem] mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto no-scrollbar">
+                                        {filteredSplitTickers.length > 0 ? (
+                                            filteredSplitTickers.map(t => (
+                                                <button
+                                                    key={t}
+                                                    onClick={() => {
+                                                        setSplitTicker(t);
+                                                        setSplitSearchQuery(t);
+                                                        setIsSplitSearchOpen(false);
+                                                    }}
+                                                    className="w-full text-left px-5 py-3 text-sm font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors border-b border-zinc-100 dark:border-zinc-800 last:border-0"
+                                                >
+                                                    {t}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-5 py-4 text-center text-xs text-zinc-400 font-medium">Nenhum ativo encontrado</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
