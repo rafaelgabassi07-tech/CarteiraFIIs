@@ -88,9 +88,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   fundamentals: {
                       p_vp: Number(m.pvp) || 0,
                       dy_12m: Number(m.dy_12m) || 0,
+                      p_l: Number(m.pl) || 0,
+                      roe: Number(m.roe) || 0,
+                      vacancy: Number(m.vacancia) || 0,
+                      liquidity: m.liquidez || '',
                       market_cap: m.current_price ? String(m.current_price) : undefined, 
                       sentiment: 'Neutro',
-                      sentiment_reason: `Dados atualizados em ${new Date(m.updated_at).toLocaleDateString()}`,
+                      sentiment_reason: `Dados fundamentais atualizados em ${new Date(m.updated_at).toLocaleDateString()}`,
                       sources: [{ title: 'Investidor10', uri: `https://investidor10.com.br/` }]
                   }
               };

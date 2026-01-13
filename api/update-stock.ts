@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Headers anti-bot
     const headers = { 
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
     };
 
@@ -77,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const parseVal = (s: string) => {
         if (!s) return 0;
         const clean = s.replace(/[^\d.,-]/g, '');
-        return parseFloat(clean.replace('.', '').replace(',', '.')) || 0;
+        return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
     };
 
     const parseDate = (str: string): string | null => {
@@ -86,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
     };
 
-    // 3. Fundamentos
+    // 3. Fundamentos Básicos
     let cotacao = parseVal($('._card-body span:contains("Cotação")').closest('.card').find('._card-body span').last().text());
     if(!cotacao) cotacao = parseVal($('.quotation-price').first().text());
     
@@ -97,7 +97,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let dy = parseVal($('div[title="Dividend Yield"] .value').text());
     if (!dy) dy = parseVal($('.dy-value').text());
 
-    // 4. Segmento - Lógica Aprimorada e Limpeza
+    // 4. Novos Fundamentos (P/L, ROE, Vacância, Liquidez)
+    // Tenta seletores comuns do Investidor10 para desktop e mobile
+    let pl = parseVal($('div[title="P/L"] .value').text());
+    let roe = parseVal($('div[title="ROE"] .value').text());
+    
+    // Vacância (Específico FIIs)
+    let vacancia = parseVal($('div[title="Vacância Física"] .value').text());
+    
+    // Liquidez Média Diária (Tratamento para String com M/K)
+    let liquidezStr = $('div[title="Liquidez Média Diária"] .value').text().trim();
+    // Se não achou pelo title, tenta buscar pelo label próximo
+    if (!liquidezStr) {
+        liquidezStr = $('.data-item:contains("Liquidez") .value').text().trim();
+    }
+
+    // 5. Segmento - Lógica Aprimorada e Limpeza
     let segment = 'Geral';
     
     const directSelectors = ['.segment-data .value', '.sector-data .value', '.segment .value'];
@@ -128,57 +143,82 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         segment = segment.trim();
     }
 
-    // Salva Metadados
+    // Salva Metadados (Incluindo novos campos)
+    // Nota: O Supabase precisa ter essas colunas ou ser JSONB. 
+    // Assumimos que a tabela suporta ou ignora colunas extras se não existirem, 
+    // mas o ideal é que 'ativos_metadata' tenha colunas pl, roe, vacancia, liquidez.
     await supabase.from('ativos_metadata').upsert({
-        ticker: stock, type: assetType, segment, current_price: cotacao, pvp, dy_12m: dy, updated_at: new Date()
+        ticker: stock, 
+        type: assetType, 
+        segment, 
+        current_price: cotacao, 
+        pvp, 
+        dy_12m: dy,
+        pl,          // Novo
+        roe,         // Novo
+        vacancia,    // Novo (FII)
+        liquidez: liquidezStr, // Novo
+        updated_at: new Date()
     }, { onConflict: 'ticker' });
 
-    // 5. Proventos - Lógica "Fuzzy" v2 (Aprimorada)
+    // 5. Proventos - Lógica Híbrida
     const dividendsToUpsert: any[] = [];
     const processedKeys = new Set();
 
-    $('tr').each((_, tr) => {
+    let tablesToScan = $('#table-dividends-history');
+    if (tablesToScan.length === 0) {
+        tablesToScan = $('table').filter((_, el) => {
+            const txt = $(el).text().toLowerCase();
+            return (txt.includes('com') || txt.includes('base')) && (txt.includes('pagamento') || txt.includes('valor'));
+        });
+    }
+
+    tablesToScan.find('tr').each((_, tr) => {
         const tds = $(tr).find('td');
         if (tds.length < 2) return;
-
         const rowText = $(tr).text();
+        if (rowText.toLowerCase().includes('variação') || rowText.toLowerCase().includes('volume')) return;
+        processRow(tds, rowText);
+    });
 
-        // 1. Busca Datas
+    if (dividendsToUpsert.length === 0) {
+        $('tr, div.card, div.cell').each((_, el) => {
+            const txt = $(el).text().toLowerCase();
+            if (txt.includes('jcp') || txt.includes('dividendo') || txt.includes('rendimento')) {
+                const tds = $(el).find('td, span.value, div.detail');
+                processRow(tds, txt);
+            }
+        });
+    }
+
+    function processRow(elements: cheerio.Cheerio<cheerio.Element>, fullText: string) {
         const datesFound: string[] = [];
-        tds.each((_, td) => {
-            const txt = $(td).text().trim();
+        let valueFound = 0;
+
+        elements.each((_, el) => {
+            const txt = $(el).text().trim();
             const date = parseDate(txt);
             if (date) datesFound.push(date);
-        });
 
-        // 2. Busca Valores (Ignorando Porcentagens de Yield)
-        let valueFound = 0;
-        tds.each((_, td) => {
-            const txt = $(td).text().trim();
-            // Ignora células com % (geralmente DY) para não confundir com valor
-            if (txt.includes('%')) return;
-
-            if (txt.includes(',') && (txt.includes('R$') || /^\d/.test(txt))) {
+            if (!txt.includes('%') && (txt.includes(',') || txt.includes('.')) && /\d/.test(txt)) {
                 const val = parseVal(txt);
-                // Filtros de sanidade: valor positivo e menor que 1000 por cota
-                if (val > 0 && val < 1000) { 
-                    valueFound = val;
+                if (val > 0 && val < 500) { 
+                    if (txt.includes('R$') || valueFound === 0) {
+                        valueFound = val;
+                    }
                 }
             }
         });
 
-        // Se achou Data e Valor
         if (datesFound.length > 0 && valueFound > 0) {
-            datesFound.sort(); // Ordena cronologicamente
-            
+            datesFound.sort(); 
             const dateCom = datesFound[0];
-            // Se tiver mais de uma data, a última é pagamento. Se só tiver uma, assume pagamento = data com.
             const datePag = datesFound.length > 1 ? datesFound[datesFound.length - 1] : dateCom;
 
             let tipo = 'DIV';
-            const lowerRow = rowText.toLowerCase();
-            if (lowerRow.includes('jcp') || lowerRow.includes('juros')) tipo = 'JCP';
-            else if (lowerRow.includes('rendimento')) tipo = 'REND';
+            const lowerText = fullText.toLowerCase();
+            if (lowerText.includes('jcp') || lowerText.includes('juros')) tipo = 'JCP';
+            else if (lowerText.includes('rendimento')) tipo = 'REND';
 
             const key = `${stock}-${tipo}-${dateCom}-${datePag}-${valueFound}`;
             
@@ -193,11 +233,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 processedKeys.add(key);
             }
         }
-    });
+    }
 
     if (dividendsToUpsert.length > 0) {
         dividendsToUpsert.sort((a, b) => b.payment_date.localeCompare(a.payment_date));
-        
         await supabase.from('market_dividends').upsert(dividendsToUpsert, {
             onConflict: 'ticker, type, date_com, payment_date, rate', ignoreDuplicates: true
         });
@@ -207,9 +246,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: true, 
         ticker: stock, 
         segment: segment,
-        fundamentals: { price: cotacao, pvp, dy },
+        fundamentals: { price: cotacao, pvp, dy, pl, roe, vacancia, liquidez: liquidezStr },
         dividends_found: dividendsToUpsert.length,
-        method: 'fuzzy_v3'
+        method: 'hybrid_v5_enhanced'
     });
 
   } catch (error: any) {

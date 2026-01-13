@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
 import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, Layers, ChevronUp, Scale, Percent, Info, Coins, BarChart3, LayoutGrid, Gem, CalendarClock, ChevronDown } from 'lucide-react';
@@ -158,9 +159,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const average = received / (totalMonths > 0 ? totalMonths : 1);
     const maxVal = Math.max(...Object.values(map), 0);
     
-    const userDy = invested > 0 ? (sum12m / invested) * 100 : 0;
+    // Base de cálculo para inflação: Investido ou Saldo (se investido for 0)
+    const baseValue = invested > 0 ? invested : balance;
+    
+    const userDy = baseValue > 0 ? (sum12m / baseValue) * 100 : 0;
     const realReturn = userDy - safeInflation;
-    const inflationCost = invested * (safeInflation / 100);
+    const inflationCost = baseValue * (safeInflation / 100);
     const dividendCoverage = inflationCost > 0 ? (sum12m / inflationCost) * 100 : 100;
 
     const last12MonthsData: MonthlyInflationData[] = [];
@@ -171,7 +175,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         const key = d.toISOString().substring(0, 7);
         const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
         const dividends = receiptsByMonthMap[key]?.reduce((acc, r) => acc + r.totalReceived, 0) || 0;
-        const monthInflationCost = invested * monthlyInflationRate;
+        const monthInflationCost = baseValue * monthlyInflationRate;
         
         last12MonthsData.push({
             month: monthLabel,
@@ -187,13 +191,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         average, 
         maxVal, 
         receiptsByMonth: receiptsByMonthMap,
-        realYieldMetrics: { userDy, realReturn, sum12m, inflationCost, dividendCoverage },
+        realYieldMetrics: { userDy, realReturn, sum12m, inflationCost, dividendCoverage, baseValue },
         last12MonthsData,
         provisionedMap: provMap, 
         provisionedTotal: provTotal,
         sortedProvisionedMonths
     };
-  }, [dividendReceipts, received, invested, safeInflation]);
+  }, [dividendReceipts, received, invested, balance, safeInflation]);
 
   const { typeData, segmentsData, classChartData, assetsChartData } = useMemo(() => {
       let fiisTotal = 0;
@@ -458,32 +462,43 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      {realYieldMetrics.realReturn >= 0 ? 'Positivo' : 'Negativo'}
                   </div>
              </div>
-             <div className="flex items-end gap-2 mb-4 relative z-10">
-                  <span className={`text-3xl font-black tracking-tight ${realYieldMetrics.realReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                     {realYieldMetrics.realReturn > 0 ? '+' : ''}{formatPercent(realYieldMetrics.realReturn, privacyMode)}
-                  </span>
-                  <span className="text-xs font-bold text-zinc-400 mb-1.5 uppercase tracking-wide">Acima da inflação</span>
-             </div>
-             <div className="space-y-3 relative z-10">
-                 <div>
-                     <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                         <span>Sua Carteira (DY)</span>
-                         <span className="text-zinc-900 dark:text-white">{formatPercent(realYieldMetrics.userDy, privacyMode)}</span>
+             
+             {realYieldMetrics.baseValue > 0 ? (
+                 <>
+                     <div className="flex items-end gap-2 mb-4 relative z-10">
+                          <span className={`text-3xl font-black tracking-tight ${realYieldMetrics.realReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                             {realYieldMetrics.realReturn > 0 ? '+' : ''}{formatPercent(realYieldMetrics.realReturn, privacyMode)}
+                          </span>
+                          <span className="text-xs font-bold text-zinc-400 mb-1.5 uppercase tracking-wide">Acima da inflação</span>
                      </div>
-                     <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                         <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min((realYieldMetrics.userDy / 15) * 100, 100)}%` }}></div>
+                     <div className="space-y-3 relative z-10">
+                         <div>
+                             <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                                 <span>Sua Carteira (DY)</span>
+                                 <span className="text-zinc-900 dark:text-white">{formatPercent(realYieldMetrics.userDy, privacyMode)}</span>
+                             </div>
+                             <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                 <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min((realYieldMetrics.userDy / 15) * 100, 100)}%` }}></div>
+                             </div>
+                         </div>
+                          <div>
+                             <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                                 <span>IPCA (Inflação)</span>
+                                 <span className="text-zinc-900 dark:text-white">{formatPercent(Number(inflationRate || 4.62), privacyMode)}</span>
+                             </div>
+                             <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                 <div className="h-full bg-zinc-400 dark:bg-zinc-600 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((Number(inflationRate || 4.62)) / 15) * 100, 100)}%` }}></div>
+                             </div>
+                         </div>
                      </div>
+                 </>
+             ) : (
+                 <div className="flex flex-col items-center justify-center py-6 opacity-60 text-center">
+                     <Coins className="w-12 h-12 mb-3 text-zinc-300" strokeWidth={1} />
+                     <p className="text-xs font-bold text-zinc-500">Adicione ativos para ver o impacto.</p>
                  </div>
-                  <div>
-                     <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                         <span>IPCA (Inflação)</span>
-                         <span className="text-zinc-900 dark:text-white">{formatPercent(Number(inflationRate || 4.62), privacyMode)}</span>
-                     </div>
-                     <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                         <div className="h-full bg-zinc-400 dark:bg-zinc-600 rounded-full transition-all duration-1000" style={{ width: `${Math.min(((Number(inflationRate || 4.62)) / 15) * 100, 100)}%` }}></div>
-                     </div>
-                 </div>
-             </div>
+             )}
+             
              {isAiLoading && <div className="absolute top-4 right-4"><Loader2 className="w-3 h-3 text-zinc-300 animate-spin"/></div>}
              <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                 <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 shadow-md flex items-center justify-center text-zinc-400">
@@ -809,7 +824,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
              </div>
              
-             {invested > 0 ? (
+             {realYieldMetrics.baseValue > 0 ? (
                  <>
                      <div className={`p-6 rounded-2xl mb-6 anim-slide-up bg-surface-light dark:bg-zinc-800/40 border-2 ${realYieldMetrics.realReturn >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20'}`} style={{ animationDelay: '100ms' }}>
                          <div className="flex items-center gap-2 mb-2">
@@ -865,15 +880,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </div>
                  </>
              ) : (
-                 <div className="flex flex-col items-center justify-center py-10 opacity-60 text-center">
-                     <Coins className="w-16 h-16 mb-4 text-zinc-300" strokeWidth={1} />
-                     <p className="text-sm font-bold text-zinc-500">Adicione ativos para ver o impacto da inflação.</p>
+                 <div className="flex flex-col items-center justify-center py-6 opacity-60 text-center">
+                     <Coins className="w-12 h-12 mb-3 text-zinc-300" strokeWidth={1} />
+                     <p className="text-xs font-bold text-zinc-500">Adicione ativos para ver o impacto.</p>
                  </div>
              )}
-
+             
              <div className="mt-8 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
                  <Info className="w-5 h-5 text-blue-500 shrink-0" />
-                 <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed"><strong>Nota Técnica:</strong> O cálculo considera a inflação mensal composta derivada do acumulado de 12 meses ({Number(safeInflation).toFixed(2)}%) aplicada sobre o valor investido atual ({formatBRL(invested, privacyMode)}).</p>
+                 <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed"><strong>Nota Técnica:</strong> O cálculo considera a inflação mensal composta derivada do acumulado de 12 meses ({Number(safeInflation).toFixed(2)}%) aplicada sobre o valor investido atual ({formatBRL(realYieldMetrics.baseValue, privacyMode)}).</p>
              </div>
          </div>
       </SwipeableModal>

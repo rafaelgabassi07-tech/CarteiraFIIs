@@ -18,6 +18,8 @@ export interface AssetFundamentals {
   p_vp?: number;
   p_l?: number;
   dy_12m?: number;
+  roe?: number; // Novo: Return on Equity
+  vacancy?: number; // Novo: Vacância Física (FIIs)
   liquidity?: string;
   shareholders?: string;
   description?: string;
