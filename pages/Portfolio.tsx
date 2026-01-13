@@ -165,7 +165,15 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
 
       {/* Details Modal */}
       <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
-        {selectedAsset && (
+        {selectedAsset && (() => {
+            // Helper calculations for modal
+            const gain = (selectedAsset.currentPrice || 0) - selectedAsset.averagePrice;
+            const gainPercent = selectedAsset.averagePrice > 0 ? (gain / selectedAsset.averagePrice) * 100 : 0;
+            const dailyChange = selectedAsset.dailyChange || 0;
+            const isDailyPositive = dailyChange >= 0;
+            const isPositive = gain >= 0;
+
+            return (
             <div className="p-6 pb-20">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8 anim-slide-up">
@@ -199,6 +207,25 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Preço Médio</p>
                         <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(selectedAsset.averagePrice, privacyMode)}</p>
                     </div>
+
+                    {/* Variação Total (Rentabilidade) */}
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Rentabilidade</p>
+                         <div className={`flex items-center gap-1 font-black text-lg ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                             {isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                             {formatPercent(gainPercent, privacyMode)}
+                         </div>
+                    </div>
+
+                    {/* Variação Diária */}
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Variação Dia</p>
+                         <div className={`flex items-center gap-1 font-black text-lg ${isDailyPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                             {isDailyPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                             {formatPercent(dailyChange, privacyMode)}
+                         </div>
+                    </div>
+
                     <div className="col-span-2 p-4 bg-zinc-900 dark:bg-white rounded-2xl text-white dark:text-zinc-900 shadow-lg flex justify-between items-center">
                         <div>
                             <p className="text-[9px] font-bold opacity-70 uppercase tracking-widest mb-1">Saldo Total</p>
@@ -276,7 +303,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                     </div>
                 </div>
             </div>
-        )}
+            );
+        })()}
       </SwipeableModal>
     </div>
   );
