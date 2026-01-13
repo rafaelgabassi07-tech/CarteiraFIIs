@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, Wallet, Calendar, Rocket, Info, CheckCircle2, X } from 'lucide-react';
 
 // Utility for smooth visibility transitions
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -309,6 +309,40 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes 
     </SwipeableModal>
 );
 
+const getNotificationStyle = (type: string, category?: string) => {
+    if (category === 'payment') return { 
+        icon: Wallet, 
+        color: 'text-emerald-500', 
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20', 
+        border: 'border-emerald-100 dark:border-emerald-900/30' 
+    };
+    if (category === 'datacom') return { 
+        icon: Calendar, 
+        color: 'text-amber-500', 
+        bg: 'bg-amber-50 dark:bg-amber-900/20', 
+        border: 'border-amber-100 dark:border-amber-900/30' 
+    };
+    if (type === 'update') return { 
+        icon: Rocket, 
+        color: 'text-sky-500', 
+        bg: 'bg-sky-50 dark:bg-sky-900/20', 
+        border: 'border-sky-100 dark:border-sky-900/30' 
+    };
+    if (type === 'warning') return { 
+        icon: AlertTriangle, 
+        color: 'text-rose-500', 
+        bg: 'bg-rose-50 dark:bg-rose-900/20', 
+        border: 'border-rose-100 dark:border-rose-900/30' 
+    };
+    // Default Info
+    return { 
+        icon: Info, 
+        color: 'text-zinc-500', 
+        bg: 'bg-zinc-50 dark:bg-zinc-800', 
+        border: 'border-zinc-200 dark:border-zinc-700' 
+    };
+};
+
 export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notifications, onClear }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
         <div className="p-6 pb-24">
@@ -325,22 +359,43 @@ export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notificatio
             </div>
             {notifications.length === 0 ? (
                 <div className="text-center py-20 opacity-40">
-                  <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-200 dark:border-zinc-700">
                     <Inbox className="w-8 h-8 text-zinc-300 dark:text-zinc-600" strokeWidth={1} />
                   </div>
-                  <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">Nada por aqui</p>
+                  <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">Tudo limpo por aqui</p>
                 </div>
             ) : (
-                <div className="space-y-2">
-                    {notifications.map((n: any, i: number) => (
-                        <div key={n.id} className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200 dark:border-zinc-800 anim-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
-                            <h4 className="font-black text-zinc-900 dark:text-white tracking-tight text-sm">{n.title}</h4>
-                            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed font-medium">{n.message}</p>
-                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-3">
-                              {new Date(n.timestamp).toLocaleDateString('pt-BR')} às {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                        </div>
-                    ))}
+                <div className="space-y-3">
+                    {notifications.map((n: any, i: number) => {
+                        const style = getNotificationStyle(n.type, n.category);
+                        return (
+                            <div 
+                                key={n.id} 
+                                className={`flex items-start gap-4 p-4 rounded-xl border transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${style.bg} ${style.border} bg-opacity-40 dark:bg-opacity-20 anim-fade-in-up`} 
+                                style={{ animationDelay: `${i * 50}ms` }}
+                            >
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 shadow-sm bg-white dark:bg-zinc-800 border ${style.border} ${style.color}`}>
+                                    <style.icon className="w-5 h-5" strokeWidth={2} />
+                                </div>
+                                
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight leading-none">{n.title}</h4>
+                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest shrink-0 ml-2">
+                                            {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-zinc-600 dark:text-zinc-300 font-medium leading-relaxed">{n.message}</p>
+                                    <div className="mt-2 flex items-center gap-1.5 opacity-60">
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+                                            {new Date(n.timestamp).toLocaleDateString('pt-BR')}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>
