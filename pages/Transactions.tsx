@@ -1,6 +1,6 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Plus, Calendar, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { TrendingUp, TrendingDown, Plus, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 
@@ -223,27 +223,36 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             {isFilterOpen ? <X className="w-5 h-5" /> : <Filter className="w-5 h-5" strokeWidth={2.5} />}
                         </button>
 
-                        {/* Dropdown Menu Popover */}
+                        {/* Janela Pequena de Filtros (Popover com Glassmorphism) */}
                         {isFilterOpen && (
                             <>
                                 <div 
-                                    className="fixed inset-0 z-20 bg-transparent" 
+                                    className="fixed inset-0 z-20 bg-black/5 dark:bg-black/20 backdrop-blur-[1px]" 
                                     onClick={() => setIsFilterOpen(false)}
                                 ></div>
-                                <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 p-1.5 z-30 anim-scale-in origin-top-right flex flex-col gap-1">
-                                    {filters.map((f) => (
-                                        <button
-                                            key={f.id}
-                                            onClick={() => { setActiveFilter(f.id); setIsFilterOpen(false); }}
-                                            className={`flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-colors ${activeFilter === f.id ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
-                                        >
-                                            <div className="flex items-center gap-2.5">
-                                                <f.icon className={`w-4 h-4 ${activeFilter === f.id ? 'text-indigo-500' : 'text-zinc-400'}`} />
-                                                <span>{f.label}</span>
-                                            </div>
-                                            {activeFilter === f.id && <Check className="w-3.5 h-3.5 text-indigo-500" strokeWidth={3} />}
-                                        </button>
-                                    ))}
+                                <div className="absolute top-full right-0 mt-2 w-56 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-2 z-30 anim-scale-in origin-top-right ring-1 ring-black/5 dark:ring-white/5">
+                                    <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800/50 mb-1">
+                                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Filtrar Ordens</span>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        {filters.map((f) => (
+                                            <button
+                                                key={f.id}
+                                                onClick={() => { setActiveFilter(f.id); setIsFilterOpen(false); }}
+                                                className={`flex items-center justify-between p-3 rounded-xl text-xs font-bold transition-all ${
+                                                    activeFilter === f.id 
+                                                    ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700' 
+                                                    : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-zinc-700 dark:hover:text-zinc-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <f.icon className={`w-4 h-4 ${activeFilter === f.id ? 'text-indigo-500' : 'text-zinc-400'}`} strokeWidth={activeFilter === f.id ? 2.5 : 2} />
+                                                    <span>{f.label}</span>
+                                                </div>
+                                                {activeFilter === f.id && <Check className="w-4 h-4 text-indigo-500" strokeWidth={3} />}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </>
                         )}
