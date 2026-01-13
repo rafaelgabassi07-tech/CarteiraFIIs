@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.3.0'; 
+const APP_VERSION = '8.3.1'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -29,7 +29,7 @@ const STORAGE_KEYS = {
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
   NOTIF_HISTORY: 'investfiis_notification_history_v2',
-  METADATA: 'investfiis_metadata_v2' // Versão atualizada do cache
+  METADATA: 'investfiis_metadata_v2' 
 };
 
 // Arredonda para 2 casas decimais
@@ -99,7 +99,6 @@ const App: React.FC = () => {
   const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.5, startDate: '' }; } catch { return { ipca: 4.5, startDate: '' }; } });
   
-  // METADATA STORE: Segura Segmento, P/VP, DY vindos do Scraper/Supabase
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => {
       try { const s = localStorage.getItem(STORAGE_KEYS.METADATA); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
@@ -115,14 +114,12 @@ const App: React.FC = () => {
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
 
-  // Persistência Local
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.NOTIF_HISTORY, JSON.stringify(notifications.slice(0, 50))); }, [notifications]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.METADATA, JSON.stringify(assetsMetadata)); }, [assetsMetadata]);
 
-  // Efeitos de Tema
   useEffect(() => {
     const root = window.document.documentElement;
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -135,7 +132,6 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
   }, [accentColor]);
 
-  // Monitoramento de Saúde
   const checkServiceHealth = useCallback(async () => {
     setIsCheckingServices(true);
     const newServices = [...services]; 
@@ -186,7 +182,6 @@ const App: React.FC = () => {
       }
   }, [session]); 
 
-  // UI Helpers
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
     setToast(null);
@@ -196,9 +191,6 @@ const App: React.FC = () => {
     }, 50);
   }, []);
 
-  // CORE: Sincronização de Dados
-  // 1. Busca Cotações (Brapi) -> Preço
-  // 2. Busca Metadata (Supabase) -> Segmento, PVP, DY, Dividendos
   const syncMarketData = useCallback(async (force = false, txsToUse: Transaction[], initialLoad = false) => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) return;
@@ -223,7 +215,6 @@ const App: React.FC = () => {
           setGeminiDividends(aiData.dividends);
       }
       if (Object.keys(aiData.metadata).length > 0) {
-          // Merge inteligente para não sobrescrever dados se a API falhar parcialmente
           setAssetsMetadata(prev => ({...prev, ...aiData.metadata}));
       }
       
@@ -272,9 +263,6 @@ const App: React.FC = () => {
       window.location.reload();
   }, []);
 
-  // MANUAL SCRAPER TRIGGER
-  // Dispara a API Serverless para varrer o Investidor10 e atualizar o Supabase.
-  // Em seguida, força um sync do Frontend para pegar os dados novos do Supabase.
   const handleManualScraperTrigger = async () => {
       if (transactions.length === 0) {
           showToast('info', 'Cadastre ativos primeiro.');
@@ -283,10 +271,8 @@ const App: React.FC = () => {
       setIsScraping(true);
       const uniqueTickers = [...new Set(transactions.map(t => t.ticker))];
       
-      // Batch Processing to avoid rate limits
       const BATCH_SIZE = 3;
       let processed = 0;
-      let cachedCount = 0;
       
       showToast('info', `Atualizando ${uniqueTickers.length} ativos...`);
 
@@ -296,13 +282,8 @@ const App: React.FC = () => {
               
               await Promise.all(batch.map(async (ticker) => {
                  try {
-                   // Chama API Serverless com force=true
                    const res = await fetch(`/api/update-stock?ticker=${ticker}&force=true`);
-                   if (res.ok) {
-                       const data = await res.json();
-                       processed++;
-                       if (data.cached) cachedCount++;
-                   }
+                   if (res.ok) processed++;
                  } catch (e) { console.error(`Falha ao atualizar ${ticker}`, e); }
               }));
               
@@ -312,8 +293,9 @@ const App: React.FC = () => {
           }
           
           if (processed > 0) {
-              showToast('success', 'Dados atualizados! Sincronizando...');
-              // Após o scraping, precisamos puxar os novos dados do Supabase
+              showToast('success', 'Dados atualizados! Sincronizando tela...');
+              // IMPORTANT: Wait slightly to ensure Supabase commits are available to read
+              await new Promise(resolve => setTimeout(resolve, 500));
               await syncMarketData(true, transactions); 
           } else {
               showToast('error', 'Falha ao conectar com servidor.');
@@ -406,11 +388,10 @@ const App: React.FC = () => {
     const finalPortfolio = Object.values(positions)
         .filter(p => p.quantity > 0.001)
         .map(p => {
-            // Lógica Central de Fonte de Dados
-            // Preço -> Brapi (quotes)
-            // Segmento, P/VP, DY -> Metadata (assetsMetadata/Scraper)
-            const meta = assetsMetadata[p.ticker] || {};
-            const quote = quotes[p.ticker] || {};
+            // Normaliza Ticker para Lookup
+            const normalizedTicker = p.ticker.trim().toUpperCase();
+            const meta = assetsMetadata[normalizedTicker] || {};
+            const quote = quotes[normalizedTicker] || {};
 
             return { 
                 ...p, 

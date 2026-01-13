@@ -27,6 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!stock || stock === 'UNDEFINED') return res.status(400).json({ error: 'Ticker obrigatório' });
 
   try {
+    // Cache Check (Ignora se force=true)
     if (force !== 'true') {
         const { data: cached } = await supabase.from('ativos_metadata').select('updated_at').eq('ticker', stock).single();
         if (cached?.updated_at) {
@@ -55,8 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Headers anti-bot
     const headers = { 
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Referer': 'https://google.com'
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
     };
 
     let html;
@@ -81,29 +81,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
     };
 
-    // 3. Fundamentos (Fallback para quando Brapi não tem)
+    // 3. Fundamentos
     let cotacao = parseVal($('._card-body span:contains("Cotação")').closest('.card').find('._card-body span').last().text());
     if(!cotacao) cotacao = parseVal($('.quotation-price').first().text());
     
+    // P/VP e DY: Tenta múltiplos seletores
     let pvp = parseVal($('div[title="P/VP"] .value').text());
-    let dy = parseVal($('div[title="Dividend Yield"] .value').text());
+    if (!pvp) pvp = parseVal($('.vp-value').text()); // Seletor alternativo
 
-    // 4. Segmento - Lógica Aprimorada
+    let dy = parseVal($('div[title="Dividend Yield"] .value').text());
+    if (!dy) dy = parseVal($('.dy-value').text()); // Seletor alternativo
+
+    // 4. Segmento - Lógica Aprimorada (Busca Textual)
     let segment = 'Geral';
-    // Prioriza .segment-data (FIIs) e .sector-data (Ações)
-    const segmentSelectors = [
-        '.segment-data .value', 
-        '.sector-data .value', 
-        'div.cell:contains("Segmento") .value',
-        'div.cell:contains("Setor") .value'
-    ];
     
-    for (const sel of segmentSelectors) {
+    // Estratégia 1: Seletores Específicos
+    const directSelectors = ['.segment-data .value', '.sector-data .value', '.segment .value'];
+    for (const sel of directSelectors) {
         const txt = $(sel).first().text().trim();
-        if (txt && txt.length > 2 && !txt.includes('-')) { 
-            segment = txt; 
-            break; 
-        }
+        if (txt && txt.length > 2) { segment = txt; break; }
+    }
+
+    // Estratégia 2: Busca por Label em Cards (Mais genérico e robusto)
+    if (segment === 'Geral') {
+        $('div.cell, div.card, div.data-item, li').each((_, el) => {
+            const label = $(el).find('.title, .name, span:first-child, strong').text().trim().toLowerCase();
+            if (label.includes('segmento') || label.includes('setor')) {
+                const val = $(el).find('.value, .detail, span:last-child').text().trim();
+                if (val && val.length > 2 && !val.includes('...')) {
+                    segment = val;
+                    return false; // Break loop
+                }
+            }
+        });
     }
 
     // Salva Metadados no Supabase

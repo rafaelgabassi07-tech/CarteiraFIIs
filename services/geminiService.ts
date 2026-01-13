@@ -62,7 +62,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }));
 
       // 2. Busca Metadata (Fundamentos e Segmentos) no Supabase (Fonte: Scraper)
-      // Nota: O Scraper popula esta tabela.
       const { data: metaData, error: metaError } = await supabase
             .from('ativos_metadata')
             .select('*')
@@ -79,7 +78,10 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   assetType = AssetType.FII;
               }
 
-              metadata[m.ticker] = {
+              // Normaliza a chave para UPPERCASE para garantir match com transactions
+              const normalizedTicker = m.ticker.trim().toUpperCase();
+
+              metadata[normalizedTicker] = {
                   segment: m.segment || 'Geral',
                   type: assetType,
                   fundamentals: {
