@@ -1,7 +1,6 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, EvolutionPoint } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Snowflake, Zap, History, LineChart, ChevronRight, Trophy, Repeat } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Snowflake, Zap, History, LineChart, ChevronRight } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ComposedChart, Line, Area, AreaChart } from 'recharts';
 import { getHistoricalBatch } from '../services/brapiService';
@@ -88,8 +87,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRealYieldModal, setShowRealYieldModal] = useState(false);
-  // Reutilizamos este state para o modal do "Patrimônio Total" que contém a evolução
-  const [showPatrimonyModal, setShowPatrimonyModal] = useState(false);
+  const [showEvolutionModal, setShowEvolutionModal] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   
   // States para Evolução Patrimonial
@@ -99,53 +97,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
   const isProfitPositive = totalProfitValue >= 0;
-
-  // Calculos Avançados para o Modal de Patrimônio
-  const advancedMetrics = useMemo(() => {
-      // 1. Melhor Ativo (Maior Valorização Nominal)
-      let bestAsset = { ticker: '-', gain: 0, percent: 0 };
-      let portfolioAveragePrice = 0;
-      let totalQty = 0;
-
-      portfolio.forEach(p => {
-          const gain = ((p.currentPrice || 0) - p.averagePrice) * p.quantity;
-          const gainPercent = p.averagePrice > 0 ? (((p.currentPrice || 0) - p.averagePrice) / p.averagePrice) * 100 : 0;
-          
-          if (gain > bestAsset.gain) {
-              bestAsset = { ticker: p.ticker, gain, percent: gainPercent };
-          }
-          portfolioAveragePrice += (p.currentPrice || 0) * p.quantity;
-          totalQty += p.quantity;
-      });
-      
-      // Preço Médio Ponderado da Carteira (para o calculo da bola de neve)
-      const avgWalletPrice = totalQty > 0 ? portfolioAveragePrice / totalQty : 0;
-
-      // 2. Snowball Effect (Poder de Recompra)
-      // Média de dividendos recebidos nos ultimos 3 meses para projetar capacidade atual
-      const today = new Date();
-      let last3MonthsDivs = 0;
-      let monthsCount = 0; // Contar meses que realmente tiveram dividendo para não diluir demais se for início
-      
-      // Simplificação: Pega média geral se histórico for curto, ou ultimos 3 meses
-      const monthlyAvg = totalDividendsReceived / (new Date().getMonth() + 1 || 1); // Fallback simples
-      
-      const snowballCapacity = avgWalletPrice > 0 ? monthlyAvg / avgWalletPrice : 0;
-
-      // 3. Yield On Cost (Global)
-      const yieldOnCost = invested > 0 ? (totalDividendsReceived / invested) * 100 : 0;
-
-      // 4. Projeção 12 Meses (Baseado na média atual)
-      const projectedIncome = monthlyAvg * 12;
-
-      return {
-          bestAsset,
-          snowballCapacity,
-          yieldOnCost,
-          projectedIncome,
-          avgWalletPrice
-      };
-  }, [portfolio, totalDividendsReceived, invested]);
 
   const { upcomingEvents, received } = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -253,10 +204,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   };
 
   useEffect(() => {
-      if (showPatrimonyModal) {
+      if (showEvolutionModal) {
           fetchEvolutionData();
       }
-  }, [showPatrimonyModal]);
+  }, [showEvolutionModal]);
 
   // Lógica Avançada de Histórico e Inflação (Desde o Início)
   const { history, average, maxVal, receiptsByMonth, realYieldMetrics } = useMemo(() => {
@@ -487,17 +438,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-3 pb-8">
-      {/* 1. Patrimonio Total (Agora Clicável para abrir Evolução) */}
+      {/* 1. Patrimonio Total */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        <button 
-            onClick={() => setShowPatrimonyModal(true)}
-            className="w-full text-left bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark group press-effect"
-        >
+        <div className="w-full bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark">
             <div className="flex justify-between items-start mb-3">
-                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block flex items-center gap-2">
-                    Patrimônio Total 
-                    <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </span>
+                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">Patrimônio Total</span>
                 {isAiLoading && <Loader2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400 animate-spin" />}
             </div>
             
@@ -528,7 +473,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
             </div>
-        </button>
+        </div>
       </div>
 
       {/* 2. Agenda */}
@@ -622,7 +567,29 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* 4. Renda vs IPCA (Ganho Real) */}
+      {/* 4. Evolução Patrimonial (Novo Card) */}
+      <div className="anim-stagger-item" style={{ animationDelay: '250ms' }}>
+          <button 
+            onClick={() => setShowEvolutionModal(true)}
+            className="w-full bg-gradient-to-br from-indigo-500 to-indigo-600 dark:from-indigo-600 dark:to-indigo-800 p-5 rounded-xl text-left shadow-lg shadow-indigo-500/20 group relative overflow-hidden"
+          >
+              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-soft-light"></div>
+              <div className="relative z-10 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                          <LineChart className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                          <h3 className="text-sm font-black text-white">Evolução Patrimonial</h3>
+                          <p className="text-[10px] text-white/70 font-medium uppercase tracking-widest">Crescimento vs Aportes</p>
+                      </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-white/70 group-hover:translate-x-1 transition-transform" />
+              </div>
+          </button>
+      </div>
+
+      {/* 5. Renda vs IPCA (Ganho Real) */}
       <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
          <button 
             onClick={() => setShowRealYieldModal(true)}
@@ -824,16 +791,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* MODAL DE EVOLUÇÃO PATRIMONIAL (Agora chamado de Patrimônio Total) */}
-      <SwipeableModal isOpen={showPatrimonyModal} onClose={() => setShowPatrimonyModal(false)}>
+      {/* MODAL DE EVOLUÇÃO PATRIMONIAL */}
+      <SwipeableModal isOpen={showEvolutionModal} onClose={() => setShowEvolutionModal(false)}>
           <div className="p-6 pb-20">
               <div className="flex items-center gap-4 mb-6">
                   <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
                       <LineChart className="w-6 h-6" />
                   </div>
                   <div>
-                      <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Patrimônio Total</h2>
-                      <p className="text-xs text-zinc-500 font-medium">Evolução do Valor de Mercado</p>
+                      <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Evolução</h2>
+                      <p className="text-xs text-zinc-500 font-medium">Patrimônio vs Aportes</p>
                   </div>
               </div>
 
@@ -898,77 +865,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       <p className="text-xs">Dados insuficientes para gerar histórico.</p>
                   </div>
               )}
-
-              {/* DETALHAMENTO CRIATIVO DE RESULTADO (SNOWBALL & EFFICIENCY) */}
-              <div className="mt-6 space-y-4 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                  
-                  {/* CARD DESTAQUE: EFEITO BOLA DE NEVE */}
-                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-800 p-6 text-white shadow-xl shadow-indigo-500/20 group">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                      
-                      <div className="relative z-10 flex items-start justify-between">
-                          <div>
-                              <div className="flex items-center gap-2 mb-2 text-white/80">
-                                  <Snowflake className="w-4 h-4" />
-                                  <span className="text-[10px] font-bold uppercase tracking-widest">Efeito Bola de Neve</span>
-                              </div>
-                              <div className="flex items-baseline gap-1">
-                                  <span className="text-4xl font-black tracking-tighter">
-                                      {privacyMode ? '••' : advancedMetrics.snowballCapacity.toFixed(1)}
-                                  </span>
-                                  <span className="text-sm font-bold text-white/70">cotas/mês</span>
-                              </div>
-                              <p className="text-[10px] text-white/60 font-medium mt-1 max-w-[200px] leading-relaxed">
-                                  Sua renda passiva atual compra sozinha essa quantidade de novas cotas da sua carteira.
-                              </p>
-                          </div>
-                          <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/10">
-                              <Repeat className="w-6 h-6 text-white" />
-                          </div>
-                      </div>
-                  </div>
-
-                  {/* GRID DE MÉTRICAS AVANÇADAS */}
-                  <div className="grid grid-cols-2 gap-3">
-                      {/* YoC */}
-                      <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 relative overflow-hidden">
-                          <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block mb-1">Yield on Cost (YoC)</span>
-                          <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300 tracking-tight">
-                              {formatPercent(advancedMetrics.yieldOnCost, privacyMode)}
-                          </div>
-                          <p className="text-[9px] text-emerald-600/60 dark:text-emerald-400/60 font-medium mt-1">Retorno sobre custo real</p>
-                      </div>
-
-                      {/* Top Asset */}
-                      <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 relative overflow-hidden">
-                          <div className="flex justify-between items-start">
-                              <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase block mb-1">Carregador do Piano</span>
-                              <Trophy className="w-3 h-3 text-amber-500" />
-                          </div>
-                          <div className="text-xl font-black text-amber-700 dark:text-amber-300 tracking-tight truncate">
-                              {advancedMetrics.bestAsset.ticker}
-                          </div>
-                          <p className="text-[10px] font-bold text-amber-600/70 dark:text-amber-400/70 mt-0.5">
-                              +{formatPercent(advancedMetrics.bestAsset.percent)} valorização
-                          </p>
-                      </div>
-                  </div>
-
-                  {/* Projeção Anual */}
-                  <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
-                      <div>
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
-                              <Calendar className="w-3 h-3" /> Projeção 12 Meses
-                          </p>
-                          <p className="text-xs text-zinc-500 font-medium mt-0.5">Renda Passiva Estimada</p>
-                      </div>
-                      <div className="text-right">
-                           <span className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">
-                               {formatBRL(advancedMetrics.projectedIncome, privacyMode)}
-                           </span>
-                      </div>
-                  </div>
-              </div>
           </div>
       </SwipeableModal>
 
