@@ -242,30 +242,35 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         </div>
                     </div>
 
-                    {/* Card 2: Minha Posição (Dense & Explícito) */}
-                    <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4">
-                        <div className="flex items-center gap-2 mb-3">
+                    {/* Card 2: Minha Posição (Structured Grid) */}
+                    <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
+                        {/* Header do Card */}
+                        <div className="bg-zinc-100/50 dark:bg-zinc-800/50 px-4 py-2 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
                             <Wallet className="w-3.5 h-3.5 text-zinc-400" />
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Minha Posição</h3>
                         </div>
-                        <div className="grid grid-cols-4 gap-2 text-center">
-                            <div className="col-span-1 text-left">
-                                <span className="block text-[9px] font-bold text-zinc-400 uppercase">Qtd</span>
-                                <span className="text-sm font-black text-zinc-900 dark:text-white">{quantity}</span>
+                        
+                        {/* Grid 2x2 para organização perfeita */}
+                        <div className="grid grid-cols-2 divide-x divide-zinc-200 dark:divide-zinc-800">
+                            {/* Quadrante 1: Quantidade */}
+                            <div className="p-3 text-center border-b border-zinc-200 dark:border-zinc-800">
+                                 <span className="block text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Quantidade</span>
+                                 <span className="text-lg font-black text-zinc-900 dark:text-white">{quantity}</span>
                             </div>
-                            <div className="col-span-1 text-left">
-                                <span className="block text-[9px] font-bold text-zinc-400 uppercase">Preço Médio</span>
-                                <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(avgPrice, privacyMode)}</span>
+                            {/* Quadrante 2: Preço Médio */}
+                            <div className="p-3 text-center border-b border-zinc-200 dark:border-zinc-800">
+                                 <span className="block text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Preço Médio</span>
+                                 <span className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(avgPrice, privacyMode)}</span>
                             </div>
-                            <div className="col-span-2 text-right flex justify-end gap-6">
-                                <div>
-                                    <span className="block text-[9px] font-bold text-zinc-400 uppercase">Seu Custo</span>
-                                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(totalInvested, privacyMode)}</span>
-                                </div>
-                                <div>
-                                    <span className="block text-[9px] font-bold text-zinc-400 uppercase">Valor Hoje</span>
-                                    <span className="text-base font-black text-zinc-900 dark:text-white">{formatBRL(totalCurrent, privacyMode)}</span>
-                                </div>
+                            {/* Quadrante 3: Custo Total */}
+                            <div className="p-3 text-center">
+                                 <span className="block text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Custo Total</span>
+                                 <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{formatBRL(totalInvested, privacyMode)}</span>
+                            </div>
+                            {/* Quadrante 4: Saldo Atual (Destaque) */}
+                            <div className="p-3 text-center bg-white dark:bg-zinc-800">
+                                 <span className="block text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">Saldo Atual</span>
+                                 <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">{formatBRL(totalCurrent, privacyMode)}</span>
                             </div>
                         </div>
                     </div>
