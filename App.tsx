@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.2.6'; 
+const APP_VERSION = '8.2.7'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -259,21 +259,40 @@ const App: React.FC = () => {
       }
       setIsScraping(true);
       const uniqueTickers = [...new Set(transactions.map(t => t.ticker))];
+      
+      // Batch Processing to avoid rate limits
+      // Processa 3 ativos por vez
+      const BATCH_SIZE = 3;
       let processed = 0;
-      showToast('info', `Atualizando ${uniqueTickers.length} ativos...`);
+      let cachedCount = 0;
+      
+      showToast('info', `Verificando ${uniqueTickers.length} ativos...`);
 
       try {
-          const promises = uniqueTickers.map(async (ticker) => {
-             try {
-               await fetch(`/api/update-stock?ticker=${ticker}`);
-               processed++;
-             } catch (e) { console.error(`Falha ao atualizar ${ticker}`, e); }
-          });
-          await Promise.all(promises);
+          for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
+              const batch = uniqueTickers.slice(i, i + BATCH_SIZE);
+              
+              await Promise.all(batch.map(async (ticker) => {
+                 try {
+                   // A API agora verifica o cache do banco antes de ir para o site externo
+                   const res = await fetch(`/api/update-stock?ticker=${ticker}`);
+                   if (res.ok) {
+                       const data = await res.json();
+                       processed++;
+                       if (data.cached) cachedCount++;
+                   }
+                 } catch (e) { console.error(`Falha ao atualizar ${ticker}`, e); }
+              }));
+              
+              // Pequeno delay entre lotes para ser gentil com a rede
+              if (i + BATCH_SIZE < uniqueTickers.length) {
+                  await new Promise(resolve => setTimeout(resolve, 800));
+              }
+          }
           
           if (processed > 0) {
-              showToast('success', `${processed} ativos atualizados!`);
-              // Força o reload dos dados do banco para o App
+              const fromCacheMsg = cachedCount > 0 ? ` (${cachedCount} via cache)` : '';
+              showToast('success', `${processed} ativos processados${fromCacheMsg}!`);
               await handleSyncAll(true);
           } else {
               showToast('error', 'Falha ao conectar com servidor.');

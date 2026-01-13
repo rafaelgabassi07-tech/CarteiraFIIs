@@ -22,7 +22,7 @@ const formatPercent = (val: number, privacy = false) => {
 
 // Helper para Status do P/VP
 const getPvpStatus = (val?: number) => {
-    if (!val) return null;
+    if (!val || val === 0) return null;
     if (val < 0.95) return { text: 'Desconto', color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' };
     if (val > 1.05) return { text: 'Ágio', color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' };
     return { text: 'Preço Justo', color: 'text-sky-500 bg-sky-500/10 border-sky-500/20' };
@@ -96,7 +96,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                 const currentPrice = asset.currentPrice || 0;
                 const totalValue = currentPrice * asset.quantity;
                 const totalGainValue = (currentPrice - asset.averagePrice) * asset.quantity;
-                const totalGainPercent = asset.averagePrice > 0 ? ((currentPrice - asset.averagePrice) / asset.averagePrice) * 100 : 0;
                 const isPositive = totalGainValue >= 0;
 
                 return (
@@ -138,7 +137,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalValue, privacyMode)}</p>
                             
                             <div className="flex items-center gap-2 mt-0.5">
-                                {/* Total Gain Compact */}
                                 <div className={`flex items-center gap-1 text-[10px] font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                     {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                                     {formatBRL(totalGainValue, privacyMode)}
@@ -158,23 +156,19 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         )}
       </div>
 
-      {/* Details Modal - Optimized Space Layout */}
+      {/* Details Modal */}
       <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
         {selectedAsset && (() => {
-            // Calculations
             const currentPrice = selectedAsset.currentPrice || 0;
             const avgPrice = selectedAsset.averagePrice || 0;
             const quantity = selectedAsset.quantity;
             const totalInvested = avgPrice * quantity;
             const totalCurrent = currentPrice * quantity;
             
-            // 1. Total Gain
             const totalGainValue = (currentPrice - avgPrice) * quantity;
             const totalGainPercent = avgPrice > 0 ? ((currentPrice - avgPrice) / avgPrice) * 100 : 0;
             const isTotalPositive = totalGainValue >= 0;
 
-            // 2. Daily Gain Calculation
-            // Formula: PreviousPrice = Current / (1 + change%); DailyGain = (Current - Previous) * Qty
             const dailyChangePercent = selectedAsset.dailyChange || 0;
             const previousClosePrice = currentPrice / (1 + (dailyChangePercent / 100));
             const dailyGainValue = (currentPrice - previousClosePrice) * quantity;
@@ -184,7 +178,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
 
             return (
             <div className="p-6 pb-20">
-                {/* Compact Header */}
+                {/* Header */}
                 <div className="flex justify-between items-start mb-6 anim-slide-up">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 p-1.5 shadow-sm border border-zinc-100 dark:border-zinc-700 flex items-center justify-center">
@@ -205,10 +199,10 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                     </div>
                 </div>
 
-                {/* Dashboard Grid - Optimized for Space */}
+                {/* Dashboard Grid */}
                 <div className="grid grid-cols-2 gap-3 mb-4 anim-slide-up" style={{ animationDelay: '100ms' }}>
                     
-                    {/* Card 1: Performance (The requested highlights) */}
+                    {/* Performance Card */}
                     <div className="col-span-2 p-4 bg-zinc-900 dark:bg-white rounded-2xl text-white dark:text-zinc-900 shadow-lg relative overflow-hidden">
                         <div className="relative z-10 grid grid-cols-2 gap-8">
                             <div>
@@ -225,9 +219,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             </div>
 
                             <div className="relative">
-                                {/* Divider Line */}
                                 <div className="absolute -left-4 top-1 bottom-1 w-px bg-white/10 dark:bg-black/10"></div>
-                                
                                 <div className="flex items-center gap-1.5 mb-1 opacity-70">
                                     <Activity className="w-3 h-3" />
                                     <span className="text-[9px] font-bold uppercase tracking-widest">Resultado Hoje</span>
@@ -242,32 +234,25 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         </div>
                     </div>
 
-                    {/* Card 2: Minha Posição (Structured Grid) */}
+                    {/* Minha Posição Grid */}
                     <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
-                        {/* Header do Card */}
                         <div className="bg-zinc-100/50 dark:bg-zinc-800/50 px-4 py-2 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
                             <Wallet className="w-3.5 h-3.5 text-zinc-400" />
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Minha Posição</h3>
                         </div>
-                        
-                        {/* Grid 2x2 para organização perfeita */}
                         <div className="grid grid-cols-2 divide-x divide-zinc-200 dark:divide-zinc-800">
-                            {/* Quadrante 1: Quantidade */}
                             <div className="p-3 text-center border-b border-zinc-200 dark:border-zinc-800">
                                  <span className="block text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Quantidade</span>
                                  <span className="text-lg font-black text-zinc-900 dark:text-white">{quantity}</span>
                             </div>
-                            {/* Quadrante 2: Preço Médio */}
                             <div className="p-3 text-center border-b border-zinc-200 dark:border-zinc-800">
                                  <span className="block text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Preço Médio</span>
                                  <span className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(avgPrice, privacyMode)}</span>
                             </div>
-                            {/* Quadrante 3: Custo Total */}
                             <div className="p-3 text-center">
                                  <span className="block text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Custo Total</span>
                                  <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{formatBRL(totalInvested, privacyMode)}</span>
                             </div>
-                            {/* Quadrante 4: Saldo Atual (Destaque) */}
                             <div className="p-3 text-center bg-white dark:bg-zinc-800">
                                  <span className="block text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">Saldo Atual</span>
                                  <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">{formatBRL(totalCurrent, privacyMode)}</span>
@@ -275,7 +260,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         </div>
                     </div>
 
-                    {/* Card 3: Fundamentos (Row) */}
+                    {/* Fundamentos Cards (Fix for missing data) */}
                     <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col justify-between">
                         <div className="flex justify-between items-start">
                             <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">P/VP</span>
@@ -285,8 +270,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                 </span>
                             )}
                         </div>
-                        <span className={`text-lg font-black ${selectedAsset.p_vp && selectedAsset.p_vp < 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
-                            {selectedAsset.p_vp?.toFixed(2) || '-'}
+                        <span className={`text-lg font-black ${selectedAsset.p_vp && selectedAsset.p_vp < 1 && selectedAsset.p_vp > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
+                            {selectedAsset.p_vp && selectedAsset.p_vp > 0 ? selectedAsset.p_vp.toFixed(2) : '-'}
                         </span>
                         <p className="text-[8px] text-zinc-400 font-medium mt-1 leading-tight">Preço sobre Valor Patrimonial</p>
                     </div>
@@ -294,32 +279,26 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                     <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col justify-between">
                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">DY (12m)</span>
                         <span className="text-lg font-black text-zinc-900 dark:text-white">
-                            {selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : '-'}
+                            {selectedAsset.dy_12m && selectedAsset.dy_12m > 0 ? `${selectedAsset.dy_12m}%` : '-'}
                         </span>
                         <p className="text-[8px] text-zinc-400 font-medium mt-1 leading-tight">Retorno anual em dividendos</p>
                     </div>
                 </div>
 
-                {/* AI & Sources - Clean Text */}
+                {/* Info Text */}
                 <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '200ms' }}>
                      <div className="flex items-center gap-2 mb-2">
                         <Leaf className="w-3.5 h-3.5 text-emerald-500" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Análise Inteligente</span>
                      </div>
-                     
                      <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium mb-3">
-                        {selectedAsset.sentiment_reason || 'Análise indisponível no momento.'}
+                        {selectedAsset.sentiment_reason || 'Dados fundamentais atualizados via Investidor10.'}
                      </p>
-
-                     {selectedAsset.sources && selectedAsset.sources.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                             {selectedAsset.sources.slice(0, 2).map((s, i) => (
-                                 <a key={i} href={s.uri} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[9px] font-bold text-zinc-400 hover:text-indigo-500 transition-colors bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-lg border border-zinc-100 dark:border-zinc-700">
-                                     <ExternalLink className="w-2.5 h-2.5" /> {new URL(s.uri).hostname.replace('www.','')}
-                                 </a>
-                             ))}
-                        </div>
-                     )}
+                     <div className="flex flex-wrap gap-2">
+                        <a href={`https://investidor10.com.br/${selectedAsset.assetType === AssetType.FII ? 'fiis' : 'acoes'}/${selectedAsset.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[9px] font-bold text-zinc-400 hover:text-indigo-500 transition-colors bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-lg border border-zinc-100 dark:border-zinc-700">
+                             <ExternalLink className="w-2.5 h-2.5" /> Investidor10
+                        </a>
+                     </div>
                 </div>
             </div>
             );

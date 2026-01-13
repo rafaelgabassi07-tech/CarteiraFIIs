@@ -22,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const { ticker } = req.query;
+  const { ticker, force } = req.query;
   const stock = String(ticker).trim().toUpperCase();
 
   if (!stock || stock === 'UNDEFINED') {
@@ -30,32 +30,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 1. Definição da URL
+    // --- 0. Verificação de Cache (Economia de Requisições) ---
+    if (force !== 'true') {
+        const { data: cached } = await supabase
+            .from('ativos_metadata')
+            .select('updated_at')
+            .eq('ticker', stock)
+            .single();
+
+        if (cached && cached.updated_at) {
+            const lastUpdate = new Date(cached.updated_at).getTime();
+            const now = Date.now();
+            const hoursDiff = (now - lastUpdate) / (1000 * 60 * 60);
+
+            if (hoursDiff < 12) {
+                console.log(`[Cache Hit] ${stock} atualizado há ${hoursDiff.toFixed(1)}h.`);
+                return res.status(200).json({ success: true, cached: true });
+            }
+        }
+    }
+
+    // --- Início do Scraping ---
     let typePath = 'acoes';
     let assetType = 'ACAO';
     
-    // Regra prática para FIIs: Termina em 11/11B e não é unit de banco/energia comum (exceções existem, mas cobre 99%)
-    // Para simplificar, assumimos que o usuário sabe o que está buscando, mas o site separa as rotas.
+    // Regra simples para FIIs
     if (stock.endsWith('11') || stock.endsWith('11B') || stock.endsWith('33') || stock.endsWith('34')) {
         typePath = 'fiis';
         assetType = 'FII';
     }
 
     const targetUrl = `https://investidor10.com.br/${typePath}/${stock.toLowerCase()}/`;
-    console.log(`[Scraper] Iniciando: ${stock} em ${targetUrl}`);
+    console.log(`[Scraper] Buscando fundamentos para: ${stock}`);
 
-    // 2. Request (Com Headers de Navegador Real)
     let html;
     const headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     };
 
     if (process.env.SCRAPER_API_KEY) {
-        console.log('[Scraper] Usando Proxy...');
         const response = await axios.get('http://api.scraperapi.com', {
             params: { api_key: process.env.SCRAPER_API_KEY, url: targetUrl, render: 'false', country_code: 'br' },
             timeout: 30000 
@@ -68,45 +81,71 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const $ = cheerio.load(html);
 
-    // --- 3. Extração de Fundamentos (Busca por Texto nos Cards) ---
-    // O site usa cards com título e valor. Procuramos o elemento que contem o TEXTO do título.
+    // --- 1. Extração Robusta de Fundamentos ---
+    // Procura o elemento que contém o RÓTULO (ex: "P/VP"), sobe para o pai (CARD) e busca o VALOR.
     const getCardValue = (searchTerms: string[]) => {
-        let value = 0;
-        // Itera sobre todos os spans/divs que podem ser títulos
-        $('div._card-header span, div.title span').each((_, el) => {
+        let foundValue = 0;
+        
+        // Seleciona todos os spans/divs/p que podem conter o título
+        $('span, div, p').each((_, el) => {
             const text = $(el).text().trim().toUpperCase();
+            
+            // Verifica se o texto é exatamente um dos termos procurados
             if (searchTerms.some(term => text === term.toUpperCase())) {
-                // Achou o título, busca o valor no irmão ou filho do card
-                const parent = $(el).closest('div._card');
-                const valStr = parent.find('div._card-body span.value').text().trim();
-                if (valStr) value = parseMoney(valStr);
+                // Encontrou o rótulo. Agora procura o valor no contexto próximo.
+                // Estratégia: Subir até encontrar um container de "card" e buscar a classe ".value" ou similar
+                const card = $(el).closest('div[class*="card"]'); 
+                
+                if (card.length) {
+                    // Tenta achar classe .value
+                    let valStr = card.find('[class*="value"]').first().text().trim();
+                    
+                    // Se não achar .value, tenta achar um span irmão que tenha números
+                    if (!valStr) {
+                         card.find('span').each((_, span) => {
+                             const t = $(span).text().trim();
+                             if (/^\d+[.,]\d+/.test(t) || t.includes('R$') || t.includes('%')) {
+                                 valStr = t;
+                             }
+                         });
+                    }
+
+                    if (valStr) {
+                        foundValue = parseMoney(valStr);
+                        return false; // Break loop
+                    }
+                }
             }
         });
-        return value;
+        return foundValue;
     };
 
     const cotacao = getCardValue(["Cotação", "Valor Atual", "Preço"]); 
     const pvp = getCardValue(["P/VP", "P/VPA", "VPA"]);
     const dy = getCardValue(["DY", "Dividend Yield", "DY (12M)"]);
-    const segment = $('.segment-data .value').first().text().trim() || 'Geral';
+    
+    // Extração de Segmento
+    let segment = 'Geral';
+    const segmentEl = $('.segment-data .value, .sector-data .value, span:contains("Segmento") + span, span:contains("Setor") + span').first();
+    if (segmentEl.length) segment = segmentEl.text().trim();
+
+    console.log(`[Dados Extraídos] ${stock} -> P/VP: ${pvp}, DY: ${dy}, Preço: ${cotacao}, Seg: ${segment}`);
 
     // Salva Metadata
     const { error: metaError } = await supabase.from('ativos_metadata').upsert({
         ticker: stock, type: assetType, segment, current_price: cotacao, pvp, dy_12m: dy, updated_at: new Date()
     }, { onConflict: 'ticker' });
 
-    if (metaError && metaError.code !== 'PGRST205') console.error('[Supabase Meta Error]', metaError);
+    if (metaError) console.error("Erro salvando metadata:", metaError);
 
-    // --- 4. Extração de Proventos (Busca Semântica de Tabela) ---
+
+    // --- 2. Extração de Proventos (Lógica Mantida e Reforçada) ---
     const dividendsToUpsert: any[] = [];
     
-    // Em vez de buscar por ID, buscamos TODAS as tabelas e verificamos se o cabeçalho tem "Com" e "Pagamento"
     $('table').each((_, table) => {
         const headersText = $(table).find('thead').text().toLowerCase();
         if (headersText.includes('com') && headersText.includes('pagamento')) {
-            // É a tabela certa!
-            // Mapeia índices
-            const headerMap: any = { tipo: -1, dataCom: -1, dataPag: -1, valor: -1 };
+            const headerMap: any = { tipo: 0, dataCom: 1, dataPag: 2, valor: 3 };
             
             $(table).find('thead th').each((idx, th) => {
                 const h = $(th).text().trim().toLowerCase();
@@ -116,9 +155,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (h.includes('valor')) headerMap.valor = idx;
             });
 
-            // Se não achou headers exatos, usa fallback (0, 1, 2, 3)
-            if (headerMap.dataCom === -1) { headerMap.tipo=0; headerMap.dataCom=1; headerMap.dataPag=2; headerMap.valor=3; }
-
             $(table).find('tbody tr').each((_, tr) => {
                 const cols = $(tr).find('td');
                 if (cols.length >= 4) {
@@ -127,8 +163,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const dataPagRaw = $(cols[headerMap.dataPag]).text().trim();
                     const valorRaw = $(cols[headerMap.valor]).text().trim();
 
-                    const dataCom = parseDate(dataComRaw); // YYYY-MM-DD
-                    const dataPagamento = parseDate(dataPagRaw); // YYYY-MM-DD
+                    const dataCom = parseDate(dataComRaw);
+                    const dataPagamento = parseDate(dataPagRaw);
                     const valor = parseMoney(valorRaw);
 
                     let tipo = 'DIV';
@@ -138,11 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                     if (valor > 0 && dataCom && dataPagamento) {
                         dividendsToUpsert.push({
-                            ticker: stock,
-                            type: tipo,
-                            date_com: dataCom,
-                            payment_date: dataPagamento,
-                            rate: valor
+                            ticker: stock, type: tipo, date_com: dataCom, payment_date: dataPagamento, rate: valor
                         });
                     }
                 }
@@ -151,19 +183,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (dividendsToUpsert.length > 0) {
-        const { error: divError } = await supabase.from('market_dividends').upsert(dividendsToUpsert, {
-            onConflict: 'ticker, type, date_com, payment_date, rate',
-            ignoreDuplicates: true
+        await supabase.from('market_dividends').upsert(dividendsToUpsert, {
+            onConflict: 'ticker, type, date_com, payment_date, rate', ignoreDuplicates: true
         });
-        if (divError && divError.code !== 'PGRST205') console.error('[Supabase Div Error]', divError);
     }
 
     return res.status(200).json({ 
         success: true, 
         ticker: stock, 
-        found_dividends: dividendsToUpsert.length,
-        price: cotacao,
-        scraped_from: targetUrl
+        cached: false,
+        fundamentals: { price: cotacao, pvp, dy },
+        dividends_found: dividendsToUpsert.length
     });
 
   } catch (error: any) {
@@ -174,20 +204,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 function parseMoney(str: string) {
     if (!str) return 0;
-    // Remove tudo que não é número ou vírgula/ponto
-    const clean = str.replace(/[^\d.,]/g, '').replace(',', '.');
-    // Se tiver mais de um ponto (milhar), mantem só o último
-    // Simplificado: Assumimos formato PT-BR padrão 1.000,00 ou 1000,00
-    // O Investidor10 usa vírgula para decimal.
-    const brFormat = str.replace('R$', '').replace('%', '').trim();
-    // Remove pontos de milhar e troca virgula por ponto
-    const normalized = brFormat.replace(/\./g, '').replace(',', '.');
-    return parseFloat(normalized) || 0;
+    // Remove R$, %, espaços
+    let clean = str.replace(/[R$\%\s]/g, '').trim();
+    // Investidor10 usa virgula como decimal "1.200,50" -> "1200.50"
+    clean = clean.replace(/\./g, '').replace(',', '.');
+    return parseFloat(clean) || 0;
 }
 
 function parseDate(str: string) {
     if (!str || str.includes('-')) return null;
     const parts = str.split('/');
-    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
     return null;
 }

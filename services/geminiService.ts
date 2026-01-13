@@ -15,21 +15,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
 
   try {
-      console.log(`[MarketData] Buscando dados para: ${uniqueTickers.join(', ')}`);
-
       // 1. Busca Dividendos
-      // Importante: Se isso retornar [], verifique as Policies RLS no Supabase!
       const { data: dividendsData, error: divError } = await supabase
             .from('market_dividends')
             .select('*')
             .in('ticker', uniqueTickers);
 
-      if (divError) {
-          // PGRST205 = Tabela não existe. Outros erros são reais.
-          if (divError.code !== 'PGRST205') console.error("Erro Supabase (Dividendos):", divError);
-      } else if (!dividendsData || dividendsData.length === 0) {
-          console.warn(`[Atenção] Nenhum dividendo retornado do banco para os ativos solicitados. Verifique: 1) Se o Scraper rodou. 2) Se as Policies RLS (Enable Read Access) estão criadas.`);
-      }
+      if (divError && divError.code !== 'PGRST205') console.error("Erro Supabase (Dividendos):", divError);
 
       const dividends: DividendReceipt[] = (dividendsData || []).map((d: any) => ({
             id: d.id,
@@ -38,11 +30,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             dateCom: d.date_com, 
             paymentDate: d.payment_date,
             rate: Number(d.rate),
-            quantityOwned: 0, // Calculado no App.tsx
+            quantityOwned: 0, 
             totalReceived: 0
       }));
 
-      // 2. Busca Metadata
+      // 2. Busca Metadata (Fundamentos)
       const { data: metaData, error: metaError } = await supabase
             .from('ativos_metadata')
             .select('*')
@@ -63,10 +55,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   segment: m.segment || 'Geral',
                   type: assetType,
                   fundamentals: {
-                      p_vp: m.pvp,
-                      dy_12m: m.dy_12m,
+                      // IMPORTANTE: Mapeamento direto das colunas do banco
+                      p_vp: Number(m.pvp) || 0,
+                      dy_12m: Number(m.dy_12m) || 0,
+                      // O scraper agora salva current_price, podemos usar se a Brapi falhar
+                      market_cap: m.current_price ? String(m.current_price) : undefined, 
                       sentiment: 'Neutro',
-                      sentiment_reason: 'Dados via Investidor10',
+                      sentiment_reason: `Dados atualizados em ${new Date(m.updated_at).toLocaleDateString()}`,
                       sources: [{ title: 'Investidor10', uri: `https://investidor10.com.br/` }]
                   }
               };
