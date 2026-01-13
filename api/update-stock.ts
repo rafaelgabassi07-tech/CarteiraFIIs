@@ -74,7 +74,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const $ = cheerio.load(html);
 
     // Helpers de Parsing
-    const parseVal = (s: string) => parseFloat(s.replace(/[R$\%\s.]/g, '').replace(',', '.')) || 0;
+    const parseVal = (s: string) => {
+        if (!s) return 0;
+        // Remove tudo que não é número, vírgula ou ponto
+        const clean = s.replace(/[^\d.,-]/g, '');
+        // Troca vírgula por ponto para JS entender
+        return parseFloat(clean.replace('.', '').replace(',', '.')) || 0;
+    };
+
     const parseDate = (str: string): string | null => {
         if (!str || str.length < 8) return null; 
         const match = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
@@ -95,14 +102,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 4. Segmento - Lógica Aprimorada e Limpeza
     let segment = 'Geral';
     
-    // Estratégia 1: Seletores Específicos
     const directSelectors = ['.segment-data .value', '.sector-data .value', '.segment .value'];
     for (const sel of directSelectors) {
         const txt = $(sel).first().text().trim();
         if (txt && txt.length > 2) { segment = txt; break; }
     }
 
-    // Estratégia 2: Busca Genérica
     if (segment === 'Geral') {
         $('div.cell, div.card, div.data-item, li').each((_, el) => {
             const label = $(el).find('.title, .name, span:first-child, strong').text().trim().toLowerCase();
@@ -116,9 +121,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
     }
 
-    // Limpeza Profunda do Segmento
     if (segment && segment !== 'Geral') {
-        segment = segment.replace(/^[\d\s.-]+/, ''); // Remove "1. "
+        segment = segment.replace(/^[\d\s.-]+/, ''); 
         segment = segment.replace(/\s+/g, ' ');
         if (segment === segment.toUpperCase()) {
             segment = segment.charAt(0) + segment.slice(1).toLowerCase();
@@ -131,58 +135,74 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ticker: stock, type: assetType, segment, current_price: cotacao, pvp, dy_12m: dy, updated_at: new Date()
     }, { onConflict: 'ticker' });
 
-    // 5. Proventos - Lógica Ampliada para Ações e FIIs (A CORREÇÃO PRINCIPAL ESTÁ AQUI)
+    // 5. Proventos - Lógica "Fuzzy" (Mais agressiva e robusta)
     const dividendsToUpsert: any[] = [];
     const processedKeys = new Set();
 
-    $('table').each((_, table) => {
-        const headerMap: Record<string, number> = {};
-        let hasHeader = false;
+    // Varre TODAS as linhas de tabela encontradas na página
+    $('tr').each((_, tr) => {
+        const tds = $(tr).find('td');
+        if (tds.length < 2) return; // Precisa de pelo menos 2 colunas
 
-        // Mapeia colunas de forma flexível (case insensitive, trim)
-        $(table).find('thead th').each((idx, th) => {
-            const txt = $(th).text().toLowerCase().trim();
-            if (txt.includes('com') || txt.includes('base') || txt.includes('data')) headerMap.com = idx;
-            if (txt.includes('pagamento') || txt.includes('pag')) headerMap.pag = idx;
-            if (txt.includes('valor') || txt.includes('provento') || txt.includes('rendimento')) headerMap.val = idx;
-            if (txt.includes('tipo')) headerMap.type = idx;
-            hasHeader = true;
+        const rowText = $(tr).text();
+        const rowHtml = $(tr).html() || '';
+
+        // Tenta encontrar datas na linha (Formato DD/MM/AAAA)
+        const datesFound: string[] = [];
+        tds.each((_, td) => {
+            const txt = $(td).text().trim();
+            const date = parseDate(txt);
+            if (date) datesFound.push(date);
         });
 
-        // Se encontrou Data Com e Valor, processa
-        if (hasHeader && headerMap.com !== undefined && headerMap.val !== undefined) {
-            $(table).find('tbody tr').each((_, tr) => {
-                const tds = $(tr).find('td');
-                if (tds.length < 2) return;
-                
-                const dateComText = $(tds[headerMap.com]).text().trim();
-                const dateCom = parseDate(dateComText);
-                const val = parseVal($(tds[headerMap.val]).text().trim());
-                
-                // Data Pagamento: Se vazia, assume Data Com (provisão)
-                let datePagText = headerMap.pag !== undefined ? $(tds[headerMap.pag]).text().trim() : '';
-                let datePag = parseDate(datePagText);
-                if (!datePag && dateCom) datePag = dateCom; 
-                
-                let tipo = 'DIV';
-                const typeRaw = headerMap.type !== undefined ? $(tds[headerMap.type]).text().toLowerCase() : '';
-                if (typeRaw.includes('jcp') || typeRaw.includes('juros')) tipo = 'JCP';
-                else if (typeRaw.includes('rendimento')) tipo = 'REND';
-
-                if (dateCom && val > 0 && datePag) {
-                    // Chave única composta para evitar duplicatas
-                    // Adicionamos 'stock' para garantir unicidade global no Set local
-                    const key = `${stock}-${tipo}-${dateCom}-${datePag}-${val}`;
-                    if (!processedKeys.has(key)) {
-                        dividendsToUpsert.push({ ticker: stock, type: tipo, date_com: dateCom, payment_date: datePag, rate: val });
-                        processedKeys.add(key);
-                    }
+        // Tenta encontrar valores monetários na linha
+        let valueFound = 0;
+        tds.each((_, td) => {
+            const txt = $(td).text().trim();
+            if (txt.includes(',') && (txt.includes('R$') || /^\d/.test(txt))) {
+                const val = parseVal(txt);
+                // Filtra valores absurdos (acima de 500 reais por cota é improvável para div normal)
+                if (val > 0 && val < 1000) { 
+                    valueFound = val;
                 }
-            });
+            }
+        });
+
+        // Se achou pelo menos uma data e um valor, é um candidato forte
+        if (datesFound.length > 0 && valueFound > 0) {
+            // Lógica de Data Com vs Pagamento
+            // Se tiver 2 datas: Assumimos a mais antiga como Com e a mais nova como Pagamento
+            // Se tiver 1 data: Assumimos que é Com E Pagamento (para garantir entrada no gráfico)
+            datesFound.sort(); 
+            const dateCom = datesFound[0];
+            const datePag = datesFound.length > 1 ? datesFound[datesFound.length - 1] : dateCom;
+
+            // Determina Tipo
+            let tipo = 'DIV';
+            const lowerRow = rowText.toLowerCase();
+            if (lowerRow.includes('jcp') || lowerRow.includes('juros')) tipo = 'JCP';
+            else if (lowerRow.includes('rendimento')) tipo = 'REND';
+
+            // Cria chave única
+            const key = `${stock}-${tipo}-${dateCom}-${datePag}-${valueFound}`;
+            
+            if (!processedKeys.has(key)) {
+                dividendsToUpsert.push({ 
+                    ticker: stock, 
+                    type: tipo, 
+                    date_com: dateCom, 
+                    payment_date: datePag, 
+                    rate: valueFound 
+                });
+                processedKeys.add(key);
+            }
         }
     });
 
     if (dividendsToUpsert.length > 0) {
+        // Ordena por data decrescente para garantir os mais recentes
+        dividendsToUpsert.sort((a, b) => b.payment_date.localeCompare(a.payment_date));
+        
         await supabase.from('market_dividends').upsert(dividendsToUpsert, {
             onConflict: 'ticker, type, date_com, payment_date, rate', ignoreDuplicates: true
         });
@@ -193,7 +213,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ticker: stock, 
         segment: segment,
         fundamentals: { price: cotacao, pvp, dy },
-        dividends_found: dividendsToUpsert.length
+        dividends_found: dividendsToUpsert.length,
+        method: 'fuzzy_v2'
     });
 
   } catch (error: any) {
