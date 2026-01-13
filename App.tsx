@@ -28,7 +28,8 @@ const STORAGE_KEYS = {
   PREFS_NOTIF: 'investfiis_prefs_notifications',
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
-  NOTIF_HISTORY: 'investfiis_notification_history_v2' 
+  NOTIF_HISTORY: 'investfiis_notification_history_v2',
+  METADATA: 'investfiis_metadata_v1' // Novo cache para metadados (segmentos)
 };
 
 // Arredonda para 2 casas decimais
@@ -102,10 +103,14 @@ const App: React.FC = () => {
   const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.5, startDate: '' }; } catch { return { ipca: 4.5, startDate: '' }; } });
   
+  // Persistence for Metadata (Fixes disappearing segments)
+  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => {
+      try { const s = localStorage.getItem(STORAGE_KEYS.METADATA); return s ? JSON.parse(s) : {}; } catch { return {}; }
+  });
+
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isScraping, setIsScraping] = useState(false); 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>({});
 
   const [isCheckingServices, setIsCheckingServices] = useState(false);
   const [services, setServices] = useState<ServiceMetric[]>([
@@ -118,6 +123,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.NOTIF_HISTORY, JSON.stringify(notifications.slice(0, 50))); }, [notifications]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.METADATA, JSON.stringify(assetsMetadata)); }, [assetsMetadata]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -211,7 +217,8 @@ const App: React.FC = () => {
           setGeminiDividends(aiData.dividends);
       }
       if (Object.keys(aiData.metadata).length > 0) {
-          setAssetsMetadata(aiData.metadata);
+          // Merge with existing to avoid overwriting unrelated keys if any
+          setAssetsMetadata(prev => ({...prev, ...aiData.metadata}));
       }
       
       // ATUALIZAÇÃO DO IPCA ADICIONADA AQUI

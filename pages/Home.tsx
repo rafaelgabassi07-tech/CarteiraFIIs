@@ -209,7 +209,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         receiptsByMonth: receiptsByMonthMap,
         realYieldMetrics: { userDy, realReturn, sum12m, inflationCost, dividendCoverage },
         last12MonthsData,
-        provisionedMap: provMap, // Explicitly returned
+        provisionedMap: provMap, 
         provisionedTotal: provTotal,
         sortedProvisionedMonths
     };
@@ -218,7 +218,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const { typeData, topAssets, segmentsData, classChartData, assetsChartData } = useMemo(() => {
       let fiisTotal = 0;
       let stocksTotal = 0;
-      // Agora o mapa guarda valor E lista de tickers
+      // Mapa que guarda valor E lista de tickers
       const segmentsMap: Record<string, { value: number; tickers: string[] }> = {};
       
       const enriched = portfolio.map(p => {
