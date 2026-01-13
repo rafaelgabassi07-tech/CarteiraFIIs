@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType } from '../types';
-import { Search, SlidersHorizontal, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, MoreHorizontal, PieChart, Wallet, Building2, CandlestickChart, Info, ExternalLink, Leaf } from 'lucide-react';
+import { Search, SlidersHorizontal, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, MoreHorizontal, PieChart, Wallet, Building2, CandlestickChart, Info, ExternalLink, Leaf, DollarSign, Target, Activity } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
@@ -16,7 +16,8 @@ const formatBRL = (val: number, privacy = false) => {
 
 const formatPercent = (val: number, privacy = false) => {
   if (privacy) return '•••%';
-  return `${val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+  const signal = val > 0 ? '+' : '';
+  return `${signal}${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
 const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode = false }) => {
@@ -31,10 +32,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         const matchesType = filterType === 'ALL' || p.assetType === filterType;
         return matchesSearch && matchesType;
       })
-      .sort((a, b) => (b.currentPrice || 0) * b.quantity - (a.currentPrice || 0) * a.quantity); // Ordena por valor total decrescente
+      .sort((a, b) => (b.currentPrice || 0) * b.quantity - (a.currentPrice || 0) * a.quantity); 
   }, [portfolio, searchTerm, filterType]);
-
-  const totalFilteredValue = filteredAssets.reduce((acc, p) => acc + ((p.currentPrice || p.averagePrice) * p.quantity), 0);
 
   return (
     <div className="pb-24">
@@ -86,13 +85,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
       <div className="space-y-3 px-1">
         {filteredAssets.length > 0 ? (
             filteredAssets.map((asset, index) => {
-                const totalValue = (asset.currentPrice || asset.averagePrice) * asset.quantity;
-                const gain = (asset.currentPrice || 0) - asset.averagePrice;
-                const gainPercent = asset.averagePrice > 0 ? (gain / asset.averagePrice) * 100 : 0;
-                const isPositive = gain >= 0;
-
-                const dailyChange = asset.dailyChange || 0;
-                const isDailyPositive = dailyChange >= 0;
+                const currentPrice = asset.currentPrice || 0;
+                const totalValue = currentPrice * asset.quantity;
+                const totalGainValue = (currentPrice - asset.averagePrice) * asset.quantity;
+                const totalGainPercent = asset.averagePrice > 0 ? ((currentPrice - asset.averagePrice) / asset.averagePrice) * 100 : 0;
+                const isPositive = totalGainValue >= 0;
 
                 return (
                     <button 
@@ -133,20 +130,10 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalValue, privacyMode)}</p>
                             
                             <div className="flex items-center gap-2 mt-0.5">
-                                {/* Variação Diária */}
-                                <div className="flex items-center gap-1">
-                                    <span className="text-[9px] font-bold text-zinc-400 uppercase">Dia</span>
-                                    <span className={`text-[10px] font-bold ${isDailyPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                        {isDailyPositive ? '+' : ''}{formatPercent(dailyChange, privacyMode)}
-                                    </span>
-                                </div>
-                                
-                                <div className="w-px h-2 bg-zinc-200 dark:bg-zinc-700"></div>
-
-                                {/* Variação Total */}
-                                <div className={`flex items-center gap-1 text-[10px] font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'} bg-zinc-100 dark:bg-zinc-800/50 px-1.5 py-0.5 rounded`}>
+                                {/* Total Gain Compact */}
+                                <div className={`flex items-center gap-1 text-[10px] font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                     {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                                    {formatPercent(gainPercent, privacyMode)}
+                                    {formatBRL(totalGainValue, privacyMode)}
                                 </div>
                             </div>
                         </div>
@@ -163,97 +150,139 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         )}
       </div>
 
-      {/* Details Modal - Minimalist Redesign */}
+      {/* Details Modal - Optimized Space Layout */}
       <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
         {selectedAsset && (() => {
-            // Helper calculations for modal
-            const gain = (selectedAsset.currentPrice || 0) - selectedAsset.averagePrice;
-            const gainPercent = selectedAsset.averagePrice > 0 ? (gain / selectedAsset.averagePrice) * 100 : 0;
-            const dailyChange = selectedAsset.dailyChange || 0;
-            const isDailyPositive = dailyChange >= 0;
-            const isPositive = gain >= 0;
+            // Calculations
+            const currentPrice = selectedAsset.currentPrice || 0;
+            const avgPrice = selectedAsset.averagePrice || 0;
+            const quantity = selectedAsset.quantity;
+            
+            // 1. Total Gain
+            const totalGainValue = (currentPrice - avgPrice) * quantity;
+            const totalGainPercent = avgPrice > 0 ? ((currentPrice - avgPrice) / avgPrice) * 100 : 0;
+            const isTotalPositive = totalGainValue >= 0;
+
+            // 2. Daily Gain Calculation
+            // Formula: PreviousPrice = Current / (1 + change%); DailyGain = (Current - Previous) * Qty
+            const dailyChangePercent = selectedAsset.dailyChange || 0;
+            const previousClosePrice = currentPrice / (1 + (dailyChangePercent / 100));
+            const dailyGainValue = (currentPrice - previousClosePrice) * quantity;
+            const isDailyPositive = dailyGainValue >= 0;
 
             return (
-            <div className="p-8 pb-20">
-                {/* Header: Clean & Typographic */}
-                <div className="flex flex-col items-center mb-8 anim-slide-up">
-                    <div className="w-16 h-16 rounded-2xl bg-white dark:bg-zinc-800 p-2 mb-4 shadow-sm border border-zinc-100 dark:border-zinc-700 flex items-center justify-center">
-                        {selectedAsset.logoUrl ? (
-                            <img src={selectedAsset.logoUrl} alt={selectedAsset.ticker} className="w-full h-full object-contain" />
-                        ) : (
-                            <span className="text-2xl font-black text-zinc-300 dark:text-zinc-600">{selectedAsset.ticker.substring(0,2)}</span>
-                        )}
+            <div className="p-6 pb-20">
+                {/* Compact Header */}
+                <div className="flex justify-between items-start mb-6 anim-slide-up">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 p-1.5 shadow-sm border border-zinc-100 dark:border-zinc-700 flex items-center justify-center">
+                            {selectedAsset.logoUrl ? (
+                                <img src={selectedAsset.logoUrl} alt={selectedAsset.ticker} className="w-full h-full object-contain" />
+                            ) : (
+                                <span className="text-xl font-black text-zinc-300 dark:text-zinc-600">{selectedAsset.ticker.substring(0,2)}</span>
+                            )}
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">{selectedAsset.ticker}</h2>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">{selectedAsset.assetType} • {selectedAsset.segment}</p>
+                        </div>
                     </div>
-                    
-                    <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight mb-1">{selectedAsset.ticker}</h2>
-                    <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">{selectedAsset.segment} • {selectedAsset.assetType}</p>
-                    
-                    <div className="text-4xl font-black text-zinc-900 dark:text-white tabular-nums tracking-tighter">
-                        {formatBRL(selectedAsset.currentPrice || 0, privacyMode)}
-                    </div>
-                </div>
-
-                {/* Performance Row (Minimal) */}
-                <div className="flex justify-center gap-8 mb-10 pb-10 border-b border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                    <div className="text-center">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Dia</span>
-                        <span className={`text-lg font-black ${isDailyPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {isDailyPositive ? '+' : ''}{formatPercent(dailyChange, privacyMode)}
-                        </span>
-                    </div>
-                    <div className="w-px bg-zinc-100 dark:bg-zinc-800"></div>
-                    <div className="text-center">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Total</span>
-                        <span className={`text-lg font-black ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {isPositive ? '+' : ''}{formatPercent(gainPercent, privacyMode)}
-                        </span>
+                    <div className="text-right">
+                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Cotação Atual</p>
+                         <p className="text-xl font-black text-zinc-900 dark:text-white tabular-nums">{formatBRL(currentPrice, privacyMode)}</p>
                     </div>
                 </div>
 
-                {/* Key Stats Grid */}
-                <div className="grid grid-cols-3 gap-y-8 gap-x-4 mb-10 anim-slide-up" style={{ animationDelay: '200ms' }}>
-                     <div>
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Preço Médio</span>
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white">{formatBRL(selectedAsset.averagePrice, privacyMode)}</span>
-                     </div>
-                     <div className="text-center">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Quantidade</span>
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white">{selectedAsset.quantity}</span>
-                     </div>
-                     <div className="text-right">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Total</span>
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white">{formatBRL((selectedAsset.currentPrice || 0) * selectedAsset.quantity, privacyMode)}</span>
-                     </div>
+                {/* Dashboard Grid - Optimized for Space */}
+                <div className="grid grid-cols-2 gap-3 mb-4 anim-slide-up" style={{ animationDelay: '100ms' }}>
+                    
+                    {/* Card 1: Performance (The requested highlights) */}
+                    <div className="col-span-2 p-4 bg-zinc-900 dark:bg-white rounded-2xl text-white dark:text-zinc-900 shadow-lg relative overflow-hidden">
+                        <div className="relative z-10 grid grid-cols-2 gap-8">
+                            <div>
+                                <div className="flex items-center gap-1.5 mb-1 opacity-70">
+                                    <Target className="w-3 h-3" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Resultado Total</span>
+                                </div>
+                                <p className={`text-lg font-black tracking-tight ${isTotalPositive ? 'text-emerald-400 dark:text-emerald-600' : 'text-rose-400 dark:text-rose-600'}`}>
+                                    {isTotalPositive ? '+' : ''}{formatBRL(totalGainValue, privacyMode)}
+                                </p>
+                                <p className={`text-[10px] font-bold ${isTotalPositive ? 'text-emerald-400/80 dark:text-emerald-600/80' : 'text-rose-400/80 dark:text-rose-600/80'}`}>
+                                    {formatPercent(totalGainPercent, privacyMode)}
+                                </p>
+                            </div>
 
-                     <div>
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">P/VP</span>
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white">{selectedAsset.p_vp?.toFixed(2) || '-'}</span>
-                     </div>
-                     <div className="text-center">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">DY (12m)</span>
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white">{selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : '-'}</span>
-                     </div>
-                     <div className="text-right">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Liquidez</span>
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white truncate max-w-[80px] ml-auto">{selectedAsset.liquidity || '-'}</span>
-                     </div>
+                            <div className="relative">
+                                {/* Divider Line */}
+                                <div className="absolute -left-4 top-1 bottom-1 w-px bg-white/10 dark:bg-black/10"></div>
+                                
+                                <div className="flex items-center gap-1.5 mb-1 opacity-70">
+                                    <Activity className="w-3 h-3" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Resultado Hoje</span>
+                                </div>
+                                <p className={`text-lg font-black tracking-tight ${isDailyPositive ? 'text-emerald-400 dark:text-emerald-600' : 'text-rose-400 dark:text-rose-600'}`}>
+                                    {isDailyPositive ? '+' : ''}{formatBRL(dailyGainValue, privacyMode)}
+                                </p>
+                                <p className={`text-[10px] font-bold ${isDailyPositive ? 'text-emerald-400/80 dark:text-emerald-600/80' : 'text-rose-400/80 dark:text-rose-600/80'}`}>
+                                    {formatPercent(dailyChangePercent, privacyMode)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 2: Minha Posição (Dense) */}
+                    <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Wallet className="w-3.5 h-3.5 text-zinc-400" />
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Minha Posição</h3>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                            <div className="col-span-1 text-left">
+                                <span className="block text-[9px] font-bold text-zinc-400 uppercase">Qtd</span>
+                                <span className="text-sm font-black text-zinc-900 dark:text-white">{quantity}</span>
+                            </div>
+                            <div className="col-span-1 text-left">
+                                <span className="block text-[9px] font-bold text-zinc-400 uppercase">Médio</span>
+                                <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(avgPrice, privacyMode)}</span>
+                            </div>
+                            <div className="col-span-2 text-right">
+                                <span className="block text-[9px] font-bold text-zinc-400 uppercase">Saldo Total</span>
+                                <span className="text-base font-black text-zinc-900 dark:text-white">{formatBRL(currentPrice * quantity, privacyMode)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 3: Fundamentos (Row) */}
+                    <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col justify-between">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">P/VP</span>
+                        <span className={`text-lg font-black ${selectedAsset.p_vp && selectedAsset.p_vp < 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
+                            {selectedAsset.p_vp?.toFixed(2) || '-'}
+                        </span>
+                    </div>
+
+                    <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col justify-between">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">DY (12m)</span>
+                        <span className="text-lg font-black text-zinc-900 dark:text-white">
+                            {selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : '-'}
+                        </span>
+                    </div>
                 </div>
 
                 {/* AI & Sources - Clean Text */}
-                <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '300ms' }}>
-                     <div className="flex items-center gap-2 mb-3">
+                <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '200ms' }}>
+                     <div className="flex items-center gap-2 mb-2">
                         <Leaf className="w-3.5 h-3.5 text-emerald-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Inteligência Artificial</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Análise Inteligente</span>
                      </div>
                      
-                     <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium mb-4">
+                     <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium mb-3">
                         {selectedAsset.sentiment_reason || 'Análise indisponível no momento.'}
                      </p>
 
                      {selectedAsset.sources && selectedAsset.sources.length > 0 && (
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-2">
                              {selectedAsset.sources.slice(0, 2).map((s, i) => (
-                                 <a key={i} href={s.uri} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-indigo-500 transition-colors">
+                                 <a key={i} href={s.uri} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[9px] font-bold text-zinc-400 hover:text-indigo-500 transition-colors bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-lg border border-zinc-100 dark:border-zinc-700">
                                      <ExternalLink className="w-2.5 h-2.5" /> {new URL(s.uri).hostname.replace('www.','')}
                                  </a>
                              ))}
