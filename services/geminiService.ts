@@ -30,7 +30,14 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             .select('*')
             .in('ticker', uniqueTickers);
 
-      if (divError) throw divError;
+      // Tratamento específico para tabela inexistente (PGRST205) para não sujar o log
+      if (divError) {
+          if (divError.code === 'PGRST205' || divError.message.includes('market_dividends')) {
+              console.warn("[Setup Necessário] Tabela 'market_dividends' não encontrada no Supabase. Crie-a usando o SQL fornecido.");
+              return { dividends: [], metadata: {} };
+          }
+          throw divError;
+      }
 
       const dividends: DividendReceipt[] = (dividendsData || []).map((d: any) => ({
             id: d.id,
@@ -49,7 +56,14 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             .select('*')
             .in('ticker', uniqueTickers);
 
-      if (metaError) throw metaError;
+      if (metaError) {
+          if (metaError.code === 'PGRST205' || metaError.message.includes('ativos_metadata')) {
+              console.warn("[Setup Necessário] Tabela 'ativos_metadata' não encontrada no Supabase. Crie-a usando o SQL fornecido.");
+              // Retorna o que conseguiu de dividendos, mas sem metadata
+              return { dividends, metadata: {} }; 
+          }
+          throw metaError;
+      }
 
       const metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};
       
