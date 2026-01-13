@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
 import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, Layers, ChevronUp, Scale, Percent, Info, Coins, BarChart3, LayoutGrid, Gem, CalendarClock, ChevronDown } from 'lucide-react';
@@ -87,13 +86,16 @@ const getInflationVerdict = (realReturn: number) => {
     return { title: "Destruição de Valor", desc: "Crítico. A inflação está consumindo seu patrimônio mais rápido do que ele rende.", color: "text-rose-500", bg: "bg-rose-500" };
 };
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate = 4.62, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRealYieldModal, setShowRealYieldModal] = useState(false);
   const [showPatrimonyHelp, setShowPatrimonyHelp] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  
+  // Fallback agressivo: Se inflationRate for null/undefined/0, usa 4.62% (média histórica recente)
+  const safeInflation = Number(inflationRate) || 4.62;
 
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
@@ -129,7 +131,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     let sum12m = 0;
 
     dividendReceipts.forEach(r => {
-        // Se paymentDate estiver vazia ou inválida, não processa
         if (!r.paymentDate || r.paymentDate.length < 7) return;
 
         const pDate = new Date(r.paymentDate + 'T00:00:00');
@@ -156,9 +157,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const totalMonths = sortedHistory.length || 1;
     const average = received / (totalMonths > 0 ? totalMonths : 1);
     const maxVal = Math.max(...Object.values(map), 0);
-
-    // Fallback seguro para IPCA
-    const safeInflation = (typeof inflationRate === 'number' && !isNaN(inflationRate)) ? inflationRate : 4.62;
+    
     const userDy = invested > 0 ? (sum12m / invested) * 100 : 0;
     const realReturn = userDy - safeInflation;
     const inflationCost = invested * (safeInflation / 100);
@@ -194,7 +193,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         provisionedTotal: provTotal,
         sortedProvisionedMonths
     };
-  }, [dividendReceipts, received, invested, inflationRate]);
+  }, [dividendReceipts, received, invested, safeInflation]);
 
   const { typeData, segmentsData, classChartData, assetsChartData } = useMemo(() => {
       let fiisTotal = 0;
@@ -809,61 +808,72 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <p className="text-xs text-zinc-500 font-medium">Histórico 12 Meses</p>
                 </div>
              </div>
-             <div className={`p-6 rounded-2xl mb-6 anim-slide-up bg-surface-light dark:bg-zinc-800/40 border-2 ${realYieldMetrics.realReturn >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20'}`} style={{ animationDelay: '100ms' }}>
-                 <div className="flex items-center gap-2 mb-2">
-                     <div className={`w-2 h-2 rounded-full ${verdict.bg} animate-pulse`}></div>
-                     <span className={`text-[10px] font-black uppercase tracking-widest ${verdict.color}`}>Veredito Financeiro</span>
-                 </div>
-                 <h3 className={`text-xl font-black mb-1.5 ${verdict.color}`}>{verdict.title}</h3>
-                 <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">{verdict.desc}</p>
-             </div>
-             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
-                 <div className="flex items-center justify-between mb-4 px-2">
-                     <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-3 h-3" /> Proventos vs IPCA</h3>
-                     <div className="flex gap-3">
-                         <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[9px] font-bold text-zinc-400 uppercase">Recebido</span></div>
-                         <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-400"></div><span className="text-[9px] font-bold text-zinc-400 uppercase">Inflação</span></div>
+             
+             {invested > 0 ? (
+                 <>
+                     <div className={`p-6 rounded-2xl mb-6 anim-slide-up bg-surface-light dark:bg-zinc-800/40 border-2 ${realYieldMetrics.realReturn >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20'}`} style={{ animationDelay: '100ms' }}>
+                         <div className="flex items-center gap-2 mb-2">
+                             <div className={`w-2 h-2 rounded-full ${verdict.bg} animate-pulse`}></div>
+                             <span className={`text-[10px] font-black uppercase tracking-widest ${verdict.color}`}>Veredito Financeiro</span>
+                         </div>
+                         <h3 className={`text-xl font-black mb-1.5 ${verdict.color}`}>{verdict.title}</h3>
+                         <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">{verdict.desc}</p>
                      </div>
-                 </div>
-                 <div className="h-48 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={last12MonthsData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b40" />
-                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 700 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `R$${val/1000}k`} />
-                            <RechartsTooltip content={<BarTooltip />} cursor={{ fill: '#71717a10', radius: 4 }} />
-                            <Bar dataKey="dividends" fill="#10b981" radius={[4, 4, 0, 0]} barSize={8} />
-                            <Bar dataKey="inflation" fill="#fb7185" radius={[4, 4, 0, 0]} barSize={8} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                 </div>
-             </div>
-             <div className="space-y-4 anim-slide-up" style={{ animationDelay: '300ms' }}>
-                 <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Detalhamento Mensal</h3>
-                 <div className="space-y-2">
-                     {last12MonthsData.slice().reverse().map((item: MonthlyInflationData, i: number) => {
-                         const isPositive = item.net >= 0;
-                         return (
-                             <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
-                                 <div className="flex items-center gap-3">
-                                     <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800`}><span className="text-[10px] font-black uppercase text-zinc-400">{item.month}</span></div>
-                                     <div>
-                                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Resultado Real</p>
-                                         <p className={`text-sm font-black ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{isPositive ? '+' : ''}{formatBRL(item.net, privacyMode)}</p>
-                                     </div>
-                                 </div>
-                                 <div className="text-right space-y-1">
-                                     <div className="flex items-center justify-end gap-2 text-[10px]"><span className="font-medium text-zinc-400">Proventos</span><span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">{formatBRL(item.dividends, privacyMode)}</span></div>
-                                     <div className="flex items-center justify-end gap-2 text-[10px]"><span className="font-medium text-zinc-400">Corrosão</span><span className="font-bold text-rose-500 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/50 px-1.5 py-0.5 rounded">-{formatBRL(item.inflation, privacyMode)}</span></div>
-                                 </div>
+                     <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
+                         <div className="flex items-center justify-between mb-4 px-2">
+                             <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-3 h-3" /> Proventos vs IPCA</h3>
+                             <div className="flex gap-3">
+                                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[9px] font-bold text-zinc-400 uppercase">Recebido</span></div>
+                                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-400"></div><span className="text-[9px] font-bold text-zinc-400 uppercase">Inflação</span></div>
                              </div>
-                         )
-                     })}
+                         </div>
+                         <div className="h-48 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={last12MonthsData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b40" />
+                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 700 }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `R$${val/1000}k`} />
+                                    <RechartsTooltip content={<BarTooltip />} cursor={{ fill: '#71717a10', radius: 4 }} />
+                                    <Bar dataKey="dividends" fill="#10b981" radius={[4, 4, 0, 0]} barSize={8} />
+                                    <Bar dataKey="inflation" fill="#fb7185" radius={[4, 4, 0, 0]} barSize={8} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                         </div>
+                     </div>
+                     <div className="space-y-4 anim-slide-up" style={{ animationDelay: '300ms' }}>
+                         <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Detalhamento Mensal</h3>
+                         <div className="space-y-2">
+                             {last12MonthsData.slice().reverse().map((item: MonthlyInflationData, i: number) => {
+                                 const isPositive = item.net >= 0;
+                                 return (
+                                     <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
+                                         <div className="flex items-center gap-3">
+                                             <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800`}><span className="text-[10px] font-black uppercase text-zinc-400">{item.month}</span></div>
+                                             <div>
+                                                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Resultado Real</p>
+                                                 <p className={`text-sm font-black ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{isPositive ? '+' : ''}{formatBRL(item.net, privacyMode)}</p>
+                                             </div>
+                                         </div>
+                                         <div className="text-right space-y-1">
+                                             <div className="flex items-center justify-end gap-2 text-[10px]"><span className="font-medium text-zinc-400">Proventos</span><span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">{formatBRL(item.dividends, privacyMode)}</span></div>
+                                             <div className="flex items-center justify-end gap-2 text-[10px]"><span className="font-medium text-zinc-400">Corrosão</span><span className="font-bold text-rose-500 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/50 px-1.5 py-0.5 rounded">-{formatBRL(item.inflation, privacyMode)}</span></div>
+                                         </div>
+                                     </div>
+                                 )
+                             })}
+                         </div>
+                     </div>
+                 </>
+             ) : (
+                 <div className="flex flex-col items-center justify-center py-10 opacity-60 text-center">
+                     <Coins className="w-16 h-16 mb-4 text-zinc-300" strokeWidth={1} />
+                     <p className="text-sm font-bold text-zinc-500">Adicione ativos para ver o impacto da inflação.</p>
                  </div>
-             </div>
+             )}
+
              <div className="mt-8 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
                  <Info className="w-5 h-5 text-blue-500 shrink-0" />
-                 <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed"><strong>Nota Técnica:</strong> O cálculo considera a inflação mensal composta derivada do acumulado de 12 meses ({Number(inflationRate || 4.62).toFixed(2)}%) aplicada sobre o valor investido atual ({formatBRL(invested, privacyMode)}).</p>
+                 <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed"><strong>Nota Técnica:</strong> O cálculo considera a inflação mensal composta derivada do acumulado de 12 meses ({Number(safeInflation).toFixed(2)}%) aplicada sobre o valor investido atual ({formatBRL(invested, privacyMode)}).</p>
              </div>
          </div>
       </SwipeableModal>

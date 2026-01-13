@@ -76,9 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Helpers de Parsing
     const parseVal = (s: string) => {
         if (!s) return 0;
-        // Remove tudo que não é número, vírgula ou ponto
         const clean = s.replace(/[^\d.,-]/g, '');
-        // Troca vírgula por ponto para JS entender
         return parseFloat(clean.replace('.', '').replace(',', '.')) || 0;
     };
 
@@ -135,19 +133,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ticker: stock, type: assetType, segment, current_price: cotacao, pvp, dy_12m: dy, updated_at: new Date()
     }, { onConflict: 'ticker' });
 
-    // 5. Proventos - Lógica "Fuzzy" (Mais agressiva e robusta)
+    // 5. Proventos - Lógica "Fuzzy" v2 (Aprimorada)
     const dividendsToUpsert: any[] = [];
     const processedKeys = new Set();
 
-    // Varre TODAS as linhas de tabela encontradas na página
     $('tr').each((_, tr) => {
         const tds = $(tr).find('td');
-        if (tds.length < 2) return; // Precisa de pelo menos 2 colunas
+        if (tds.length < 2) return;
 
         const rowText = $(tr).text();
-        const rowHtml = $(tr).html() || '';
 
-        // Tenta encontrar datas na linha (Formato DD/MM/AAAA)
+        // 1. Busca Datas
         const datesFound: string[] = [];
         tds.each((_, td) => {
             const txt = $(td).text().trim();
@@ -155,35 +151,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             if (date) datesFound.push(date);
         });
 
-        // Tenta encontrar valores monetários na linha
+        // 2. Busca Valores (Ignorando Porcentagens de Yield)
         let valueFound = 0;
         tds.each((_, td) => {
             const txt = $(td).text().trim();
+            // Ignora células com % (geralmente DY) para não confundir com valor
+            if (txt.includes('%')) return;
+
             if (txt.includes(',') && (txt.includes('R$') || /^\d/.test(txt))) {
                 const val = parseVal(txt);
-                // Filtra valores absurdos (acima de 500 reais por cota é improvável para div normal)
+                // Filtros de sanidade: valor positivo e menor que 1000 por cota
                 if (val > 0 && val < 1000) { 
                     valueFound = val;
                 }
             }
         });
 
-        // Se achou pelo menos uma data e um valor, é um candidato forte
+        // Se achou Data e Valor
         if (datesFound.length > 0 && valueFound > 0) {
-            // Lógica de Data Com vs Pagamento
-            // Se tiver 2 datas: Assumimos a mais antiga como Com e a mais nova como Pagamento
-            // Se tiver 1 data: Assumimos que é Com E Pagamento (para garantir entrada no gráfico)
-            datesFound.sort(); 
+            datesFound.sort(); // Ordena cronologicamente
+            
             const dateCom = datesFound[0];
+            // Se tiver mais de uma data, a última é pagamento. Se só tiver uma, assume pagamento = data com.
             const datePag = datesFound.length > 1 ? datesFound[datesFound.length - 1] : dateCom;
 
-            // Determina Tipo
             let tipo = 'DIV';
             const lowerRow = rowText.toLowerCase();
             if (lowerRow.includes('jcp') || lowerRow.includes('juros')) tipo = 'JCP';
             else if (lowerRow.includes('rendimento')) tipo = 'REND';
 
-            // Cria chave única
             const key = `${stock}-${tipo}-${dateCom}-${datePag}-${valueFound}`;
             
             if (!processedKeys.has(key)) {
@@ -200,7 +196,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (dividendsToUpsert.length > 0) {
-        // Ordena por data decrescente para garantir os mais recentes
         dividendsToUpsert.sort((a, b) => b.payment_date.localeCompare(a.payment_date));
         
         await supabase.from('market_dividends').upsert(dividendsToUpsert, {
@@ -214,7 +209,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         segment: segment,
         fundamentals: { price: cotacao, pvp, dy },
         dividends_found: dividendsToUpsert.length,
-        method: 'fuzzy_v2'
+        method: 'fuzzy_v3'
     });
 
   } catch (error: any) {
