@@ -116,13 +116,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
     }
 
-    // Limpeza Profunda do Segmento (Remove números "1.", caracteres estranhos, espaços extras)
+    // Limpeza Profunda do Segmento
     if (segment && segment !== 'Geral') {
-        // Remove números iniciais (ex: "1. Bancos" -> "Bancos")
-        segment = segment.replace(/^[\d\s.-]+/, '');
-        // Remove múltiplos espaços
+        segment = segment.replace(/^[\d\s.-]+/, ''); // Remove "1. "
         segment = segment.replace(/\s+/g, ' ');
-        // Capitaliza corretamente (Primeira letra maiúscula, resto minúscula se estiver tudo gritando)
         if (segment === segment.toUpperCase()) {
             segment = segment.charAt(0) + segment.slice(1).toLowerCase();
         }
@@ -134,23 +131,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ticker: stock, type: assetType, segment, current_price: cotacao, pvp, dy_12m: dy, updated_at: new Date()
     }, { onConflict: 'ticker' });
 
-    // 5. Proventos - Lógica Ampliada para Ações
+    // 5. Proventos - Lógica Ampliada para Ações e FIIs (A CORREÇÃO PRINCIPAL ESTÁ AQUI)
     const dividendsToUpsert: any[] = [];
     const processedKeys = new Set();
 
     $('table').each((_, table) => {
         const headerMap: Record<string, number> = {};
+        let hasHeader = false;
+
+        // Mapeia colunas de forma flexível (case insensitive, trim)
         $(table).find('thead th').each((idx, th) => {
             const txt = $(th).text().toLowerCase().trim();
-            // Amplia termos de busca para colunas
             if (txt.includes('com') || txt.includes('base') || txt.includes('data')) headerMap.com = idx;
             if (txt.includes('pagamento') || txt.includes('pag')) headerMap.pag = idx;
-            if (txt.includes('valor')) headerMap.val = idx;
+            if (txt.includes('valor') || txt.includes('provento') || txt.includes('rendimento')) headerMap.val = idx;
             if (txt.includes('tipo')) headerMap.type = idx;
+            hasHeader = true;
         });
 
-        // Se encontrou pelo menos Data Com e Valor
-        if (headerMap.com !== undefined && headerMap.val !== undefined) {
+        // Se encontrou Data Com e Valor, processa
+        if (hasHeader && headerMap.com !== undefined && headerMap.val !== undefined) {
             $(table).find('tbody tr').each((_, tr) => {
                 const tds = $(tr).find('td');
                 if (tds.length < 2) return;
@@ -159,11 +159,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const dateCom = parseDate(dateComText);
                 const val = parseVal($(tds[headerMap.val]).text().trim());
                 
-                // Data Pagamento: Se estiver vazia ou com traço (comum em ações), usa Data Com como base
+                // Data Pagamento: Se vazia, assume Data Com (provisão)
                 let datePagText = headerMap.pag !== undefined ? $(tds[headerMap.pag]).text().trim() : '';
                 let datePag = parseDate(datePagText);
-                
-                // Se não tem data de pagamento definida (ex: "-"), assume provisionado (usa Data Com)
                 if (!datePag && dateCom) datePag = dateCom; 
                 
                 let tipo = 'DIV';
@@ -173,6 +171,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 if (dateCom && val > 0 && datePag) {
                     // Chave única composta para evitar duplicatas
+                    // Adicionamos 'stock' para garantir unicidade global no Set local
                     const key = `${stock}-${tipo}-${dateCom}-${datePag}-${val}`;
                     if (!processedKeys.has(key)) {
                         dividendsToUpsert.push({ ticker: stock, type: tipo, date_com: dateCom, payment_date: datePag, rate: val });
