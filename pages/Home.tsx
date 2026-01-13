@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Snowflake, Zap } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Snowflake, Zap, History } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ComposedChart, Line, Area } from 'recharts';
 
@@ -30,7 +30,7 @@ const formatBRL = (val: any, privacy = false) => {
 const formatPercent = (val: any, privacy = false) => {
   if (privacy) return '•••%';
   const num = typeof val === 'number' ? val : 0;
-  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}%`;
+  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
 // Cores vibrantes para os gráficos
@@ -112,79 +112,134 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return { upcomingEvents: uniqueEvents, received: receivedTotal };
   }, [dividendReceipts]);
 
+  // Lógica Avançada de Histórico e Inflação
   const { history, average, maxVal, receiptsByMonth, realYieldMetrics } = useMemo(() => {
     const map: Record<string, number> = {};
     const receiptsByMonthMap: Record<string, DividendReceipt[]> = {};
     const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
     let sum12m = 0;
 
-    // Agrupamento por mês
+    // 1. Mapa de Dividendos Recebidos (Agregado por Mês)
     dividendReceipts.forEach(r => {
         const pDate = new Date(r.paymentDate + 'T00:00:00');
-        
-        // Dados para gráfico mensal (apenas pagos até hoje)
-        if (r.paymentDate <= today.toISOString().split('T')[0]) {
+        if (r.paymentDate <= todayStr) {
             const key = r.paymentDate.substring(0, 7);
             map[key] = (map[key] || 0) + r.totalReceived;
             if (!receiptsByMonthMap[key]) receiptsByMonthMap[key] = [];
             receiptsByMonthMap[key].push(r);
         }
-
-        // Cálculo Renda 12 Meses (Trailing 12m)
+        
+        // Cálculo Renda 12m
         const diffMonths = (today.getFullYear() - pDate.getFullYear()) * 12 + (today.getMonth() - pDate.getMonth());
         if (diffMonths >= 0 && diffMonths <= 11) {
             sum12m += r.totalReceived;
         }
     });
 
-    const sorted = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0])); // Decrescente para lista
-    const totalMonths = sorted.length || 1;
-    const average = received / (totalMonths > 0 ? totalMonths : 1);
+    const sortedHistory = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
+    const totalMonthsWithReceipts = sortedHistory.length || 1;
+    const average = received / (totalMonthsWithReceipts > 0 ? totalMonthsWithReceipts : 1);
     const maxVal = Math.max(...Object.values(map), 0);
 
-    // --- LÓGICA DE GANHO REAL (HISTÓRICO) ---
-    // Estimativa de inflação mensal (simplificada: média geométrica do IPCA anual)
+    // 2. Timeline Completa (Desde a primeira transação)
+    // Se não houver transações, usa 12 meses atrás como fallback
+    let timelineStart = new Date();
+    timelineStart.setMonth(timelineStart.getMonth() - 11);
+    
+    if (transactions.length > 0) {
+        const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+        if (sortedTxs[0]) {
+            timelineStart = new Date(sortedTxs[0].date + 'T00:00:00');
+        }
+    }
+
+    // Gerar array de meses desde start até hoje
     const monthlyInflationRate = Math.pow(1 + (inflationRate || 0)/100, 1/12) - 1;
+    const fullHistoryData: any[] = [];
     
-    // Preparar dados para o gráfico de barras comparativo (Últimos 12 meses cronológicos)
-    const sortedAsc = Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).slice(-12);
+    let pointer = new Date(timelineStart);
+    pointer.setDate(1); // Normaliza para o dia 1
     
-    let cumulativeInflationCost = 0;
-    
-    const comparisonChartData = sortedAsc.map(([month, val]) => {
-        const [y, m] = month.split('-');
-        // Custo da inflação naquele mês = Investido * Inflação Mensal
-        // (Simplificação: usa investido atual, para precisão maior precisaria de histórico de PL)
-        const monthlyCost = invested * monthlyInflationRate;
-        cumulativeInflationCost += monthlyCost;
+    const endPointer = new Date();
+    endPointer.setDate(2); // Garante que pegue o mês atual
 
-        return {
-            name: `${m}/${y.substring(2)}`,
-            dividend: val,
-            inflation: monthlyCost,
-            realResult: val - monthlyCost
-        };
-    });
+    let accumulatedInvested = 0;
 
-    const userDy = invested > 0 ? (sum12m / invested) * 100 : 0;
-    const realReturn = userDy - (inflationRate || 0);
-    const netRealIncome = sum12m - cumulativeInflationCost; // Resultado líquido real aproximado
+    while (pointer <= endPointer) {
+        const y = pointer.getFullYear();
+        const m = String(pointer.getMonth() + 1).padStart(2, '0');
+        const monthKey = `${y}-${m}`;
+        
+        // Calcular patrimônio investido ATÉ o final deste mês
+        // (Soma de compras - vendas até o último dia deste mês)
+        const lastDayOfMonth = new Date(y, pointer.getMonth() + 1, 0).toISOString().split('T')[0];
+        
+        // Atualiza o acumulado baseado nas transações deste mês
+        const txsInMonth = transactions.filter(t => t.date.substring(0, 7) === monthKey);
+        // Nota: Para precisão perfeita, deveríamos recalcular dia a dia, mas mês a mês é uma boa aproximação para UI
+        // Para simplificar e performar, pegamos o valor investido acumulado até o momento
+        // Uma abordagem melhor: recalculate invested snapshot at end of month
+        const investedAtMonth = transactions
+            .filter(t => t.date <= lastDayOfMonth)
+            .reduce((acc, t) => t.type === 'BUY' ? acc + (t.price * t.quantity) : acc - (t.price * t.quantity), 0);
+
+        const monthlyDividends = map[monthKey] || 0;
+        
+        // Cálculos de Erosão
+        const patrimonyErosion = investedAtMonth * monthlyInflationRate;
+        const dividendErosion = monthlyDividends * monthlyInflationRate;
+        
+        const nominalYield = investedAtMonth > 0 ? (monthlyDividends / investedAtMonth) * 100 : 0;
+        const inflationYield = monthlyInflationRate * 100;
+        
+        // Dados para o Gráfico Stacked (Mesma Barra)
+        // Se Inflação > Yield, a barra é toda vermelha (limitada ao tamanho do Yield para manter a escala visual do Yield)
+        // Se Yield > Inflação, a barra tem base vermelha e topo verde.
+        const erosionPartPercent = Math.min(nominalYield, inflationYield);
+        const realPartPercent = Math.max(0, nominalYield - inflationYield);
+
+        if (investedAtMonth > 0 || monthlyDividends > 0) {
+            fullHistoryData.push({
+                monthKey,
+                label: `${m}/${y.toString().substring(2)}`,
+                invested: investedAtMonth,
+                dividend: monthlyDividends,
+                patrimonyErosion,
+                dividendErosion,
+                realGainValue: monthlyDividends - patrimonyErosion, // Ganho Real Monetário (Dividendos - Perda do Principal)
+                
+                // Percentages for Chart
+                nominalYield,
+                inflationYield,
+                erosionPartPercent,
+                realPartPercent,
+                
+                // Metadata
+                isLoss: nominalYield < inflationYield
+            });
+        }
+
+        pointer.setMonth(pointer.getMonth() + 1);
+    }
+
+    // Métricas Agregadas Atuais
+    const currentDy = invested > 0 ? (sum12m / invested) * 100 : 0;
+    const realReturn = currentDy - (inflationRate || 0);
 
     return { 
-        history: sorted, 
+        history: sortedHistory, 
         average, 
         maxVal, 
         receiptsByMonth: receiptsByMonthMap,
         realYieldMetrics: { 
-            userDy, 
+            userDy: currentDy, 
             realReturn, 
-            sum12m, 
-            cumulativeInflationCost, 
-            netRealIncome,
-            comparisonChartData
+            timeline: fullHistoryData
         }
     };
-  }, [dividendReceipts, received, invested, inflationRate, portfolio]);
+  }, [dividendReceipts, received, invested, inflationRate, portfolio, transactions]);
 
   const { typeData, topAssets, segmentsData, classChartData } = useMemo(() => {
       let fiisTotal = 0;
@@ -227,7 +282,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       setExpandedMonth(expandedMonth === monthKey ? null : monthKey);
   };
 
-  // Custom Tooltip for Recharts
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -235,12 +289,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
            <p className="text-xs font-black text-zinc-900 dark:text-white mb-2">{label}</p>
            {payload.map((entry: any, index: number) => (
              <div key={index} className="flex justify-between items-center gap-3 text-[10px] mb-1">
-                <span className="font-bold" style={{ color: entry.color }}>{entry.name}:</span>
+                <span className="font-bold" style={{ color: entry.color }}>
+                    {entry.name === 'realPartPercent' ? 'Ganho Real' : 'Inflação (IPCA)'}:
+                </span>
                 <span className="font-mono text-zinc-600 dark:text-zinc-300">
-                    {typeof entry.value === 'number' && entry.value > 100 
-                        ? formatBRL(entry.value, privacyMode)
-                        : entry.value.toFixed(2)
-                    }
+                    {entry.value.toFixed(2)}%
                 </span>
              </div>
            ))}
@@ -483,97 +536,71 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
              </div>
 
-             {/* SEÇÃO 1: GRÁFICO COMPARATIVO BARRAS (DIVIDENDOS VS CUSTO IPCA) */}
+             {/* SEÇÃO 1: GRÁFICO EMPILHADO (UMA BARRA, DIVIDIDA) */}
              <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '100ms' }}>
                  <div className="flex items-center justify-between mb-4 px-2">
                      <div className="flex items-center gap-2">
                         <BarChart3 className="w-3 h-3 text-zinc-400" />
                         <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-                            Batalha Mensal: Renda vs Inflação
+                            Yield Nominal: Inflação (Vermelho) vs Real (Verde)
                         </h3>
                      </div>
                  </div>
                  
                  <div className="h-56 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={realYieldMetrics.comparisonChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                        <BarChart 
+                            data={realYieldMetrics.timeline.slice(-12)} // Mostra últimos 12 meses no gráfico para caber na tela mobile
+                            margin={{ top: 10, right: 0, left: -20, bottom: 0 }}
+                        >
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b33" />
-                            <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#71717a' }} tickLine={false} axisLine={false} />
+                            <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#71717a' }} tickLine={false} axisLine={false} />
                             <YAxis tick={{ fontSize: 9, fill: '#71717a' }} tickLine={false} axisLine={false} />
                             <RechartsTooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
-                            <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                            <Bar name="Recebido" dataKey="dividend" fill="#10b981" radius={[4, 4, 0, 0]} barSize={8} />
-                            <Bar name="Custo IPCA" dataKey="inflation" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={8} />
+                            
+                            {/* Stacked Bars: Same StackId makes them share the same bar */}
+                            <Bar name="erosionPartPercent" dataKey="erosionPartPercent" stackId="a" fill="#f43f5e" radius={[0, 0, 4, 4]} barSize={12} />
+                            <Bar name="realPartPercent" dataKey="realPartPercent" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} barSize={12} />
                         </BarChart>
                     </ResponsiveContainer>
                  </div>
-                 <div className="mt-2 flex items-center gap-2 justify-center">
-                     <div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span className="text-[9px] text-zinc-500">Dividendos</span>
-                     <div className="w-2 h-2 bg-rose-500 rounded-full ml-2"></div><span className="text-[9px] text-zinc-500">Corrosão (IPCA)</span>
+                 <div className="mt-2 flex items-center gap-4 justify-center">
+                     <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-rose-500 rounded-full"></div><span className="text-[9px] text-zinc-500 font-bold uppercase">Corrosão (IPCA)</span></div>
+                     <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span className="text-[9px] text-zinc-500 font-bold uppercase">Ganho Real</span></div>
                  </div>
              </div>
 
-             {/* SEÇÃO 2: MATEMÁTICA DA EROSÃO (TOTAL) */}
-             <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-[2rem] p-5 border border-zinc-200 dark:border-zinc-800 anim-slide-up mb-6" style={{ animationDelay: '200ms' }}>
-                 <div className="flex items-center gap-2 mb-4">
-                     <ShieldCheck className="w-4 h-4 text-zinc-400" />
-                     <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Matemática da Erosão (12 Meses)</h4>
+             {/* SEÇÃO 2: HISTÓRICO DETALHADO (LISTA MÊS A MÊS DESDE O INÍCIO) */}
+             <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-[2rem] overflow-hidden border border-zinc-200 dark:border-zinc-800 anim-slide-up mb-6" style={{ animationDelay: '200ms' }}>
+                 <div className="p-4 bg-white dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
+                     <History className="w-4 h-4 text-zinc-400" />
+                     <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Diário da Corrosão</h4>
                  </div>
 
-                 <div className="space-y-3">
-                     <div className="flex justify-between items-center p-3 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700">
-                         <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">Proventos Nominais</span>
-                         <span className="text-sm font-black text-emerald-500">+{formatBRL(realYieldMetrics.sum12m, privacyMode)}</span>
+                 <div className="max-h-[300px] overflow-y-auto no-scrollbar">
+                     <div className="grid grid-cols-4 gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-[8px] font-black uppercase text-zinc-400 tracking-widest sticky top-0 z-10 backdrop-blur-md">
+                         <span>Mês</span>
+                         <span className="text-right">Corrosão Patr.</span>
+                         <span className="text-right">Corrosão Div.</span>
+                         <span className="text-right">Ganho Real</span>
                      </div>
-                     <div className="flex justify-center">
-                         <ArrowDownRight className="w-4 h-4 text-zinc-300" />
-                     </div>
-                     <div className="flex justify-between items-center p-3 bg-white dark:bg-zinc-800 rounded-xl border border-rose-100 dark:border-rose-900/20">
-                         <div>
-                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 block">Corrosão Inflacionária</span>
-                            <span className="text-[9px] text-zinc-400">Perda de valor do dinheiro</span>
+                     {realYieldMetrics.timeline.slice().reverse().map((item: any, idx: number) => (
+                         <div key={idx} className="grid grid-cols-4 gap-2 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 items-center hover:bg-white dark:hover:bg-zinc-800 transition-colors">
+                             <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-300">{item.label}</span>
+                             <span className="text-[10px] font-mono text-rose-500 text-right">-{formatBRL(item.patrimonyErosion, privacyMode)}</span>
+                             <span className="text-[10px] font-mono text-rose-500 text-right">-{formatBRL(item.dividendErosion, privacyMode)}</span>
+                             <span className={`text-[10px] font-black text-right ${item.realGainValue >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                 {formatBRL(item.realGainValue, privacyMode)}
+                             </span>
                          </div>
-                         <span className="text-sm font-black text-rose-500">-{formatBRL(realYieldMetrics.cumulativeInflationCost, privacyMode)}</span>
-                     </div>
-                     <div className="h-px bg-zinc-200 dark:bg-zinc-700 my-2 border-dashed"></div>
-                     <div className="flex justify-between items-center px-3">
-                         <span className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wider">Ganho Real Líquido</span>
-                         <span className={`text-lg font-black ${realYieldMetrics.netRealIncome >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                             {formatBRL(realYieldMetrics.netRealIncome, privacyMode)}
-                         </span>
-                     </div>
+                     ))}
                  </div>
              </div>
 
-             {/* SEÇÃO 3: IDEIA CRIATIVA - PODER DE COMPRA (Quantas cotas são 'reais'?) */}
-             <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[2rem] p-6 text-white anim-slide-up shadow-lg shadow-indigo-500/20 relative overflow-hidden" style={{ animationDelay: '300ms' }}>
-                 <Zap className="absolute -right-4 -bottom-4 w-24 h-24 text-white/10 -rotate-12" />
-                 
-                 <div className="relative z-10">
-                     <div className="flex items-center gap-2 mb-3">
-                         <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
-                             <Coins className="w-4 h-4 text-white" />
-                         </div>
-                         <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">Poder de Compra Real</h4>
-                     </div>
-                     
-                     <div className="flex items-baseline gap-1 my-2">
-                        <span className="text-4xl font-black tracking-tighter">
-                             {Math.floor(invested > 0 ? (realYieldMetrics.netRealIncome / (invested/portfolio.length || 100)) : 0)}
-                        </span>
-                        <span className="text-sm font-bold text-white/80">cotas "reais"</span>
-                     </div>
-                     
-                     <p className="text-xs font-medium text-white/90 leading-relaxed max-w-[90%] mb-4">
-                         Descontando a inflação, este é o número de cotas que você realmente "ganhou" de graça. O restante serviu apenas para manter seu patrimônio empatado.
-                     </p>
-                 </div>
-             </div>
-
-             <div className="mt-8 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
+             <div className="mt-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
                  <Info className="w-5 h-5 text-blue-500 shrink-0" />
                  <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed">
-                     <strong>Nota:</strong> O cálculo mensal assume que seu patrimônio total sofreu a inflação mensal proporcional, corroendo parte dos proventos recebidos naquele mês.
+                     <strong>Matemática da Corrosão:</strong> Para cada mês, calculamos quanto o seu patrimônio e seus dividendos perderam de poder de compra com base na inflação mensal equivalente ao IPCA anual. O "Ganho Real" é o que sobra do dividendo após cobrir a perda de valor do montante principal investido.
                  </p>
              </div>
          </div>
