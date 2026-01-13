@@ -70,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-4 transition-all duration-300 border-b border-zinc-200 dark:border-zinc-800 bg-primary-light dark:bg-zinc-900 ${
+      className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-4 transition-all duration-300 glass-effect ${
         bannerVisible ? 'h-28 pt-8' : 'h-20 pt-safe'
       } top-0`}
     >
@@ -78,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3 w-full">
           {showBack ? (
             <div className="flex items-center gap-3 w-full anim-slide-in-right">
-              <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform">
+              <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform hover:bg-zinc-100 dark:hover:bg-zinc-800">
                 <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
               </button>
               <h1 className="text-lg font-bold text-zinc-900 dark:text-white">Voltar</h1>
@@ -86,10 +86,10 @@ export const Header: React.FC<HeaderProps> = ({
           ) : (
             <div className="flex flex-col anim-fade-in">
                 <div className="flex items-center gap-2">
-                    {isRefreshing && <Loader2 className="w-4 h-4 animate-spin text-sky-500" />}
+                    {isRefreshing && <Loader2 className="w-4 h-4 animate-spin text-accent" />}
                     <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight flex items-baseline gap-1">
                       {title}
-                      <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+                      {!isRefreshing && <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>}
                     </h1>
                 </div>
             </div>
@@ -98,12 +98,12 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="flex items-center gap-2">
           {updateAvailable && !showBack && (
-            <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-sky-500 text-white active:scale-95 transition-transform shadow-sm">
+            <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-sky-500 text-white active:scale-95 transition-transform shadow-lg shadow-sky-500/30">
               <Download className="w-4 h-4 animate-bounce" strokeWidth={2.5} />
             </button>
           )}
           {onNotificationClick && !showBack && (
-            <button onClick={onNotificationClick} className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700">
+            <button onClick={onNotificationClick} className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
               <Bell className="w-4 h-4" strokeWidth={2} />
               {notificationCount > 0 && 
                 <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
           {!showBack && onSettingsClick && (
-            <button onClick={onSettingsClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700">
+            <button onClick={onSettingsClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-transform hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
               <Settings className="w-4 h-4" strokeWidth={2} />
             </button>
           )}
@@ -137,19 +137,16 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-      <nav className="pointer-events-auto bg-white/85 dark:bg-zinc-900/85 backdrop-blur-[20px] border border-white/20 dark:border-zinc-800/60 rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[22rem] mx-6 relative overflow-hidden">
+      <nav className="pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-white/20 dark:border-zinc-800/60 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[20rem] mx-6 relative overflow-hidden">
         
         {/* Sliding Active Indicator */}
         <div 
-            className="absolute top-1.5 bottom-1.5 w-[calc(33.33%-0.25rem)] bg-white dark:bg-zinc-800 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.08)] dark:shadow-black/50 border border-zinc-100 dark:border-zinc-700/50 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] will-change-transform z-0"
+            className="absolute top-1.5 bottom-1.5 w-[calc(33.33%-0.25rem)] bg-zinc-100 dark:bg-zinc-800 rounded-xl shadow-inner border border-black/5 dark:border-white/5 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] will-change-transform z-0"
             style={{ 
-                left: '0.125rem', // Offset inicial leve
-                transform: `translateX(calc(${activeIndex} * 100% + ${activeIndex * 0.25}rem))` // Move 100% da largura + gap
+                left: '0.125rem',
+                transform: `translateX(calc(${activeIndex} * 100% + ${activeIndex * 0.25}rem))`
             }}
-        >
-            {/* Inner Glow for Premium Feel */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-sky-500/10 dark:to-sky-400/5 rounded-xl"></div>
-        </div>
+        ></div>
 
         {/* Buttons Grid */}
         <div className="relative z-10 grid grid-cols-3 h-14">
@@ -159,18 +156,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className="flex flex-col items-center justify-center relative outline-none select-none active:scale-90 transition-transform duration-200 group"
+                className="flex flex-col items-center justify-center relative outline-none select-none active:scale-95 transition-transform duration-200 group"
               >
                 {/* Icon Wrapper with Pop Animation */}
                 <div className={`relative transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isActive ? '-translate-y-1.5' : 'translate-y-1 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-400'}`}>
                     
                     {/* Active Glow Behind Icon */}
-                    <div className={`absolute inset-0 bg-sky-400/40 blur-lg rounded-full transition-all duration-500 ${isActive ? 'opacity-100 scale-150' : 'opacity-0 scale-0'}`}></div>
+                    <div className={`absolute inset-0 bg-accent/20 blur-xl rounded-full transition-all duration-500 ${isActive ? 'opacity-100 scale-150' : 'opacity-0 scale-0'}`}></div>
                     
                     <item.icon 
                         className={`w-6 h-6 relative z-10 transition-all duration-500 ${
                             isActive 
-                                ? 'text-sky-600 dark:text-sky-400 stroke-[2.5px] scale-110 drop-shadow-sm' 
+                                ? 'text-accent stroke-[2.5px] scale-110 drop-shadow-sm' 
                                 : 'stroke-[2px]'
                         }`} 
                     />
@@ -196,7 +193,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
 interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: React.ReactNode; }
 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
-  // Aumentamos a duração para 500ms para acomodar a nova curva de física "Apple-like"
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 500);
   const modalRef = useRef<HTMLDivElement>(null);
   const [dragOffset, setDragOffset] = useState(0);
@@ -233,19 +229,19 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 
   return createPortal(
     <div className={`fixed inset-0 z-[200] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+      {/* Backdrop with stronger blur for depth */}
       <div 
           onClick={onClose} 
-          className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-[3px] transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-[6px] transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       ></div>
       
       <div
         ref={modalRef}
         style={{
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
-            // Physics: cubic-bezier(0.19, 1, 0.22, 1) provides a very snappy start and a soft, slow settling (premium feel)
             transition: isDragging ? 'none' : 'transform 500ms cubic-bezier(0.19, 1, 0.22, 1)'
         }}
-        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-3xl h-[92vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_40px_rgba(0,0,0,0.3)] border-t border-zinc-200 dark:border-zinc-800 will-change-transform`}
+        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-3xl h-[92vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_40px_rgba(0,0,0,0.3)] border-t border-white/20 dark:border-white/5 will-change-transform`}
       >
         <div 
             onTouchStart={handleTouchStart}
@@ -253,10 +249,10 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             onTouchEnd={handleTouchEnd}
             className="flex-none p-4 flex justify-center bg-transparent cursor-grab active:cursor-grabbing touch-none z-10"
         >
-            <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
+            {/* Cleaner Drag Handle */}
+            <div className="w-12 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full opacity-50"></div>
         </div>
         
-        {/* Content Stagger: Fade in content slightly after modal starts moving to prevent visual jitter */}
         <div className={`flex-1 overflow-y-auto overscroll-contain pb-safe transition-opacity duration-500 delay-100 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
           {children}
         </div>

@@ -5,15 +5,14 @@
 
 @layer base {
   :root {
-    --duration-fast: 150ms;
+    --duration-fast: 200ms;
     --duration-normal: 400ms;
     --duration-slow: 700ms;
     
-    /* Spring-like Easing Curves Refined */
-    --ease-out-mola: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    /* Updated for a smoother "Apple-like" sheet settle */
+    /* Spring-like Easing Curves Refined - Apple Style */
+    --ease-out-mola: cubic-bezier(0.175, 0.885, 0.32, 1.1); /* Menos overshoot */
     --ease-out-soft: cubic-bezier(0.19, 1, 0.22, 1); 
-    --ease-in-out-expo: cubic-bezier(1, 0, 0, 1);
+    --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
     
     --color-accent-rgb: 14 165 233;
   }
@@ -54,38 +53,47 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* New Global Animations */
+  /* Glassmorphism Utility */
+  .glass-effect {
+    @apply bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50;
+  }
+
+  .glass-panel {
+    @apply bg-white/60 dark:bg-zinc-900/60 backdrop-blur-md border border-white/20 dark:border-white/5;
+  }
+
+  /* Animations */
   .anim-fade-in {
     animation: fadeIn var(--duration-normal) var(--ease-out-soft) forwards;
   }
 
   .anim-slide-up {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(12px);
     animation: slideUp var(--duration-normal) var(--ease-out-soft) forwards;
   }
 
   .anim-scale-in {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.96);
     animation: scaleIn var(--duration-normal) var(--ease-out-mola) forwards;
   }
 
   .anim-page-enter {
     opacity: 0;
-    transform: scale(0.98) translateY(10px);
-    animation: pageEnter 0.5s var(--ease-out-soft) forwards;
+    transform: scale(0.99) translateY(4px);
+    animation: pageEnter 0.4s var(--ease-out-soft) forwards;
   }
 
   .anim-stagger-item {
     opacity: 0;
-    transform: translateY(15px);
+    transform: translateY(10px);
     animation: slideUp var(--duration-normal) var(--ease-out-soft) forwards;
   }
 
-  /* Interaction Utility */
+  /* Interaction Utility - More solid feel */
   .press-effect {
-    @apply transition-transform duration-75 active:scale-95;
+    @apply transition-transform duration-100 active:scale-[0.98] cursor-pointer;
   }
 }
 
@@ -94,7 +102,8 @@
 @keyframes scaleIn { to { opacity: 1; transform: scale(1); } }
 @keyframes pageEnter { to { opacity: 1; transform: scale(1) translateY(0); } }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-.dark ::-webkit-scrollbar-thumb { background: #1e293b; }
+/* Custom Scrollbar - Slimmer and cleaner */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
+.dark ::-webkit-scrollbar-thumb { background: #27272a; }
