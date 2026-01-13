@@ -30,11 +30,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Detecção inteligente de tipo de ativo para URL correta
-    // FIIs geralmente terminam em 11 ou 11B, Ações em 3, 4, 5, 6
+    // 1. Definição da URL correta (FIIs vs Ações)
+    // Investidor10 separa em /fiis/ e /acoes/
     let typePath = 'acoes';
     let assetType = 'ACAO';
     
+    // Lógica simples: Se termina em 11 ou 11B, assume FII (ou Unit/ETF, mas a estrutura de página é similar a FII no site)
     if (stock.endsWith('11') || stock.endsWith('11B')) {
         typePath = 'fiis';
         assetType = 'FII';
@@ -42,99 +43,137 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const targetUrl = `https://investidor10.com.br/${typePath}/${stock.toLowerCase()}/`;
     
-    console.log(`[Scraper] Buscando ${stock} em ${targetUrl}`);
+    console.log(`[Scraper] Iniciando busca para ${stock} em: ${targetUrl}`);
 
     let html;
 
-    // LÓGICA ANTI-BLOQUEIO (Proxy vs Direto)
+    // 2. Requisição HTTP (Proxy vs Direta)
     if (process.env.SCRAPER_API_KEY) {
-        // Modo Robusto: Usa ScraperAPI com render=true para processar JS
-        console.log(`[Proxy] Usando ScraperAPI (render=true) para evitar bloqueio...`);
+        // Uso da ScraperAPI para evitar bloqueios e renderizar JS se necessário
+        console.log(`[Proxy] Via ScraperAPI...`);
         const response = await axios.get('http://api.scraperapi.com', {
             params: {
                 api_key: process.env.SCRAPER_API_KEY,
                 url: targetUrl,
-                render: 'true', // Essencial para passar pelo Cloudflare JS Challenge
-                premium: 'true' // Opcional: Tenta usar IPs residenciais se disponível no plano
+                render: 'true', // Importante para sites modernos
+                country_code: 'br', // Tenta sair por IP brasileiro se possível
+                premium: 'true'
             },
-            timeout: 25000 // Aumentado para dar tempo do render
+            timeout: 35000 
         });
         html = response.data;
     } else {
-        // Modo Fallback: Tenta acesso direto fingindo ser um browser
-        console.log(`[Direct] Tentando acesso direto com Headers aprimorados...`);
+        // Acesso Direto (Fallback) - User-Agent atualizado para simular Chrome recente
+        console.log(`[Direct] Acesso direto...`);
         const response = await axios.get(targetUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                 'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Referer': 'https://www.google.com.br/', 
+                'Referer': 'https://www.google.com.br/',
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache'
             },
-            timeout: 10000 
+            timeout: 12000
         });
         html = response.data;
     }
 
+    // 3. Parsing do HTML com Cheerio
     const $ = cheerio.load(html);
 
-    // 1. Dados Fundamentais (Cards)
-    // CORREÇÃO DE SELETORES: Busca mais robusta usando .closest('._card')
-    // Isso funciona tanto se o valor estiver na mesma div ou separado
-    const getCardValue = (label: string) => {
-        // Tenta encontrar o label, sobe até o card pai, e busca o valor dentro dele
-        const val = $(`span:contains("${label}")`).closest('div._card').find('div._card-body span.value').text();
-        return parseMoney(val);
+    // --- Extração de Fundamentos ---
+    // Estrutura típica do Investidor10: div._card -> div._card-header (Label) -> div._card-body (Valor)
+    const getFundamentalValue = (labels: string[]) => {
+        // Tenta encontrar qualquer um dos labels fornecidos (ex: "P/VP" ou "VPA")
+        for (const label of labels) {
+            // Procura o span que contém o texto exato ou aproximado
+            // .filter garante que pegamos o elemento que contém o texto
+            const el = $(`span`).filter((i, el) => $(el).text().trim().toUpperCase() === label.toUpperCase()).first();
+            
+            if (el.length > 0) {
+                // Sobe até o card pai e desce até o valor
+                // O seletor ._card-body span.value é padrão no site
+                let val = el.closest('div._card').find('div._card-body span.value').text().trim();
+                
+                if (val) return parseMoney(val);
+            }
+        }
+        return 0;
     };
 
-    const cotacao = getCardValue("Cotação");
-    const pvp = getCardValue("P/VP");
-    const dy = getCardValue("DY");
+    // Mapeamento de campos fundamentais
+    // Brapi cuida da cotação em tempo real, mas pegamos aqui para registro histórico/fallback
+    const cotacao = getFundamentalValue(["Cotação", "Valor Atual", "Preço"]); 
+    const pvp = getFundamentalValue(["P/VP", "P/VPA"]);
+    const dy = getFundamentalValue(["DY", "Dividend Yield", "DY (12M)"]);
     
-    // Tenta pegar segmento se disponível
-    const segment = $('.segment-data .value').first().text().trim() || 'Geral';
+    // Segmento: Geralmente fica no topo ou em uma tabela de dados da empresa
+    const segment = $('.segment-data .value').first().text().trim() || 
+                    $('.sector-data .value').first().text().trim() || 'Geral';
 
-    // Salva metadados se a tabela 'ativos_metadata' existir (Opcional, mas útil)
+    console.log(`[Dados] ${stock} -> Preço: ${cotacao} | P/VP: ${pvp} | DY: ${dy}`);
+
+    // Salva metadados no Supabase (ativos_metadata)
     try {
         await supabase.from('ativos_metadata').upsert({
             ticker: stock,
             type: assetType,
             segment: segment,
-            current_price: cotacao,
+            current_price: cotacao, // Usado apenas como referência/cache
             pvp: pvp,
             dy_12m: dy,
             updated_at: new Date()
         });
-    } catch (e) { /* Tabela pode não existir */ }
+    } catch (e) { 
+        console.warn("Erro ao salvar metadata (tabela pode não existir):", e); 
+    }
 
-    // 2. Extração de Proventos (Tabela)
-    // Mapeamos para o formato da tabela 'market_dividends' usada pelo app
+    // --- Extração de Proventos (Tabela) ---
+    // Seletor: #table-dividends-history
     const dividendsToUpsert: any[] = [];
     
-    $('#table-dividends-history tbody tr').each((_, element) => {
-      const cols = $(element).find('td');
-      const tipoRaw = $(cols[0]).text().trim(); 
-      const dataCom = parseDate($(cols[1]).text().trim());
-      const dataPagamento = parseDate($(cols[2]).text().trim());
-      const valor = parseMoney($(cols[3]).text().trim());
+    const tableRows = $('#table-dividends-history tbody tr');
+    
+    if (tableRows.length > 0) {
+        tableRows.each((_, element) => {
+            const cols = $(element).find('td');
+            
+            // Estrutura Padrão Investidor10:
+            // Col 0: Tipo (Dividendo, JCP, Rendimento)
+            // Col 1: Data Com (Data base)
+            // Col 2: Data Pagamento
+            // Col 3: Valor
+            
+            if (cols.length >= 4) {
+                const tipoRaw = $(cols[0]).text().trim(); 
+                const dataCom = parseDate($(cols[1]).text().trim());
+                const dataPagamento = parseDate($(cols[2]).text().trim());
+                const valor = parseMoney($(cols[3]).text().trim());
 
-      let tipo = 'DIV';
-      if (tipoRaw.toLowerCase().includes('juros') || tipoRaw.toLowerCase().includes('jcp')) tipo = 'JCP';
-      else if (tipoRaw.toLowerCase().includes('rendimento')) tipo = 'REND';
+                // Normalização do Tipo
+                let tipo = 'DIV';
+                const tLower = tipoRaw.toLowerCase();
+                if (tLower.includes('juros') || tLower.includes('jcp')) tipo = 'JCP';
+                else if (tLower.includes('rendimento')) tipo = 'REND';
 
-      if (valor > 0 && dataCom && dataPagamento) {
-        dividendsToUpsert.push({
-            ticker: stock,
-            type: tipo,
-            date_com: dataCom,
-            payment_date: dataPagamento,
-            rate: valor
+                // Validação mínima antes de adicionar
+                if (valor > 0 && dataCom && dataPagamento) {
+                    dividendsToUpsert.push({
+                        ticker: stock,
+                        type: tipo,
+                        date_com: dataCom,
+                        payment_date: dataPagamento,
+                        rate: valor
+                    });
+                }
+            }
         });
-      }
-    });
+    } else {
+        console.log(`[Aviso] Nenhuma tabela de proventos encontrada para ${stock}`);
+    }
 
-    // Salva na tabela principal do App: market_dividends
+    // Salva proventos no Supabase (market_dividends)
     if (dividendsToUpsert.length > 0) {
         const { error } = await supabase.from('market_dividends').upsert(dividendsToUpsert, { 
             onConflict: 'ticker, type, date_com, payment_date, rate',
@@ -142,7 +181,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         
         if (error) {
-            console.error("[Supabase Error]", error);
+            console.error("[Supabase Error - Dividends]", error);
+        } else {
+            console.log(`[Sucesso] ${dividendsToUpsert.length} proventos salvos/atualizados.`);
         }
     }
 
@@ -154,22 +195,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error(error);
-    // Retorna erro detalhado para debug, mas em prod idealmente seria genérico
-    return res.status(500).json({ error: 'Falha no scraping', details: error.message, is_proxy_used: !!process.env.SCRAPER_API_KEY });
+    console.error(`[Fatal Error] ${stock}:`, error.message);
+    return res.status(500).json({ 
+        error: 'Falha no scraping', 
+        details: error.message, 
+        is_proxy_used: !!process.env.SCRAPER_API_KEY 
+    });
   }
 }
 
-// Helpers
+// --- Helpers de Parsing ---
+
 function parseMoney(str: string) {
     if (!str) return 0;
-    const clean = str.replace(/[^\d,-]/g, '').replace(',', '.');
+    // Remove R$, espaços e converte vírgula para ponto
+    const clean = str.replace('R$', '').replace('%', '').replace(/\./g, '').replace(',', '.').trim();
     return parseFloat(clean) || 0;
 }
 
 function parseDate(str: string) {
     if (!str || str === '-') return null;
+    // Espera formato DD/MM/YYYY
     const parts = str.split('/');
-    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    if (parts.length === 3) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+    }
     return null;
 }
