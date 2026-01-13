@@ -11,17 +11,13 @@ export interface UnifiedMarketData {
 }
 
 // Configuração Estrita: Gemini 2.5 Flash
-// ID definido explicitamente conforme solicitação do usuário: "gemini-2.5-flash"
 const GEMINI_CACHE_KEY = 'investfiis_gemini_v23_25flash_strict_search'; 
 const LOCKED_MODEL_ID = "gemini-2.5-flash";
 
 // Robust API Key Retrieval
 const getApiKey = () => {
-    // 1. Tenta via Vite (padrão moderno)
     const viteKey = (import.meta as any).env?.VITE_API_KEY;
     if (viteKey) return viteKey;
-    
-    // 2. Tenta via define/process.env (fallback build/vercel)
     try {
         return process.env.API_KEY;
     } catch {
@@ -107,7 +103,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         const cachedRaw = localStorage.getItem(GEMINI_CACHE_KEY);
         if (cachedRaw) {
             const cached = JSON.parse(cachedRaw);
-            // Cache válido por 4 horas para dados de mercado com busca ativa
             if ((Date.now() - cached.timestamp) < (4 * 60 * 60 * 1000) && cached.tickerKey === tickerKey) {
                 return cached.data;
             }
@@ -118,177 +113,186 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const apiKey = getApiKey();
   if (!apiKey) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
 
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    const storedDividends = await fetchStoredDividends(uniqueTickers);
+  // Estrutura do Prompt Simplificada para Requisição Única
+  const systemInstruction = `
+  VOCÊ É UM AGENTE DE DADOS B3.
+  USE A FERRAMENTA "GoogleSearch" UMA ÚNICA VEZ PARA BUSCAR TUDO.
+  RETORNE JSON APENAS.
+  `;
 
-    // 2. Instrução de Sistema Otimizada
-    const systemInstruction = `
-    VOCÊ É UM AGENTE DE DADOS DE MERCADO FINANCEIRO (B3).
-    SUA FUNÇÃO: Usar a ferramenta "GoogleSearch" para buscar dados oficiais em tempo real sobre FIIs e Ações Brasileiras.
-    
-    OBJETIVO: Retornar um JSON estruturado com metadados e histórico de proventos.
-    `;
+  const prompt = `
+  ATIVOS: ${uniqueTickers.join(', ')}
+  DATA INICIO: ${startDate || '2024-01-01'}
+  
+  TAREFA ÚNICA:
+  1. Busque o valor exato do "IPCA acumulado 12 meses Brasil" hoje.
+  2. Para CADA ativo listado, busque: 
+     - Dividendos anunciados desde a data de inicio.
+     - P/VP atual.
+     - DY (Dividend Yield) 12 meses.
+     - Segmento de atuação.
+  `;
 
-    const prompt = `
-    ATIVOS SOLICITADOS: ${uniqueTickers.join(', ')}
-    PERÍODO DE INTERESSE: ${startDate || '2024-01-01'} até hoje.
-
-    Busque:
-    1. "IPCA acumulado 12 meses Brasil hoje"
-    2. Para cada ativo: Dividendos recentes, P/VP, DY e Segmento.
-    `;
-
-    // 3. Definição do Schema (Structured Output) para garantir JSON válido
-    const marketDataSchema = {
-      type: Type.OBJECT,
-      properties: {
-        sys: {
+  const marketDataSchema = {
+    type: Type.OBJECT,
+    properties: {
+      sys: {
+        type: Type.OBJECT,
+        properties: {
+          ipca_12m: { type: Type.NUMBER, description: "IPCA acumulado 12 meses" }
+        }
+      },
+      assets: {
+        type: Type.ARRAY,
+        items: {
           type: Type.OBJECT,
           properties: {
-            ipca_12m: { type: Type.NUMBER, description: "IPCA acumulado 12 meses (ex: 4.5)" }
-          }
-        },
-        assets: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              ticker: { type: Type.STRING },
-              segment: { type: Type.STRING },
-              type: { type: Type.STRING, description: "FII ou ACAO" },
-              fundamentals: {
+            ticker: { type: Type.STRING },
+            segment: { type: Type.STRING },
+            type: { type: Type.STRING, description: "FII ou ACAO" },
+            fundamentals: {
+              type: Type.OBJECT,
+              properties: {
+                pvp: { type: Type.NUMBER, nullable: true },
+                dy: { type: Type.NUMBER, nullable: true },
+                mcap: { type: Type.STRING, nullable: true },
+                liq: { type: Type.STRING, nullable: true },
+                sentiment: { type: Type.STRING, nullable: true },
+                reason: { type: Type.STRING, nullable: true }
+              },
+              nullable: true
+            },
+            history: {
+              type: Type.ARRAY,
+              items: {
                 type: Type.OBJECT,
                 properties: {
-                  pvp: { type: Type.NUMBER, nullable: true },
-                  dy: { type: Type.NUMBER, nullable: true },
-                  mcap: { type: Type.STRING, nullable: true },
-                  liq: { type: Type.STRING, nullable: true },
-                  sentiment: { type: Type.STRING, nullable: true },
-                  reason: { type: Type.STRING, nullable: true }
-                },
-                nullable: true
-              },
-              history: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    com: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
-                    pay: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
-                    val: { type: Type.NUMBER, description: "Valor do provento" },
-                    type: { type: Type.STRING, description: "DIV, JCP ou REND" }
-                  }
+                  com: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
+                  pay: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
+                  val: { type: Type.NUMBER, description: "Valor do provento" },
+                  type: { type: Type.STRING, description: "DIV, JCP ou REND" }
                 }
               }
             }
           }
         }
       }
-    };
-
-    // 4. Chamada à API com Schema e Tools
-    const response = await ai.models.generateContent({
-        model: LOCKED_MODEL_ID, 
-        contents: prompt,
-        config: {
-            systemInstruction,
-            tools: [{googleSearch: {}}], // Ativa o grounding no Google Search
-            temperature: 0.1,
-            responseMimeType: "application/json", // Obrigatório para usar responseSchema
-            responseSchema: marketDataSchema
-        },
-    });
-    
-    // 5. Tratamento de Fontes (Grounding Metadata)
-    const sources: {title: string, uri: string}[] = [];
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-    if (chunks) {
-        chunks.forEach((chunk: any) => {
-            if (chunk.web?.uri) {
-                sources.push({ title: chunk.web.title || 'Fonte Web', uri: chunk.web.uri });
-            }
-        });
     }
+  };
 
-    // 6. Parse Seguro do JSON (Agora garantido pelo Schema)
-    let parsedJson: any = { assets: [] };
-    try {
-        if (response.text) {
-             parsedJson = JSON.parse(response.text);
-        }
-    } catch (parseError) {
-        console.warn("Gemini: Erro no parse JSON, mesmo com Schema.", parseError);
-    }
-
-    // 7. Mapeamento
-    const metadata: any = {};
-    const aiDividends: any[] = [];
-    
-    if (parsedJson.assets && Array.isArray(parsedJson.assets)) {
-      for (const asset of parsedJson.assets) {
-          const t = asset.ticker?.toUpperCase() || "UNKNOWN";
-          
-          metadata[t] = {
-              type: asset.type === 'FII' ? AssetType.FII : AssetType.STOCK,
-              segment: asset.segment || 'Geral',
-              fundamentals: {
-                  p_vp: normalizeValue(asset.fundamentals?.pvp),
-                  dy_12m: normalizeValue(asset.fundamentals?.dy),
-                  liquidity: asset.fundamentals?.liq || '-',
-                  market_cap: asset.fundamentals?.mcap || '-',
-                  sentiment: asset.fundamentals?.sentiment || 'Neutro',
-                  sentiment_reason: asset.fundamentals?.reason || 'Análise automática',
-                  sources: sources.slice(0, 3)
-              },
-          };
-          
-          if (asset.history && Array.isArray(asset.history)) {
-            asset.history.forEach((d: any) => {
-                const dCom = normalizeDate(d.com);
-                const dPay = normalizeDate(d.pay);
-                if (dCom && d.val > 0) {
-                    aiDividends.push({
-                        ticker: t,
-                        type: d.type || 'REND',
-                        dateCom: dCom,
-                        paymentDate: dPay || dCom,
-                        rate: normalizeValue(d.val),
-                    });
-                }
-            });
-          }
+  try {
+      // --- SINGLE REQUEST EXECUTION (NO RETRIES) ---
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const response = await ai.models.generateContent({
+          model: LOCKED_MODEL_ID, 
+          contents: prompt,
+          config: {
+              systemInstruction,
+              tools: [{googleSearch: {}}], 
+              temperature: 0.1,
+              responseMimeType: "application/json", 
+              responseSchema: marketDataSchema
+          },
+      });
+      
+      // Processamento da Resposta
+      const sources: {title: string, uri: string}[] = [];
+      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      if (chunks) {
+          chunks.forEach((chunk: any) => {
+              if (chunk.web?.uri) {
+                  sources.push({ title: chunk.web.title || 'Fonte Web', uri: chunk.web.uri });
+              }
+          });
       }
-    }
 
-    // 8. Sincronização
-    upsertDividendsToCloud(aiDividends);
+      let parsedJson: any = { assets: [] };
+      try {
+          if (response.text) {
+              parsedJson = JSON.parse(response.text);
+          }
+      } catch (parseError) {
+          console.warn("Gemini: Erro no parse JSON.", parseError);
+      }
 
-    const combined = [...storedDividends];
-    aiDividends.forEach(newDiv => {
-        const exists = combined.some(old => 
-            old.ticker === newDiv.ticker && 
-            old.dateCom === newDiv.dateCom && 
-            Math.abs(old.rate - newDiv.rate) < 0.001
-        );
-        if (!exists) combined.push(newDiv);
-    });
-    
-    const finalData = { 
-        dividends: combined, 
-        metadata, 
-        indicators: { 
-            ipca_cumulative: normalizeValue(parsedJson.sys?.ipca_12m), 
-            start_date_used: startDate || '' 
+      const metadata: any = {};
+      const aiDividends: any[] = [];
+      
+      if (parsedJson.assets && Array.isArray(parsedJson.assets)) {
+        for (const asset of parsedJson.assets) {
+            const t = asset.ticker?.toUpperCase() || "UNKNOWN";
+            
+            metadata[t] = {
+                type: asset.type === 'FII' ? AssetType.FII : AssetType.STOCK,
+                segment: asset.segment || 'Geral',
+                fundamentals: {
+                    p_vp: normalizeValue(asset.fundamentals?.pvp),
+                    dy_12m: normalizeValue(asset.fundamentals?.dy),
+                    liquidity: asset.fundamentals?.liq || '-',
+                    market_cap: asset.fundamentals?.mcap || '-',
+                    sentiment: asset.fundamentals?.sentiment || 'Neutro',
+                    sentiment_reason: asset.fundamentals?.reason || 'Análise automática',
+                    sources: sources.slice(0, 3)
+                },
+            };
+            
+            if (asset.history && Array.isArray(asset.history)) {
+              asset.history.forEach((d: any) => {
+                  const dCom = normalizeDate(d.com);
+                  const dPay = normalizeDate(d.pay);
+                  if (dCom && d.val > 0) {
+                      aiDividends.push({
+                          ticker: t,
+                          type: d.type || 'REND',
+                          dateCom: dCom,
+                          paymentDate: dPay || dCom,
+                          rate: normalizeValue(d.val),
+                      });
+                  }
+              });
+            }
         }
-    };
-    
-    localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), tickerKey, data: finalData }));
-    return finalData;
+      }
+
+      // Sync Cloud (Fire and forget para não travar a UI)
+      upsertDividendsToCloud(aiDividends);
+
+      // Merge com dados do Supabase
+      const storedDividends = await fetchStoredDividends(uniqueTickers);
+      const combined = [...storedDividends];
+      
+      aiDividends.forEach(newDiv => {
+          const exists = combined.some(old => 
+              old.ticker === newDiv.ticker && 
+              old.dateCom === newDiv.dateCom && 
+              Math.abs(old.rate - newDiv.rate) < 0.001
+          );
+          if (!exists) combined.push(newDiv);
+      });
+      
+      const finalData = { 
+          dividends: combined, 
+          metadata, 
+          indicators: { 
+              ipca_cumulative: normalizeValue(parsedJson.sys?.ipca_12m), 
+              start_date_used: startDate || '' 
+          }
+      };
+      
+      // Salva no Cache
+      localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), tickerKey, data: finalData }));
+      return finalData;
 
   } catch (error: any) {
-    console.error("Gemini Search Error:", error);
-    const stored = await fetchStoredDividends(uniqueTickers);
-    return { dividends: stored, metadata: {}, error: error.message || 'Erro desconhecido' };
+      console.error("Gemini Single Request Error:", error);
+      
+      // Fallback imediato se a requisição única falhar
+      const storedFallback = await fetchStoredDividends(uniqueTickers);
+      return { 
+          dividends: storedFallback, 
+          metadata: {}, 
+          error: error.message || 'Erro na requisição única do Gemini' 
+      };
   }
 };
