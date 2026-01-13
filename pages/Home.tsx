@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Gem } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Gem, ChevronRight, Calculator, ArrowRightLeft } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
 
@@ -283,13 +283,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-3 pb-8">
-      {/* 1. Patrimonio Total - Hero Card Updated */}
+      {/* 1. Patrimonio Total - Hero Card Updated (Static, with inline breakdown) */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
         <div 
-            className="w-full p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark transition-all duration-500"
-            style={{ 
-                background: `linear-gradient(135deg, rgba(var(--color-accent-rgb), 0.05) 0%, rgba(255,255,255,0) 100%)` 
-            }}
+            className="w-full p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-card dark:shadow-card-dark bg-surface-light dark:bg-surface-dark"
         >
             {/* Dynamic Mesh Background */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
@@ -303,7 +300,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter tabular-nums leading-none mb-1">{formatBRL(balance, privacyMode)}</h2>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-200/50 dark:border-zinc-800/50 relative z-10">
+            <div className="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-4 relative z-10">
                 <div>
                     <span className="flex items-center gap-1.5 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">
                         <Wallet className="w-3 h-3" /> Valor Aplicado
@@ -313,7 +310,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                 <div className="text-right">
                      <span className="flex items-center justify-end gap-1.5 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">
-                        Rentabilidade
+                        Rentabilidade Total
                     </span>
                     <div className={`flex flex-col items-end`}>
                         <span className={`text-sm font-black flex items-center gap-1 ${isProfitPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
@@ -325,6 +322,34 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </span>
                     </div>
                 </div>
+            </div>
+
+            {/* Breakdown Inline Grid */}
+            <div className="grid grid-cols-3 gap-2 relative z-10">
+                 {/* Valorização */}
+                 <div className="p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 text-center">
+                    <div className="flex justify-center mb-1"><TrendingUp className="w-3.5 h-3.5 text-zinc-400" /></div>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Valorização</p>
+                    <p className={`text-[10px] font-black ${totalAppreciation >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        {formatBRL(totalAppreciation, privacyMode)}
+                    </p>
+                 </div>
+                 {/* Proventos */}
+                 <div className="p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 text-center">
+                    <div className="flex justify-center mb-1"><Coins className="w-3.5 h-3.5 text-emerald-500" /></div>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Proventos</p>
+                    <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                        {formatBRL(totalDividendsReceived, privacyMode)}
+                    </p>
+                 </div>
+                 {/* Vendas */}
+                 <div className="p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 text-center">
+                    <div className="flex justify-center mb-1"><ArrowRightLeft className="w-3.5 h-3.5 text-sky-500" /></div>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Vendas</p>
+                    <p className={`text-[10px] font-black ${salesGain >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        {formatBRL(salesGain, privacyMode)}
+                    </p>
+                 </div>
             </div>
         </div>
       </div>
@@ -521,125 +546,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
-      {/* Outros Modais mantidos com a mesma lógica mas herdando os estilos globais melhorados */}
-      {/* ... (rest of the file content remains largely structurally the same, just utilizing new CSS utilities via global imports) ... */}
-      
-      <SwipeableModal isOpen={showRealYieldModal} onClose={() => setShowRealYieldModal(false)}>
-         <div className="p-6 pb-20">
-             <div className="flex items-center gap-4 mb-6 anim-slide-up">
-                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-500 border border-indigo-100 dark:border-indigo-900/30">
-                    <Scale className="w-6 h-6" strokeWidth={1.5} />
-                </div>
-                <div>
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Raio-X da Inflação</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Histórico 12 Meses</p>
-                </div>
-             </div>
-
-             {/* VEREDITO */}
-             <div className={`p-6 rounded-2xl mb-6 anim-slide-up bg-surface-light dark:bg-zinc-800/40 border-2 ${realYieldMetrics.realReturn >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20'}`} style={{ animationDelay: '100ms' }}>
-                 <div className="flex items-center gap-2 mb-2">
-                     <div className={`w-2 h-2 rounded-full ${verdict.bg} animate-pulse`}></div>
-                     <span className={`text-[10px] font-black uppercase tracking-widest ${verdict.color}`}>Veredito Financeiro</span>
-                 </div>
-                 <h3 className={`text-xl font-black mb-1.5 ${verdict.color}`}>{verdict.title}</h3>
-                 <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                     {verdict.desc}
-                 </p>
-             </div>
-
-             {/* GRÁFICO 12 MESES */}
-             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
-                 <div className="flex items-center justify-between mb-4 px-2">
-                     <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                        <BarChart3 className="w-3 h-3" /> Proventos vs IPCA
-                     </h3>
-                     <div className="flex gap-3">
-                         <div className="flex items-center gap-1.5">
-                             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                             <span className="text-[9px] font-bold text-zinc-400 uppercase">Recebido</span>
-                         </div>
-                         <div className="flex items-center gap-1.5">
-                             <div className="w-2 h-2 rounded-full bg-rose-400"></div>
-                             <span className="text-[9px] font-bold text-zinc-400 uppercase">Inflação</span>
-                         </div>
-                     </div>
-                 </div>
-                 
-                 <div className="h-48 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={last12MonthsData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b40" />
-                            <XAxis 
-                                dataKey="month" 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 700 }} 
-                                dy={10}
-                            />
-                            <YAxis 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{ fontSize: 9, fill: '#a1a1aa' }} 
-                                tickFormatter={(val) => `R$${val/1000}k`}
-                            />
-                            <RechartsTooltip content={<BarTooltip />} cursor={{ fill: '#71717a10', radius: 4 }} />
-                            <Bar dataKey="dividends" fill="#10b981" radius={[4, 4, 0, 0]} barSize={8} />
-                            <Bar dataKey="inflation" fill="#fb7185" radius={[4, 4, 0, 0]} barSize={8} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                 </div>
-             </div>
-
-             {/* HISTÓRICO DETALHADO (LISTA) */}
-             <div className="space-y-4 anim-slide-up" style={{ animationDelay: '300ms' }}>
-                 <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Detalhamento Mensal</h3>
-                 <div className="space-y-2">
-                     {last12MonthsData.slice().reverse().map((item, i) => {
-                         const isPositive = item.net >= 0;
-                         return (
-                             <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
-                                 <div className="flex items-center gap-3">
-                                     <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800`}>
-                                         <span className="text-[10px] font-black uppercase text-zinc-400">{item.month}</span>
-                                     </div>
-                                     <div>
-                                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Resultado Real</p>
-                                         <p className={`text-sm font-black ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                             {isPositive ? '+' : ''}{formatBRL(item.net, privacyMode)}
-                                         </p>
-                                     </div>
-                                 </div>
-                                 
-                                 <div className="text-right space-y-1">
-                                     <div className="flex items-center justify-end gap-2 text-[10px]">
-                                         <span className="font-medium text-zinc-400">Proventos</span>
-                                         <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">
-                                             {formatBRL(item.dividends, privacyMode)}
-                                         </span>
-                                     </div>
-                                     <div className="flex items-center justify-end gap-2 text-[10px]">
-                                         <span className="font-medium text-zinc-400">Corrosão</span>
-                                         <span className="font-bold text-rose-500 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/50 px-1.5 py-0.5 rounded">
-                                             -{formatBRL(item.inflation, privacyMode)}
-                                         </span>
-                                     </div>
-                                 </div>
-                             </div>
-                         )
-                     })}
-                 </div>
-             </div>
-
-             <div className="mt-8 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
-                 <Info className="w-5 h-5 text-blue-500 shrink-0" />
-                 <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed">
-                     <strong>Nota Técnica:</strong> O cálculo considera a inflação mensal composta derivada do acumulado de 12 meses ({inflationRate}%) aplicada sobre o valor investido atual ({formatBRL(invested, privacyMode)}). Isso fornece uma estimativa visual do poder de compra perdido mês a mês.
-                 </p>
-             </div>
-         </div>
-      </SwipeableModal>
-
       {/* ... Rest of existing modals ... */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
          {/* ... Conteúdo do modal de proventos mantido ... */}
@@ -765,7 +671,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         {/* ... Conteúdo do modal de alocação mantido com estilos atualizados ... */}
+         {/* ... Conteúdo do modal de alocação mantido ... */}
          <div className="p-6 pb-20">
              <div className="flex items-center gap-4 mb-6 anim-slide-up">
                 <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
@@ -878,7 +784,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
              )}
 
-             {/* GRÁFICO 3: POR ATIVO (Donut Chart Substituindo a Lista) */}
+             {/* GRÁFICO 3: POR ATIVO */}
              {assetsChartData.length > 0 && (
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 anim-slide-up shadow-sm" style={{ animationDelay: '300ms' }}>
                     <div className="flex items-center gap-2 mb-2 px-2">
@@ -925,6 +831,123 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
              )}
+         </div>
+      </SwipeableModal>
+      
+      <SwipeableModal isOpen={showRealYieldModal} onClose={() => setShowRealYieldModal(false)}>
+         {/* ... Conteúdo do modal de Ganho Real mantido ... */}
+         <div className="p-6 pb-20">
+             <div className="flex items-center gap-4 mb-6 anim-slide-up">
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-500 border border-indigo-100 dark:border-indigo-900/30">
+                    <Scale className="w-6 h-6" strokeWidth={1.5} />
+                </div>
+                <div>
+                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Raio-X da Inflação</h2>
+                    <p className="text-xs text-zinc-500 font-medium">Histórico 12 Meses</p>
+                </div>
+             </div>
+
+             {/* VEREDITO */}
+             <div className={`p-6 rounded-2xl mb-6 anim-slide-up bg-surface-light dark:bg-zinc-800/40 border-2 ${realYieldMetrics.realReturn >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20'}`} style={{ animationDelay: '100ms' }}>
+                 <div className="flex items-center gap-2 mb-2">
+                     <div className={`w-2 h-2 rounded-full ${verdict.bg} animate-pulse`}></div>
+                     <span className={`text-[10px] font-black uppercase tracking-widest ${verdict.color}`}>Veredito Financeiro</span>
+                 </div>
+                 <h3 className={`text-xl font-black mb-1.5 ${verdict.color}`}>{verdict.title}</h3>
+                 <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                     {verdict.desc}
+                 </p>
+             </div>
+
+             {/* GRÁFICO 12 MESES */}
+             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
+                 <div className="flex items-center justify-between mb-4 px-2">
+                     <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                        <BarChart3 className="w-3 h-3" /> Proventos vs IPCA
+                     </h3>
+                     <div className="flex gap-3">
+                         <div className="flex items-center gap-1.5">
+                             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                             <span className="text-[9px] font-bold text-zinc-400 uppercase">Recebido</span>
+                         </div>
+                         <div className="flex items-center gap-1.5">
+                             <div className="w-2 h-2 rounded-full bg-rose-400"></div>
+                             <span className="text-[9px] font-bold text-zinc-400 uppercase">Inflação</span>
+                         </div>
+                     </div>
+                 </div>
+                 
+                 <div className="h-48 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={last12MonthsData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b40" />
+                            <XAxis 
+                                dataKey="month" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 700 }} 
+                                dy={10}
+                            />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{ fontSize: 9, fill: '#a1a1aa' }} 
+                                tickFormatter={(val) => `R$${val/1000}k`}
+                            />
+                            <RechartsTooltip content={<BarTooltip />} cursor={{ fill: '#71717a10', radius: 4 }} />
+                            <Bar dataKey="dividends" fill="#10b981" radius={[4, 4, 0, 0]} barSize={8} />
+                            <Bar dataKey="inflation" fill="#fb7185" radius={[4, 4, 0, 0]} barSize={8} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                 </div>
+             </div>
+
+             {/* HISTÓRICO DETALHADO (LISTA) */}
+             <div className="space-y-4 anim-slide-up" style={{ animationDelay: '300ms' }}>
+                 <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Detalhamento Mensal</h3>
+                 <div className="space-y-2">
+                     {last12MonthsData.slice().reverse().map((item, i) => {
+                         const isPositive = item.net >= 0;
+                         return (
+                             <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
+                                 <div className="flex items-center gap-3">
+                                     <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800`}>
+                                         <span className="text-[10px] font-black uppercase text-zinc-400">{item.month}</span>
+                                     </div>
+                                     <div>
+                                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Resultado Real</p>
+                                         <p className={`text-sm font-black ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                             {isPositive ? '+' : ''}{formatBRL(item.net, privacyMode)}
+                                         </p>
+                                     </div>
+                                 </div>
+                                 
+                                 <div className="text-right space-y-1">
+                                     <div className="flex items-center justify-end gap-2 text-[10px]">
+                                         <span className="font-medium text-zinc-400">Proventos</span>
+                                         <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">
+                                             {formatBRL(item.dividends, privacyMode)}
+                                         </span>
+                                     </div>
+                                     <div className="flex items-center justify-end gap-2 text-[10px]">
+                                         <span className="font-medium text-zinc-400">Corrosão</span>
+                                         <span className="font-bold text-rose-500 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/50 px-1.5 py-0.5 rounded">
+                                             -{formatBRL(item.inflation, privacyMode)}
+                                         </span>
+                                     </div>
+                                 </div>
+                             </div>
+                         )
+                     })}
+                 </div>
+             </div>
+
+             <div className="mt-8 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
+                 <Info className="w-5 h-5 text-blue-500 shrink-0" />
+                 <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed">
+                     <strong>Nota Técnica:</strong> O cálculo considera a inflação mensal composta derivada do acumulado de 12 meses ({inflationRate}%) aplicada sobre o valor investido atual ({formatBRL(invested, privacyMode)}). Isso fornece uma estimativa visual do poder de compra perdido mês a mês.
+                 </p>
+             </div>
          </div>
       </SwipeableModal>
     </div>
