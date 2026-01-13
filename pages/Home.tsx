@@ -520,7 +520,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     <span>{getDaysUntil(e.date)}</span>
                                 </div>
                                 <p className="text-sm font-black text-zinc-900 dark:text-white">{formatDateShort(e.date)}</p>
-                                {e.eventType === 'payment' && <p className={`text-xs ${style.valueClass}`}>{formatBRL(e.totalReceived, privacyMode)}</p>}
+                                {e.eventType === 'payment' && (
+                                    <div className="mt-1 flex flex-col items-end">
+                                        <p className={`text-xs ${style.valueClass}`}>{formatBRL(e.totalReceived, privacyMode)}</p>
+                                        <div className="flex items-center justify-end gap-1.5 mt-1">
+                                            <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded border border-black/5 dark:border-white/5">
+                                                {e.quantityOwned} un
+                                            </span>
+                                            <span className="text-[9px] text-zinc-400">x</span>
+                                            <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded border border-black/5 dark:border-white/5">
+                                                {formatBRL(e.rate, privacyMode)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     );
@@ -578,7 +591,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                   </div>
                                                   <div className="text-right">
                                                       <span className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(detail.totalReceived, privacyMode)}</span>
-                                                      <span className="text-[8px] text-zinc-400">Pag: {formatDateShort(detail.paymentDate)}</span>
+                                                      <div className="flex items-center justify-end gap-1 mt-0.5 text-[8px] text-zinc-400">
+                                                          <span className="font-bold">{detail.quantityOwned} un</span>
+                                                          <span>x</span>
+                                                          <span className="font-bold">{formatBRL(detail.rate, privacyMode)}</span>
+                                                      </div>
+                                                      <span className="text-[8px] text-zinc-400 mt-0.5 block">Pag: {formatDateShort(detail.paymentDate)}</span>
                                                   </div>
                                              </div>
                                          ))}
