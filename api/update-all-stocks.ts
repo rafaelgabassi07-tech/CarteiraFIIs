@@ -100,8 +100,8 @@ async function scrapeTickerData(ticker: string) {
             const cols = $(tr).find('td');
             if (cols.length >= 3) {
                 let tipo = '';
-                let dataCom = null;
-                let dataPag = null;
+                let dataCom: string | null = null;
+                let dataPag: string | null = null;
                 let valor = 0;
 
                 cols.each((_, td) => {

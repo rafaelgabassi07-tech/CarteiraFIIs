@@ -168,8 +168,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Verifica se a linha tem colunas suficientes
         if (cols.length >= 3) {
             let tipo = '';
-            let dataCom = null;
-            let dataPag = null;
+            let dataCom: string | null = null;
+            let dataPag: string | null = null;
             let valor = 0;
 
             // Análise Célula a Célula (Independente da ordem das colunas)
