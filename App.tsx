@@ -122,9 +122,8 @@ const App: React.FC = () => {
   // --- Health Check Function ---
   const checkServiceHealth = useCallback(async () => {
     setIsCheckingServices(true);
-    const newServices = [...services]; // Clone state to modify
+    const newServices = [...services]; 
     
-    // Atualiza status visual para "checking"
     setServices(prev => prev.map(s => s.id !== 'ai' ? { ...s, status: 'checking' } : s));
 
     const checkService = async (index: number) => {
@@ -163,18 +162,16 @@ const App: React.FC = () => {
       }
     };
 
-    // Executa testes de rede
     await Promise.all(newServices.map((s, i) => s.id !== 'ai' ? checkService(i) : Promise.resolve()));
     
-    // AI Status (Baseado no último fetch de dados)
     const aiIndex = newServices.findIndex(s => s.id === 'ai');
     if (aiIndex >= 0) {
        const aiService = { ...newServices[aiIndex] };
-       aiService.status = lastAiStatus; // Usa o estado global da IA
+       aiService.status = lastAiStatus;
        
        if (lastAiStatus === 'operational') {
            aiService.latency = Math.floor(Math.random() * 200) + 100;
-           aiService.message = `[INFO] Gemini AI Model Status\n[MODEL] gemini-3-flash-preview\n[STATUS] Ready for inference.\n[LATENCY] ${aiService.latency}ms (estimated)`;
+           aiService.message = `[INFO] Gemini AI Model Status\n[MODEL] gemini-2.5-flash\n[STATUS] Ready for inference.\n[LATENCY] ${aiService.latency}ms (estimated)`;
        } else if (lastAiStatus === 'unknown') {
            aiService.message = `[INFO] Aguardando primeira sincronização de dados para validar IA.`;
        } else {
@@ -187,16 +184,14 @@ const App: React.FC = () => {
     setIsCheckingServices(false);
   }, [services, lastAiStatus]);
 
-  // Trigger health check on session load
   useEffect(() => {
       if (session) {
-          // Delay ligeiro para não competir com a renderização inicial pesada
           const timer = setTimeout(() => {
               checkServiceHealth();
           }, 1000);
           return () => clearTimeout(timer);
       }
-  }, [session]); // Dependência apenas de session para rodar uma vez ao logar
+  }, [session]); 
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
@@ -271,7 +266,7 @@ const App: React.FC = () => {
           quantity: t.quantity,
           price: t.price,
           date: t.date,
-          asset_type: t.assetType, // Correct mapping: camelCase -> snake_case
+          asset_type: t.assetType, 
           user_id: session.user.id
       };
 
@@ -291,7 +286,7 @@ const App: React.FC = () => {
       if (t.quantity !== undefined) dbPayload.quantity = t.quantity;
       if (t.price !== undefined) dbPayload.price = t.price;
       if (t.date !== undefined) dbPayload.date = t.date;
-      if (t.assetType !== undefined) dbPayload.asset_type = t.assetType; // Correct mapping
+      if (t.assetType !== undefined) dbPayload.asset_type = t.assetType; 
 
       const { error } = await supabase.from('transactions').update(dbPayload).eq('id', id);
       if (error) {
@@ -356,10 +351,22 @@ const App: React.FC = () => {
     sortedTxs.forEach(t => {
       if (!positions[t.ticker]) positions[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType };
       const p = positions[t.ticker];
+      
       if (t.type === 'BUY') { 
-          p.averagePrice = (p.quantity * p.averagePrice + t.quantity * t.price) / (p.quantity + t.quantity); 
-          p.quantity += t.quantity; 
-      } else { p.quantity -= t.quantity; }
+          // Weighted Average Price Calculation with floating point safety
+          const newQuantity = p.quantity + t.quantity;
+          if (newQuantity > 0.000001) {
+             p.averagePrice = ((p.quantity * p.averagePrice) + (t.quantity * t.price)) / newQuantity; 
+          }
+          p.quantity = newQuantity; 
+      } else { 
+          p.quantity -= t.quantity; 
+          // Logic to reset Average Price if position is closed (prevents stale history affecting new positions)
+          if (p.quantity <= 0.000001) {
+              p.quantity = 0;
+              p.averagePrice = 0;
+          }
+      }
     });
 
     const finalPortfolio = Object.values(positions)
@@ -369,7 +376,7 @@ const App: React.FC = () => {
             totalDividends: divPaidMap[p.ticker] || 0, 
             segment: assetsMetadata[p.ticker]?.segment || 'Geral', 
             currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice, 
-            dailyChange: quotes[p.ticker]?.regularMarketChangePercent || 0, // Mapeado da API Brapi
+            dailyChange: quotes[p.ticker]?.regularMarketChangePercent || 0, 
             logoUrl: quotes[p.ticker]?.logourl, 
             assetType: assetsMetadata[p.ticker]?.type || p.assetType, 
             ...assetsMetadata[p.ticker]?.fundamentals 

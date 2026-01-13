@@ -157,6 +157,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             const currentPrice = selectedAsset.currentPrice || 0;
             const avgPrice = selectedAsset.averagePrice || 0;
             const quantity = selectedAsset.quantity;
+            const totalInvested = avgPrice * quantity;
+            const totalCurrent = currentPrice * quantity;
             
             // 1. Total Gain
             const totalGainValue = (currentPrice - avgPrice) * quantity;
@@ -230,7 +232,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         </div>
                     </div>
 
-                    {/* Card 2: Minha Posição (Dense) */}
+                    {/* Card 2: Minha Posição (Dense & Explícito) */}
                     <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4">
                         <div className="flex items-center gap-2 mb-3">
                             <Wallet className="w-3.5 h-3.5 text-zinc-400" />
@@ -242,12 +244,18 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                 <span className="text-sm font-black text-zinc-900 dark:text-white">{quantity}</span>
                             </div>
                             <div className="col-span-1 text-left">
-                                <span className="block text-[9px] font-bold text-zinc-400 uppercase">Médio</span>
+                                <span className="block text-[9px] font-bold text-zinc-400 uppercase">Preço Médio</span>
                                 <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(avgPrice, privacyMode)}</span>
                             </div>
-                            <div className="col-span-2 text-right">
-                                <span className="block text-[9px] font-bold text-zinc-400 uppercase">Saldo Total</span>
-                                <span className="text-base font-black text-zinc-900 dark:text-white">{formatBRL(currentPrice * quantity, privacyMode)}</span>
+                            <div className="col-span-2 text-right flex justify-end gap-6">
+                                <div>
+                                    <span className="block text-[9px] font-bold text-zinc-400 uppercase">Custo Total</span>
+                                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(totalInvested, privacyMode)}</span>
+                                </div>
+                                <div>
+                                    <span className="block text-[9px] font-bold text-zinc-400 uppercase">Saldo Atual</span>
+                                    <span className="text-base font-black text-zinc-900 dark:text-white">{formatBRL(totalCurrent, privacyMode)}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
