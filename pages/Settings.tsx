@@ -155,7 +155,6 @@ export const Settings: React.FC<SettingsProps> = ({
               const txsToAdd = newTxs.filter(t => !existingSig.has(`${t.ticker}-${t.date}-${t.quantity}-${t.price}-${t.type}`));
               
               if (txsToAdd.length > 0 && user?.id) {
-                  // Prepara payload para o banco
                   const dbPayload = txsToAdd.map(t => ({
                       ticker: t.ticker,
                       type: t.type,
@@ -166,36 +165,54 @@ export const Settings: React.FC<SettingsProps> = ({
                       user_id: user.id
                   }));
                   
-                  // Salva na nuvem
                   const { error } = await supabase.from('transactions').insert(dbPayload);
-                  
                   if (error) {
-                      console.error('Erro ao salvar importação:', error);
-                      showToast('error', 'Erro ao salvar ordens na nuvem.');
+                      console.error('Erro ao salvar ordens:', error);
+                      showToast('error', 'Erro parcial: Ordens não salvas na nuvem.');
                   } else {
-                      // Atualiza estado local imediatamente para feedback visual
                       onImportTransactions([...transactions, ...txsToAdd]);
                   }
               }
 
-              // 2. Processar Dividendos (Mesclar com estado local)
-              // Verifica duplicatas baseadas em Data e Valor
+              // 2. Processar Dividendos (Salvar no Supabase na tabela de mercado)
+              // Filtra duplicatas locais antes de enviar
               const combinedDivs = [...geminiDividends];
               let divsAddedCount = 0;
+              const divsToSync: DividendReceipt[] = [];
               
               newDivs.forEach(d => {
                   const exists = combinedDivs.some(existing => 
                       existing.ticker === d.ticker && 
                       existing.paymentDate === d.paymentDate && 
-                      Math.abs(existing.totalReceived - d.totalReceived) < 0.05 // Margem de erro centavos
+                      Math.abs(existing.totalReceived - d.totalReceived) < 0.05 
                   );
                   if (!exists) {
                       combinedDivs.push(d);
+                      divsToSync.push(d);
                       divsAddedCount++;
                   }
               });
 
-              if (divsAddedCount > 0) {
+              if (divsToSync.length > 0) {
+                  // Mapeia para o formato do banco de dados (market_dividends)
+                  // Nota: Salvamos a taxa (rate) unitária. O app calcula o total baseado na quantidade que o usuário possui.
+                  const divPayload = divsToSync.map(d => ({
+                      ticker: d.ticker,
+                      type: d.type,
+                      date_com: d.dateCom,
+                      payment_date: d.paymentDate,
+                      rate: d.rate
+                  }));
+
+                  // Upsert no Supabase para garantir que dados históricos fiquem salvos
+                  const { error: divError } = await supabase
+                      .from('market_dividends')
+                      .upsert(divPayload, { onConflict: 'ticker, type, date_com, payment_date, rate', ignoreDuplicates: true });
+                  
+                  if (divError) {
+                      console.error('Erro ao salvar dividendos na nuvem:', divError);
+                  }
+
                   onImportDividends(combinedDivs);
               }
 
@@ -204,10 +221,10 @@ export const Settings: React.FC<SettingsProps> = ({
               if (divsAddedCount > 0) msgParts.push(`${divsAddedCount} proventos`);
               
               if (msgParts.length > 0) {
-                  showToast('success', `Importado: ${msgParts.join(' e ')}!`);
+                  showToast('success', `Importado e Sincronizado: ${msgParts.join(' e ')}!`);
                   setActiveSection('menu');
               } else {
-                  showToast('info', 'Dados já existem na carteira.');
+                  showToast('info', 'Todos os dados já existem na carteira.');
               }
           }
       } catch (error) {

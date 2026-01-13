@@ -38,7 +38,10 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
   try {
     const quotePromises = uniqueTickers.map(async (ticker) => {
         try {
-            const response = await fetch(`https://brapi.dev/api/quote/${ticker}?token=${BRAPI_TOKEN}`);
+            // Adiciona cache: 'no-store' para garantir que o fetch respeite o polling e não pegue do disk cache
+            const response = await fetch(`https://brapi.dev/api/quote/${ticker}?token=${BRAPI_TOKEN}`, {
+                cache: 'no-store'
+            });
             
             if (!response.ok) {
                 console.warn(`Brapi error for ${ticker}: ${response.status}`);

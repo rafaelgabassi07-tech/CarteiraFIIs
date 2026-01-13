@@ -211,6 +211,7 @@ const App: React.FC = () => {
     setIsRefreshing(true);
     if (initialLoad) setLoadingProgress(50);
     try {
+      // 1. Atualização de Cotações (Brapi) - Prioridade Alta
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
@@ -218,6 +219,7 @@ const App: React.FC = () => {
       
       if (initialLoad) setLoadingProgress(70); 
       
+      // 2. Atualização de Metadados/IA (Gemini) - Background
       if (process.env.API_KEY || (import.meta as any).env?.VITE_API_KEY) {
           setIsAiLoading(true);
           const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
@@ -343,6 +345,20 @@ const App: React.FC = () => {
   useEffect(() => {
     if (session?.user) fetchTransactionsFromCloud(session, false, transactions.length === 0).finally(() => setAppLoading(false));
   }, [session]);
+
+  // --- AUTO-UPDATE QUOTES (POLLING 30 MIN) ---
+  useEffect(() => {
+    if (!session || transactions.length === 0) return;
+
+    // Configura intervalo de 30 minutos (30 * 60 * 1000 ms)
+    const intervalId = setInterval(() => {
+        // Reuse a lógica de sincronização existente, passando 'true' para forçar se necessário
+        // e a lista atual de transações para saber quais tickers atualizar.
+        syncMarketData(true, transactions);
+    }, 30 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [session, transactions, syncMarketData]);
 
   const memoizedPortfolioData = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -470,23 +486,58 @@ const App: React.FC = () => {
                       totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
                       isAiLoading={isAiLoading} 
                       inflationRate={marketIndicators.ipca} 
-                      portfolioStartDate={marketIndicators.startDate} 
-                      accentColor={accentColor} 
                       privacyMode={privacyMode}
                     />
                   )}
-                  {currentTab === 'portfolio' && <MemoizedPortfolio {...memoizedPortfolioData} privacyMode={privacyMode} />}
-                  {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
+                  {currentTab === 'portfolio' && (
+                    <MemoizedPortfolio 
+                      portfolio={memoizedPortfolioData.portfolio} 
+                      privacyMode={privacyMode}
+                    />
+                  )}
+                  {currentTab === 'transactions' && (
+                    <MemoizedTransactions 
+                      transactions={transactions} 
+                      onAddTransaction={handleAddTransaction} 
+                      onUpdateTransaction={handleUpdateTransaction} 
+                      onRequestDeleteConfirmation={handleDeleteTransaction}
+                      privacyMode={privacyMode}
+                    />
+                  )}
                 </div>
               )}
             </main>
             {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
+            
+            <ChangelogModal 
+                isOpen={updateManager.showChangelog} 
+                onClose={() => updateManager.setShowChangelog(false)} 
+                version={updateManager.availableVersion || APP_VERSION}
+                notes={updateManager.releaseNotes}
+                isUpdatePending={updateManager.isUpdateAvailable}
+                onUpdate={updateManager.startUpdateProcess}
+                isUpdating={updateManager.isUpdating}
+                progress={updateManager.updateProgress}
+            />
+            
+            <NotificationsModal 
+                isOpen={showNotifications} 
+                onClose={() => setShowNotifications(false)} 
+                notifications={notifications} 
+                onClear={() => setNotifications([])} 
+            />
+
+            <ConfirmationModal 
+                isOpen={!!confirmModal} 
+                title={confirmModal?.title || ''} 
+                message={confirmModal?.message || ''} 
+                onConfirm={() => confirmModal?.onConfirm()} 
+                onCancel={() => setConfirmModal(null)} 
+            />
         </>
       )}
-      <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
-      <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={() => setNotifications([])} />
-      {confirmModal?.isOpen && ( <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} /> )}
     </div>
   );
 };
+
 export default App;
