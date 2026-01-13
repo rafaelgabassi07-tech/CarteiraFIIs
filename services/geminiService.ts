@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
 import { supabase } from "./supabase";
 
@@ -10,19 +10,27 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Configuração Estrita: Gemini 2.5 Flash
-const GEMINI_CACHE_KEY = 'investfiis_gemini_v23_25flash_strict_search'; 
-const LOCKED_MODEL_ID = "gemini-2.5-flash";
+// Configuração: Usando Gemini 3 Flash Preview (Conforme Guidelines)
+const GEMINI_CACHE_KEY = 'investfiis_gemini_v25_3flash_search'; 
+const LOCKED_MODEL_ID = "gemini-3-flash-preview";
 
 // Robust API Key Retrieval
 const getApiKey = () => {
     const viteKey = (import.meta as any).env?.VITE_API_KEY;
-    if (viteKey) return viteKey;
-    try {
-        return process.env.API_KEY;
-    } catch {
-        return undefined;
+    if (viteKey) {
+        console.log("GeminiService: API Key encontrada via VITE_API_KEY");
+        return viteKey;
     }
+    try {
+        if (process.env.API_KEY) {
+            console.log("GeminiService: API Key encontrada via process.env.API_KEY");
+            return process.env.API_KEY;
+        }
+    } catch {
+        // ignore
+    }
+    console.warn("GeminiService: Nenhuma API Key encontrada.");
+    return undefined;
 };
 
 const normalizeDate = (dateStr: any): string => {
@@ -97,13 +105,15 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.toUpperCase())));
   const tickerKey = uniqueTickers.slice().sort().join('|');
 
-  // 1. Verificação de Cache Local (Performance First)
+  // 1. Verificação de Cache Local
   if (!forceRefresh) {
     try {
         const cachedRaw = localStorage.getItem(GEMINI_CACHE_KEY);
         if (cachedRaw) {
             const cached = JSON.parse(cachedRaw);
+            // Cache de 4 horas
             if ((Date.now() - cached.timestamp) < (4 * 60 * 60 * 1000) && cached.tickerKey === tickerKey) {
+                console.log("GeminiService: Usando Cache Local");
                 return cached.data;
             }
         }
@@ -111,77 +121,52 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   }
 
   const apiKey = getApiKey();
-  if (!apiKey) return { dividends: [], metadata: {}, error: "API_KEY ausente" };
+  if (!apiKey) {
+      console.error("GeminiService: API Key ausente. Abortando requisição.");
+      return { dividends: [], metadata: {}, error: "API_KEY ausente" };
+  }
 
-  // Estrutura do Prompt Simplificada para Requisição Única
   const systemInstruction = `
-  VOCÊ É UM AGENTE DE DADOS B3.
-  USE A FERRAMENTA "GoogleSearch" UMA ÚNICA VEZ PARA BUSCAR TUDO.
-  RETORNE JSON APENAS.
+  ATUE COMO UM ANALISTA DE DADOS DA B3 (BRASIL).
+  
+  OBJETIVO:
+  Usar a ferramenta "GoogleSearch" para encontrar dados RECENTES (2024-2025) sobre os ativos solicitados.
+  
+  FORMATO DE RESPOSTA:
+  Você DEVE retornar APENAS um JSON válido. Não use Markdown (\`\`\`json). Retorne o texto cru do JSON.
+  
+  O JSON deve seguir estritamente esta estrutura:
+  {
+    "sys": { "ipca_12m": number },
+    "assets": [
+      {
+        "ticker": "string",
+        "segment": "string",
+        "type": "FII" | "ACAO",
+        "fundamentals": {
+            "pvp": number | null,
+            "dy": number | null,
+            "reason": "string (resumo curto de 1 frase)"
+        },
+        "history": [
+           { "com": "YYYY-MM-DD", "pay": "YYYY-MM-DD", "val": number, "type": "DIV" | "JCP" | "REND" }
+        ]
+      }
+    ]
+  }
   `;
 
   const prompt = `
   ATIVOS: ${uniqueTickers.join(', ')}
-  DATA INICIO: ${startDate || '2024-01-01'}
+  DATA DE CORTE: ${startDate || '2024-01-01'}
   
-  TAREFA ÚNICA:
-  1. Busque o valor exato do "IPCA acumulado 12 meses Brasil" hoje.
-  2. Para CADA ativo listado, busque: 
-     - Dividendos anunciados desde a data de inicio.
-     - P/VP atual.
-     - DY (Dividend Yield) 12 meses.
-     - Segmento de atuação.
+  BUSQUE AGORA:
+  1. Valor IPCA acumulado 12 meses Brasil hoje.
+  2. Para cada ativo: Dividendos anunciados após a data de corte, P/VP, DY e Segmento.
   `;
 
-  const marketDataSchema = {
-    type: Type.OBJECT,
-    properties: {
-      sys: {
-        type: Type.OBJECT,
-        properties: {
-          ipca_12m: { type: Type.NUMBER, description: "IPCA acumulado 12 meses" }
-        }
-      },
-      assets: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            ticker: { type: Type.STRING },
-            segment: { type: Type.STRING },
-            type: { type: Type.STRING, description: "FII ou ACAO" },
-            fundamentals: {
-              type: Type.OBJECT,
-              properties: {
-                pvp: { type: Type.NUMBER, nullable: true },
-                dy: { type: Type.NUMBER, nullable: true },
-                mcap: { type: Type.STRING, nullable: true },
-                liq: { type: Type.STRING, nullable: true },
-                sentiment: { type: Type.STRING, nullable: true },
-                reason: { type: Type.STRING, nullable: true }
-              },
-              nullable: true
-            },
-            history: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  com: { type: Type.STRING, description: "Data Com (YYYY-MM-DD)" },
-                  pay: { type: Type.STRING, description: "Data Pagamento (YYYY-MM-DD)" },
-                  val: { type: Type.NUMBER, description: "Valor do provento" },
-                  type: { type: Type.STRING, description: "DIV, JCP ou REND" }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  };
-
   try {
-      // --- SINGLE REQUEST EXECUTION (NO RETRIES) ---
+      console.log(`GeminiService: Iniciando requisição para ${uniqueTickers.length} ativos...`);
       const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({
@@ -189,13 +174,22 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           contents: prompt,
           config: {
               systemInstruction,
-              tools: [{googleSearch: {}}], 
+              tools: [{googleSearch: {}}],
+              // NOTA: responseMimeType 'application/json' conflitua com googleSearch em alguns casos.
+              // Usamos prompt engineering para forçar JSON e fazemos parse manual.
               temperature: 0.1,
-              responseMimeType: "application/json", 
-              responseSchema: marketDataSchema
+              // Desativa filtros de segurança para evitar bloqueio de termos financeiros
+              safetySettings: [
+                { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+                { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE }
+              ]
           },
       });
       
+      console.log("GeminiService: Resposta recebida.");
+
       // Processamento da Resposta
       const sources: {title: string, uri: string}[] = [];
       const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
@@ -208,12 +202,16 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }
 
       let parsedJson: any = { assets: [] };
+      let textResponse = response.text || "{}";
+      
+      // Limpeza de Markdown caso o modelo envie ```json ... ```
+      textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+
       try {
-          if (response.text) {
-              parsedJson = JSON.parse(response.text);
-          }
+          parsedJson = JSON.parse(textResponse);
       } catch (parseError) {
-          console.warn("Gemini: Erro no parse JSON.", parseError);
+          console.warn("GeminiService: Falha ao parsear JSON. Tentando correção...", parseError);
+          console.debug("Raw Text:", textResponse);
       }
 
       const metadata: any = {};
@@ -231,8 +229,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                     dy_12m: normalizeValue(asset.fundamentals?.dy),
                     liquidity: asset.fundamentals?.liq || '-',
                     market_cap: asset.fundamentals?.mcap || '-',
-                    sentiment: asset.fundamentals?.sentiment || 'Neutro',
-                    sentiment_reason: asset.fundamentals?.reason || 'Análise automática',
+                    sentiment: 'Neutro',
+                    sentiment_reason: asset.fundamentals?.reason || 'Dados obtidos via IA',
                     sources: sources.slice(0, 3)
                 },
             };
@@ -255,7 +253,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
         }
       }
 
-      // Sync Cloud (Fire and forget para não travar a UI)
+      // Sync Cloud
       upsertDividendsToCloud(aiDividends);
 
       // Merge com dados do Supabase
@@ -280,19 +278,16 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           }
       };
       
-      // Salva no Cache
       localStorage.setItem(GEMINI_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), tickerKey, data: finalData }));
       return finalData;
 
   } catch (error: any) {
-      console.error("Gemini Single Request Error:", error);
-      
-      // Fallback imediato se a requisição única falhar
+      console.error("GeminiService: Erro Fatal na Requisição:", error);
       const storedFallback = await fetchStoredDividends(uniqueTickers);
       return { 
           dividends: storedFallback, 
           metadata: {}, 
-          error: error.message || 'Erro na requisição única do Gemini' 
+          error: error.message || 'Erro de conexão com Gemini' 
       };
   }
 };

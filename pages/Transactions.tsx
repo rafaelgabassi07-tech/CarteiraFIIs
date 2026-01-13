@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Plus, Calendar, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
@@ -82,7 +83,7 @@ type FilterOption = 'ALL' | 'BUY' | 'SELL' | 'FII' | 'STOCK';
 
 const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onUpdateTransaction, onRequestDeleteConfirmation, privacyMode = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [activeFilter, setActiveFilter] = useState<FilterOption>('ALL');
     
@@ -196,11 +197,11 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     };
 
     const filters: { id: FilterOption; label: string; icon: any }[] = [
-        { id: 'ALL', label: 'Todas as Ordens', icon: ArrowRightLeft },
-        { id: 'BUY', label: 'Apenas Compras', icon: TrendingUp },
-        { id: 'SELL', label: 'Apenas Vendas', icon: TrendingDown },
-        { id: 'FII', label: 'Somente FIIs', icon: Building2 },
-        { id: 'STOCK', label: 'Somente Ações', icon: CandlestickChart },
+        { id: 'ALL', label: 'Tudo', icon: ArrowRightLeft },
+        { id: 'BUY', label: 'Compras', icon: TrendingUp },
+        { id: 'SELL', label: 'Vendas', icon: TrendingDown },
+        { id: 'FII', label: 'FIIs', icon: Building2 },
+        { id: 'STOCK', label: 'Ações', icon: CandlestickChart },
     ];
 
     return (
@@ -214,12 +215,39 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 </div>
                 
                 <div className="flex gap-2">
-                    <button 
-                        onClick={() => setIsFilterModalOpen(true)}
-                        className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg press-effect transition-colors ${activeFilter !== 'ALL' ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
-                    >
-                        <Filter className="w-5 h-5" strokeWidth={2.5} />
-                    </button>
+                    <div className="relative z-30">
+                        <button 
+                            onClick={() => setIsFilterOpen(!isFilterOpen)}
+                            className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg press-effect transition-colors ${activeFilter !== 'ALL' ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
+                        >
+                            {isFilterOpen ? <X className="w-5 h-5" /> : <Filter className="w-5 h-5" strokeWidth={2.5} />}
+                        </button>
+
+                        {/* Dropdown Menu Popover */}
+                        {isFilterOpen && (
+                            <>
+                                <div 
+                                    className="fixed inset-0 z-20 bg-transparent" 
+                                    onClick={() => setIsFilterOpen(false)}
+                                ></div>
+                                <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 p-1.5 z-30 anim-scale-in origin-top-right flex flex-col gap-1">
+                                    {filters.map((f) => (
+                                        <button
+                                            key={f.id}
+                                            onClick={() => { setActiveFilter(f.id); setIsFilterOpen(false); }}
+                                            className={`flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-colors ${activeFilter === f.id ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
+                                        >
+                                            <div className="flex items-center gap-2.5">
+                                                <f.icon className={`w-4 h-4 ${activeFilter === f.id ? 'text-indigo-500' : 'text-zinc-400'}`} />
+                                                <span>{f.label}</span>
+                                            </div>
+                                            {activeFilter === f.id && <Check className="w-3.5 h-3.5 text-indigo-500" strokeWidth={3} />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
 
                     <button 
                         onClick={handleOpenAdd}
@@ -255,36 +283,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
                 )}
             </div>
-
-            <SwipeableModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)}>
-                <div className="p-6 pb-20">
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <Filter className="w-6 h-6" strokeWidth={1.5} />
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Filtrar Ordens</h2>
-                            <p className="text-xs text-zinc-500 font-medium">Selecione o tipo de visualização</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        {filters.map((f) => (
-                            <button
-                                key={f.id}
-                                onClick={() => { setActiveFilter(f.id); setIsFilterModalOpen(false); }}
-                                className={`w-full p-4 rounded-2xl border flex items-center justify-between transition-all ${activeFilter === f.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-lg transform scale-[1.02]' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <f.icon className="w-5 h-5" strokeWidth={activeFilter === f.id ? 2.5 : 2} />
-                                    <span className="font-bold text-sm">{f.label}</span>
-                                </div>
-                                {activeFilter === f.id && <Check className="w-5 h-5" strokeWidth={3} />}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </SwipeableModal>
 
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <div className="p-6 pb-12">
