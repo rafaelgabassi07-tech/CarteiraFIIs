@@ -91,6 +91,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                 const gainPercent = asset.averagePrice > 0 ? (gain / asset.averagePrice) * 100 : 0;
                 const isPositive = gain >= 0;
 
+                const dailyChange = asset.dailyChange || 0;
+                const isDailyPositive = dailyChange >= 0;
+
                 return (
                     <button 
                         key={asset.ticker}
@@ -126,11 +129,25 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             </div>
                         </div>
 
-                        <div className="text-right">
+                        <div className="text-right flex flex-col items-end">
                             <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalValue, privacyMode)}</p>
-                            <div className={`flex items-center justify-end gap-1 text-[10px] font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                                {formatPercent(gainPercent, privacyMode)}
+                            
+                            <div className="flex items-center gap-2 mt-0.5">
+                                {/* Variação Diária */}
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[9px] font-bold text-zinc-400 uppercase">Dia</span>
+                                    <span className={`text-[10px] font-bold ${isDailyPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                        {isDailyPositive ? '+' : ''}{formatPercent(dailyChange, privacyMode)}
+                                    </span>
+                                </div>
+                                
+                                <div className="w-px h-2 bg-zinc-200 dark:bg-zinc-700"></div>
+
+                                {/* Variação Total */}
+                                <div className={`flex items-center gap-1 text-[10px] font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'} bg-zinc-100 dark:bg-zinc-800/50 px-1.5 py-0.5 rounded`}>
+                                    {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                                    {formatPercent(gainPercent, privacyMode)}
+                                </div>
                             </div>
                         </div>
                     </button>

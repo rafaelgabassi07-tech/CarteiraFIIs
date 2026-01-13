@@ -369,6 +369,7 @@ const App: React.FC = () => {
             totalDividends: divPaidMap[p.ticker] || 0, 
             segment: assetsMetadata[p.ticker]?.segment || 'Geral', 
             currentPrice: quotes[p.ticker]?.regularMarketPrice || p.averagePrice, 
+            dailyChange: quotes[p.ticker]?.regularMarketChangePercent || 0, // Mapeado da API Brapi
             logoUrl: quotes[p.ticker]?.logourl, 
             assetType: assetsMetadata[p.ticker]?.type || p.assetType, 
             ...assetsMetadata[p.ticker]?.fundamentals 

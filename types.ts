@@ -32,6 +32,7 @@ export interface AssetPosition extends AssetFundamentals {
   quantity: number;
   averagePrice: number;
   currentPrice?: number;
+  dailyChange?: number; // Variação do dia em %
   assetType: AssetType;
   logoUrl?: string;
   totalDividends?: number;
@@ -55,6 +56,7 @@ export interface BrapiQuote {
   shortName: string;
   longName: string;
   regularMarketPrice: number;
+  regularMarketChangePercent?: number; // Variação diária vinda da API
   logourl: string;
 }
 
