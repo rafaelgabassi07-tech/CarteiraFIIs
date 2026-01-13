@@ -9,26 +9,28 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Busca IPCA acumulado 12 meses (Fallback para BrasilAPI)
+// Busca IPCA acumulado 12 meses diretamente do Banco Central (Série 13522)
 const fetchInflationData = async (): Promise<number> => {
-    const FALLBACK_IPCA = 4.62;
+    const FALLBACK_IPCA = 4.62; // Valor de segurança caso a API falhe
     try {
-        const response = await fetch('https://brasilapi.com.br/api/taxas/v1', { 
-            cache: 'force-cache',
+        // Série 13522: IPCA - acumulado 12 meses - Fonte: SGS/BCB
+        const response = await fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json', { 
+            cache: 'no-store',
             headers: { 'Accept': 'application/json' }
         });
         
         if (!response.ok) {
-            console.warn("BrasilAPI returned non-200. Using fallback IPCA.");
+            console.warn("BCB API returned non-200. Using fallback IPCA.");
             return FALLBACK_IPCA;
         }
         
         const data = await response.json();
-        const ipcaObj = data.find((item: any) => item.nome === 'IPCA');
-        
-        if (ipcaObj && !isNaN(Number(ipcaObj.valor))) {
-            return Number(ipcaObj.valor);
+        // Esperado: [{ data: "dd/mm/aaaa", valor: "4.62" }]
+        if (data && Array.isArray(data) && data.length > 0 && data[0].valor) {
+            const val = parseFloat(data[0].valor);
+            if (!isNaN(val)) return val;
         }
+        
         return FALLBACK_IPCA;
     } catch (e) {
         console.warn("Erro ao buscar inflação (Network/CORS), usando fallback:", e);
@@ -96,7 +98,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           });
       }
 
-      // 3. Busca Indicadores Macro
+      // 3. Busca Indicadores Macro (BCB)
       const ipca = await fetchInflationData();
 
       return { 
