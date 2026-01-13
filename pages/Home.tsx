@@ -552,27 +552,28 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  
                  <div className="h-56 w-full overflow-x-auto no-scrollbar">
                     {/* Container com largura mínima para garantir que muitas barras não fiquem espremidas se o histórico for longo */}
-                    <div style={{ minWidth: `${Math.max(100, realYieldMetrics.timeline.length * 40)}px`, height: '100%' }}>
+                    <div style={{ minWidth: `${Math.max(100, realYieldMetrics.timeline.length * 50)}px`, height: '100%' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
                                 data={realYieldMetrics.timeline} 
                                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                                barGap={2}
                             >
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b33" />
-                                <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#71717a' }} tickLine={false} axisLine={false} interval={0} />
-                                <YAxis tick={{ fontSize: 9, fill: '#71717a' }} tickLine={false} axisLine={false} />
-                                <RechartsTooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
+                                <XAxis dataKey="label" tick={{ fontSize: 10, fontWeight: 600, fill: '#71717a' }} tickLine={false} axisLine={false} interval={0} />
+                                <YAxis tick={{ fontSize: 10, fontWeight: 600, fill: '#71717a' }} tickLine={false} axisLine={false} />
+                                <RechartsTooltip cursor={{ fill: '#f4f4f5', opacity: 0.1 }} content={<CustomTooltip />} />
                                 
                                 {/* Stacked Bars: Same StackId makes them share the same bar */}
-                                <Bar name="erosionPartPercent" dataKey="erosionPartPercent" stackId="a" fill="#f43f5e" radius={[0, 0, 4, 4]} barSize={12} />
-                                <Bar name="realPartPercent" dataKey="realPartPercent" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} barSize={12} />
+                                <Bar name="erosionPartPercent" dataKey="erosionPartPercent" stackId="a" fill="#f43f5e" radius={[0, 0, 3, 3]} barSize={28} />
+                                <Bar name="realPartPercent" dataKey="realPartPercent" stackId="a" fill="#10b981" radius={[3, 3, 0, 0]} barSize={28} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                  </div>
                  <div className="mt-2 flex items-center gap-4 justify-center">
-                     <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-rose-500 rounded-full"></div><span className="text-[9px] text-zinc-500 font-bold uppercase">Corrosão (IPCA)</span></div>
-                     <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span className="text-[9px] text-zinc-500 font-bold uppercase">Ganho Real</span></div>
+                     <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-rose-500 rounded-full"></div><span className="text-[9px] text-zinc-500 font-bold uppercase">Corrosão (IPCA)</span></div>
+                     <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div><span className="text-[9px] text-zinc-500 font-bold uppercase">Ganho Real</span></div>
                  </div>
              </div>
 
