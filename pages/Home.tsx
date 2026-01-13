@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Gem, ChevronRight, Calculator, ArrowRightLeft } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Building2, CandlestickChart, Wallet, Calendar, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, ChevronDown, ChevronUp, DollarSign, Scale, Percent, ShieldCheck, AlertOctagon, Info, Coins, Shield, BarChart3, LayoutGrid, Gem, ChevronRight, Calculator, ArrowRightLeft, HelpCircle } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
 
@@ -95,6 +95,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRealYieldModal, setShowRealYieldModal] = useState(false);
+  const [showPatrimonyHelp, setShowPatrimonyHelp] = useState(false); // Novo estado para ajuda
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
 
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
@@ -293,7 +294,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             
             <div className="flex justify-between items-start mb-3 relative z-10">
                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">Patrimônio Total</span>
-                {isAiLoading && <Loader2 className="w-4 h-4 text-accent animate-spin" />}
+                <div className="flex items-center gap-2">
+                    {isAiLoading && <Loader2 className="w-4 h-4 text-accent animate-spin" />}
+                    <button onClick={(e) => { e.stopPropagation(); setShowPatrimonyHelp(true); }} className="text-zinc-400 hover:text-accent transition-colors">
+                        <Info className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
             
             <div className="mb-6 relative z-10">
@@ -303,14 +309,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             <div className="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-4 relative z-10">
                 <div>
                     <span className="flex items-center gap-1.5 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">
-                        <Wallet className="w-3 h-3" /> Valor Aplicado
+                        <Wallet className="w-3 h-3" /> Custo de Aquisição
                     </span>
                     <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(invested, privacyMode)}</p>
                 </div>
 
                 <div className="text-right">
                      <span className="flex items-center justify-end gap-1.5 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">
-                        Rentabilidade Total
+                        Resultado Geral
                     </span>
                     <div className={`flex flex-col items-end`}>
                         <span className={`text-sm font-black flex items-center gap-1 ${isProfitPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
@@ -324,12 +330,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
             </div>
 
-            {/* Breakdown Inline Grid */}
+            {/* Breakdown Inline Grid - Termos Melhorados */}
             <div className="grid grid-cols-3 gap-2 relative z-10">
                  {/* Valorização */}
                  <div className="p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 text-center">
                     <div className="flex justify-center mb-1"><TrendingUp className="w-3.5 h-3.5 text-zinc-400" /></div>
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Valorização</p>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Valorização Atual</p>
                     <p className={`text-[10px] font-black ${totalAppreciation >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                         {formatBRL(totalAppreciation, privacyMode)}
                     </p>
@@ -337,7 +343,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  {/* Proventos */}
                  <div className="p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 text-center">
                     <div className="flex justify-center mb-1"><Coins className="w-3.5 h-3.5 text-emerald-500" /></div>
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Proventos</p>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Total Recebido</p>
                     <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">
                         {formatBRL(totalDividendsReceived, privacyMode)}
                     </p>
@@ -345,7 +351,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  {/* Vendas */}
                  <div className="p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 text-center">
                     <div className="flex justify-center mb-1"><ArrowRightLeft className="w-3.5 h-3.5 text-sky-500" /></div>
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Vendas</p>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Lucro Realizado</p>
                     <p className={`text-[10px] font-black ${salesGain >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                         {formatBRL(salesGain, privacyMode)}
                     </p>
@@ -514,7 +520,43 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </button>
       </div>
 
+      <SwipeableModal isOpen={showPatrimonyHelp} onClose={() => setShowPatrimonyHelp(false)}>
+          <div className="p-6 pb-20">
+              <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500">
+                      <HelpCircle className="w-6 h-6" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                      <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Entenda os Valores</h2>
+                      <p className="text-xs text-zinc-500 font-medium">Glossário do seu Patrimônio</p>
+                  </div>
+              </div>
+
+              <div className="space-y-4">
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                      <h4 className="text-xs font-black text-zinc-900 dark:text-white mb-1">Valorização Atual</h4>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed">
+                          Representa o ganho (ou perda) latente dos ativos que você possui <strong>hoje</strong> na carteira. É a diferença entre quanto você pagou e quanto vale agora.
+                      </p>
+                  </div>
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                      <h4 className="text-xs font-black text-zinc-900 dark:text-white mb-1">Lucro Realizado</h4>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed">
+                          É o dinheiro que você já colocou no bolso ao <strong>vender</strong> ativos com lucro. Se você vender com prejuízo, este valor diminui.
+                      </p>
+                  </div>
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                      <h4 className="text-xs font-black text-zinc-900 dark:text-white mb-1">Total Recebido (Proventos)</h4>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed">
+                          Soma de todos os dividendos, JCP e rendimentos que já caíram na sua conta desde o início.
+                      </p>
+                  </div>
+              </div>
+          </div>
+      </SwipeableModal>
+
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
+        {/* ... Agenda Modal Content ... */}
         <div className="p-6 pb-20">
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-6 px-2">Agenda Completa</h2>
             <div className="space-y-3">

@@ -20,6 +20,14 @@ const formatPercent = (val: number, privacy = false) => {
   return `${signal}${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
+// Helper para Status do P/VP
+const getPvpStatus = (val?: number) => {
+    if (!val) return null;
+    if (val < 0.95) return { text: 'Desconto', color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' };
+    if (val > 1.05) return { text: 'Ágio', color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' };
+    return { text: 'Preço Justo', color: 'text-sky-500 bg-sky-500/10 border-sky-500/20' };
+};
+
 const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | AssetType>('ALL');
@@ -172,6 +180,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             const dailyGainValue = (currentPrice - previousClosePrice) * quantity;
             const isDailyPositive = dailyGainValue >= 0;
 
+            const pvpStatus = getPvpStatus(selectedAsset.p_vp);
+
             return (
             <div className="p-6 pb-20">
                 {/* Compact Header */}
@@ -204,7 +214,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             <div>
                                 <div className="flex items-center gap-1.5 mb-1 opacity-70">
                                     <Target className="w-3 h-3" />
-                                    <span className="text-[9px] font-bold uppercase tracking-widest">Resultado Total</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Valorização (Cota)</span>
                                 </div>
                                 <p className={`text-lg font-black tracking-tight ${isTotalPositive ? 'text-emerald-400 dark:text-emerald-600' : 'text-rose-400 dark:text-rose-600'}`}>
                                     {isTotalPositive ? '+' : ''}{formatBRL(totalGainValue, privacyMode)}
@@ -249,11 +259,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             </div>
                             <div className="col-span-2 text-right flex justify-end gap-6">
                                 <div>
-                                    <span className="block text-[9px] font-bold text-zinc-400 uppercase">Custo Total</span>
+                                    <span className="block text-[9px] font-bold text-zinc-400 uppercase">Seu Custo</span>
                                     <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(totalInvested, privacyMode)}</span>
                                 </div>
                                 <div>
-                                    <span className="block text-[9px] font-bold text-zinc-400 uppercase">Saldo Atual</span>
+                                    <span className="block text-[9px] font-bold text-zinc-400 uppercase">Valor Hoje</span>
                                     <span className="text-base font-black text-zinc-900 dark:text-white">{formatBRL(totalCurrent, privacyMode)}</span>
                                 </div>
                             </div>
@@ -262,10 +272,18 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
 
                     {/* Card 3: Fundamentos (Row) */}
                     <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col justify-between">
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">P/VP</span>
+                        <div className="flex justify-between items-start">
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">P/VP</span>
+                            {pvpStatus && (
+                                <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${pvpStatus.color}`}>
+                                    {pvpStatus.text}
+                                </span>
+                            )}
+                        </div>
                         <span className={`text-lg font-black ${selectedAsset.p_vp && selectedAsset.p_vp < 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
                             {selectedAsset.p_vp?.toFixed(2) || '-'}
                         </span>
+                        <p className="text-[8px] text-zinc-400 font-medium mt-1 leading-tight">Preço sobre Valor Patrimonial</p>
                     </div>
 
                     <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col justify-between">
@@ -273,6 +291,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         <span className="text-lg font-black text-zinc-900 dark:text-white">
                             {selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : '-'}
                         </span>
+                        <p className="text-[8px] text-zinc-400 font-medium mt-1 leading-tight">Retorno anual em dividendos</p>
                     </div>
                 </div>
 
