@@ -9,69 +9,52 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-/**
- * Serviço de Dados de Mercado (Ex-GeminiService)
- * 
- * Agora atua apenas como leitor do banco de dados local (Supabase),
- * servindo os dados que foram coletados via Scraper (Crawler).
- * A funcionalidade de IA foi removida conforme solicitado.
- */
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
-  const uniqueTickers = Array.from(new Set(tickers.map(t => t.toUpperCase())));
+  const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
 
   try {
-      console.log(`[MarketService] Buscando dados no banco local para ${uniqueTickers.length} ativos...`);
+      console.log(`[MarketData] Buscando dados para: ${uniqueTickers.join(', ')}`);
 
-      // 1. Busca Dividendos do Banco de Dados (tabela market_dividends)
+      // 1. Busca Dividendos
+      // Importante: Se isso retornar [], verifique as Policies RLS no Supabase!
       const { data: dividendsData, error: divError } = await supabase
             .from('market_dividends')
             .select('*')
             .in('ticker', uniqueTickers);
 
-      // Tratamento específico para tabela inexistente (PGRST205) para não sujar o log
       if (divError) {
-          if (divError.code === 'PGRST205' || divError.message.includes('market_dividends')) {
-              console.warn("[Setup Necessário] Tabela 'market_dividends' não encontrada no Supabase. Crie-a usando o SQL fornecido.");
-              return { dividends: [], metadata: {} };
-          }
-          throw divError;
+          // PGRST205 = Tabela não existe. Outros erros são reais.
+          if (divError.code !== 'PGRST205') console.error("Erro Supabase (Dividendos):", divError);
+      } else if (!dividendsData || dividendsData.length === 0) {
+          console.warn(`[Atenção] Nenhum dividendo retornado do banco para os ativos solicitados. Verifique: 1) Se o Scraper rodou. 2) Se as Policies RLS (Enable Read Access) estão criadas.`);
       }
 
       const dividends: DividendReceipt[] = (dividendsData || []).map((d: any) => ({
             id: d.id,
             ticker: d.ticker,
             type: d.type,
-            dateCom: d.date_com,
+            dateCom: d.date_com, 
             paymentDate: d.payment_date,
             rate: Number(d.rate),
-            quantityOwned: 0,
+            quantityOwned: 0, // Calculado no App.tsx
             totalReceived: 0
       }));
 
-      // 2. Busca Metadados do Banco de Dados (tabela ativos_metadata)
+      // 2. Busca Metadata
       const { data: metaData, error: metaError } = await supabase
             .from('ativos_metadata')
             .select('*')
             .in('ticker', uniqueTickers);
 
-      if (metaError) {
-          if (metaError.code === 'PGRST205' || metaError.message.includes('ativos_metadata')) {
-              console.warn("[Setup Necessário] Tabela 'ativos_metadata' não encontrada no Supabase. Crie-a usando o SQL fornecido.");
-              // Retorna o que conseguiu de dividendos, mas sem metadata
-              return { dividends, metadata: {} }; 
-          }
-          throw metaError;
-      }
+      if (metaError && metaError.code !== 'PGRST205') console.error("Erro Supabase (Metadata):", metaError);
 
       const metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};
       
       if (metaData) {
           metaData.forEach((m: any) => {
-              // Determina o tipo de ativo baseado no registro do banco ou inferência pelo ticker
               let assetType = AssetType.STOCK;
-              // Verifica se no banco está salvo como 'FII' ou se termina com 11/11B
               if (m.type === 'FII' || m.ticker.endsWith('11') || m.ticker.endsWith('11B')) {
                   assetType = AssetType.FII;
               }
@@ -82,9 +65,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   fundamentals: {
                       p_vp: m.pvp,
                       dy_12m: m.dy_12m,
-                      // Preenche campos de "IA" com valores estáticos para manter compatibilidade de UI
                       sentiment: 'Neutro',
-                      sentiment_reason: 'Dados obtidos via Scraper.',
+                      sentiment_reason: 'Dados via Investidor10',
                       sources: [{ title: 'Investidor10', uri: `https://investidor10.com.br/` }]
                   }
               };
@@ -94,15 +76,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       return { 
           dividends, 
           metadata, 
-          indicators: { 
-              // Como removemos a IA, não temos o IPCA em tempo real aqui. Retornamos 0.
-              ipca_cumulative: 0, 
-              start_date_used: startDate || '' 
-          }
+          indicators: { ipca_cumulative: 0, start_date_used: startDate || '' }
       };
 
   } catch (error: any) {
-      console.error("MarketService Error:", error);
-      return { dividends: [], metadata: {}, error: error.message || 'Erro ao buscar dados locais' };
+      console.error("MarketService Fatal:", error);
+      return { dividends: [], metadata: {}, error: error.message };
   }
 };

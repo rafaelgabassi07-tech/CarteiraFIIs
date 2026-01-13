@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.2.4'; 
+const APP_VERSION = '8.2.6'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -31,15 +31,26 @@ const STORAGE_KEYS = {
   NOTIF_HISTORY: 'investfiis_notification_history_v2' 
 };
 
-// Arredonda para 2 casas decimais para evitar erros de ponto flutuante (ex: 0.1 + 0.2 != 0.3)
+// Arredonda para 2 casas decimais
 const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
+/**
+ * Calcula a quantidade de ativos que o usuário possuía em uma data específica (Data Com).
+ * Comparação simplificada de strings para evitar problemas de timezone.
+ */
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!dateCom || dateCom.length < 10) return 0;
-  const targetDate = dateCom.substring(0, 10);
+  
+  // O banco retorna YYYY-MM-DD. As transações também salvam YYYY-MM-DD.
+  const targetDate = dateCom.substring(0, 10); 
   const targetTicker = ticker.trim().toUpperCase();
+
   return transactions
-    .filter(t => t.ticker.trim().toUpperCase() === targetTicker && (t.date || '').substring(0, 10) <= targetDate)
+    .filter(t => {
+        const txDate = (t.date || '').substring(0, 10);
+        // Se a compra foi feita ATÉ o dia da Data Com (inclusive), conta.
+        return t.ticker.trim().toUpperCase() === targetTicker && txDate <= targetDate;
+    })
     .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
 };
 
@@ -92,17 +103,14 @@ const App: React.FC = () => {
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.5, startDate: '' }; } catch { return { ipca: 4.5, startDate: '' }; } });
   
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [isScraping, setIsScraping] = useState(false); // Novo estado para o scraper manual
-  const [lastAiStatus, setLastAiStatus] = useState<'operational' | 'degraded' | 'error' | 'unknown'>('unknown');
+  const [isScraping, setIsScraping] = useState(false); 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>({});
 
-  // --- Service Health State ---
   const [isCheckingServices, setIsCheckingServices] = useState(false);
   const [services, setServices] = useState<ServiceMetric[]>([
     { id: 'db', label: 'Supabase Database', url: getSupabaseUrl(), icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'market', label: 'Brapi Market Data', url: 'https://brapi.dev', icon: Activity, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
-    { id: 'ai', label: 'Gemini AI Inference', icon: Zap, status: 'unknown', latency: null, message: 'Serviço interno de IA.' },
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
 
@@ -123,11 +131,9 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
   }, [accentColor]);
 
-  // --- Health Check Function ---
   const checkServiceHealth = useCallback(async () => {
     setIsCheckingServices(true);
     const newServices = [...services]; 
-    
     setServices(prev => prev.map(s => s.id !== 'ai' ? { ...s, status: 'checking' } : s));
 
     const checkService = async (index: number) => {
@@ -140,9 +146,8 @@ const App: React.FC = () => {
             logMessage = `[INFO] Connecting to Supabase Auth...\n[TARGET] ${s.url}`;
             const { error } = await supabase.auth.getSession();
             if (error) throw error;
-            logMessage += `\n[OK] Auth Handshake successful.\n[OK] Session verified.`;
+            logMessage += `\n[OK] Auth Handshake successful.`;
         } else if (s.url && s.id !== 'ai') {
-            logMessage = `[INFO] Pinging ${s.url}...\n[MODE] no-cors (Opaque)`;
             await fetch(s.url, { mode: 'no-cors', cache: 'no-store' });
             logMessage += `\n[OK] Response received.`;
         }
@@ -152,47 +157,26 @@ const App: React.FC = () => {
           ...s, 
           status: latency > 1500 ? 'degraded' : 'operational',
           latency,
-          message: `${logMessage}\n[STATS] Latency: ${latency}ms\n[TIME] ${new Date().toLocaleTimeString()}`
+          message: `${logMessage}\n[STATS] Latency: ${latency}ms`
         };
       } catch (e: any) {
-        console.warn(`Health check failed for ${s.id}`, e);
-        const errorText = e instanceof Error ? e.message : JSON.stringify(e);
         newServices[index] = { 
             ...s, 
             status: 'error', 
             latency: null,
-            message: `${logMessage}\n[ERROR] Connection failed.\n[DETAILS] ${errorText}\n[TIME] ${new Date().toLocaleTimeString()}`
+            message: `${logMessage}\n[ERROR] Connection failed: ${e.message}`
         };
       }
     };
 
     await Promise.all(newServices.map((s, i) => s.id !== 'ai' ? checkService(i) : Promise.resolve()));
-    
-    const aiIndex = newServices.findIndex(s => s.id === 'ai');
-    if (aiIndex >= 0) {
-       const aiService = { ...newServices[aiIndex] };
-       aiService.status = lastAiStatus;
-       
-       if (lastAiStatus === 'operational') {
-           aiService.latency = Math.floor(Math.random() * 200) + 100;
-           aiService.message = `[INFO] Gemini AI Model Status\n[MODEL] gemini-2.5-flash\n[STATUS] Ready for inference.\n[LATENCY] ${aiService.latency}ms (estimated)`;
-       } else if (lastAiStatus === 'unknown') {
-           aiService.message = `[INFO] Aguardando primeira sincronização de dados para validar IA.`;
-       } else {
-           aiService.message = `[WARN] AI Service Status: ${lastAiStatus}\n[INFO] Check API configuration.`;
-       }
-       newServices[aiIndex] = aiService;
-    }
-
     setServices(newServices);
     setIsCheckingServices(false);
-  }, [services, lastAiStatus]);
+  }, [services]);
 
   useEffect(() => {
       if (session) {
-          const timer = setTimeout(() => {
-              checkServiceHealth();
-          }, 1000);
+          const timer = setTimeout(() => { checkServiceHealth(); }, 1000);
           return () => clearTimeout(timer);
       }
   }, [session]); 
@@ -212,7 +196,6 @@ const App: React.FC = () => {
     setIsRefreshing(true);
     if (initialLoad) setLoadingProgress(50);
     try {
-      // 1. Atualização de Cotações (Brapi) - Prioridade Alta
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
@@ -220,16 +203,17 @@ const App: React.FC = () => {
       
       if (initialLoad) setLoadingProgress(70); 
       
-      // 2. Atualização de Metadados/IA (Gemini) - Background
-      if (process.env.API_KEY || (import.meta as any).env?.VITE_API_KEY) {
-          setIsAiLoading(true);
-          const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
-          const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
-          setLastAiStatus(aiData.error ? 'degraded' : 'operational');
-          if (aiData.dividends.length > 0) setGeminiDividends(aiData.dividends);
-          if (Object.keys(aiData.metadata).length > 0) setAssetsMetadata(aiData.metadata);
-          if (aiData.indicators?.ipca_cumulative) setMarketIndicators({ ipca: aiData.indicators.ipca_cumulative, startDate: aiData.indicators.start_date_used });
+      setIsAiLoading(true);
+      const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
+      const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
+      
+      if (aiData.dividends.length > 0) {
+          setGeminiDividends(aiData.dividends);
       }
+      if (Object.keys(aiData.metadata).length > 0) {
+          setAssetsMetadata(aiData.metadata);
+      }
+      
       if (initialLoad) setLoadingProgress(100); 
     } catch (e) { console.error(e); } finally { setIsRefreshing(false); setIsAiLoading(false); }
   }, []);
@@ -254,8 +238,6 @@ const App: React.FC = () => {
     setSession(null);
     setTransactions([]);
     setGeminiDividends([]);
-    setQuotes({});
-    setAssetsMetadata({});
     showToast('info', 'Desconectado com sucesso.');
   }, [showToast]);
 
@@ -263,80 +245,47 @@ const App: React.FC = () => {
     if (session) await fetchTransactionsFromCloud(session, force);
   }, [session, fetchTransactionsFromCloud]);
 
-  // Função para Reset Inteligente (Sem Deslogar)
   const handleSoftReset = useCallback(() => {
-      // Itera sobre as chaves e remove tudo, exceto chaves do Supabase (autenticação)
       Object.keys(localStorage).forEach(key => {
-          if (!key.startsWith('sb-') && !key.includes('supabase')) {
-              localStorage.removeItem(key);
-          }
+          if (!key.startsWith('sb-') && !key.includes('supabase')) localStorage.removeItem(key);
       });
-      // Recarrega a página para reinicializar o estado limpo
       window.location.reload();
   }, []);
 
-  // Lógica para acionar o Scraper manualmente para todos os ativos
   const handleManualScraperTrigger = async () => {
       if (transactions.length === 0) {
-          showToast('info', 'Você precisa ter ativos cadastrados.');
+          showToast('info', 'Cadastre ativos primeiro.');
           return;
       }
-      
       setIsScraping(true);
       const uniqueTickers = [...new Set(transactions.map(t => t.ticker))];
       let processed = 0;
-      
-      showToast('info', `Iniciando atualização de ${uniqueTickers.length} ativos...`);
+      showToast('info', `Atualizando ${uniqueTickers.length} ativos...`);
 
       try {
-          // Dispara requisições sequenciais ou em pequenos lotes para não sobrecarregar
-          // Como é Vercel, podemos disparar em paralelo, mas limitamos para evitar rate-limit do browser
           const promises = uniqueTickers.map(async (ticker) => {
              try {
                await fetch(`/api/update-stock?ticker=${ticker}`);
                processed++;
-             } catch (e) { 
-               console.error(`Falha ao atualizar ${ticker}`, e); 
-             }
+             } catch (e) { console.error(`Falha ao atualizar ${ticker}`, e); }
           });
-
           await Promise.all(promises);
           
           if (processed > 0) {
-              showToast('success', `${processed} ativos atualizados via Scraper!`);
-              // Recarrega os dados do banco para a tela
+              showToast('success', `${processed} ativos atualizados!`);
+              // Força o reload dos dados do banco para o App
               await handleSyncAll(true);
           } else {
-              showToast('error', 'Falha ao conectar com o servidor de atualização.');
+              showToast('error', 'Falha ao conectar com servidor.');
           }
-
-      } catch (e) {
-          showToast('error', 'Erro durante a atualização manual.');
-          console.error(e);
-      } finally {
-          setIsScraping(false);
-      }
+      } catch (e) { showToast('error', 'Erro na atualização.'); } finally { setIsScraping(false); }
   };
 
   const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
       if (!session?.user?.id) return;
-      
-      const dbPayload = {
-          ticker: t.ticker,
-          type: t.type,
-          quantity: t.quantity,
-          price: t.price,
-          date: t.date,
-          asset_type: t.assetType, 
-          user_id: session.user.id
-      };
-
+      const dbPayload = { ticker: t.ticker, type: t.type, quantity: t.quantity, price: t.price, date: t.date, asset_type: t.assetType, user_id: session.user.id };
       const { error } = await supabase.from('transactions').insert(dbPayload);
-      if (error) {
-        console.error("Supabase Insert Error:", error);
-        showToast('error', `Erro ao salvar: ${error.message || 'Falha na conexão'}`);
-        return;
-      }
+      if (error) { showToast('error', 'Erro ao salvar'); return; }
       await fetchTransactionsFromCloud(session);
   }, [session, fetchTransactionsFromCloud, showToast]);
 
@@ -348,29 +297,17 @@ const App: React.FC = () => {
       if (t.price !== undefined) dbPayload.price = t.price;
       if (t.date !== undefined) dbPayload.date = t.date;
       if (t.assetType !== undefined) dbPayload.asset_type = t.assetType; 
-
       const { error } = await supabase.from('transactions').update(dbPayload).eq('id', id);
-      if (error) {
-        console.error("Supabase Update Error:", error);
-        showToast('error', `Erro ao atualizar: ${error.message || 'Falha na conexão'}`);
-        return;
-      }
+      if (error) { showToast('error', 'Erro ao atualizar'); return; }
       await fetchTransactionsFromCloud(session);
   }, [session, fetchTransactionsFromCloud, showToast]);
 
   const handleDeleteTransaction = useCallback((id: string) => {
       setConfirmModal({
-          isOpen: true, 
-          title: 'Apagar?', 
-          message: 'Confirmar exclusão desta ordem?', 
+          isOpen: true, title: 'Apagar?', message: 'Confirmar exclusão desta ordem?', 
           onConfirm: async () => {
             const { error } = await supabase.from('transactions').delete().eq('id', id);
-            if (error) {
-                 showToast('error', 'Erro ao excluir');
-            } else {
-                 setConfirmModal(null); 
-                 await fetchTransactionsFromCloud(session);
-            }
+            if (error) showToast('error', 'Erro ao excluir'); else { setConfirmModal(null); await fetchTransactionsFromCloud(session); }
           }
       });
   }, [session, fetchTransactionsFromCloud, showToast]);
@@ -379,8 +316,7 @@ const App: React.FC = () => {
     setLoadingProgress(10);
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) setLoadingProgress(20);
-      else setAppLoading(false);
+      if (session) setLoadingProgress(20); else setAppLoading(false);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
     return () => subscription.unsubscribe();
@@ -390,28 +326,15 @@ const App: React.FC = () => {
     if (session?.user) fetchTransactionsFromCloud(session, false, transactions.length === 0).finally(() => setAppLoading(false));
   }, [session]);
 
-  // --- AUTO-UPDATE QUOTES (POLLING 30 MIN) ---
-  useEffect(() => {
-    if (!session || transactions.length === 0) return;
-
-    // Configura intervalo de 30 minutos (30 * 60 * 1000 ms)
-    const intervalId = setInterval(() => {
-        // Reuse a lógica de sincronização existente, passando 'true' para forçar se necessário
-        // e a lista atual de transações para saber quais tickers atualizar.
-        syncMarketData(true, transactions);
-    }, 30 * 60 * 1000);
-
-    return () => clearInterval(intervalId);
-  }, [session, transactions, syncMarketData]);
-
   const memoizedPortfolioData = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
+    // Filtro mais permissivo para proventos:
     const receipts = geminiDividends.map(d => {
         const qty = getQuantityOnDate(d.ticker, d.dateCom, sortedTxs);
         return { ...d, quantityOwned: qty, totalReceived: qty * d.rate };
-    }).filter(r => r.totalReceived > 0.0001);
+    }).filter(r => r.totalReceived > 0.0001); // Mantém apenas se recebeu algo
 
     const divPaidMap: Record<string, number> = {};
     let totalDividendsReceived = 0;
@@ -428,7 +351,6 @@ const App: React.FC = () => {
       const p = positions[t.ticker];
       
       if (t.type === 'BUY') { 
-          // Weighted Average Price Calculation with ROUNDING to fix floating point drift
           const newQuantity = p.quantity + t.quantity;
           if (newQuantity > 0.000001) {
              const currentTotalCost = round(p.quantity * p.averagePrice);
@@ -438,10 +360,7 @@ const App: React.FC = () => {
           p.quantity = newQuantity; 
       } else { 
           p.quantity -= t.quantity; 
-          if (p.quantity <= 0.000001) {
-              p.quantity = 0;
-              p.averagePrice = 0;
-          }
+          if (p.quantity <= 0.000001) { p.quantity = 0; p.averagePrice = 0; }
       }
     });
 
@@ -480,24 +399,11 @@ const App: React.FC = () => {
       <CloudStatusBanner status={cloudStatus} />
       {toast && ( 
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-sm px-4">
-            <div className={`
-              flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up
-              ${toast.type === 'success' ? 'bg-white dark:bg-slate-900 border-l-emerald-500 border-y border-r border-slate-100 dark:border-slate-800' : 
-                toast.type === 'error' ? 'bg-white dark:bg-slate-900 border-l-rose-500 border-y border-r border-slate-100 dark:border-slate-800' :
-                'bg-white dark:bg-slate-900 border-l-sky-500 border-y border-r border-slate-100 dark:border-slate-800'}
-            `}>
-               <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                 toast.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 
-                 toast.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 
-                 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'
-               }`}>
-                 {toast.type === 'info' ? <Info className="w-4 h-4" /> : 
-                  toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : 
-                  <Check className="w-4 h-4" />}
+            <div className={`flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up bg-white dark:bg-slate-900 border-y border-r border-slate-100 dark:border-slate-800 ${toast.type === 'success' ? 'border-l-emerald-500' : toast.type === 'error' ? 'border-l-rose-500' : 'border-l-sky-500'}`}>
+               <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : toast.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600' : 'bg-sky-100 dark:bg-sky-900/30 text-sky-600'}`}>
+                 {toast.type === 'info' ? <Info className="w-4 h-4" /> : toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : <Check className="w-4 h-4" />}
                </div>
-               <div className="min-w-0">
-                 <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.text}</p>
-               </div>
+               <div className="min-w-0"><p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.text}</p></div>
             </div>
         </div> 
       )}
@@ -506,19 +412,12 @@ const App: React.FC = () => {
         <>
             <Header 
                 title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} 
-                showBack={showSettings} 
-                onBack={() => setShowSettings(false)} 
-                onSettingsClick={() => setShowSettings(true)} 
-                isRefreshing={isRefreshing || isAiLoading || isScraping} 
-                updateAvailable={updateManager.isUpdateAvailable} 
-                onUpdateClick={() => updateManager.setShowChangelog(true)} 
-                onNotificationClick={() => setShowNotifications(true)} 
-                notificationCount={notifications.filter(n=>!n.read).length} 
-                appVersion={APP_VERSION} 
-                bannerVisible={cloudStatus !== 'hidden'} 
+                showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
+                isRefreshing={isRefreshing || isAiLoading || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
+                onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
+                notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} 
                 onRefreshClick={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
             />
-            {/* Main Container - Ajustado para max-w-xl e px-4 para melhor aproveitamento */}
             <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
               {showSettings ? (
                 <div className="anim-page-enter pt-4">
@@ -536,61 +435,16 @@ const App: React.FC = () => {
                 </div>
               ) : (
                 <div key={currentTab} className="anim-page-enter">
-                  {currentTab === 'home' && (
-                    <MemoizedHome 
-                      {...memoizedPortfolioData} 
-                      transactions={transactions} 
-                      totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
-                      isAiLoading={isAiLoading} 
-                      inflationRate={marketIndicators.ipca} 
-                      privacyMode={privacyMode}
-                    />
-                  )}
-                  {currentTab === 'portfolio' && (
-                    <MemoizedPortfolio 
-                      portfolio={memoizedPortfolioData.portfolio} 
-                      privacyMode={privacyMode}
-                    />
-                  )}
-                  {currentTab === 'transactions' && (
-                    <MemoizedTransactions 
-                      transactions={transactions} 
-                      onAddTransaction={handleAddTransaction} 
-                      onUpdateTransaction={handleUpdateTransaction} 
-                      onRequestDeleteConfirmation={handleDeleteTransaction}
-                      privacyMode={privacyMode}
-                    />
-                  )}
+                  {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} isAiLoading={isAiLoading} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
+                  {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} privacyMode={privacyMode} />}
+                  {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                 </div>
               )}
             </main>
             {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
-            
-            <ChangelogModal 
-                isOpen={updateManager.showChangelog} 
-                onClose={() => updateManager.setShowChangelog(false)} 
-                version={updateManager.availableVersion || APP_VERSION}
-                notes={updateManager.releaseNotes}
-                isUpdatePending={updateManager.isUpdateAvailable}
-                onUpdate={updateManager.startUpdateProcess}
-                isUpdating={updateManager.isUpdating}
-                progress={updateManager.updateProgress}
-            />
-            
-            <NotificationsModal 
-                isOpen={showNotifications} 
-                onClose={() => setShowNotifications(false)} 
-                notifications={notifications} 
-                onClear={() => setNotifications([])} 
-            />
-
-            <ConfirmationModal 
-                isOpen={!!confirmModal} 
-                title={confirmModal?.title || ''} 
-                message={confirmModal?.message || ''} 
-                onConfirm={() => confirmModal?.onConfirm()} 
-                onCancel={() => setConfirmModal(null)} 
-            />
+            <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
+            <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={() => setNotifications([])} />
+            <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />
         </>
       )}
     </div>
