@@ -1,3 +1,4 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -47,15 +48,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // LÓGICA ANTI-BLOQUEIO (Proxy vs Direto)
     if (process.env.SCRAPER_API_KEY) {
-        // Modo Robusto: Usa ScraperAPI para rotacionar IP e evitar Cloudflare
-        // render=true força o ScraperAPI a usar um browser headless, passando por desafios JS do Cloudflare
+        // Modo Robusto: Usa ScraperAPI com render=true para processar JS
         console.log(`[Proxy] Usando ScraperAPI (render=true) para evitar bloqueio...`);
         const response = await axios.get('http://api.scraperapi.com', {
             params: {
                 api_key: process.env.SCRAPER_API_KEY,
                 url: targetUrl,
-                render: 'true' 
-            }
+                render: 'true', // Essencial para passar pelo Cloudflare JS Challenge
+                premium: 'true' // Opcional: Tenta usar IPs residenciais se disponível no plano
+            },
+            timeout: 25000 // Aumentado para dar tempo do render
         });
         html = response.data;
     } else {
@@ -66,11 +68,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                 'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Referer': 'https://www.google.com.br/', // O "Pulo do Gato": finge vir do Google
+                'Referer': 'https://www.google.com.br/', 
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache'
             },
-            timeout: 10000 // Aumentado levemente para dar chance ao handshake
+            timeout: 10000 
         });
         html = response.data;
     }
@@ -78,9 +80,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const $ = cheerio.load(html);
 
     // 1. Dados Fundamentais (Cards)
-    const cotacao = parseMoney($('div._card-body span:contains("Cotação")').parent().find('div._card-body span.value').text());
-    const pvp = parseMoney($('div._card-body span:contains("P/VP")').parent().find('div._card-body span.value').text());
-    const dy = parseMoney($('div._card-body span:contains("DY")').parent().find('div._card-body span.value').text());
+    // CORREÇÃO DE SELETORES: Busca mais robusta usando .closest('._card')
+    // Isso funciona tanto se o valor estiver na mesma div ou separado
+    const getCardValue = (label: string) => {
+        // Tenta encontrar o label, sobe até o card pai, e busca o valor dentro dele
+        const val = $(`span:contains("${label}")`).closest('div._card').find('div._card-body span.value').text();
+        return parseMoney(val);
+    };
+
+    const cotacao = getCardValue("Cotação");
+    const pvp = getCardValue("P/VP");
+    const dy = getCardValue("DY");
     
     // Tenta pegar segmento se disponível
     const segment = $('.segment-data .value').first().text().trim() || 'Geral';

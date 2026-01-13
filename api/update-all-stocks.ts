@@ -1,3 +1,4 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -31,7 +32,8 @@ async function scrapeTickerData(ticker: string) {
                 params: {
                     api_key: process.env.SCRAPER_API_KEY,
                     url: targetUrl,
-                    render: 'true'
+                    render: 'true',
+                    premium: 'true'
                 },
                 timeout: 30000 // Aumentado para 30s pois render=true é mais lento
             });
@@ -54,10 +56,15 @@ async function scrapeTickerData(ticker: string) {
 
         const $ = cheerio.load(html);
 
-        // 1. Dados Fundamentais
-        const cotacao = parseMoney($('div._card-body span:contains("Cotação")').parent().find('div._card-body span.value').text());
-        const pvp = parseMoney($('div._card-body span:contains("P/VP")').parent().find('div._card-body span.value').text());
-        const dy = parseMoney($('div._card-body span:contains("DY")').parent().find('div._card-body span.value').text());
+        // 1. Dados Fundamentais com Seletores Corrigidos
+        const getCardValue = (label: string) => {
+            const val = $(`span:contains("${label}")`).closest('div._card').find('div._card-body span.value').text();
+            return parseMoney(val);
+        };
+
+        const cotacao = getCardValue("Cotação");
+        const pvp = getCardValue("P/VP");
+        const dy = getCardValue("DY");
         const segment = $('.segment-data .value').first().text().trim() || 'Geral';
 
         // Atualiza Metadata
@@ -131,9 +138,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ATENÇÃO: Reduzido para 5 para evitar Timeout de 10s da Vercel Free ao usar Proxy
     const batchSize = process.env.SCRAPER_API_KEY ? 5 : 8;
     
-    // Podemos pegar ativos aleatórios ou os primeiros. 
-    // Idealmente, você salvaria um 'last_update' no DB e pegaria os mais antigos.
-    // Aqui pegamos os primeiros 'batchSize' apenas como exemplo.
     const batch = uniqueTickers.slice(0, batchSize); 
 
     console.log(`[Cron] Iniciando atualização para ${batch.length} ativos (Batch Limit: ${batchSize})...`);
