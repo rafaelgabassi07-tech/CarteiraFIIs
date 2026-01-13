@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.2.7'; 
+const APP_VERSION = '8.2.8'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -212,6 +212,14 @@ const App: React.FC = () => {
       }
       if (Object.keys(aiData.metadata).length > 0) {
           setAssetsMetadata(aiData.metadata);
+      }
+      
+      // ATUALIZAÇÃO DO IPCA ADICIONADA AQUI
+      if (aiData.indicators) {
+         setMarketIndicators({ 
+             ipca: aiData.indicators.ipca_cumulative, 
+             startDate: aiData.indicators.start_date_used 
+         });
       }
       
       if (initialLoad) setLoadingProgress(100); 

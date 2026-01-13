@@ -9,10 +9,9 @@ const supabase = createClient(
   process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || ''
 );
 
-// Lista de ativos final 11 que SÃO Ações (Units), não FIIs
-const KNOWN_STOCKS_11 = [
-    'TAEE11', 'KLBN11', 'ALUP11', 'SAPR11', 'SANB11', 'BPAC11', 'TIET11', 'BBSE11', 'BIDI11', 'ENGI11', 'SULA11', 'CPFE11', 'IGTI11', 'ITUB11', 'BBDC11'
-];
+// Ativos Especiais e ETFs conhecidos
+const KNOWN_STOCKS_11 = ['TAEE11', 'KLBN11', 'ALUP11', 'SAPR11', 'SANB11', 'BPAC11', 'TIET11', 'BBSE11', 'BIDI11', 'ENGI11', 'SULA11', 'CPFE11', 'IGTI11', 'ITUB11', 'BBDC11'];
+const KNOWN_ETFS = ['BOVA11', 'SMAL11', 'IVVB11', 'HASH11', 'QBTC11', 'ETH11', 'XINA11', 'GOLD11', 'BBSD11', 'ECOO11', 'GOVE11', 'ISUS11', 'MATB11', 'PIBB11', 'SPXI11'];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -28,7 +27,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!stock || stock === 'UNDEFINED') return res.status(400).json({ error: 'Ticker obrigatório' });
 
   try {
-    // 0. Cache Check
     if (force !== 'true') {
         const { data: cached } = await supabase.from('ativos_metadata').select('updated_at').eq('ticker', stock).single();
         if (cached?.updated_at) {
@@ -41,25 +39,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let typePath = 'acoes';
     let assetType = 'ACAO';
     
-    // Lógica: Se termina em 11, é FII... EXCETO se for uma Unit conhecida ou BDR (33/34)
-    if ((stock.endsWith('11') || stock.endsWith('11B')) && !KNOWN_STOCKS_11.includes(stock)) {
+    if (KNOWN_ETFS.includes(stock)) {
+        typePath = 'etfs';
+        assetType = 'ETF'; // Você pode mapear para STOCK se preferir simplificar
+    } else if ((stock.endsWith('11') || stock.endsWith('11B')) && !KNOWN_STOCKS_11.includes(stock)) {
         typePath = 'fiis';
         assetType = 'FII';
     } else if (stock.endsWith('33') || stock.endsWith('34')) {
-        typePath = 'bdrs'; // Investidor10 geralmente usa /bdrs/
-        assetType = 'ACAO'; // Tratamos BDR como Ação na carteira por simplificação ou crie AssetType.BDR se preferir
+        typePath = 'bdrs';
+        assetType = 'ACAO';
     }
 
     const targetUrl = `https://investidor10.com.br/${typePath}/${stock.toLowerCase()}/`;
-    console.log(`[Scraper] ${stock} -> ${targetUrl}`);
+    
+    // Headers anti-bot melhorados
+    const headers = { 
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Referer': 'https://google.com'
+    };
 
-    // 2. Fetch HTML
     let html;
-    const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' };
-
     if (process.env.SCRAPER_API_KEY) {
         const response = await axios.get('http://api.scraperapi.com', {
-            params: { api_key: process.env.SCRAPER_API_KEY, url: targetUrl, render: 'false', country_code: 'br' },
+            params: { api_key: process.env.SCRAPER_API_KEY, url: targetUrl, render: 'true', country_code: 'br' },
             timeout: 40000 
         });
         html = response.data;
@@ -70,53 +73,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const $ = cheerio.load(html);
 
-    // 3. Fundamentos Básicos
-    const parseVal = (s: string) => {
-        if (!s) return 0;
-        return parseFloat(s.replace(/[R$\%\s.]/g, '').replace(',', '.')) || 0;
+    // Helpers de Parsing
+    const parseVal = (s: string) => parseFloat(s.replace(/[R$\%\s.]/g, '').replace(',', '.')) || 0;
+    const parseDate = (str: string): string | null => {
+        if (!str || str.length < 8) return null; 
+        const match = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
     };
-    
-    // Tenta pegar de cards específicos primeiro (mais preciso)
-    let cotacao = parseVal($('._card-body span:contains("Cotação")').closest('.card').find('._card-body span').last().text());
-    if(!cotacao) cotacao = parseVal($('.quotation-price').first().text()); // Tentativa genérica
-    if(!cotacao) cotacao = parseVal($('div[title="Valor Atual"] .value').text());
 
+    // 3. Fundamentos
+    let cotacao = parseVal($('._card-body span:contains("Cotação")').closest('.card').find('._card-body span').last().text());
+    if(!cotacao) cotacao = parseVal($('.quotation-price').first().text());
+    
     let pvp = parseVal($('div[title="P/VP"] .value').text());
     let dy = parseVal($('div[title="Dividend Yield"] .value').text());
 
-    // 4. Segmento (Busca Exaustiva)
+    // 4. Segmento
     let segment = 'Geral';
-    const segmentSelectors = [
-        '.segment-data .value', 
-        '.sector-data .value',
-        'div.cell:contains("Segmento") .value',
-        'div.cell:contains("Setor") .value',
-        'span:contains("Segmento") + span', // Label + Value spans
-        'span:contains("Setor") + span'
-    ];
-
+    const segmentSelectors = ['.segment-data .value', '.sector-data .value', 'div.cell:contains("Segmento") .value'];
     for (const sel of segmentSelectors) {
         const txt = $(sel).first().text().trim();
-        if (txt && txt.length > 2 && !txt.includes(':')) {
-            segment = txt;
-            break;
-        }
+        if (txt && txt.length > 2) { segment = txt; break; }
     }
-    
-    // Salva Metadata
+
     await supabase.from('ativos_metadata').upsert({
         ticker: stock, type: assetType, segment, current_price: cotacao, pvp, dy_12m: dy, updated_at: new Date()
     }, { onConflict: 'ticker' });
 
-    // 5. Proventos (Table Header Parsing)
+    // 5. Proventos (Híbrido: Header-based + Fallback Row Scan)
     const dividendsToUpsert: any[] = [];
     const processedKeys = new Set();
 
+    // Método A: Tabelas com Cabeçalho
     $('table').each((_, table) => {
-        // Mapeia índices das colunas
         const headerMap: Record<string, number> = {};
-        let hasValidHeader = false;
-
         $(table).find('thead th').each((idx, th) => {
             const txt = $(th).text().toLowerCase().trim();
             if (txt.includes('com') || txt.includes('base')) headerMap.com = idx;
@@ -125,42 +115,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             if (txt.includes('tipo')) headerMap.type = idx;
         });
 
-        // Se achou colunas de Data COM e Valor, é uma tabela útil
         if (headerMap.com !== undefined && headerMap.val !== undefined) {
-            hasValidHeader = true;
             $(table).find('tbody tr').each((_, tr) => {
                 const tds = $(tr).find('td');
                 if (tds.length < 2) return;
-
-                const dateComRaw = $(tds[headerMap.com]).text().trim();
-                const valRaw = $(tds[headerMap.val]).text().trim();
                 
-                // Opcionais
-                const datePagRaw = headerMap.pag !== undefined ? $(tds[headerMap.pag]).text().trim() : '';
-                const typeRaw = headerMap.type !== undefined ? $(tds[headerMap.type]).text().trim() : '';
-
-                // Parsing
-                const dateCom = parseDate(dateComRaw);
-                const datePag = parseDate(datePagRaw) || dateCom; // Fallback se pagamento vazio
-                const val = parseVal(valRaw);
-
+                const dateCom = parseDate($(tds[headerMap.com]).text().trim());
+                const val = parseVal($(tds[headerMap.val]).text().trim());
+                const datePag = (headerMap.pag !== undefined ? parseDate($(tds[headerMap.pag]).text().trim()) : null) || dateCom;
+                
                 let tipo = 'DIV';
-                const tLower = typeRaw.toLowerCase();
-                if (tLower.includes('jcp') || tLower.includes('juros')) tipo = 'JCP';
-                else if (tLower.includes('rendimento')) tipo = 'REND';
+                const typeRaw = headerMap.type !== undefined ? $(tds[headerMap.type]).text().toLowerCase() : '';
+                if (typeRaw.includes('jcp') || typeRaw.includes('juros')) tipo = 'JCP';
+                else if (typeRaw.includes('rendimento')) tipo = 'REND';
 
                 if (dateCom && val > 0) {
                     const key = `${stock}-${tipo}-${dateCom}-${datePag}-${val}`;
                     if (!processedKeys.has(key)) {
-                        dividendsToUpsert.push({
-                            ticker: stock, type: tipo, date_com: dateCom, payment_date: datePag, rate: val
-                        });
+                        dividendsToUpsert.push({ ticker: stock, type: tipo, date_com: dateCom, payment_date: datePag, rate: val });
                         processedKeys.add(key);
                     }
                 }
             });
         }
     });
+
+    // Método B: Fallback (Se encontrou pouco, varre tudo)
+    if (dividendsToUpsert.length < 2) {
+        $('tr').each((_, tr) => {
+             const txt = $(tr).text();
+             // Procura linha que tenha data (DD/MM/AAAA) e dinheiro (R$ X,XX ou X,XX)
+             if (/\d{2}\/\d{2}\/\d{4}/.test(txt) && /[0-9],[0-9]/.test(txt)) {
+                 const tds = $(tr).find('td');
+                 let dCom: string | null = null;
+                 let val = 0;
+                 let tipo = 'DIV';
+
+                 tds.each((_, td) => {
+                     const t = $(td).text().trim();
+                     const asDate = parseDate(t);
+                     if (asDate && !dCom) dCom = asDate;
+                     const asVal = parseVal(t);
+                     if (asVal > 0 && asVal < 500 && t.includes(',')) val = asVal; // Sanity check < 500
+                     if (t.toLowerCase().includes('jcp')) tipo = 'JCP';
+                 });
+
+                 if (dCom && val > 0) {
+                      const key = `${stock}-${tipo}-${dCom}-${dCom}-${val}`;
+                      if (!processedKeys.has(key)) {
+                          dividendsToUpsert.push({ ticker: stock, type: tipo, date_com: dCom, payment_date: dCom, rate: val });
+                          processedKeys.add(key);
+                      }
+                 }
+             }
+        });
+    }
 
     if (dividendsToUpsert.length > 0) {
         await supabase.from('market_dividends').upsert(dividendsToUpsert, {
@@ -172,19 +181,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: true, 
         ticker: stock, 
         fundamentals: { price: cotacao, pvp, dy },
-        dividends_found: dividendsToUpsert.length,
-        segment
+        dividends_found: dividendsToUpsert.length
     });
 
   } catch (error: any) {
     console.error(`[Scraper Error] ${stock}:`, error.message);
     return res.status(500).json({ error: error.message });
   }
-}
-
-function parseDate(str: string): string | null {
-    if (!str || str.length < 8) return null; 
-    const match = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    if (match) return `${match[3]}-${match[2]}-${match[1]}`;
-    return null;
 }
