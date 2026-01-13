@@ -365,7 +365,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
 
             {upcomingEvents.length > 0 ? (
-                <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+                <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 mask-linear-fade">
                     {upcomingEvents.slice(0, 4).map((event, i) => {
                         const style = getEventStyle(event.eventType, event.date);
                         return (
@@ -439,7 +439,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
          <button 
             onClick={() => setShowRealYieldModal(true)}
-            className="w-full bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-card dark:shadow-card-dark relative overflow-hidden text-left press-effect group"
+            className="w-full bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-card dark:shadow-card-dark relative overflow-hidden text-left press-effect group focus:outline-none"
          >
              {/* Background Mesh Gradient for premium feel */}
              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none group-hover:bg-emerald-500/20 transition-all duration-500"></div>
@@ -550,7 +550,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  
                  <div className="h-56 w-full overflow-x-auto no-scrollbar">
                     {/* Container com largura mínima para garantir que muitas barras não fiquem espremidas se o histórico for longo */}
-                    <div style={{ minWidth: `${Math.max(100, realYieldMetrics.timeline.length * 50)}px`, height: '100%' }}>
+                    <div style={{ minWidth: `${Math.max(100, realYieldMetrics.timeline.length * 50)}px`, height: '100%', outline: 'none' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
                                 data={realYieldMetrics.timeline} 
@@ -589,7 +589,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                  {/* Sticky Header Table Layout */}
                  <div className="max-h-[400px] overflow-y-auto no-scrollbar relative">
-                     <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-zinc-50/90 dark:bg-zinc-900/90 text-[9px] font-black uppercase text-zinc-400 tracking-widest sticky top-0 z-10 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
+                     <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-zinc-50/90 dark:bg-zinc-900/90 text-[9px] font-black uppercase text-zinc-500 dark:text-zinc-400 tracking-widest sticky top-0 z-10 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
                          <span className="col-span-3">Período</span>
                          <span className="col-span-5 text-right">Inflação (R$)</span>
                          <span className="col-span-4 text-right">Real (R$)</span>
@@ -781,7 +781,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </h3>
                  </div>
                  
-                 <div className="h-48 w-full relative">
+                 <div className="h-48 w-full relative" style={{ outline: 'none' }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
@@ -835,7 +835,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </h3>
                     </div>
                     
-                    <div className="h-56 w-full">
+                    <div className="h-56 w-full" style={{ outline: 'none' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie

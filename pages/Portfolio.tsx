@@ -138,7 +138,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, balance = 0, 
                             placeholder="Buscar ativo..." 
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full bg-surface-light dark:bg-surface-dark pl-11 pr-4 py-3 rounded-xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 border border-zinc-200 dark:border-zinc-800 focus:border-sky-500 outline-none shadow-sm transition-all"
+                            className="w-full bg-surface-light dark:bg-surface-dark pl-11 pr-4 py-3 rounded-xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 border border-zinc-200 dark:border-zinc-800 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none shadow-sm transition-all"
                         />
                      </div>
                  </div>
