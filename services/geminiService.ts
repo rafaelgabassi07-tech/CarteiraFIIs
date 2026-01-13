@@ -9,23 +9,35 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Busca IPCA acumulado 12 meses via BrasilAPI (Dados Oficiais)
+// Busca IPCA acumulado 12 meses
 const fetchInflationData = async (): Promise<number> => {
+    // Valor fallback recente (IPCA acumulado 12m - ref mid-2025)
+    // Atualize este valor periodicamente se a API falhar constantemente
+    const FALLBACK_IPCA = 4.62;
+
     try {
-        // Busca taxa SELIC e IPCA (Taxas V1 da BrasilAPI)
-        // Se a BrasilAPI falhar, usamos um fallback aproximado do IPCA atual (4.5%)
-        const response = await fetch('https://brasilapi.com.br/api/taxas/v1', { cache: 'force-cache' });
-        if (!response.ok) return 4.5;
+        const response = await fetch('https://brasilapi.com.br/api/taxas/v1', { 
+            cache: 'force-cache',
+            headers: { 'Accept': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            console.warn("BrasilAPI returned non-200. Using fallback IPCA.");
+            return FALLBACK_IPCA;
+        }
         
         const data = await response.json();
-        // A API retorna um array, ex: [{ nome: 'Selic', valor: 10.75 }, { nome: 'CDI', valor: 10.65 }, { nome: 'IPCA', valor: 4.50 }]
-        // O valor do IPCA na BrasilAPI geralmente é o acumulado 12 meses ou a meta.
+        // A API retorna um array. Ex: [{ nome: 'IPCA', valor: 4.50 }, ...]
         const ipcaObj = data.find((item: any) => item.nome === 'IPCA');
         
-        return ipcaObj ? Number(ipcaObj.valor) : 4.5;
+        if (ipcaObj && !isNaN(Number(ipcaObj.valor))) {
+            return Number(ipcaObj.valor);
+        }
+
+        return FALLBACK_IPCA;
     } catch (e) {
-        console.warn("Erro ao buscar inflação, usando fallback", e);
-        return 4.5;
+        console.warn("Erro ao buscar inflação (Network/CORS), usando fallback:", e);
+        return FALLBACK_IPCA;
     }
 };
 

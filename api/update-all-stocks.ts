@@ -65,14 +65,26 @@ async function scrapeTickerData(ticker: string) {
         const pvp = getFundamentalValue(["P/VP", "P/VPA"]);
         const dy = getFundamentalValue(["DY", "Dividend Yield", "DY (12M)"]);
         
-        // --- 2. Segmento ---
+        // --- 2. Segmento (Lógica Aprimorada) ---
         let segment = 'Geral';
-        const segmentLabel = $('span:contains("Segmento"), span:contains("Setor")').first();
-        if (segmentLabel.length) {
-            let segText = segmentLabel.next().text().trim() || segmentLabel.parent().find('.value').text().trim();
-            if (segText) segment = segText;
+        const segmentEl = $('.segment-data .value, .sector-data .value').first();
+        if (segmentEl.length) {
+            segment = segmentEl.text().trim();
         } else {
-             segment = $('.segment-data .value, .sector-data .value').first().text().trim() || 'Geral';
+            $('div.cell').each((_, el) => {
+                const label = $(el).find('.name').text().trim().toLowerCase();
+                if (label === 'segmento') {
+                    const val = $(el).find('.value').text().trim();
+                    if (val) segment = val;
+                }
+            });
+            if (segment === 'Geral') {
+                 const labelSpan = $('span:contains("Segmento"), span:contains("Setor")').first();
+                 if (labelSpan.length) {
+                     const nextText = labelSpan.next().text().trim();
+                     if (nextText && nextText.length > 2) segment = nextText;
+                 }
+            }
         }
 
         // Atualiza Metadata
@@ -80,47 +92,51 @@ async function scrapeTickerData(ticker: string) {
             ticker: stock, type: assetType, segment, current_price: cotacao, pvp, dy_12m: dy, updated_at: new Date()
         });
 
-        // --- 3. Proventos ---
+        // --- 3. Proventos (Regex Inteligente) ---
         const dividendsToUpsert: any[] = [];
+        const processedKeys = new Set();
         
-        $('table').each((_, table) => {
-            const headersText = $(table).find('thead').text().toLowerCase();
-            if ((headersText.includes('com') || headersText.includes('base')) && (headersText.includes('pagamento') || headersText.includes('valor'))) {
-                const headerMap: any = { tipo: -1, dataCom: -1, dataPag: -1, valor: -1 };
-                
-                $(table).find('thead th').each((idx, th) => {
-                    const h = $(th).text().trim().toLowerCase();
-                    if (h.includes('tipo')) headerMap.tipo = idx;
-                    if (h.includes('com') || h.includes('base')) headerMap.dataCom = idx;
-                    if (h.includes('pagamento')) headerMap.dataPag = idx;
-                    if (h.includes('valor')) headerMap.valor = idx;
+        $('table tr').each((_, tr) => {
+            const cols = $(tr).find('td');
+            if (cols.length >= 3) {
+                let tipo = '';
+                let dataCom = null;
+                let dataPag = null;
+                let valor = 0;
+
+                cols.each((_, td) => {
+                    const text = $(td).text().trim();
+                    const textLower = text.toLowerCase();
+                    
+                    if (textLower.includes('jcp') || textLower.includes('juros')) tipo = 'JCP';
+                    else if (textLower.includes('dividendo')) tipo = 'DIV';
+                    else if (textLower.includes('rendimento')) tipo = 'REND';
+
+                    if (/\d{2}\/\d{2}\/\d{4}/.test(text)) {
+                        const parsedDate = parseDate(text);
+                        if (parsedDate) {
+                            if (!dataCom) dataCom = parsedDate;
+                            else if (!dataPag) dataPag = parsedDate;
+                        }
+                    }
+
+                    if ((text.includes(',') || text.includes('.')) && !text.includes('%') && /\d/.test(text)) {
+                        const v = parseMoney(text);
+                        if (v > 0 && v < 1000) valor = v;
+                    }
                 });
 
-                if (headerMap.dataCom !== -1 && headerMap.valor !== -1) {
-                    $(table).find('tbody tr').each((_, tr) => {
-                        const cols = $(tr).find('td');
-                        if (cols.length >= 3) {
-                            const tipoRaw = headerMap.tipo !== -1 ? $(cols[headerMap.tipo]).text().trim() : 'Rendimento';
-                            const dataComRaw = $(cols[headerMap.dataCom]).text().trim();
-                            const dataPagRaw = headerMap.dataPag !== -1 ? $(cols[headerMap.dataPag]).text().trim() : dataComRaw;
-                            const valorRaw = $(cols[headerMap.valor]).text().trim();
+                if (!dataPag && dataCom) dataPag = dataCom;
+                if (!tipo) tipo = assetType === 'FII' ? 'REND' : 'DIV';
 
-                            const dataCom = parseDate(dataComRaw);
-                            const dataPagamento = parseDate(dataPagRaw);
-                            const valor = parseMoney(valorRaw);
-
-                            let tipo = 'DIV';
-                            const tLower = tipoRaw.toLowerCase();
-                            if (tLower.includes('juros') || tLower.includes('jcp')) tipo = 'JCP';
-                            else if (tLower.includes('rendimento')) tipo = 'REND';
-
-                            if (valor > 0 && dataCom && dataPagamento) {
-                                dividendsToUpsert.push({
-                                    ticker: stock, type: tipo, date_com: dataCom, payment_date: dataPagamento, rate: valor
-                                });
-                            }
-                        }
-                    });
+                if (valor > 0 && dataCom && dataPag) {
+                    const uniqueKey = `${stock}-${tipo}-${dataCom}-${dataPag}-${valor}`;
+                    if (!processedKeys.has(uniqueKey)) {
+                        dividendsToUpsert.push({
+                            ticker: stock, type: tipo, date_com: dataCom, payment_date: dataPag, rate: valor
+                        });
+                        processedKeys.add(uniqueKey);
+                    }
                 }
             }
         });
@@ -146,9 +162,9 @@ function parseMoney(str: string) {
 }
 
 function parseDate(str: string) {
-    if (!str || str.includes('-') && str.length > 10) return null;
-    const parts = str.split('/');
-    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    if (!str || str.length < 8) return null;
+    const match = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (match) return `${match[3]}-${match[2]}-${match[1]}`;
     return null;
 }
 
@@ -163,7 +179,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (error) throw error;
 
     const uniqueTickers = [...new Set((transactions || []).map((t: any) => t.ticker))];
-    // Batch reduzido para evitar timeout em conexões diretas
     const batchSize = 3;
     const batch = uniqueTickers.slice(0, batchSize); 
 

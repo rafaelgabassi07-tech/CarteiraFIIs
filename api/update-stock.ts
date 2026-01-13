@@ -121,19 +121,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const pvp = getCardValue(["P/VP", "P/VPA", "VPA"]);
     const dy = getCardValue(["DY", "Dividend Yield", "DY (12M)"]);
     
-    // --- 2. Extração de Segmento ---
+    // --- 2. Extração de Segmento (Lógica Aprimorada) ---
     let segment = 'Geral';
-    // Tenta achar pelo label "Segmento" ou "Setor" e pega o próximo span/valor
-    const segmentLabel = $('span:contains("Segmento"), span:contains("Setor")').first();
-    if (segmentLabel.length) {
-        // Tenta pegar o irmão, ou o valor dentro de um container pai
-        let segText = segmentLabel.next().text().trim(); 
-        if (!segText) segText = segmentLabel.parent().find('.value').text().trim();
-        if (segText) segment = segText;
+    
+    // Tentativa 1: Estrutura comum de Ações (.sector-data ou .segment-data)
+    const segmentEl = $('.segment-data .value, .sector-data .value').first();
+    if (segmentEl.length) {
+        segment = segmentEl.text().trim();
     } else {
-        // Fallback para classes conhecidas
-        const segEl = $('.segment-data .value, .sector-data .value').first();
-        if (segEl.length) segment = segEl.text().trim();
+        // Tentativa 2: Busca por Label "Segmento" em tabelas de FIIs
+        $('div.cell').each((_, el) => {
+            const label = $(el).find('.name').text().trim().toLowerCase();
+            if (label === 'segmento') {
+                const val = $(el).find('.value').text().trim();
+                if (val) segment = val;
+            }
+        });
+
+        // Tentativa 3: Busca genérica em spans próximos
+        if (segment === 'Geral') {
+             const labelSpan = $('span:contains("Segmento"), span:contains("Setor")').first();
+             if (labelSpan.length) {
+                 const nextText = labelSpan.next().text().trim();
+                 if (nextText && nextText.length > 2) segment = nextText;
+             }
+        }
     }
 
     console.log(`[Fundamentos] ${stock} -> P/VP: ${pvp}, DY: ${dy}, Seg: ${segment}`);
@@ -145,59 +157,71 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (metaError) console.error("Erro salvando metadata:", metaError);
 
-    // --- 3. Extração de Proventos (Tabelas) ---
+    // --- 3. Extração de Proventos (Lógica Inteligente via Regex) ---
     const dividendsToUpsert: any[] = [];
-    
-    // Itera sobre TODAS as tabelas encontradas para achar a de proventos
-    $('table').each((_, table) => {
-        const headersText = $(table).find('thead').text().toLowerCase();
+    const processedKeys = new Set(); // Evita duplicatas na mesma execução
+
+    $('table tr').each((_, tr) => {
+        const rowText = $(tr).text().trim();
+        const cols = $(tr).find('td');
         
-        // Verifica se é uma tabela de proventos pelos cabeçalhos
-        if ((headersText.includes('com') || headersText.includes('base')) && (headersText.includes('pagamento') || headersText.includes('valor'))) {
-            
-            // Mapeia índices das colunas dinamicamente
-            const headerMap: any = { tipo: -1, dataCom: -1, dataPag: -1, valor: -1 };
-            
-            $(table).find('thead th').each((idx, th) => {
-                const h = $(th).text().trim().toLowerCase();
-                if (h.includes('tipo')) headerMap.tipo = idx;
-                if (h.includes('com') || h.includes('base')) headerMap.dataCom = idx;
-                if (h.includes('pagamento')) headerMap.dataPag = idx;
-                if (h.includes('valor')) headerMap.valor = idx;
+        // Verifica se a linha tem colunas suficientes
+        if (cols.length >= 3) {
+            let tipo = '';
+            let dataCom = null;
+            let dataPag = null;
+            let valor = 0;
+
+            // Análise Célula a Célula (Independente da ordem das colunas)
+            cols.each((idx, td) => {
+                const text = $(td).text().trim();
+                
+                // 1. Detecta Tipo (JCP, Dividendo, Rendimento)
+                const textLower = text.toLowerCase();
+                if (textLower.includes('jcp') || textLower.includes('juros')) tipo = 'JCP';
+                else if (textLower.includes('dividendo')) tipo = 'DIV';
+                else if (textLower.includes('rendimento')) tipo = 'REND';
+
+                // 2. Detecta Data (Formato DD/MM/AAAA)
+                if (/\d{2}\/\d{2}\/\d{4}/.test(text)) {
+                    const parsedDate = parseDate(text);
+                    if (parsedDate) {
+                        // A primeira data encontrada geralmente é Data Com, a segunda Pagamento.
+                        // Mas em alguns layouts, a data de pagamento vem vazia (-).
+                        if (!dataCom) dataCom = parsedDate;
+                        else if (!dataPag) dataPag = parsedDate;
+                    }
+                }
+
+                // 3. Detecta Valor Monetário (R$ 0,00 ou 0,00)
+                // Evita pegar percentuais (%)
+                if ((text.includes(',') || text.includes('.')) && !text.includes('%') && /\d/.test(text)) {
+                    // Tenta parsear. Se for um número válido > 0 e parece dinheiro
+                    const v = parseMoney(text);
+                    if (v > 0 && v < 1000) { // Filtro de sanidade: provento unitário raramente passa de 1000
+                        valor = v; 
+                    }
+                }
             });
 
-            if (headerMap.dataCom !== -1 && headerMap.valor !== -1) {
-                $(table).find('tbody tr').each((_, tr) => {
-                    const cols = $(tr).find('td');
-                    if (cols.length >= 3) {
-                        const tipoRaw = headerMap.tipo !== -1 ? $(cols[headerMap.tipo]).text().trim() : 'Rendimento';
-                        const dataComRaw = $(cols[headerMap.dataCom]).text().trim();
-                        // Data Pagamento as vezes é vazia (anunciado mas não pago)
-                        const dataPagRaw = headerMap.dataPag !== -1 ? $(cols[headerMap.dataPag]).text().trim() : dataComRaw; 
-                        const valorRaw = $(cols[headerMap.valor]).text().trim();
+            // Fallbacks e Validações Finais da Linha
+            if (!dataPag && dataCom) dataPag = dataCom; // Se não tem data de pagamento, assume data com
+            if (!tipo) tipo = assetType === 'FII' ? 'REND' : 'DIV'; // Tipo padrão
 
-                        const dataCom = parseDate(dataComRaw);
-                        const dataPagamento = parseDate(dataPagRaw) || dataCom; // Fallback para data com se não tiver pag
-                        const valor = parseMoney(valorRaw);
-
-                        let tipo = 'DIV';
-                        const tLower = tipoRaw.toLowerCase();
-                        if (tLower.includes('jcp') || tLower.includes('juros')) tipo = 'JCP';
-                        else if (tLower.includes('rendimento')) tipo = 'REND';
-
-                        // Só adiciona se tiver dados válidos e valor > 0
-                        if (valor > 0 && dataCom && dataPagamento) {
-                            dividendsToUpsert.push({
-                                ticker: stock, type: tipo, date_com: dataCom, payment_date: dataPagamento, rate: valor
-                            });
-                        }
-                    }
-                });
+            if (valor > 0 && dataCom && dataPag) {
+                const uniqueKey = `${stock}-${tipo}-${dataCom}-${dataPag}-${valor}`;
+                if (!processedKeys.has(uniqueKey)) {
+                    dividendsToUpsert.push({
+                        ticker: stock, type: tipo, date_com: dataCom, payment_date: dataPag, rate: valor
+                    });
+                    processedKeys.add(uniqueKey);
+                }
             }
         }
     });
 
     if (dividendsToUpsert.length > 0) {
+        // Upsert ignorando duplicatas de chave primária
         await supabase.from('market_dividends').upsert(dividendsToUpsert, {
             onConflict: 'ticker, type, date_com, payment_date, rate', ignoreDuplicates: true
         });
@@ -219,7 +243,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 function parseMoney(str: string) {
     if (!str) return 0;
-    // Remove R$, %, espaços
+    // Remove R$, %, espaços e caracteres invisíveis
     let clean = str.replace(/[R$\%\s]/g, '').trim();
     // Padrão brasileiro: 1.200,50 -> remove ponto, troca virgula por ponto
     clean = clean.replace(/\./g, '').replace(',', '.');
@@ -227,9 +251,11 @@ function parseMoney(str: string) {
 }
 
 function parseDate(str: string) {
-    if (!str || str.includes('-') && str.length > 10) return null; // Ignora se já for formato ISO ou texto estranho
-    // Espera DD/MM/YYYY
-    const parts = str.split('/');
-    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    if (!str || str.length < 8) return null; 
+    // Tenta extrair DD/MM/YYYY mesmo se tiver texto ao redor
+    const match = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (match) {
+        return `${match[3]}-${match[2]}-${match[1]}`;
+    }
     return null;
 }
