@@ -31,6 +31,9 @@ const STORAGE_KEYS = {
   NOTIF_HISTORY: 'investfiis_notification_history_v2' 
 };
 
+// Arredonda para 2 casas decimais para evitar erros de ponto flutuante (ex: 0.1 + 0.2 != 0.3)
+const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!dateCom || dateCom.length < 10) return 0;
   const targetDate = dateCom.substring(0, 10);
@@ -353,15 +356,16 @@ const App: React.FC = () => {
       const p = positions[t.ticker];
       
       if (t.type === 'BUY') { 
-          // Weighted Average Price Calculation with floating point safety
+          // Weighted Average Price Calculation with ROUNDING to fix floating point drift
           const newQuantity = p.quantity + t.quantity;
           if (newQuantity > 0.000001) {
-             p.averagePrice = ((p.quantity * p.averagePrice) + (t.quantity * t.price)) / newQuantity; 
+             const currentTotalCost = round(p.quantity * p.averagePrice);
+             const additionalCost = round(t.quantity * t.price);
+             p.averagePrice = (currentTotalCost + additionalCost) / newQuantity; 
           }
           p.quantity = newQuantity; 
       } else { 
           p.quantity -= t.quantity; 
-          // Logic to reset Average Price if position is closed (prevents stale history affecting new positions)
           if (p.quantity <= 0.000001) {
               p.quantity = 0;
               p.averagePrice = 0;
@@ -382,15 +386,15 @@ const App: React.FC = () => {
             ...assetsMetadata[p.ticker]?.fundamentals 
         }));
 
-    const invested = finalPortfolio.reduce((a, p) => a + (p.averagePrice * p.quantity), 0);
-    const balance = finalPortfolio.reduce((a, p) => a + ((p.currentPrice || p.averagePrice) * p.quantity), 0);
+    const invested = round(finalPortfolio.reduce((a, p) => a + (p.averagePrice * p.quantity), 0));
+    const balance = round(finalPortfolio.reduce((a, p) => a + ((p.currentPrice || p.averagePrice) * p.quantity), 0));
     
     let salesGain = 0; const tracker: Record<string, { q: number; c: number }> = {};
     sortedTxs.forEach(t => {
       if (!tracker[t.ticker]) tracker[t.ticker] = { q: 0, c: 0 };
       const a = tracker[t.ticker];
-      if (t.type === 'BUY') { a.q += t.quantity; a.c += t.quantity * t.price; } 
-      else if (a.q > 0) { const cost = t.quantity * (a.c / a.q); salesGain += t.quantity * t.price - cost; a.c -= cost; a.q -= t.quantity; }
+      if (t.type === 'BUY') { a.q += t.quantity; a.c += round(t.quantity * t.price); } 
+      else if (a.q > 0) { const cost = round(t.quantity * (a.c / a.q)); salesGain += round((t.quantity * t.price) - cost); a.c -= cost; a.q -= t.quantity; }
     });
 
     return { portfolio: finalPortfolio, dividendReceipts: receipts, totalDividendsReceived, invested, balance, salesGain };

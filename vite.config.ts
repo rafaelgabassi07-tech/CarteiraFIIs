@@ -6,9 +6,6 @@ export default defineConfig(({ mode }) => {
   // Carrega variáveis de .env, .env.local, etc.
   const env = loadEnv(mode, '.', '');
   
-  // No Vercel/Node, as variáveis de sistema estão em process.env.
-  // O loadEnv nem sempre pega variáveis de sistema que não estão em arquivos .env,
-  // então fazemos um fallback explícito.
   const getEnvVar = (key: string, viteKey: string) => {
     return JSON.stringify(env[key] || process.env[key] || env[viteKey] || process.env[viteKey] || '');
   };
@@ -47,6 +44,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
+      // Polyfill crítico para navegadores desktop que não têm o objeto 'process'
+      // Isso previne o erro "ReferenceError: process is not defined"
+      'process.env': {}, 
       'process.env.API_KEY': getEnvVar('API_KEY', 'VITE_API_KEY'),
       'process.env.BRAPI_TOKEN': getEnvVar('BRAPI_TOKEN', 'VITE_BRAPI_TOKEN'),
       'process.env.SUPABASE_URL': getEnvVar('SUPABASE_URL', 'VITE_SUPABASE_URL'),

@@ -4,12 +4,13 @@ import {
   ChevronRight, ArrowLeft, Bell, Sun, Moon, Monitor, RefreshCw, 
   Eye, EyeOff, Palette, Rocket, Database, ShieldAlert, Info, 
   User, LogOut, Check, AlertTriangle, Globe, Github, Smartphone, Copy, CheckCircle2,
-  Wifi, Activity, XCircle, Terminal, Trash2, Filter
+  Wifi, Activity, XCircle, Terminal, Trash2, Filter, FileSpreadsheet, FileJson
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ServiceMetric, LogEntry } from '../types';
 import { ThemeType } from '../App';
 import { ConfirmationModal, SwipeableModal } from '../components/Layout';
 import { logger } from '../services/logger';
+import { parseB3Excel } from '../services/excelService';
 
 interface SettingsProps {
   user: any;
@@ -62,6 +63,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   
   // States para o Logger
   const [showLogs, setShowLogs] = useState(false);
@@ -69,6 +71,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [logFilter, setLogFilter] = useState<'all' | 'error'>('all');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const excelInputRef = useRef<HTMLInputElement>(null);
 
   const [notificationPrefs, setNotificationPrefs] = useState({
     dividends: true,
@@ -119,7 +122,7 @@ export const Settings: React.FC<SettingsProps> = ({
     showToast('success', 'Backup exportado!');
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -133,10 +136,45 @@ export const Settings: React.FC<SettingsProps> = ({
           setActiveSection('menu');
         }
       } catch (err) {
-        showToast('error', 'Arquivo inválido.');
+        showToast('error', 'Arquivo JSON inválido.');
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setIsImporting(true);
+      try {
+          const newTransactions = await parseB3Excel(file);
+          if (newTransactions.length === 0) {
+              showToast('error', 'Nenhuma transação identificada. Verifique o layout da planilha.');
+          } else {
+              // Mescla com as existentes evitando duplicatas exatas de ID se houver, 
+              // mas para excel geralmente geramos novos IDs. 
+              // O ideal seria verificar duplicatas por ticker/data/qtd/preço.
+              // Aqui vamos apenas adicionar por simplicidade.
+              
+              // Filtra duplicatas lógicas simples (mesmo dia, ticker, qtd, preço)
+              const existingSig = new Set(transactions.map(t => `${t.ticker}-${t.date}-${t.quantity}-${t.price}-${t.type}`));
+              const toAdd = newTransactions.filter(t => !existingSig.has(`${t.ticker}-${t.date}-${t.quantity}-${t.price}-${t.type}`));
+              
+              if (toAdd.length > 0) {
+                  onImportTransactions([...transactions, ...toAdd]);
+                  showToast('success', `${toAdd.length} ordens importadas!`);
+                  setActiveSection('menu');
+              } else {
+                  showToast('info', 'Todas as ordens do arquivo já existem.');
+              }
+          }
+      } catch (error) {
+          console.error(error);
+          showToast('error', 'Erro ao ler arquivo Excel.');
+      } finally {
+          setIsImporting(false);
+          if (excelInputRef.current) excelInputRef.current.value = '';
+      }
   };
 
   const handleCopyDebug = () => {
@@ -397,17 +435,47 @@ export const Settings: React.FC<SettingsProps> = ({
               <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Database className="w-7 h-7" />
               </div>
-              <h3 className="text-lg font-black mb-1">Backup Seguro</h3>
-              <p className="text-xs text-zinc-500 mb-6 leading-relaxed px-4">Seus dados são sincronizados na nuvem, mas você pode baixar uma cópia física JSON.</p>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={handleExport} className="py-3.5 bg-blue-500 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all">Exportar</button>
-                <button onClick={() => fileInputRef.current?.click()} className="py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all">Importar</button>
+              <h3 className="text-lg font-black mb-1">Gerenciar Dados</h3>
+              <p className="text-xs text-zinc-500 mb-6 leading-relaxed px-4">Importe seus dados da B3 ou faça backup da sua carteira.</p>
+              
+              <div className="space-y-3">
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200 dark:border-zinc-800 text-left">
+                      <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center">
+                              <FileSpreadsheet className="w-5 h-5" />
+                          </div>
+                          <div>
+                              <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Importar da B3</h4>
+                              <p className="text-[10px] text-zinc-500">Arquivos Excel (.xlsx)</p>
+                          </div>
+                      </div>
+                      <button 
+                        onClick={() => excelInputRef.current?.click()}
+                        disabled={isImporting}
+                        className="w-full py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-bold text-[10px] uppercase tracking-widest shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+                      >
+                         {isImporting ? <RefreshCw className="w-3 h-3 animate-spin" /> : <FileSpreadsheet className="w-3 h-3" />}
+                         {isImporting ? 'Lendo Arquivo...' : 'Selecionar Planilha'}
+                      </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={handleExport} className="py-3.5 bg-blue-500 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <Database className="w-3 h-3" /> Exportar Backup
+                    </button>
+                    <button onClick={() => fileInputRef.current?.click()} className="py-3.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <FileJson className="w-3 h-3" /> Importar JSON
+                    </button>
+                  </div>
               </div>
-              <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
+
+              <input type="file" ref={fileInputRef} onChange={handleImportJson} accept=".json" className="hidden" />
+              <input type="file" ref={excelInputRef} onChange={handleImportExcel} accept=".xlsx,.xls" className="hidden" />
             </div>
           </div>
         )}
 
+        {/* ... Restante das seções (privacy, updates, about, reset) sem alterações ... */}
         {activeSection === 'privacy' && (
           <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
             <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center transition-all duration-300 ${privacyMode ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20 scale-110' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
