@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Configuração de CORS
+  // Configuração de CORS para permitir chamadas do frontend
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -16,20 +16,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // TENTATIVA 1: Banco Central do Brasil
-    // User-Agent é OBRIGATÓRIO para não ser bloqueado como bot
+    // TENTATIVA 1: API Oficial do Banco Central (BCB)
+    // O BCB bloqueia requisições sem User-Agent definido.
     const bcbUrl = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json';
     
     const response = await axios.get(bcbUrl, { 
         timeout: 8000,
         headers: {
+            // Emula um navegador Chrome moderno para evitar bloqueio WAF
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json'
+            'Accept': 'application/json, text/plain, */*',
+            'Referer': 'https://www.bcb.gov.br/'
         }
     });
     
     const data = response.data;
 
+    // Valida se veio o formato esperado [{ data: "...", valor: "..." }]
     if (Array.isArray(data) && data.length > 0 && data[0].valor) {
         const value = parseFloat(data[0].valor);
         if (!isNaN(value)) {
@@ -45,10 +48,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     throw new Error('Dados do BCB inválidos ou vazios');
 
   } catch (error: any) {
-    console.error('[Indicators API] Falha no BCB, usando Fallback:', error.message);
+    console.error('[Indicators API] Falha no BCB, ativando Fallback:', error.message);
 
-    // TENTATIVA 2: Fallback fixo seguro
-    // Retorna um valor plausível para não quebrar a UI
+    // TENTATIVA 2: Fallback Seguro
+    // Se o BCB falhar, retornamos a média recente (aprox 4.62%) para não quebrar o gráfico.
+    // O frontend vai receber isso normalmente e funcionar.
     return res.status(200).json({
         value: 4.62,
         source: 'Fallback (Segurança)',

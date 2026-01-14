@@ -9,20 +9,18 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// Busca IPCA acumulado 12 meses
+// Busca IPCA acumulado 12 meses com proteção contra falhas
 const fetchInflationData = async (): Promise<number> => {
     const FALLBACK_IPCA = 4.62;
     try {
-        // Tenta a API interna
+        // Usa timeout curto (3s) para não travar o carregamento dos ativos se a API demorar
         const response = await fetch('/api/indicators', { 
             headers: { 'Accept': 'application/json' },
-            // Timeout curto para não travar a UI se a API local não existir
             signal: AbortSignal.timeout(3000) 
         });
         
         if (!response.ok) {
-            // Em dev local sem Vercel, isso vai dar 404. É esperado.
-            // console.warn("API de indicadores indisponível, usando fallback.");
+            console.warn("API de indicadores retornou erro, usando fallback.");
             return FALLBACK_IPCA;
         }
         
@@ -33,7 +31,7 @@ const fetchInflationData = async (): Promise<number> => {
         
         return FALLBACK_IPCA;
     } catch (e) {
-        // Erro de rede, timeout ou json inválido
+        // Erros de rede (ex: offline) ou timeout caem aqui
         return FALLBACK_IPCA;
     }
 };
@@ -44,7 +42,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
 
   try {
-      // 1. Busca Dividendos Históricos e Futuros no Supabase (Fonte: Scraper)
+      // 1. Busca Dividendos no Supabase
       const { data: dividendsData, error: divError } = await supabase
             .from('market_dividends')
             .select('*')
@@ -59,11 +57,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             dateCom: d.date_com, 
             paymentDate: d.payment_date,
             rate: Number(d.rate),
-            quantityOwned: 0, // Será calculado no App.tsx
-            totalReceived: 0 // Será calculado no App.tsx
+            quantityOwned: 0, 
+            totalReceived: 0
       }));
 
-      // 2. Busca Metadata (Fundamentos e Segmentos) no Supabase (Fonte: Scraper)
+      // 2. Busca Metadata (Fundamentos Atualizados pelo Scraper)
       const { data: metaData, error: metaError } = await supabase
             .from('ativos_metadata')
             .select('*')
@@ -92,7 +90,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                       roe: Number(m.roe) || 0,
                       vacancy: Number(m.vacancia) || 0,
                       liquidity: m.liquidez || '',
-                      market_cap: m.current_price ? String(m.current_price) : undefined, 
+                      market_cap: m.valor_mercado || undefined, 
                       sentiment: 'Neutro',
                       sentiment_reason: `Dados fundamentais atualizados em ${new Date(m.updated_at).toLocaleDateString()}`,
                       sources: [{ title: 'Investidor10', uri: `https://investidor10.com.br/` }]
@@ -101,7 +99,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           });
       }
 
-      // 3. Busca Indicadores Macro (Async)
+      // 3. Busca IPCA em paralelo (não bloqueante)
       const ipca = await fetchInflationData();
 
       return { 
@@ -112,6 +110,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   } catch (error: any) {
       console.error("MarketService Fatal:", error);
+      // Retorna objeto vazio em caso de erro fatal para não quebrar a UI
       return { dividends: [], metadata: {}, error: error.message };
   }
 };

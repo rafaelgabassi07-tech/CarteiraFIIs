@@ -53,6 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const targetUrl = `https://investidor10.com.br/${typePath}/${stock.toLowerCase()}/`;
     
+    // Headers para simular navegador real
     const headers = { 
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
@@ -66,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         html = response.data;
     } else {
-        const response = await axios.get(targetUrl, { headers, timeout: 20000 });
+        const response = await axios.get(targetUrl, { headers, timeout: 25000 });
         html = response.data;
     }
 
@@ -85,54 +86,78 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
     };
 
-    // 3. Scanner de Fundamentos (Estratégia Genérica)
-    // Varre todos os blocos de dados da página, associa título -> valor
-    const dataMap: Record<string, string> = {};
-
-    $('div.cell, div.card, div.data-item, li.item').each((_, el) => {
-        const titleEl = $(el).find('.title, .name, span:first-child, strong, .label').first();
-        const valueEl = $(el).find('.value, .detail, span:last-child, .number').last();
-        
-        if (titleEl.length && valueEl.length) {
-            const key = titleEl.text().trim().toUpperCase().replace(/[\.\/]/g, ''); // Remove pontos e barras do título (P/L -> PL)
-            const val = valueEl.text().trim();
-            if (key && val) {
-                dataMap[key] = val;
-            }
+    // 3. SCANNER VISUAL DE DADOS
+    // Em vez de confiar em classes CSS que mudam, procuramos pelo TEXTO do rótulo (ex: "P/L")
+    // e pegamos o valor visualmente associado a ele.
+    const findValueByLabel = (labels: string[]) => {
+        // Tenta achar via title attribute (Comum no Desktop)
+        for (const label of labels) {
+            const val = $(`div[title="${label}"] .value`).text().trim();
+            if (val) return val;
         }
-    });
 
-    // Mapeamento Inteligente
-    // Busca chaves comuns e suas variações
-    const getMapVal = (keys: string[]) => {
-        for (const k of keys) {
-            if (dataMap[k]) return dataMap[k];
-            // Tenta match parcial
-            const found = Object.keys(dataMap).find(dk => dk.includes(k));
-            if (found) return dataMap[found];
-        }
-        return '';
+        // Tenta achar varrendo spans/divs (Comum no Mobile)
+        let foundValue = '';
+        $('span, div.name, p, strong, div.title').each((_, el) => {
+             const txt = $(el).text().trim().toUpperCase();
+             // Verifica se o texto do elemento bate com algum dos labels procurados
+             if (labels.some(l => txt === l.toUpperCase())) {
+                 // Estratégia 1: O valor é o próximo irmão (Next Sibling)
+                 let next = $(el).next().text().trim();
+                 if (next && /\d/.test(next)) { foundValue = next; return false; }
+                 
+                 // Estratégia 2: O valor está dentro do mesmo container pai
+                 next = $(el).parent().find('.value, .detail, span:not(.title):not(.name)').last().text().trim();
+                 if (next && /\d/.test(next)) { foundValue = next; return false; }
+             }
+        });
+        return foundValue;
     };
 
-    let cotacao = parseVal(getMapVal(['COTAÇÃO', 'COTACAO', 'VALOR ATUAL']));
-    if (!cotacao) cotacao = parseVal($('.quotation-price').first().text());
+    // --- Extração de Fundamentos (Blindada contra mudanças de layout) ---
+    
+    // Cotação
+    let cotacao = parseVal($('div[title="Cotação"] .value').text() || $('.quotation-price').first().text());
+    if (!cotacao) cotacao = parseVal(findValueByLabel(['Cotação', 'Valor Atual', 'Preço']));
 
-    let pvp = parseVal(getMapVal(['PVP', 'P/VP', 'VPA', 'VP']));
-    let dy = parseVal(getMapVal(['DY', 'DIVIDEND YIELD', 'YIELD']));
-    let pl = parseVal(getMapVal(['PL', 'P/L', 'PREÇO/LUCRO']));
-    let roe = parseVal(getMapVal(['ROE', 'RETORNO SOBRE']));
-    let vacancia = parseVal(getMapVal(['VACANCIA', 'VACÂNCIA FÍSICA']));
-    let liquidezStr = getMapVal(['LIQUIDEZ', 'LIQUIDEZ DIÁRIA', 'VOL MÉDIO']);
+    // P/VP
+    let pvp = parseVal(findValueByLabel(['P/VP', 'VPA', 'VP', 'P/VPA']));
+    
+    // DY
+    let dy = parseVal(findValueByLabel(['Dividend Yield', 'DY', 'Yield']));
+
+    // P/L (Preço/Lucro - Ações)
+    let pl = parseVal(findValueByLabel(['P/L', 'PL', 'Preço/Lucro']));
+
+    // ROE (Return on Equity)
+    let roe = parseVal(findValueByLabel(['ROE', 'Return on Equity']));
+
+    // Vacância (FIIs)
+    let vacancia = parseVal(findValueByLabel(['Vacância Física', 'Vacância', 'Vacância F.']));
+
+    // Liquidez
+    let liquidezStr = findValueByLabel(['Liquidez Média Diária', 'Liquidez', 'Vol Médio']);
+    if (!liquidezStr) liquidezStr = $('span:contains("Liquidez")').next().text().trim();
+
+    // Valor de Mercado (Novo)
+    let valorMercadoStr = findValueByLabel(['Valor de Mercado', 'Market Cap']);
 
     // 4. Segmento
     let segment = 'Geral';
-    const rawSeg = getMapVal(['SEGMENTO', 'SETOR']);
-    if (rawSeg && rawSeg.length > 2) {
-        segment = rawSeg.replace(/^[\d\s.-]+/, '').replace(/\s+/g, ' ').trim();
+    const segRaw = findValueByLabel(['Segmento', 'Setor', 'Segmento de Atuação']);
+    if (segRaw && segRaw.length > 2) {
+        segment = segRaw.replace(/^[\d\s.-]+/, '').replace(/\s+/g, ' ').trim();
         if (segment === segment.toUpperCase()) segment = segment.charAt(0) + segment.slice(1).toLowerCase();
+    } else {
+        // Fallback antigo
+        const directSelectors = ['.segment-data .value', '.sector-data .value'];
+        for (const sel of directSelectors) {
+            const txt = $(sel).first().text().trim();
+            if (txt && txt.length > 2) { segment = txt; break; }
+        }
     }
 
-    // Salva Metadados
+    // Salva Metadados no Supabase
     await supabase.from('ativos_metadata').upsert({
         ticker: stock, 
         type: assetType, 
@@ -144,14 +169,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         roe,
         vacancia,
         liquidez: liquidezStr,
+        valor_mercado: valorMercadoStr,
         updated_at: new Date()
     }, { onConflict: 'ticker' });
 
-    // 5. Proventos - Lógica Híbrida
+    // 5. Proventos - Scanner de Tabelas
     const dividendsToUpsert: any[] = [];
     const processedKeys = new Set();
 
     let tablesToScan = $('#table-dividends-history');
+    // Se não achar a tabela específica, pega qualquer tabela que pareça de dividendos
     if (tablesToScan.length === 0) {
         tablesToScan = $('table').filter((_, el) => {
             const txt = $(el).text().toLowerCase();
@@ -159,6 +186,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
     }
 
+    // Processa linhas da tabela
     tablesToScan.find('tr').each((_, tr) => {
         const tds = $(tr).find('td');
         if (tds.length < 2) return;
@@ -167,19 +195,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         processRow(tds, rowText);
     });
 
-    // Fallback para Mobile Cards
+    // Fallback: Se não achou tabela, procura cards (layout mobile)
     if (dividendsToUpsert.length === 0) {
-        $('div.card-body, div.grid-item').each((_, el) => {
+        $('div.grid-item, div.card-body').each((_, el) => {
              const txt = $(el).text();
-             // Procura padrões de data (dd/mm/aaaa) e valor monetário
              if (/\d{2}\/\d{2}\/\d{4}/.test(txt) && (txt.includes('R$') || txt.includes(','))) {
-                 // Cria um pseudo-elemento para processar como linha
-                 const spans = $(el).find('span, div, p');
-                 processRow(spans, txt);
+                 const pseudoRow = $(el).find('*');
+                 processRow(pseudoRow, txt);
              }
         });
     }
 
+    // Função genérica que tenta extrair data e valor de um conjunto de elementos HTML
+    // Usa 'any' no Cheerio para evitar conflitos de versão de tipos no Vercel
     function processRow(elements: cheerio.Cheerio<any>, fullText: string) {
         const datesFound: string[] = [];
         let valueFound = 0;
@@ -191,8 +219,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             if (!txt.includes('%') && (txt.includes(',') || txt.includes('.')) && /\d/.test(txt)) {
                 const val = parseVal(txt);
-                // Filtros de sanidade (Proventos raramente > 500 ou < 0.01)
-                if (val > 0.001 && val < 500) { 
+                // Filtro de sanidade: Dividendos > 0 e < 1000 (evita pegar cotação por engano)
+                if (val > 0.001 && val < 1000) { 
                     if (txt.includes('R$') || valueFound === 0) {
                         valueFound = val;
                     }
@@ -226,7 +254,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (dividendsToUpsert.length > 0) {
-        dividendsToUpsert.sort((a, b) => b.payment_date.localeCompare(a.payment_date));
         await supabase.from('market_dividends').upsert(dividendsToUpsert, {
             onConflict: 'ticker, type, date_com, payment_date, rate', ignoreDuplicates: true
         });
@@ -236,9 +263,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: true, 
         ticker: stock, 
         segment: segment,
-        fundamentals: { price: cotacao, pvp, dy, pl, roe, vacancia, liquidez: liquidezStr },
+        fundamentals: { 
+            price: cotacao, 
+            pvp, 
+            dy, 
+            pl, 
+            roe, 
+            vacancia, 
+            liquidez: liquidezStr,
+            market_cap: valorMercadoStr
+        },
         dividends_found: dividendsToUpsert.length,
-        method: 'scan_v6_full'
+        method: 'scanner_v8_resilient'
     });
 
   } catch (error: any) {
