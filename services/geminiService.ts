@@ -13,10 +13,10 @@ export interface UnifiedMarketData {
 const fetchInflationData = async (): Promise<number> => {
     const FALLBACK_IPCA = 4.62;
     try {
-        // Usa timeout curto (3s) para não travar o carregamento dos ativos se a API demorar
+        // Aumentado timeout para 10s (Serverless cold start + API lenta do governo)
         const response = await fetch('/api/indicators', { 
             headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(3000) 
+            signal: AbortSignal.timeout(10000) 
         });
         
         if (!response.ok) {
@@ -32,6 +32,7 @@ const fetchInflationData = async (): Promise<number> => {
         return FALLBACK_IPCA;
     } catch (e) {
         // Erros de rede (ex: offline) ou timeout caem aqui
+        console.warn("Timeout ou erro de rede ao buscar IPCA", e);
         return FALLBACK_IPCA;
     }
 };
