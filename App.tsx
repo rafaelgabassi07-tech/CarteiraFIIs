@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.3.1'; 
+const APP_VERSION = '8.3.2'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -97,7 +97,12 @@ const App: React.FC = () => {
   });
   
   const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
-  const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.5, startDate: '' }; } catch { return { ipca: 4.5, startDate: '' }; } });
+  const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { 
+      try { 
+          const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); 
+          return s ? JSON.parse(s) : { ipca: 4.62, startDate: '' }; 
+      } catch { return { ipca: 4.62, startDate: '' }; } 
+  });
   
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => {
       try { const s = localStorage.getItem(STORAGE_KEYS.METADATA); return s ? JSON.parse(s) : {}; } catch { return {}; }
@@ -220,7 +225,7 @@ const App: React.FC = () => {
       
       if (aiData.indicators) {
          setMarketIndicators({ 
-             ipca: aiData.indicators.ipca_cumulative, 
+             ipca: aiData.indicators.ipca_cumulative || 4.62, // Fallback se vier zero
              startDate: aiData.indicators.start_date_used 
          });
       }
@@ -392,11 +397,16 @@ const App: React.FC = () => {
             const normalizedTicker = p.ticker.trim().toUpperCase();
             const meta = assetsMetadata[normalizedTicker] || {};
             const quote = quotes[normalizedTicker] || {};
+            
+            // Limpeza de Segmento
+            let segment = meta.segment || 'Geral';
+            segment = segment.replace('Seg: ', '').trim();
+            if (segment.length > 20) segment = segment.substring(0, 20) + '...';
 
             return { 
                 ...p, 
                 totalDividends: divPaidMap[p.ticker] || 0, 
-                segment: meta.segment || 'Geral', 
+                segment: segment, 
                 currentPrice: quote.regularMarketPrice || p.averagePrice, 
                 dailyChange: quote.regularMarketChangePercent || 0, 
                 logoUrl: quote.logourl, 
