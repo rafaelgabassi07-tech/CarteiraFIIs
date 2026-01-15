@@ -1,15 +1,16 @@
 
 import React, { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Plus, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar } from 'lucide-react';
-import { SwipeableModal } from '../components/Layout';
+import { TrendingUp, TrendingDown, Plus, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Square, CheckCircle2 } from 'lucide-react';
+import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
+import { supabase } from '../services/supabase';
 
 const formatBRL = (val: number, privacy = false) => {
   if (privacy) return '••••••';
   return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-// Helper para formatar Mês/Ano (Ex: 2024-05 -> MAIO 2024)
+// Helper para formatar Mês/Ano
 const formatMonthHeader = (monthKey: string) => {
     try {
         const [year, month] = monthKey.split('-');
@@ -24,6 +25,8 @@ const formatMonthHeader = (monthKey: string) => {
 const TransactionRow = React.memo(({ index, style, data }: any) => {
   const item = data.items[index];
   const privacyMode = data.privacyMode;
+  const isSelectionMode = data.isSelectionMode;
+  const isSelected = data.selectedIds.has(item.data?.id);
   
   // Cabeçalho de Mês
   if (item.type === 'header') {
@@ -45,17 +48,28 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
   return (
       <div className="px-0.5 py-1 anim-stagger-item" style={{ ...style, animationDelay: `${(index % 10) * 30}ms` }}>
           <button 
-            onClick={() => data.onRowClick(t)}
-            className="w-full text-left bg-surface-light dark:bg-surface-dark p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-sm press-effect hover:border-zinc-300 dark:hover:border-zinc-700"
+            onClick={() => isSelectionMode ? data.onToggleSelect(t.id) : data.onRowClick(t)}
+            className={`w-full text-left p-3.5 rounded-2xl border flex items-center justify-between shadow-sm press-effect transition-all duration-300 ${
+                isSelected 
+                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-500/30' 
+                : 'bg-surface-light dark:bg-surface-dark border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+            }`}
           >
               <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
-                      {isBuy ? <TrendingUp className="w-4.5 h-4.5" /> : <TrendingDown className="w-4.5 h-4.5" />}
-                  </div>
+                  {isSelectionMode ? (
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-600'}`}>
+                          {isSelected ? <CheckCircle2 className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                      </div>
+                  ) : (
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
+                          {isBuy ? <TrendingUp className="w-4.5 h-4.5" /> : <TrendingDown className="w-4.5 h-4.5" />}
+                      </div>
+                  )}
+                  
                   <div>
-                      <h4 className="font-black text-sm text-zinc-900 dark:text-white">{t.ticker}</h4>
+                      <h4 className={`font-black text-sm ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{t.ticker}</h4>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase">{t.date.split('-').reverse().slice(0,2).join('/')}</span>
+                        <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.date.split('-').reverse().slice(0,2).join('/')}</span>
                         <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase ${t.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800'}`}>
                             {t.assetType === AssetType.FII ? 'FII' : 'Ação'}
                         </span>
@@ -63,8 +77,8 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
                   </div>
               </div>
               <div className="text-right">
-                  <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(t.price * t.quantity, privacyMode)}</p>
-                  <p className="text-[10px] text-zinc-400 font-medium">{t.quantity}x {t.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  <p className={`text-sm font-black ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(t.price * t.quantity, privacyMode)}</p>
+                  <p className={`text-[10px] font-medium ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.quantity}x {t.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
               </div>
           </button>
       </div>
@@ -87,6 +101,12 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [editingId, setEditingId] = useState<string | null>(null);
     const [activeFilter, setActiveFilter] = useState<FilterOption>('ALL');
     
+    // Selection Mode States
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     // Form States
     const [ticker, setTicker] = useState('');
     const [type, setType] = useState<'BUY' | 'SELL'>('BUY');
@@ -118,7 +138,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 groups[k] = { items: [], totalBuy: 0 };
             }
             groups[k].items.push(t);
-            // Soma apenas compras para o total de aporte
             if (t.type === 'BUY') {
                 groups[k].totalBuy += (t.price * t.quantity);
             }
@@ -126,7 +145,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
         const list: any[] = [];
         Object.keys(groups).sort((a,b) => b.localeCompare(a)).forEach(k => {
-            // Header agora carrega o totalBuy
             list.push({ type: 'header', monthKey: k, monthlyTotal: groups[k].totalBuy });
             groups[k].items.forEach((t: any) => list.push({ type: 'item', data: t }));
         });
@@ -196,6 +214,47 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         }
     };
 
+    const toggleSelectionMode = () => {
+        if (isSelectionMode) {
+            setIsSelectionMode(false);
+            setSelectedIds(new Set());
+        } else {
+            setIsSelectionMode(true);
+        }
+    };
+
+    const handleToggleSelect = (id: string) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedIds(newSet);
+    };
+
+    const handleBulkDelete = async () => {
+        setIsDeleting(true);
+        try {
+            const idsToDelete = Array.from(selectedIds);
+            const { error } = await supabase.from('transactions').delete().in('id', idsToDelete);
+            
+            if (error) throw error;
+
+            // Recarrega a página ou chama função de reload se disponível. 
+            // Como onUpdateTransaction/onDelete não suportam batch diretamente na interface atual,
+            // forçamos um reload ou seria ideal refatorar o App.tsx para aceitar batch delete.
+            // Aqui vamos simular chamando delete um por um para atualizar o estado local se necessário,
+            // mas o reload garante sincronia.
+            window.location.reload(); 
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao excluir itens.');
+        } finally {
+            setIsDeleting(false);
+            setShowBulkDeleteConfirm(false);
+            setIsSelectionMode(false);
+            setSelectedIds(new Set());
+        }
+    };
+
     const filters: { id: FilterOption; label: string; icon: any }[] = [
         { id: 'ALL', label: 'Tudo', icon: ArrowRightLeft },
         { id: 'BUY', label: 'Compras', icon: TrendingUp },
@@ -205,7 +264,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     ];
 
     return (
-        <div className="anim-fade-in">
+        <div className="anim-fade-in relative h-full">
             <div className="flex items-center justify-between mb-4 px-1 pt-2">
                 <div>
                     <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
@@ -215,15 +274,23 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 </div>
                 
                 <div className="flex gap-2">
+                    {/* Botão de Seleção */}
+                    <button 
+                        onClick={toggleSelectionMode}
+                        className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg press-effect transition-all ${isSelectionMode ? 'bg-indigo-500 text-white ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-black' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
+                    >
+                         {isSelectionMode ? <CheckSquare className="w-5 h-5" /> : <CheckSquare className="w-5 h-5 opacity-50" />}
+                    </button>
+
                     <div className="relative z-30">
                         <button 
                             onClick={() => setIsFilterOpen(!isFilterOpen)}
-                            className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg press-effect transition-colors ${activeFilter !== 'ALL' ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
+                            disabled={isSelectionMode}
+                            className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg press-effect transition-colors ${activeFilter !== 'ALL' ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'} ${isSelectionMode ? 'opacity-30 pointer-events-none' : ''}`}
                         >
                             {isFilterOpen ? <X className="w-5 h-5" /> : <Filter className="w-5 h-5" strokeWidth={2.5} />}
                         </button>
 
-                        {/* Janela Pequena de Filtros (Popover com Glassmorphism) */}
                         {isFilterOpen && (
                             <>
                                 <div 
@@ -260,7 +327,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
                     <button 
                         onClick={handleOpenAdd}
-                        className="w-11 h-11 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl flex items-center justify-center shadow-lg press-effect hover:shadow-xl anim-scale-in"
+                        disabled={isSelectionMode}
+                        className={`w-11 h-11 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl flex items-center justify-center shadow-lg press-effect hover:shadow-xl anim-scale-in ${isSelectionMode ? 'opacity-30 pointer-events-none' : ''}`}
                     >
                         <Plus className="w-5 h-5" strokeWidth={2.5} />
                     </button>
@@ -269,12 +337,19 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
             <div className="h-[calc(100vh-220px)] overflow-y-auto pb-safe">
                 {flatTransactions.length > 0 ? (
-                    <div className="pb-20">
+                    <div className="pb-24">
                         {flatTransactions.map((item: any, index: number) => (
                             <TransactionRow 
                                 key={index} 
                                 index={index} 
-                                data={{ items: flatTransactions, onRowClick: handleOpenEdit, privacyMode }}
+                                data={{ 
+                                    items: flatTransactions, 
+                                    onRowClick: handleOpenEdit, 
+                                    privacyMode,
+                                    isSelectionMode,
+                                    selectedIds,
+                                    onToggleSelect: handleToggleSelect
+                                }}
                                 style={{}} 
                             />
                         ))}
@@ -292,6 +367,26 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
                 )}
             </div>
+
+            {/* Barra Flutuante de Ação em Massa */}
+            {isSelectionMode && selectedIds.size > 0 && (
+                <div className="fixed bottom-24 left-4 right-4 z-40 anim-slide-up">
+                    <div className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-zinc-800 dark:border-zinc-200">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-zinc-800 dark:bg-zinc-100 flex items-center justify-center font-black text-sm">
+                                {selectedIds.size}
+                            </div>
+                            <span className="text-xs font-bold uppercase tracking-wide">Selecionados</span>
+                        </div>
+                        <button 
+                            onClick={() => setShowBulkDeleteConfirm(true)}
+                            className="bg-rose-600 hover:bg-rose-500 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all"
+                        >
+                            <Trash2 className="w-4 h-4" /> Excluir
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <div className="p-6 pb-12">
@@ -404,6 +499,14 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
                 </div>
             </SwipeableModal>
+
+            <ConfirmationModal 
+                isOpen={showBulkDeleteConfirm} 
+                title="Excluir Itens?" 
+                message={`Tem certeza que deseja apagar ${selectedIds.size} ordens selecionadas? Esta ação não pode ser desfeita.`} 
+                onConfirm={handleBulkDelete} 
+                onCancel={() => setShowBulkDeleteConfirm(false)} 
+            />
         </div>
     );
 };

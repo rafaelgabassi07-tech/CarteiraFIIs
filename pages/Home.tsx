@@ -1,9 +1,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, Layers, ChevronUp, Scale, Percent, Info, Coins, BarChart3, LayoutGrid, Gem, CalendarClock, ChevronDown, X } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, Layers, ChevronUp, Scale, Percent, Info, Coins, BarChart3, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, Sector } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -80,6 +80,35 @@ const getDaysUntil = (dateStr: string) => {
     return `Em ${diffDays} dias`;
 };
 
+// Renderizador Customizado para o gráfico de pizza (Active Shape)
+const renderActiveShape = (props: any) => {
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+  return (
+    <g>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius + 8} // Aumenta o raio para dar efeito de zoom
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+        className="drop-shadow-lg filter"
+      />
+      <Sector
+        cx={cx}
+        cy={cy}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        innerRadius={outerRadius + 12}
+        outerRadius={outerRadius + 14}
+        fill={fill}
+        opacity={0.3}
+      />
+    </g>
+  );
+};
+
 const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
@@ -88,10 +117,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showPatrimonyHelp, setShowPatrimonyHelp] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   
-  // Novo estado para controlar o mês selecionado no gráfico de barras
+  // Estado para controlar o segmento ativo nos gráficos de pizza
+  const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
+  const [activeIndexAsset, setActiveIndexAsset] = useState<number | undefined>(undefined);
+  
   const [selectedProventosMonth, setSelectedProventosMonth] = useState<string | null>(null);
   
-  // Fallback agressivo: Se inflationRate for null/undefined/0, usa 4.62% (média histórica recente)
   const safeInflation = Number(inflationRate) || 4.62;
 
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
@@ -126,7 +157,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const todayStr = new Date().toISOString().split('T')[0];
     const today = new Date();
     
-    // Agrupa dividendos
     dividendReceipts.forEach(r => {
         if (!r.paymentDate || r.paymentDate.length < 7) return;
         const key = r.paymentDate.substring(0, 7);
@@ -148,7 +178,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const average = received / (totalMonths > 0 ? totalMonths : 1);
     const maxVal = Math.max(...Object.values(map), 0);
     
-    // Dados para o Gráfico de Barras (Cronológico)
     const dividendsChartData = sortedHistory.map(([date, val]) => {
         const [y, m] = date.split('-');
         const d = new Date(parseInt(y), parseInt(m) - 1, 1);
@@ -160,7 +189,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         };
     }).reverse();
 
-    // --- LÓGICA DE INFLAÇÃO RECONSTRUÍDA ---
     const investedByMonth: Record<string, number> = {};
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
@@ -305,7 +333,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md p-3 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700">
+        <div className="bg-white/95 dark:bg-zinc-800/95 backdrop-blur-md p-3 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 z-50">
           <p className="text-xs font-black text-zinc-900 dark:text-white mb-0.5">{payload[0].name}</p>
           <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
             {formatBRL(payload[0].value, privacyMode)} ({formatPercent((payload[0].value / typeData.total) * 100)})
@@ -316,7 +344,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return null;
   };
 
-  // Tooltip customizado para o gráfico de barras positivo/negativo
   const NetBarTooltip = ({ active, payload, label }: any) => {
       if (active && payload && payload.length) {
           const val = payload[0].value;
@@ -337,7 +364,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return null;
   };
 
-  // Tooltip simples para o novo gráfico de proventos
   const DividendChartTooltip = ({ active, payload, label }: any) => {
       if (active && payload && payload.length) {
           return (
@@ -618,7 +644,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          <div className="p-6 pb-20">
              <div className="flex items-center justify-between mb-6 anim-slide-up">
                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200 dark:border-emerald-900">
                         <Wallet className="w-6 h-6" strokeWidth={1.5} />
                     </div>
                     <div>
@@ -632,15 +658,34 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </button>
                  )}
              </div>
+
+             {/* Grid de Resumo Visualmente Melhorado */}
+             {!selectedProventosMonth && (
+                 <div className="grid grid-cols-2 gap-3 mb-6 anim-slide-up" style={{ animationDelay: '50ms' }}>
+                     <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-3xl text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
+                         <div className="absolute top-0 right-0 p-4 opacity-10"><Coins className="w-12 h-12" /></div>
+                         <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
+                         <p className="text-2xl font-black">{formatBRL(received, privacyMode)}</p>
+                     </div>
+                     <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                         <div className="absolute top-0 right-0 p-4 opacity-5"><BarChart3 className="w-12 h-12" /></div>
+                         <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
+                         <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(average, privacyMode)}</p>
+                     </div>
+                 </div>
+             )}
              
              {/* Gráfico de Barras Interativo */}
              {dividendsChartData.length > 0 && (
-                 <div className="mb-8 p-2 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-graph-grow shadow-sm">
+                 <div className="mb-8 p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 anim-graph-grow shadow-sm">
+                     <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Evolução Mensal</h3>
+                     </div>
                      <div className="h-48 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
                                 data={dividendsChartData} 
-                                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                                margin={{ top: 10, right: 0, left: -24, bottom: 0 }}
                                 onClick={(data) => {
                                     if (data && data.activePayload && data.activePayload.length > 0) {
                                         const clickedMonth = data.activePayload[0].payload.fullDate;
@@ -661,12 +706,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     axisLine={false} 
                                     tickLine={false} 
                                     tick={{ fontSize: 9, fill: '#a1a1aa' }} 
-                                    tickFormatter={(val) => `R$${val}`} 
+                                    tickFormatter={(val) => `${val/1000}k`} 
                                 />
-                                <RechartsTooltip content={<DividendChartTooltip />} cursor={{ fill: '#71717a10', radius: 4 }} />
+                                <RechartsTooltip content={<DividendChartTooltip />} cursor={{ fill: '#71717a10', radius: 8 }} />
                                 <Bar 
                                     dataKey="value" 
-                                    radius={[4, 4, 0, 0]} 
+                                    radius={[6, 6, 6, 6]} 
                                     isAnimationActive={true}
                                     animationDuration={1500}
                                     animationBegin={200}
@@ -683,7 +728,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             </BarChart>
                         </ResponsiveContainer>
                      </div>
-                     <p className="text-center text-[9px] font-bold text-zinc-400 mt-2 uppercase tracking-widest">Toque nas barras para filtrar</p>
                  </div>
              )}
 
@@ -703,7 +747,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         {(receiptsByMonth[selectedProventosMonth] || [])
                             .sort((a, b) => b.totalReceived - a.totalReceived)
                             .map((detail, idx) => (
-                            <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-700 transition-colors anim-stagger-item" style={{ animationDelay: `${idx * 50}ms` }}>
+                            <div key={idx} className="flex justify-between items-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-700 transition-colors anim-stagger-item" style={{ animationDelay: `${idx * 50}ms` }}>
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-700 flex items-center justify-center text-xs font-black text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-600 shadow-sm">
                                         {detail.ticker.substring(0,2)}
@@ -733,17 +777,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              ) : (
                  // Visualização padrão (Sem filtro)
                  <>
-                     <div className="grid grid-cols-2 gap-3 mb-6 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                         <div className="bg-emerald-500 p-5 rounded-2xl text-white shadow-lg shadow-emerald-500/20">
-                             <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
-                             <p className="text-2xl font-black">{formatBRL(received, privacyMode)}</p>
-                         </div>
-                         <div className="bg-zinc-100 dark:bg-zinc-800 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-700">
-                             <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
-                             <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(average, privacyMode)}</p>
-                         </div>
-                     </div>
-
                      {sortedProvisionedMonths.length > 0 && (
                          <div className="mb-6 anim-slide-up" style={{ animationDelay: '200ms' }}>
                              <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest px-2 mb-2 flex items-center gap-2">
@@ -800,12 +833,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     const monthlyDetails = receiptsByMonth[month] || [];
 
                                     return (
-                                        <div key={month} className={`group rounded-2xl transition-all duration-300 border overflow-hidden anim-slide-up ${isExpanded ? 'bg-white dark:bg-zinc-900 border-emerald-500 shadow-lg scale-[1.02] z-10' : 'bg-surface-light dark:bg-surface-dark border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`} style={{ animationDelay: `${400 + (i * 50)}ms` }}>
+                                        <div key={month} className={`group rounded-2xl transition-all duration-500 border overflow-hidden anim-slide-up ${isExpanded ? 'bg-white dark:bg-zinc-900 border-emerald-500 shadow-lg scale-[1.02] z-10 ring-4 ring-emerald-500/5' : 'bg-surface-light dark:bg-surface-dark border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`} style={{ animationDelay: `${400 + (i * 50)}ms` }}>
                                             <button onClick={() => toggleMonthExpand(month)} className="w-full p-5 flex flex-col gap-2 relative">
                                                 <div className="w-full flex justify-between items-center relative z-10">
                                                     <div className="flex items-center gap-4">
                                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors border border-zinc-100 dark:border-zinc-800 ${isExpanded ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
-                                                            <Calendar className="w-5 h-5" strokeWidth={2} />
+                                                            <Receipt className="w-5 h-5" strokeWidth={2} />
                                                         </div>
                                                         <div className="text-left">
                                                             <span className={`text-sm font-black capitalize block leading-tight ${isExpanded ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-200'}`}>{monthName}</span>
@@ -863,21 +896,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="p-6 pb-20">
              <div className="flex items-center gap-4 mb-6 anim-slide-up">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm border border-blue-200 dark:border-blue-900/50">
                     <PieIcon className="w-6 h-6" strokeWidth={1.5} />
                 </div>
                 <div>
                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Distribuição Visual</p>
+                    <p className="text-xs text-zinc-500 font-medium">Toque para explorar os gráficos</p>
                 </div>
              </div>
 
-             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm anim-graph-grow" style={{ animationDelay: '100ms' }}>
+             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm anim-graph-grow relative overflow-visible" style={{ animationDelay: '100ms' }}>
                  <div className="flex items-center gap-2 mb-2 px-2">
                      <LayoutGrid className="w-3 h-3 text-zinc-400" />
                      <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Por Classe</h3>
                  </div>
-                 <div className="h-48 w-full relative">
+                 <div className="h-48 w-full relative z-10">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie 
@@ -891,6 +924,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 animationDuration={1400}
                                 animationBegin={200}
                                 animationEasing="ease-out"
+                                activeIndex={activeIndexClass}
+                                activeShape={renderActiveShape}
+                                onMouseEnter={(_, index) => setActiveIndexClass(index)}
+                                onTouchStart={(_, index) => setActiveIndexClass(index)}
+                                onMouseLeave={() => setActiveIndexClass(undefined)}
                             >
                                 {classChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                             </Pie>
@@ -903,11 +941,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                  </div>
                  <div className="grid grid-cols-2 gap-3 mt-2">
-                     <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 flex items-center justify-between">
+                     <div 
+                        className={`p-3 rounded-xl border flex items-center justify-between transition-all duration-300 ${activeIndexClass === 0 ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-500/30' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-700/50'}`}
+                        onClick={() => setActiveIndexClass(0)}
+                     >
                          <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-indigo-500"></div><span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">FIIs</span></div>
                          <span className="text-xs font-black text-zinc-900 dark:text-white">{formatPercent(typeData.fiis.percent, privacyMode)}</span>
                      </div>
-                     <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 flex items-center justify-between">
+                     <div 
+                        className={`p-3 rounded-xl border flex items-center justify-between transition-all duration-300 ${activeIndexClass === 1 ? 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-500/30' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-700/50'}`}
+                        onClick={() => setActiveIndexClass(1)}
+                     >
                          <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-sky-500"></div><span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">Ações</span></div>
                          <span className="text-xs font-black text-zinc-900 dark:text-white">{formatPercent(typeData.stocks.percent, privacyMode)}</span>
                      </div>
@@ -915,12 +959,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              </div>
 
              {assetsChartData.length > 0 && (
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 anim-slide-up shadow-sm anim-graph-grow" style={{ animationDelay: '300ms' }}>
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 anim-slide-up shadow-sm anim-graph-grow overflow-visible" style={{ animationDelay: '300ms' }}>
                     <div className="flex items-center gap-2 mb-2 px-2">
                         <Gem className="w-3 h-3 text-zinc-400" />
                         <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Por Ativo</h3>
                     </div>
-                    <div className="h-56 w-full">
+                    <div className="h-56 w-full relative z-10">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie 
@@ -934,6 +978,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     animationDuration={1600}
                                     animationBegin={300}
                                     animationEasing="ease-out"
+                                    activeIndex={activeIndexAsset}
+                                    activeShape={renderActiveShape}
+                                    onMouseEnter={(_, index) => setActiveIndexAsset(index)}
+                                    onTouchStart={(_, index) => setActiveIndexAsset(index)}
+                                    onMouseLeave={() => setActiveIndexAsset(undefined)}
                                 >
                                     {assetsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
@@ -943,7 +992,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                     <div className="space-y-2 mt-2">
                         {assetsChartData.map((entry, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors anim-stagger-item" style={{ animationDelay: `${500 + index * 50}ms` }}>
+                            <div 
+                                key={index} 
+                                className={`flex items-center justify-between p-2 rounded-lg transition-all anim-stagger-item cursor-pointer ${activeIndexAsset === index ? 'bg-zinc-100 dark:bg-zinc-800 scale-105' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800'}`} 
+                                style={{ animationDelay: `${500 + index * 50}ms` }}
+                                onClick={() => setActiveIndexAsset(index)}
+                            >
                                 <div className="flex items-center gap-2.5 overflow-hidden">
                                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
                                     <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 truncate max-w-[150px]">{entry.name}</span>
