@@ -77,10 +77,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 5. Parsers Auxiliares
     const parseMoney = (text: string) => {
       if (!text) return 0;
-      // Limpa tudo que não é número, vírgula ou traço (para negativos)
       const clean = text.replace(/[^\d.,-]/g, '').trim();
       if (!clean) return 0;
-      // Padrão brasileiro: ponto separa milhar, vírgula separa decimal
       return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
     };
 
@@ -90,10 +88,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     // 6. Scanner de Dados por Rótulo (Resiliente a mudanças de CSS)
-    // Procura o texto do rótulo (ex: "P/VP") e pega o valor associado visualmente
     const getCardValue = (labels: string[]) => {
        let value = '';
-       
        // Estratégia A: Busca por atributo title (Comum no Desktop)
        labels.forEach(label => {
            if (!value) {
@@ -106,11 +102,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
            $('span, div.name, p, strong').each((_, el) => {
                const txt = $(el).text().trim().toUpperCase();
                if (labels.some(l => txt === l.toUpperCase())) {
-                   // O valor geralmente é o próximo elemento ou está no pai
                    const next = $(el).next().text().trim() || $(el).parent().find('.value').text().trim();
                    if (next && /\d/.test(next)) {
                        value = next;
-                       return false; // Break loop
+                       return false; 
                    }
                }
            });
@@ -125,7 +120,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const pl = getCardValue(['P/L', 'PL', 'Preço/Lucro']);
     const vacancia = getCardValue(['Vacância Física', 'Vacância']);
     
-    // Valor de Mercado: Tratamento especial pois pode vir como texto (ex: "2.5 B")
     let valMercadoStr = '';
     $('div, span').each((_, el) => {
         if ($(el).text().trim() === 'Valor de Mercado') {
@@ -133,12 +127,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
     });
 
+    // --- SAFETY CHECK ---
+    // Se cotacao for 0 e DY for 0, provavelmente fomos bloqueados ou o layout mudou drasticamente.
+    // Não salvamos no banco para não corromper dados existentes com zeros.
+    if (cotacao === 0 && dy === 0 && pvp === 0) {
+        throw new Error("Scraping retornou dados zerados. Possível bloqueio ou ticker inválido.");
+    }
+
     // Segmento
     let segment = 'Geral';
     const segmentEl = $('.segment-data .value, .sector-data .value').first();
     if (segmentEl.length) segment = segmentEl.text().trim();
 
-    // 8. Salvar Metadados no Supabase (Tabela 'ativos_metadata')
+    // 8. Salvar Metadados no Supabase
     const metadataPayload = {
         ticker: stock,
         type: assetType,
@@ -159,7 +160,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const dividendsToUpsert: any[] = [];
     const processedKeys = new Set();
     
-    // Procura por qualquer tabela que pareça ter dividendos
     const tables = $('table');
     tables.each((_, table) => {
         const headerText = $(table).text().toLowerCase();
@@ -167,17 +167,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
              $(table).find('tbody tr').each((__, tr) => {
                 const tds = $(tr).find('td');
                 if (tds.length >= 3) {
-                    // Lógica para encontrar colunas dinamicamente seria ideal, 
-                    // mas o padrão do site é consistente: Tipo | Data Com | Data Pag | Valor
                     let tipoIdx = 0, comIdx = 1, pagIdx = 2, valIdx = 3;
-                    
-                    // Ajuste fino se a tabela tiver colunas diferentes
                     if (tds.length === 3) { comIdx = 0; pagIdx = 1; valIdx = 2; tipoIdx = -1; }
 
                     const tipoRaw = tipoIdx >= 0 ? $(tds[tipoIdx]).text().toUpperCase() : 'DIV';
                     const tipo = tipoRaw.includes('JCP') ? 'JCP' : 'DIV';
                     const dataCom = parseDate($(tds[comIdx]).text());
-                    const dataPag = parseDate($(tds[pagIdx]).text()) || dataCom; // Fallback se não tiver data pag
+                    const dataPag = parseDate($(tds[pagIdx]).text()) || dataCom;
                     const valor = parseMoney($(tds[valIdx]).text());
 
                     if (dataCom && valor > 0) {
@@ -198,7 +194,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
     });
 
-    // Salvar Dividendos no Supabase (Tabela 'market_dividends')
     if (dividendsToUpsert.length > 0) {
         const { error: divError } = await supabase.from('market_dividends').upsert(dividendsToUpsert, {
             onConflict: 'ticker, type, date_com, payment_date, rate', 
@@ -207,25 +202,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (divError) console.error('Erro Supabase Dividendos:', divError);
     }
 
-    // 10. Resposta Final
     return res.status(200).json({
       success: true,
       ticker: stock,
-      data: {
-        price: cotacao,
-        dy,
-        pvp,
-        pl,
-        segment
-      },
+      data: { price: cotacao, dy, pvp, pl, segment },
       dividends_found: dividendsToUpsert.length
     });
 
   } catch (error: any) {
     console.error(`Scraper Error [${stock}]:`, error.message);
-    return res.status(500).json({ 
-        error: 'Falha ao obter dados.', 
-        details: error.message 
-    });
+    return res.status(500).json({ error: 'Falha ao obter dados.', details: error.message });
   }
 }
