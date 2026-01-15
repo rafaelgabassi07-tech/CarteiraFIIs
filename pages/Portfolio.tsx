@@ -44,8 +44,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
 
   return (
     <div className="pb-24 min-h-screen">
-      {/* Search Bar Sticky Fix */}
-      <div className="sticky top-[4.5rem] z-30 -mx-4 px-4 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all">
+      {/* Search Bar Sticky Fix - Agora com fundo sólido para cobrir a lista ao rolar */}
+      <div className="sticky top-[4.5rem] z-30 -mx-4 px-4 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all shadow-sm">
         <div className="flex flex-col gap-3">
             <div className="relative flex items-center">
                 <Search className="w-4 h-4 absolute left-3 text-zinc-400" />

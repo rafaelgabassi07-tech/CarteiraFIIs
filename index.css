@@ -60,6 +60,7 @@
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   .pt-safe { padding-top: env(safe-area-inset-top); }
   
+  /* Esconde Scrollbars mantendo funcionalidade */
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -131,7 +132,7 @@
   to { opacity: 1; transform: scaleY(1); }
 }
 
-/* Global Scrollbar Hiding */
+/* Global Scrollbar Hiding for ALL elements */
 ::-webkit-scrollbar {
   display: none;
   width: 0px;
@@ -139,6 +140,6 @@
 }
 
 * {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
