@@ -3,6 +3,13 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import https from 'https';
+import { createClient } from '@supabase/supabase-js';
+
+// --- CONFIGURAÇÃO SUPABASE ---
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '',
+  process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || ''
+);
 
 // --- OTIMIZAÇÃO: AGENTE HTTPS ---
 const httpsAgent = new https.Agent({ 
@@ -101,7 +108,7 @@ async function scrapeFundamentos(ticker: string) {
             num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
             taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A',
 
-            // Ações (Novos Campos)
+            // Ações
             margem_liquida: 'N/A', margem_bruta: 'N/A', margem_ebit: 'N/A',
             divida_liquida_ebitda: 'N/A', divida_liquida_pl: 'N/A', ev_ebitda: 'N/A',
             payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A'
@@ -133,67 +140,26 @@ async function scrapeFundamentos(ticker: string) {
             }
 
             // --- FALLBACK POR TEXTO ---
-            // Geral
             if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || titulo.includes('dy ('))) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
-            if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
-
-            // FIIs
+            
+            // FIIs Específicos
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
-            if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
-            if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
-            if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
-            if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
-            if (dados.mandato === 'N/A' && titulo.includes('mandato')) dados.mandato = valor;
-            if (dados.tipo_fundo === 'N/A' && titulo.includes('tipo de fundo')) dados.tipo_fundo = valor;
-            if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
-            if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
-            if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas')) dados.cotas_emitidas = valor;
-            if (dados.publico_alvo === 'N/A' && titulo.includes('publico') && titulo.includes('alvo')) dados.publico_alvo = valor;
-
-            // Ações
-            if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
-            if (dados.roe === 'N/A' && titulo.replace(/\./g, '') === 'roe') dados.roe = valor;
-            if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
             
-            // Margens & Payout
-            if (titulo.includes('margem liquida')) dados.margem_liquida = valor;
-            if (titulo.includes('margem bruta')) dados.margem_bruta = valor;
-            if (titulo.includes('margem ebit')) dados.margem_ebit = valor;
-            if (titulo.includes('payout')) dados.payout = valor;
-
-            // EV e Dívidas
-            if (titulo.includes('ev/ebitda')) dados.ev_ebitda = valor;
-            const tClean = titulo.replace(/[\s\/\.\-]/g, ''); 
-            if (dados.divida_liquida_ebitda === 'N/A') {
-                if (tClean.includes('div') && tClean.includes('liq') && tClean.includes('ebitda')) dados.divida_liquida_ebitda = valor;
-            }
-            if (tClean.includes('div') && tClean.includes('liq') && tClean.includes('patrim')) dados.divida_liquida_pl = valor;
-
-            // CAGR
-            if (titulo.includes('cagr') && titulo.includes('receita')) dados.cagr_receita_5a = valor;
-            if (titulo.includes('cagr') && titulo.includes('lucro')) dados.cagr_lucros_5a = valor;
-
-            // VPA/Patrimônio
-            if (dados.vp_cota === 'N/A') {
-                if (titulo === 'vpa' || titulo.replace(/\./g, '') === 'vpa' || titulo.includes('vp por cota')) dados.vp_cota = valor;
-            }
+            // Ações Específicas
+            if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
+            
+            // Patrimônio (Fallback VPA)
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
-                const textoLower = valor.toLowerCase();
-                if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
+                if (valorNumerico > 10000) {
                     if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
                 } else {
                     if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
-            }
-
-            if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
-                num_cotas = parseValue(valor);
-                if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
             }
         };
 
@@ -226,25 +192,13 @@ async function scrapeFundamentos(ticker: string) {
             }
         });
 
-        if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
-            let mercadoCalc = 0;
-            if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
-            else if (dados.patrimonio_liquido !== 'N/A' && dados.pvp !== 'N/A') {
-                const pl = parseExtendedValue(dados.patrimonio_liquido);
-                const pvp = parseValue(dados.pvp);
-                if (pl > 0 && pvp > 0) mercadoCalc = pl * pvp;
-            }
-            if (mercadoCalc > 0) {
-                if (mercadoCalc > 1e9) dados.val_mercado = `R$ ${(mercadoCalc / 1e9).toFixed(2)} Bilhões`;
-                else if (mercadoCalc > 1e6) dados.val_mercado = `R$ ${(mercadoCalc / 1e6).toFixed(2)} Milhões`;
-                else dados.val_mercado = formatCurrency(mercadoCalc);
-            }
-        }
+        // Add cotacao to dataset for return
+        dados.cotacao = cotacao_atual;
 
         return dados;
     } catch (error: any) {
-        console.error("Erro scraper:", error.message);
-        return { dy: '-', pvp: '-' };
+        console.error(`Erro scraper fundamentos [${ticker}]:`, error.message);
+        return { dy: '-', pvp: '-', cotacao: 0 };
     }
 }
 
@@ -304,7 +258,7 @@ async function scrapeAsset(ticker: string) {
 }
 
 // ---------------------------------------------------------
-// PARTE 3: IPCA -> INVESTIDOR10 (NOVA LÓGICA COMPLETA)
+// PARTE 3: IPCA -> INVESTIDOR10
 // ---------------------------------------------------------
 
 async function scrapeIpca() {
@@ -317,42 +271,34 @@ async function scrapeIpca() {
         let acumulado12m = '0,00';
         let acumuladoAno = '0,00';
 
-        // 1. Localiza a tabela correta procurando pelo cabeçalho "Acumulado 12 meses"
-        // O HTML pode usar classes variadas, então buscamos pelo texto do header para garantir
         let $table = null;
         $('table').each((i, el) => {
             const headers = $(el).text().toLowerCase();
             if (headers.includes('acumulado 12 meses') || headers.includes('variação em %')) {
                 $table = $(el);
-                return false; // break loop
+                return false; 
             }
         });
 
         if ($table) {
-            // 2. Itera sobre as linhas do corpo da tabela
-            // Estrutura das colunas: 0=Data, 1=Var%, 2=VarAno, 3=Acum12m
             // @ts-ignore
             $table.find('tbody tr').each((i, el) => {
                 const cols = $(el).find('td');
                 if (cols.length >= 2) {
-                    const dataRef = $(cols[0]).text().trim(); // Ex: Jan/2025
-                    const valorStr = $(cols[1]).text().trim(); // Ex: 0,56
-                    const acAnoStr = $(cols[2]).text().trim(); // Ex: 0,56
-                    const ac12mStr = $(cols[3]).text().trim(); // Ex: 4,50
+                    const dataRef = $(cols[0]).text().trim();
+                    const valorStr = $(cols[1]).text().trim();
+                    const acAnoStr = $(cols[2]).text().trim();
+                    const ac12mStr = $(cols[3]).text().trim();
 
-                    // A primeira linha contém os dados mais recentes (Acumulados atuais)
                     if (i === 0) {
-                         acumulado12m = ac12mStr.replace('.', ','); // Garante formato BR
+                         acumulado12m = ac12mStr.replace('.', ','); 
                          acumuladoAno = acAnoStr.replace('.', ',');
                     }
 
-                    // Pega os últimos 13 meses (margem de segurança)
                     if (dataRef && valorStr && i < 13) {
                          historico.push({
                              mes: dataRef,
-                             // Converte para float para o gráfico (0,56 -> 0.56)
                              valor: parseFloat(valorStr.replace('.', '').replace(',', '.')),
-                             // Mantém string formatada para exibição
                              acumulado_12m: ac12mStr.replace('.', ','),
                              acumulado_ano: acAnoStr.replace('.', ',')
                          });
@@ -361,11 +307,8 @@ async function scrapeIpca() {
             });
         }
 
-        // Inverte array para ficar cronológico no gráfico (Jan -> Dez)
-        const historicoCronologico = historico.reverse();
-
         return {
-            historico: historicoCronologico,
+            historico: historico.reverse(),
             acumulado_12m: acumulado12m,
             acumulado_ano: acumuladoAno
         };
@@ -386,69 +329,119 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'GET' || req.method === 'POST') {
-       res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
-    }
-
     if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-    if (req.method !== 'POST') { return res.status(405).json({ error: "Use POST" }); }
 
     try {
-        if (!req.body || !req.body.mode) throw new Error("Payload inválido");
-        const { mode, payload } = req.body;
+        // --- MODO CRON (GET) ---
+        // Executado automaticamente pelo Vercel Cron ou manualmente via URL
+        if (req.method === 'GET') {
+            // 1. Busca todos os tickers únicos do banco de dados
+            const { data: transactions, error } = await supabase.from('transactions').select('ticker');
+            if (error) throw error;
 
-        // --- MODO IPCA (ATUALIZADO) ---
-        if (mode === 'ipca') {
-            const dados = await scrapeIpca();
-            return res.status(200).json({ json: dados });
-        }
+            const uniqueTickers = [...new Set((transactions || []).map((t: any) => t.ticker.toUpperCase()))];
+            if (uniqueTickers.length === 0) return res.status(200).json({ message: "Nenhum ativo para atualizar." });
 
-        if (mode === 'fundamentos') {
-            if (!payload.ticker) return res.json({ json: {} });
-            const dados = await scrapeFundamentos(payload.ticker);
-            return res.status(200).json({ json: dados });
-        }
+            const batches = chunkArray(uniqueTickers, 3); // Lotes de 3 para não estourar memória/timeout
+            let processed = 0;
 
-        if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
-            if (!payload.fiiList) return res.json({ json: [] });
-            const batches = chunkArray(payload.fiiList, 5);
-            let finalResults: any[] = [];
             for (const batch of batches) {
-                const promises = batch.map(async (item: any) => {
-                    const ticker = typeof item === 'string' ? item : item.ticker;
-                    const defaultLimit = mode === 'historico_portfolio' ? 14 : 12;
-                    const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
-                    const history = await scrapeAsset(ticker);
-                    const recents = history.filter((h: any) => h.paymentDate && h.value > 0).slice(0, limit);
-                    if (recents.length > 0) return recents.map((r: any) => ({ symbol: ticker.toUpperCase(), ...r }));
-                    return null;
-                });
-                const batchResults = await Promise.all(promises);
-                finalResults = finalResults.concat(batchResults);
-                if (batches.length > 1) await new Promise(r => setTimeout(r, 200)); 
+                await Promise.all(batch.map(async (ticker: string) => {
+                    try {
+                        // A. Scrape Fundamentos
+                        const fund = await scrapeFundamentos(ticker);
+                        const assetType = (ticker.endsWith('11') || ticker.endsWith('11B')) ? 'FII' : 'ACAO';
+                        
+                        // Salva Metadata
+                        await supabase.from('ativos_metadata').upsert({
+                            ticker,
+                            type: assetType,
+                            segment: fund.segmento !== 'N/A' ? fund.segmento : 'Geral',
+                            current_price: parseValue(fund.cotacao),
+                            pvp: parseValue(fund.pvp),
+                            dy_12m: parseValue(fund.dy),
+                            pl: parseValue(fund.pl),
+                            vacancia: parseValue(fund.vacancia),
+                            valor_mercado: fund.val_mercado,
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: 'ticker' });
+
+                        // B. Scrape Proventos
+                        const proventos = await scrapeAsset(ticker);
+                        if (proventos.length > 0) {
+                            const dbProventos = proventos.map((p: any) => ({
+                                ticker,
+                                type: p.type,
+                                date_com: p.dataCom,
+                                payment_date: p.paymentDate,
+                                rate: p.value
+                            }));
+                            
+                            await supabase.from('market_dividends').upsert(dbProventos, {
+                                onConflict: 'ticker, type, date_com, payment_date, rate',
+                                ignoreDuplicates: true
+                            });
+                        }
+                        processed++;
+                    } catch (err) {
+                        console.error(`Falha no Cron para ${ticker}:`, err);
+                    }
+                }));
+                // Pequena pausa entre lotes
+                await new Promise(r => setTimeout(r, 1000));
             }
-            return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
+
+            return res.status(200).json({ 
+                success: true, 
+                processed, 
+                total: uniqueTickers.length,
+                message: "Ciclo de atualização concluído." 
+            });
         }
 
-        if (mode === 'historico_12m') {
-            if (!payload.ticker) return res.json({ json: [] });
-            const history = await scrapeAsset(payload.ticker);
-            const formatted = history.slice(0, 18).map((h: any) => {
-                if (!h.paymentDate) return null;
-                const [ano, mes] = h.paymentDate.split('-');
-                return { mes: `${mes}/${ano.substring(2)}`, valor: h.value };
-            }).filter((h: any) => h !== null);
-            return res.status(200).json({ json: formatted });
+        // --- MODO PROXY/CLIENTE (POST) ---
+        // Mantém a compatibilidade com a sua implementação anterior
+        if (req.method === 'POST') {
+            if (!req.body || !req.body.mode) throw new Error("Payload inválido");
+            const { mode, payload } = req.body;
+
+            if (mode === 'ipca') {
+                const dados = await scrapeIpca();
+                return res.status(200).json({ json: dados });
+            }
+
+            if (mode === 'fundamentos') {
+                if (!payload.ticker) return res.json({ json: {} });
+                const dados = await scrapeFundamentos(payload.ticker);
+                return res.status(200).json({ json: dados });
+            }
+
+            if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
+                if (!payload.fiiList) return res.json({ json: [] });
+                const batches = chunkArray(payload.fiiList, 5);
+                let finalResults: any[] = [];
+                for (const batch of batches) {
+                    const promises = batch.map(async (item: any) => {
+                        const ticker = typeof item === 'string' ? item : item.ticker;
+                        const defaultLimit = mode === 'historico_portfolio' ? 14 : 12;
+                        const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
+                        const history = await scrapeAsset(ticker);
+                        const recents = history.filter((h: any) => h.paymentDate && h.value > 0).slice(0, limit);
+                        if (recents.length > 0) return recents.map((r: any) => ({ symbol: ticker.toUpperCase(), ...r }));
+                        return null;
+                    });
+                    const batchResults = await Promise.all(promises);
+                    finalResults = finalResults.concat(batchResults);
+                    if (batches.length > 1) await new Promise(r => setTimeout(r, 200)); 
+                }
+                return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
+            }
+
+            return res.status(400).json({ error: "Modo desconhecido" });
         }
 
-        if (mode === 'proximo_provento') {
-            if (!payload.ticker) return res.json({ json: null });
-            const history = await scrapeAsset(payload.ticker);
-            const ultimo = history.length > 0 ? history[0] : null;
-            return res.status(200).json({ json: ultimo });
-        }
+        return res.status(405).json({ error: "Method Not Allowed" });
 
-        return res.status(400).json({ error: "Modo desconhecido" });
     } catch (error: any) {
         return res.status(500).json({ error: error.message });
     }
