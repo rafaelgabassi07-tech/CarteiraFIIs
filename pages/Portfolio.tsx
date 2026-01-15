@@ -43,9 +43,10 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
   }, [portfolio, searchTerm, filterType]);
 
   return (
-    <div className="pb-24">
-      <div className="sticky top-20 z-30 px-4 py-2 -mx-4 mb-2">
-        <div className="glass-effect rounded-2xl p-2 shadow-lg border border-white/20 dark:border-zinc-800/50 flex flex-col gap-2">
+    <div className="pb-24 min-h-screen">
+      {/* Search Bar Sticky Fix */}
+      <div className="sticky top-[4.5rem] z-30 -mx-4 px-4 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all">
+        <div className="flex flex-col gap-3">
             <div className="relative flex items-center">
                 <Search className="w-4 h-4 absolute left-3 text-zinc-400" />
                 <input 
@@ -53,21 +54,21 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                     placeholder="Buscar ativo ou setor..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-zinc-100 dark:bg-zinc-800/50 pl-9 pr-4 py-2.5 rounded-xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-accent/20 transition-all"
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 pl-9 pr-4 py-2.5 rounded-xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-accent/20 transition-all shadow-sm"
                 />
             </div>
             <div className="flex items-center justify-between">
-                <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl">
-                    <button onClick={() => setFilterType('ALL')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${filterType === 'ALL' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Tudo</button>
-                    <button onClick={() => setFilterType(AssetType.FII)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${filterType === AssetType.FII ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>FIIs</button>
-                    <button onClick={() => setFilterType(AssetType.STOCK)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${filterType === AssetType.STOCK ? 'bg-white dark:bg-zinc-700 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Ações</button>
+                <div className="flex gap-1 bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-xl">
+                    <button onClick={() => setFilterType('ALL')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${filterType === 'ALL' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>Tudo</button>
+                    <button onClick={() => setFilterType(AssetType.FII)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${filterType === AssetType.FII ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>FIIs</button>
+                    <button onClick={() => setFilterType(AssetType.STOCK)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${filterType === AssetType.STOCK ? 'bg-white dark:bg-zinc-700 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>Ações</button>
                 </div>
                 <div className="text-[10px] font-bold text-zinc-400 px-2">{filteredAssets.length} Ativos</div>
             </div>
         </div>
       </div>
 
-      <div className="space-y-3 px-1">
+      <div className="space-y-3 px-1 pt-2">
         {filteredAssets.length > 0 ? (
             filteredAssets.map((asset, index) => {
                 const currentPrice = asset.currentPrice || 0;

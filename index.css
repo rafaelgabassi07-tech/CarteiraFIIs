@@ -113,8 +113,14 @@
 @keyframes scaleIn { to { opacity: 1; transform: scale(1); } }
 @keyframes pageEnter { to { opacity: 1; transform: scale(1) translateY(0); } }
 
-/* Custom Scrollbar - Slimmer and cleaner */
-::-webkit-scrollbar { width: 3px; height: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
-.dark ::-webkit-scrollbar-thumb { background: #27272a; }
+/* Global Scrollbar Hiding */
+::-webkit-scrollbar {
+  display: none;
+  width: 0px;
+  background: transparent;
+}
+
+* {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}

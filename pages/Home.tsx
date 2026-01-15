@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
 import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, Layers, ChevronUp, Scale, Percent, Info, Coins, BarChart3, LayoutGrid, Gem, CalendarClock, ChevronDown } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -78,13 +78,6 @@ const getDaysUntil = (dateStr: string) => {
     if (diffDays === 0) return 'Hoje';
     if (diffDays === 1) return 'Amanhã';
     return `Em ${diffDays} dias`;
-};
-
-const getInflationVerdict = (realReturn: number) => {
-    if (realReturn >= 4) return { title: "Gerador de Riqueza", desc: "Excelente! Sua carteira está multiplicando seu poder de compra agressivamente.", color: "text-emerald-500", bg: "bg-emerald-500" };
-    if (realReturn >= 0) return { title: "Proteção Patrimonial", desc: "Bom. Você está blindado contra a inflação e ganhando poder de compra.", color: "text-sky-500", bg: "bg-sky-500" };
-    if (realReturn >= -2) return { title: "Erosão Leve", desc: "Atenção. Seus dividendos quase cobrem a inflação, mas ainda há perda real.", color: "text-amber-500", bg: "bg-amber-500" };
-    return { title: "Destruição de Valor", desc: "Crítico. A inflação está consumindo seu patrimônio mais rápido do que ele rende.", color: "text-rose-500", bg: "bg-rose-500" };
 };
 
 const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
@@ -258,7 +251,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [portfolio]);
 
   const toggleMonthExpand = (monthKey: string) => setExpandedMonth(expandedMonth === monthKey ? null : monthKey);
-  const verdict = getInflationVerdict(realYieldMetrics.realReturn);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -274,22 +266,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return null;
   };
 
-  const BarTooltip = ({ active, payload, label }: any) => {
+  // Tooltip customizado para o gráfico de barras positivo/negativo
+  const NetBarTooltip = ({ active, payload, label }: any) => {
       if (active && payload && payload.length) {
+          const val = payload[0].value;
+          const isPos = val >= 0;
           return (
-              <div className="bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md p-3 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 z-50">
+              <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50">
                   <p className="text-xs font-black text-zinc-900 dark:text-white mb-2 uppercase tracking-wider">{label}</p>
-                  <div className="space-y-1">
-                      {payload.map((entry: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between gap-4">
-                              <span className="text-[10px] font-bold" style={{ color: entry.color }}>
-                                  {entry.name === 'dividends' ? 'Proventos' : 'Inflação'}
-                              </span>
-                              <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                                  {formatBRL(entry.value, privacyMode)}
-                              </span>
-                          </div>
-                      ))}
+                  <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${isPos ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                      <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">Saldo Real:</span>
+                      <span className={`text-xs font-black ${isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                          {formatBRL(val, privacyMode)}
+                      </span>
                   </div>
               </div>
           );
@@ -741,42 +731,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
-             {segmentsData.length > 0 && (
-                <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
-                    <div className="flex items-center gap-2 mb-2 px-2">
-                        <Layers className="w-3 h-3 text-zinc-400" />
-                        <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Por Segmento</h3>
-                    </div>
-                    <div className="h-56 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie data={segmentsData} innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
-                                    {segmentsData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                </Pie>
-                                <RechartsTooltip content={<CustomTooltip />} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="space-y-2 mt-2">
-                        {segmentsData.map((entry, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                                <div className="flex items-center gap-2.5 overflow-hidden">
-                                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 truncate max-w-[150px]">{entry.name}</span>
-                                        <span className="text-[9px] text-zinc-400 truncate max-w-[150px]">{entry.tickers.join(', ')}</span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-[10px] text-zinc-400 font-medium">{formatBRL(entry.value, privacyMode)}</span>
-                                    <span className="text-xs font-black text-zinc-900 dark:text-white min-w-[40px] text-right">{formatPercent((entry.value / typeData.total) * 100, privacyMode)}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-             )}
-
              {assetsChartData.length > 0 && (
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 anim-slide-up shadow-sm" style={{ animationDelay: '300ms' }}>
                     <div className="flex items-center gap-2 mb-2 px-2">
@@ -820,58 +774,71 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
                 <div>
                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Raio-X da Inflação</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Histórico 12 Meses</p>
+                    <p className="text-xs text-zinc-500 font-medium">Análise de Poder de Compra</p>
                 </div>
              </div>
              
              {realYieldMetrics.baseValue > 0 ? (
                  <>
-                     <div className={`p-6 rounded-2xl mb-6 anim-slide-up bg-surface-light dark:bg-zinc-800/40 border-2 ${realYieldMetrics.realReturn >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20'}`} style={{ animationDelay: '100ms' }}>
-                         <div className="flex items-center gap-2 mb-2">
-                             <div className={`w-2 h-2 rounded-full ${verdict.bg} animate-pulse`}></div>
-                             <span className={`text-[10px] font-black uppercase tracking-widest ${verdict.color}`}>Veredito Financeiro</span>
+                     {/* Summary Cards */}
+                     <div className="grid grid-cols-3 gap-3 mb-6 anim-slide-up" style={{ animationDelay: '100ms' }}>
+                         <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                             <p className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1">Recebido</p>
+                             <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.sum12m, privacyMode)}</p>
                          </div>
-                         <h3 className={`text-xl font-black mb-1.5 ${verdict.color}`}>{verdict.title}</h3>
-                         <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">{verdict.desc}</p>
+                         <div className="p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-100 dark:border-rose-900/30 text-center">
+                             <p className="text-[9px] font-black uppercase text-rose-600 dark:text-rose-400 mb-1">Inflação</p>
+                             <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.inflationCost, privacyMode)}</p>
+                         </div>
+                         <div className={`p-3 rounded-xl text-center border ${realYieldMetrics.sum12m >= realYieldMetrics.inflationCost ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30'}`}>
+                             <p className={`text-[9px] font-black uppercase mb-1 ${realYieldMetrics.sum12m >= realYieldMetrics.inflationCost ? 'text-indigo-600 dark:text-indigo-400' : 'text-amber-600 dark:text-amber-400'}`}>Real</p>
+                             <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.sum12m - realYieldMetrics.inflationCost, privacyMode)}</p>
+                         </div>
                      </div>
+
                      <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
                          <div className="flex items-center justify-between mb-4 px-2">
-                             <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-3 h-3" /> Proventos vs IPCA</h3>
-                             <div className="flex gap-3">
-                                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[9px] font-bold text-zinc-400 uppercase">Recebido</span></div>
-                                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-400"></div><span className="text-[9px] font-bold text-zinc-400 uppercase">Inflação</span></div>
-                             </div>
+                             <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-3 h-3" /> Evolução do Saldo Real</h3>
                          </div>
                          <div className="h-48 w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={last12MonthsData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                                <BarChart data={last12MonthsData.slice().reverse()} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b40" />
-                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 700 }} dy={10} />
+                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `R$${val/1000}k`} />
-                                    <RechartsTooltip content={<BarTooltip />} cursor={{ fill: '#71717a10', radius: 4 }} />
-                                    <Bar dataKey="dividends" fill="#10b981" radius={[4, 4, 0, 0]} barSize={8} />
-                                    <Bar dataKey="inflation" fill="#fb7185" radius={[4, 4, 0, 0]} barSize={8} />
+                                    <ReferenceLine y={0} stroke="#71717a" />
+                                    <RechartsTooltip content={<NetBarTooltip />} cursor={{ fill: '#71717a10', radius: 4 }} />
+                                    <Bar dataKey="net" radius={[2, 2, 2, 2]} barSize={12}>
+                                        {last12MonthsData.slice().reverse().map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.net >= 0 ? '#10b981' : '#f43f5e'} />
+                                        ))}
+                                    </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                          </div>
                      </div>
+
                      <div className="space-y-4 anim-slide-up" style={{ animationDelay: '300ms' }}>
                          <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Detalhamento Mensal</h3>
                          <div className="space-y-2">
                              {last12MonthsData.slice().reverse().map((item: MonthlyInflationData, i: number) => {
                                  const isPositive = item.net >= 0;
                                  return (
-                                     <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
+                                     <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-800 transition-colors">
                                          <div className="flex items-center gap-3">
-                                             <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800`}><span className="text-[10px] font-black uppercase text-zinc-400">{item.month}</span></div>
+                                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border ${isPositive ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 border-emerald-200 dark:border-emerald-800' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 border-rose-200 dark:border-rose-800'}`}>
+                                                 {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                             </div>
                                              <div>
-                                                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Resultado Real</p>
-                                                 <p className={`text-sm font-black ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{isPositive ? '+' : ''}{formatBRL(item.net, privacyMode)}</p>
+                                                 <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">{item.month}</p>
+                                                 <p className="text-xs font-bold text-zinc-900 dark:text-white">Saldo: <span className={isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>{isPositive ? '+' : ''}{formatBRL(item.net, privacyMode)}</span></p>
                                              </div>
                                          </div>
-                                         <div className="text-right space-y-1">
-                                             <div className="flex items-center justify-end gap-2 text-[10px]"><span className="font-medium text-zinc-400">Proventos</span><span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">{formatBRL(item.dividends, privacyMode)}</span></div>
-                                             <div className="flex items-center justify-end gap-2 text-[10px]"><span className="font-medium text-zinc-400">Corrosão</span><span className="font-bold text-rose-500 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/50 px-1.5 py-0.5 rounded">-{formatBRL(item.inflation, privacyMode)}</span></div>
+                                         <div className="text-right">
+                                             <div className="text-[9px] font-medium text-zinc-500 flex flex-col">
+                                                 <span>Rec: {formatBRL(item.dividends, privacyMode)}</span>
+                                                 <span className="text-rose-400">Inf: -{formatBRL(item.inflation, privacyMode)}</span>
+                                             </div>
                                          </div>
                                      </div>
                                  )
