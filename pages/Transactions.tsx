@@ -10,7 +10,6 @@ const formatBRL = (val: number, privacy = false) => {
   return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-// Helper para formatar Mês/Ano
 const formatMonthHeader = (monthKey: string) => {
     try {
         const [year, month] = monthKey.split('-');
@@ -21,20 +20,18 @@ const formatMonthHeader = (monthKey: string) => {
     }
 };
 
-// Componente da Linha da Transação
-const TransactionRow = React.memo(({ index, style, data }: any) => {
+const TransactionRow = React.memo(({ index, data }: any) => {
   const item = data.items[index];
   const privacyMode = data.privacyMode;
   const isSelectionMode = data.isSelectionMode;
   const isSelected = data.selectedIds.has(item.data?.id);
   
-  // Cabeçalho de Mês
   if (item.type === 'header') {
       return (
-          <div style={style} className="px-2 pt-6 pb-2 anim-fade-in flex items-end justify-between border-b border-zinc-100 dark:border-zinc-800/50 mb-1">
+          <div className={`px-2 pt-8 pb-3 flex items-end justify-between border-b border-zinc-200 dark:border-zinc-800/50 mb-2 anim-fade-in ${index === 0 ? 'mt-4' : ''}`}>
               <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{formatMonthHeader(item.monthKey)}</h3>
               {item.monthlyTotal > 0 && (
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded uppercase tracking-wider">
                       Aporte: {formatBRL(item.monthlyTotal, privacyMode)}
                   </span>
               )}
@@ -46,29 +43,29 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
   const isBuy = t.type === 'BUY';
   
   return (
-      <div className="px-0.5 py-1 anim-stagger-item" style={{ ...style, animationDelay: `${(index % 10) * 30}ms` }}>
+      <div className="px-0.5 py-1 anim-stagger-item" style={{ animationDelay: `${(index % 10) * 30}ms` }}>
           <button 
             onClick={() => isSelectionMode ? data.onToggleSelect(t.id) : data.onRowClick(t)}
-            className={`w-full text-left p-3.5 rounded-2xl border flex items-center justify-between shadow-sm press-effect transition-all duration-300 ${
+            className={`w-full text-left p-4 rounded-2xl border flex items-center justify-between shadow-sm press-effect transition-all duration-300 ${
                 isSelected 
-                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-500/30' 
+                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-400 dark:border-indigo-500' 
                 : 'bg-surface-light dark:bg-surface-dark border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
             }`}
           >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                   {isSelectionMode ? (
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-600'}`}>
-                          {isSelected ? <CheckCircle2 className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-600'}`}>
+                          {isSelected ? <CheckCircle2 className="w-6 h-6" /> : <Square className="w-6 h-6" />}
                       </div>
                   ) : (
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
-                          {isBuy ? <TrendingUp className="w-4.5 h-4.5" /> : <TrendingDown className="w-4.5 h-4.5" />}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
+                          {isBuy ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                       </div>
                   )}
                   
                   <div>
-                      <h4 className={`font-black text-sm ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{t.ticker}</h4>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <h4 className={`font-black text-base ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{t.ticker}</h4>
+                      <div className="flex items-center gap-2 mt-1">
                         <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.date.split('-').reverse().slice(0,2).join('/')}</span>
                         <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase ${t.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800'}`}>
                             {t.assetType === AssetType.FII ? 'FII' : 'Ação'}
@@ -77,8 +74,8 @@ const TransactionRow = React.memo(({ index, style, data }: any) => {
                   </div>
               </div>
               <div className="text-right">
-                  <p className={`text-sm font-black ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(t.price * t.quantity, privacyMode)}</p>
-                  <p className={`text-[10px] font-medium ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.quantity}x {t.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  <p className={`text-base font-black ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(t.price * t.quantity, privacyMode)}</p>
+                  <p className={`text-[11px] font-medium ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.quantity}x {t.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
               </div>
           </button>
       </div>
@@ -101,13 +98,11 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [editingId, setEditingId] = useState<string | null>(null);
     const [activeFilter, setActiveFilter] = useState<FilterOption>('ALL');
     
-    // Selection Mode States
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Form States
     const [ticker, setTicker] = useState('');
     const [type, setType] = useState<'BUY' | 'SELL'>('BUY');
     const [assetType, setAssetType] = useState<AssetType>(AssetType.FII);
@@ -115,7 +110,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [price, setPrice] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
-    // Filter Logic
     const filteredTransactions = useMemo(() => {
         if (activeFilter === 'ALL') return transactions;
         return transactions.filter(t => {
@@ -127,7 +121,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         });
     }, [transactions, activeFilter]);
 
-    // Calculation Logic
     const flatTransactions = useMemo(() => {
         const sorted = [...filteredTransactions].sort((a: any,b: any) => b.date.localeCompare(a.date));
         const groups: any = {};
@@ -188,7 +181,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
     const handleSave = async () => {
         if (!ticker || !quantity || !price || !date) return;
-        
         const payload = {
             ticker: ticker.toUpperCase(),
             type,
@@ -197,21 +189,9 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             price: Number(price.replace(',', '.')),
             date
         };
-
         setIsModalOpen(false); 
-
-        if (editingId) {
-            await onUpdateTransaction(editingId, payload);
-        } else {
-            await onAddTransaction(payload);
-        }
-    };
-
-    const handleDelete = () => {
-        if (editingId) {
-            setIsModalOpen(false);
-            onRequestDeleteConfirmation(editingId);
-        }
+        if (editingId) await onUpdateTransaction(editingId, payload);
+        else await onAddTransaction(payload);
     };
 
     const toggleSelectionMode = () => {
@@ -231,30 +211,24 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     };
 
     const toggleSelectAll = () => {
-        if (selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0) {
+        if (selectedIds.size === filteredTransactions.length) {
             setSelectedIds(new Set());
         } else {
-            const allIds = new Set(filteredTransactions.map(t => t.id));
-            setSelectedIds(allIds);
+            setSelectedIds(new Set(filteredTransactions.map(t => t.id)));
         }
     };
 
     const handleBulkDelete = async () => {
         setIsDeleting(true);
         try {
-            const idsToDelete = Array.from(selectedIds);
-            const { error } = await supabase.from('transactions').delete().in('id', idsToDelete);
-            
+            const { error } = await supabase.from('transactions').delete().in('id', Array.from(selectedIds));
             if (error) throw error;
             window.location.reload(); 
         } catch (err) {
-            console.error(err);
             alert('Erro ao excluir itens.');
         } finally {
             setIsDeleting(false);
             setShowBulkDeleteConfirm(false);
-            setIsSelectionMode(false);
-            setSelectedIds(new Set());
         }
     };
 
@@ -267,105 +241,88 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     ];
 
     return (
-        <div className="anim-fade-in relative min-h-screen pb-32">
-            {/* STICKY HEADER FIX: Top at 5.5rem aligns with App header padding */}
-            <div className="sticky top-[5.5rem] z-30 -mx-4 px-4 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all shadow-sm mb-2">
+        <div className="anim-fade-in relative min-h-screen pb-40">
+            {/* Barra de Ferramentas - STICKY FIX */}
+            <div className="sticky top-20 z-30 -mx-4 px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
                 <div className="flex items-center justify-between">
                     <div>
                         {isSelectionMode ? (
-                             <div className="flex items-center gap-2 anim-slide-up">
-                                <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">
-                                    {selectedIds.size}
+                            <div className="flex flex-col anim-slide-up">
+                                <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Modo Seleção</span>
+                                <p className="text-sm font-black text-zinc-900 dark:text-white">
+                                    {selectedIds.size} selecionado(s)
                                 </p>
-                                <span className="text-zinc-500 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-wider">Selecionados</span>
-                             </div>
+                            </div>
                         ) : (
-                            <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest anim-slide-up">
-                                {filteredTransactions.length} {filteredTransactions.length === 1 ? 'Registro' : 'Registros'}
-                                {activeFilter !== 'ALL' && <span className="text-accent ml-1">• Filtrado</span>}
-                            </p>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Filtro Atual</span>
+                                <p className="text-sm font-black text-zinc-900 dark:text-white">
+                                    {filters.find(f => f.id === activeFilter)?.label || 'Todos'}
+                                </p>
+                            </div>
                         )}
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                         {isSelectionMode && (
-                            <button
+                            <button 
                                 onClick={toggleSelectAll}
-                                className="px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 active:scale-95 transition-all anim-scale-in"
+                                className="px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform"
                             >
-                                {selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0 ? 'Desmarcar' : 'Todos'}
+                                {selectedIds.size === filteredTransactions.length ? 'Desmarcar' : 'Todos'}
                             </button>
                         )}
 
                         <button 
                             onClick={toggleSelectionMode}
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm press-effect transition-all ${isSelectionMode ? 'bg-indigo-500 text-white ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-black' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isSelectionMode ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}
                         >
-                             {isSelectionMode ? <CheckSquare className="w-5 h-5" /> : <CheckSquare className="w-5 h-5 opacity-50" />}
+                            <CheckSquare className="w-5 h-5" />
                         </button>
 
                         {!isSelectionMode && (
                             <>
-                                <div className="relative z-30">
-                                    <button 
-                                        onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                        className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm press-effect transition-colors ${activeFilter !== 'ALL' ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
-                                    >
-                                        {isFilterOpen ? <X className="w-5 h-5" /> : <Filter className="w-5 h-5" strokeWidth={2.5} />}
-                                    </button>
-
-                                    {isFilterOpen && (
-                                        <>
-                                            <div 
-                                                className="fixed inset-0 z-20 bg-black/5 dark:bg-black/20 backdrop-blur-[1px]" 
-                                                onClick={() => setIsFilterOpen(false)}
-                                            ></div>
-                                            <div className="absolute top-full right-0 mt-2 w-56 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-2 z-30 anim-scale-in origin-top-right ring-1 ring-black/5 dark:ring-white/5">
-                                                <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800/50 mb-1">
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Filtrar Ordens</span>
-                                                </div>
-                                                <div className="flex flex-col gap-1">
-                                                    {filters.map((f) => (
-                                                        <button
-                                                            key={f.id}
-                                                            onClick={() => { setActiveFilter(f.id); setIsFilterOpen(false); }}
-                                                            className={`flex items-center justify-between p-3 rounded-xl text-xs font-bold transition-all ${
-                                                                activeFilter === f.id 
-                                                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700' 
-                                                                : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-zinc-700 dark:hover:text-zinc-300'
-                                                            }`}
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                <f.icon className={`w-4 h-4 ${activeFilter === f.id ? 'text-indigo-500' : 'text-zinc-400'}`} strokeWidth={activeFilter === f.id ? 2.5 : 2} />
-                                                                <span>{f.label}</span>
-                                                            </div>
-                                                            {activeFilter === f.id && <Check className="w-4 h-4 text-indigo-500" strokeWidth={3} />}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-
+                                <button 
+                                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${activeFilter !== 'ALL' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}
+                                >
+                                    <Filter className="w-5 h-5" />
+                                </button>
                                 <button 
                                     onClick={handleOpenAdd}
-                                    className={`w-10 h-10 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl flex items-center justify-center shadow-lg press-effect hover:shadow-xl anim-scale-in`}
+                                    className="w-10 h-10 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl flex items-center justify-center shadow-lg press-effect"
                                 >
-                                    <Plus className="w-5 h-5" strokeWidth={2.5} />
+                                    <Plus className="w-5 h-5" />
                                 </button>
                             </>
                         )}
                     </div>
                 </div>
+
+                {/* Filtros Dropdown */}
+                {isFilterOpen && !isSelectionMode && (
+                    <div className="absolute top-full left-0 right-0 p-2 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 anim-slide-up grid grid-cols-5 gap-2 shadow-xl">
+                        {filters.map(f => (
+                            <button
+                                key={f.id}
+                                onClick={() => { setActiveFilter(f.id); setIsFilterOpen(false); }}
+                                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all ${activeFilter === f.id ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}
+                            >
+                                <f.icon className="w-4 h-4 mb-1" />
+                                <span className="text-[8px] font-black uppercase">{f.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
+            {/* Lista de Transações */}
             <div className="px-1">
                 {flatTransactions.length > 0 ? (
                     <div>
                         {flatTransactions.map((item: any, index: number) => (
                             <TransactionRow 
-                                key={index} 
+                                key={item.data?.id || `header-${index}`} 
                                 index={index} 
                                 data={{ 
                                     items: flatTransactions, 
@@ -375,7 +332,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                     selectedIds,
                                     onToggleSelect: handleToggleSelect
                                 }}
-                                style={{}} 
                             />
                         ))}
                     </div>
@@ -383,29 +339,23 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     <div className="h-[50vh] flex flex-col items-center justify-center opacity-40 anim-fade-in">
                         <ArrowRightLeft className="w-16 h-16 mb-4 text-zinc-300 dark:text-zinc-700" strokeWidth={1} />
                         <p className="text-sm font-bold text-zinc-500">Nenhuma ordem encontrada.</p>
-                        {activeFilter !== 'ALL' && (
-                            <button onClick={() => setActiveFilter('ALL')} className="mt-4 text-xs font-bold text-indigo-500 uppercase tracking-widest">Limpar Filtros</button>
-                        )}
-                        {activeFilter === 'ALL' && (
-                            <button onClick={handleOpenAdd} className="mt-4 text-xs font-bold text-sky-500 uppercase tracking-widest">Adicionar Primeira</button>
-                        )}
                     </div>
                 )}
             </div>
 
-            {/* Barra Flutuante de Ação em Massa - Z-INDEX e BOTTOM corrigidos */}
+            {/* Barra Flutuante de Exclusão */}
             {isSelectionMode && selectedIds.size > 0 && (
-                <div className="fixed bottom-[6.5rem] left-4 right-4 z-[100] anim-slide-up">
-                    <div className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-zinc-800 dark:border-zinc-200">
+                <div className="fixed bottom-28 left-4 right-4 z-50 anim-slide-up">
+                    <div className="bg-zinc-900 dark:bg-white p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-zinc-800 dark:border-zinc-200">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-zinc-800 dark:bg-zinc-100 flex items-center justify-center font-black text-sm">
+                            <div className="w-10 h-10 rounded-xl bg-zinc-800 dark:bg-zinc-100 flex items-center justify-center font-black text-white dark:text-zinc-900">
                                 {selectedIds.size}
                             </div>
-                            <span className="text-xs font-bold uppercase tracking-wide">Selecionados</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-white dark:text-zinc-900">Selecionados</span>
                         </div>
                         <button 
                             onClick={() => setShowBulkDeleteConfirm(true)}
-                            className="bg-rose-600 hover:bg-rose-500 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all"
+                            className="bg-rose-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-transform"
                         >
                             <Trash2 className="w-4 h-4" /> Excluir
                         </button>
@@ -426,7 +376,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         </div>
                         {editingId && (
                             <button 
-                                onClick={handleDelete}
+                                onClick={() => onRequestDeleteConfirmation(editingId)}
                                 className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100 dark:border-rose-500/20 press-effect"
                             >
                                 <Trash2 className="w-5 h-5" />
@@ -527,8 +477,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
             <ConfirmationModal 
                 isOpen={showBulkDeleteConfirm} 
-                title="Excluir Itens?" 
-                message={`Tem certeza que deseja apagar ${selectedIds.size} ordens selecionadas? Esta ação não pode ser desfeita.`} 
+                title="Excluir Selecionados?" 
+                message={`Tem certeza que deseja apagar ${selectedIds.size} ordens? Esta ação não pode ser desfeita.`} 
                 onConfirm={handleBulkDelete} 
                 onCancel={() => setShowBulkDeleteConfirm(false)} 
             />

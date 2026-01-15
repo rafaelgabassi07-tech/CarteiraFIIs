@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
@@ -11,8 +12,8 @@
     <title>InvestFIIs - FIIs & Ações</title>
     
     <link rel="manifest" href="./manifest.json" />
-    <link rel="icon" type="image/svg+xml" href="./logo.svg" />
-    <link rel="apple-touch-icon" href="./logo.svg" />
+    <link rel="icon" type="image/png" href="./logo.png" />
+    <link rel="apple-touch-icon" href="./logo.png" />
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
@@ -27,8 +28,8 @@
       
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg-splash: #09090b; /* Zinc 950 */
-          --logo-bg: #27272a;   /* Zinc 800 - Destaque cinza */
+          --bg-splash: #09090b;
+          --logo-bg: #27272a;
           --text-main: #FFFFFF;
           --bar-bg: #1e293b;
         }
@@ -45,7 +46,6 @@
         overflow-y: auto;
       }
       
-      /* Container Principal */
       #root-splash {
         position: fixed;
         inset: 0;
@@ -58,7 +58,6 @@
         transition: opacity 0.6s cubic-bezier(0.23, 1, 0.32, 1), visibility 0.6s;
       }
 
-      /* Estado de Saída (Adicionado via JS) */
       #root-splash.splash-exit {
         opacity: 0;
         visibility: hidden;
@@ -92,17 +91,12 @@
         overflow: hidden;
       }
       
-      /* Brilho sutil na logo */
-      .s-logo-box::after {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
-        pointer-events: none;
+      .s-logo-box img {
+        width: 70%;
+        height: 70%;
+        object-fit: contain;
       }
 
-      .s-icon { width: 40px; height: 40px; color: var(--text-main); }
-      
       .s-title {
         font-size: 28px;
         font-weight: 900;
@@ -114,7 +108,6 @@
       }
       .s-title span { color: var(--accent); }
 
-      /* Barra de Progresso */
       .s-progress-track {
         width: 140px;
         height: 4px;
@@ -129,7 +122,7 @@
         left: 0;
         top: 0;
         height: 100%;
-        width: 0%; /* Controlado via JS */
+        width: 0%;
         background-color: var(--accent);
         border-radius: 999px;
         transition: width 0.3s ease-out;
@@ -160,14 +153,12 @@
 </script>
 </head>
   <body>
-    <!-- Splash Estático -->
     <div id="root-splash">
         <div class="s-content">
             <div class="s-logo-box">
-                <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="s-icon"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+                <img src="./logo.png" alt="Logo" />
             </div>
             <div class="s-title">Invest<span>FIIs</span></div>
-            
             <div class="s-progress-track">
                 <div id="splash-progress-bar" class="s-progress-bar"></div>
             </div>
@@ -177,7 +168,6 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     
-    <!-- Safety Script: Remove Splash se React falhar ou demorar demais -->
     <script>
         setTimeout(() => {
             const splash = document.getElementById('root-splash');
@@ -188,7 +178,7 @@
                    if(splash.parentNode) splash.parentNode.removeChild(splash);
                 }, 600);
             }
-        }, 8000); // 8 segundos de timeout máximo absoluto
+        }, 8000);
     </script>
   </body>
 </html>
