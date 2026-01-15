@@ -113,13 +113,19 @@ export const parseB3Excel = async (file: File): Promise<{ transactions: Transact
               const quantity = Math.abs(parseBrNumber(row[qtyKey]));
 
               if (totalVal > 0) {
-                  const rate = quantity > 0 ? totalVal / quantity : 0; // Se não tiver quantidade, rate = 0 (mas salvamos total)
+                  // Normalização de Tipo para bater com API (JCP, DIV, REND)
+                  let type = 'DIV';
+                  if (typeVal.includes('juros') || typeVal.includes('jcp')) type = 'JCP';
+                  else if (typeVal.includes('rendimento')) type = 'REND';
+
+                  // Normalização de Rate (Máximo 6 casas decimais para evitar conflito de float no DB)
+                  const rate = quantity > 0 ? Number((totalVal / quantity).toFixed(6)) : 0; 
                   
                   dividends.push({
                       id: crypto.randomUUID(),
                       ticker: tickerStr,
-                      type: typeVal.includes('juros') || typeVal.includes('jcp') ? 'JCP' : 'DIV',
-                      dateCom: dateStr, // Planilha B3 geralmente só tem a data do crédito. Assumimos Data Com = Data Pagamento para fins de registro histórico se não houver outra info.
+                      type,
+                      dateCom: dateStr, // Planilha B3 geralmente só tem a data do crédito.
                       paymentDate: dateStr,
                       rate: rate,
                       quantityOwned: quantity,

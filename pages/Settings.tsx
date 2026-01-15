@@ -176,16 +176,22 @@ export const Settings: React.FC<SettingsProps> = ({
 
               // 2. Processar Dividendos (Salvar no Supabase na tabela de mercado)
               // Filtra duplicatas locais antes de enviar
+              // ESTRATÉGIA ANTI-DUPLICAÇÃO:
+              // Se já existir na memória (vindo do Scraper ou BD) um dividendo do mesmo Ticker, Tipo e MÊS,
+              // ignoramos o do Excel. Motivo: O scraper tem a Data Com exata, o Excel chuta Data Com = Pagamento.
               const combinedDivs = [...geminiDividends];
               let divsAddedCount = 0;
               const divsToSync: DividendReceipt[] = [];
               
               newDivs.forEach(d => {
+                  const paymentMonth = d.paymentDate.substring(0, 7); // YYYY-MM
+                  
                   const exists = combinedDivs.some(existing => 
                       existing.ticker === d.ticker && 
-                      existing.paymentDate === d.paymentDate && 
-                      Math.abs(existing.totalReceived - d.totalReceived) < 0.05 
+                      existing.paymentDate.substring(0, 7) === paymentMonth &&
+                      existing.type === d.type
                   );
+
                   if (!exists) {
                       combinedDivs.push(d);
                       divsToSync.push(d);
@@ -194,8 +200,6 @@ export const Settings: React.FC<SettingsProps> = ({
               });
 
               if (divsToSync.length > 0) {
-                  // Mapeia para o formato do banco de dados (market_dividends)
-                  // Nota: Salvamos a taxa (rate) unitária. O app calcula o total baseado na quantidade que o usuário possui.
                   const divPayload = divsToSync.map(d => ({
                       ticker: d.ticker,
                       type: d.type,
@@ -204,7 +208,6 @@ export const Settings: React.FC<SettingsProps> = ({
                       rate: d.rate
                   }));
 
-                  // Upsert no Supabase para garantir que dados históricos fiquem salvos
                   const { error: divError } = await supabase
                       .from('market_dividends')
                       .upsert(divPayload, { onConflict: 'ticker, type, date_com, payment_date, rate', ignoreDuplicates: true });
@@ -224,7 +227,7 @@ export const Settings: React.FC<SettingsProps> = ({
                   showToast('success', `Importado e Sincronizado: ${msgParts.join(' e ')}!`);
                   setActiveSection('menu');
               } else {
-                  showToast('info', 'Todos os dados já existem na carteira.');
+                  showToast('info', 'Dados já atualizados ou duplicatas ignoradas.');
               }
           }
       } catch (error) {
