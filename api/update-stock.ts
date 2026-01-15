@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -43,14 +42,25 @@ function normalizeKey(str: string) {
         .trim();
 }
 
+// Normaliza ticker para busca de proventos (Remove 'F' do fracionário para ações)
+function getBaseTickerForProventos(ticker: string) {
+    const t = ticker.toUpperCase().trim();
+    // Se for ação (não termina em 11 ou 11B) e terminar em F (ITSA4F), remove o F
+    if (!t.endsWith('11') && !t.endsWith('11B') && t.endsWith('F') && t.length >= 5) {
+        return t.substring(0, t.length - 1);
+    }
+    return t;
+}
+
 async function scrapeAsset(ticker: string) {
     try {
-        const t = ticker.toUpperCase();
+        const baseTicker = getBaseTickerForProventos(ticker);
         let type = 'acao';
-        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
+        if (baseTicker.endsWith('11') || baseTicker.endsWith('11B')) type = 'fii'; 
 
         // Endpoint que retorna lista completa (passado e futuro)
-        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
+        // Usamos baseTicker (ex: ITSA4) mesmo se o input for ITSA4F
+        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${baseTicker}&chartProventsType=2`;
 
         const { data } = await client.get(url, { 
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -224,10 +234,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }, { onConflict: 'ticker' });
 
     // 2. Scrape Proventos (Inclui futuros e JCP)
+    // Passa o stock original para manter consistência no DB, 
+    // mas internamente scrapeAsset resolve o baseTicker para a API
     const proventos = await scrapeAsset(stock);
     if (proventos.length > 0) {
         const dbProventos = proventos.map((p: any) => ({
-            ticker: stock,
+            ticker: stock, // Salva com o ticker original (ex: ITSA4F ou ITSA4)
             type: p.type,
             date_com: p.dataCom,
             payment_date: p.paymentDate,

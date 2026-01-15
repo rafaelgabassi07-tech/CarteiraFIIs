@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -153,16 +152,25 @@ async function scrapeFundamentos(ticker: string) {
 }
 
 // ---------------------------------------------------------
-// PARTE 2: PROVENTOS -> STATUSINVEST (FUTURO E PASSADO)
+// PARTE 2: PROVENTOS -> STATUSINVEST
 // ---------------------------------------------------------
+
+// Normaliza ticker para busca de proventos (Remove 'F' do fracionário para ações)
+function getBaseTickerForProventos(ticker: string) {
+    const t = ticker.toUpperCase().trim();
+    if (!t.endsWith('11') && !t.endsWith('11B') && t.endsWith('F') && t.length >= 5) {
+        return t.substring(0, t.length - 1);
+    }
+    return t;
+}
 
 async function scrapeAsset(ticker: string) {
     try {
-        const t = ticker.toUpperCase();
+        const baseTicker = getBaseTickerForProventos(ticker);
         let type = 'acao';
-        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
+        if (baseTicker.endsWith('11') || baseTicker.endsWith('11B')) type = 'fii'; 
 
-        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
+        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${baseTicker}&chartProventsType=2`;
 
         const { data } = await client.get(url, { 
             headers: { 
@@ -186,7 +194,6 @@ async function scrapeAsset(ticker: string) {
             if (d.et === 1) labelTipo = 'DIV';
             if (d.et === 2) labelTipo = 'JCP';
             
-            // Refinamento por texto
             if (d.etd) {
                 const texto = d.etd.toUpperCase();
                 if (texto.includes('JURO')) labelTipo = 'JCP';
@@ -197,7 +204,6 @@ async function scrapeAsset(ticker: string) {
             const dataCom = parseDateJSON(d.ed);
             let paymentDate = parseDateJSON(d.pd);
 
-            // Se tem Data Com mas não tem Pagamento (Provisionado), usa Data Com como referência
             if (!paymentDate && dataCom) {
                 paymentDate = dataCom; 
             }
@@ -211,7 +217,6 @@ async function scrapeAsset(ticker: string) {
             };
         });
 
-        // Filtra inválidos, mas mantém futuros
         return dividendos
             .filter((d: any) => d.dataCom !== null && d.value > 0)
             .sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
@@ -227,7 +232,6 @@ async function scrapeAsset(ticker: string) {
 // ---------------------------------------------------------
 
 async function scrapeIpca() {
-    // ... (Mantém lógica anterior do IPCA)
     try {
         const url = 'https://investidor10.com.br/indices/ipca/';
         const { data } = await client.get(url);
@@ -345,14 +349,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             updated_at: new Date().toISOString()
                         }, { onConflict: 'ticker' });
 
-                        // Scrape Proventos (Inclui futuros)
                         const proventos = await scrapeAsset(ticker);
                         if (proventos.length > 0) {
                             const dbProventos = proventos.map((p: any) => ({
                                 ticker,
                                 type: p.type,
                                 date_com: p.dataCom,
-                                payment_date: p.paymentDate, // Pode ser igual dataCom se não anunciado
+                                payment_date: p.paymentDate, 
                                 rate: p.value
                             }));
                             
@@ -402,7 +405,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         const defaultLimit = mode === 'historico_portfolio' ? 14 : 12;
                         const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
                         const history = await scrapeAsset(ticker);
-                        const recents = history.slice(0, limit); // Pega os mais recentes (futuros inclusos)
+                        const recents = history.slice(0, limit); 
                         if (recents.length > 0) return recents.map((r: any) => ({ symbol: ticker.toUpperCase(), ...r }));
                         return null;
                     });

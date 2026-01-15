@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
     
-    <meta name="app-version" content="8.2.3" />
+    <meta name="app-version" content="8.3.3" />
     <title>InvestFIIs - FIIs & Ações</title>
     
     <link rel="manifest" href="./manifest.json" />
@@ -176,5 +176,19 @@
 
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
+    
+    <!-- Safety Script: Remove Splash se React falhar ou demorar demais -->
+    <script>
+        setTimeout(() => {
+            const splash = document.getElementById('root-splash');
+            if (splash) {
+                splash.classList.add('splash-exit');
+                document.body.classList.add('app-revealed');
+                setTimeout(() => {
+                   if(splash.parentNode) splash.parentNode.removeChild(splash);
+                }, 600);
+            }
+        }, 8000); // 8 segundos de timeout máximo absoluto
+    </script>
   </body>
 </html>
