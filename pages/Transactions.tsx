@@ -48,13 +48,13 @@ const TransactionRow = React.memo(({ index, data }: any) => {
             onClick={() => isSelectionMode ? data.onToggleSelect(t.id) : data.onRowClick(t)}
             className={`w-full text-left p-4 rounded-2xl border flex items-center justify-between shadow-sm press-effect transition-all duration-300 ${
                 isSelected 
-                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-400 dark:border-indigo-500' 
+                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 dark:border-indigo-400 shadow-lg shadow-indigo-500/5' 
                 : 'bg-surface-light dark:bg-surface-dark border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
             }`}
           >
               <div className="flex items-center gap-4">
                   {isSelectionMode ? (
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-600'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-600'}`}>
                           {isSelected ? <CheckCircle2 className="w-6 h-6" /> : <Square className="w-6 h-6" />}
                       </div>
                   ) : (
@@ -64,7 +64,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
                   )}
                   
                   <div>
-                      <h4 className={`font-black text-base ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{t.ticker}</h4>
+                      <h4 className={`font-black text-base ${isSelected ? 'text-indigo-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>{t.ticker}</h4>
                       <div className="flex items-center gap-2 mt-1">
                         <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.date.split('-').reverse().slice(0,2).join('/')}</span>
                         <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase ${t.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800'}`}>
@@ -74,7 +74,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
                   </div>
               </div>
               <div className="text-right">
-                  <p className={`text-base font-black ${isSelected ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(t.price * t.quantity, privacyMode)}</p>
+                  <p className={`text-base font-black ${isSelected ? 'text-indigo-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(t.price * t.quantity, privacyMode)}</p>
                   <p className={`text-[11px] font-medium ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.quantity}x {t.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
               </div>
           </button>
@@ -101,7 +101,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
 
     const [ticker, setTicker] = useState('');
     const [type, setType] = useState<'BUY' | 'SELL'>('BUY');
@@ -169,13 +168,9 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const handleTickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value.toUpperCase();
         setTicker(val);
-        
         if (!editingId) { 
-            if (val.endsWith('11') || val.endsWith('11B')) {
-                setAssetType(AssetType.FII);
-            } else if (['3', '4', '5', '6'].some(end => val.endsWith(end))) {
-                setAssetType(AssetType.STOCK);
-            }
+            if (val.endsWith('11') || val.endsWith('11B')) setAssetType(AssetType.FII);
+            else if (['3', '4', '5', '6'].some(end => val.endsWith(end))) setAssetType(AssetType.STOCK);
         }
     };
 
@@ -211,15 +206,11 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     };
 
     const toggleSelectAll = () => {
-        if (selectedIds.size === filteredTransactions.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(filteredTransactions.map(t => t.id)));
-        }
+        if (selectedIds.size === filteredTransactions.length) setSelectedIds(new Set());
+        else setSelectedIds(new Set(filteredTransactions.map(t => t.id)));
     };
 
     const handleBulkDelete = async () => {
-        setIsDeleting(true);
         try {
             const { error } = await supabase.from('transactions').delete().in('id', Array.from(selectedIds));
             if (error) throw error;
@@ -227,7 +218,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         } catch (err) {
             alert('Erro ao excluir itens.');
         } finally {
-            setIsDeleting(false);
             setShowBulkDeleteConfirm(false);
         }
     };
@@ -241,21 +231,21 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     ];
 
     return (
-        <div className="anim-fade-in relative min-h-screen pb-40">
-            {/* Barra de Ferramentas - STICKY FIX */}
-            <div className="sticky top-20 z-30 -mx-4 px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
+        <div className="anim-fade-in relative min-h-screen pb-48">
+            {/* Header Sticky Blindado */}
+            <div className="sticky top-20 z-40 -mx-4 px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300">
                 <div className="flex items-center justify-between">
                     <div>
                         {isSelectionMode ? (
                             <div className="flex flex-col anim-slide-up">
-                                <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Modo Seleção</span>
+                                <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Ação em Massa</span>
                                 <p className="text-sm font-black text-zinc-900 dark:text-white">
-                                    {selectedIds.size} selecionado(s)
+                                    {selectedIds.size} selecionados
                                 </p>
                             </div>
                         ) : (
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Filtro Atual</span>
+                                <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Exibindo</span>
                                 <p className="text-sm font-black text-zinc-900 dark:text-white">
                                     {filters.find(f => f.id === activeFilter)?.label || 'Todos'}
                                 </p>
@@ -265,21 +255,19 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     
                     <div className="flex items-center gap-2">
                         {isSelectionMode && (
-                            <button 
+                             <button 
                                 onClick={toggleSelectAll}
                                 className="px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform"
                             >
-                                {selectedIds.size === filteredTransactions.length ? 'Desmarcar' : 'Todos'}
+                                {selectedIds.size === filteredTransactions.length ? 'Nenhum' : 'Todos'}
                             </button>
                         )}
-
                         <button 
                             onClick={toggleSelectionMode}
                             className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isSelectionMode ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}
                         >
                             <CheckSquare className="w-5 h-5" />
                         </button>
-
                         {!isSelectionMode && (
                             <>
                                 <button 
@@ -299,27 +287,25 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
                 </div>
 
-                {/* Filtros Dropdown */}
                 {isFilterOpen && !isSelectionMode && (
-                    <div className="absolute top-full left-0 right-0 p-2 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 anim-slide-up grid grid-cols-5 gap-2 shadow-xl">
+                    <div className="absolute top-full left-0 right-0 p-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 anim-slide-up grid grid-cols-5 gap-2 shadow-2xl">
                         {filters.map(f => (
                             <button
                                 key={f.id}
                                 onClick={() => { setActiveFilter(f.id); setIsFilterOpen(false); }}
-                                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all ${activeFilter === f.id ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}
+                                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all ${activeFilter === f.id ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400'}`}
                             >
                                 <f.icon className="w-4 h-4 mb-1" />
-                                <span className="text-[8px] font-black uppercase">{f.label}</span>
+                                <span className="text-[8px] font-black uppercase tracking-tighter">{f.label}</span>
                             </button>
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Lista de Transações */}
-            <div className="px-1">
+            <div className="px-1 pt-4">
                 {flatTransactions.length > 0 ? (
-                    <div>
+                    <div className="space-y-1">
                         {flatTransactions.map((item: any, index: number) => (
                             <TransactionRow 
                                 key={item.data?.id || `header-${index}`} 
@@ -334,6 +320,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                 }}
                             />
                         ))}
+                        {/* Spacer final para garantir que nada fique coberto */}
+                        <div className="h-24"></div>
                     </div>
                 ) : (
                     <div className="h-[50vh] flex flex-col items-center justify-center opacity-40 anim-fade-in">
@@ -343,19 +331,19 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
-            {/* Barra Flutuante de Exclusão */}
+            {/* BARRA DE EXCLUSÃO FIXA (SUSPENSA ACIMA DO MENU) */}
             {isSelectionMode && selectedIds.size > 0 && (
-                <div className="fixed bottom-28 left-4 right-4 z-50 anim-slide-up">
-                    <div className="bg-zinc-900 dark:bg-white p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-zinc-800 dark:border-zinc-200">
+                <div className="fixed bottom-28 left-4 right-4 z-[100] anim-slide-up">
+                    <div className="bg-zinc-900 dark:bg-white p-4 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between border border-white/5 dark:border-black/5">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-zinc-800 dark:bg-zinc-100 flex items-center justify-center font-black text-white dark:text-zinc-900">
+                            <div className="w-10 h-10 rounded-2xl bg-zinc-800 dark:bg-zinc-100 flex items-center justify-center font-black text-white dark:text-zinc-900">
                                 {selectedIds.size}
                             </div>
-                            <span className="text-xs font-bold uppercase tracking-widest text-white dark:text-zinc-900">Selecionados</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Selecionados</span>
                         </div>
                         <button 
                             onClick={() => setShowBulkDeleteConfirm(true)}
-                            className="bg-rose-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-transform"
+                            className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all shadow-lg shadow-rose-600/20"
                         >
                             <Trash2 className="w-4 h-4" /> Excluir
                         </button>
@@ -367,17 +355,17 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 <div className="p-6 pb-12">
                     <div className="flex items-center justify-between mb-8 anim-slide-up">
                         <div>
-                            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
+                            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">
                                 {editingId ? 'Editar Ordem' : 'Nova Ordem'}
                             </h2>
-                            <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">
+                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-2">
                                 {editingId ? 'Atualizar registro' : 'Lançar movimentação'}
                             </p>
                         </div>
                         {editingId && (
                             <button 
                                 onClick={() => onRequestDeleteConfirmation(editingId)}
-                                className="w-10 h-10 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100 dark:border-rose-500/20 press-effect"
+                                className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl flex items-center justify-center border border-rose-100 dark:border-rose-900/30 press-effect"
                             >
                                 <Trash2 className="w-5 h-5" />
                             </button>
@@ -385,14 +373,14 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
 
                     <div className="space-y-5">
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block">Ativo (Ticker)</label>
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '100ms' }}>
+                            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 block">Ativo (Ticker)</label>
                             <input 
                                 type="text" 
                                 value={ticker}
                                 onChange={handleTickerChange}
                                 placeholder="EX: HGLG11"
-                                className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-300 dark:placeholder:text-zinc-700 outline-none uppercase"
+                                className="w-full bg-transparent text-3xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-200 dark:placeholder:text-zinc-800 outline-none uppercase tracking-tight"
                                 autoFocus={!editingId}
                             />
                         </div>
@@ -400,64 +388,54 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         <div className="grid grid-cols-2 gap-4 anim-slide-up" style={{ animationDelay: '150ms' }}>
                             <div className="bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex relative">
                                 <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ease-out-soft ${type === 'SELL' ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
-                                <button onClick={() => setType('BUY')} className={`relative z-10 flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center transition-colors ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>Compra</button>
-                                <button onClick={() => setType('SELL')} className={`relative z-10 flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center transition-colors ${type === 'SELL' ? 'text-rose-500' : 'text-zinc-400'}`}>Venda</button>
+                                <button onClick={() => setType('BUY')} className={`relative z-10 flex-1 py-3 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>Compra</button>
+                                <button onClick={() => setType('SELL')} className={`relative z-10 flex-1 py-3 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${type === 'SELL' ? 'text-rose-500' : 'text-zinc-400'}`}>Venda</button>
                             </div>
 
                             <div className="bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex relative">
                                 <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ease-out-soft ${assetType === AssetType.STOCK ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
-                                <button onClick={() => setAssetType(AssetType.FII)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-center transition-colors ${assetType === AssetType.FII ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>
-                                    <Building2 className="w-3 h-3" /> FII
-                                </button>
-                                <button onClick={() => setAssetType(AssetType.STOCK)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-center transition-colors ${assetType === AssetType.STOCK ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>
-                                    <CandlestickChart className="w-3 h-3" /> Ação
-                                </button>
+                                <button onClick={() => setAssetType(AssetType.FII)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${assetType === AssetType.FII ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>FII</button>
+                                <button onClick={() => setAssetType(AssetType.STOCK)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${assetType === AssetType.STOCK ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>Ação</button>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 anim-slide-up" style={{ animationDelay: '200ms' }}>
-                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Hash className="w-3 h-3 text-zinc-400" />
-                                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Quantidade</label>
-                                </div>
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Quantidade</label>
                                 <input 
                                     type="number" 
                                     inputMode="numeric"
                                     value={quantity}
                                     onChange={e => setQuantity(e.target.value)}
                                     placeholder="0"
-                                    className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white placeholder:text-zinc-300 outline-none"
+                                    className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-200 outline-none"
                                 />
                             </div>
 
-                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <DollarSign className="w-3 h-3 text-zinc-400" />
-                                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Preço (Unit)</label>
-                                </div>
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Preço (Unit)</label>
                                 <input 
                                     type="number" 
                                     inputMode="decimal"
                                     value={price}
                                     onChange={e => setPrice(e.target.value)}
                                     placeholder="0.00"
-                                    className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white placeholder:text-zinc-300 outline-none"
+                                    className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-200 outline-none"
                                 />
                             </div>
                         </div>
 
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center gap-4 anim-slide-up" style={{ animationDelay: '250ms' }}>
-                            <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center gap-4 anim-slide-up" style={{ animationDelay: '250ms' }}>
+                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-zinc-500">
                                 <Calendar className="w-5 h-5" />
                             </div>
                             <div className="flex-1">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Data da Operação</label>
+                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Data da Operação</label>
                                 <input 
                                     type="date" 
                                     value={date}
                                     onChange={e => setDate(e.target.value)}
-                                    className="w-full bg-transparent text-sm font-bold text-zinc-900 dark:text-white outline-none"
+                                    className="w-full bg-transparent text-sm font-black text-zinc-900 dark:text-white outline-none"
                                 />
                             </div>
                         </div>
@@ -465,7 +443,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         <button 
                             onClick={handleSave}
                             disabled={!ticker || !quantity || !price}
-                            className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg press-effect mt-4 anim-slide-up ${(!ticker || !quantity || !price) ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'}`}
+                            className={`w-full py-5 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-xl press-effect mt-6 transition-all ${(!ticker || !quantity || !price) ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'}`}
                             style={{ animationDelay: '300ms' }}
                         >
                             <Save className="w-4 h-4" />
@@ -478,7 +456,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             <ConfirmationModal 
                 isOpen={showBulkDeleteConfirm} 
                 title="Excluir Selecionados?" 
-                message={`Tem certeza que deseja apagar ${selectedIds.size} ordens? Esta ação não pode ser desfeita.`} 
+                message={`Deseja realmente apagar estes ${selectedIds.size} registros? Esta ação é irreversível.`} 
                 onConfirm={handleBulkDelete} 
                 onCancel={() => setShowBulkDeleteConfirm(false)} 
             />
