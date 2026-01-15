@@ -34,9 +34,7 @@ function parseValue(valueStr: any) {
     if (!valueStr) return 0;
     if (typeof valueStr === 'number') return valueStr;
     try {
-        // Remove %, R$, espaços e caracteres invisíveis
         const clean = valueStr.replace(/[^0-9,.-]/g, '').trim();
-        // Converte formato BR (1.000,00) para US (1000.00)
         return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
@@ -44,8 +42,8 @@ function parseValue(valueStr: any) {
 function normalizeKey(str: string) {
     if (!str) return '';
     return str.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
-        .replace(/[^a-z0-9]/g, "") // Remove símbolos
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+        .replace(/[^a-z0-9]/g, "") 
         .trim();
 }
 
@@ -58,18 +56,16 @@ function chunkArray(array: any[], size: number) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (ROBUST SCRAPER)
+// PARTE 1: FUNDAMENTOS -> INVESTIDOR10
 // ---------------------------------------------------------
 
 async function scrapeFundamentos(ticker: string) {
     try {
         let html;
         try {
-            // Tenta FIIs primeiro
             const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
             html = res.data;
         } catch (e) {
-            // Se falhar, tenta Ações
             const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
             html = res.data;
         }
@@ -77,46 +73,38 @@ async function scrapeFundamentos(ticker: string) {
         const $ = cheerio.load(html);
         const dataMap: Record<string, any> = {};
 
-        // 1. Extração via Classes Específicas dos Cards (Baseado no HTML fornecido)
-        // Cotação
+        // 1. Extração Específica
         const cotacaoVal = $('._card.cotacao .value').text().trim();
         if (cotacaoVal) dataMap['cotacao'] = cotacaoVal;
 
-        // Dividend Yield (Pega o primeiro ._card.dy pois o segundo é variação)
         const dyVal = $('._card.dy ._card-body span').first().text().trim();
         if (dyVal) dataMap['dy'] = dyVal;
 
-        // P/VP
         const pvpVal = $('._card.vp ._card-body span').text().trim();
         if (pvpVal) dataMap['pvp'] = pvpVal;
 
-        // P/L (Ações) - Geralmente usa a mesma classe .vp ou .val em alguns layouts, mas vamos buscar por texto
         const plVal = $('._card.pl ._card-body span').text().trim();
         if (plVal) dataMap['pl'] = plVal;
 
-        // Liquidez
         const liqVal = $('._card.val ._card-body span').text().trim();
         if (liqVal) dataMap['liquidez'] = liqVal;
 
-        // 2. Varredura da Tabela de Detalhes (.cell)
+        // 2. Varredura Tabela
         $('#table-indicators .cell').each((_, el) => {
             const title = $(el).find('.name').text().trim();
             const value = $(el).find('.value span').text().trim();
-            
             if (title && value) {
-                const key = normalizeKey(title);
-                dataMap[key] = value;
+                dataMap[normalizeKey(title)] = value;
             }
         });
 
-        // 3. Fallback: Varredura Genérica de Cards (caso mude o layout)
+        // 3. Fallback Genérico
         $('._card').each((_, el) => {
             const title = $(el).find('._card-header').text().trim();
             const value = $(el).find('._card-body').text().trim();
-            if (title && value) dataMap[normalizeKey(title)] = value;
+            if (title && value) dataMap[normalizeKey(title)] = value.trim();
         });
 
-        // 4. Mapeamento Final
         const findVal = (keys: string[]) => {
             for (const key of keys) {
                 const nKey = normalizeKey(key);
@@ -141,11 +129,10 @@ async function scrapeFundamentos(ticker: string) {
             roe: findVal(['roe', 'return on equity']),
             liquidez: dataMap['liquidez'] || findText(['liquidez diaria', 'liquidez']),
             vacancia: findVal(['vacancia']),
-            val_mercado: findText(['valor patrimonial', 'patrimonio liquido', 'valor de mercado']), // Prioriza valor patrimonial para FIIs
+            val_mercado: findText(['valor patrimonial', 'patrimonio liquido', 'valor de mercado']),
             segmento: findText(['segmento'])
         };
 
-        // Extração de Segmento via Breadcrumbs (Backup)
         if (!dados.segmento || dados.segmento === 'Geral') {
              $('#breadcrumbs li a, .breadcrumb-item a').each((_, el) => {
                 const txt = $(el).text().trim();
@@ -156,7 +143,6 @@ async function scrapeFundamentos(ticker: string) {
         }
 
         return dados;
-
     } catch (error: any) {
         console.error(`Erro scraper fundamentos [${ticker}]:`, error.message);
         return { 
@@ -167,7 +153,7 @@ async function scrapeFundamentos(ticker: string) {
 }
 
 // ---------------------------------------------------------
-// PARTE 2: PROVENTOS -> STATUSINVEST
+// PARTE 2: PROVENTOS -> STATUSINVEST (FUTURO E PASSADO)
 // ---------------------------------------------------------
 
 async function scrapeAsset(ticker: string) {
@@ -195,25 +181,40 @@ async function scrapeAsset(ticker: string) {
                 if (parts.length !== 3) return null;
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
+
             let labelTipo = 'REND'; 
             if (d.et === 1) labelTipo = 'DIV';
             if (d.et === 2) labelTipo = 'JCP';
+            
+            // Refinamento por texto
             if (d.etd) {
                 const texto = d.etd.toUpperCase();
                 if (texto.includes('JURO')) labelTipo = 'JCP';
                 else if (texto.includes('DIVID')) labelTipo = 'DIV';
-                else if (texto.includes('TRIBUTADO')) labelTipo = 'REND_TRIB';
+                else if (texto.includes('REND')) labelTipo = 'REND';
             }
+
+            const dataCom = parseDateJSON(d.ed);
+            let paymentDate = parseDateJSON(d.pd);
+
+            // Se tem Data Com mas não tem Pagamento (Provisionado), usa Data Com como referência
+            if (!paymentDate && dataCom) {
+                paymentDate = dataCom; 
+            }
+
             return {
-                dataCom: parseDateJSON(d.ed),
-                paymentDate: parseDateJSON(d.pd),
+                dataCom: dataCom,
+                paymentDate: paymentDate,
                 value: d.v,
                 type: labelTipo,
                 rawType: d.et
             };
         });
 
-        return dividendos.filter((d: any) => d.paymentDate !== null).sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
+        // Filtra inválidos, mas mantém futuros
+        return dividendos
+            .filter((d: any) => d.dataCom !== null && d.value > 0)
+            .sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
 
     } catch (error: any) { 
         console.error(`Erro StatusInvest API ${ticker}:`, error.message);
@@ -222,25 +223,22 @@ async function scrapeAsset(ticker: string) {
 }
 
 // ---------------------------------------------------------
-// PARTE 3: IPCA -> INVESTIDOR10 (TABELA DINÂMICA)
+// PARTE 3: IPCA
 // ---------------------------------------------------------
 
 async function scrapeIpca() {
+    // ... (Mantém lógica anterior do IPCA)
     try {
         const url = 'https://investidor10.com.br/indices/ipca/';
         const { data } = await client.get(url);
         const $ = cheerio.load(data);
-
         const historico: any[] = [];
         let acumulado12m = '0,00';
         let acumuladoAno = '0,00';
 
-        // Busca tabela que contém "Acumulado" no header
         $('table').each((i, table) => {
             const headerText = $(table).find('thead').text().toLowerCase();
             if (headerText.includes('acumulado 12 meses') || headerText.includes('no ano')) {
-                
-                // Mapeia índices das colunas
                 let idx12m = -1;
                 let idxAno = -1;
                 let idxMes = -1;
@@ -254,13 +252,11 @@ async function scrapeIpca() {
                     if (txt.includes('no ano')) idxAno = idx;
                 });
 
-                // Se não achou header, tenta defaults (0: Mes, 1: Valor, 2: Ano, 3: 12m)
                 if (idx12m === -1 && $(table).find('tr').first().find('td').length >= 4) {
                     idxMes = 0; idxVal = 1; idxAno = 2; idx12m = 3;
                 }
 
                 if (idx12m !== -1) {
-                    // Itera linhas
                     $(table).find('tbody tr').each((rIdx, tr) => {
                         const tds = $(tr).find('td');
                         if (tds.length > idx12m) {
@@ -268,13 +264,10 @@ async function scrapeIpca() {
                             const val = $(tds[idxVal]).text().trim();
                             const acc12 = $(tds[idx12m]).text().trim();
                             const accAno = $(tds[idxAno]).text().trim();
-
-                            // A primeira linha válida é o acumulado atual
                             if (rIdx === 0 && acc12) {
                                 acumulado12m = acc12.replace('.', ',');
                                 acumuladoAno = accAno.replace('.', ',');
                             }
-
                             if (mes && val) {
                                 historico.push({
                                     mes,
@@ -289,7 +282,6 @@ async function scrapeIpca() {
             }
         });
 
-        // Se não achou na tabela, tenta buscar cards de destaque (widgets)
         if (acumulado12m === '0,00') {
             $('.value').each((_, el) => {
                 const parentText = $(el).parent().text().toLowerCase();
@@ -300,13 +292,11 @@ async function scrapeIpca() {
         }
 
         return {
-            historico: historico.slice(0, 13).reverse(), // Últimos 12 meses
+            historico: historico.slice(0, 13).reverse(), 
             acumulado_12m: acumulado12m,
             acumulado_ano: acumuladoAno
         };
-
     } catch (error) {
-        console.error('Erro no Scraper IPCA:', error);
         return { historico: [], acumulado_12m: '0,00', acumulado_ano: '0,00' };
     }
 }
@@ -324,27 +314,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
     try {
-        // --- MODO CRON (GET) ---
-        // Executado automaticamente pelo Vercel Cron ou manualmente via URL
         if (req.method === 'GET') {
-            // 1. Busca todos os tickers únicos do banco de dados
             const { data: transactions, error } = await supabase.from('transactions').select('ticker');
             if (error) throw error;
 
             const uniqueTickers = [...new Set((transactions || []).map((t: any) => t.ticker.toUpperCase()))];
             if (uniqueTickers.length === 0) return res.status(200).json({ message: "Nenhum ativo para atualizar." });
 
-            const batches = chunkArray(uniqueTickers, 3); // Lotes de 3
+            const batches = chunkArray(uniqueTickers, 3); 
             let processed = 0;
 
             for (const batch of batches) {
                 await Promise.all(batch.map(async (ticker: string) => {
                     try {
-                        // A. Scrape Fundamentos
                         const fund = await scrapeFundamentos(ticker);
                         const assetType = (ticker.endsWith('11') || ticker.endsWith('11B')) ? 'FII' : 'ACAO';
                         
-                        // Salva Metadata no Supabase
                         await supabase.from('ativos_metadata').upsert({
                             ticker,
                             type: assetType,
@@ -360,14 +345,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             updated_at: new Date().toISOString()
                         }, { onConflict: 'ticker' });
 
-                        // B. Scrape Proventos
+                        // Scrape Proventos (Inclui futuros)
                         const proventos = await scrapeAsset(ticker);
                         if (proventos.length > 0) {
                             const dbProventos = proventos.map((p: any) => ({
                                 ticker,
                                 type: p.type,
                                 date_com: p.dataCom,
-                                payment_date: p.paymentDate,
+                                payment_date: p.paymentDate, // Pode ser igual dataCom se não anunciado
                                 rate: p.value
                             }));
                             
@@ -381,7 +366,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         console.error(`Falha no Cron para ${ticker}:`, err);
                     }
                 }));
-                // Pequena pausa entre lotes
                 await new Promise(r => setTimeout(r, 1500));
             }
 
@@ -393,8 +377,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        // --- MODO PROXY (POST) ---
-        // Para consultas do Frontend
         if (req.method === 'POST') {
             if (!req.body || !req.body.mode) throw new Error("Payload inválido");
             const { mode, payload } = req.body;
@@ -410,7 +392,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 return res.status(200).json({ json: dados });
             }
             
-            // ... (Lógica de portfolio se mantem igual) ...
             if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
                 if (!payload.fiiList) return res.json({ json: [] });
                 const batches = chunkArray(payload.fiiList, 5);
@@ -421,7 +402,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         const defaultLimit = mode === 'historico_portfolio' ? 14 : 12;
                         const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
                         const history = await scrapeAsset(ticker);
-                        const recents = history.filter((h: any) => h.paymentDate && h.value > 0).slice(0, limit);
+                        const recents = history.slice(0, limit); // Pega os mais recentes (futuros inclusos)
                         if (recents.length > 0) return recents.map((r: any) => ({ symbol: ticker.toUpperCase(), ...r }));
                         return null;
                     });

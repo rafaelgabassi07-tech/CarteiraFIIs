@@ -10,10 +10,19 @@ const supabase = createClient(
   process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || ''
 );
 
-// Agente HTTPS para evitar bloqueios simples
 const httpsAgent = new https.Agent({ 
     keepAlive: true, 
     rejectUnauthorized: false 
+});
+
+const client = axios.create({
+    httpsAgent,
+    headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Referer': 'https://statusinvest.com.br/'
+    },
+    timeout: 15000
 });
 
 // Helper de Parsing
@@ -34,6 +43,68 @@ function normalizeKey(str: string) {
         .trim();
 }
 
+async function scrapeAsset(ticker: string) {
+    try {
+        const t = ticker.toUpperCase();
+        let type = 'acao';
+        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
+
+        // Endpoint que retorna lista completa (passado e futuro)
+        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
+
+        const { data } = await client.get(url, { 
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        const earnings = data.assetEarningsModels || [];
+
+        const dividendos = earnings.map((d: any) => {
+            const parseDateJSON = (dStr: string) => {
+                if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
+                const parts = dStr.split('/');
+                if (parts.length !== 3) return null;
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            };
+
+            let labelTipo = 'REND'; 
+            if (d.et === 1) labelTipo = 'DIV';
+            if (d.et === 2) labelTipo = 'JCP';
+            
+            if (d.etd) {
+                const texto = d.etd.toUpperCase();
+                if (texto.includes('JURO')) labelTipo = 'JCP';
+                else if (texto.includes('DIVID')) labelTipo = 'DIV';
+                else if (texto.includes('REND')) labelTipo = 'REND';
+            }
+
+            const dataCom = parseDateJSON(d.ed);
+            let paymentDate = parseDateJSON(d.pd);
+
+            // Se pagamento ainda não definido (Provisionado), usa Data Com como referência
+            if (!paymentDate && dataCom) {
+                paymentDate = dataCom;
+            }
+
+            return {
+                dataCom: dataCom,
+                paymentDate: paymentDate,
+                value: d.v,
+                type: labelTipo,
+                rawType: d.et
+            };
+        });
+
+        // Filtra inválidos, mas mantém futuros
+        return dividendos
+            .filter((d: any) => d.dataCom !== null && d.value > 0)
+            .sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
+
+    } catch (error: any) { 
+        console.error(`Erro StatusInvest API ${ticker}:`, error.message);
+        return []; 
+    }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -51,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const assetType = (stock.endsWith('11') || stock.endsWith('11B')) ? 'FII' : 'ACAO';
     let url = `https://investidor10.com.br/${assetType === 'FII' ? 'fiis' : 'acoes'}/${stock.toLowerCase()}/`;
 
-    // Fetch com Headers de Navegador Real
+    // 1. Scrape Fundamentos
     const response = await axios.get(url, {
       httpsAgent,
       headers: {
@@ -71,7 +142,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const $ = cheerio.load(response.data);
     const dataMap: Record<string, any> = {};
 
-    // 1. Extração Específica (Classes de Destaque)
     const cotacaoVal = $('._card.cotacao .value').text().trim();
     if (cotacaoVal) dataMap['cotacao'] = cotacaoVal;
 
@@ -87,7 +157,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const liqVal = $('._card.val ._card-body span').text().trim();
     if (liqVal) dataMap['liquidez'] = liqVal;
 
-    // 2. Varredura da Tabela de Indicadores (.cell)
     $('#table-indicators .cell').each((_, el) => {
         const title = $(el).find('.name').text().trim();
         const value = $(el).find('.value span').text().trim();
@@ -96,7 +165,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
     });
 
-    // 3. Fallback Genérico
     $('._card').each((_, el) => {
         const title = $(el).find('._card-header').text();
         const value = $(el).find('._card-body').text();
@@ -131,7 +199,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         segmento: findText(['segmento'])
     };
 
-    // 3. Segmento (Breadcrumbs) - Fallback
     if (!fund.segmento || fund.segmento === 'Geral') {
         $('#breadcrumbs li a, .breadcrumb-item a').each((_, el) => {
             const txt = $(el).text().trim();
@@ -141,7 +208,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
     }
 
-    // Upsert Metadata
     await supabase.from('ativos_metadata').upsert({
         ticker: stock,
         type: assetType,
@@ -157,10 +223,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         updated_at: new Date().toISOString()
     }, { onConflict: 'ticker' });
 
+    // 2. Scrape Proventos (Inclui futuros e JCP)
+    const proventos = await scrapeAsset(stock);
+    if (proventos.length > 0) {
+        const dbProventos = proventos.map((p: any) => ({
+            ticker: stock,
+            type: p.type,
+            date_com: p.dataCom,
+            payment_date: p.paymentDate,
+            rate: p.value
+        }));
+        
+        await supabase.from('market_dividends').upsert(dbProventos, {
+            onConflict: 'ticker, type, date_com, payment_date, rate',
+            ignoreDuplicates: true
+        });
+    }
+
     return res.status(200).json({
       success: true,
       ticker: stock,
-      data: fund
+      data: fund,
+      dividends_count: proventos.length
     });
 
   } catch (error: any) {
