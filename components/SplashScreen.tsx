@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 
 interface SplashScreenProps {
   finishLoading: boolean;
@@ -27,7 +27,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
     }
 
     if (statusText) {
-      // Muda o texto baseado no progresso
       const textIndex = Math.min(
         Math.floor((realProgress / 100) * STATUS_TEXTS.length),
         STATUS_TEXTS.length - 1
@@ -49,8 +48,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         setTimeout(() => {
           splashElement.classList.add('splash-exit');
           
-          // LIBERA O SCROLL
+          // LIBERA O SCROLL DEFINITIVAMENTE
           document.body.classList.remove('is-loading');
+          document.body.style.overflow = '';
+          document.body.style.position = '';
           document.body.classList.add('app-revealed');
           
           setTimeout(() => {
