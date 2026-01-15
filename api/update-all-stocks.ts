@@ -1,5 +1,4 @@
 
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -65,67 +64,63 @@ function chunkArray(array: any[], size: number) {
 async function scrapeFundamentos(ticker: string) {
     try {
         let html;
-        let finalUrl = '';
         try {
             // Tenta FIIs primeiro
             const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
             html = res.data;
-            finalUrl = res.request?.res?.responseUrl || '';
         } catch (e) {
             // Se falhar, tenta Ações
             const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
             html = res.data;
-            finalUrl = res.request?.res?.responseUrl || '';
         }
 
         const $ = cheerio.load(html);
         const dataMap: Record<string, any> = {};
 
-        // 1. Extração Genérica (Cards, Células, Tabelas)
-        // Itera por todos os elementos que parecem conter par Titulo/Valor
-        
-        // Cards do Topo (Layout Desktop)
-        $('._card').each((_, el) => {
-            const title = $(el).find('._card-header').text();
-            const value = $(el).find('._card-body').text();
-            if (title && value) dataMap[normalizeKey(title)] = value.trim();
-        });
+        // 1. Extração via Classes Específicas dos Cards (Baseado no HTML fornecido)
+        // Cotação
+        const cotacaoVal = $('._card.cotacao .value').text().trim();
+        if (cotacaoVal) dataMap['cotacao'] = cotacaoVal;
 
-        // Células de Grade (Layout Mobile/Tablet)
-        $('.cell').each((_, el) => {
-            let title = $(el).find('.name').text();
-            if (!title) title = $(el).children('span').first().text();
-            
-            let value = $(el).find('.value').text();
-            if (!value) value = $(el).children('span').last().text();
-            
-            if (title && value) dataMap[normalizeKey(title)] = value.trim();
-        });
+        // Dividend Yield (Pega o primeiro ._card.dy pois o segundo é variação)
+        const dyVal = $('._card.dy ._card-body span').first().text().trim();
+        if (dyVal) dataMap['dy'] = dyVal;
 
-        // Tabelas de Indicadores (Layout Detalhado)
-        $('table tr').each((_, tr) => {
-            const tds = $(tr).find('td');
-            if (tds.length >= 2) {
-                const title = $(tds[0]).text();
-                const value = $(tds[1]).text();
-                if (title && value) dataMap[normalizeKey(title)] = value.trim();
+        // P/VP
+        const pvpVal = $('._card.vp ._card-body span').text().trim();
+        if (pvpVal) dataMap['pvp'] = pvpVal;
+
+        // P/L (Ações) - Geralmente usa a mesma classe .vp ou .val em alguns layouts, mas vamos buscar por texto
+        const plVal = $('._card.pl ._card-body span').text().trim();
+        if (plVal) dataMap['pl'] = plVal;
+
+        // Liquidez
+        const liqVal = $('._card.val ._card-body span').text().trim();
+        if (liqVal) dataMap['liquidez'] = liqVal;
+
+        // 2. Varredura da Tabela de Detalhes (.cell)
+        $('#table-indicators .cell').each((_, el) => {
+            const title = $(el).find('.name').text().trim();
+            const value = $(el).find('.value span').text().trim();
+            
+            if (title && value) {
+                const key = normalizeKey(title);
+                dataMap[key] = value;
             }
         });
 
-        // Cotação Atual (Destaque)
-        const cotacaoDestaque = $('.quotation-price').first().text().trim();
-        if (cotacaoDestaque) dataMap['cotacao'] = cotacaoDestaque;
+        // 3. Fallback: Varredura Genérica de Cards (caso mude o layout)
+        $('._card').each((_, el) => {
+            const title = $(el).find('._card-header').text().trim();
+            const value = $(el).find('._card-body').text().trim();
+            if (title && value) dataMap[normalizeKey(title)] = value;
+        });
 
-        // 2. Mapeamento para o Schema do App
-        // Função auxiliar para buscar chaves variadas
+        // 4. Mapeamento Final
         const findVal = (keys: string[]) => {
             for (const key of keys) {
                 const nKey = normalizeKey(key);
-                // Tenta match exato
                 if (dataMap[nKey]) return parseValue(dataMap[nKey]);
-                // Tenta match parcial
-                const found = Object.keys(dataMap).find(k => k.includes(nKey));
-                if (found) return parseValue(dataMap[found]);
             }
             return 0;
         };
@@ -134,38 +129,30 @@ async function scrapeFundamentos(ticker: string) {
             for (const key of keys) {
                 const nKey = normalizeKey(key);
                 if (dataMap[nKey]) return dataMap[nKey];
-                const found = Object.keys(dataMap).find(k => k.includes(nKey));
-                if (found) return dataMap[found];
             }
             return '';
         };
 
         const dados = {
-            cotacao: findVal(['cotacao', 'valor atual', 'preco']),
-            dy: findVal(['dividend yield', 'dy', 'yield']),
-            pvp: findVal(['p/vp', 'vp']),
-            pl: findVal(['p/l', 'pl', 'preco/lucro']),
+            cotacao: parseValue(dataMap['cotacao']) || findVal(['cotacao', 'valor atual']),
+            dy: parseValue(dataMap['dy']) || findVal(['dividend yield', 'dy']),
+            pvp: parseValue(dataMap['pvp']) || findVal(['p/vp', 'pvp']),
+            pl: parseValue(dataMap['pl']) || findVal(['p/l', 'pl']),
             roe: findVal(['roe', 'return on equity']),
-            liquidez: findText(['liquidez', 'liq diaria', 'vol financeiro']),
+            liquidez: dataMap['liquidez'] || findText(['liquidez diaria', 'liquidez']),
             vacancia: findVal(['vacancia']),
-            val_mercado: findText(['valor de mercado', 'mercado']),
-            segmento: 'Geral'
+            val_mercado: findText(['valor patrimonial', 'patrimonio liquido', 'valor de mercado']), // Prioriza valor patrimonial para FIIs
+            segmento: findText(['segmento'])
         };
 
-        // 3. Extração de Segmento (Prioridade: Breadcrumbs)
-        // O segmento geralmente está no breadcrumb: Início > Ações > Setor > Ticker
-        $('#breadcrumbs a, .breadcrumbs a').each((i, el) => {
-            const txt = $(el).text().trim();
-            // Ignora termos genéricos
-            if (!['Início', 'Home', 'Ações', 'FIIs', 'BDRs', 'ETFs', ticker.toUpperCase()].includes(txt)) {
-                dados.segmento = txt;
-            }
-        });
-
-        // Se falhar no breadcrumb, tenta buscar na tabela
-        if (dados.segmento === 'Geral') {
-            const segTable = findText(['segmento', 'segmentacao', 'setor']);
-            if (segTable) dados.segmento = segTable;
+        // Extração de Segmento via Breadcrumbs (Backup)
+        if (!dados.segmento || dados.segmento === 'Geral') {
+             $('#breadcrumbs li a, .breadcrumb-item a').each((_, el) => {
+                const txt = $(el).text().trim();
+                if (!['Início', 'Home', 'Ações', 'FIIs', 'BDRs', 'ETFs', ticker.toUpperCase()].includes(txt)) {
+                    dados.segmento = txt;
+                }
+            });
         }
 
         return dados;
