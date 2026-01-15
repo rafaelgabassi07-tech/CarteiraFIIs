@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -395,11 +394,11 @@ const App: React.FC = () => {
         .map(p => {
             // Normaliza Ticker para Lookup
             const normalizedTicker = p.ticker.trim().toUpperCase();
-            const meta = assetsMetadata[normalizedTicker] || {};
-            const quote = quotes[normalizedTicker] || {};
+            const meta = assetsMetadata[normalizedTicker];
+            const quote = quotes[normalizedTicker];
             
             // Limpeza de Segmento
-            let segment = meta.segment || 'Geral';
+            let segment = meta?.segment || 'Geral';
             segment = segment.replace('Seg: ', '').trim();
             if (segment.length > 20) segment = segment.substring(0, 20) + '...';
 
@@ -407,11 +406,11 @@ const App: React.FC = () => {
                 ...p, 
                 totalDividends: divPaidMap[p.ticker] || 0, 
                 segment: segment, 
-                currentPrice: quote.regularMarketPrice || p.averagePrice, 
-                dailyChange: quote.regularMarketChangePercent || 0, 
-                logoUrl: quote.logourl, 
-                assetType: meta.type || p.assetType, 
-                ...meta.fundamentals 
+                currentPrice: quote?.regularMarketPrice || p.averagePrice, 
+                dailyChange: quote?.regularMarketChangePercent || 0, 
+                logoUrl: quote?.logourl, 
+                assetType: meta?.type || p.assetType, 
+                ...(meta?.fundamentals || {}) 
             };
         });
 
