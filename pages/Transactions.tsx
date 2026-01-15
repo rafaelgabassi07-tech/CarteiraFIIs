@@ -230,6 +230,15 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         setSelectedIds(newSet);
     };
 
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            const allIds = new Set(filteredTransactions.map(t => t.id));
+            setSelectedIds(allIds);
+        }
+    };
+
     const handleBulkDelete = async () => {
         setIsDeleting(true);
         try {
@@ -237,12 +246,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             const { error } = await supabase.from('transactions').delete().in('id', idsToDelete);
             
             if (error) throw error;
-
-            // Recarrega a página ou chama função de reload se disponível. 
-            // Como onUpdateTransaction/onDelete não suportam batch diretamente na interface atual,
-            // forçamos um reload ou seria ideal refatorar o App.tsx para aceitar batch delete.
-            // Aqui vamos simular chamando delete um por um para atualizar o estado local se necessário,
-            // mas o reload garante sincronia.
             window.location.reload(); 
         } catch (err) {
             console.error(err);
@@ -264,80 +267,102 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     ];
 
     return (
-        <div className="anim-fade-in relative h-full">
-            <div className="flex items-center justify-between mb-4 px-1 pt-2">
-                <div>
-                    <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-                        {filteredTransactions.length} {filteredTransactions.length === 1 ? 'Registro' : 'Registros'}
-                        {activeFilter !== 'ALL' && <span className="text-accent ml-1">• Filtrado</span>}
-                    </p>
-                </div>
-                
-                <div className="flex gap-2">
-                    {/* Botão de Seleção */}
-                    <button 
-                        onClick={toggleSelectionMode}
-                        className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg press-effect transition-all ${isSelectionMode ? 'bg-indigo-500 text-white ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-black' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
-                    >
-                         {isSelectionMode ? <CheckSquare className="w-5 h-5" /> : <CheckSquare className="w-5 h-5 opacity-50" />}
-                    </button>
+        <div className="anim-fade-in relative min-h-screen pb-32">
+            {/* STICKY HEADER FIX: Top at 5.5rem aligns with App header padding */}
+            <div className="sticky top-[5.5rem] z-30 -mx-4 px-4 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all shadow-sm mb-2">
+                <div className="flex items-center justify-between">
+                    <div>
+                        {isSelectionMode ? (
+                             <div className="flex items-center gap-2 anim-slide-up">
+                                <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                                    {selectedIds.size}
+                                </p>
+                                <span className="text-zinc-500 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-wider">Selecionados</span>
+                             </div>
+                        ) : (
+                            <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest anim-slide-up">
+                                {filteredTransactions.length} {filteredTransactions.length === 1 ? 'Registro' : 'Registros'}
+                                {activeFilter !== 'ALL' && <span className="text-accent ml-1">• Filtrado</span>}
+                            </p>
+                        )}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                        {isSelectionMode && (
+                            <button
+                                onClick={toggleSelectAll}
+                                className="px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 active:scale-95 transition-all anim-scale-in"
+                            >
+                                {selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0 ? 'Desmarcar' : 'Todos'}
+                            </button>
+                        )}
 
-                    <div className="relative z-30">
                         <button 
-                            onClick={() => setIsFilterOpen(!isFilterOpen)}
-                            disabled={isSelectionMode}
-                            className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg press-effect transition-colors ${activeFilter !== 'ALL' ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'} ${isSelectionMode ? 'opacity-30 pointer-events-none' : ''}`}
+                            onClick={toggleSelectionMode}
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm press-effect transition-all ${isSelectionMode ? 'bg-indigo-500 text-white ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-black' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
                         >
-                            {isFilterOpen ? <X className="w-5 h-5" /> : <Filter className="w-5 h-5" strokeWidth={2.5} />}
+                             {isSelectionMode ? <CheckSquare className="w-5 h-5" /> : <CheckSquare className="w-5 h-5 opacity-50" />}
                         </button>
 
-                        {isFilterOpen && (
+                        {!isSelectionMode && (
                             <>
-                                <div 
-                                    className="fixed inset-0 z-20 bg-black/5 dark:bg-black/20 backdrop-blur-[1px]" 
-                                    onClick={() => setIsFilterOpen(false)}
-                                ></div>
-                                <div className="absolute top-full right-0 mt-2 w-56 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-2 z-30 anim-scale-in origin-top-right ring-1 ring-black/5 dark:ring-white/5">
-                                    <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800/50 mb-1">
-                                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Filtrar Ordens</span>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        {filters.map((f) => (
-                                            <button
-                                                key={f.id}
-                                                onClick={() => { setActiveFilter(f.id); setIsFilterOpen(false); }}
-                                                className={`flex items-center justify-between p-3 rounded-xl text-xs font-bold transition-all ${
-                                                    activeFilter === f.id 
-                                                    ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700' 
-                                                    : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-zinc-700 dark:hover:text-zinc-300'
-                                                }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <f.icon className={`w-4 h-4 ${activeFilter === f.id ? 'text-indigo-500' : 'text-zinc-400'}`} strokeWidth={activeFilter === f.id ? 2.5 : 2} />
-                                                    <span>{f.label}</span>
+                                <div className="relative z-30">
+                                    <button 
+                                        onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                        className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm press-effect transition-colors ${activeFilter !== 'ALL' ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
+                                    >
+                                        {isFilterOpen ? <X className="w-5 h-5" /> : <Filter className="w-5 h-5" strokeWidth={2.5} />}
+                                    </button>
+
+                                    {isFilterOpen && (
+                                        <>
+                                            <div 
+                                                className="fixed inset-0 z-20 bg-black/5 dark:bg-black/20 backdrop-blur-[1px]" 
+                                                onClick={() => setIsFilterOpen(false)}
+                                            ></div>
+                                            <div className="absolute top-full right-0 mt-2 w-56 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-2 z-30 anim-scale-in origin-top-right ring-1 ring-black/5 dark:ring-white/5">
+                                                <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800/50 mb-1">
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Filtrar Ordens</span>
                                                 </div>
-                                                {activeFilter === f.id && <Check className="w-4 h-4 text-indigo-500" strokeWidth={3} />}
-                                            </button>
-                                        ))}
-                                    </div>
+                                                <div className="flex flex-col gap-1">
+                                                    {filters.map((f) => (
+                                                        <button
+                                                            key={f.id}
+                                                            onClick={() => { setActiveFilter(f.id); setIsFilterOpen(false); }}
+                                                            className={`flex items-center justify-between p-3 rounded-xl text-xs font-bold transition-all ${
+                                                                activeFilter === f.id 
+                                                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700' 
+                                                                : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-zinc-700 dark:hover:text-zinc-300'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <f.icon className={`w-4 h-4 ${activeFilter === f.id ? 'text-indigo-500' : 'text-zinc-400'}`} strokeWidth={activeFilter === f.id ? 2.5 : 2} />
+                                                                <span>{f.label}</span>
+                                                            </div>
+                                                            {activeFilter === f.id && <Check className="w-4 h-4 text-indigo-500" strokeWidth={3} />}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
+
+                                <button 
+                                    onClick={handleOpenAdd}
+                                    className={`w-10 h-10 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl flex items-center justify-center shadow-lg press-effect hover:shadow-xl anim-scale-in`}
+                                >
+                                    <Plus className="w-5 h-5" strokeWidth={2.5} />
+                                </button>
                             </>
                         )}
                     </div>
-
-                    <button 
-                        onClick={handleOpenAdd}
-                        disabled={isSelectionMode}
-                        className={`w-11 h-11 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl flex items-center justify-center shadow-lg press-effect hover:shadow-xl anim-scale-in ${isSelectionMode ? 'opacity-30 pointer-events-none' : ''}`}
-                    >
-                        <Plus className="w-5 h-5" strokeWidth={2.5} />
-                    </button>
                 </div>
             </div>
 
-            <div className="h-[calc(100vh-220px)] overflow-y-auto pb-safe">
+            <div className="px-1">
                 {flatTransactions.length > 0 ? (
-                    <div className="pb-24">
+                    <div>
                         {flatTransactions.map((item: any, index: number) => (
                             <TransactionRow 
                                 key={index} 
@@ -355,7 +380,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         ))}
                     </div>
                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center opacity-40 anim-fade-in">
+                    <div className="h-[50vh] flex flex-col items-center justify-center opacity-40 anim-fade-in">
                         <ArrowRightLeft className="w-16 h-16 mb-4 text-zinc-300 dark:text-zinc-700" strokeWidth={1} />
                         <p className="text-sm font-bold text-zinc-500">Nenhuma ordem encontrada.</p>
                         {activeFilter !== 'ALL' && (
@@ -368,9 +393,9 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
-            {/* Barra Flutuante de Ação em Massa */}
+            {/* Barra Flutuante de Ação em Massa - Z-INDEX e BOTTOM corrigidos */}
             {isSelectionMode && selectedIds.size > 0 && (
-                <div className="fixed bottom-24 left-4 right-4 z-40 anim-slide-up">
+                <div className="fixed bottom-[6.5rem] left-4 right-4 z-[100] anim-slide-up">
                     <div className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-zinc-800 dark:border-zinc-200">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-zinc-800 dark:bg-zinc-100 flex items-center justify-center font-black text-sm">
