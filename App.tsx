@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.3.1'; 
+const APP_VERSION = '8.3.2'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
