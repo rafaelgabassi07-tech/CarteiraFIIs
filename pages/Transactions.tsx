@@ -231,21 +231,21 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     ];
 
     return (
-        <div className="anim-fade-in relative min-h-screen pb-48">
+        <div className="anim-fade-in relative min-h-screen pb-60">
             {/* Header Sticky Blindado */}
             <div className="sticky top-20 z-40 -mx-4 px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300">
                 <div className="flex items-center justify-between">
                     <div>
                         {isSelectionMode ? (
                             <div className="flex flex-col anim-slide-up">
-                                <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Ação em Massa</span>
+                                <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">Modo Seleção</span>
                                 <p className="text-sm font-black text-zinc-900 dark:text-white">
                                     {selectedIds.size} selecionados
                                 </p>
                             </div>
                         ) : (
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Exibindo</span>
+                                <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Ordens</span>
                                 <p className="text-sm font-black text-zinc-900 dark:text-white">
                                     {filters.find(f => f.id === activeFilter)?.label || 'Todos'}
                                 </p>
@@ -320,8 +320,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                 }}
                             />
                         ))}
-                        {/* Spacer final para garantir que nada fique coberto */}
-                        <div className="h-24"></div>
                     </div>
                 ) : (
                     <div className="h-[50vh] flex flex-col items-center justify-center opacity-40 anim-fade-in">

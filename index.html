@@ -8,27 +8,28 @@
     <meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
     
-    <meta name="app-version" content="8.3.4" />
+    <meta name="app-version" content="8.3.6" />
     <title>InvestFIIs - FIIs & Ações</title>
     
     <link rel="manifest" href="./manifest.json" />
-    <link rel="icon" type="image/png" href="./logo.png" />
-    <link rel="apple-touch-icon" href="./logo.png" />
+    <link rel="icon" type="image/svg+xml" href="./logo.svg" />
+    <link rel="apple-touch-icon" href="./logo.svg" />
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
       :root {
         --bg-splash: #F4F4F5;
-        --logo-bg: rgba(255, 255, 255, 0.8);
+        --logo-bg: #FFFFFF;
         --text-main: #18181b;
         --accent: #0ea5e9;
+        --accent-rgb: 14, 165, 233;
       }
       
       @media (prefers-color-scheme: dark) {
         :root {
           --bg-splash: #09090b;
-          --logo-bg: rgba(24, 24, 27, 0.8);
+          --logo-bg: #18181b;
           --text-main: #FFFFFF;
         }
       }
@@ -36,11 +37,15 @@
       body, html {
         margin: 0;
         padding: 0;
-        background-color: var(--bg-splash);
         height: 100%;
         width: 100%;
         font-family: 'Inter', sans-serif;
-        overflow: hidden;
+        background-color: var(--bg-splash);
+      }
+
+      body.is-loading {
+        overflow: hidden !important;
+        touch-action: none;
       }
       
       #root-splash {
@@ -52,99 +57,135 @@
         align-items: center;
         justify-content: center;
         background-color: var(--bg-splash);
-        transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
+        background-image: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.05) 0%, transparent 70%);
+        transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
       }
 
       #root-splash.splash-exit {
         opacity: 0;
         visibility: hidden;
+        pointer-events: none;
       }
 
       .s-content {
         display: flex;
         flex-direction: column;
         align-items: center;
-        animation: contentEnter 1s ease-out;
+        text-align: center;
+        width: 100%;
+        max-width: 280px;
       }
 
-      @keyframes contentEnter {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-
-      .s-logo-container {
+      .s-logo-wrapper {
         position: relative;
-        width: 120px;
-        height: 120px;
-        margin-bottom: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .s-logo-glow {
-        position: absolute;
-        inset: -10px;
-        background: var(--accent);
-        border-radius: 40px;
-        opacity: 0.15;
-        filter: blur(20px);
-        animation: pulseGlow 2s infinite alternate ease-in-out;
-      }
-
-      @keyframes pulseGlow {
-        from { opacity: 0.1; transform: scale(0.9); }
-        to { opacity: 0.25; transform: scale(1.1); }
+        margin-bottom: 48px;
+        perspective: 1000px;
       }
 
       .s-logo-box {
-        width: 100px;
-        height: 100px;
-        border-radius: 30px;
+        width: 120px;
+        height: 120px;
+        border-radius: 36px;
         background: var(--logo-bg);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.1);
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.2), 
+                    0 0 0 1px rgba(0, 0, 0, 0.05);
+        position: relative;
         z-index: 2;
-        overflow: hidden;
+        animation: logoArrival 1s cubic-bezier(0.23, 1, 0.32, 1), logoFloat 4s ease-in-out infinite 1s;
       }
-      
+
+      @media (prefers-color-scheme: dark) {
+        .s-logo-box {
+          box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5), 
+                      0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+      }
+
+      @keyframes logoArrival {
+        from { opacity: 0; transform: scale(0.8) translateY(20px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+      }
+
+      @keyframes logoFloat {
+        0%, 100% { transform: translateY(0) rotateX(0); }
+        50% { transform: translateY(-12px) rotateX(5deg); }
+      }
+
       .s-logo-box img {
-        width: 70%;
-        height: 70%;
+        width: 60%;
+        height: 60%;
         object-fit: contain;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+      }
+
+      .s-logo-pulse {
+        position: absolute;
+        inset: -20px;
+        background: var(--accent);
+        border-radius: 50px;
+        opacity: 0;
+        filter: blur(24px);
+        animation: pulseIntensity 2.5s infinite ease-in-out;
+      }
+
+      @keyframes pulseIntensity {
+        0% { opacity: 0.05; transform: scale(0.9); }
+        50% { opacity: 0.15; transform: scale(1.15); }
+        100% { opacity: 0.05; transform: scale(0.9); }
       }
 
       .s-title {
-        font-size: 32px;
+        font-size: 34px;
         font-weight: 900;
-        letter-spacing: -0.04em;
+        letter-spacing: -0.05em;
         color: var(--text-main);
-        margin-bottom: 60px;
+        margin-bottom: 12px;
+        animation: fadeIn 0.8s ease-out 0.2s forwards;
+        opacity: 0;
       }
       .s-title span { color: var(--accent); }
 
-      .s-loader-track {
-        width: 180px;
-        height: 6px;
-        background: rgba(0,0,0,0.05);
-        border-radius: 10px;
-        overflow: hidden;
-      }
-      
-      @media (prefers-color-scheme: dark) {
-        .s-loader-track { background: rgba(255,255,255,0.05); }
+      .s-status {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--text-main);
+        margin-bottom: 36px;
+        height: 16px;
+        opacity: 0;
+        animation: fadeIn 0.8s ease-out 0.4s forwards;
       }
 
-      .s-loader-bar {
+      .s-progress-container {
+        width: 100%;
+        height: 4px;
+        background: rgba(0,0,0,0.06);
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+        opacity: 0;
+        animation: fadeIn 0.8s ease-out 0.6s forwards;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .s-progress-container { background: rgba(255,255,255,0.08); }
+      }
+
+      .s-progress-bar {
         height: 100%;
         width: 0%;
         background: linear-gradient(90deg, var(--accent), #10b981);
         border-radius: 10px;
-        transition: width 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        transition: width 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+        box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.5);
+      }
+
+      @keyframes fadeIn {
+        to { opacity: 1; }
       }
     </style>
 
@@ -171,18 +212,19 @@
 }
 </script>
 </head>
-  <body>
+  <body class="is-loading">
     <div id="root-splash">
         <div class="s-content">
-            <div class="s-logo-container">
-                <div class="s-logo-glow"></div>
+            <div class="s-logo-wrapper">
+                <div class="s-logo-pulse"></div>
                 <div class="s-logo-box">
-                    <img src="./logo.png" alt="Logo" />
+                    <img src="./logo.svg" alt="InvestFIIs Logo" />
                 </div>
             </div>
             <div class="s-title">Invest<span>FIIs</span></div>
-            <div class="s-loader-track">
-                <div id="splash-progress-bar" class="s-loader-bar"></div>
+            <div id="splash-status-text" class="s-status">Conectando...</div>
+            <div class="s-progress-container">
+                <div id="splash-progress-bar" class="s-progress-bar"></div>
             </div>
         </div>
     </div>

@@ -1,61 +1,67 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 
 interface SplashScreenProps {
   finishLoading: boolean;
   realProgress: number; 
 }
 
-/**
- * SplashScreen Controller
- * 
- * Este componente NÃO renderiza nada visualmente.
- * Ele atua como um controlador lógico para o elemento #root-splash que já existe no index.html.
- * Isso evita o "flash" branco causado pela hidratação do React e garante
- * uma transição suave entre o carregamento estático e a aplicação interativa.
- */
+const STATUS_TEXTS = [
+  "Iniciando...",
+  "Conectando ao banco...",
+  "Sincronizando carteira...",
+  "Verificando cotações...",
+  "Analisando fundamentos...",
+  "Preparando dashboard...",
+  "Quase pronto..."
+];
+
 export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realProgress }) => {
 
-  // Efeito para atualizar a barra de progresso no DOM
   useEffect(() => {
     const progressBar = document.getElementById('splash-progress-bar');
+    const statusText = document.getElementById('splash-status-text');
+    
     if (progressBar) {
       progressBar.style.width = `${Math.max(10, realProgress)}%`;
     }
+
+    if (statusText) {
+      // Muda o texto baseado no progresso
+      const textIndex = Math.min(
+        Math.floor((realProgress / 100) * STATUS_TEXTS.length),
+        STATUS_TEXTS.length - 1
+      );
+      statusText.innerText = STATUS_TEXTS[textIndex];
+    }
   }, [realProgress]);
 
-  // Efeito para lidar com a finalização e remoção do splash
   useEffect(() => {
     if (finishLoading) {
       const splashElement = document.getElementById('root-splash');
       const progressBar = document.getElementById('splash-progress-bar');
+      const statusText = document.getElementById('splash-status-text');
       
       if (splashElement) {
-        // 1. Completa a barra visualmente antes de sair
         if (progressBar) progressBar.style.width = '100%';
+        if (statusText) statusText.innerText = "Tudo pronto!";
 
-        // 2. Aguarda um momento breve para o usuário ver o 100%
         setTimeout(() => {
-          // 3. Adiciona a classe que dispara a transição CSS (opacity 0, scale up)
           splashElement.classList.add('splash-exit');
           
-          // 4. Sinaliza para o CSS do body que o app foi revelado (para animações de entrada do conteúdo)
+          // LIBERA O SCROLL
+          document.body.classList.remove('is-loading');
           document.body.classList.add('app-revealed');
-          document.body.style.overflow = ''; // Libera o scroll
-
-          // 5. Remove o elemento do DOM após a animação CSS terminar (600ms definido no CSS)
+          
           setTimeout(() => {
             if (splashElement.parentNode) {
               splashElement.parentNode.removeChild(splashElement);
             }
-          }, 600);
+          }, 800);
         }, 500);
       }
-    } else {
-        // Garante scroll travado enquanto carrega
-        document.body.style.overflow = 'hidden';
     }
   }, [finishLoading]);
 
-  // Não renderizamos nada via React. O HTML estático cuida do visual.
   return null;
 };
