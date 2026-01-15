@@ -700,7 +700,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
              </div>
 
-             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '100ms' }}>
+             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm anim-graph-grow" style={{ animationDelay: '100ms' }}>
                  <div className="flex items-center gap-2 mb-2 px-2">
                      <LayoutGrid className="w-3 h-3 text-zinc-400" />
                      <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Por Classe</h3>
@@ -708,13 +708,24 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  <div className="h-48 w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                            <Pie data={classChartData} innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
+                            <Pie 
+                                data={classChartData} 
+                                innerRadius={60} 
+                                outerRadius={80} 
+                                paddingAngle={4} 
+                                dataKey="value" 
+                                stroke="none"
+                                isAnimationActive={true}
+                                animationDuration={1400}
+                                animationBegin={200}
+                                animationEasing="ease-out"
+                            >
                                 {classChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                             </Pie>
                             <RechartsTooltip content={<CustomTooltip />} />
                         </PieChart>
                     </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none anim-fade-in" style={{ animationDelay: '1000ms' }}>
                         <span className="text-[10px] font-bold text-zinc-400 uppercase">Total</span>
                         <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(typeData.total, privacyMode)}</span>
                     </div>
@@ -732,7 +743,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              </div>
 
              {assetsChartData.length > 0 && (
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 anim-slide-up shadow-sm" style={{ animationDelay: '300ms' }}>
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 anim-slide-up shadow-sm anim-graph-grow" style={{ animationDelay: '300ms' }}>
                     <div className="flex items-center gap-2 mb-2 px-2">
                         <Gem className="w-3 h-3 text-zinc-400" />
                         <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Por Ativo</h3>
@@ -740,7 +751,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <div className="h-56 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie data={assetsChartData} innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
+                                <Pie 
+                                    data={assetsChartData} 
+                                    innerRadius={50} 
+                                    outerRadius={80} 
+                                    paddingAngle={3} 
+                                    dataKey="value" 
+                                    stroke="none"
+                                    isAnimationActive={true}
+                                    animationDuration={1600}
+                                    animationBegin={300}
+                                    animationEasing="ease-out"
+                                >
                                     {assetsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <RechartsTooltip content={<CustomTooltip />} />
@@ -749,7 +771,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                     <div className="space-y-2 mt-2">
                         {assetsChartData.map((entry, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                            <div key={index} className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors anim-stagger-item" style={{ animationDelay: `${500 + index * 50}ms` }}>
                                 <div className="flex items-center gap-2.5 overflow-hidden">
                                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
                                     <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 truncate max-w-[150px]">{entry.name}</span>
@@ -782,21 +804,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  <>
                      {/* Summary Cards */}
                      <div className="grid grid-cols-3 gap-3 mb-6 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                         <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                         <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center anim-scale-in" style={{ animationDelay: '200ms' }}>
                              <p className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1">Recebido</p>
                              <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.sum12m, privacyMode)}</p>
                          </div>
-                         <div className="p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-100 dark:border-rose-900/30 text-center">
+                         <div className="p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-100 dark:border-rose-900/30 text-center anim-scale-in" style={{ animationDelay: '300ms' }}>
                              <p className="text-[9px] font-black uppercase text-rose-600 dark:text-rose-400 mb-1">Inflação</p>
                              <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.inflationCost, privacyMode)}</p>
                          </div>
-                         <div className={`p-3 rounded-xl text-center border ${realYieldMetrics.sum12m >= realYieldMetrics.inflationCost ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30'}`}>
+                         <div className={`p-3 rounded-xl text-center border anim-scale-in ${realYieldMetrics.sum12m >= realYieldMetrics.inflationCost ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30'}`} style={{ animationDelay: '400ms' }}>
                              <p className={`text-[9px] font-black uppercase mb-1 ${realYieldMetrics.sum12m >= realYieldMetrics.inflationCost ? 'text-indigo-600 dark:text-indigo-400' : 'text-amber-600 dark:text-amber-400'}`}>Real</p>
                              <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.sum12m - realYieldMetrics.inflationCost, privacyMode)}</p>
                          </div>
                      </div>
 
-                     <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
+                     <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm anim-graph-grow" style={{ animationDelay: '200ms' }}>
                          <div className="flex items-center justify-between mb-4 px-2">
                              <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-3 h-3" /> Evolução do Saldo Real</h3>
                          </div>
@@ -808,7 +830,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `R$${val/1000}k`} />
                                     <ReferenceLine y={0} stroke="#71717a" />
                                     <RechartsTooltip content={<NetBarTooltip />} cursor={{ fill: '#71717a10', radius: 4 }} />
-                                    <Bar dataKey="net" radius={[2, 2, 2, 2]} barSize={12}>
+                                    <Bar 
+                                        dataKey="net" 
+                                        radius={[2, 2, 2, 2]} 
+                                        barSize={12}
+                                        isAnimationActive={true}
+                                        animationDuration={1500}
+                                        animationBegin={200}
+                                        animationEasing="ease-out"
+                                    >
                                         {last12MonthsData.slice().reverse().map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={entry.net >= 0 ? '#10b981' : '#f43f5e'} />
                                         ))}
@@ -824,7 +854,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                              {last12MonthsData.slice().reverse().map((item: MonthlyInflationData, i: number) => {
                                  const isPositive = item.net >= 0;
                                  return (
-                                     <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-800 transition-colors">
+                                     <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-800 transition-colors anim-stagger-item" style={{ animationDelay: `${i * 50}ms` }}>
                                          <div className="flex items-center gap-3">
                                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border ${isPositive ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 border-emerald-200 dark:border-emerald-800' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 border-rose-200 dark:border-rose-800'}`}>
                                                  {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
