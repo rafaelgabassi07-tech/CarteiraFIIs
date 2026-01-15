@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -338,19 +339,53 @@ const App: React.FC = () => {
       });
   }, [session, fetchTransactionsFromCloud, showToast]);
 
+  // Inicialização da Autenticação
   useEffect(() => {
     setLoadingProgress(10);
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) setLoadingProgress(20); else setAppLoading(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
-    return () => subscription.unsubscribe();
-  }, []);
 
-  useEffect(() => {
-    if (session?.user) fetchTransactionsFromCloud(session, false, transactions.length === 0).finally(() => setAppLoading(false));
-  }, [session]);
+    const initAuth = async () => {
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) throw error;
+            
+            setSession(session);
+            
+            if (session) {
+                setLoadingProgress(20);
+                // Busca dados se houver sessão
+                await fetchTransactionsFromCloud(session, false, true);
+            } else {
+                setAppLoading(false); // Sem sessão, encerra load para mostrar Login
+            }
+        } catch (e) {
+            console.error("Erro na inicialização da Auth:", e);
+            setAppLoading(false); // Em caso de erro, libera a tela
+        }
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+        setSession(session);
+        if (!session) setAppLoading(false);
+    });
+    
+    // Safety Timeout: Se em 6 segundos não carregar, libera a tela
+    const safetyTimer = setTimeout(() => {
+        setAppLoading((current) => {
+            if (current) {
+                console.warn("Safety Timeout: Forcing App Load");
+                return false;
+            }
+            return current;
+        });
+    }, 6000);
+
+    return () => {
+        subscription.unsubscribe();
+        clearTimeout(safetyTimer);
+    };
+  }, []);
 
   const memoizedPortfolioData = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
