@@ -65,7 +65,6 @@ export const Settings: React.FC<SettingsProps> = ({
   // States para o Logger
   const [showLogs, setShowLogs] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [logFilter, setLogFilter] = useState<'all' | 'error'>('all');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -78,15 +77,9 @@ export const Settings: React.FC<SettingsProps> = ({
   });
 
   useEffect(() => {
-      // Wrapper para garantir tipagem correta no callback
       const unsubscribe = logger.subscribe((l) => setLogs(l));
       return unsubscribe;
   }, []);
-
-  const filteredLogs = useMemo(() => {
-      if (logFilter === 'all') return logs;
-      return logs.filter(l => l.level === 'error');
-  }, [logs, logFilter]);
 
   useEffect(() => {
     const saved = localStorage.getItem('investfiis_notif_prefs_v1');
@@ -146,7 +139,6 @@ export const Settings: React.FC<SettingsProps> = ({
           if (newTxs.length === 0 && newDivs.length === 0) {
               showToast('error', 'Nenhum dado válido identificado na planilha.');
           } else {
-              // Deduplicação e Importação (Simplificado para brevidade, lógica completa mantida do anterior)
               const existingSig = new Set(transactions.map(t => 
                   `${t.ticker.trim().toUpperCase()}-${t.date.split('T')[0]}-${Math.round(t.quantity)}-${Math.round(t.price * 100)}-${t.type}`
               ));
@@ -339,7 +331,7 @@ export const Settings: React.FC<SettingsProps> = ({
               </div>
               <div className="space-y-2">
                   {services.map((s) => (
-                    <button key={s.id} onClick={() => setSelectedServiceId(s.id)} className="w-full flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group active:scale-[0.98]">
+                    <button key={s.id} onClick={() => setSelectedServiceId(s.id)} className="w-full flex items-center justify-between p-3 rounded-xl bg-zinc-5 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group active:scale-[0.98]">
                         <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${s.status === 'operational' ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : s.status === 'degraded' ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600' : s.status === 'error' ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-600' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
                                 {s.icon && <s.icon className="w-4 h-4" />}
@@ -364,15 +356,10 @@ export const Settings: React.FC<SettingsProps> = ({
             <button onClick={() => setShowLogs(true)} className="w-full p-4 rounded-2xl bg-zinc-950 dark:bg-black border border-zinc-800 flex items-center justify-between group press-effect">
                 <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-zinc-400 border border-zinc-800"><Terminal className="w-5 h-5" /></div>
-                    <div className="text-left"><h4 className="text-xs font-bold text-white mb-0.5">Console de Logs</h4><p className="text-[10px] text-zinc-500 font-mono">{logs.length} registro(s) • {logs.filter(l => l.level === 'error').length} erro(s)</p></div>
+                    <div className="text-left"><h4 className="text-xs font-bold text-white mb-0.5">Console de Logs</h4><p className="text-[10px] text-zinc-500 font-mono">{logs.length} registro(s)</p></div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
             </button>
-            
-            <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-white dark:bg-indigo-900/50 flex items-center justify-center shrink-0 text-indigo-500"><Wifi className="w-4 h-4" /></div>
-                <div><h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-100">Modo Offline Habilitado</h4><p className="text-[10px] text-indigo-700/70 dark:text-indigo-300/70 mt-0.5 leading-relaxed">Mesmo se os serviços caírem, você pode acessar seus dados locais.</p></div>
-            </div>
           </div>
         )}
 

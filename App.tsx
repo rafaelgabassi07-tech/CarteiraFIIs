@@ -33,19 +33,27 @@ const STORAGE_KEYS = {
 const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
 /**
- * Calcula quantidade em Data Com
+ * Calcula quantidade em Data Com com precisão de data
  */
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!dateCom || dateCom.length < 10) return 0;
-  const targetDate = dateCom.substring(0, 10); 
+  
+  // Normaliza data alvo para YYYY-MM-DD
+  const targetDateStr = dateCom.substring(0, 10);
   const targetTicker = ticker.trim().toUpperCase();
 
   return transactions
     .filter(t => {
-        const txDate = (t.date || '').substring(0, 10);
-        return t.ticker.trim().toUpperCase() === targetTicker && txDate <= targetDate;
+        const txDateStr = (t.date || '').substring(0, 10);
+        // A lógica é: Se comprei ATÉ (<=) a data com, eu tenho direito.
+        // Se vendi ATÉ (<=) a data com, eu perdi o direito.
+        return t.ticker.trim().toUpperCase() === targetTicker && txDateStr <= targetDateStr;
     })
-    .reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
+    .reduce((acc, t) => {
+        if (t.type === 'BUY') return acc + t.quantity;
+        if (t.type === 'SELL') return acc - t.quantity;
+        return acc;
+    }, 0);
 };
 
 const mapSupabaseToTx = (record: any): Transaction => ({
@@ -70,11 +78,10 @@ const MemoizedTransactions = React.memo(Transactions);
 
 const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
-  // Inicialização "Lazy" do SessionStorage/LocalStorage para evitar delay no primeiro render
   const updateManager = useUpdateManager(APP_VERSION);
   
   // Controle de Inicialização
-  const [isReady, setIsReady] = useState(false); // Indica se o React terminou de montar e verificar Auth
+  const [isReady, setIsReady] = useState(false); 
   const [loadingProgress, setLoadingProgress] = useState(0); 
   
   // Auth
@@ -101,7 +108,7 @@ const App: React.FC = () => {
   const toastTimeoutRef = useRef<number | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
   
-  // Dados de Negócio (Iniciam vazios ou do cache para não quebrar render)
+  // Dados de Negócio
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY); return s ? JSON.parse(s) : []; } catch { return []; } });
   
@@ -160,7 +167,6 @@ const App: React.FC = () => {
       const handler = (e: any) => {
           e.preventDefault();
           setInstallPrompt(e);
-          // Pequeno delay para não aparecer em cima do splash screen ou login
           setTimeout(() => setShowInstallModal(true), 5000);
       };
       window.addEventListener('beforeinstallprompt', handler);
@@ -187,6 +193,21 @@ const App: React.FC = () => {
       toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3500); 
     }, 50);
   }, []);
+
+  const addNotification = useCallback((title: string, message: string, type: 'info' | 'success' | 'warning' | 'update' = 'info', category: any = 'general') => {
+      const newNotif: AppNotification = {
+          id: crypto.randomUUID(),
+          title,
+          message,
+          type,
+          category,
+          timestamp: Date.now(),
+          read: false
+      };
+      setNotifications(prev => [newNotif, ...prev]);
+      // Pequeno feedback visual se as notificações não estiverem abertas
+      if (!showNotifications) showToast('info', title);
+  }, [showToast, showNotifications]);
 
   const checkServiceHealth = useCallback(async () => {
     setIsCheckingServices(true);
@@ -253,6 +274,29 @@ const App: React.FC = () => {
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
       const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
       
+      // DETECÇÃO DE NOVOS EVENTOS PARA NOTIFICAÇÃO
+      if (aiData.dividends.length > 0 && pushEnabled) {
+          const previousSignatures = new Set(geminiDividends.map(d => `${d.ticker}-${d.type}-${d.paymentDate}-${d.rate}`));
+          let newEventsCount = 0;
+          let lastTicker = '';
+
+          aiData.dividends.forEach(d => {
+              const signature = `${d.ticker}-${d.type}-${d.paymentDate}-${d.rate}`;
+              // Se não existia antes e a data de pagamento é futura ou hoje
+              const isFuture = d.paymentDate >= new Date().toISOString().split('T')[0];
+              if (!previousSignatures.has(signature) && isFuture) {
+                  newEventsCount++;
+                  lastTicker = d.ticker;
+              }
+          });
+
+          if (newEventsCount === 1) {
+              addNotification('Novo Provento Detectado', `${lastTicker} anunciou pagamento. Confira na agenda.`, 'success', 'datacom');
+          } else if (newEventsCount > 1) {
+              addNotification('Novos Proventos', `${newEventsCount} novos pagamentos identificados na sua carteira.`, 'success', 'datacom');
+          }
+      }
+
       if (aiData.dividends.length > 0) {
           setGeminiDividends(aiData.dividends);
       }
@@ -262,14 +306,14 @@ const App: React.FC = () => {
       
       if (aiData.indicators) {
          setMarketIndicators({ 
-             ipca: aiData.indicators.ipca_cumulative || 4.62, // Fallback se vier zero
+             ipca: aiData.indicators.ipca_cumulative || 4.62, 
              startDate: aiData.indicators.start_date_used 
          });
       }
       
       if (initialLoad) setLoadingProgress(100); 
     } catch (e) { console.error(e); } finally { setIsRefreshing(false); setIsAiLoading(false); }
-  }, []);
+  }, [geminiDividends, pushEnabled, addNotification]);
 
   const fetchTransactionsFromCloud = useCallback(async (currentSession: Session | null, force = false, initialLoad = false) => {
     setCloudStatus('syncing');
@@ -284,7 +328,6 @@ const App: React.FC = () => {
         setCloudStatus('connected');
         setTimeout(() => setCloudStatus('hidden'), 3000);
         
-        // Dispara sync de mercado em background (sem await para não travar UI)
         if (cloudTxs.length > 0) {
             syncMarketData(force, cloudTxs, initialLoad).catch(e => console.error("Bg sync error", e));
         }
@@ -294,18 +337,15 @@ const App: React.FC = () => {
     }
   }, [syncMarketData, showToast]);
 
-  // --- INICIALIZAÇÃO CRÍTICA (REFACTOR) ---
+  // --- INICIALIZAÇÃO CRÍTICA ---
   useEffect(() => {
     const initApp = async () => {
-        // Marca o tempo de início para controle de duração mínima do splash
         const startTime = Date.now();
-        const MIN_SPLASH_TIME = 3000; // 3 segundos de exibição mínima
+        const MIN_SPLASH_TIME = 2500;
         
         setLoadingProgress(10);
         
         try {
-            // Promise Race: Auth vs Timeout
-            // Evita que o app trave na tela de carregamento se a Auth demorar demais (5s)
             const sessionPromise = supabase.auth.getSession();
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Timeout')), 5000));
             
@@ -319,16 +359,12 @@ const App: React.FC = () => {
             setLoadingProgress(50);
 
             if (initialSession) {
-                // Se tem sessão, buscamos dados na nuvem (sem await para liberar UI, mas aguardamos no Promise.all depois se necessário)
-                // Aqui optamos por liberar rápido e deixar sync em background, mas respeitando o tempo mínimo visual
                 fetchTransactionsFromCloud(initialSession, false, true);
             }
 
-            // CALCULA O TEMPO DECORRIDO
             const elapsed = Date.now() - startTime;
             const remainingTime = Math.max(0, MIN_SPLASH_TIME - elapsed);
 
-            // Se o carregamento foi muito rápido, aguarda o restante do tempo e simula progresso
             if (remainingTime > 0) {
                 setLoadingProgress(80);
                 await new Promise(resolve => setTimeout(resolve, remainingTime));
@@ -340,14 +376,12 @@ const App: React.FC = () => {
             console.warn("Auth check finished with error or timeout, defaulting to Login screen.", e);
             setSession(null);
         } finally {
-            // Libera a UI IMEDIATAMENTE após o tempo mínimo
             setIsReady(true);
         }
     };
 
     initApp();
 
-    // Listener de Auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, newSession) => {
         setSession(newSession);
         if (!newSession) {
@@ -362,28 +396,17 @@ const App: React.FC = () => {
   // --- HANDLERS DA UI ---
 
   const handleLogout = useCallback(async () => {
-    // 1. Limpa Estado Visual Imediatamente
     setSession(null);
     setTransactions([]);
     setGeminiDividends([]);
-    
-    // 2. Realiza o SignOut no Supabase
     await supabase.auth.signOut();
-
-    // 3. LIMPEZA SEGURA DE LOCALSTORAGE (Prevenção de Sessão Zumbi)
-    // Remove manualmente chaves de autenticação do Supabase para garantir que o 
-    // refresh da página não encontre um token antigo e logue automaticamente.
     try {
         Object.keys(localStorage).forEach(key => {
-            // As chaves do Supabase geralmente seguem o padrão 'sb-<project-id>-auth-token'
             if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
                 localStorage.removeItem(key);
             }
         });
-    } catch (e) {
-        console.warn("Falha ao limpar cache de auth manual", e);
-    }
-
+    } catch (e) { console.warn(e); }
     showToast('info', 'Desconectado com sucesso.');
   }, [showToast]);
 
@@ -466,11 +489,16 @@ const App: React.FC = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
-    // Processamento de Dividendos
+    // Processamento de Dividendos (Agora usando getQuantityOnDate estrito)
     const receipts = geminiDividends.map(d => {
+        // Verifica a quantidade exata na data com (Elegibilidade)
         const qty = getQuantityOnDate(d.ticker, d.dateCom, sortedTxs);
-        return { ...d, quantityOwned: qty, totalReceived: qty * d.rate };
-    }).filter(r => r.totalReceived > 0.0001); 
+        return { 
+            ...d, 
+            quantityOwned: qty, 
+            totalReceived: qty * d.rate // Cálculo bruto (app presume que rate vindo do scraper já considera impostos ou o usuário deve ajustar mentalmente se for JCP líquido vs bruto)
+        };
+    }).filter(r => r.totalReceived > 0.0001); // Filtra quem não tinha posição na data com
 
     const divPaidMap: Record<string, number> = {};
     let totalDividendsReceived = 0;
@@ -539,11 +567,8 @@ const App: React.FC = () => {
 
   // --- RENDERIZAÇÃO ---
 
-  // Se não estiver pronto, deixa o HTML Splash aparecer e segura o React
-  // (Embora o React renderize null, o HTML splash statico cobre a tela)
   if (!isReady) return <SplashScreen finishLoading={false} realProgress={loadingProgress} />;
 
-  // Se estiver pronto mas sem sessão, mostra Login
   if (!session) {
       return (
           <>
@@ -554,12 +579,9 @@ const App: React.FC = () => {
       );
   }
 
-  // App Principal
   return (
     <div className="min-h-screen bg-primary-light dark:bg-primary-dark">
-      {/* Sinaliza para o componente Splash que ele pode sumir */}
       <SplashScreen finishLoading={true} realProgress={100} />
-      
       <CloudStatusBanner status={cloudStatus} />
       
       {toast && ( 
@@ -573,7 +595,6 @@ const App: React.FC = () => {
         </div> 
       )}
 
-      {/* Main Content */}
         <>
             <Header 
                 title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} 

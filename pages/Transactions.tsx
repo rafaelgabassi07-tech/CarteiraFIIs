@@ -232,8 +232,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
     return (
         <div className="anim-fade-in relative min-h-screen pb-60">
-            {/* Header Fixo Blindado (Mudado de sticky para fixed) */}
-            <div className="fixed top-20 left-0 right-0 z-30 max-w-xl mx-auto px-4 py-2 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300">
+            {/* Header Sticky (Corrigido para sticky em vez de fixed para evitar conflito com transform) */}
+            <div className="sticky top-20 z-30 -mx-4 px-4 py-2 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300">
                 <div className="flex items-center justify-between">
                     <div>
                         {isSelectionMode ? (
@@ -311,8 +311,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
-            {/* Spacer para compensar o header fixo e permitir que o conteúdo role por baixo dele */}
-            <div className="px-1 pt-24">
+            {/* Lista de Transações (Sem spacer pt-24 manual, pois sticky ocupa espaço) */}
+            <div className="px-1 pt-4">
                 {flatTransactions.length > 0 ? (
                     <div className="space-y-1">
                         {flatTransactions.map((item: any, index: number) => (
