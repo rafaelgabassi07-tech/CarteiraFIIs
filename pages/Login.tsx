@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
-import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Eye, EyeOff, Sparkles, TrendingUp, KeyRound, ArrowLeft, MailCheck, UserPlus, LogIn } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Eye, EyeOff, Sparkles, TrendingUp, KeyRound, ArrowLeft, MailCheck, UserPlus, LogIn, ChevronRight } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'recovery'>('signin'); // State machine simples
@@ -66,170 +66,171 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-zinc-950 relative overflow-hidden font-sans">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-zinc-950 relative overflow-hidden font-sans text-zinc-100">
       
-      {/* Background - Solid Dark, no blur blobs */}
-      
-      <div className="w-full max-w-[420px] flex flex-col gap-6 relative z-10">
+      {/* Ambient Lighting Effects */}
+      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-teal-900/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-sky-900/10 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="w-full max-w-[380px] flex flex-col relative z-10">
         
-        {/* Header Logo */}
-        <div className="text-center anim-fade-in-up is-visible">
-            <div className="relative w-20 h-20 mx-auto mb-6 group cursor-default">
-                <div className="relative w-full h-full bg-zinc-900 border border-zinc-800 rounded-[1.5rem] flex items-center justify-center shadow-2xl">
-                    <img src="./logo.svg" alt="Logo" className="w-10 h-10 object-contain opacity-90 group-hover:scale-110 transition-transform duration-500" />
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-sky-500 rounded-lg flex items-center justify-center border-[3px] border-zinc-950 shadow-lg">
-                        <TrendingUp className="w-3 h-3 text-white" strokeWidth={3} />
-                    </div>
-                </div>
+        {/* Header Section */}
+        <div className="mb-10 text-center anim-fade-in-up">
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-3xl bg-zinc-900 border border-zinc-800 shadow-xl shadow-black/50">
+                <img src="./logo.svg" alt="Logo" className="w-8 h-8 object-contain drop-shadow-md" />
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tight mb-1">Invest<span className="text-sky-500">FIIs</span></h1>
-            <p className="text-xs text-zinc-500 font-bold tracking-widest uppercase">Gestão Inteligente</p>
+            <h1 className="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-400 mb-2">
+                {mode === 'signin' ? 'Bem-vindo' : mode === 'signup' ? 'Criar Conta' : 'Recuperar'}
+            </h1>
+            <p className="text-sm text-zinc-500 font-medium">
+                {mode === 'signin' ? 'Gerencie seus dividendos com inteligência.' : mode === 'signup' ? 'Comece a acompanhar sua evolução hoje.' : 'Vamos te ajudar a voltar.'}
+            </p>
         </div>
 
-        {/* Main Card - SOLID */}
-        <div className="bg-zinc-900 rounded-[2.5rem] border border-zinc-800 p-2 shadow-2xl anim-fade-in-up is-visible" style={{ animationDelay: '100ms' }}>
-            
-            {isVerificationSent ? (
-                <div className="p-8 text-center">
-                    <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 animate-pulse">
-                        <MailCheck className="w-8 h-8" strokeWidth={1.5} />
-                    </div>
-                    <h2 className="text-xl font-bold text-white mb-2">Verifique seu E-mail</h2>
-                    <p className="text-sm text-zinc-400 mb-8 leading-relaxed">Enviamos um link de confirmação para <strong>{email}</strong>. Clique nele para ativar sua conta.</p>
-                    <button 
-                        onClick={() => { setIsVerificationSent(false); setMode('signin'); }}
-                        className="w-full py-4 rounded-2xl bg-zinc-800 text-white font-bold text-xs uppercase tracking-widest active:scale-95 transition-transform hover:bg-zinc-700"
-                    >
-                        Voltar ao Login
-                    </button>
+        {isVerificationSent ? (
+            <div className="text-center anim-scale-in">
+                <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 border border-emerald-500/20">
+                    <MailCheck className="w-10 h-10" strokeWidth={1.5} />
                 </div>
-            ) : (
-                <div className="p-6">
-                    {/* Animated Segmented Control */}
-                    {mode !== 'recovery' && (
-                        <div className="relative flex bg-zinc-950 p-1.5 rounded-2xl mb-8 border border-zinc-800">
-                            <div 
-                                className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-zinc-800 rounded-xl shadow transition-all duration-300 ease-out-quint ${mode === 'signup' ? 'translate-x-[100%] translate-x-1.5' : 'left-1.5'}`}
-                            ></div>
-                            <button
-                                onClick={() => toggleMode('signin')}
-                                className={`relative z-10 flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-center transition-colors duration-300 ${mode === 'signin' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                            >
-                                Entrar
-                            </button>
-                            <button
-                                onClick={() => toggleMode('signup')}
-                                className={`relative z-10 flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-center transition-colors duration-300 ${mode === 'signup' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                            >
-                                Criar Conta
-                            </button>
+                <h2 className="text-xl font-bold text-white mb-2">Verifique seu E-mail</h2>
+                <p className="text-sm text-zinc-400 mb-8 leading-relaxed px-4">
+                    Enviamos um link de confirmação para <span className="text-white font-semibold">{email}</span>.
+                </p>
+                <button 
+                    onClick={() => { setIsVerificationSent(false); setMode('signin'); }}
+                    className="w-full py-4 rounded-2xl bg-zinc-900 border border-zinc-800 text-white font-bold text-xs uppercase tracking-widest active:scale-95 transition-all hover:bg-zinc-800 hover:border-zinc-700"
+                >
+                    Voltar ao Login
+                </button>
+            </div>
+        ) : (
+            <div className="anim-fade-in-up" style={{ animationDelay: '100ms' }}>
+                
+                {/* Tab Switcher (Minimalist) */}
+                {mode !== 'recovery' && (
+                    <div className="flex bg-zinc-900/50 p-1 rounded-2xl mb-8 border border-zinc-800/50 backdrop-blur-sm">
+                        <button
+                            onClick={() => toggleMode('signin')}
+                            className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${mode === 'signin' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                            Login
+                        </button>
+                        <button
+                            onClick={() => toggleMode('signup')}
+                            className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${mode === 'signup' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                            Cadastro
+                        </button>
+                    </div>
+                )}
+
+                {/* Forms */}
+                <form onSubmit={handleAuth} className="space-y-5">
+                    
+                    {/* Error/Success Messages */}
+                    {(error || message) && (
+                        <div className={`p-4 rounded-2xl text-xs font-bold flex items-center gap-3 border anim-scale-in ${error ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                            {error ? <ShieldCheck className="w-4 h-4 shrink-0" /> : <Sparkles className="w-4 h-4 shrink-0" />}
+                            <span>{error || message}</span>
                         </div>
                     )}
 
-                    {mode === 'recovery' && (
-                        <div className="mb-8 text-center relative">
-                            <button 
-                                onClick={() => setMode('signin')} 
-                                className="absolute left-0 top-1 w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all"
-                            >
-                                <ArrowLeft className="w-4 h-4" />
-                            </button>
-                            <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-400">
-                                <KeyRound className="w-6 h-6" />
-                            </div>
-                            <h3 className="text-lg font-bold text-white">Recuperar Senha</h3>
-                            <p className="text-xs text-zinc-500 mt-1">Informe seu e-mail cadastrado</p>
-                        </div>
-                    )}
-
-                    <form onSubmit={handleAuth} className="space-y-4">
-                        {/* Messages Area */}
-                        <div className={`overflow-hidden transition-all duration-300 ${error || message ? 'max-h-24 opacity-100 mb-4' : 'max-h-0 opacity-0 mb-0'}`}>
-                             {error && <div className="p-3 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold border border-rose-500/20 flex items-center gap-2"><ShieldCheck className="w-4 h-4 shrink-0" /> {error}</div>}
-                             {message && <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20 flex items-center gap-2"><Sparkles className="w-4 h-4 shrink-0" /> {message}</div>}
-                        </div>
-
-                        {/* Inputs Container */}
-                        <div className="space-y-4">
-                            <div className="group relative">
-                                <div className="absolute left-4 top-4 text-zinc-500 group-focus-within:text-sky-500 transition-colors"><Mail className="w-5 h-5" /></div>
+                    <div className="space-y-4">
+                        <div className="group">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 ml-1 block">E-mail</label>
+                            <div className="relative">
+                                <div className="absolute left-4 top-4 text-zinc-600 group-focus-within:text-sky-500 transition-colors pointer-events-none">
+                                    <Mail className="w-5 h-5" />
+                                </div>
                                 <input
                                     type="email"
-                                    placeholder="Seu e-mail principal"
+                                    placeholder="seu@email.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-zinc-950 pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-600 outline-none border border-zinc-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-inner"
+                                    className="w-full bg-zinc-900/80 pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-700 outline-none border border-zinc-800 focus:border-sky-500 focus:bg-zinc-900 transition-all"
                                     required
                                 />
                             </div>
-
-                            <div className="group relative">
-                                <div className="absolute left-4 top-4 text-zinc-500 group-focus-within:text-sky-500 transition-colors"><Lock className="w-5 h-5" /></div>
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    placeholder="Sua senha secreta"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-zinc-950 pl-12 pr-12 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-600 outline-none border border-zinc-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-inner"
-                                    required={mode !== 'recovery'}
-                                />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-zinc-600 hover:text-white transition-colors">
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
-
-                            {/* Animated Confirm Password Field */}
-                            <div className={`overflow-hidden transition-all duration-300 ease-out-quint ${mode === 'signup' ? 'max-h-20 opacity-100 pt-0' : 'max-h-0 opacity-0 pt-0'}`}>
-                                <div className="group relative">
-                                    <div className="absolute left-4 top-4 text-zinc-500 group-focus-within:text-indigo-500 transition-colors"><ShieldCheck className="w-5 h-5" /></div>
-                                    <input
-                                        type="password"
-                                        placeholder="Confirme a senha"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-zinc-950 pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-600 outline-none border border-zinc-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
-                                        required={mode === 'signup'}
-                                    />
-                                </div>
-                            </div>
                         </div>
 
-                        {mode === 'signin' && (
-                            <div className="flex justify-end pt-1">
-                                <button type="button" onClick={() => setMode('recovery')} className="text-[10px] font-bold text-zinc-500 hover:text-sky-400 transition-colors uppercase tracking-wider">
-                                    Esqueci a senha
-                                </button>
+                        {mode !== 'recovery' && (
+                            <div className="group">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 ml-1 block">Senha</label>
+                                <div className="relative">
+                                    <div className="absolute left-4 top-4 text-zinc-600 group-focus-within:text-sky-500 transition-colors pointer-events-none">
+                                        <Lock className="w-5 h-5" />
+                                    </div>
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full bg-zinc-900/80 pl-12 pr-12 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-700 outline-none border border-zinc-800 focus:border-sky-500 focus:bg-zinc-900 transition-all"
+                                        required
+                                    />
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-zinc-600 hover:text-white transition-colors p-1">
+                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
                             </div>
                         )}
 
-                        <div className="pt-4">
-                            <button 
-                                type="submit" 
-                                disabled={loading} 
-                                className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.15em] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-sky-500/20 ${
-                                    mode === 'recovery' 
-                                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20' 
-                                    : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                                }`}
-                            >
-                                {loading ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
-                                    <>
-                                        {mode === 'recovery' ? 'Enviar Link' : mode === 'signup' ? 'Cadastrar' : 'Acessar Carteira'}
-                                        {!loading && <ArrowRight className="w-4 h-4" strokeWidth={3} />}
-                                    </>
-                                )} 
+                        {mode === 'signup' && (
+                            <div className="group anim-slide-up">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 ml-1 block">Confirmar Senha</label>
+                                <div className="relative">
+                                    <div className="absolute left-4 top-4 text-zinc-600 group-focus-within:text-sky-500 transition-colors pointer-events-none">
+                                        <ShieldCheck className="w-5 h-5" />
+                                    </div>
+                                    <input
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        className="w-full bg-zinc-900/80 pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-700 outline-none border border-zinc-800 focus:border-sky-500 focus:bg-zinc-900 transition-all"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                        {mode === 'signin' ? (
+                            <button type="button" onClick={() => setMode('recovery')} className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 transition-colors uppercase tracking-widest ml-1">
+                                Esqueci a senha
                             </button>
-                        </div>
-                    </form>
-                </div>
-            )}
-        </div>
-        
-        {/* Footer info */}
-        <p className="text-center text-[10px] text-zinc-600 font-medium">
-             &copy; {new Date().getFullYear()} InvestFIIs Cloud. All rights reserved.
+                        ) : mode === 'recovery' && (
+                            <button type="button" onClick={() => setMode('signin')} className="text-[10px] font-bold text-zinc-500 hover:text-white transition-colors uppercase tracking-widest ml-1 flex items-center gap-1">
+                                <ArrowLeft className="w-3 h-3" /> Voltar
+                            </button>
+                        )}
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        disabled={loading} 
+                        className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-sky-900/20 ${
+                            loading ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 
+                            'bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-500 hover:to-teal-500 text-white'
+                        }`}
+                    >
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                            <>
+                                <span>{mode === 'recovery' ? 'Enviar Link' : mode === 'signup' ? 'Criar Conta' : 'Acessar'}</span>
+                                <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                            </>
+                        )}
+                    </button>
+                </form>
+            </div>
+        )}
+      </div>
+      
+      {/* Footer minimalista */}
+      <div className="absolute bottom-6 left-0 right-0 text-center">
+        <p className="text-[10px] font-medium text-zinc-700 uppercase tracking-widest">
+             InvestFIIs Cloud &copy; {new Date().getFullYear()}
         </p>
       </div>
     </div>
