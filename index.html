@@ -8,12 +8,12 @@
     <meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
     
-    <meta name="app-version" content="8.3.8" />
+    <meta name="app-version" content="8.3.10" />
     <title>InvestFIIs - FIIs & Ações</title>
     
     <link rel="manifest" href="./manifest.json" />
-    <link rel="icon" type="image/png" href="./logo.png" />
-    <link rel="apple-touch-icon" href="./logo.png" />
+    <link rel="icon" type="image/svg+xml" href="./logo.svg" />
+    <link rel="apple-touch-icon" href="./logo.svg" />
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
@@ -42,12 +42,10 @@
         background-color: var(--bg-splash);
       }
 
-      /* Trava o scroll apenas durante o estado de carregamento */
       body.is-loading {
         overflow: hidden !important;
         position: fixed;
         width: 100%;
-        height: 100%;
       }
       
       #root-splash {
@@ -59,7 +57,7 @@
         align-items: center;
         justify-content: center;
         background-color: var(--bg-splash);
-        transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
+        transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
       }
 
       #root-splash.splash-exit {
@@ -76,71 +74,78 @@
       }
 
       .s-logo-box {
-        width: 120px;
-        height: 120px;
-        border-radius: 38px;
+        width: 110px;
+        height: 110px;
+        border-radius: 32px;
         background: var(--logo-bg);
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(0,0,0,0.04);
         margin-bottom: 40px;
-        animation: logoFloat 3s ease-in-out infinite;
+        animation: logoArrival 0.8s cubic-bezier(0.16, 1, 0.3, 1), logoFloat 4s ease-in-out infinite 0.8s;
         overflow: hidden;
       }
 
       @media (prefers-color-scheme: dark) {
         .s-logo-box {
-          border: 1px solid rgba(255,255,255,0.08);
-          box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5);
+          border: 1px solid rgba(255,255,255,0.06);
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
       }
 
+      @keyframes logoArrival {
+        from { opacity: 0; transform: scale(0.85) translateY(20px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+      }
+
       @keyframes logoFloat {
-        0%, 100% { transform: translateY(0) scale(1); }
-        50% { transform: translateY(-12px) scale(1.02); }
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
       }
 
       .s-logo-box img {
         width: 70%;
         height: 70%;
         object-fit: contain;
-        /* Garante nitidez máxima para PNG */
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
       }
 
       .s-title {
-        font-size: 32px;
+        font-size: 30px;
         font-weight: 900;
         letter-spacing: -0.05em;
         color: var(--text-main);
-        margin-bottom: 12px;
+        margin-bottom: 8px;
+        opacity: 0;
+        animation: fadeIn 0.6s ease-out 0.4s forwards;
       }
       .s-title span { color: var(--accent); }
 
       .s-status {
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.2em;
+        letter-spacing: 0.25em;
         color: var(--accent);
         margin-bottom: 30px;
-        height: 14px;
-        opacity: 0.7;
+        height: 12px;
+        opacity: 0;
+        animation: fadeIn 0.6s ease-out 0.6s forwards;
       }
 
       .s-progress-container {
-        width: 200px;
+        width: 160px;
         height: 4px;
-        background: rgba(0,0,0,0.05);
+        background: rgba(0,0,0,0.06);
         border-radius: 10px;
         overflow: hidden;
+        opacity: 0;
+        animation: fadeIn 0.6s ease-out 0.8s forwards;
       }
 
       @media (prefers-color-scheme: dark) {
-        .s-progress-container { background: rgba(255,255,255,0.05); }
+        .s-progress-container { background: rgba(255,255,255,0.06); }
       }
 
       .s-progress-bar {
@@ -148,7 +153,11 @@
         width: 0%;
         background: linear-gradient(90deg, var(--accent), #10b981);
         border-radius: 10px;
-        transition: width 0.3s ease-out;
+        transition: width 0.4s ease-out;
+      }
+
+      @keyframes fadeIn {
+        to { opacity: 1; }
       }
     </style>
 
@@ -179,7 +188,7 @@
     <div id="root-splash">
         <div class="s-content">
             <div class="s-logo-box">
-                <img src="./logo.png" alt="InvestFIIs" />
+                <img src="./logo.svg" alt="InvestFIIs" />
             </div>
             <div class="s-title">Invest<span>FIIs</span></div>
             <div id="splash-status-text" class="s-status">Iniciando...</div>
