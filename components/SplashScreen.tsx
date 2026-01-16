@@ -108,7 +108,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
                         <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_splash)"/>
                    </svg>
                 </div>
-                <span className="text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-teal-700 to-sky-500 dark:from-teal-400 dark:to-sky-400 transform -translate-x-4">
+                <span className="text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-teal-700 to-sky-500 dark:from-teal-400 dark:to-sky-400 transform -translate-x-[20px]">
                     NVEST
                 </span>
             </div>
