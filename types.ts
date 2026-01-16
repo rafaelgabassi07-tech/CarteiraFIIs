@@ -17,18 +17,43 @@ export interface Transaction {
 }
 
 export interface AssetFundamentals {
+  // Comuns
   p_vp?: number;
   p_l?: number;
   dy_12m?: number;
-  roe?: number; // Novo: Return on Equity
-  vacancy?: number; // Novo: Vacância Física (FIIs)
-  liquidity?: string;
-  shareholders?: string;
+  roe?: number;
+  liquidity?: string; // Liquidez Média Diária
+  market_cap?: string; // Valor de Mercado
+  
+  // Ações - Eficiência e Crescimento
+  net_margin?: number; // Margem Líquida
+  gross_margin?: number; // Margem Bruta
+  ebit_margin?: number; // Margem EBIT
+  cagr_revenue?: number; // CAGR Receita 5a
+  cagr_profits?: number; // CAGR Lucros 5a
+  payout?: number; // Payout
+  lpa?: number; // Lucro por Ação
+  vpa?: number; // Valor Patrimonial por Ação
+  
+  // Ações - Dívida e Valuation
+  ev_ebitda?: number;
+  net_debt_ebitda?: number; // Dívida Líquida / EBITDA
+  net_debt_equity?: number; // Dívida Líquida / PL
+
+  // FIIs
+  vacancy?: number; // Vacância Física
+  assets_value?: string; // Patrimônio Líquido (R$)
+  manager_type?: string; // Tipo de Gestão (Ativa/Passiva)
+  segment_secondary?: string; // Segmento/Tipo de Fundo
+  mandate?: string; // Mandato
+  properties_count?: number; // Quantidade de Imóveis (se disponível)
+  management_fee?: string; // Taxa de Administração
+  last_dividend?: number; // Último Rendimento
+  
   description?: string;
-  market_cap?: string;
   sentiment?: 'Otimista' | 'Neutro' | 'Pessimista' | string;
   sentiment_reason?: string;
-  sources?: { title: string; uri: string }[]; // Links de onde a IA tirou a info
+  sources?: { title: string; uri: string }[];
 }
 
 export interface AssetPosition extends AssetFundamentals {
@@ -110,20 +135,18 @@ export interface EvolutionPoint {
     monthlyInflationCost: number;
 }
 
-// Novos tipos para o sistema de saúde
 export type ServiceStatus = 'operational' | 'degraded' | 'error' | 'checking' | 'unknown';
 
 export interface ServiceMetric {
   id: string;
   label: string;
   url?: string;
-  icon?: any; // Mantido como any para compatibilidade com lucide-react icons passados como ref/componente
+  icon?: any;
   status: ServiceStatus;
   latency: number | null;
   message?: string;
 }
 
-// Logger Types
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 export interface LogEntry {

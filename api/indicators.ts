@@ -4,11 +4,15 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import https from 'https';
 
+const httpsAgent = new https.Agent({ 
+    keepAlive: true, 
+    rejectUnauthorized: false 
+});
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -16,7 +20,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const targetUrl = 'https://investidor10.com.br/indices/ipca/';
     
-    const httpsAgent = new https.Agent({ rejectUnauthorized: false });
     const response = await axios.get(targetUrl, { 
         timeout: 10000,
         httpsAgent,
@@ -30,66 +33,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let acumulado12m = 0;
     let found = false;
 
-    // Estratégia 1: Cards/Widgets de Destaque
-    $('.value').each((_, el) => {
-        const parentText = $(el).parent().text().toLowerCase();
-        if (parentText.includes('ipca') && (parentText.includes('12 meses') || parentText.includes('acumulado'))) {
-            const val = parseFloat($(el).text().trim().replace('.', '').replace(',', '.').replace('%', ''));
-            if (!isNaN(val)) {
-                acumulado12m = val;
-                found = true;
-                return false; // break
-            }
+    // Estratégia 1: Tabela Dinâmica (Procura coluna "Acumulado 12 meses")
+    $('table').each((_, table) => {
+        let idx12m = -1;
+        
+        // Acha o index da coluna
+        $(table).find('thead th, tr:first-child td').each((idx, col) => {
+            const txt = $(col).text().toLowerCase();
+            if (txt.includes('12 meses') || txt.includes('acumulado')) idx12m = idx;
+        });
+
+        if (idx12m !== -1) {
+            // Pega a primeira linha de dados válida
+            $(table).find('tbody tr').each((_, tr) => {
+                const tds = $(tr).find('td');
+                if (tds.length > idx12m) {
+                    const valStr = $(tds[idx12m]).text().trim();
+                    // Limpa string (ex: "4,50%")
+                    if (valStr && valStr !== '-') {
+                         const val = parseFloat(valStr.replace('.', '').replace(',', '.').replace('%', ''));
+                         if (!isNaN(val)) {
+                             acumulado12m = val;
+                             found = true;
+                             return false; // break rows
+                         }
+                    }
+                }
+            });
         }
+        if (found) return false; // break tables
     });
 
-    // Estratégia 2: Tabela Dinâmica
+    // Estratégia 2: Widgets de Destaque (Fallback)
     if (!found) {
-        $('table').each((_, table) => {
-            // Identifica indices das colunas
-            let idx12m = -1;
-            
-            $(table).find('thead th, tr:first-child td').each((idx, col) => {
-                const txt = $(col).text().toLowerCase();
-                if (txt.includes('12 meses') || txt.includes('acumulado')) idx12m = idx;
-            });
-
-            // Se achou a coluna, pega a primeira linha de dados
-            if (idx12m !== -1) {
-                $(table).find('tbody tr').each((rIdx, tr) => {
-                    const tds = $(tr).find('td');
-                    if (tds.length > idx12m) {
-                        const valStr = $(tds[idx12m]).text().trim();
-                        if (valStr) {
-                             const val = parseFloat(valStr.replace('.', '').replace(',', '.').replace('%', ''));
-                             if (!isNaN(val)) {
-                                 acumulado12m = val;
-                                 found = true;
-                                 return false; // break rows
-                             }
-                        }
-                    }
-                });
+        $('.value').each((_, el) => {
+            const parentText = $(el).parent().text().toLowerCase();
+            if (parentText.includes('ipca') && (parentText.includes('12 meses') || parentText.includes('acumulado'))) {
+                const val = parseFloat($(el).text().trim().replace('.', '').replace(',', '.').replace('%', ''));
+                if (!isNaN(val)) {
+                    acumulado12m = val;
+                    return false;
+                }
             }
-            if (found) return false; // break tables
         });
     }
 
-    // Fallback: Se ainda for 0, usa valor fixo seguro para não quebrar a UI
+    // Fallback Final
     if (acumulado12m === 0) acumulado12m = 4.62;
 
     return res.status(200).json({
         value: acumulado12m,
         date: new Date().toISOString(),
-        source: 'Investidor10 (Scraper v2)',
-        timestamp: Date.now()
+        source: 'Investidor10 (Robust Scraper)'
     });
 
   } catch (error: any) {
     console.error('[Indicators Scraper] Erro:', error.message);
     return res.status(200).json({
         value: 4.62,
-        source: 'Fallback System',
+        source: 'Fallback Static',
         isError: true
     });
   }
