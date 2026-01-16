@@ -57,7 +57,8 @@
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
   .glass-effect {
-    @apply bg-white/90 dark:bg-[#09090b]/90 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800;
+    /* Alterado para sólido conforme solicitado */
+    @apply bg-white dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800;
   }
 
   .anim-fade-in { animation: fadeIn 0.5s var(--ease-out-soft) forwards; }

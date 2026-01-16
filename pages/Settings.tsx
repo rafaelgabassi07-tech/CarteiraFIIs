@@ -447,8 +447,8 @@ export const Settings = ({
                     <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-xl">
                             <defs>
                                 <linearGradient id="logo_grad_about" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0%" stopColor="#10b981"/>
-                                    <stop offset="100%" stopColor="#0ea5e9"/>
+                                    <stop offset="0%" stopColor="#475569"/>
+                                    <stop offset="100%" stopColor="#0f172a"/>
                                 </linearGradient>
                             </defs>
                             <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_about)"/>
@@ -457,7 +457,7 @@ export const Settings = ({
                             <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_about)"/>
                     </svg>
                     </div>
-                    <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-sky-400 relative z-0 -ml-2.5">NVEST</span>
+                    <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-400 to-zinc-600 relative z-0 -ml-2.5">NVEST</span>
                 </div>
               <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-4">Built for Investors</p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-6">Focado em performance, design e simplicidade para a gestão inteligente de dividendos na B3.</p>

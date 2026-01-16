@@ -70,8 +70,8 @@ export const Login: React.FC = () => {
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-zinc-950 relative overflow-hidden font-sans text-zinc-100">
       
       {/* Ambient Lighting Effects */}
-      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-teal-900/20 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-sky-900/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-zinc-800/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-slate-800/10 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-[380px] flex flex-col relative z-10">
         
@@ -83,8 +83,8 @@ export const Login: React.FC = () => {
                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-xl">
                         <defs>
                             <linearGradient id="logo_grad_login" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stopColor="#10b981"/>
-                                <stop offset="100%" stopColor="#0ea5e9"/>
+                                <stop offset="0%" stopColor="#475569"/>
+                                <stop offset="100%" stopColor="#0f172a"/>
                             </linearGradient>
                         </defs>
                         <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_login)"/>
@@ -95,7 +95,7 @@ export const Login: React.FC = () => {
                         <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_login)"/>
                    </svg>
                 </div>
-                <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-sky-400 relative z-0 -ml-2.5">
+                <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-400 to-zinc-600 relative z-0 -ml-2.5">
                     NVEST
                 </span>
             </div>

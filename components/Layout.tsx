@@ -72,10 +72,10 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header 
       className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-4 transition-all duration-500 ease-out-soft glass-effect ${
-        bannerVisible ? 'h-28 pt-8' : 'h-24 pt-safe'
+        bannerVisible ? 'h-24 pt-6' : 'h-20 pt-safe' 
       } top-0`}
     >
-      <div className="flex items-center justify-between h-14 mb-2">
+      <div className="flex items-center justify-between h-14 mb-1">
         <div className="flex items-center gap-3 w-full">
           {showBack ? (
             <div className="flex items-center gap-3 w-full anim-slide-in-right">
@@ -150,7 +150,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-      <nav className="pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-white/20 dark:border-zinc-800/60 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[20rem] mx-6 relative overflow-hidden transition-all duration-300">
+      {/* Sólido, sem blur */}
+      <nav className="pointer-events-auto bg-white dark:bg-zinc-900 border border-white/20 dark:border-zinc-800 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[20rem] mx-6 relative overflow-hidden transition-all duration-300">
         
         {/* Sliding Active Indicator with Bouncier Physics */}
         <div 
@@ -242,10 +243,10 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 
   return createPortal(
     <div className={`fixed inset-0 z-[200] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
-      {/* Backdrop with stronger blur for depth */}
+      {/* Backdrop without blur for cleaner solid look, just slight dark overlay */}
       <div 
           onClick={onClose} 
-          className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-[6px] transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       ></div>
       
       <div
@@ -280,7 +281,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
   if (!isMounted) return null;
   return createPortal(
     <div className={`fixed inset-0 z-[1000] flex items-center justify-center p-6 ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
-      <div className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-sm transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
+      <div className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
       <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-xs p-8 text-center shadow-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) border border-zinc-100 dark:border-zinc-800 ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-8 opacity-0'}`}>
         <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-6 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 shadow-sm">
           <AlertTriangle className="w-8 h-8" strokeWidth={2.5} />
@@ -304,7 +305,7 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({ isOpen, 
 
     return createPortal(
         <div className={`fixed inset-0 z-[2000] flex items-center justify-center p-6 ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
-            <div className={`absolute inset-0 bg-zinc-950/80 backdrop-blur-md transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onDismiss}></div>
+            <div className={`absolute inset-0 bg-zinc-950/80 transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onDismiss}></div>
             <div className={`relative bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2rem] p-8 shadow-2xl border border-zinc-200/50 dark:border-zinc-700/50 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-20 opacity-0 scale-95'}`}>
                 <div className="flex flex-col items-center text-center">
                     <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-sky-500 rounded-3xl flex items-center justify-center text-white mb-6 shadow-xl shadow-sky-500/20 animate-[float_4s_ease-in-out_infinite]">
