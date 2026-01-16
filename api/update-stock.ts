@@ -10,49 +10,64 @@ const supabase = createClient(
   process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || ''
 );
 
-// Agente HTTPS para ignorar erros de certificado e manter conexão viva
+// --- CONFIGURAÇÃO ROBUSTA ---
+
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+];
+
+const getRandomAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+
 const httpsAgent = new https.Agent({ 
     keepAlive: true, 
     rejectUnauthorized: false 
 });
 
-const client = axios.create({
-    httpsAgent,
-    headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Referer': 'https://investidor10.com.br/',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-    },
-    timeout: 25000 // 25s timeout
-});
+// Função de Retry Inteligente
+async function fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<any> {
+    try {
+        const client = axios.create({
+            httpsAgent,
+            headers: {
+                'User-Agent': getRandomAgent(),
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Referer': 'https://investidor10.com.br/',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            },
+            timeout: 20000 
+        });
+        return await client.get(url);
+    } catch (err: any) {
+        if (retries > 0) {
+            console.warn(`[Retry] Falha em ${url}. Tentando novamente em ${delay}ms... Restam: ${retries}`);
+            await new Promise(res => setTimeout(res, delay));
+            return fetchWithRetry(url, retries - 1, delay * 2); // Exponential Backoff
+        }
+        throw err;
+    }
+}
 
-// Helper: Converte string brasileira (1.000,00) para float (1000.00)
+// Helper: Parsing Numérico Seguro
 function parseValue(valueStr: any): number {
     if (!valueStr) return 0;
     if (typeof valueStr === 'number') return valueStr;
     
     let clean = String(valueStr).trim();
-    
-    // Remove traços que indicam valor nulo
     if (clean === '-' || clean === '--') return 0;
 
-    // Remove R$, %, espaços e quebras de linha
-    clean = clean.replace(/R\$|\%|\s|\n/g, '').trim();
+    // Remove caracteres invisíveis e unidades
+    clean = clean.replace(/R\$|\%|\s|\n|\t/g, '').trim();
     
-    // Lógica para detectar milhar vs decimal
-    // Se tiver ponto e vírgula (ex: 1.234,56) -> remove ponto, troca vírgula por ponto
     if (clean.includes('.') && clean.includes(',')) {
         clean = clean.replace(/\./g, '').replace(',', '.');
-    } 
-    // Se tiver apenas vírgula (ex: 12,34) -> troca por ponto
-    else if (clean.includes(',')) {
+    } else if (clean.includes(',')) {
         clean = clean.replace(',', '.');
-    }
-    // Se tiver apenas ponto e for formato BR (ex: 1.234 -> deve ser 1234)
-    else if (clean.includes('.') && !clean.includes(',')) {
+    } else if (clean.includes('.') && !clean.includes(',')) {
         clean = clean.replace(/\./g, '');
     }
 
@@ -63,40 +78,27 @@ function parseValue(valueStr: any): number {
 function normalizeKey(str: string) {
     if (!str) return '';
     return str.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
-        .replace(/[^a-z0-9]/g, "") // Remove especiais
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "")
         .trim();
 }
 
-// Mapa de correspondência: Chave Normalizada -> Coluna no Banco
 const KEY_MAP: Record<string, string> = {
-    'cotacao': 'current_price',
-    'valoratual': 'current_price',
-    'preconofechamento': 'current_price',
-    'pvp': 'pvp',
-    'p/vp': 'pvp',
-    'vp': 'pvp',
-    'pl': 'pl',
-    'p/l': 'pl',
-    'dividendyield': 'dy_12m',
-    'dy': 'dy_12m',
-    'yield': 'dy_12m',
-    'dy12m': 'dy_12m',
-    'roe': 'roe',
-    'returnonequity': 'roe',
-    'vacanciafisica': 'vacancia',
-    'vacancia': 'vacancia',
-    'liquidezmediadiaria': 'liquidez',
-    'liquidez': 'liquidez',
-    'valordemercado': 'valor_mercado',
-    'patrimonioliquido': 'valor_mercado'
+    'cotacao': 'current_price', 'valoratual': 'current_price', 'preconofechamento': 'current_price',
+    'pvp': 'pvp', 'p/vp': 'pvp', 'vp': 'pvp',
+    'pl': 'pl', 'p/l': 'pl',
+    'dividendyield': 'dy_12m', 'dy': 'dy_12m', 'yield': 'dy_12m', 'dy12m': 'dy_12m',
+    'roe': 'roe', 'returnonequity': 'roe',
+    'vacanciafisica': 'vacancia', 'vacancia': 'vacancia',
+    'liquidezmediadiaria': 'liquidez', 'liquidez': 'liquidez',
+    'valordemercado': 'valor_mercado', 'patrimonioliquido': 'valor_mercado'
 };
 
 async function scrapeInvestidor10Metadata(ticker: string, type: 'fiis' | 'acoes') {
     const url = `https://investidor10.com.br/${type}/${ticker.toLowerCase()}/`;
     
     try {
-        const { data: html } = await client.get(url);
+        const { data: html } = await fetchWithRetry(url);
         const $ = cheerio.load(html);
         const extracted: Record<string, any> = {};
 
@@ -108,7 +110,7 @@ async function scrapeInvestidor10Metadata(ticker: string, type: 'fiis' | 'acoes'
             if (label && value) {
                 const normKey = normalizeKey(label);
                 if (KEY_MAP[normKey]) {
-                    extracted[KEY_MAP[normKey]] = KEY_MAP[normKey] === 'liquidez' || KEY_MAP[normKey] === 'valor_mercado' 
+                    extracted[KEY_MAP[normKey]] = ['liquidez', 'valor_mercado'].includes(KEY_MAP[normKey])
                         ? value.trim() 
                         : parseValue(value);
                 }
@@ -123,7 +125,7 @@ async function scrapeInvestidor10Metadata(ticker: string, type: 'fiis' | 'acoes'
             if (label && value) {
                 const normKey = normalizeKey(label);
                 if (KEY_MAP[normKey]) {
-                    extracted[KEY_MAP[normKey]] = KEY_MAP[normKey] === 'liquidez' || KEY_MAP[normKey] === 'valor_mercado'
+                    extracted[KEY_MAP[normKey]] = ['liquidez', 'valor_mercado'].includes(KEY_MAP[normKey])
                         ? value.trim()
                         : parseValue(value);
                 }
@@ -140,7 +142,13 @@ async function scrapeInvestidor10Metadata(ticker: string, type: 'fiis' | 'acoes'
         });
         if (segmento) extracted['segment'] = segmento;
 
-        return { metadata: extracted, html }; // Retorna HTML para reuso no scraping de dividendos se necessário
+        // SANITY CHECK: Se preço ou DY vierem zerados mas a página carregou, algo está errado (layout mudou ou bloqueio soft)
+        if (!extracted.current_price && !extracted.dy_12m) {
+            console.warn(`[Scraper Warning] ${ticker}: Página carregou mas dados cruciais estão vazios.`);
+            // Não jogamos erro aqui para permitir retornar o que achou, mas logamos
+        }
+
+        return { metadata: extracted };
 
     } catch (e: any) {
         if (e.response?.status === 404) return null;
@@ -148,15 +156,13 @@ async function scrapeInvestidor10Metadata(ticker: string, type: 'fiis' | 'acoes'
     }
 }
 
-// Scraper Alternativo para Dividendos (Investidor10) - Resolve ITSA4
 async function scrapeProventosInvestidor10(ticker: string, type: 'fiis' | 'acoes') {
     const url = `https://investidor10.com.br/${type}/${ticker.toLowerCase()}/`;
     try {
-        const { data: html } = await client.get(url);
+        const { data: html } = await fetchWithRetry(url);
         const $ = cheerio.load(html);
         const proventos: any[] = [];
 
-        // Tabela de Proventos (Geralmente ID #table-dividends-history)
         $('#table-dividends-history tbody tr').each((_, tr) => {
             const cols = $(tr).find('td');
             if (cols.length >= 4) {
@@ -173,7 +179,7 @@ async function scrapeProventosInvestidor10(ticker: string, type: 'fiis' | 'acoes
                 };
 
                 const dateCom = parseDate(dateComRaw);
-                const datePay = parseDate(datePayRaw); // Pode ser null se provisionado sem data
+                const datePay = parseDate(datePayRaw); 
                 const rate = parseValue(valueRaw);
 
                 if (dateCom && rate > 0) {
@@ -185,7 +191,7 @@ async function scrapeProventosInvestidor10(ticker: string, type: 'fiis' | 'acoes
                         ticker,
                         type,
                         date_com: dateCom,
-                        payment_date: datePay || dateCom, // Fallback para data com se não tiver pag
+                        payment_date: datePay || dateCom,
                         rate
                     });
                 }
@@ -204,7 +210,7 @@ async function scrapeProventosStatusInvest(ticker: string) {
         const typeUrl = (baseTicker.endsWith('11') || baseTicker.endsWith('11B')) ? 'fii' : 'acao';
         const url = `https://statusinvest.com.br/${typeUrl}/companytickerprovents?ticker=${baseTicker}&chartProventsType=2`;
         
-        const { data } = await client.get(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const { data } = await fetchWithRetry(url);
         
         return (data.assetEarningsModels || []).map((d: any) => {
             const parseDate = (s: string) => s ? s.split('/').reverse().join('-') : null;
@@ -234,15 +240,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const isFII = stock.endsWith('11') || stock.endsWith('11B');
         let typeStr: 'fiis' | 'acoes' = isFII ? 'fiis' : 'acoes';
         
-        // 1. Busca Metadata (Investidor10)
+        // 1. Busca Metadata (Investidor10) com Retry
         let result = await scrapeInvestidor10Metadata(stock, typeStr);
         if (!result) {
-            // Tenta o outro tipo
             typeStr = isFII ? 'acoes' : 'fiis';
             result = await scrapeInvestidor10Metadata(stock, typeStr);
         }
 
-        if (!result || !result.metadata) throw new Error('Ativo não encontrado no Investidor10');
+        if (!result || !result.metadata) throw new Error('Ativo não encontrado ou bloqueio de IP');
         const data = result.metadata;
 
         const payload = {
@@ -262,14 +267,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         await supabase.from('ativos_metadata').upsert(payload, { onConflict: 'ticker' });
 
-        // 2. Busca Proventos (Estratégia Híbrida: StatusInvest + Fallback Investidor10)
+        // 2. Busca Proventos Inteligente
         let proventos = await scrapeProventosStatusInvest(stock);
         
-        // Se veio vazio ou parece incompleto (comum para ITSA4 futura), tenta Investidor10
-        if (proventos.length === 0 || stock.includes('ITSA') || stock.includes('PETR') || stock.includes('VALE')) {
+        // Fallback Trigger: Se vazio OU se for ticker problemático conhecido (ITSA/PETR/VALE)
+        if (proventos.length === 0 || ['ITSA4', 'ITSA3', 'PETR4', 'PETR3', 'VALE3', 'BBAS3'].includes(stock)) {
+             console.log(`[Fallback] Ativando scraping alternativo para ${stock}`);
              const proventosFallback = await scrapeProventosInvestidor10(stock, typeStr);
              
-             // Merge sem duplicar (Chave: data_com + rate + type)
              const existingSigs = new Set(proventos.map(p => `${p.date_com}-${p.rate}-${p.type}`));
              proventosFallback.forEach(p => {
                  const sig = `${p.date_com}-${p.rate}-${p.type}`;

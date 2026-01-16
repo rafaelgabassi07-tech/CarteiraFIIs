@@ -11,7 +11,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
   const [showChangelog, setShowChangelog] = useState(false);
   const [currentVersionDate, setCurrentVersionDate] = useState<string | null>(null);
 
-  // Compara versões semânticas (ex: 8.2.3 vs 8.2.4)
   const isNewerVersion = (newVer: string, currentVer: string) => {
     const n = newVer.split('.').map(Number);
     const c = currentVer.split('.').map(Number);
@@ -22,10 +21,8 @@ export const useUpdateManager = (currentAppVersion: string) => {
     return false;
   };
 
-  // Verifica metadados no version.json
   const checkVersionMetadata = useCallback(async () => {
     try {
-      // Adiciona timestamp para evitar cache do browser no arquivo JSON
       const response = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
       if (!response.ok) return false;
       
@@ -44,50 +41,67 @@ export const useUpdateManager = (currentAppVersion: string) => {
     return false;
   }, [currentAppVersion]);
 
-  // Função manual de verificação (chamada pelo botão)
   const checkForUpdates = useCallback(async () => {
-    // 1. Verifica metadados remotos
     const hasJsonUpdate = await checkVersionMetadata();
-
-    // 2. Verifica se o Service Worker tem algo novo
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.ready;
-        await registration.update(); // Força check de byte-to-byte no sw.js
+        await registration.update();
       } catch (e) {
         console.error('Erro ao atualizar SW:', e);
       }
     }
-
     return hasJsonUpdate;
   }, [checkVersionMetadata]);
 
-  // Inicia o processo de atualização (Instalar e Recarregar)
+  // Estratégia de Atualização Robusta
   const startUpdateProcess = useCallback(async () => {
     setIsUpdating(true);
     setUpdateProgress(10);
 
-    // Timeout de segurança: se o SW falhar em responder, recarrega forçado em 4s
-    const safetyTimer = setTimeout(() => {
+    // Função para forçar limpeza total (Nuclear Option)
+    const forceCleanReload = async () => {
+        setUpdateProgress(90);
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const reg of regs) {
+                await reg.unregister(); // Remove o SW antigo
+            }
+        }
+        // Limpa caches de armazenamento
+        if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(key => caches.delete(key)));
+        }
         window.location.reload();
-    }, 4000);
+    };
+
+    // Timeout de segurança: Se o SW não responder em 3s, força limpeza total
+    const safetyTimer = setTimeout(() => {
+        console.warn("Update timeout triggered. Forcing clean reload.");
+        forceCleanReload();
+    }, 3000);
 
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();
       
       if (reg) {
-        // Se já existe um worker aguardando (Waiting), ativa-o imediatamente
         if (reg.waiting) {
             setUpdateProgress(50);
             reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
             return;
         }
 
-        // Se não tem worker aguardando, forçamos um update e esperamos
         setUpdateProgress(30);
-        await reg.update();
+        try {
+            await reg.update();
+        } catch (e) {
+            console.error("SW Update failed", e);
+            clearTimeout(safetyTimer);
+            forceCleanReload();
+            return;
+        }
         
-        // Verifica novamente após o update manual
         if (reg.waiting) {
              setUpdateProgress(70);
              // @ts-ignore
@@ -97,16 +111,14 @@ export const useUpdateManager = (currentAppVersion: string) => {
       }
     }
 
-    // Fallback: se não houver SW ou algo falhar, recarrega a página
+    // Se chegou aqui e não tem SW ou não achou update, força reload normal
     setUpdateProgress(100);
     clearTimeout(safetyTimer);
     window.location.reload();
   }, []);
 
-  // Monitoramento do ciclo de vida do Service Worker
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      // Ao montar, verifica se já existe um worker esperando (atualização em background)
       navigator.serviceWorker.getRegistration().then(reg => {
           if (reg?.waiting) {
               setIsUpdateAvailable(true);
@@ -114,15 +126,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
           }
       });
 
-      // Escuta por novos workers sendo instalados
-      navigator.serviceWorker.addEventListener('updatefound', () => {
-         // Se detectarmos updatefound globalmente (menos preciso que via registration, mas útil)
-         // A lógica principal fica no registration.onupdatefound se tivéssemos acesso fácil aqui,
-         // mas o checkVersionMetadata e o polling costumam cobrir.
-      });
-
-      // O evento 'controllerchange' ocorre quando o novo SW assume o controle.
-      // É o sinal final para recarregar a página e mostrar o novo app.
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!refreshing) {
@@ -131,8 +134,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
           }
       });
     }
-
-    // Verifica versão ao iniciar o hook
     checkVersionMetadata();
   }, [checkVersionMetadata]);
 
