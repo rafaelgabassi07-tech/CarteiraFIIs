@@ -254,6 +254,14 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
                     
                     <div className="flex items-center gap-2">
+                        {isSelectionMode && selectedIds.size > 0 && (
+                            <button 
+                                onClick={() => setShowBulkDeleteConfirm(true)}
+                                className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-900/30 active:scale-95 transition-all shadow-sm anim-scale-in"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                            </button>
+                        )}
                         {isSelectionMode && (
                              <button 
                                 onClick={toggleSelectAll}
@@ -328,26 +336,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
                 )}
             </div>
-
-            {/* BARRA DE EXCLUSÃO FIXA (SUSPENSA ACIMA DO MENU) */}
-            {isSelectionMode && selectedIds.size > 0 && (
-                <div className="fixed bottom-28 left-4 right-4 z-[100] anim-slide-up">
-                    <div className="bg-zinc-900 dark:bg-white p-4 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between border border-white/5 dark:border-black/5">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-zinc-800 dark:bg-zinc-100 flex items-center justify-center font-black text-white dark:text-zinc-900">
-                                {selectedIds.size}
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Selecionados</span>
-                        </div>
-                        <button 
-                            onClick={() => setShowBulkDeleteConfirm(true)}
-                            className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all shadow-lg shadow-rose-600/20"
-                        >
-                            <Trash2 className="w-4 h-4" /> Excluir
-                        </button>
-                    </div>
-                </div>
-            )}
 
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <div className="p-6 pb-12">
