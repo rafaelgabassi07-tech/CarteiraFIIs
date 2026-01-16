@@ -57,7 +57,7 @@ export const Settings: React.FC<SettingsProps> = ({
   onSetPrivacyMode, appVersion, updateAvailable, onCheckUpdates, 
   onShowChangelog, pushEnabled, onRequestPushPermission,
   onSyncAll, currentVersionDate, accentColor, onSetAccentColor,
-  services, onCheckConnection, isCheckingConnection
+  services, onCheckConnection, isCheckingConnection, onForceUpdate
 }) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'appearance' | 'privacy' | 'notifications' | 'services' | 'data' | 'updates' | 'about' | 'reset'>('menu');
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
@@ -441,7 +441,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     >
                         <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${s.status === 'operational' ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : s.status === 'degraded' ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600' : s.status === 'error' ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-600' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
-                                <s.icon className="w-4 h-4" />
+                                {s.icon && <s.icon className="w-4 h-4" />}
                             </div>
                             <div className="text-left">
                                 <p className="text-xs font-bold text-zinc-900 dark:text-white">{s.label}</p>
