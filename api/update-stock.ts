@@ -275,8 +275,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
              console.log(`[Fallback] Ativando scraping alternativo para ${stock}`);
              const proventosFallback = await scrapeProventosInvestidor10(stock, typeStr);
              
-             const existingSigs = new Set(proventos.map(p => `${p.date_com}-${p.rate}-${p.type}`));
-             proventosFallback.forEach(p => {
+             // Tipagem explícita para evitar erro de build TS7006
+             const existingSigs = new Set(proventos.map((p: any) => `${p.date_com}-${p.rate}-${p.type}`));
+             proventosFallback.forEach((p: any) => {
                  const sig = `${p.date_com}-${p.rate}-${p.type}`;
                  if (!existingSigs.has(sig)) {
                      proventos.push(p);
