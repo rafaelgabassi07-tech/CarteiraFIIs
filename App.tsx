@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.3.12'; 
+const APP_VERSION = '8.3.13'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -276,27 +276,30 @@ const App: React.FC = () => {
     const initApp = async () => {
         setLoadingProgress(10);
         
-        // 1. Verificar Sessão (Rápido)
         try {
-            const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+            // Promise Race: Auth vs Timeout
+            // Evita que o app trave na tela de carregamento se a Auth demorar
+            const sessionPromise = supabase.auth.getSession();
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Timeout')), 2000));
+            
+            // @ts-ignore
+            const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
+            
             if (error) throw error;
+            const initialSession = data?.session;
             
             setSession(initialSession);
             setLoadingProgress(30);
 
             if (initialSession) {
-                // Se tem sessão, buscamos dados na nuvem
-                // Não usamos await aqui para liberar a tela de splash logo
-                // A UI vai renderizar com o que tiver (vazio ou cache) e preencher depois
+                // Se tem sessão, buscamos dados na nuvem (sem await para liberar UI)
                 fetchTransactionsFromCloud(initialSession, false, true);
             }
         } catch (e) {
-            console.error("Auth Init Error", e);
-            // Em caso de erro, assumimos sem sessão para mostrar Login
+            console.warn("Auth check finished with error or timeout, defaulting to Login screen.", e);
             setSession(null);
         } finally {
-            // 2. Libera a UI IMEDIATAMENTE após checar auth
-            // O componente SplashScreen vai receber o sinal e sumir
+            // Libera a UI IMEDIATAMENTE
             setIsReady(true);
         }
     };
@@ -306,7 +309,6 @@ const App: React.FC = () => {
     // Listener de Auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, newSession) => {
         setSession(newSession);
-        // Se deslogar, reseta dados
         if (!newSession) {
             setTransactions([]);
             setGeminiDividends([]);
