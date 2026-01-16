@@ -79,7 +79,21 @@ export const Login: React.FC = () => {
             {/* BRAND COMPOSITION (Same as Splash) */}
             <div className="flex items-center justify-center gap-0 mb-8 relative select-none">
                 <div className="w-[48px] h-[72px] flex items-center justify-center relative z-10">
-                   <img src="/logo.svg" alt="I" className="w-full h-auto drop-shadow-[0_0_20px_rgba(14,165,233,0.4)]" />
+                   {/* INLINE SVG LOGO - Bulletproof */}
+                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_0_20px_rgba(14,165,233,0.4)]">
+                        <defs>
+                            <linearGradient id="logo_grad_login" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stopColor="#0f766e"/>
+                                <stop offset="100%" stopColor="#115e59"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_login)"/>
+                        <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_login)"/>
+                        <rect x="184" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_login)"/>
+                        <rect x="240" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_login)"/>
+                        <rect x="296" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_login)"/>
+                        <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_login)"/>
+                   </svg>
                 </div>
                 <span className="text-[52px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-teal-400 to-sky-400 transform -translate-x-3 relative z-0">
                     NVEST
