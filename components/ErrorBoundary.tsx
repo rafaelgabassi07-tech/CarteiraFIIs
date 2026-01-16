@@ -41,6 +41,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
+    
+    // SAFETY: Remove splash screen if it exists, so the error can be seen
+    document.body.classList.remove('is-loading');
+    document.body.classList.add('app-revealed');
+    const splash = document.getElementById('root-splash');
+    if (splash) splash.style.display = 'none';
   }
 
   render(): ReactNode {
@@ -56,6 +62,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             <div>
               <h1 className="text-xl font-bold mb-2">Ops! Algo deu errado.</h1>
               <p className="text-zinc-400">Um erro inesperado ocorreu. Por favor, recarregue a página.</p>
+              <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-white text-black rounded-lg font-bold text-xs uppercase tracking-widest">
+                  Recarregar
+              </button>
             </div>
           </div>
       );

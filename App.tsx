@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.3.2'; 
+const APP_VERSION = '8.3.3'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -354,6 +354,9 @@ const App: React.FC = () => {
                 setLoadingProgress(20);
                 // Busca dados se houver sessão
                 await fetchTransactionsFromCloud(session, false, true);
+                
+                // --- FIX: Libera a tela após carregar dados
+                setAppLoading(false);
             } else {
                 setAppLoading(false); // Sem sessão, encerra load para mostrar Login
             }
