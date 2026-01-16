@@ -15,7 +15,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.3.13'; 
+const APP_VERSION = '8.3.14'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -33,7 +33,9 @@ const STORAGE_KEYS = {
 const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
 /**
- * Calcula quantidade em Data Com com precisão de data
+ * Calcula quantidade em Data Com com precisão absoluta de string.
+ * IMPORTANTE: Evita conversão para Date object para não sofrer com Timezone (UTC-3 vs UTC).
+ * A comparação é feita estritamente lexicográfica: "2023-10-26" > "2023-10-25".
  */
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!dateCom || dateCom.length < 10) return 0;
@@ -44,9 +46,12 @@ const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transa
 
   return transactions
     .filter(t => {
+        // Garante que pegamos apenas YYYY-MM-DD da transação
         const txDateStr = (t.date || '').substring(0, 10);
-        // A lógica é: Se comprei ATÉ (<=) a data com, eu tenho direito.
-        // Se vendi ATÉ (<=) a data com, eu perdi o direito.
+        
+        // A compra deve ter sido feita ATÉ o final do dia da Data Com.
+        // Se Data da Transação <= Data Com, o usuário tem direito.
+        // Comparação de string funciona perfeitamente para ISO format (YYYY-MM-DD).
         return t.ticker.trim().toUpperCase() === targetTicker && txDateStr <= targetDateStr;
     })
     .reduce((acc, t) => {
@@ -496,7 +501,7 @@ const App: React.FC = () => {
         return { 
             ...d, 
             quantityOwned: qty, 
-            totalReceived: qty * d.rate // Cálculo bruto (app presume que rate vindo do scraper já considera impostos ou o usuário deve ajustar mentalmente se for JCP líquido vs bruto)
+            totalReceived: qty * d.rate // Cálculo bruto
         };
     }).filter(r => r.totalReceived > 0.0001); // Filtra quem não tinha posição na data com
 

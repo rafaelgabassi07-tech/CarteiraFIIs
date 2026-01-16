@@ -52,13 +52,7 @@ function parseValue(valueStr: any): number {
         clean = clean.replace(',', '.');
     }
     // Se tiver apenas ponto e for formato BR (ex: 1.234 -> deve ser 1234)
-    // Mas cuidado com 1.234 (USA) vs 1.234 (BR milhar). Assumimos BR.
-    // O site Investidor10 usa "." como milhar e "," como decimal.
     else if (clean.includes('.') && !clean.includes(',')) {
-        // Se tiver mais de 3 casas decimais, provavelmente é milhar mesmo
-        // Mas para simplificar, em site BR, ponto solto costuma ser milhar se for > 999
-        // Porém, cotação 10.50 pode ser 10,50. É ambíguo.
-        // O padrão do site é vírgula para decimal. Então removemos ponto.
         clean = clean.replace(/\./g, '');
     }
 
@@ -98,7 +92,7 @@ const KEY_MAP: Record<string, string> = {
     'patrimonioliquido': 'valor_mercado'
 };
 
-async function scrapeInvestidor10(ticker: string, type: 'fiis' | 'acoes') {
+async function scrapeInvestidor10Metadata(ticker: string, type: 'fiis' | 'acoes') {
     const url = `https://investidor10.com.br/${type}/${ticker.toLowerCase()}/`;
     
     try {
@@ -106,7 +100,7 @@ async function scrapeInvestidor10(ticker: string, type: 'fiis' | 'acoes') {
         const $ = cheerio.load(html);
         const extracted: Record<string, any> = {};
 
-        // 1. Cards do Topo (Cotação, DY, P/VP, P/L, Liquidez)
+        // 1. Cards do Topo
         $('div._card').each((_, el) => {
             const label = $(el).find('div._card-header span').text() || $(el).find('div._card-header').text();
             const value = $(el).find('div._card-body span').text() || $(el).find('div._card-body').text();
@@ -121,10 +115,10 @@ async function scrapeInvestidor10(ticker: string, type: 'fiis' | 'acoes') {
             }
         });
 
-        // 2. Tabela de Indicadores (#table-indicators) - Fonte rica de dados
+        // 2. Tabela de Indicadores
         $('#table-indicators .cell').each((_, el) => {
             const label = $(el).find('span.name').text();
-            const value = $(el).find('div.value span').text() || $(el).find('span.value').text(); // Tenta diferentes estruturas
+            const value = $(el).find('div.value span').text() || $(el).find('span.value').text(); 
 
             if (label && value) {
                 const normKey = normalizeKey(label);
@@ -136,7 +130,7 @@ async function scrapeInvestidor10(ticker: string, type: 'fiis' | 'acoes') {
             }
         });
 
-        // 3. Segmento (Breadcrumbs)
+        // 3. Segmento
         let segmento = '';
         $('#breadcrumbs li span a span, .breadcrumb-item').each((_, el) => {
             const txt = $(el).text().trim();
@@ -146,17 +140,67 @@ async function scrapeInvestidor10(ticker: string, type: 'fiis' | 'acoes') {
         });
         if (segmento) extracted['segment'] = segmento;
 
-        return extracted;
+        return { metadata: extracted, html }; // Retorna HTML para reuso no scraping de dividendos se necessário
 
     } catch (e: any) {
-        if (e.response?.status === 404) return null; // Não achou nesta URL
+        if (e.response?.status === 404) return null;
         throw e;
     }
 }
 
-async function scrapeProventos(ticker: string) {
+// Scraper Alternativo para Dividendos (Investidor10) - Resolve ITSA4
+async function scrapeProventosInvestidor10(ticker: string, type: 'fiis' | 'acoes') {
+    const url = `https://investidor10.com.br/${type}/${ticker.toLowerCase()}/`;
     try {
-        const baseTicker = ticker.replace(/F$/, ''); // Remove F fracionário
+        const { data: html } = await client.get(url);
+        const $ = cheerio.load(html);
+        const proventos: any[] = [];
+
+        // Tabela de Proventos (Geralmente ID #table-dividends-history)
+        $('#table-dividends-history tbody tr').each((_, tr) => {
+            const cols = $(tr).find('td');
+            if (cols.length >= 4) {
+                const typeRaw = $(cols[0]).text().trim().toUpperCase();
+                const dateComRaw = $(cols[1]).text().trim();
+                const datePayRaw = $(cols[2]).text().trim();
+                const valueRaw = $(cols[3]).text().trim();
+
+                const parseDate = (s: string) => {
+                    if (!s || s === '-') return null;
+                    const parts = s.split('/');
+                    if (parts.length !== 3) return null;
+                    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                };
+
+                const dateCom = parseDate(dateComRaw);
+                const datePay = parseDate(datePayRaw); // Pode ser null se provisionado sem data
+                const rate = parseValue(valueRaw);
+
+                if (dateCom && rate > 0) {
+                    let type = 'DIV';
+                    if (typeRaw.includes('JCP') || typeRaw.includes('JUROS')) type = 'JCP';
+                    else if (typeRaw.includes('RENDIMENTO')) type = 'REND';
+
+                    proventos.push({
+                        ticker,
+                        type,
+                        date_com: dateCom,
+                        payment_date: datePay || dateCom, // Fallback para data com se não tiver pag
+                        rate
+                    });
+                }
+            }
+        });
+        return proventos;
+    } catch (e) {
+        console.error(`Erro Investidor10 Proventos [${ticker}]:`, e);
+        return [];
+    }
+}
+
+async function scrapeProventosStatusInvest(ticker: string) {
+    try {
+        const baseTicker = ticker.replace(/F$/, '');
         const typeUrl = (baseTicker.endsWith('11') || baseTicker.endsWith('11B')) ? 'fii' : 'acao';
         const url = `https://statusinvest.com.br/${typeUrl}/companytickerprovents?ticker=${baseTicker}&chartProventsType=2`;
         
@@ -187,16 +231,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!stock || stock === 'UNDEFINED') return res.status(400).json({ error: 'Ticker required' });
 
     try {
-        // Tenta identificar tipo e buscar em URLs alternadas se falhar
         const isFII = stock.endsWith('11') || stock.endsWith('11B');
-        let data = await scrapeInvestidor10(stock, isFII ? 'fiis' : 'acoes');
+        let typeStr: 'fiis' | 'acoes' = isFII ? 'fiis' : 'acoes';
         
-        if (!data) {
-            // Tenta o outro tipo (ex: ação que termina em 11 ou FII atípico)
-            data = await scrapeInvestidor10(stock, isFII ? 'acoes' : 'fiis');
+        // 1. Busca Metadata (Investidor10)
+        let result = await scrapeInvestidor10Metadata(stock, typeStr);
+        if (!result) {
+            // Tenta o outro tipo
+            typeStr = isFII ? 'acoes' : 'fiis';
+            result = await scrapeInvestidor10Metadata(stock, typeStr);
         }
 
-        if (!data) throw new Error('Ativo não encontrado no Investidor10');
+        if (!result || !result.metadata) throw new Error('Ativo não encontrado no Investidor10');
+        const data = result.metadata;
 
         const payload = {
             ticker: stock,
@@ -213,11 +260,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             updated_at: new Date().toISOString()
         };
 
-        // Salva Metadata
         await supabase.from('ativos_metadata').upsert(payload, { onConflict: 'ticker' });
 
-        // Busca e Salva Proventos
-        const proventos = await scrapeProventos(stock);
+        // 2. Busca Proventos (Estratégia Híbrida: StatusInvest + Fallback Investidor10)
+        let proventos = await scrapeProventosStatusInvest(stock);
+        
+        // Se veio vazio ou parece incompleto (comum para ITSA4 futura), tenta Investidor10
+        if (proventos.length === 0 || stock.includes('ITSA') || stock.includes('PETR') || stock.includes('VALE')) {
+             const proventosFallback = await scrapeProventosInvestidor10(stock, typeStr);
+             
+             // Merge sem duplicar (Chave: data_com + rate + type)
+             const existingSigs = new Set(proventos.map(p => `${p.date_com}-${p.rate}-${p.type}`));
+             proventosFallback.forEach(p => {
+                 const sig = `${p.date_com}-${p.rate}-${p.type}`;
+                 if (!existingSigs.has(sig)) {
+                     proventos.push(p);
+                 }
+             });
+        }
+
         if (proventos.length > 0) {
             await supabase.from('market_dividends').upsert(proventos, { 
                 onConflict: 'ticker, type, date_com, payment_date, rate', 
@@ -225,7 +286,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        return res.status(200).json({ success: true, data: payload });
+        return res.status(200).json({ success: true, data: payload, dividends_count: proventos.length });
 
     } catch (error: any) {
         console.error(`Update Error [${stock}]:`, error.message);
