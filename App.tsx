@@ -15,7 +15,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.3.14'; 
+const APP_VERSION = '8.3.15'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -32,11 +32,6 @@ const STORAGE_KEYS = {
 // Arredonda para 2 casas decimais
 const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
-/**
- * Calcula quantidade em Data Com com precisão absoluta de string.
- * IMPORTANTE: Evita conversão para Date object para não sofrer com Timezone (UTC-3 vs UTC).
- * A comparação é feita estritamente lexicográfica: "2023-10-26" > "2023-10-25".
- */
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!dateCom || dateCom.length < 10) return 0;
   
@@ -46,12 +41,7 @@ const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transa
 
   return transactions
     .filter(t => {
-        // Garante que pegamos apenas YYYY-MM-DD da transação
         const txDateStr = (t.date || '').substring(0, 10);
-        
-        // A compra deve ter sido feita ATÉ o final do dia da Data Com.
-        // Se Data da Transação <= Data Com, o usuário tem direito.
-        // Comparação de string funciona perfeitamente para ISO format (YYYY-MM-DD).
         return t.ticker.trim().toUpperCase() === targetTicker && txDateStr <= targetDateStr;
     })
     .reduce((acc, t) => {
@@ -76,7 +66,6 @@ const getSupabaseUrl = () => {
     return url || 'https://supabase.com';
 };
 
-// Memoização dos componentes de página para performance
 const MemoizedHome = React.memo(Home);
 const MemoizedPortfolio = React.memo(Portfolio);
 const MemoizedTransactions = React.memo(Transactions);
@@ -210,7 +199,6 @@ const App: React.FC = () => {
           read: false
       };
       setNotifications(prev => [newNotif, ...prev]);
-      // Pequeno feedback visual se as notificações não estiverem abertas
       if (!showNotifications) showToast('info', title);
   }, [showToast, showNotifications]);
 
@@ -266,7 +254,6 @@ const App: React.FC = () => {
     if (initialLoad) setLoadingProgress(50);
     
     try {
-      // 1. Cotações (BRAPI)
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
@@ -275,11 +262,9 @@ const App: React.FC = () => {
       if (initialLoad) setLoadingProgress(70); 
       
       setIsAiLoading(true);
-      // 2. Dados Fundamentais e Proventos (SUPABASE - Populado pelo Scraper)
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
       const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
       
-      // DETECÇÃO DE NOVOS EVENTOS PARA NOTIFICAÇÃO
       if (aiData.dividends.length > 0 && pushEnabled) {
           const previousSignatures = new Set(geminiDividends.map(d => `${d.ticker}-${d.type}-${d.paymentDate}-${d.rate}`));
           let newEventsCount = 0;
@@ -287,7 +272,6 @@ const App: React.FC = () => {
 
           aiData.dividends.forEach(d => {
               const signature = `${d.ticker}-${d.type}-${d.paymentDate}-${d.rate}`;
-              // Se não existia antes e a data de pagamento é futura ou hoje
               const isFuture = d.paymentDate >= new Date().toISOString().split('T')[0];
               if (!previousSignatures.has(signature) && isFuture) {
                   newEventsCount++;
@@ -347,36 +331,26 @@ const App: React.FC = () => {
     const initApp = async () => {
         const startTime = Date.now();
         const MIN_SPLASH_TIME = 2500;
-        
         setLoadingProgress(10);
-        
         try {
             const sessionPromise = supabase.auth.getSession();
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Timeout')), 5000));
-            
             // @ts-ignore
             const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
-            
             if (error) throw error;
             const initialSession = data?.session;
-            
             setSession(initialSession);
             setLoadingProgress(50);
-
             if (initialSession) {
                 fetchTransactionsFromCloud(initialSession, false, true);
             }
-
             const elapsed = Date.now() - startTime;
             const remainingTime = Math.max(0, MIN_SPLASH_TIME - elapsed);
-
             if (remainingTime > 0) {
                 setLoadingProgress(80);
                 await new Promise(resolve => setTimeout(resolve, remainingTime));
             }
-            
             setLoadingProgress(100);
-
         } catch (e) {
             console.warn("Auth check finished with error or timeout, defaulting to Login screen.", e);
             setSession(null);
@@ -384,9 +358,7 @@ const App: React.FC = () => {
             setIsReady(true);
         }
     };
-
     initApp();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, newSession) => {
         setSession(newSession);
         if (!newSession) {
@@ -394,7 +366,6 @@ const App: React.FC = () => {
             setGeminiDividends([]);
         }
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -427,26 +398,34 @@ const App: React.FC = () => {
   }, []);
 
   const handleManualScraperTrigger = async () => {
-      if (transactions.length === 0) {
-          showToast('info', 'Cadastre ativos primeiro.');
+      // 1. Calcula apenas ativos com saldo em carteira
+      const holdings: Record<string, number> = {};
+      transactions.forEach(t => {
+          holdings[t.ticker] = (holdings[t.ticker] || 0) + (t.type === 'BUY' ? t.quantity : -t.quantity);
+      });
+      
+      const activeTickers = Object.keys(holdings).filter(t => holdings[t] > 0.000001);
+
+      if (activeTickers.length === 0) {
+          showToast('info', 'Nenhum ativo em custódia para atualizar.');
           return;
       }
+      
       setIsScraping(true);
-      const uniqueTickers = [...new Set(transactions.map(t => t.ticker))];
       const BATCH_SIZE = 3;
       let processed = 0;
       
-      showToast('info', `Atualizando ${uniqueTickers.length} ativos...`);
+      showToast('info', `Atualizando ${activeTickers.length} ativos...`);
       try {
-          for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
-              const batch = uniqueTickers.slice(i, i + BATCH_SIZE);
+          for (let i = 0; i < activeTickers.length; i += BATCH_SIZE) {
+              const batch = activeTickers.slice(i, i + BATCH_SIZE);
               await Promise.all(batch.map(async (ticker) => {
                  try {
                    const res = await fetch(`/api/update-stock?ticker=${ticker}&force=true`);
                    if (res.ok) processed++;
                  } catch (e) { console.error(`Falha ao atualizar ${ticker}`, e); }
               }));
-              if (i + BATCH_SIZE < uniqueTickers.length) await new Promise(resolve => setTimeout(resolve, 800));
+              if (i + BATCH_SIZE < activeTickers.length) await new Promise(resolve => setTimeout(resolve, 800));
           }
           if (processed > 0) {
               showToast('success', 'Dados atualizados! Sincronizando tela...');
@@ -494,16 +473,14 @@ const App: React.FC = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
-    // Processamento de Dividendos (Agora usando getQuantityOnDate estrito)
     const receipts = geminiDividends.map(d => {
-        // Verifica a quantidade exata na data com (Elegibilidade)
         const qty = getQuantityOnDate(d.ticker, d.dateCom, sortedTxs);
         return { 
             ...d, 
             quantityOwned: qty, 
-            totalReceived: qty * d.rate // Cálculo bruto
+            totalReceived: qty * d.rate 
         };
-    }).filter(r => r.totalReceived > 0.0001); // Filtra quem não tinha posição na data com
+    }).filter(r => r.totalReceived > 0.0001); 
 
     const divPaidMap: Record<string, number> = {};
     let totalDividendsReceived = 0;
@@ -514,7 +491,6 @@ const App: React.FC = () => {
         } 
     });
 
-    // Processamento de Posições
     const positions: Record<string, any> = {};
     sortedTxs.forEach(t => {
       if (!positions[t.ticker]) positions[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType };

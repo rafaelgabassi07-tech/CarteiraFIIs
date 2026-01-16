@@ -52,23 +52,32 @@ async function fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<a
     }
 }
 
-// Helper: Parsing Numérico Seguro
+// Helper: Parsing Numérico Seguro e Agressivo
 function parseValue(valueStr: any): number {
     if (!valueStr) return 0;
     if (typeof valueStr === 'number') return valueStr;
     
     let clean = String(valueStr).trim();
-    if (clean === '-' || clean === '--') return 0;
+    if (clean === '-' || clean === '--' || clean === 'N/A') return 0;
 
-    // Remove caracteres invisíveis e unidades
-    clean = clean.replace(/R\$|\%|\s|\n|\t/g, '').trim();
+    // Mantém apenas números, vírgula, ponto e sinal de menos
+    clean = clean.replace(/[^0-9.,-]/g, '');
     
-    if (clean.includes('.') && clean.includes(',')) {
-        clean = clean.replace(/\./g, '').replace(',', '.');
+    // Lógica para detectar milhar vs decimal
+    // Ex: 1.234,56 -> 1234.56
+    // Ex: 1,234.56 -> 1234.56
+    // Ex: 12,34 -> 12.34
+    
+    if (clean.includes(',') && clean.includes('.')) {
+        if (clean.indexOf(',') > clean.indexOf('.')) {
+             // Formato US (1.234,56) - Raro no BR, mas possível
+             clean = clean.replace(/\./g, '').replace(',', '.');
+        } else {
+             // Formato BR Invertido? Geralmente não acontece, assumimos BR (1.234,56)
+             clean = clean.replace(/\./g, '').replace(',', '.');
+        }
     } else if (clean.includes(',')) {
         clean = clean.replace(',', '.');
-    } else if (clean.includes('.') && !clean.includes(',')) {
-        clean = clean.replace(/\./g, '');
     }
 
     const floatVal = parseFloat(clean);
@@ -78,19 +87,30 @@ function parseValue(valueStr: any): number {
 function normalizeKey(str: string) {
     if (!str) return '';
     return str.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]/g, "")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
+        .replace(/[^a-z0-9]/g, "") // Remove tudo que não for letra ou numero
         .trim();
 }
 
 const KEY_MAP: Record<string, string> = {
+    // Preço
     'cotacao': 'current_price', 'valoratual': 'current_price', 'preconofechamento': 'current_price',
+    
+    // Valuation
     'pvp': 'pvp', 'p/vp': 'pvp', 'vp': 'pvp',
-    'pl': 'pl', 'p/l': 'pl',
+    'pl': 'pl', 'p/l': 'pl', 'precolucro': 'pl',
+    
+    // Dividendos
     'dividendyield': 'dy_12m', 'dy': 'dy_12m', 'yield': 'dy_12m', 'dy12m': 'dy_12m',
+    
+    // Eficiência
     'roe': 'roe', 'returnonequity': 'roe',
+    
+    // FIIs
     'vacanciafisica': 'vacancia', 'vacancia': 'vacancia',
-    'liquidezmediadiaria': 'liquidez', 'liquidez': 'liquidez',
+    
+    // Geral
+    'liquidezmediadiaria': 'liquidez', 'liquidez': 'liquidez', 'vol.medio': 'liquidez',
     'valordemercado': 'valor_mercado', 'patrimonioliquido': 'valor_mercado'
 };
 
@@ -102,50 +122,74 @@ async function scrapeInvestidor10Metadata(ticker: string, type: 'fiis' | 'acoes'
         const $ = cheerio.load(html);
         const extracted: Record<string, any> = {};
 
-        // 1. Cards do Topo
-        $('div._card').each((_, el) => {
-            const label = $(el).find('div._card-header span').text() || $(el).find('div._card-header').text();
-            const value = $(el).find('div._card-body span').text() || $(el).find('div._card-body').text();
-            
+        // ESTRATÉGIA 1: Cards do Topo (Busca por texto exato nos headers)
+        // Isso é mais seguro que confiar em classes css como `._card`
+        const processElement = (label: string, value: string) => {
             if (label && value) {
                 const normKey = normalizeKey(label);
-                if (KEY_MAP[normKey]) {
-                    extracted[KEY_MAP[normKey]] = ['liquidez', 'valor_mercado'].includes(KEY_MAP[normKey])
+                // Tenta correspondência exata ou parcial
+                let mappedKey = KEY_MAP[normKey];
+                
+                // Fallback para chaves parciais (ex: "P/VP" vira "pvp")
+                if (!mappedKey) {
+                    Object.keys(KEY_MAP).forEach(k => {
+                        if (normKey.includes(k) && !mappedKey) mappedKey = KEY_MAP[k];
+                    });
+                }
+
+                if (mappedKey) {
+                    extracted[mappedKey] = ['liquidez', 'valor_mercado'].includes(mappedKey)
                         ? value.trim() 
                         : parseValue(value);
                 }
             }
+        };
+
+        // Varre todos os cartões de dados
+        $('div._card').each((_, el) => {
+            const label = $(el).find('div._card-header').text();
+            const value = $(el).find('div._card-body').text();
+            processElement(label, value);
         });
 
-        // 2. Tabela de Indicadores
+        // Varre a tabela de indicadores (comum em ações)
         $('#table-indicators .cell').each((_, el) => {
-            const label = $(el).find('span.name').text();
-            const value = $(el).find('div.value span').text() || $(el).find('span.value').text(); 
-
-            if (label && value) {
-                const normKey = normalizeKey(label);
-                if (KEY_MAP[normKey]) {
-                    extracted[KEY_MAP[normKey]] = ['liquidez', 'valor_mercado'].includes(KEY_MAP[normKey])
-                        ? value.trim()
-                        : parseValue(value);
-                }
-            }
+            const label = $(el).find('.name').text();
+            const value = $(el).find('.value').text();
+            processElement(label, value);
         });
+
+        // ESTRATÉGIA DE SEGURANÇA (Fallback):
+        // Se P/VP ou DY ainda estiverem vazios, faz busca textual bruta
+        if (!extracted['pvp'] || !extracted['dy_12m']) {
+             $('span, div, h3, h4').each((_, el) => {
+                 const txt = $(el).text().trim().toUpperCase();
+                 // Verifica se é um rótulo conhecido
+                 if (['P/VP', 'DY', 'P/L', 'V.P.', 'VACÂNCIA'].includes(txt)) {
+                     // Tenta pegar o próximo elemento ou o pai->proximo
+                     let val = $(el).next().text().trim();
+                     if (!val) val = $(el).parent().find('.value, span').last().text().trim();
+                     if (val && val !== txt) {
+                         processElement(txt, val);
+                     }
+                 }
+             });
+        }
 
         // 3. Segmento
         let segmento = '';
-        $('#breadcrumbs li span a span, .breadcrumb-item').each((_, el) => {
+        $('#breadcrumbs li, .breadcrumb-item').each((_, el) => {
             const txt = $(el).text().trim();
-            if (txt && !['Início', 'Ações', 'FIIs', 'Home'].includes(txt) && txt.toUpperCase() !== ticker) {
-                segmento = txt;
+            if (txt && !['Início', 'Ações', 'FIIs', 'Home', 'Cotovelos', '>'].includes(txt) && txt.toUpperCase() !== ticker) {
+                // Geralmente o segmento é o penúltimo ou antepenúltimo item
+                if (txt.length > 3) segmento = txt;
             }
         });
         if (segmento) extracted['segment'] = segmento;
 
-        // SANITY CHECK: Se preço ou DY vierem zerados mas a página carregou, algo está errado (layout mudou ou bloqueio soft)
+        // SANITY CHECK
         if (!extracted.current_price && !extracted.dy_12m) {
-            console.warn(`[Scraper Warning] ${ticker}: Página carregou mas dados cruciais estão vazios.`);
-            // Não jogamos erro aqui para permitir retornar o que achou, mas logamos
+            console.warn(`[Scraper Warning] ${ticker}: Dados fundamentais vazios.`);
         }
 
         return { metadata: extracted };
@@ -240,14 +284,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const isFII = stock.endsWith('11') || stock.endsWith('11B');
         let typeStr: 'fiis' | 'acoes' = isFII ? 'fiis' : 'acoes';
         
-        // 1. Busca Metadata (Investidor10) com Retry
+        // 1. Busca Metadata (Investidor10) com Retry e Lógica Semântica
         let result = await scrapeInvestidor10Metadata(stock, typeStr);
-        if (!result) {
+        if (!result || Object.keys(result.metadata).length <= 2) {
+            // Se falhou ou trouxe poucos dados, tenta o outro tipo de ativo
             typeStr = isFII ? 'acoes' : 'fiis';
-            result = await scrapeInvestidor10Metadata(stock, typeStr);
+            const retryResult = await scrapeInvestidor10Metadata(stock, typeStr);
+            if (retryResult && Object.keys(retryResult.metadata).length > 2) {
+                result = retryResult;
+            }
         }
 
-        if (!result || !result.metadata) throw new Error('Ativo não encontrado ou bloqueio de IP');
+        if (!result || !result.metadata) throw new Error('Dados fundamentais não encontrados');
         const data = result.metadata;
 
         const payload = {
@@ -267,15 +315,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         await supabase.from('ativos_metadata').upsert(payload, { onConflict: 'ticker' });
 
-        // 2. Busca Proventos Inteligente
+        // 2. Busca Proventos
         let proventos = await scrapeProventosStatusInvest(stock);
         
-        // Fallback Trigger: Se vazio OU se for ticker problemático conhecido (ITSA/PETR/VALE)
+        // Fallback Trigger
         if (proventos.length === 0 || ['ITSA4', 'ITSA3', 'PETR4', 'PETR3', 'VALE3', 'BBAS3'].includes(stock)) {
              console.log(`[Fallback] Ativando scraping alternativo para ${stock}`);
              const proventosFallback = await scrapeProventosInvestidor10(stock, typeStr);
              
-             // Tipagem explícita para evitar erro de build TS7006
              const existingSigs = new Set(proventos.map((p: any) => `${p.date_com}-${p.rate}-${p.type}`));
              proventosFallback.forEach((p: any) => {
                  const sig = `${p.date_com}-${p.rate}-${p.type}`;
