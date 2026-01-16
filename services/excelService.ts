@@ -63,11 +63,19 @@ const inferAssetType = (ticker: string): AssetType => {
 
 const extractTicker = (raw: string): string => {
     if (!raw) return '';
-    const clean = raw.trim().toUpperCase();
+    let clean = raw.trim().toUpperCase();
+    
+    // Remove "F" do final se for fracionário (ex: ITSA4F -> ITSA4), exceto se for 11F (raro, mas previne erro em FIIs)
+    if (clean.endsWith('F') && !clean.endsWith('11F') && clean.length <= 6) {
+       clean = clean.substring(0, clean.length - 1);
+    }
+
     const matchStart = clean.match(/^([A-Z0-9]{4,6}[0-9]{1,2}B?)\s*[- ]/);
     if (matchStart) return matchStart[1];
+    
     const matchCode = clean.match(/\b([A-Z]{4}[0-9]{1,2}B?)\b/);
     if (matchCode) return matchCode[1];
+    
     return clean.split(' ')[0];
 };
 
@@ -97,7 +105,11 @@ export const parseB3Excel = async (file: File): Promise<{ transactions: Transact
           const dateStr = parseBrDate(row[dateKey]);
           
           const tickerKey = keys['código de negociação'] || keys['código'] || keys['ativo'] || keys['ticker'] || keys['produto'] || keys['papel'];
-          const tickerStr = extractTicker(String(row[tickerKey] || ''));
+          const rawTicker = String(row[tickerKey] || '');
+          const tickerStr = extractTicker(rawTicker);
+
+          // Ignora se não conseguiu extrair ticker ou se parece ser Tesouro/Opção (muito longo ou caracteres estranhos)
+          if (!tickerStr || tickerStr.length > 7 || tickerStr.includes('TESOURO')) continue;
 
           const typeVal = String(row[keys['movimentação'] || keys['tipo de movimentação'] || keys['histórico'] || keys['natureza'] || ''] || '').toLowerCase();
           

@@ -150,9 +150,16 @@ export const Settings: React.FC<SettingsProps> = ({
           if (newTxs.length === 0 && newDivs.length === 0) {
               showToast('error', 'Nenhum dado válido identificado na planilha.');
           } else {
-              // 1. Processar Transações (Salvar no Supabase para persistência)
-              const existingSig = new Set(transactions.map(t => `${t.ticker}-${t.date}-${t.quantity}-${t.price}-${t.type}`));
-              const txsToAdd = newTxs.filter(t => !existingSig.has(`${t.ticker}-${t.date}-${t.quantity}-${t.price}-${t.type}`));
+              // 1. Processar Transações (Deduplicação Robusta)
+              // Criamos uma assinatura única para cada transação existente
+              const existingSig = new Set(transactions.map(t => 
+                  `${t.ticker.trim().toUpperCase()}-${t.date.split('T')[0]}-${Math.round(t.quantity)}-${Math.round(t.price * 100)}-${t.type}`
+              ));
+              
+              const txsToAdd = newTxs.filter(t => {
+                  const sig = `${t.ticker.trim().toUpperCase()}-${t.date.split('T')[0]}-${Math.round(t.quantity)}-${Math.round(t.price * 100)}-${t.type}`;
+                  return !existingSig.has(sig);
+              });
               
               if (txsToAdd.length > 0 && user?.id) {
                   const dbPayload = txsToAdd.map(t => ({
@@ -174,11 +181,12 @@ export const Settings: React.FC<SettingsProps> = ({
                   }
               }
 
-              // 2. Processar Dividendos (Salvar no Supabase na tabela de mercado)
-              // Filtra duplicatas locais antes de enviar
-              // ESTRATÉGIA ANTI-DUPLICAÇÃO:
-              // Se já existir na memória (vindo do Scraper ou BD) um dividendo do mesmo Ticker, Tipo e MÊS,
-              // ignoramos o do Excel. Motivo: O scraper tem a Data Com exata, o Excel chuta Data Com = Pagamento.
+              // 2. Processar Dividendos (Deduplicação Inteligente)
+              // O Excel traz dividendos com Data Pagamento repetida como Data Com e sem distinção clara.
+              // O App já tem dados precisos via API.
+              // REGRA: Se já existe um dividendo para o mesmo Ticker, Tipo e MÊS, IGNORA O DO EXCEL.
+              // Preservamos o dado da API que tem a Data Com correta.
+              
               const combinedDivs = [...geminiDividends];
               let divsAddedCount = 0;
               const divsToSync: DividendReceipt[] = [];
@@ -186,11 +194,16 @@ export const Settings: React.FC<SettingsProps> = ({
               newDivs.forEach(d => {
                   const paymentMonth = d.paymentDate.substring(0, 7); // YYYY-MM
                   
-                  const exists = combinedDivs.some(existing => 
-                      existing.ticker === d.ticker && 
-                      existing.paymentDate.substring(0, 7) === paymentMonth &&
-                      existing.type === d.type
-                  );
+                  // Verifica duplicidade relaxada (Mesmo ticker, mesmo tipo, mesmo mês de pagamento)
+                  const exists = combinedDivs.some(existing => {
+                      const existingMonth = existing.paymentDate.substring(0, 7);
+                      const sameTicker = existing.ticker.trim().toUpperCase() === d.ticker.trim().toUpperCase();
+                      const sameType = existing.type === d.type;
+                      
+                      // Se coincidir Ticker, Tipo e Mês, assumimos que é o mesmo provento.
+                      // O dado que já temos (via API) é melhor que o do Excel, então ignoramos o novo.
+                      return sameTicker && sameType && existingMonth === paymentMonth;
+                  });
 
                   if (!exists) {
                       combinedDivs.push(d);
@@ -208,6 +221,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       rate: d.rate
                   }));
 
+                  // Upsert no Supabase (Isso não duplica se a chave única bater, mas o filtro acima js garante a limpeza visual)
                   const { error: divError } = await supabase
                       .from('market_dividends')
                       .upsert(divPayload, { onConflict: 'ticker, type, date_com, payment_date, rate', ignoreDuplicates: true });
@@ -224,10 +238,10 @@ export const Settings: React.FC<SettingsProps> = ({
               if (divsAddedCount > 0) msgParts.push(`${divsAddedCount} proventos`);
               
               if (msgParts.length > 0) {
-                  showToast('success', `Importado e Sincronizado: ${msgParts.join(' e ')}!`);
+                  showToast('success', `Adicionado: ${msgParts.join(' e ')} (Duplicatas ignoradas)`);
                   setActiveSection('menu');
               } else {
-                  showToast('info', 'Dados já atualizados ou duplicatas ignoradas.');
+                  showToast('info', 'Nenhum dado novo encontrado. Tudo atualizado.');
               }
           }
       } catch (error) {
