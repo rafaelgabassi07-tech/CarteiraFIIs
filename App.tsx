@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.3.3'; 
+const APP_VERSION = '8.3.11'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -245,7 +245,12 @@ const App: React.FC = () => {
         setTransactions(cloudTxs);
         setCloudStatus('connected');
         setTimeout(() => setCloudStatus('hidden'), 3000);
-        if (cloudTxs.length > 0) await syncMarketData(force, cloudTxs, initialLoad);
+        
+        // --- CRITICAL FIX: Não usamos 'await' aqui. 
+        // Dispara a sincronização de mercado em background para não travar a abertura do app.
+        if (cloudTxs.length > 0) {
+            syncMarketData(force, cloudTxs, initialLoad).catch(e => console.error("Background sync error:", e));
+        }
     } catch (err) { showToast('error', 'Erro na nuvem.'); setCloudStatus('disconnected'); }
   }, [syncMarketData, showToast]);
 
@@ -352,17 +357,17 @@ const App: React.FC = () => {
             
             if (session) {
                 setLoadingProgress(20);
-                // Busca dados se houver sessão
+                // Busca transações e libera tela
+                // A sincronização de mercado acontece em background dentro dessa função agora
                 await fetchTransactionsFromCloud(session, false, true);
                 
-                // --- FIX: Libera a tela após carregar dados
                 setAppLoading(false);
             } else {
-                setAppLoading(false); // Sem sessão, encerra load para mostrar Login
+                setAppLoading(false); 
             }
         } catch (e) {
             console.error("Erro na inicialização da Auth:", e);
-            setAppLoading(false); // Em caso de erro, libera a tela
+            setAppLoading(false); 
         }
     };
 
@@ -373,7 +378,7 @@ const App: React.FC = () => {
         if (!session) setAppLoading(false);
     });
     
-    // Safety Timeout: Se em 6 segundos não carregar, libera a tela
+    // Safety Timeout Reduzido: Garante que o app abra em até 3s mesmo se a rede falhar
     const safetyTimer = setTimeout(() => {
         setAppLoading((current) => {
             if (current) {
@@ -382,7 +387,7 @@ const App: React.FC = () => {
             }
             return current;
         });
-    }, 6000);
+    }, 3000);
 
     return () => {
         subscription.unsubscribe();
@@ -472,6 +477,17 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-primary-light dark:bg-primary-dark">
       <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
       <CloudStatusBanner status={cloudStatus} />
+      
+      {/* Fallback Loader: Garante que o usuário veja algo se a Splash HTML for removida antes do tempo */}
+      {appLoading && (
+         <div className="fixed inset-0 flex items-center justify-center z-50 bg-primary-light dark:bg-primary-dark">
+            <div className="flex flex-col items-center animate-pulse">
+                <img src="./logo.svg" className="w-16 h-16 mb-6 opacity-50" alt="Loading" />
+                <Loader2 className="w-6 h-6 animate-spin text-accent" />
+            </div>
+         </div>
+      )}
+
       {toast && ( 
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-sm px-4">
             <div className={`flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up bg-white dark:bg-slate-900 border-y border-r border-slate-100 dark:border-slate-800 ${toast.type === 'success' ? 'border-l-emerald-500' : toast.type === 'error' ? 'border-l-rose-500' : 'border-l-sky-500'}`}>

@@ -72,56 +72,64 @@
         width: 100%;
       }
 
-      /* Nova Estrutura da Marca: Logo + Texto */
+      /* CONCEITO: Logo atuando como 'I' + NVEST */
       .s-brand {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 2px; /* Espaço mínimo entre o logo (I) e o resto do texto */
+        /* Ajuste fino do kerning entre o logo e a letra N */
+        gap: 1px; 
         margin-bottom: 48px;
         position: relative;
       }
 
-      .s-logo-img {
-        height: 64px;
-        width: auto;
-        /* Pequena sombra para destacar do fundo */
-        filter: drop-shadow(0 4px 12px rgba(14, 165, 233, 0.15));
-        
-        /* Animação de entrada do logo */
+      .s-logo-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* Largura fixa para garantir estabilidade */
+        width: 60px; 
+        height: 80px;
+        margin-right: 2px;
+        animation: logoEnter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         opacity: 0;
         transform: scale(0.8) translateY(10px);
-        animation: logoEnter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      .s-logo-img {
+        width: 100%;
+        height: auto;
+        filter: drop-shadow(0 4px 12px rgba(14, 165, 233, 0.2));
       }
 
       .s-brand-text {
-        font-size: 64px;
+        font-size: 64px; /* Tamanho grande para impacto */
         font-weight: 900; /* Black */
-        letter-spacing: -0.04em;
+        letter-spacing: -0.05em; /* Tracking apertado estilo fintech */
         line-height: 1;
         
-        /* Gradiente no Texto */
+        /* Gradiente Moderno Teal -> Blue */
         background: linear-gradient(135deg, #115e59 0%, #0ea5e9 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         color: transparent;
 
-        /* Animação do texto */
+        /* Animação com delay para entrar depois do logo */
         opacity: 0;
-        transform: translateX(-15px);
+        transform: translateX(-20px);
         animation: textEnter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
       }
 
       @media (prefers-color-scheme: dark) {
         .s-brand-text {
-          /* Gradiente mais vibrante para dark mode */
+          /* Gradiente mais luminoso para fundo escuro */
           background: linear-gradient(135deg, #2dd4bf 0%, #38bdf8 100%);
           -webkit-background-clip: text;
           background-clip: text;
         }
         .s-logo-img {
-            filter: drop-shadow(0 4px 12px rgba(14, 165, 233, 0.3));
+            filter: drop-shadow(0 4px 16px rgba(14, 165, 233, 0.3));
         }
       }
 
@@ -199,12 +207,13 @@
     <div id="root-splash">
         <div class="s-content">
             <div class="s-brand">
-                <!-- Logo atuando como a letra 'I' -->
-                <img src="./logo.svg" alt="I" class="s-logo-img" />
+                <div class="s-logo-wrapper">
+                   <img src="./logo.svg" alt="I" class="s-logo-img" />
+                </div>
                 <span class="s-brand-text">NVEST</span>
             </div>
             
-            <div id="splash-status-text" class="s-status">Carregando...</div>
+            <div id="splash-status-text" class="s-status">Inicializando...</div>
             <div class="s-progress-container">
                 <div id="splash-progress-bar" class="s-progress-bar"></div>
             </div>
@@ -214,13 +223,13 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
 
-    <!-- Failsafe: Remove splash screen após 8s se algo falhar no carregamento do React -->
+    <!-- FAILSAFE: Remove tela de splash após 8s se o React não assumir -->
     <script>
         setTimeout(() => {
             const body = document.body;
             const splash = document.getElementById('root-splash');
             if (body.classList.contains('is-loading')) {
-                console.warn('Splash Failsafe Triggered');
+                console.warn('Splash Failsafe Triggered: Forcing App Reveal');
                 body.classList.remove('is-loading');
                 if (splash) splash.style.display = 'none';
             }
