@@ -17,7 +17,7 @@ import { Session } from '@supabase/supabase-js';
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
-const APP_VERSION = '8.3.11'; 
+const APP_VERSION = '8.3.12'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -25,7 +25,6 @@ const STORAGE_KEYS = {
   THEME: 'investfiis_theme',
   ACCENT: 'investfiis_accent_color',
   PRIVACY: 'investfiis_privacy_mode',
-  PREFS_NOTIF: 'investfiis_prefs_notifications',
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
   NOTIF_HISTORY: 'investfiis_notification_history_v2',
@@ -66,37 +65,50 @@ const getSupabaseUrl = () => {
     return url || 'https://supabase.com';
 };
 
+// Memoização dos componentes de página para performance
 const MemoizedHome = React.memo(Home);
 const MemoizedPortfolio = React.memo(Portfolio);
 const MemoizedTransactions = React.memo(Transactions);
 
 const App: React.FC = () => {
+  // --- ESTADOS GLOBAIS ---
+  // Inicialização "Lazy" do SessionStorage/LocalStorage para evitar delay no primeiro render
   const updateManager = useUpdateManager(APP_VERSION);
-  const [appLoading, setAppLoading] = useState(true);
+  
+  // Controle de Inicialização
+  const [isReady, setIsReady] = useState(false); // Indica se o React terminou de montar e verificar Auth
   const [loadingProgress, setLoadingProgress] = useState(0); 
+  
+  // Auth
   const [session, setSession] = useState<Session | null>(null);
+  
+  // UI States
   const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
-
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   
+  // Preferências
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#0ea5e9');
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
   const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(STORAGE_KEYS.PUSH_ENABLED) === 'true');
   
+  // Feedback
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
   
+  // Dados de Negócio (Iniciam vazios ou do cache para não quebrar render)
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY); return s ? JSON.parse(s) : []; } catch { return []; } });
+  
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>(() => {
     try { const s = localStorage.getItem(STORAGE_KEYS.QUOTES); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
   
   const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
+  
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { 
       try { 
           const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); 
@@ -108,10 +120,12 @@ const App: React.FC = () => {
       try { const s = localStorage.getItem(STORAGE_KEYS.METADATA); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
 
+  // Status de Processos
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isScraping, setIsScraping] = useState(false); 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Status de Serviços
   const [isCheckingServices, setIsCheckingServices] = useState(false);
   const [services, setServices] = useState<ServiceMetric[]>([
     { id: 'db', label: 'Supabase Database', url: getSupabaseUrl(), icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
@@ -119,12 +133,14 @@ const App: React.FC = () => {
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
 
+  // --- EFEITOS DE PERSISTÊNCIA ---
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.NOTIF_HISTORY, JSON.stringify(notifications.slice(0, 50))); }, [notifications]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.METADATA, JSON.stringify(assetsMetadata)); }, [assetsMetadata]);
 
+  // Tema e Cores
   useEffect(() => {
     const root = window.document.documentElement;
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -136,6 +152,18 @@ const App: React.FC = () => {
     document.documentElement.style.setProperty('--color-accent-rgb', accentColor.replace('#', '').match(/.{2}/g)?.map(x => parseInt(x, 16)).join(' ') || '14 165 233');
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
   }, [accentColor]);
+
+
+  // --- FUNÇÕES AUXILIARES ---
+
+  const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
+    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+    setToast(null);
+    setTimeout(() => { 
+      setToast({ type, text }); 
+      toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3500); 
+    }, 50);
+  }, []);
 
   const checkServiceHealth = useCallback(async () => {
     setIsCheckingServices(true);
@@ -180,21 +208,7 @@ const App: React.FC = () => {
     setIsCheckingServices(false);
   }, [services]);
 
-  useEffect(() => {
-      if (session) {
-          const timer = setTimeout(() => { checkServiceHealth(); }, 1000);
-          return () => clearTimeout(timer);
-      }
-  }, [session]); 
-
-  const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
-    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-    setToast(null);
-    setTimeout(() => { 
-      setToast({ type, text }); 
-      toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3500); 
-    }, 50);
-  }, []);
+  // --- SINCRONIZAÇÃO DE DADOS ---
 
   const syncMarketData = useCallback(async (force = false, txsToUse: Transaction[], initialLoad = false) => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
@@ -241,18 +255,68 @@ const App: React.FC = () => {
         if (!currentSession?.user?.id) return;
         const { data, error } = await supabase.from('transactions').select('*').eq('user_id', currentSession.user.id);
         if (error) throw error;
+        
         const cloudTxs = (data || []).map(mapSupabaseToTx);
         setTransactions(cloudTxs);
         setCloudStatus('connected');
         setTimeout(() => setCloudStatus('hidden'), 3000);
         
-        // --- CRITICAL FIX: Não usamos 'await' aqui. 
-        // Dispara a sincronização de mercado em background para não travar a abertura do app.
+        // Dispara sync de mercado em background (sem await para não travar UI)
         if (cloudTxs.length > 0) {
-            syncMarketData(force, cloudTxs, initialLoad).catch(e => console.error("Background sync error:", e));
+            syncMarketData(force, cloudTxs, initialLoad).catch(e => console.error("Bg sync error", e));
         }
-    } catch (err) { showToast('error', 'Erro na nuvem.'); setCloudStatus('disconnected'); }
+    } catch (err) { 
+        showToast('error', 'Erro na nuvem.'); 
+        setCloudStatus('disconnected'); 
+    }
   }, [syncMarketData, showToast]);
+
+  // --- INICIALIZAÇÃO CRÍTICA (REFACTOR) ---
+  useEffect(() => {
+    const initApp = async () => {
+        setLoadingProgress(10);
+        
+        // 1. Verificar Sessão (Rápido)
+        try {
+            const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+            if (error) throw error;
+            
+            setSession(initialSession);
+            setLoadingProgress(30);
+
+            if (initialSession) {
+                // Se tem sessão, buscamos dados na nuvem
+                // Não usamos await aqui para liberar a tela de splash logo
+                // A UI vai renderizar com o que tiver (vazio ou cache) e preencher depois
+                fetchTransactionsFromCloud(initialSession, false, true);
+            }
+        } catch (e) {
+            console.error("Auth Init Error", e);
+            // Em caso de erro, assumimos sem sessão para mostrar Login
+            setSession(null);
+        } finally {
+            // 2. Libera a UI IMEDIATAMENTE após checar auth
+            // O componente SplashScreen vai receber o sinal e sumir
+            setIsReady(true);
+        }
+    };
+
+    initApp();
+
+    // Listener de Auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, newSession) => {
+        setSession(newSession);
+        // Se deslogar, reseta dados
+        if (!newSession) {
+            setTransactions([]);
+            setGeminiDividends([]);
+        }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // --- HANDLERS DA UI ---
 
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut();
@@ -280,31 +344,23 @@ const App: React.FC = () => {
       }
       setIsScraping(true);
       const uniqueTickers = [...new Set(transactions.map(t => t.ticker))];
-      
       const BATCH_SIZE = 3;
       let processed = 0;
       
       showToast('info', `Atualizando ${uniqueTickers.length} ativos...`);
-
       try {
           for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
               const batch = uniqueTickers.slice(i, i + BATCH_SIZE);
-              
               await Promise.all(batch.map(async (ticker) => {
                  try {
                    const res = await fetch(`/api/update-stock?ticker=${ticker}&force=true`);
                    if (res.ok) processed++;
                  } catch (e) { console.error(`Falha ao atualizar ${ticker}`, e); }
               }));
-              
-              if (i + BATCH_SIZE < uniqueTickers.length) {
-                  await new Promise(resolve => setTimeout(resolve, 800));
-              }
+              if (i + BATCH_SIZE < uniqueTickers.length) await new Promise(resolve => setTimeout(resolve, 800));
           }
-          
           if (processed > 0) {
               showToast('success', 'Dados atualizados! Sincronizando tela...');
-              // IMPORTANT: Wait slightly to ensure Supabase commits are available to read
               await new Promise(resolve => setTimeout(resolve, 500));
               await syncMarketData(true, transactions); 
           } else {
@@ -344,61 +400,12 @@ const App: React.FC = () => {
       });
   }, [session, fetchTransactionsFromCloud, showToast]);
 
-  // Inicialização da Autenticação
-  useEffect(() => {
-    setLoadingProgress(10);
-
-    const initAuth = async () => {
-        try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) throw error;
-            
-            setSession(session);
-            
-            if (session) {
-                setLoadingProgress(20);
-                // Busca transações e libera tela
-                // A sincronização de mercado acontece em background dentro dessa função agora
-                await fetchTransactionsFromCloud(session, false, true);
-                
-                setAppLoading(false);
-            } else {
-                setAppLoading(false); 
-            }
-        } catch (e) {
-            console.error("Erro na inicialização da Auth:", e);
-            setAppLoading(false); 
-        }
-    };
-
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-        setSession(session);
-        if (!session) setAppLoading(false);
-    });
-    
-    // Safety Timeout Reduzido: Garante que o app abra em até 3s mesmo se a rede falhar
-    const safetyTimer = setTimeout(() => {
-        setAppLoading((current) => {
-            if (current) {
-                console.warn("Safety Timeout: Forcing App Load");
-                return false;
-            }
-            return current;
-        });
-    }, 3000);
-
-    return () => {
-        subscription.unsubscribe();
-        clearTimeout(safetyTimer);
-    };
-  }, []);
-
+  // --- CÁLCULOS DE PORTFÓLIO (Memoized) ---
   const memoizedPortfolioData = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
+    // Processamento de Dividendos
     const receipts = geminiDividends.map(d => {
         const qty = getQuantityOnDate(d.ticker, d.dateCom, sortedTxs);
         return { ...d, quantityOwned: qty, totalReceived: qty * d.rate };
@@ -413,11 +420,11 @@ const App: React.FC = () => {
         } 
     });
 
+    // Processamento de Posições
     const positions: Record<string, any> = {};
     sortedTxs.forEach(t => {
       if (!positions[t.ticker]) positions[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType };
       const p = positions[t.ticker];
-      
       if (t.type === 'BUY') { 
           const newQuantity = p.quantity + t.quantity;
           if (newQuantity > 0.000001) {
@@ -435,12 +442,10 @@ const App: React.FC = () => {
     const finalPortfolio = Object.values(positions)
         .filter(p => p.quantity > 0.001)
         .map(p => {
-            // Normaliza Ticker para Lookup
             const normalizedTicker = p.ticker.trim().toUpperCase();
             const meta = assetsMetadata[normalizedTicker];
             const quote = quotes[normalizedTicker];
             
-            // Limpeza de Segmento
             let segment = meta?.segment || 'Geral';
             segment = segment.replace('Seg: ', '').trim();
             if (segment.length > 20) segment = segment.substring(0, 20) + '...';
@@ -471,23 +476,30 @@ const App: React.FC = () => {
     return { portfolio: finalPortfolio, dividendReceipts: receipts, totalDividendsReceived, invested, balance, salesGain };
   }, [transactions, quotes, geminiDividends, assetsMetadata]);
 
-  if (!session && !appLoading) return <Login />;
+  // --- RENDERIZAÇÃO ---
 
+  // Se não estiver pronto, deixa o HTML Splash aparecer e segura o React
+  // (Embora o React renderize null, o HTML splash statico cobre a tela)
+  if (!isReady) return <SplashScreen finishLoading={false} realProgress={loadingProgress} />;
+
+  // Se estiver pronto mas sem sessão, mostra Login
+  if (!session) {
+      return (
+          <>
+            <SplashScreen finishLoading={true} realProgress={100} />
+            <Login />
+          </>
+      );
+  }
+
+  // App Principal
   return (
     <div className="min-h-screen bg-primary-light dark:bg-primary-dark">
-      <SplashScreen finishLoading={!appLoading} realProgress={loadingProgress} />
+      {/* Sinaliza para o componente Splash que ele pode sumir */}
+      <SplashScreen finishLoading={true} realProgress={100} />
+      
       <CloudStatusBanner status={cloudStatus} />
       
-      {/* Fallback Loader: Garante que o usuário veja algo se a Splash HTML for removida antes do tempo */}
-      {appLoading && (
-         <div className="fixed inset-0 flex items-center justify-center z-50 bg-primary-light dark:bg-primary-dark">
-            <div className="flex flex-col items-center animate-pulse">
-                <img src="./logo.svg" className="w-16 h-16 mb-6 opacity-50" alt="Loading" />
-                <Loader2 className="w-6 h-6 animate-spin text-accent" />
-            </div>
-         </div>
-      )}
-
       {toast && ( 
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-sm px-4">
             <div className={`flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up bg-white dark:bg-slate-900 border-y border-r border-slate-100 dark:border-slate-800 ${toast.type === 'success' ? 'border-l-emerald-500' : toast.type === 'error' ? 'border-l-rose-500' : 'border-l-sky-500'}`}>
@@ -499,7 +511,7 @@ const App: React.FC = () => {
         </div> 
       )}
 
-      {session && !appLoading && (
+      {/* Main Content */}
         <>
             <Header 
                 title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} 
@@ -537,7 +549,6 @@ const App: React.FC = () => {
             <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={() => setNotifications([])} />
             <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />
         </>
-      )}
     </div>
   );
 };

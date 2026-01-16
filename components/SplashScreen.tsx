@@ -8,11 +8,11 @@ interface SplashScreenProps {
 
 const STATUS_TEXTS = [
   "Iniciando...",
-  "Conectando ao banco...",
-  "Sincronizando carteira...",
-  "Verificando cotações...",
-  "Analisando fundamentos...",
-  "Preparando dashboard...",
+  "Conectando...",
+  "Sincronizando...",
+  "Validando sessão...",
+  "Preparando ambiente...",
+  "Carregando ativos...",
   "Quase pronto..."
 ];
 
@@ -41,25 +41,24 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
       const progressBar = document.getElementById('splash-progress-bar');
       const statusText = document.getElementById('splash-status-text');
       
-      if (splashElement) {
+      if (splashElement && !splashElement.classList.contains('splash-exit')) {
         if (progressBar) progressBar.style.width = '100%';
-        if (statusText) statusText.innerText = "Tudo pronto!";
+        if (statusText) statusText.innerText = "Pronto!";
 
+        // Pequeno delay para usuário ver o 100%
         setTimeout(() => {
           splashElement.classList.add('splash-exit');
           
-          // LIBERA O SCROLL DEFINITIVAMENTE
           document.body.classList.remove('is-loading');
-          document.body.style.overflow = '';
-          document.body.style.position = '';
           document.body.classList.add('app-revealed');
           
+          // Remove do DOM após a transição CSS (0.6s)
           setTimeout(() => {
             if (splashElement.parentNode) {
               splashElement.parentNode.removeChild(splashElement);
             }
           }, 800);
-        }, 500);
+        }, 400);
       }
     }
   }, [finishLoading]);

@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
     
-    <meta name="app-version" content="8.3.11" />
+    <meta name="app-version" content="8.3.12" />
     <title>InvestFIIs - FIIs & Ações</title>
     
     <link rel="manifest" href="./manifest.json" />
@@ -72,25 +72,22 @@
         width: 100%;
       }
 
-      /* CONCEITO: Logo atuando como 'I' + NVEST */
+      /* BRAND */
       .s-brand {
         display: flex;
         align-items: center;
         justify-content: center;
-        /* Ajuste fino do kerning entre o logo e a letra N */
-        gap: 1px; 
+        gap: 0;
         margin-bottom: 48px;
         position: relative;
       }
 
       .s-logo-wrapper {
+        width: 52px; 
+        height: 80px;
         display: flex;
         align-items: center;
         justify-content: center;
-        /* Largura fixa para garantir estabilidade */
-        width: 60px; 
-        height: 80px;
-        margin-right: 2px;
         animation: logoEnter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         opacity: 0;
         transform: scale(0.8) translateY(10px);
@@ -99,37 +96,33 @@
       .s-logo-img {
         width: 100%;
         height: auto;
+        /* Sombra leve para destacar */
         filter: drop-shadow(0 4px 12px rgba(14, 165, 233, 0.2));
       }
 
       .s-brand-text {
-        font-size: 64px; /* Tamanho grande para impacto */
-        font-weight: 900; /* Black */
-        letter-spacing: -0.05em; /* Tracking apertado estilo fintech */
+        font-size: 56px; 
+        font-weight: 900; 
+        letter-spacing: -0.04em;
         line-height: 1;
         
-        /* Gradiente Moderno Teal -> Blue */
+        /* Gradiente Moderno */
         background: linear-gradient(135deg, #115e59 0%, #0ea5e9 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         color: transparent;
 
-        /* Animação com delay para entrar depois do logo */
         opacity: 0;
-        transform: translateX(-20px);
+        transform: translateX(-15px);
         animation: textEnter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
       }
 
       @media (prefers-color-scheme: dark) {
         .s-brand-text {
-          /* Gradiente mais luminoso para fundo escuro */
           background: linear-gradient(135deg, #2dd4bf 0%, #38bdf8 100%);
           -webkit-background-clip: text;
           background-clip: text;
-        }
-        .s-logo-img {
-            filter: drop-shadow(0 4px 16px rgba(14, 165, 233, 0.3));
         }
       }
 
@@ -213,7 +206,7 @@
                 <span class="s-brand-text">NVEST</span>
             </div>
             
-            <div id="splash-status-text" class="s-status">Inicializando...</div>
+            <div id="splash-status-text" class="s-status">Carregando...</div>
             <div class="s-progress-container">
                 <div id="splash-progress-bar" class="s-progress-bar"></div>
             </div>
@@ -223,14 +216,15 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
 
-    <!-- FAILSAFE: Remove tela de splash após 8s se o React não assumir -->
+    <!-- FAILSAFE: Garante que a splash suma após 8s se o React não assumir -->
     <script>
         setTimeout(() => {
             const body = document.body;
             const splash = document.getElementById('root-splash');
             if (body.classList.contains('is-loading')) {
-                console.warn('Splash Failsafe Triggered: Forcing App Reveal');
+                console.warn('Splash Failsafe Triggered');
                 body.classList.remove('is-loading');
+                body.classList.add('app-revealed');
                 if (splash) splash.style.display = 'none';
             }
         }, 8000);
