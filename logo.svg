@@ -2,11 +2,11 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
 <defs>
 <linearGradient id="logo_grad" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
-<stop offset="0%" stop-color="#475569"/>
-<stop offset="100%" stop-color="#0f172a"/>
+<stop offset="0%" stop-color="#10b981"/>
+<stop offset="100%" stop-color="#0284c7"/>
 </linearGradient>
 <filter id="dropShadow" x="0" y="0" width="512" height="530" filterUnits="userSpaceOnUse">
-<feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.2"/>
+<feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0284c7" flood-opacity="0.2"/>
 </filter>
 </defs>
 

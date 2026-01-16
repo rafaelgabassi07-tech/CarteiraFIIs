@@ -83,8 +83,8 @@ export const Login: React.FC = () => {
                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-xl">
                         <defs>
                             <linearGradient id="logo_grad_login" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stopColor="#475569"/>
-                                <stop offset="100%" stopColor="#0f172a"/>
+                                <stop offset="0%" stopColor="#10b981"/>
+                                <stop offset="100%" stopColor="#0284c7"/>
                             </linearGradient>
                         </defs>
                         <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_login)"/>
@@ -95,7 +95,7 @@ export const Login: React.FC = () => {
                         <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_login)"/>
                    </svg>
                 </div>
-                <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-400 to-zinc-600 relative z-0 -ml-2.5">
+                <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-sky-600 relative z-0 -ml-2.5">
                     NVEST
                 </span>
             </div>
