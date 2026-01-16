@@ -1,8 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType } from '../types';
-// Fixed missing import: Added 'Info' to lucide-react imports
-import { Search, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Building2, CandlestickChart, Wallet, Target, Activity, Leaf, ExternalLink, BarChart3, Droplets, PieChart as PieIcon, Home as HomeIcon, Info } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Building2, CandlestickChart, Wallet, Target, Activity, Leaf, ExternalLink, BarChart3, Droplets, PieChart as PieIcon, Home as HomeIcon, Info, Gauge, Percent, Scale } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
@@ -21,12 +20,18 @@ const formatPercent = (val: number, privacy = false) => {
   return `${signal}${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
-const getPvpStatus = (val?: number) => {
-    if (!val || val === 0) return null;
-    if (val < 0.95) return { text: 'Desconto', color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' };
-    if (val > 1.05) return { text: 'Ágio', color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' };
-    return { text: 'Preço Justo', color: 'text-sky-500 bg-sky-500/10 border-sky-500/20' };
-};
+// Componente auxiliar para Card de Indicador
+const IndicatorCard = ({ label, value, highlight = false, subtext }: { label: string, value: string | number, highlight?: boolean, subtext?: string }) => (
+    <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/40 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between h-full">
+        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1">{label}</span>
+        <div>
+            <span className={`text-lg font-black tracking-tight ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
+                {value}
+            </span>
+            {subtext && <p className="text-[9px] font-bold text-zinc-400 mt-0.5">{subtext}</p>}
+        </div>
+    </div>
+);
 
 const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -138,45 +143,87 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-6 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                    <div className="col-span-2 p-6 bg-zinc-900 dark:bg-white rounded-[2rem] text-white dark:text-zinc-900 shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 opacity-10"><BarChart3 className="w-20 h-20" /></div>
-                        <div className="relative z-10 grid grid-cols-2 gap-4">
-                            <div>
-                                <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Rentabilidade</span>
-                                <p className={`text-2xl font-black tracking-tight mt-1 ${isTotalPositive ? 'text-emerald-400 dark:text-emerald-600' : 'text-rose-400 dark:text-rose-600'}`}>{isTotalPositive ? '+' : ''}{formatBRL(totalGainValue, privacyMode)}</p>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10 dark:border-black/10 mt-2 inline-block ${isTotalPositive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>{formatPercent(totalGainPercent, privacyMode)}</span>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Valor Total</span>
-                                <p className="text-2xl font-black tracking-tight mt-1 tabular-nums">{formatBRL(totalCurrent, privacyMode)}</p>
-                                <span className="text-[10px] font-bold opacity-60 mt-2 block">Custo: {formatBRL(totalInvested, privacyMode)}</span>
-                            </div>
+                {/* Card Principal de Rentabilidade */}
+                <div className="mb-6 p-6 bg-zinc-900 dark:bg-white rounded-[2rem] text-white dark:text-zinc-900 shadow-2xl relative overflow-hidden anim-slide-up" style={{ animationDelay: '100ms' }}>
+                    <div className="absolute top-0 right-0 p-8 opacity-10"><BarChart3 className="w-20 h-20" /></div>
+                    <div className="relative z-10 grid grid-cols-2 gap-4">
+                        <div>
+                            <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Rentabilidade</span>
+                            <p className={`text-2xl font-black tracking-tight mt-1 ${isTotalPositive ? 'text-emerald-400 dark:text-emerald-600' : 'text-rose-400 dark:text-rose-600'}`}>{isTotalPositive ? '+' : ''}{formatBRL(totalGainValue, privacyMode)}</p>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10 dark:border-black/10 mt-2 inline-block ${isTotalPositive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>{formatPercent(totalGainPercent, privacyMode)}</span>
                         </div>
-                    </div>
-
-                    <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/40 dark:border-zinc-800 rounded-3xl p-5 flex items-center justify-between">
-                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Posição</span>
-                            <span className="text-xl font-black text-zinc-900 dark:text-white mt-1">{quantity} Unidades</span>
-                         </div>
-                         <div className="text-right flex flex-col">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Preço Médio</span>
-                            <span className="text-xl font-black text-zinc-900 dark:text-white mt-1">{formatBRL(avgPrice, privacyMode)}</span>
-                         </div>
-                    </div>
-
-                    <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/40 dark:border-zinc-800 rounded-3xl p-5">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">P/VP</span>
-                        <p className="text-xl font-black text-zinc-900 dark:text-white mt-1">{selectedAsset.p_vp || '-'}</p>
-                    </div>
-                    <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/40 dark:border-zinc-800 rounded-3xl p-5">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Yield (12m)</span>
-                        <p className="text-xl font-black text-zinc-900 dark:text-white mt-1">{selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : '-'}</p>
+                        <div className="text-right">
+                            <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Valor Total</span>
+                            <p className="text-2xl font-black tracking-tight mt-1 tabular-nums">{formatBRL(totalCurrent, privacyMode)}</p>
+                            <span className="text-[10px] font-bold opacity-60 mt-2 block">Custo: {formatBRL(totalInvested, privacyMode)}</span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '200ms' }}>
+                {/* Detalhes da Posição */}
+                <div className="mb-6 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/40 dark:border-zinc-800 rounded-3xl p-5 flex items-center justify-between anim-slide-up" style={{ animationDelay: '150ms' }}>
+                        <div className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Posição</span>
+                        <span className="text-xl font-black text-zinc-900 dark:text-white mt-1">{selectedAsset.quantity} Unidades</span>
+                        </div>
+                        <div className="text-right flex flex-col">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Preço Médio</span>
+                        <span className="text-xl font-black text-zinc-900 dark:text-white mt-1">{formatBRL(avgPrice, privacyMode)}</span>
+                        </div>
+                </div>
+
+                {/* Grade de Indicadores Fundamentais */}
+                <div className="mb-6 anim-slide-up" style={{ animationDelay: '200ms' }}>
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                        <Gauge className="w-4 h-4 text-zinc-400" strokeWidth={2} />
+                        <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Fundamentos (Investidor10)</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <IndicatorCard 
+                            label="P/VP" 
+                            value={selectedAsset.p_vp ? selectedAsset.p_vp : '-'} 
+                            subtext={selectedAsset.p_vp ? (selectedAsset.p_vp < 1 ? 'Desconto' : selectedAsset.p_vp > 1.05 ? 'Ágio' : 'Justo') : ''}
+                        />
+                        <IndicatorCard 
+                            label="Yield (12m)" 
+                            value={selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : '-'} 
+                            highlight={true}
+                        />
+                        
+                        {/* Indicadores Específicos para FIIs */}
+                        {isFII && (
+                            <>
+                                <IndicatorCard 
+                                    label="Vacância" 
+                                    value={selectedAsset.vacancy !== undefined ? `${selectedAsset.vacancy}%` : '-'} 
+                                    subtext="Física"
+                                />
+                                <IndicatorCard 
+                                    label="Liquidez Diária" 
+                                    value={selectedAsset.liquidity || '-'} 
+                                />
+                            </>
+                        )}
+
+                        {/* Indicadores Específicos para Ações */}
+                        {!isFII && (
+                            <>
+                                <IndicatorCard 
+                                    label="P/L" 
+                                    value={selectedAsset.p_l ? selectedAsset.p_l : '-'} 
+                                    subtext="Preço/Lucro"
+                                />
+                                <IndicatorCard 
+                                    label="ROE" 
+                                    value={selectedAsset.roe ? `${selectedAsset.roe}%` : '-'} 
+                                    subtext="Retorno s/ PL"
+                                />
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '250ms' }}>
                      <div className="flex items-center gap-2 mb-4"><Info className="w-4 h-4 text-zinc-400" /><span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Análise do Ativo</span></div>
                      <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-medium mb-6">{selectedAsset.sentiment_reason || 'Análise de fundamentos atualizada automaticamente via Scraper.'}</p>
                      <div className="flex flex-wrap gap-2">

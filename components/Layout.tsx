@@ -64,16 +64,17 @@ interface HeaderProps {
   appVersion?: string;
   bannerVisible?: boolean;
   onRefreshClick?: () => void; // Novo prop para o botão manual
+  hideBorder?: boolean; // Prop para remover borda inferior (fusão visual)
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  title, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, bannerVisible = false, onRefreshClick
+  title, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, bannerVisible = false, onRefreshClick, hideBorder = false
 }) => {
   return (
     <header 
       className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-4 transition-all duration-500 ease-out-soft glass-effect ${
         bannerVisible ? 'h-24 pt-6' : 'h-20 pt-safe' 
-      } top-0`}
+      } top-0 ${hideBorder ? '!border-b-0 shadow-none' : ''}`}
     >
       <div className="flex items-center justify-between h-14 mb-1">
         <div className="flex items-center gap-3 w-full">

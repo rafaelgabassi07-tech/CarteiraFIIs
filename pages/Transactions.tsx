@@ -233,7 +233,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     return (
         <div className="anim-fade-in relative min-h-screen pb-60">
             {/* Header Fixo Blindado (Mudado de sticky para fixed) */}
-            <div className="fixed top-20 left-0 right-0 z-30 max-w-xl mx-auto px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300">
+            <div className="fixed top-20 left-0 right-0 z-30 max-w-xl mx-auto px-4 py-2 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300">
                 <div className="flex items-center justify-between">
                     <div>
                         {isSelectionMode ? (
