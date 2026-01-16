@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase';
 import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Eye, EyeOff, Sparkles, ArrowLeft, MailCheck } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const [mode, setMode] = useState<'signin' | 'signup' | 'recovery'>('signin'); // State machine simples
+  const [mode, setMode] = useState<'signin' | 'signup' | 'recovery'>('signin');
   const [isVerificationSent, setIsVerificationSent] = useState(false);
   
   const [email, setEmail] = useState('');
@@ -21,8 +21,9 @@ export const Login: React.FC = () => {
   useEffect(() => {
     setError(null);
     setMessage(null);
-    setPassword('');
-    setConfirmPassword('');
+    if (mode === 'signin') {
+        setConfirmPassword('');
+    }
   }, [mode]);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -76,11 +77,9 @@ export const Login: React.FC = () => {
         
         {/* Header Section */}
         <div className="mb-8 text-center anim-fade-in-up">
-            {/* BRAND COMPOSITION (Matched with Splash Screen) */}
+            {/* BRAND COMPOSITION */}
             <div className="flex items-center justify-center gap-0 mb-8 relative select-none">
-                {/* Dimesões ajustadas para 52px x 80px (igual index.html) */}
                 <div className="w-[52px] h-[80px] flex items-center justify-center relative z-10">
-                   {/* INLINE SVG LOGO - Bulletproof */}
                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_0_20px_rgba(14,165,233,0.4)]">
                         <defs>
                             <linearGradient id="logo_grad_login" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
@@ -96,18 +95,20 @@ export const Login: React.FC = () => {
                         <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_login)"/>
                    </svg>
                 </div>
-                {/* Fonte aumentada para 56px e margem negativa ajustada para -20px para colar no logo */}
                 <span className="text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-teal-400 to-sky-400 transform -translate-x-[20px] relative z-0">
                     NVEST
                 </span>
             </div>
 
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-100 mb-2">
-                {mode === 'signin' ? 'Bem-vindo de volta' : mode === 'signup' ? 'Criar Conta' : 'Recuperar Acesso'}
-            </h1>
-            <p className="text-sm text-zinc-500 font-medium">
-                {mode === 'signin' ? 'Sua carteira inteligente.' : mode === 'signup' ? 'Acompanhe sua evolução.' : 'Vamos te ajudar a voltar.'}
-            </p>
+            {/* Dynamic Text with Key-based Animation */}
+            <div key={mode} className="anim-fade-in-up">
+                <h1 className="text-2xl font-bold tracking-tight text-zinc-100 mb-2">
+                    {mode === 'signin' ? 'Bem-vindo de volta' : mode === 'signup' ? 'Criar Conta' : 'Recuperar Acesso'}
+                </h1>
+                <p className="text-sm text-zinc-500 font-medium">
+                    {mode === 'signin' ? 'Sua carteira inteligente.' : mode === 'signup' ? 'Acompanhe sua evolução.' : 'Vamos te ajudar a voltar.'}
+                </p>
+            </div>
         </div>
 
         {isVerificationSent ? (
@@ -148,7 +149,7 @@ export const Login: React.FC = () => {
                 )}
 
                 {/* Forms */}
-                <form onSubmit={handleAuth} className="space-y-5">
+                <form onSubmit={handleAuth} className="space-y-4">
                     
                     {/* Error/Success Messages */}
                     {(error || message) && (
@@ -159,6 +160,7 @@ export const Login: React.FC = () => {
                     )}
 
                     <div className="space-y-4">
+                        {/* Email Input */}
                         <div className="group">
                             <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 ml-1 block">E-mail</label>
                             <div className="relative">
@@ -198,8 +200,9 @@ export const Login: React.FC = () => {
                             </div>
                         )}
 
-                        {mode === 'signup' && (
-                            <div className="group anim-slide-up">
+                        {/* Smooth Slide Transition for Confirm Password */}
+                        <div className={`transition-all duration-500 ease-out-mola overflow-hidden ${mode === 'signup' ? 'max-h-28 opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className="group pt-1">
                                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 ml-1 block">Confirmar Senha</label>
                                 <div className="relative">
                                     <div className="absolute left-4 top-4 text-zinc-600 group-focus-within:text-sky-500 transition-colors pointer-events-none">
@@ -211,14 +214,14 @@ export const Login: React.FC = () => {
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         className="w-full bg-zinc-900/80 pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-700 outline-none border border-zinc-800 focus:border-sky-500 focus:bg-zinc-900 transition-all"
-                                        required
+                                        required={mode === 'signup'}
                                     />
                                 </div>
                             </div>
-                        )}
+                        </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center justify-between pt-1">
                         {mode === 'signin' ? (
                             <button type="button" onClick={() => setMode('recovery')} className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 transition-colors uppercase tracking-widest ml-1">
                                 Esqueci a senha
@@ -233,16 +236,16 @@ export const Login: React.FC = () => {
                     <button 
                         type="submit" 
                         disabled={loading} 
-                        className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-sky-900/20 ${
+                        className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-sky-900/20 mt-4 ${
                             loading ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 
                             'bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-500 hover:to-teal-500 text-white'
                         }`}
                     >
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                            <>
+                            <div key={mode} className="flex items-center gap-2 anim-fade-in">
                                 <span>{mode === 'recovery' ? 'Enviar Link' : mode === 'signup' ? 'Criar Conta' : 'Acessar'}</span>
                                 <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
-                            </>
+                            </div>
                         )}
                     </button>
                 </form>
