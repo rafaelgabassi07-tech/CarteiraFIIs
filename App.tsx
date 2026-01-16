@@ -274,13 +274,17 @@ const App: React.FC = () => {
   // --- INICIALIZAÇÃO CRÍTICA (REFACTOR) ---
   useEffect(() => {
     const initApp = async () => {
+        // Marca o tempo de início para controle de duração mínima do splash
+        const startTime = Date.now();
+        const MIN_SPLASH_TIME = 3000; // 3 segundos de exibição mínima
+        
         setLoadingProgress(10);
         
         try {
             // Promise Race: Auth vs Timeout
-            // Evita que o app trave na tela de carregamento se a Auth demorar
+            // Evita que o app trave na tela de carregamento se a Auth demorar demais (5s)
             const sessionPromise = supabase.auth.getSession();
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Timeout')), 2000));
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Timeout')), 5000));
             
             // @ts-ignore
             const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
@@ -289,17 +293,31 @@ const App: React.FC = () => {
             const initialSession = data?.session;
             
             setSession(initialSession);
-            setLoadingProgress(30);
+            setLoadingProgress(50);
 
             if (initialSession) {
-                // Se tem sessão, buscamos dados na nuvem (sem await para liberar UI)
+                // Se tem sessão, buscamos dados na nuvem (sem await para liberar UI, mas aguardamos no Promise.all depois se necessário)
+                // Aqui optamos por liberar rápido e deixar sync em background, mas respeitando o tempo mínimo visual
                 fetchTransactionsFromCloud(initialSession, false, true);
             }
+
+            // CALCULA O TEMPO DECORRIDO
+            const elapsed = Date.now() - startTime;
+            const remainingTime = Math.max(0, MIN_SPLASH_TIME - elapsed);
+
+            // Se o carregamento foi muito rápido, aguarda o restante do tempo e simula progresso
+            if (remainingTime > 0) {
+                setLoadingProgress(80);
+                await new Promise(resolve => setTimeout(resolve, remainingTime));
+            }
+            
+            setLoadingProgress(100);
+
         } catch (e) {
             console.warn("Auth check finished with error or timeout, defaulting to Login screen.", e);
             setSession(null);
         } finally {
-            // Libera a UI IMEDIATAMENTE
+            // Libera a UI IMEDIATAMENTE após o tempo mínimo
             setIsReady(true);
         }
     };

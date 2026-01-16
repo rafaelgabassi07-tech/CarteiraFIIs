@@ -56,7 +56,7 @@
         align-items: center;
         justify-content: center;
         background-color: var(--bg-splash);
-        transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
+        transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
       }
 
       #root-splash.splash-exit {
@@ -88,9 +88,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        animation: logoEnter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        /* Animação mais lenta (1.5s) para entrada suave */
+        animation: logoEnter 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         opacity: 0;
-        transform: scale(0.8) translateY(10px);
+        transform: scale(0.8) translateY(20px);
       }
 
       .s-logo-img {
@@ -114,8 +115,9 @@
         color: transparent;
 
         opacity: 0;
-        transform: translateX(-15px);
-        animation: textEnter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
+        transform: translateX(-20px);
+        /* Texto entra um pouco depois do logo */
+        animation: textEnter 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
       }
 
       @media (prefers-color-scheme: dark) {
@@ -135,7 +137,7 @@
         margin-bottom: 24px;
         height: 14px;
         opacity: 0;
-        animation: fadeIn 0.6s ease-out 0.5s forwards;
+        animation: fadeIn 0.8s ease-out 0.8s forwards;
       }
 
       .s-progress-container {
@@ -145,7 +147,7 @@
         border-radius: 10px;
         overflow: hidden;
         opacity: 0;
-        animation: fadeIn 0.6s ease-out 0.7s forwards;
+        animation: fadeIn 0.8s ease-out 1s forwards;
       }
 
       @media (prefers-color-scheme: dark) {
