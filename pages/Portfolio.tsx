@@ -46,7 +46,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
   return (
     <div className="pb-32 min-h-screen">
       {/* Search Bar Blindada - Fundo Sólido */}
-      <div className="sticky top-20 z-40 -mx-4 px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300">
+      <div className="sticky top-20 z-40 -mx-4 px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200/60 dark:border-zinc-800/60 shadow-sm transition-all duration-300">
         <div className="flex flex-col gap-3">
             <div className="relative flex items-center">
                 <Search className="w-4 h-4 absolute left-4 text-zinc-400" />
@@ -78,7 +78,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                 const isPositive = totalGainValue >= 0;
 
                 return (
-                    <button key={asset.ticker} onClick={() => setSelectedAsset(asset)} className="w-full bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between shadow-sm press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 anim-stagger-item" style={{ animationDelay: `${index * 40}ms` }}>
+                    <button key={asset.ticker} onClick={() => setSelectedAsset(asset)} className="w-full bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 flex items-center justify-between shadow-sm press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 anim-stagger-item" style={{ animationDelay: `${index * 40}ms` }}>
                         <div className="flex items-center gap-4">
                             <div className="relative">
                                 {asset.logoUrl ? (
@@ -155,7 +155,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         </div>
                     </div>
 
-                    <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 flex items-center justify-between">
+                    <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800 rounded-3xl p-5 flex items-center justify-between">
                          <div className="flex flex-col">
                             <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Posição</span>
                             <span className="text-xl font-black text-zinc-900 dark:text-white mt-1">{quantity} Unidades</span>
@@ -166,11 +166,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                          </div>
                     </div>
 
-                    <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800 rounded-3xl p-5">
                         <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">P/VP</span>
                         <p className="text-xl font-black text-zinc-900 dark:text-white mt-1">{selectedAsset.p_vp || '-'}</p>
                     </div>
-                    <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800 rounded-3xl p-5">
                         <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Yield (12m)</span>
                         <p className="text-xl font-black text-zinc-900 dark:text-white mt-1">{selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : '-'}</p>
                     </div>
