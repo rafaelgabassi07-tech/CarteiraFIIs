@@ -95,7 +95,7 @@ export const Login: React.FC = () => {
                         <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_login)"/>
                    </svg>
                 </div>
-                <span className="font-display text-[56px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-sky-400 relative z-0 -ml-2.5">
+                <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-sky-400 relative z-0 -ml-2.5">
                     NVEST
                 </span>
             </div>

@@ -89,7 +89,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         className={`fixed inset-0 z-[9998] flex flex-col items-center justify-center bg-primary-light dark:bg-primary-dark transition-opacity duration-500 ease-out-soft ${isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
     >
         <div className="flex flex-col items-center w-full">
-            <div className="flex items-center justify-center gap-0 mb-12 relative select-none">
+            <div className="flex items-center justify-center gap-0 mb-12 relative select-none animate-[float_3s_ease-in-out_infinite]">
                 <div className="w-[52px] h-[80px] flex items-center justify-center">
                    {/* INLINE SVG - Bulletproof */}
                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-xl">
@@ -107,7 +107,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
                         <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_splash)"/>
                    </svg>
                 </div>
-                <span className="font-display text-[56px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-500 to-sky-500 dark:from-emerald-400 dark:to-sky-400 transform -ml-2.5">
+                <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-500 to-sky-500 dark:from-emerald-400 dark:to-sky-400 transform -ml-2.5">
                     NVEST
                 </span>
             </div>
@@ -116,7 +116,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
                 Iniciando...
             </div>
             <div className="w-[140px] h-1 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                <div id="react-splash-progress" className="h-full bg-accent rounded-full transition-all duration-300 ease-out w-0"></div>
+                <div id="react-splash-progress" className="h-full bg-accent rounded-full transition-all duration-300 ease-out w-0 shadow-[0_0_10px_rgba(14,165,233,0.5)]"></div>
             </div>
         </div>
     </div>

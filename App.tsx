@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal } from './components/Layout';
+import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
@@ -88,6 +88,10 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   
+  // PWA Install State
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+
   // Preferências
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#0ea5e9');
@@ -153,6 +157,27 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
   }, [accentColor]);
 
+  // --- PWA INSTALL HANDLER ---
+  useEffect(() => {
+      const handler = (e: any) => {
+          e.preventDefault();
+          setInstallPrompt(e);
+          // Pequeno delay para não aparecer em cima do splash screen ou login
+          setTimeout(() => setShowInstallModal(true), 5000);
+      };
+      window.addEventListener('beforeinstallprompt', handler);
+      return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+      if (!installPrompt) return;
+      installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      if (outcome === 'accepted') {
+          setInstallPrompt(null);
+      }
+      setShowInstallModal(false);
+  };
 
   // --- FUNÇÕES AUXILIARES ---
 
@@ -507,6 +532,7 @@ const App: React.FC = () => {
       return (
           <>
             <SplashScreen finishLoading={true} realProgress={100} />
+            <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
             <Login />
           </>
       );
@@ -568,6 +594,7 @@ const App: React.FC = () => {
             <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
             <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={() => setNotifications([])} />
             <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />
+            <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
         </>
     </div>
   );

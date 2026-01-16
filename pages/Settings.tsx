@@ -457,7 +457,7 @@ export const Settings = ({
                             <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_about)"/>
                     </svg>
                     </div>
-                    <span className="font-display text-[56px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-sky-400 relative z-0 -ml-2.5">NVEST</span>
+                    <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-sky-400 relative z-0 -ml-2.5">NVEST</span>
                 </div>
               <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-4">Built for Investors</p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-6">Focado em performance, design e simplicidade para a gestão inteligente de dividendos na B3.</p>

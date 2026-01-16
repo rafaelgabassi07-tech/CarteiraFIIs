@@ -90,26 +90,27 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        /* Animação mais lenta (1.5s) para entrada suave */
-        animation: logoEnter 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        /* Animação complexa: Entrada com Blur -> Flutuação suave */
+        animation: logoEnter 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards, logoFloat 3s ease-in-out 1.2s infinite;
         opacity: 0;
         transform: scale(0.8) translateY(20px);
+        will-change: transform, opacity, filter;
       }
 
       .s-logo-img {
         width: 100%;
         height: auto;
         /* Sombra leve para destacar */
-        filter: drop-shadow(0 4px 12px rgba(14, 165, 233, 0.2));
+        filter: drop-shadow(0 4px 12px rgba(14, 165, 233, 0.25));
       }
 
       .s-brand-text {
         font-family: 'Outfit', sans-serif;
         font-size: 56px; 
-        font-weight: 800; 
-        letter-spacing: -0.05em;
+        font-weight: 700; /* Reduzido de 800 para 700 (Bold) */
+        letter-spacing: -0.03em;
         line-height: 1;
-        margin-left: -10px; /* Ajuste fino para aproximar do logo */
+        margin-left: -10px; 
         
         /* Gradiente Moderno (Emerald -> Sky) */
         background: linear-gradient(135deg, #10b981 0%, #0ea5e9 100%);
@@ -120,8 +121,8 @@
 
         opacity: 0;
         transform: translateX(-20px);
-        /* Texto entra um pouco depois do logo */
-        animation: textEnter 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
+        /* Texto entra um pouco depois do logo com tracking animation */
+        animation: textEnter 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
       }
 
       @media (prefers-color-scheme: dark) {
@@ -142,7 +143,7 @@
         margin-bottom: 24px;
         height: 14px;
         opacity: 0;
-        animation: fadeIn 0.8s ease-out 0.8s forwards;
+        animation: fadeIn 0.8s ease-out 0.6s forwards;
       }
 
       .s-progress-container {
@@ -152,7 +153,7 @@
         border-radius: 10px;
         overflow: hidden;
         opacity: 0;
-        animation: fadeIn 0.8s ease-out 1s forwards;
+        animation: fadeIn 0.8s ease-out 0.8s forwards;
       }
 
       @media (prefers-color-scheme: dark) {
@@ -165,14 +166,22 @@
         background: var(--accent);
         border-radius: 10px;
         transition: width 0.3s ease-out;
+        box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
       }
 
       @keyframes logoEnter {
-        to { opacity: 1; transform: scale(1) translateY(0); }
+        0% { opacity: 0; transform: scale(0.8) translateY(20px); filter: blur(10px); }
+        100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
+      }
+
+      @keyframes logoFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
       }
 
       @keyframes textEnter {
-        to { opacity: 1; transform: translateX(0); }
+        0% { opacity: 0; transform: translateX(-20px); letter-spacing: -0.1em; }
+        100% { opacity: 1; transform: translateX(0); letter-spacing: -0.03em; }
       }
 
       @keyframes fadeIn {

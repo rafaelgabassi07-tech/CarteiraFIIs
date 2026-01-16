@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X } from 'lucide-react';
 
 // Utility for smooth visibility transitions
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -292,6 +292,37 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
       </div>
     </div>, document.body
   );
+};
+
+// Modal de Instalação PWA
+interface InstallPromptModalProps { isOpen: boolean; onInstall: () => void; onDismiss: () => void; }
+export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({ isOpen, onInstall, onDismiss }) => {
+    const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
+    if (!isMounted) return null;
+
+    return createPortal(
+        <div className={`fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-4 ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+            <div className={`absolute inset-0 bg-zinc-950/60 backdrop-blur-sm transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onDismiss}></div>
+            <div className={`relative bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-100 dark:border-zinc-800 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-20 opacity-0 scale-95'}`}>
+                <button onClick={onDismiss} className="absolute top-4 right-4 p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+                    <X className="w-4 h-4" />
+                </button>
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-sky-500 rounded-2xl flex items-center justify-center text-white mb-5 shadow-lg shadow-sky-500/20">
+                        <Smartphone className="w-8 h-8" strokeWidth={2} />
+                    </div>
+                    <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2">Instalar App</h3>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+                        Instale o <strong>InvestFIIs</strong> no seu dispositivo para acesso rápido e melhor performance.
+                    </p>
+                    <button onClick={onInstall} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 press-effect">
+                        <Download className="w-4 h-4" /> Instalar Agora
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
 };
 
 export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes = [], isUpdatePending, onUpdate, isUpdating, progress }) => (
