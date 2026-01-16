@@ -58,7 +58,7 @@
         align-items: center;
         justify-content: center;
         background-color: var(--bg-splash);
-        transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
+        transition: opacity 0.6s ease-out, visibility 0.6s;
       }
 
       #root-splash.splash-exit {
@@ -72,124 +72,139 @@
         flex-direction: column;
         align-items: center;
         width: 100%;
+        /* Perspectiva para animações 3D sutis */
+        perspective: 1000px;
       }
 
-      /* BRAND */
+      /* BRAND CONTAINER */
       .s-brand {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0;
-        margin-bottom: 48px;
+        gap: 4px;
+        margin-bottom: 56px;
         position: relative;
-        /* Otimização de renderização para nitidez */
-        transform: translateZ(0); 
       }
 
+      /* LOGO ICON ANIMATION */
       .s-logo-wrapper {
-        width: 64px; /* Aumentado de 52px para maior nitidez em telas retina */
+        width: 68px; 
         height: auto;
         display: flex;
         align-items: center;
         justify-content: center;
-        /* Animação complexa: Entrada com Blur -> Flutuação suave */
-        animation: logoEnter 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards, logoFloat 3s ease-in-out 1.2s infinite;
+        
+        /* Initial State */
         opacity: 0;
-        transform: scale(0.8) translateY(20px);
-        /* Removido will-change para evitar rasterização prematura (blur) em alguns browsers */
+        transform: scale(0.5) rotate(-10deg);
+        filter: blur(10px);
+        
+        /* Pop In Effect */
+        animation: logoPopIn 1.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
       }
 
+      /* Floating Animation Loop (After Pop In) */
       .s-logo-img {
         width: 100%;
         height: auto;
-        /* Sombra leve para destacar - Ajustado para ser mais nítido */
-        filter: drop-shadow(0 4px 8px rgba(16, 185, 129, 0.2));
-        /* Garante renderização nítida */
-        image-rendering: -webkit-optimize-contrast;
+        filter: drop-shadow(0 12px 24px rgba(14, 165, 233, 0.25));
+        animation: logoFloat 6s ease-in-out infinite 1.4s;
       }
 
+      /* TEXT NVEST ANIMATION */
       .s-brand-text {
         font-family: 'Outfit', sans-serif;
-        font-size: 56px; 
-        font-weight: 700; 
-        letter-spacing: -0.03em;
+        font-size: 52px; 
+        font-weight: 800; 
+        letter-spacing: -0.04em; /* Tighter tracking */
         line-height: 1;
-        margin-left: -12px; 
+        margin-left: -8px; 
+        margin-top: 4px;
         
-        /* Gradiente Moderno (Emerald -> Sky) */
-        background: linear-gradient(135deg, #10b981 0%, #0284c7 100%);
+        /* Premium Gradient */
+        background: linear-gradient(135deg, #334155 0%, #0f172a 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         color: transparent;
 
+        /* Reveal Animation */
         opacity: 0;
-        transform: translateX(-20px);
-        /* Texto entra um pouco depois do logo com tracking animation */
-        animation: textEnter 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+        transform: translateX(-30px);
+        filter: blur(8px);
+        
+        animation: textReveal 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s forwards;
       }
 
       @media (prefers-color-scheme: dark) {
         .s-brand-text {
-          background: linear-gradient(135deg, #34d399 0%, #38bdf8 100%);
+          /* Dark Mode Gradient: Mais brilho */
+          background: linear-gradient(135deg, #cbd5e1 0%, #f8fafc 50%, #94a3b8 100%);
           -webkit-background-clip: text;
           background-clip: text;
+          /* Sombra sutil no texto para destacar do fundo escuro */
+          text-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
       }
 
       .s-status {
         font-family: 'Outfit', sans-serif;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.2em;
+        letter-spacing: 0.25em;
         color: var(--accent);
         margin-bottom: 24px;
         height: 14px;
         opacity: 0;
-        animation: fadeIn 0.8s ease-out 0.6s forwards;
+        transform: translateY(10px);
+        animation: fadeInUp 0.8s ease-out 0.8s forwards;
       }
 
       .s-progress-container {
         width: 140px;
-        height: 4px;
-        background: rgba(0,0,0,0.06);
+        height: 3px;
+        background: rgba(0,0,0,0.04);
         border-radius: 10px;
         overflow: hidden;
         opacity: 0;
-        animation: fadeIn 0.8s ease-out 0.8s forwards;
+        transform: translateY(10px);
+        animation: fadeInUp 0.8s ease-out 1s forwards;
       }
 
       @media (prefers-color-scheme: dark) {
-        .s-progress-container { background: rgba(255,255,255,0.08); }
+        .s-progress-container { background: rgba(255,255,255,0.06); }
       }
 
       .s-progress-bar {
         height: 100%;
         width: 0%;
-        background: var(--accent);
+        background: linear-gradient(90deg, #10b981, #0ea5e9);
         border-radius: 10px;
         transition: width 0.3s ease-out;
-        box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+        box-shadow: 0 0 12px rgba(14, 165, 233, 0.6);
       }
 
-      @keyframes logoEnter {
-        0% { opacity: 0; transform: scale(0.8) translateY(20px); filter: blur(4px); }
-        100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
+      /* KEYFRAMES */
+
+      @keyframes logoPopIn {
+        0% { opacity: 0; transform: scale(0.5) rotate(-15deg); filter: blur(10px); }
+        60% { opacity: 1; transform: scale(1.1) rotate(2deg); filter: blur(0px); }
+        100% { opacity: 1; transform: scale(1) rotate(0deg); filter: blur(0px); }
       }
 
       @keyframes logoFloat {
         0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-6px); }
+        50% { transform: translateY(-8px); }
       }
 
-      @keyframes textEnter {
-        0% { opacity: 0; transform: translateX(-20px); letter-spacing: -0.1em; }
-        100% { opacity: 1; transform: translateX(0); letter-spacing: -0.03em; }
+      @keyframes textReveal {
+        0% { opacity: 0; transform: translateX(-20px) scale(0.95); filter: blur(8px); }
+        100% { opacity: 1; transform: translateX(0) scale(1); filter: blur(0px); }
       }
 
-      @keyframes fadeIn {
-        to { opacity: 1; }
+      @keyframes fadeInUp {
+        to { opacity: 1; transform: translateY(0); }
       }
     </style>
 
@@ -236,7 +251,7 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
 
-    <!-- FAILSAFE: Garante que a splash suma após 8s se o React não assumir -->
+    <!-- FAILSAFE -->
     <script>
         setTimeout(() => {
             const body = document.body;

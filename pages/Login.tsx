@@ -78,24 +78,25 @@ export const Login: React.FC = () => {
         {/* Header Section */}
         <div className="mb-8 text-center anim-fade-in-up">
             {/* BRAND COMPOSITION */}
-            <div className="flex items-center justify-center gap-0 mb-8 relative select-none">
-                <div className="w-[52px] h-[80px] flex items-center justify-center relative z-10">
-                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-xl">
+            <div className="flex items-center justify-center gap-1 mb-8 relative select-none">
+                <div className="w-[68px] h-[80px] flex items-center justify-center relative z-10">
+                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_12px_24px_rgba(14,165,233,0.3)]">
                         <defs>
-                            <linearGradient id="logo_grad_login" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
+                            <linearGradient id="logo_grad_login" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
                                 <stop offset="0%" stopColor="#10b981"/>
-                                <stop offset="100%" stopColor="#0284c7"/>
+                                <stop offset="50%" stopColor="#0ea5e9"/>
+                                <stop offset="100%" stopColor="#4f46e5"/>
                             </linearGradient>
                         </defs>
                         <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_login)"/>
                         <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_login)"/>
-                        <rect x="184" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_login)"/>
-                        <rect x="240" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_login)"/>
-                        <rect x="296" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_login)"/>
+                        <rect x="184" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_login)"/>
+                        <rect x="240" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_login)"/>
+                        <rect x="296" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_login)"/>
                         <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_login)"/>
                    </svg>
                 </div>
-                <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-sky-600 relative z-0 -ml-2.5">
+                <span className="font-display text-[52px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-white via-zinc-200 to-zinc-400 mt-1 -ml-2 drop-shadow-sm">
                     NVEST
                 </span>
             </div>

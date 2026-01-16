@@ -50,12 +50,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
       // 1. Trigger exit animation on HTML Splash
       const htmlSplash = document.getElementById('root-splash');
       if (htmlSplash) {
-        // Force 100%
         const htmlProgress = document.getElementById('splash-progress-bar');
         const htmlStatus = document.getElementById('splash-status-text');
         if (htmlProgress) htmlProgress.style.width = '100%';
         if (htmlStatus) htmlStatus.innerText = "Pronto!";
-        
         htmlSplash.classList.add('splash-exit');
       }
 
@@ -67,12 +65,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         document.body.classList.remove('is-loading');
         document.body.classList.add('app-revealed');
         
-        // Cleanup HTML Splash
         if (htmlSplash && htmlSplash.parentNode) {
             htmlSplash.parentNode.removeChild(htmlSplash);
         }
         
-        // Unmount React Splash
         setShouldRender(false);
       }, 600); // Sync with CSS transition
 
@@ -83,40 +79,39 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
   if (!shouldRender) return null;
 
   // React Splash Fallback
-  // z-index 9998 garante que fique atrás do HTML Splash (9999) mas sobre o App
   return (
     <div 
         className={`fixed inset-0 z-[9998] flex flex-col items-center justify-center bg-primary-light dark:bg-primary-dark transition-opacity duration-500 ease-out-soft ${isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
     >
         <div className="flex flex-col items-center w-full">
-            <div className="flex items-center justify-center gap-0 mb-12 relative select-none animate-[float_3s_ease-in-out_infinite]">
-                <div className="w-[52px] h-[80px] flex items-center justify-center">
-                   {/* INLINE SVG - Bulletproof */}
-                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-xl">
+            <div className="flex items-center justify-center gap-1 mb-14 relative select-none">
+                <div className="w-[68px] h-[80px] flex items-center justify-center animate-[float_6s_ease-in-out_infinite]">
+                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_12px_24px_rgba(14,165,233,0.3)]">
                         <defs>
-                            <linearGradient id="logo_grad_splash" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
+                            <linearGradient id="logo_grad_splash" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
                                 <stop offset="0%" stopColor="#10b981"/>
-                                <stop offset="100%" stopColor="#0284c7"/>
+                                <stop offset="50%" stopColor="#0ea5e9"/>
+                                <stop offset="100%" stopColor="#4f46e5"/>
                             </linearGradient>
                         </defs>
                         <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_splash)"/>
                         <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_splash)"/>
-                        <rect x="184" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_splash)"/>
-                        <rect x="240" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_splash)"/>
-                        <rect x="296" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_splash)"/>
+                        <rect x="184" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
+                        <rect x="240" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
+                        <rect x="296" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
                         <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_splash)"/>
                    </svg>
                 </div>
-                <span className="font-display text-[56px] font-bold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-500 to-sky-600 dark:from-emerald-400 dark:to-sky-400 transform -ml-2.5">
+                <span className="font-display text-[52px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-zinc-200 dark:via-zinc-100 dark:to-zinc-400 mt-1 -ml-2 drop-shadow-sm">
                     NVEST
                 </span>
             </div>
             
-            <div id="react-splash-status" className="font-display text-[11px] font-bold text-accent uppercase tracking-[0.2em] mb-6 h-[14px]">
+            <div id="react-splash-status" className="font-display text-[10px] font-bold text-accent uppercase tracking-[0.25em] mb-6 h-[14px]">
                 Iniciando...
             </div>
-            <div className="w-[140px] h-1 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                <div id="react-splash-progress" className="h-full bg-accent rounded-full transition-all duration-300 ease-out w-0 shadow-[0_0_10px_rgba(14,165,233,0.5)]"></div>
+            <div className="w-[140px] h-[3px] bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+                <div id="react-splash-progress" className="h-full bg-gradient-to-r from-emerald-500 to-sky-500 rounded-full transition-all duration-300 ease-out w-0 shadow-[0_0_12px_rgba(14,165,233,0.6)]"></div>
             </div>
         </div>
     </div>

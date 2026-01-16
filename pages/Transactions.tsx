@@ -49,7 +49,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
             className={`w-full text-left p-4 rounded-2xl border flex items-center justify-between shadow-sm press-effect transition-all duration-300 ${
                 isSelected 
                 ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 dark:border-indigo-400 shadow-lg shadow-indigo-500/5' 
-                : 'bg-surface-light dark:bg-surface-dark border-zinc-200/60 dark:border-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700'
+                : 'bg-surface-light dark:bg-surface-dark border-zinc-200/40 dark:border-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700'
             }`}
           >
               <div className="flex items-center gap-4">
@@ -371,7 +371,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
 
                     <div className="space-y-5">
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 anim-slide-up" style={{ animationDelay: '100ms' }}>
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 anim-slide-up" style={{ animationDelay: '100ms' }}>
                             <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 block">Ativo (Ticker)</label>
                             <input 
                                 type="text" 
@@ -384,13 +384,13 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 anim-slide-up" style={{ animationDelay: '150ms' }}>
-                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 flex relative">
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 flex relative">
                                 <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ease-out-soft ${type === 'SELL' ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
                                 <button onClick={() => setType('BUY')} className={`relative z-10 flex-1 py-3 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>Compra</button>
                                 <button onClick={() => setType('SELL')} className={`relative z-10 flex-1 py-3 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${type === 'SELL' ? 'text-rose-500' : 'text-zinc-400'}`}>Venda</button>
                             </div>
 
-                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 flex relative">
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 flex relative">
                                 <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ease-out-soft ${assetType === AssetType.STOCK ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
                                 <button onClick={() => setAssetType(AssetType.FII)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${assetType === AssetType.FII ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>FII</button>
                                 <button onClick={() => setAssetType(AssetType.STOCK)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${assetType === AssetType.STOCK ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>Ação</button>
@@ -398,7 +398,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 anim-slide-up" style={{ animationDelay: '200ms' }}>
-                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60">
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40">
                                 <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Quantidade</label>
                                 <input 
                                     type="number" 
@@ -410,7 +410,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                 />
                             </div>
 
-                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60">
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40">
                                 <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Preço (Unit)</label>
                                 <input 
                                     type="number" 
@@ -423,7 +423,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             </div>
                         </div>
 
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 flex items-center gap-4 anim-slide-up" style={{ animationDelay: '250ms' }}>
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 flex items-center gap-4 anim-slide-up" style={{ animationDelay: '250ms' }}>
                             <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-zinc-500">
                                 <Calendar className="w-5 h-5" />
                             </div>

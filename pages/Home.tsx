@@ -380,7 +380,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     <div className="space-y-3 pb-8">
       {/* 1. Patrimonio Total - Hero Card */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        <div className="w-full p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 relative overflow-hidden shadow-card dark:shadow-card-dark bg-surface-light dark:bg-surface-dark">
+        <div className="w-full p-5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 relative overflow-hidden shadow-card dark:shadow-card-dark bg-surface-light dark:bg-surface-dark">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
             <div className="flex justify-between items-start mb-3 relative z-10">
                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">Patrimônio Total</span>
@@ -442,7 +442,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 2. Agenda */}
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
-        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 shadow-card dark:shadow-card-dark">
+        <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 shadow-card dark:shadow-card-dark">
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
@@ -487,7 +487,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       
       {/* 3. Grid Buttons */}
       <div className="grid grid-cols-2 gap-3 anim-stagger-item" style={{ animationDelay: '200ms' }}>
-        <button onClick={() => setShowProventosModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full relative overflow-hidden shadow-card dark:shadow-card-dark">
+        <button onClick={() => setShowProventosModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full relative overflow-hidden shadow-card dark:shadow-card-dark">
             <div>
                 <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-3 border border-emerald-100 dark:border-emerald-900/30">
                     <CircleDollarSign className="w-4.5 h-4.5" />
@@ -504,7 +504,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             )}
         </button>
 
-        <button onClick={() => setShowAllocationModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-card dark:shadow-card-dark">
+        <button onClick={() => setShowAllocationModal(true)} className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-card dark:shadow-card-dark">
             <div>
                 <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/30">
                     <PieIcon className="w-4.5 h-4.5" />
@@ -524,7 +524,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 4. Renda vs IPCA (Ganho Real) */}
       <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
-         <button onClick={() => setShowRealYieldModal(true)} className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 p-5 shadow-card dark:shadow-card-dark relative overflow-hidden text-left press-effect group">
+         <button onClick={() => setShowRealYieldModal(true)} className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 p-5 shadow-card dark:shadow-card-dark relative overflow-hidden text-left press-effect group">
              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none group-hover:bg-emerald-500/20 transition-all duration-500"></div>
              <div className="flex items-center justify-between mb-4 relative z-10">
                  <div className="flex items-center gap-2">
@@ -677,7 +677,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              
              {/* Gráfico de Barras Interativo */}
              {dividendsChartData.length > 0 && (
-                 <div className="mb-8 p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/60 anim-graph-grow shadow-sm">
+                 <div className="mb-8 p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 anim-graph-grow shadow-sm">
                      <div className="flex items-center justify-between mb-4">
                         <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Evolução Mensal</h3>
                      </div>
@@ -747,7 +747,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         {(receiptsByMonth[selectedProventosMonth] || [])
                             .sort((a, b) => b.totalReceived - a.totalReceived)
                             .map((detail, idx) => (
-                            <div key={idx} className="flex justify-between items-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-700 transition-colors anim-stagger-item" style={{ animationDelay: `${idx * 50}ms` }}>
+                            <div key={idx} className="flex justify-between items-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/40 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-700 transition-colors anim-stagger-item" style={{ animationDelay: `${idx * 50}ms` }}>
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-700 flex items-center justify-center text-xs font-black text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-600 shadow-sm">
                                         {detail.ticker.substring(0,2)}
@@ -833,7 +833,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     const monthlyDetails = receiptsByMonth[month] || [];
 
                                     return (
-                                        <div key={month} className={`group rounded-2xl transition-all duration-500 border overflow-hidden anim-slide-up ${isExpanded ? 'bg-white dark:bg-zinc-900 border-emerald-500 shadow-lg scale-[1.02] z-10 ring-4 ring-emerald-500/5' : 'bg-surface-light dark:bg-surface-dark border-zinc-200/60 dark:border-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700'}`} style={{ animationDelay: `${400 + (i * 50)}ms` }}>
+                                        <div key={month} className={`group rounded-2xl transition-all duration-500 border overflow-hidden anim-slide-up ${isExpanded ? 'bg-white dark:bg-zinc-900 border-emerald-500 shadow-lg scale-[1.02] z-10 ring-4 ring-emerald-500/5' : 'bg-surface-light dark:bg-surface-dark border-zinc-200/40 dark:border-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700'}`} style={{ animationDelay: `${400 + (i * 50)}ms` }}>
                                             <button onClick={() => toggleMonthExpand(month)} className="w-full p-5 flex flex-col gap-2 relative">
                                                 <div className="w-full flex justify-between items-center relative z-10">
                                                     <div className="flex items-center gap-4">
@@ -905,7 +905,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
              </div>
 
-             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 anim-slide-up shadow-sm anim-graph-grow relative overflow-visible" style={{ animationDelay: '100ms' }}>
+             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 anim-slide-up shadow-sm anim-graph-grow relative overflow-visible" style={{ animationDelay: '100ms' }}>
                  <div className="flex items-center gap-2 mb-2 px-2">
                      <LayoutGrid className="w-3 h-3 text-zinc-400" />
                      <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Por Classe</h3>
@@ -959,7 +959,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              </div>
 
              {assetsChartData.length > 0 && (
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 p-4 anim-slide-up shadow-sm anim-graph-grow overflow-visible" style={{ animationDelay: '300ms' }}>
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 p-4 anim-slide-up shadow-sm anim-graph-grow overflow-visible" style={{ animationDelay: '300ms' }}>
                     <div className="flex items-center gap-2 mb-2 px-2">
                         <Gem className="w-3 h-3 text-zinc-400" />
                         <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Por Ativo</h3>
