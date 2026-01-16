@@ -82,11 +82,13 @@
         gap: 0;
         margin-bottom: 48px;
         position: relative;
+        /* Otimização de renderização para nitidez */
+        transform: translateZ(0); 
       }
 
       .s-logo-wrapper {
-        width: 52px; 
-        height: 80px;
+        width: 64px; /* Aumentado de 52px para maior nitidez em telas retina */
+        height: auto;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -94,23 +96,25 @@
         animation: logoEnter 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards, logoFloat 3s ease-in-out 1.2s infinite;
         opacity: 0;
         transform: scale(0.8) translateY(20px);
-        will-change: transform, opacity, filter;
+        /* Removido will-change para evitar rasterização prematura (blur) em alguns browsers */
       }
 
       .s-logo-img {
         width: 100%;
         height: auto;
-        /* Sombra leve para destacar */
-        filter: drop-shadow(0 4px 12px rgba(14, 165, 233, 0.25));
+        /* Sombra leve para destacar - Ajustado para ser mais nítido */
+        filter: drop-shadow(0 4px 8px rgba(14, 165, 233, 0.3));
+        /* Garante renderização nítida */
+        image-rendering: -webkit-optimize-contrast;
       }
 
       .s-brand-text {
         font-family: 'Outfit', sans-serif;
         font-size: 56px; 
-        font-weight: 700; /* Reduzido de 800 para 700 (Bold) */
+        font-weight: 700; 
         letter-spacing: -0.03em;
         line-height: 1;
-        margin-left: -10px; 
+        margin-left: -12px; 
         
         /* Gradiente Moderno (Emerald -> Sky) */
         background: linear-gradient(135deg, #10b981 0%, #0ea5e9 100%);
@@ -170,7 +174,7 @@
       }
 
       @keyframes logoEnter {
-        0% { opacity: 0; transform: scale(0.8) translateY(20px); filter: blur(10px); }
+        0% { opacity: 0; transform: scale(0.8) translateY(20px); filter: blur(4px); }
         100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
       }
 
