@@ -51,14 +51,14 @@ const ACCENT_COLORS = [
   { hex: '#10b981', name: 'Emerald' },
 ];
 
-export const Settings: React.FC<SettingsProps> = ({ 
+export const Settings = ({ 
   user, onLogout, transactions, onImportTransactions, geminiDividends, 
   onImportDividends, onResetApp, theme, onSetTheme, privacyMode, 
   onSetPrivacyMode, appVersion, updateAvailable, onCheckUpdates, 
   onShowChangelog, pushEnabled, onRequestPushPermission,
   onSyncAll, currentVersionDate, accentColor, onSetAccentColor,
   services, onCheckConnection, isCheckingConnection, onForceUpdate
-}) => {
+}: SettingsProps) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'appearance' | 'privacy' | 'notifications' | 'services' | 'data' | 'updates' | 'about' | 'reset'>('menu');
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
