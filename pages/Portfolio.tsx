@@ -44,7 +44,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
   }, [portfolio, searchTerm, filterType]);
 
   return (
-    <div className="pb-32 min-h-screen overflow-y-auto no-scrollbar">
+    <div className="pb-32 min-h-screen">
       {/* Search Bar Blindada - Fundo Sólido (Removido opacity) */}
       <div className="sticky top-20 z-40 -mx-4 px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300">
         <div className="flex flex-col gap-3">
