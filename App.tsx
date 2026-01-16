@@ -9,13 +9,13 @@ import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType } from './types';
 import { getQuotes } from './services/brapiService';
-import { fetchUnifiedMarketData } from './services/geminiService';
+import { fetchUnifiedMarketData, updateBatchWithAI } from './services/geminiService';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.3.16'; // Version Bumped
+const APP_VERSION = '8.4.1'; // Bump Version
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -128,11 +128,14 @@ const App: React.FC = () => {
 
   // Status de Serviços
   const [isCheckingServices, setIsCheckingServices] = useState(false);
-  const [services, setServices] = useState<ServiceMetric[]>([
+  
+  // Ref para serviços para evitar re-renders cíclicos no checkServiceHealth
+  const servicesRef = useRef<ServiceMetric[]>([
     { id: 'db', label: 'Supabase Database', url: getSupabaseUrl(), icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'market', label: 'Brapi Market Data', url: 'https://brapi.dev', icon: Activity, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
+  const [services, setServices] = useState<ServiceMetric[]>(servicesRef.current);
 
   // --- EFEITOS DE PERSISTÊNCIA ---
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
@@ -202,52 +205,58 @@ const App: React.FC = () => {
 
   const checkServiceHealth = useCallback(async () => {
     setIsCheckingServices(true);
-    const newServices = [...services]; 
-    setServices(prev => prev.map(s => s.id !== 'ai' ? { ...s, status: 'checking' } : s));
+    // Use uma cópia base dos serviços para evitar dependência cíclica de estado
+    const currentServices = [...servicesRef.current];
+    
+    // Atualiza UI para 'Checking'
+    setServices(prev => prev.map(s => ({ ...s, status: 'checking', message: 'Testando conexão...' })));
 
-    const checkService = async (index: number) => {
-      const s = { ...newServices[index] };
-      const start = Date.now();
-      let logMessage = '';
+    const checks = currentServices.map(async (s) => {
+        const start = Date.now();
+        let status: ServiceMetric['status'] = 'operational';
+        let message = '';
+        let latency = 0;
 
-      try {
-        if (s.id === 'db') {
-            // Check Real Supabase Auth
-            logMessage = `[INFO] Connecting to Supabase Auth...\n[TARGET] ${s.url}`;
-            const { error } = await supabase.auth.getSession();
-            if (error) throw error;
-            logMessage += `\n[OK] Auth Handshake successful.`;
-        } else if (s.id === 'cdn') {
-            // Check local file to verify server/pwa integrity
-            await fetch('./version.json?t=' + Date.now()); 
-            logMessage += `\n[OK] Local asset loaded.`;
-        } else if (s.url && s.id !== 'ai') {
-            // General fetch (no-cors for external like brapi to avoid browser error, though opaque)
-            await fetch(s.url, { mode: 'no-cors', cache: 'no-store' });
-            logMessage += `\n[OK] Opaque response received.`;
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s Timeout
+
+            if (s.id === 'db') {
+                // DB Check: Supabase Connectivity
+                const { error } = await supabase.from('transactions').select('id').limit(1).maybeSingle();
+                if (error && error.code !== 'PGRST116') {
+                    const { error: authError } = await supabase.auth.getSession();
+                    if (authError) throw error; 
+                }
+                message = 'Conexão com Banco de Dados estabelecida.';
+            } 
+            else if (s.id === 'market') {
+                await fetch('https://brapi.dev/api/quote/PETR4', { mode: 'no-cors', signal: controller.signal });
+                message = 'API de Cotações acessível.';
+            } 
+            else if (s.id === 'cdn') {
+                const res = await fetch(`${window.location.origin}/version.json?t=${Date.now()}`, { signal: controller.signal });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                message = 'Arquivos estáticos carregados.';
+            }
+
+            clearTimeout(timeoutId);
+            latency = Date.now() - start;
+            if (latency > 2000) status = 'degraded';
+
+        } catch (e: any) {
+            status = 'error';
+            message = e.name === 'AbortError' ? 'Tempo limite excedido (Timeout)' : (e.message || 'Falha na conexão');
+            latency = 0;
         }
-        
-        const latency = Date.now() - start;
-        newServices[index] = { 
-          ...s, 
-          status: latency > 1500 ? 'degraded' : 'operational',
-          latency,
-          message: `${logMessage}\n[STATS] Latency: ${latency}ms`
-        };
-      } catch (e: any) {
-        newServices[index] = { 
-            ...s, 
-            status: 'error', 
-            latency: null,
-            message: `${logMessage}\n[ERROR] Connection failed: ${e.message}`
-        };
-      }
-    };
 
-    await Promise.all(newServices.map((s, i) => s.id !== 'ai' ? checkService(i) : Promise.resolve()));
-    setServices(newServices);
+        return { ...s, status, latency, message };
+    });
+
+    const results = await Promise.all(checks);
+    setServices(results);
     setIsCheckingServices(false);
-  }, [services]);
+  }, []); 
 
   // --- SINCRONIZAÇÃO DE DADOS ---
 
@@ -267,28 +276,24 @@ const App: React.FC = () => {
       
       setIsAiLoading(true);
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
-      const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
       
-      // AUTO-SCRAPING: Detecta metadados faltantes e atualiza em background
+      // 1. Busca dados iniciais do banco
+      let aiData = await fetchUnifiedMarketData(tickers, startDate, force);
+      
+      // 2. Se for forçado ou dados essenciais faltarem, chama a IA
       const missingTickers = tickers.filter(t => {
-          // Checa se falta no resultado E se não temos no cache local válido
           const meta = aiData.metadata[t];
-          return !meta || (!meta.fundamentals?.p_vp && !meta.fundamentals?.dy_12m);
+          return force || !meta || (!meta.fundamentals?.p_vp && !meta.fundamentals?.dy_12m);
       });
 
       if (missingTickers.length > 0) {
-          console.log(`[AutoScraper] Disparando atualização para: ${missingTickers.join(', ')}`);
-          // Não espera isso terminar para liberar a UI
-          Promise.allSettled(
-              missingTickers.map(t => fetch(`/api/update-stock?ticker=${t}`))
-          ).then(() => {
-              // Quando terminar, busca novamente os dados atualizados
-              fetchUnifiedMarketData(missingTickers, startDate, true).then(newData => {
-                   if (Object.keys(newData.metadata).length > 0) {
-                       setAssetsMetadata(prev => ({...prev, ...newData.metadata}));
-                   }
-              });
-          });
+          console.log(`[Gemini Batch] Atualizando ${missingTickers.length} ativos via AI Feed...`);
+          
+          // Chama o endpoint de LOTE - Agora sem limite de 20 e com prompt focado em fundamentos
+          await updateBatchWithAI(missingTickers);
+          
+          // Recarrega os dados atualizados do banco
+          aiData = await fetchUnifiedMarketData(tickers, startDate, true);
       }
 
       if (aiData.dividends.length > 0) {
@@ -402,44 +407,11 @@ const App: React.FC = () => {
       window.location.reload();
   }, []);
 
+  // Atualização Manual agora força o fluxo completo com Gemini
   const handleManualScraperTrigger = async () => {
-      // 1. Calcula apenas ativos com saldo em carteira
-      const holdings: Record<string, number> = {};
-      transactions.forEach(t => {
-          holdings[t.ticker] = (holdings[t.ticker] || 0) + (t.type === 'BUY' ? t.quantity : -t.quantity);
-      });
-      
-      const activeTickers = Object.keys(holdings).filter(t => holdings[t] > 0.000001);
-
-      if (activeTickers.length === 0) {
-          showToast('info', 'Nenhum ativo em custódia para atualizar.');
-          return;
-      }
-      
-      setIsScraping(true);
-      const BATCH_SIZE = 3;
-      let processed = 0;
-      
-      showToast('info', `Atualizando ${activeTickers.length} ativos...`);
-      try {
-          for (let i = 0; i < activeTickers.length; i += BATCH_SIZE) {
-              const batch = activeTickers.slice(i, i + BATCH_SIZE);
-              await Promise.all(batch.map(async (ticker) => {
-                 try {
-                   const res = await fetch(`/api/update-stock?ticker=${ticker}&force=true`);
-                   if (res.ok) processed++;
-                 } catch (e) { console.error(`Falha ao atualizar ${ticker}`, e); }
-              }));
-              if (i + BATCH_SIZE < activeTickers.length) await new Promise(resolve => setTimeout(resolve, 800));
-          }
-          if (processed > 0) {
-              showToast('success', 'Dados atualizados! Sincronizando tela...');
-              await new Promise(resolve => setTimeout(resolve, 500));
-              await syncMarketData(true, transactions); 
-          } else {
-              showToast('error', 'Falha ao conectar com servidor.');
-          }
-      } catch (e) { showToast('error', 'Erro na atualização.'); } finally { setIsScraping(false); }
+      showToast('info', 'Iniciando busca de fundamentos...');
+      await handleSyncAll(true);
+      showToast('success', 'Dados atualizados via Gemini 2.5!');
   };
 
   const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {

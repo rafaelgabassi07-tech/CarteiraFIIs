@@ -24,6 +24,22 @@ const fetchInflationData = async (): Promise<number> => {
     }
 };
 
+export const updateBatchWithAI = async (tickers: string[]): Promise<boolean> => {
+    if (!tickers || tickers.length === 0) return false;
+    try {
+        const response = await fetch('/api/ai-feed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tickers })
+        });
+        const result = await response.json();
+        return result.success;
+    } catch (e) {
+        console.error("Falha na atualização AI Batch:", e);
+        return false;
+    }
+};
+
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
@@ -78,11 +94,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                       liquidity: m.liquidez || '',
                       market_cap: m.valor_mercado || undefined, 
                       
-                      // Ações - Extraídos se existirem nas colunas ou JSON
+                      // Ações
                       net_margin: m.margem_liquida ? Number(m.margem_liquida) : undefined,
+                      gross_margin: m.margem_bruta ? Number(m.margem_bruta) : undefined,
                       cagr_revenue: m.cagr_receita ? Number(m.cagr_receita) : undefined,
                       cagr_profits: m.cagr_lucro ? Number(m.cagr_lucro) : undefined,
                       net_debt_ebitda: m.divida_liquida_ebitda ? Number(m.divida_liquida_ebitda) : undefined,
+                      ev_ebitda: m.ev_ebitda ? Number(m.ev_ebitda) : undefined,
                       lpa: m.lpa ? Number(m.lpa) : undefined,
                       vpa: m.vpa ? Number(m.vpa) : undefined,
 
@@ -91,10 +109,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                       manager_type: m.tipo_gestao || undefined,
                       assets_value: m.patrimonio_liquido || undefined,
                       management_fee: m.taxa_adm || undefined,
+                      last_dividend: m.ultimo_rendimento ? Number(m.ultimo_rendimento) : undefined,
 
                       sentiment: 'Neutro',
-                      sentiment_reason: `Dados atualizados em ${m.updated_at ? new Date(m.updated_at).toLocaleDateString('pt-BR') : 'Recentemente'}.`,
-                      sources: [{ title: 'Investidor10', uri: `https://investidor10.com.br/${assetType === AssetType.FII ? 'fiis' : 'acoes'}/${normalizedTicker.toLowerCase()}/` }]
+                      sentiment_reason: `Dados Gemini 2.5: ${m.updated_at ? new Date(m.updated_at).toLocaleDateString('pt-BR') : 'Recente'}.`,
+                      sources: [{ title: 'Google Search Grounding', uri: `https://google.com/search?q=${normalizedTicker}+fundamentos` }]
                   }
               };
           });
