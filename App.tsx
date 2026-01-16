@@ -212,13 +212,19 @@ const App: React.FC = () => {
 
       try {
         if (s.id === 'db') {
+            // Check Real Supabase Auth
             logMessage = `[INFO] Connecting to Supabase Auth...\n[TARGET] ${s.url}`;
             const { error } = await supabase.auth.getSession();
             if (error) throw error;
             logMessage += `\n[OK] Auth Handshake successful.`;
+        } else if (s.id === 'cdn') {
+            // Check local file to verify server/pwa integrity
+            await fetch('./version.json?t=' + Date.now()); 
+            logMessage += `\n[OK] Local asset loaded.`;
         } else if (s.url && s.id !== 'ai') {
+            // General fetch (no-cors for external like brapi to avoid browser error, though opaque)
             await fetch(s.url, { mode: 'no-cors', cache: 'no-store' });
-            logMessage += `\n[OK] Response received.`;
+            logMessage += `\n[OK] Opaque response received.`;
         }
         
         const latency = Date.now() - start;
