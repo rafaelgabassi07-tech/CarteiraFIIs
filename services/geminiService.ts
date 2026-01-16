@@ -13,26 +13,15 @@ export interface UnifiedMarketData {
 const fetchInflationData = async (): Promise<number> => {
     const FALLBACK_IPCA = 4.62;
     try {
-        // Aumentado timeout para 10s (Serverless cold start + API lenta do governo)
         const response = await fetch('/api/indicators', { 
             headers: { 'Accept': 'application/json' },
             signal: AbortSignal.timeout(10000) 
         });
         
-        if (!response.ok) {
-            console.warn("API de indicadores retornou erro, usando fallback.");
-            return FALLBACK_IPCA;
-        }
-        
+        if (!response.ok) return FALLBACK_IPCA;
         const data = await response.json();
-        if (data && typeof data.value === 'number') {
-            return data.value;
-        }
-        
-        return FALLBACK_IPCA;
+        return (data && typeof data.value === 'number') ? data.value : FALLBACK_IPCA;
     } catch (e) {
-        // Erros de rede (ex: offline) ou timeout caem aqui
-        console.warn("Timeout ou erro de rede ao buscar IPCA", e);
         return FALLBACK_IPCA;
     }
 };
@@ -85,22 +74,22 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   segment: m.segment || 'Geral',
                   type: assetType,
                   fundamentals: {
-                      p_vp: Number(m.pvp) || 0,
-                      dy_12m: Number(m.dy_12m) || 0,
-                      p_l: Number(m.pl) || 0,
-                      roe: Number(m.roe) || 0,
-                      vacancy: Number(m.vacancia) || 0,
+                      p_vp: m.pvp ? Number(m.pvp) : 0,
+                      dy_12m: m.dy_12m ? Number(m.dy_12m) : 0,
+                      p_l: m.pl ? Number(m.pl) : 0,
+                      roe: m.roe ? Number(m.roe) : 0,
+                      vacancy: m.vacancia ? Number(m.vacancia) : 0,
                       liquidity: m.liquidez || '',
                       market_cap: m.valor_mercado || undefined, 
                       sentiment: 'Neutro',
-                      sentiment_reason: `Dados fundamentais atualizados em ${new Date(m.updated_at).toLocaleDateString()}`,
+                      sentiment_reason: `Dados fundamentais atualizados em ${m.updated_at ? new Date(m.updated_at).toLocaleDateString('pt-BR') : 'Recentemente'}.`,
                       sources: [{ title: 'Investidor10', uri: `https://investidor10.com.br/` }]
                   }
               };
           });
       }
 
-      // 3. Busca IPCA em paralelo (não bloqueante)
+      // 3. Busca IPCA em paralelo
       const ipca = await fetchInflationData();
 
       return { 
@@ -111,7 +100,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   } catch (error: any) {
       console.error("MarketService Fatal:", error);
-      // Retorna objeto vazio em caso de erro fatal para não quebrar a UI
       return { dividends: [], metadata: {}, error: error.message };
   }
 };

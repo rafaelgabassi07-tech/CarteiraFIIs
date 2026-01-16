@@ -21,17 +21,24 @@ const formatPercent = (val: number, privacy = false) => {
 };
 
 // Componente auxiliar para Card de Indicador
-const IndicatorCard = ({ label, value, highlight = false, subtext }: { label: string, value: string | number, highlight?: boolean, subtext?: string }) => (
-    <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/40 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between h-full">
-        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1">{label}</span>
-        <div>
-            <span className={`text-lg font-black tracking-tight ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
-                {value}
-            </span>
-            {subtext && <p className="text-[9px] font-bold text-zinc-400 mt-0.5">{subtext}</p>}
+const IndicatorCard = ({ label, value, highlight = false, subtext }: { label: string, value: string | number | undefined, highlight?: boolean, subtext?: string }) => {
+    // Lógica robusta de exibição: 0 é um valor válido, null/undefined vira traço
+    const displayValue = (value !== undefined && value !== null && value !== '') 
+        ? value 
+        : '-';
+
+    return (
+        <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/40 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between h-full">
+            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1">{label}</span>
+            <div>
+                <span className={`text-lg font-black tracking-tight ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
+                    {displayValue}
+                </span>
+                {subtext && <p className="text-[9px] font-bold text-zinc-400 mt-0.5">{subtext}</p>}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -181,12 +188,12 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                     <div className="grid grid-cols-2 gap-3">
                         <IndicatorCard 
                             label="P/VP" 
-                            value={selectedAsset.p_vp ? selectedAsset.p_vp : '-'} 
-                            subtext={selectedAsset.p_vp ? (selectedAsset.p_vp < 1 ? 'Desconto' : selectedAsset.p_vp > 1.05 ? 'Ágio' : 'Justo') : ''}
+                            value={selectedAsset.p_vp}
+                            subtext={selectedAsset.p_vp !== undefined ? (selectedAsset.p_vp < 1 ? 'Desconto' : selectedAsset.p_vp > 1.05 ? 'Ágio' : 'Justo') : undefined}
                         />
                         <IndicatorCard 
                             label="Yield (12m)" 
-                            value={selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : '-'} 
+                            value={selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : undefined}
                             highlight={true}
                         />
                         
@@ -195,12 +202,12 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             <>
                                 <IndicatorCard 
                                     label="Vacância" 
-                                    value={selectedAsset.vacancy !== undefined ? `${selectedAsset.vacancy}%` : '-'} 
+                                    value={selectedAsset.vacancy !== undefined ? `${selectedAsset.vacancy}%` : undefined} 
                                     subtext="Física"
                                 />
                                 <IndicatorCard 
                                     label="Liquidez Diária" 
-                                    value={selectedAsset.liquidity || '-'} 
+                                    value={selectedAsset.liquidity}
                                 />
                             </>
                         )}
@@ -210,12 +217,12 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             <>
                                 <IndicatorCard 
                                     label="P/L" 
-                                    value={selectedAsset.p_l ? selectedAsset.p_l : '-'} 
+                                    value={selectedAsset.p_l}
                                     subtext="Preço/Lucro"
                                 />
                                 <IndicatorCard 
                                     label="ROE" 
-                                    value={selectedAsset.roe ? `${selectedAsset.roe}%` : '-'} 
+                                    value={selectedAsset.roe ? `${selectedAsset.roe}%` : undefined}
                                     subtext="Retorno s/ PL"
                                 />
                             </>
