@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-pwa-v8.3.14'; // Sync with App Version
+const CACHE_NAME = 'investfiis-pwa-v8.3.15'; // Bumped version
 
 const PRECACHE_ASSETS = [
   './',
@@ -15,6 +15,7 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Força instalação imediata
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
   );
@@ -27,9 +28,7 @@ self.addEventListener('activate', (event) => {
       caches.keys().then((keys) => {
         return Promise.all(
           keys.map((key) => {
-            // Remove qualquer cache que não seja o atual
             if (key !== CACHE_NAME) {
-                console.log('[SW] Clearing old cache:', key);
                 return caches.delete(key);
             }
           })
@@ -75,7 +74,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation: Network First with Cache Fallback (Ensures fresh index.html)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -84,7 +82,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Local Assets (JS/CSS): Stale-While-Revalidate
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {

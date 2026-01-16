@@ -15,7 +15,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.3.15'; 
+const APP_VERSION = '8.3.16'; // Version Bumped
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -34,8 +34,6 @@ const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!dateCom || dateCom.length < 10) return 0;
-  
-  // Normaliza data alvo para YYYY-MM-DD
   const targetDateStr = dateCom.substring(0, 10);
   const targetTicker = ticker.trim().toUpperCase();
 
@@ -265,25 +263,26 @@ const App: React.FC = () => {
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
       const aiData = await fetchUnifiedMarketData(tickers, startDate, force);
       
-      if (aiData.dividends.length > 0 && pushEnabled) {
-          const previousSignatures = new Set(geminiDividends.map(d => `${d.ticker}-${d.type}-${d.paymentDate}-${d.rate}`));
-          let newEventsCount = 0;
-          let lastTicker = '';
+      // AUTO-SCRAPING: Detecta metadados faltantes e atualiza em background
+      const missingTickers = tickers.filter(t => {
+          // Checa se falta no resultado E se não temos no cache local válido
+          const meta = aiData.metadata[t];
+          return !meta || (!meta.fundamentals?.p_vp && !meta.fundamentals?.dy_12m);
+      });
 
-          aiData.dividends.forEach(d => {
-              const signature = `${d.ticker}-${d.type}-${d.paymentDate}-${d.rate}`;
-              const isFuture = d.paymentDate >= new Date().toISOString().split('T')[0];
-              if (!previousSignatures.has(signature) && isFuture) {
-                  newEventsCount++;
-                  lastTicker = d.ticker;
-              }
+      if (missingTickers.length > 0) {
+          console.log(`[AutoScraper] Disparando atualização para: ${missingTickers.join(', ')}`);
+          // Não espera isso terminar para liberar a UI
+          Promise.allSettled(
+              missingTickers.map(t => fetch(`/api/update-stock?ticker=${t}`))
+          ).then(() => {
+              // Quando terminar, busca novamente os dados atualizados
+              fetchUnifiedMarketData(missingTickers, startDate, true).then(newData => {
+                   if (Object.keys(newData.metadata).length > 0) {
+                       setAssetsMetadata(prev => ({...prev, ...newData.metadata}));
+                   }
+              });
           });
-
-          if (newEventsCount === 1) {
-              addNotification('Novo Provento Detectado', `${lastTicker} anunciou pagamento. Confira na agenda.`, 'success', 'datacom');
-          } else if (newEventsCount > 1) {
-              addNotification('Novos Proventos', `${newEventsCount} novos pagamentos identificados na sua carteira.`, 'success', 'datacom');
-          }
       }
 
       if (aiData.dividends.length > 0) {
@@ -302,7 +301,7 @@ const App: React.FC = () => {
       
       if (initialLoad) setLoadingProgress(100); 
     } catch (e) { console.error(e); } finally { setIsRefreshing(false); setIsAiLoading(false); }
-  }, [geminiDividends, pushEnabled, addNotification]);
+  }, [geminiDividends, pushEnabled, addNotification, assetsMetadata]);
 
   const fetchTransactionsFromCloud = useCallback(async (currentSession: Session | null, force = false, initialLoad = false) => {
     setCloudStatus('syncing');

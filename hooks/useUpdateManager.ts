@@ -54,67 +54,51 @@ export const useUpdateManager = (currentAppVersion: string) => {
     return hasJsonUpdate;
   }, [checkVersionMetadata]);
 
-  // Estratégia de Atualização Robusta
+  // Estratégia de Atualização "Nuclear" (Limpa tudo para garantir funcionamento)
   const startUpdateProcess = useCallback(async () => {
     setIsUpdating(true);
     setUpdateProgress(10);
 
-    // Função para forçar limpeza total (Nuclear Option)
     const forceCleanReload = async () => {
         setUpdateProgress(90);
+        
+        // 1. Remove Service Workers
         if ('serviceWorker' in navigator) {
             const regs = await navigator.serviceWorker.getRegistrations();
             for (const reg of regs) {
-                await reg.unregister(); // Remove o SW antigo
+                await reg.unregister();
             }
         }
-        // Limpa caches de armazenamento
+        
+        // 2. Limpa Caches de Arquivos (Não localStorage)
         if ('caches' in window) {
             const keys = await caches.keys();
             await Promise.all(keys.map(key => caches.delete(key)));
         }
+
+        // 3. Reload Forçado
         window.location.reload();
     };
 
-    // Timeout de segurança: Se o SW não responder em 3s, força limpeza total
-    const safetyTimer = setTimeout(() => {
-        console.warn("Update timeout triggered. Forcing clean reload.");
-        forceCleanReload();
-    }, 3000);
-
+    // Tenta atualização suave primeiro
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();
-      
       if (reg) {
         if (reg.waiting) {
             setUpdateProgress(50);
             reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
             return;
         }
-
         setUpdateProgress(30);
         try {
             await reg.update();
-        } catch (e) {
-            console.error("SW Update failed", e);
-            clearTimeout(safetyTimer);
-            forceCleanReload();
-            return;
-        }
-        
-        if (reg.waiting) {
-             setUpdateProgress(70);
-             // @ts-ignore
-             reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-             return;
-        }
+        } catch {}
       }
     }
 
-    // Se chegou aqui e não tem SW ou não achou update, força reload normal
-    setUpdateProgress(100);
-    clearTimeout(safetyTimer);
-    window.location.reload();
+    // Se não funcionar em 2s, detona tudo
+    setTimeout(forceCleanReload, 2000);
+
   }, []);
 
   useEffect(() => {
