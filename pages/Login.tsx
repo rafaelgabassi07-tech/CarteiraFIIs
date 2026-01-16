@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
-import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Eye, EyeOff, Sparkles, TrendingUp, KeyRound, ArrowLeft, MailCheck, UserPlus, LogIn, ChevronRight } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, Eye, EyeOff, Sparkles, ArrowLeft, MailCheck } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'recovery'>('signin'); // State machine simples
@@ -75,15 +75,22 @@ export const Login: React.FC = () => {
       <div className="w-full max-w-[380px] flex flex-col relative z-10">
         
         {/* Header Section */}
-        <div className="mb-10 text-center anim-fade-in-up">
-            <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-3xl bg-zinc-900 border border-zinc-800 shadow-xl shadow-black/50">
-                <img src="./logo.svg" alt="Logo" className="w-8 h-8 object-contain drop-shadow-md" />
+        <div className="mb-8 text-center anim-fade-in-up">
+            {/* BRAND COMPOSITION (Same as Splash) */}
+            <div className="flex items-center justify-center gap-0 mb-8 relative select-none">
+                <div className="w-[48px] h-[72px] flex items-center justify-center">
+                   <img src="./logo.svg" alt="I" className="w-full h-auto drop-shadow-[0_0_20px_rgba(14,165,233,0.4)]" />
+                </div>
+                <span className="text-[52px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-teal-400 to-sky-400 transform -translate-x-3">
+                    NVEST
+                </span>
             </div>
-            <h1 className="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-400 mb-2">
-                {mode === 'signin' ? 'Bem-vindo' : mode === 'signup' ? 'Criar Conta' : 'Recuperar'}
+
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-100 mb-2">
+                {mode === 'signin' ? 'Bem-vindo de volta' : mode === 'signup' ? 'Criar Conta' : 'Recuperar Acesso'}
             </h1>
             <p className="text-sm text-zinc-500 font-medium">
-                {mode === 'signin' ? 'Gerencie seus dividendos com inteligência.' : mode === 'signup' ? 'Comece a acompanhar sua evolução hoje.' : 'Vamos te ajudar a voltar.'}
+                {mode === 'signin' ? 'Sua carteira inteligente.' : mode === 'signup' ? 'Acompanhe sua evolução.' : 'Vamos te ajudar a voltar.'}
             </p>
         </div>
 
