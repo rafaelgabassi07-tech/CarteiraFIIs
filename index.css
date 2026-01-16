@@ -53,7 +53,8 @@
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   .pt-safe { padding-top: env(safe-area-inset-top); }
   
-  .no-scrollbar::-webkit-scrollbar { display: none; }
+  /* Scrollbar Invisível mas Funcional */
+  .no-scrollbar::-webkit-scrollbar { display: none; width: 0px; background: transparent; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
   .glass-effect {
@@ -79,5 +80,6 @@
 @keyframes pageEnter { from { opacity: 0; transform: translateY(8px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes graphGrow { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: scaleY(1); } }
 
+/* Global Scrollbar Hide */
 ::-webkit-scrollbar { display: none; width: 0px; background: transparent; }
 * { -ms-overflow-style: none; scrollbar-width: none; }
