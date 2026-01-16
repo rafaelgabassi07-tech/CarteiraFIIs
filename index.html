@@ -8,14 +8,16 @@
     <meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
     
-    <meta name="app-version" content="8.3.12" />
+    <meta name="app-version" content="8.3.13" />
     <title>InvestFIIs - FIIs & Ações</title>
     
     <link rel="manifest" href="./manifest.json" />
     <link rel="icon" type="image/svg+xml" href="./logo.svg" />
     <link rel="apple-touch-icon" href="./logo.svg" />
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
     
     <style>
       :root {
@@ -102,13 +104,15 @@
       }
 
       .s-brand-text {
+        font-family: 'Outfit', sans-serif;
         font-size: 56px; 
-        font-weight: 900; 
-        letter-spacing: -0.04em;
+        font-weight: 800; 
+        letter-spacing: -0.05em;
         line-height: 1;
+        margin-left: -10px; /* Ajuste fino para aproximar do logo */
         
-        /* Gradiente Moderno */
-        background: linear-gradient(135deg, #115e59 0%, #0ea5e9 100%);
+        /* Gradiente Moderno (Emerald -> Sky) */
+        background: linear-gradient(135deg, #10b981 0%, #0ea5e9 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -122,14 +126,15 @@
 
       @media (prefers-color-scheme: dark) {
         .s-brand-text {
-          background: linear-gradient(135deg, #2dd4bf 0%, #38bdf8 100%);
+          background: linear-gradient(135deg, #34d399 0%, #38bdf8 100%);
           -webkit-background-clip: text;
           background-clip: text;
         }
       }
 
       .s-status {
-        font-size: 10px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.2em;

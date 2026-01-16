@@ -84,20 +84,19 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
 
   // React Splash Fallback
   // z-index 9998 garante que fique atrás do HTML Splash (9999) mas sobre o App
-  // Se o HTML Splash for removido pelo failsafe, este aqui assume.
   return (
     <div 
         className={`fixed inset-0 z-[9998] flex flex-col items-center justify-center bg-primary-light dark:bg-primary-dark transition-opacity duration-500 ease-out-soft ${isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
     >
         <div className="flex flex-col items-center w-full">
-            <div className="flex items-center justify-center gap-0 mb-12 relative">
+            <div className="flex items-center justify-center gap-0 mb-12 relative select-none">
                 <div className="w-[52px] h-[80px] flex items-center justify-center">
                    {/* INLINE SVG - Bulletproof */}
-                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-lg">
+                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-xl">
                         <defs>
                             <linearGradient id="logo_grad_splash" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stopColor="#0f766e"/>
-                                <stop offset="100%" stopColor="#115e59"/>
+                                <stop offset="0%" stopColor="#10b981"/>
+                                <stop offset="100%" stopColor="#0ea5e9"/>
                             </linearGradient>
                         </defs>
                         <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_splash)"/>
@@ -108,12 +107,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
                         <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_splash)"/>
                    </svg>
                 </div>
-                <span className="text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-teal-700 to-sky-500 dark:from-teal-400 dark:to-sky-400 transform -translate-x-[20px]">
+                <span className="font-display text-[56px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-emerald-500 to-sky-500 dark:from-emerald-400 dark:to-sky-400 transform -ml-2.5">
                     NVEST
                 </span>
             </div>
             
-            <div id="react-splash-status" className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] mb-6 h-[14px]">
+            <div id="react-splash-status" className="font-display text-[11px] font-bold text-accent uppercase tracking-[0.2em] mb-6 h-[14px]">
                 Iniciando...
             </div>
             <div className="w-[140px] h-1 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">

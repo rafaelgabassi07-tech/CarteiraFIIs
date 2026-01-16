@@ -13,7 +13,10 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
-      fontFamily: { sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'] },
+      fontFamily: { 
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['Outfit', 'Inter', 'sans-serif'] // Nova fonte para títulos/logo
+      },
       colors: {
         // Fintech Palette Refined (Solid Grays/Zinc)
         primary: { 
