@@ -78,10 +78,10 @@ export const Login: React.FC = () => {
         <div className="mb-8 text-center anim-fade-in-up">
             {/* BRAND COMPOSITION (Same as Splash) */}
             <div className="flex items-center justify-center gap-0 mb-8 relative select-none">
-                <div className="w-[48px] h-[72px] flex items-center justify-center">
-                   <img src="./logo.svg" alt="I" className="w-full h-auto drop-shadow-[0_0_20px_rgba(14,165,233,0.4)]" />
+                <div className="w-[48px] h-[72px] flex items-center justify-center relative z-10">
+                   <img src="/logo.svg" alt="I" className="w-full h-auto drop-shadow-[0_0_20px_rgba(14,165,233,0.4)]" />
                 </div>
-                <span className="text-[52px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-teal-400 to-sky-400 transform -translate-x-3">
+                <span className="text-[52px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-teal-400 to-sky-400 transform -translate-x-3 relative z-0">
                     NVEST
                 </span>
             </div>

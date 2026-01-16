@@ -92,7 +92,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         <div className="flex flex-col items-center w-full">
             <div className="flex items-center justify-center gap-0 mb-12 relative">
                 <div className="w-[52px] h-[80px] flex items-center justify-center">
-                   <img src="./logo.svg" alt="I" className="w-full h-auto drop-shadow-lg" />
+                   <img src="/logo.svg" alt="I" className="w-full h-auto drop-shadow-lg" />
                 </div>
                 <span className="text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-teal-700 to-sky-500 dark:from-teal-400 dark:to-sky-400 transform -translate-x-4">
                     NVEST
