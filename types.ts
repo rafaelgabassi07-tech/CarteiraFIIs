@@ -4,6 +4,8 @@ export enum AssetType {
   FII = 'FII'
 }
 
+export type ThemeType = 'light' | 'dark' | 'system';
+
 export interface Transaction {
   id: string;
   ticker: string;

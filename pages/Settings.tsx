@@ -6,8 +6,7 @@ import {
   User, LogOut, Check, AlertTriangle, Globe, Github, Smartphone, Copy, CheckCircle2,
   Wifi, Activity, XCircle, Terminal, Trash2, Filter, FileSpreadsheet, FileJson
 } from 'lucide-react';
-import { Transaction, DividendReceipt, ServiceMetric, LogEntry } from '../types';
-import { ThemeType } from '../App';
+import { Transaction, DividendReceipt, ServiceMetric, LogEntry, ThemeType } from '../types';
 import { logger } from '../services/logger';
 import { parseB3Excel } from '../services/excelService';
 import { supabase } from '../services/supabase';
@@ -50,14 +49,14 @@ const ACCENT_COLORS = [
   { hex: '#10b981', name: 'Emerald' },
 ];
 
-export const Settings = ({ 
+export const Settings: React.FC<SettingsProps> = ({ 
   user, onLogout, transactions, onImportTransactions, geminiDividends, 
   onImportDividends, onResetApp, theme, onSetTheme, privacyMode, 
   onSetPrivacyMode, appVersion, updateAvailable, onCheckUpdates, 
   onShowChangelog, pushEnabled, onRequestPushPermission,
   onSyncAll, currentVersionDate, accentColor, onSetAccentColor,
   services, onCheckConnection, isCheckingConnection, onForceUpdate
-}: SettingsProps) => {
+}) => {
   const [activeSection, setActiveSection] = useState<'menu' | 'appearance' | 'privacy' | 'notifications' | 'services' | 'data' | 'updates' | 'about' | 'reset'>('menu');
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -79,7 +78,8 @@ export const Settings = ({
   });
 
   useEffect(() => {
-      const unsubscribe = logger.subscribe(setLogs);
+      // Wrapper para garantir tipagem correta no callback
+      const unsubscribe = logger.subscribe((l) => setLogs(l));
       return unsubscribe;
   }, []);
 

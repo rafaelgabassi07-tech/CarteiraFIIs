@@ -7,15 +7,13 @@ import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric } from './types';
+import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/geminiService';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
-
-export type ThemeType = 'light' | 'dark' | 'system';
 
 const APP_VERSION = '8.3.13'; 
 
