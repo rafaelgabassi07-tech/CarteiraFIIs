@@ -72,25 +72,27 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header 
       className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-4 transition-all duration-500 ease-out-soft glass-effect ${
-        bannerVisible ? 'h-28 pt-8' : 'h-20 pt-safe'
+        bannerVisible ? 'h-28 pt-8' : 'h-24 pt-safe'
       } top-0`}
     >
-      <div className="flex items-center justify-between h-14 mb-1">
+      <div className="flex items-center justify-between h-14 mb-2">
         <div className="flex items-center gap-3 w-full">
           {showBack ? (
             <div className="flex items-center gap-3 w-full anim-slide-in-right">
               <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-100 dark:hover:bg-zinc-800">
                 <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
               </button>
-              <h1 className="text-lg font-bold text-zinc-900 dark:text-white">Voltar</h1>
+              <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Voltar</h1>
             </div>
           ) : (
             <div className="flex flex-col anim-fade-in">
-                <div className="flex items-center gap-2">
-                    {isRefreshing && <Loader2 className="w-4 h-4 animate-spin text-accent" />}
-                    <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight flex items-baseline gap-1">
+                <div className="flex items-center gap-3">
+                    {isRefreshing && <Loader2 className="w-5 h-5 animate-spin text-accent" />}
+                    <h1 className="text-3xl font-black tracking-tighter flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-500 dark:from-white dark:via-zinc-200 dark:to-zinc-500 selection:bg-accent/20">
                       {title}
-                      {!isRefreshing && <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>}
+                      {!isRefreshing && (
+                        <span className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_12px_rgb(var(--color-accent-rgb))]"></span>
+                      )}
                     </h1>
                 </div>
             </div>
@@ -102,27 +104,27 @@ export const Header: React.FC<HeaderProps> = ({
             <button 
                 onClick={onRefreshClick} 
                 disabled={isRefreshing}
-                className="w-9 h-9 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50 disabled:opacity-50"
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50 disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} strokeWidth={2} />
             </button>
           )}
 
           {updateAvailable && !showBack && (
-            <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-sky-500 text-white press-effect shadow-lg shadow-sky-500/30">
+            <button onClick={onUpdateClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-sky-500 text-white press-effect shadow-lg shadow-sky-500/30">
               <Download className="w-4 h-4 animate-bounce" strokeWidth={2.5} />
             </button>
           )}
           {onNotificationClick && !showBack && (
-            <button onClick={onNotificationClick} className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+            <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
               <Bell className="w-4 h-4" strokeWidth={2} />
               {notificationCount > 0 && 
-                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
+                <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
               }
             </button>
           )}
           {!showBack && onSettingsClick && (
-            <button onClick={onSettingsClick} className="w-9 h-9 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+            <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
               <Settings className="w-4 h-4" strokeWidth={2} />
             </button>
           )}

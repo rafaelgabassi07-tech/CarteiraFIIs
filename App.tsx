@@ -364,10 +364,28 @@ const App: React.FC = () => {
   // --- HANDLERS DA UI ---
 
   const handleLogout = useCallback(async () => {
-    await supabase.auth.signOut();
+    // 1. Limpa Estado Visual Imediatamente
     setSession(null);
     setTransactions([]);
     setGeminiDividends([]);
+    
+    // 2. Realiza o SignOut no Supabase
+    await supabase.auth.signOut();
+
+    // 3. LIMPEZA SEGURA DE LOCALSTORAGE (Prevenção de Sessão Zumbi)
+    // Remove manualmente chaves de autenticação do Supabase para garantir que o 
+    // refresh da página não encontre um token antigo e logue automaticamente.
+    try {
+        Object.keys(localStorage).forEach(key => {
+            // As chaves do Supabase geralmente seguem o padrão 'sb-<project-id>-auth-token'
+            if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                localStorage.removeItem(key);
+            }
+        });
+    } catch (e) {
+        console.warn("Falha ao limpar cache de auth manual", e);
+    }
+
     showToast('info', 'Desconectado com sucesso.');
   }, [showToast]);
 
