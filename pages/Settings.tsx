@@ -607,9 +607,29 @@ export const Settings: React.FC<SettingsProps> = ({
 
         {activeSection === 'about' && (
           <div className="space-y-4">
-            <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
-              <img src="./logo.svg" alt="InvestFIIs" className="w-16 h-16 mx-auto mb-4" />
-              <h2 className="text-xl font-black text-zinc-900 dark:text-white mb-1">InvestFIIs Pro</h2>
+            <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center overflow-hidden">
+                {/* BRAND COMPOSITION MATCHED WITH LOGIN */}
+                <div className="flex items-center justify-center gap-0 mb-6 relative select-none scale-90">
+                    <div className="w-[52px] h-[80px] flex items-center justify-center relative z-10">
+                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_0_20px_rgba(14,165,233,0.4)]">
+                            <defs>
+                                <linearGradient id="logo_grad_about" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stopColor="#0f766e"/>
+                                    <stop offset="100%" stopColor="#115e59"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_about)"/>
+                            <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_about)"/>
+                            <rect x="184" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_about)"/>
+                            <rect x="240" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_about)"/>
+                            <rect x="296" y="328" width="32" height="104" rx="4" fill="url(#logo_grad_about)"/>
+                            <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_about)"/>
+                    </svg>
+                    </div>
+                    <span className="text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-teal-400 to-sky-400 transform -translate-x-[20px] relative z-0">
+                        NVEST
+                    </span>
+                </div>
               <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-4">Built for Investors</p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-6">Focado em performance, design e simplicidade para a gestão inteligente de dividendos na B3.</p>
               
