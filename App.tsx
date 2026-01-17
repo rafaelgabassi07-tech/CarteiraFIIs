@@ -15,7 +15,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.4.3'; // Bump Version
+const APP_VERSION = '8.4.4'; // Bump Version
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -206,10 +206,7 @@ const App: React.FC = () => {
 
   const checkServiceHealth = useCallback(async () => {
     setIsCheckingServices(true);
-    // Use uma cópia base dos serviços para evitar dependência cíclica de estado
     const currentServices = [...servicesRef.current];
-    
-    // Atualiza UI para 'Checking'
     setServices(prev => prev.map(s => ({ ...s, status: 'checking', message: 'Testando conexão...' })));
 
     const checks = currentServices.map(async (s) => {
@@ -220,10 +217,9 @@ const App: React.FC = () => {
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s Timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000); 
 
             if (s.id === 'db') {
-                // DB Check: Supabase Connectivity
                 const { error } = await supabase.from('transactions').select('id').limit(1).maybeSingle();
                 if (error && error.code !== 'PGRST116') {
                     const { error: authError } = await supabase.auth.getSession();
@@ -232,7 +228,6 @@ const App: React.FC = () => {
                 message = 'Conexão com Banco de Dados estabelecida.';
             } 
             else if (s.id === 'ai') {
-                // Gemini AI Check
                 const res = await fetch('/api/ai-status', { signal: controller.signal });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
@@ -297,10 +292,7 @@ const App: React.FC = () => {
 
       if (missingTickers.length > 0) {
           console.log(`[Gemini Batch] Atualizando ${missingTickers.length} ativos via AI Feed...`);
-          
-          // Chama o endpoint de LOTE - Agora sem limite de 20 e com prompt focado em fundamentos
           await updateBatchWithAI(missingTickers);
-          
           // Recarrega os dados atualizados do banco
           aiData = await fetchUnifiedMarketData(tickers, startDate, true);
       }
@@ -337,8 +329,10 @@ const App: React.FC = () => {
         setTimeout(() => setCloudStatus('hidden'), 3000);
         
         if (cloudTxs.length > 0) {
-            // FIX: Adicionado await para garantir que a UI espere o término do processo (Scraping/AI)
             await syncMarketData(force, cloudTxs, initialLoad);
+        } else {
+            // Se não tem transações, não há o que buscar
+             if (initialLoad) setLoadingProgress(100);
         }
     } catch (err) { 
         console.error(err);
@@ -380,15 +374,22 @@ const App: React.FC = () => {
         }
     };
     initApp();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, newSession) => {
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
         setSession(newSession);
+        
+        // CORREÇÃO: Busca dados ao logar (SIGNED_IN) para evitar tela zerada
+        if (event === 'SIGNED_IN' && newSession) {
+            fetchTransactionsFromCloud(newSession, false, true);
+        }
+        
         if (!newSession) {
             setTransactions([]);
             setGeminiDividends([]);
         }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, []); // Remove dependencies to avoid loop
 
   // --- HANDLERS DA UI ---
 
@@ -418,7 +419,6 @@ const App: React.FC = () => {
       window.location.reload();
   }, []);
 
-  // Atualização Manual agora força o fluxo completo com Gemini
   const handleManualScraperTrigger = async () => {
       showToast('info', 'Iniciando busca de fundamentos...');
       await handleSyncAll(true);
