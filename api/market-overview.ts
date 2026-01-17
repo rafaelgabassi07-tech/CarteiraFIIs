@@ -80,69 +80,76 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const $home = cheerio.load(homeHtml);
 
             // Função genérica para extrair dados de uma lista de elementos
-            // Uso de 'any' para evitar erros de tipagem estrita do Cheerio/TS
+            // IMPORTANTE: Tipagem 'any' explicita para evitar conflitos de versão do Cheerio (AnyNode vs Element)
             const extractAssets = (elements: any, type: 'gain' | 'loss', limit = 4) => {
                 const list: any[] = [];
-                elements.each((_: any, el: any) => {
-                    if (list.length >= limit) return;
+                // Validação de segurança se elements é iterável
+                if (elements && typeof elements.each === 'function') {
+                    elements.each((_: any, el: any) => {
+                        if (list.length >= limit) return;
 
-                    let ticker = '';
-                    let priceStr = '';
-                    let changeStr = '';
+                        let ticker = '';
+                        let priceStr = '';
+                        let changeStr = '';
 
-                    // Estrutura Card (Desktop/Mobile)
-                    if ($home(el).find('.ticker, .name').length > 0) {
-                        ticker = $home(el).find('.ticker, .name').first().text().trim();
-                        priceStr = $home(el).find('.price, .value').first().text().trim();
-                        changeStr = $home(el).find('.change, .percentage').first().text().trim();
-                    } 
-                    // Estrutura Tabela (Fallback)
-                    else if ($home(el).find('td').length >= 3) {
-                        ticker = $home(el).find('td').eq(0).text().trim();
-                        priceStr = $home(el).find('td').eq(1).text().trim();
-                        changeStr = $home(el).find('td').eq(2).text().trim();
-                    }
+                        // Estrutura Card (Desktop/Mobile)
+                        if ($home(el).find('.ticker, .name').length > 0) {
+                            ticker = $home(el).find('.ticker, .name').first().text().trim();
+                            priceStr = $home(el).find('.price, .value').first().text().trim();
+                            changeStr = $home(el).find('.change, .percentage').first().text().trim();
+                        } 
+                        // Estrutura Tabela (Fallback)
+                        else if ($home(el).find('td').length >= 3) {
+                            ticker = $home(el).find('td').eq(0).text().trim();
+                            priceStr = $home(el).find('td').eq(1).text().trim();
+                            changeStr = $home(el).find('td').eq(2).text().trim();
+                        }
 
-                    if (!ticker || !changeStr) return;
+                        if (!ticker || !changeStr) return;
 
-                    const price = parseValue(priceStr);
-                    const change = parseValue(changeStr);
+                        const price = parseValue(priceStr);
+                        const change = parseValue(changeStr);
 
-                    // Filtro de consistência
-                    if (type === 'gain' && change <= 0) return;
-                    if (type === 'loss' && change >= 0) return;
+                        // Filtro de consistência
+                        if (type === 'gain' && change <= 0) return;
+                        if (type === 'loss' && change >= 0) return;
 
-                    list.push({
-                        ticker,
-                        name: ticker,
-                        price,
-                        change,
-                        assetType: 'STOCK', 
-                        type,
-                        description: type === 'gain' ? `Alta de ${changeStr}` : `Queda de ${changeStr}`
+                        list.push({
+                            ticker,
+                            name: ticker,
+                            price,
+                            change,
+                            assetType: 'STOCK', 
+                            type,
+                            description: type === 'gain' ? `Alta de ${changeStr}` : `Queda de ${changeStr}`
+                        });
                     });
-                });
+                }
                 return list;
             };
 
             // Procura seções pelo título
             $home('h2, h3, h4, .title').each((_: any, titleEl: any) => {
                 const titleText = $home(titleEl).text().toLowerCase();
-                const parentSection = $home(titleEl).closest('section, div.container, .content, .box');
+                // Cast explicito para 'any' para evitar erro TS2322 ao atribuir Cheerio<AnyNode>
+                const parentSection: any = $home(titleEl).closest('section, div.container, .content, .box');
 
                 if (titleText.includes('maiores altas') || titleText.includes('altas')) {
-                    let container = parentSection.find('#tabs-1, .active, .list-ticker').first();
+                    // Cast explicito para 'any'
+                    let container: any = parentSection.find('#tabs-1, .active, .list-ticker').first();
                     if (container.length === 0) container = parentSection;
                     
-                    const items = extractAssets(container.find('.card-ticker, .ticker-card, tbody tr, li'), 'gain');
+                    // Cast explicito do argumento
+                    const items = extractAssets(container.find('.card-ticker, .ticker-card, tbody tr, li') as any, 'gain');
                     if (items.length > 0 && gainers.length === 0) gainers.push(...items);
                 }
 
                 if (titleText.includes('maiores baixas') || titleText.includes('baixas')) {
-                    let container = parentSection.find('#tabs-1, .active, .list-ticker').first();
+                    let container: any = parentSection.find('#tabs-1, .active, .list-ticker').first();
                     if (container.length === 0) container = parentSection;
 
-                    const items = extractAssets(container.find('.card-ticker, .ticker-card, tbody tr, li'), 'loss');
+                    // Cast explicito do argumento
+                    const items = extractAssets(container.find('.card-ticker, .ticker-card, tbody tr, li') as any, 'loss');
                     if (items.length > 0 && losers.length === 0) losers.push(...items);
                 }
             });
