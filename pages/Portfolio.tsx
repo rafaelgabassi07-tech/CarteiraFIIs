@@ -20,42 +20,41 @@ const formatPercent = (val: number, privacy = false) => {
   return `${signal}${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
-// Tile de Indicador Premium
-const IndicatorTile = ({ label, value, sublabel, highlight = false, icon: Icon, color = 'emerald' }: any) => {
+// Tile Compacto para Alta Densidade de Informação
+const CompactTile = ({ label, value, sublabel, highlight = false, color = 'zinc', colSpan = 1 }: any) => {
     const hasValue = value !== undefined && value !== null && value !== '' && value !== 'N/A' && value !== 0;
     
-    // Mapeamento de cores
     const colors: any = {
-        emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/20', border: 'border-emerald-100 dark:border-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', icon: 'text-emerald-500' },
-        sky: { bg: 'bg-sky-50 dark:bg-sky-950/20', border: 'border-sky-100 dark:border-sky-900/30', text: 'text-sky-700 dark:text-sky-400', icon: 'text-sky-500' },
-        rose: { bg: 'bg-rose-50 dark:bg-rose-950/20', border: 'border-rose-100 dark:border-rose-900/30', text: 'text-rose-700 dark:text-rose-400', icon: 'text-rose-500' },
-        amber: { bg: 'bg-amber-50 dark:bg-amber-950/20', border: 'border-amber-100 dark:border-amber-900/30', text: 'text-amber-700 dark:text-amber-400', icon: 'text-amber-500' },
-        indigo: { bg: 'bg-indigo-50 dark:bg-indigo-950/20', border: 'border-indigo-100 dark:border-indigo-900/30', text: 'text-indigo-700 dark:text-indigo-400', icon: 'text-indigo-500' },
-        zinc: { bg: 'bg-white dark:bg-zinc-900', border: 'border-zinc-100 dark:border-zinc-800', text: 'text-zinc-900 dark:text-white', icon: 'text-zinc-300' }
+        emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400' },
+        rose: { bg: 'bg-rose-50 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-400' },
+        indigo: { bg: 'bg-indigo-50 dark:bg-indigo-950/30', text: 'text-indigo-700 dark:text-indigo-400' },
+        sky: { bg: 'bg-sky-50 dark:bg-sky-950/30', text: 'text-sky-700 dark:text-sky-400' },
+        amber: { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400' },
+        zinc: { bg: 'bg-white dark:bg-zinc-800/50', text: 'text-zinc-900 dark:text-zinc-200' }
     };
 
     const theme = highlight ? colors[color] : colors.zinc;
+    const borderClass = highlight ? `border-${color}-100 dark:border-${color}-900/50` : 'border-zinc-200/50 dark:border-zinc-700/50';
 
     return (
-        <div className={`relative overflow-hidden p-3.5 rounded-2xl border transition-all ${theme.bg} ${theme.border}`}>
-            {highlight && <div className="absolute top-0 right-0 p-2 opacity-10"><Icon className={`w-12 h-12 ${theme.icon}`} /></div>}
-            
-            <div className="flex justify-between items-start mb-1.5 relative z-10">
-                <span className={`text-[9px] font-black uppercase tracking-widest ${highlight ? theme.text : 'text-zinc-400'}`}>{label}</span>
-                {!highlight && Icon && <Icon className="w-3.5 h-3.5 text-zinc-300" />}
-            </div>
-            
-            <div className="relative z-10">
-                <span className={`text-lg font-black tracking-tighter block ${theme.text}`}>
-                    {hasValue ? value : '-'}
-                </span>
-                {sublabel && hasValue && (
-                    <span className={`text-[9px] font-bold mt-0.5 block ${highlight ? theme.text : 'text-zinc-400'} opacity-70`}>{sublabel}</span>
-                )}
-            </div>
+        <div className={`relative p-2.5 rounded-xl border ${theme.bg} ${borderClass} flex flex-col justify-center transition-all ${colSpan > 1 ? `col-span-${colSpan}` : ''}`}>
+            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5 truncate">{label}</span>
+            <span className={`text-sm font-black tracking-tight leading-tight ${theme.text}`}>
+                {hasValue ? value : '-'}
+            </span>
+            {sublabel && hasValue && (
+                <span className="text-[8px] font-bold opacity-60 mt-0.5">{sublabel}</span>
+            )}
         </div>
     );
 };
+
+const SectionHeader = ({ icon: Icon, title }: any) => (
+    <div className="flex items-center gap-1.5 mb-2 mt-4 px-1">
+        <Icon className="w-3 h-3 text-zinc-400" strokeWidth={2.5} />
+        <h3 className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">{title}</h3>
+    </div>
+);
 
 const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -151,183 +150,138 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             const isFII = selectedAsset.assetType === AssetType.FII;
 
             return (
-            <div className="p-6 pb-20">
-                {/* Header do Ativo */}
-                <div className="flex justify-between items-start mb-8 anim-slide-up">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-3xl bg-white dark:bg-zinc-800 p-2 shadow-xl border border-zinc-100 dark:border-zinc-700 flex items-center justify-center overflow-hidden">
-                            {selectedAsset.logoUrl ? <img src={selectedAsset.logoUrl} alt={selectedAsset.ticker} className="w-full h-full object-contain" /> : <span className="text-2xl font-black text-zinc-200 dark:text-zinc-700">{selectedAsset.ticker.substring(0,2)}</span>}
+            <div className="p-5 pb-16">
+                {/* Header Compacto */}
+                <div className="flex justify-between items-center mb-6 anim-slide-up">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 p-1.5 shadow-sm border border-zinc-200 dark:border-zinc-700 flex items-center justify-center overflow-hidden">
+                            {selectedAsset.logoUrl ? <img src={selectedAsset.logoUrl} alt={selectedAsset.ticker} className="w-full h-full object-contain" /> : <span className="text-sm font-black text-zinc-400">{selectedAsset.ticker.substring(0,2)}</span>}
                         </div>
                         <div>
-                            <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">{selectedAsset.ticker}</h2>
-                            <div className="flex items-center gap-2 mt-2">
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest ${isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600'}`}>
-                                    {isFII ? 'Fundo Imobiliário' : 'Ação'}
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">{selectedAsset.ticker}</h2>
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-100 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 border-sky-100 dark:border-sky-800'}`}>
+                                    {isFII ? 'FII' : 'Ação'}
                                 </span>
-                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest truncate max-w-[150px]">{selectedAsset.segment || 'Setor Geral'}</span>
                             </div>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide truncate max-w-[200px]">{selectedAsset.segment || 'Setor Geral'}</p>
                         </div>
                     </div>
-                    <button onClick={() => setSelectedAsset(null)} className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
-                        <X className="w-5 h-5" />
+                    <button onClick={() => setSelectedAsset(null)} className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
 
-                {/* Card de Rentabilidade */}
-                <div className="mb-6 p-6 bg-zinc-900 dark:bg-white rounded-[2rem] text-white dark:text-zinc-900 shadow-2xl relative overflow-hidden anim-slide-up" style={{ animationDelay: '100ms' }}>
-                    <div className="absolute top-0 right-0 p-8 opacity-10"><BarChart3 className="w-24 h-24" /></div>
-                    <div className="relative z-10 grid grid-cols-2 gap-6">
+                {/* Minha Posição (Grid Compacto) */}
+                <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-2xl p-4 border border-zinc-200/50 dark:border-zinc-800/50 mb-4 anim-slide-up" style={{ animationDelay: '50ms' }}>
+                    <div className="flex justify-between items-end mb-3 border-b border-zinc-200 dark:border-zinc-800 pb-3">
                         <div>
-                            <span className="text-[9px] font-black uppercase tracking-widest opacity-60 block mb-1">Lucro / Prejuízo</span>
-                            <p className={`text-2xl font-black tracking-tight ${isPositive ? 'text-emerald-400 dark:text-emerald-600' : 'text-rose-400 dark:text-rose-600'}`}>
-                                {isPositive ? '+' : ''}{formatBRL(totalGainValue, privacyMode)}
-                            </p>
-                            <span className={`inline-block mt-2 px-2.5 py-1 rounded-lg text-[10px] font-black ${isPositive ? 'bg-emerald-500/20 text-emerald-300 dark:text-emerald-700' : 'bg-rose-500/20 text-rose-300 dark:text-rose-700'}`}>
-                                {formatPercent(totalGainPercent, privacyMode)}
-                            </span>
+                            <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Saldo Atual</span>
+                            <span className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(totalCurrent, privacyMode)}</span>
                         </div>
                         <div className="text-right">
-                            <span className="text-[9px] font-black uppercase tracking-widest opacity-60 block mb-1">Total Atual</span>
-                            <p className="text-2xl font-black tracking-tight tabular-nums">{formatBRL(totalCurrent, privacyMode)}</p>
-                            <p className="text-[10px] font-bold opacity-60 mt-2">Médio: {formatBRL(selectedAsset.averagePrice, privacyMode)}</p>
+                            <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Variação</span>
+                            <span className={`text-base font-black ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                {isPositive ? '+' : ''}{formatBRL(totalGainValue, privacyMode)}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                        <div className="text-center p-2 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700 shadow-sm">
+                            <span className="block text-[8px] font-bold text-zinc-400 uppercase">Qtd</span>
+                            <span className="block text-xs font-black text-zinc-900 dark:text-white">{selectedAsset.quantity}</span>
+                        </div>
+                        <div className="text-center p-2 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700 shadow-sm">
+                            <span className="block text-[8px] font-bold text-zinc-400 uppercase">Médio</span>
+                            <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatBRL(avgPrice, privacyMode).replace('R$', '')}</span>
+                        </div>
+                        <div className="text-center p-2 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700 shadow-sm">
+                            <span className="block text-[8px] font-bold text-zinc-400 uppercase">Atual</span>
+                            <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatBRL(currentPrice, privacyMode).replace('R$', '')}</span>
+                        </div>
+                        <div className={`text-center p-2 rounded-xl border shadow-sm ${isPositive ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800'}`}>
+                            <span className={`block text-[8px] font-bold uppercase ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>%</span>
+                            <span className={`block text-xs font-black ${isPositive ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>{formatPercent(totalGainPercent, privacyMode).replace('%','')}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* --- SEÇÕES DE FUNDAMENTOS --- */}
-                
-                {/* 1. Destaques (Valuation e Dividendos) */}
-                <div className="mb-6 anim-slide-up" style={{ animationDelay: '200ms' }}>
-                    <div className="flex items-center gap-2 mb-3 px-1">
-                        <Activity className="w-4 h-4 text-zinc-400" />
-                        <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Valuation & Dividendos</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <IndicatorTile 
-                            label="Dividend Yield" 
+                {/* Fundamentos (Grid 3 colunas) */}
+                <div className="anim-slide-up" style={{ animationDelay: '100ms' }}>
+                    <SectionHeader icon={Activity} title="Indicadores de Mercado" />
+                    <div className="grid grid-cols-3 gap-2">
+                        <CompactTile 
+                            label="D.Y. (12m)" 
                             value={selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : undefined} 
-                            sublabel="Últimos 12m" 
                             highlight={true} 
-                            color="emerald"
-                            icon={Percent} 
+                            color="emerald" 
                         />
-                        <IndicatorTile 
-                            label="P/VP" 
-                            value={selectedAsset.p_vp} 
-                            sublabel={selectedAsset.p_vp ? (selectedAsset.p_vp < 1 ? 'Desconto' : 'Ágio') : ''} 
-                            icon={Scale} 
-                        />
-                        {!isFII && (
-                            <IndicatorTile 
-                                label="P/L" 
-                                value={selectedAsset.p_l} 
-                                sublabel="Preço / Lucro" 
-                                icon={Activity} 
+                        <CompactTile label="P/VP" value={selectedAsset.p_vp} />
+                        
+                        {isFII ? (
+                            <CompactTile 
+                                label="Vacância" 
+                                value={selectedAsset.vacancy !== undefined ? `${selectedAsset.vacancy}%` : undefined} 
+                                highlight={selectedAsset.vacancy === 0} 
+                                color={selectedAsset.vacancy === 0 ? 'emerald' : 'rose'} 
                             />
+                        ) : (
+                            <CompactTile label="P/L" value={selectedAsset.p_l} />
                         )}
-                        {!isFII && (
-                            <IndicatorTile 
-                                label="EV / EBITDA" 
-                                value={selectedAsset.ev_ebitda} 
-                                icon={Zap} 
-                            />
+
+                        {isFII ? (
+                            <CompactTile label="Últ. Rend." value={selectedAsset.last_dividend ? formatBRL(selectedAsset.last_dividend, false) : undefined} />
+                        ) : (
+                            <CompactTile label="ROE" value={selectedAsset.roe ? `${selectedAsset.roe}%` : undefined} />
                         )}
-                        {selectedAsset.market_cap && (
-                            <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800 rounded-xl p-3 flex justify-between items-center">
-                                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Valor de Mercado</span>
-                                <span className="text-xs font-black text-zinc-700 dark:text-zinc-300">{selectedAsset.market_cap}</span>
-                            </div>
+
+                        {isFII ? (
+                            <CompactTile label="Patrimônio" value={selectedAsset.assets_value} sublabel="Valor total do Fundo" />
+                        ) : (
+                            <CompactTile label="Margem Líq." value={selectedAsset.net_margin ? `${selectedAsset.net_margin}%` : undefined} />
                         )}
+
+                        <CompactTile label="Valor Mercado" value={selectedAsset.market_cap} />
                     </div>
+
+                    {!isFII && (selectedAsset.net_debt_ebitda || selectedAsset.ev_ebitda) && (
+                        <>
+                            <SectionHeader icon={Briefcase} title="Dívida & Valor" />
+                            <div className="grid grid-cols-3 gap-2">
+                                <CompactTile label="Div.Líq/EBITDA" value={selectedAsset.net_debt_ebitda} />
+                                <CompactTile label="EV/EBITDA" value={selectedAsset.ev_ebitda} />
+                                <CompactTile label="Payout" value={selectedAsset.payout ? `${selectedAsset.payout}%` : undefined} />
+                            </div>
+                        </>
+                    )}
+
+                    {isFII && (
+                        <>
+                            <SectionHeader icon={Building2} title="Gestão & Taxas" />
+                            <div className="grid grid-cols-2 gap-2">
+                                <CompactTile label="Gestão" value={selectedAsset.manager_type} />
+                                <CompactTile label="Taxa Adm." value={selectedAsset.management_fee} />
+                            </div>
+                        </>
+                    )}
                 </div>
 
-                {/* 2. Eficiência e Crescimento (Apenas Ações) */}
-                {!isFII && (
-                    <div className="mb-6 anim-slide-up" style={{ animationDelay: '250ms' }}>
-                        <div className="flex items-center gap-2 mb-3 px-1">
-                            <TrendingUp className="w-4 h-4 text-zinc-400" />
-                            <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Eficiência</h3>
+                {/* Footer */}
+                <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '200ms' }}>
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-zinc-400">
+                            <Info className="w-3 h-3" />
+                            <span className="text-[9px] font-bold uppercase tracking-widest">Fonte: Investidor10</span>
                         </div>
-                        <div className="grid grid-cols-3 gap-2">
-                            <IndicatorTile label="ROE" value={selectedAsset.roe ? `${selectedAsset.roe}%` : undefined} />
-                            <IndicatorTile label="Mg. Líq." value={selectedAsset.net_margin ? `${selectedAsset.net_margin}%` : undefined} />
-                            <IndicatorTile label="Mg. Bruta" value={selectedAsset.gross_margin ? `${selectedAsset.gross_margin}%` : undefined} />
-                        </div>
-                        {(selectedAsset.cagr_revenue || selectedAsset.cagr_profits) && (
-                            <div className="grid grid-cols-2 gap-2 mt-2">
-                                <IndicatorTile label="CAGR Rec. (5a)" value={selectedAsset.cagr_revenue ? `${selectedAsset.cagr_revenue}%` : undefined} color="sky" highlight={true} icon={TrendingUp} />
-                                <IndicatorTile label="CAGR Lucro (5a)" value={selectedAsset.cagr_profits ? `${selectedAsset.cagr_profits}%` : undefined} color="sky" highlight={true} icon={Coins} />
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* 3. Dívida (Apenas Ações) */}
-                {!isFII && (
-                    <div className="mb-6 anim-slide-up" style={{ animationDelay: '300ms' }}>
-                        <div className="flex items-center gap-2 mb-3 px-1">
-                            <Briefcase className="w-4 h-4 text-zinc-400" />
-                            <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Endividamento</h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <IndicatorTile label="Dív. Líq / PL" value={selectedAsset.net_debt_equity} />
-                            <IndicatorTile label="Dív. Líq / EBITDA" value={selectedAsset.net_debt_ebitda} />
-                        </div>
-                    </div>
-                )}
-
-                {/* 4. Dados do Fundo (Apenas FIIs) */}
-                {isFII && (
-                    <div className="mb-6 anim-slide-up" style={{ animationDelay: '300ms' }}>
-                        <div className="flex items-center gap-2 mb-3 px-1">
-                            <Building2 className="w-4 h-4 text-zinc-400" />
-                            <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Imóvel & Gestão</h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <IndicatorTile 
-                                label="Vacância Física" 
-                                value={selectedAsset.vacancy !== undefined ? `${selectedAsset.vacancy}%` : undefined} 
-                                highlight={true} 
-                                color="rose"
-                                icon={Building2} 
-                            />
-                            <IndicatorTile 
-                                label="Liquidez Diária" 
-                                value={selectedAsset.liquidity} 
-                                icon={Droplets} 
-                            />
-                            <IndicatorTile label="Patrimônio" value={selectedAsset.assets_value} />
-                            <IndicatorTile label="Taxa Adm." value={selectedAsset.management_fee} />
-                            <div className="col-span-2 grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/30 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
-                                    <span className="text-[9px] font-black text-zinc-400 uppercase">Gestão</span>
-                                    <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{selectedAsset.manager_type || '-'}</p>
-                                </div>
-                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/30 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
-                                    <span className="text-[9px] font-black text-zinc-400 uppercase">Últ. Rend.</span>
-                                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{selectedAsset.last_dividend ? formatBRL(selectedAsset.last_dividend, false) : '-'}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{ animationDelay: '400ms' }}>
-                     <div className="flex items-center gap-2 mb-4">
-                         <Info className="w-4 h-4 text-zinc-400" />
-                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Fonte de Dados</span>
+                        <a 
+                            href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${selectedAsset.ticker.toLowerCase()}/`} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg active:scale-95 transition-transform"
+                        >
+                            Ver Site <ExternalLink className="w-3 h-3" />
+                        </a>
                      </div>
-                     <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-6">
-                        Dados extraídos automaticamente do Investidor10. Cotações em tempo real via B3.
-                     </p>
-                     <a 
-                        href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${selectedAsset.ticker.toLowerCase()}/`} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-white bg-zinc-900 dark:bg-white dark:text-zinc-900 px-4 py-4 rounded-2xl shadow-lg press-effect"
-                     >
-                        <ExternalLink className="w-3 h-3" /> Ver Detalhes no Site
-                     </a>
                 </div>
             </div>
             );
