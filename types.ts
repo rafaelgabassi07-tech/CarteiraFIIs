@@ -50,6 +50,8 @@ export interface AssetFundamentals {
   management_fee?: string; // Taxa de Administração
   last_dividend?: number; // Último Rendimento
   
+  updated_at?: string; // Data da última atualização via IA/Crawler
+  
   description?: string;
   sentiment?: 'Otimista' | 'Neutro' | 'Pessimista' | string;
   sentiment_reason?: string;

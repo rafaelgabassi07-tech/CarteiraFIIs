@@ -119,6 +119,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                       assets_value: m.patrimonio_liquido || undefined,
                       management_fee: m.taxa_adm || undefined,
                       last_dividend: parseNumberSafe(m.ultimo_rendimento),
+                      
+                      updated_at: m.updated_at,
 
                       sentiment: 'Neutro',
                       sentiment_reason: `Dados Gemini 2.5: ${m.updated_at ? new Date(m.updated_at).toLocaleDateString('pt-BR') : 'Recente'}.`,
