@@ -13,9 +13,9 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // --- HELPERS DE LIMPEZA E PARSE ---
 
-// Remove blocos de código Markdown (```json ... ```)
 function cleanJsonString(str: string): string {
     if (!str) return '[]';
+    // Remove blocos de código Markdown e limpa espaços
     let cleaned = str.replace(/```json/g, '').replace(/```/g, '').trim();
     const start = cleaned.indexOf('[');
     const end = cleaned.lastIndexOf(']');
@@ -25,29 +25,22 @@ function cleanJsonString(str: string): string {
     return cleaned;
 }
 
-// Converte formatos variados (1.000,00 | 10,5% | R$ 10) para float JS (1000.00 | 10.5 | 10)
 function parseRobustNumber(val: any): number {
     if (typeof val === 'number') return val;
-    if (!val || val === 'N/A' || val === '-') return 0;
+    if (!val || val === 'N/A' || val === '-' || val === '--') return 0;
     
     let str = String(val).trim();
     
-    // Tratamento de multiplicadores (B = Bilhão, M = Milhão - comum em Market Cap)
-    let multiplier = 1;
-    if (str.toUpperCase().includes('B')) multiplier = 1; // Geralmente MarketCap já vem formatado ou queremos manter a grandeza
-    // Mas para campos numéricos puros como P/L, DY, etc, removemos sufixos não numéricos exceto . , -
-    
-    // Remove R$, %, espaços
+    // Remove R$, %, espaços e caracteres invisíveis
     str = str.replace(/[R$%\s]/g, '');
     
-    // Tratamento de formato BR (1.000,00) vs US (1,000.00)
-    // Se tem vírgula e não tem ponto, assume vírgula como decimal (10,5 -> 10.5)
-    if (str.includes(',') && !str.includes('.')) {
+    // Lógica para detectar formato BR (1.200,50) vs US (1,200.50)
+    // Se houver vírgula, assumimos que é decimal BR, a menos que seja um separador único irrelevante
+    if (str.includes(',')) {
+        // Remove pontos de milhar (ex: 1.200,50 -> 1200,50)
+        str = str.replace(/\./g, '');
+        // Troca vírgula por ponto (1200,50 -> 1200.50)
         str = str.replace(',', '.');
-    } 
-    // Se tem ponto e vírgula (1.200,50), remove ponto e troca vírgula
-    else if (str.includes('.') && str.includes(',')) {
-        str = str.replace(/\./g, '').replace(',', '.');
     }
     
     const num = parseFloat(str);
@@ -73,41 +66,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     if (allTickers.length === 0) return res.json({ data: [] });
 
-    // Lote reduzido para garantir qualidade da busca
-    const CHUNK_SIZE = 5; 
+    // AUMENTADO PARA 20: Tenta resolver a maioria das carteiras em UMA ÚNICA requisição
+    const CHUNK_SIZE = 20; 
     const results: any[] = [];
 
     const baseSystemInstruction = `
-        Você é um API de dados financeiros.
+        Você é um Crawler de Dados Financeiros especializado no site Investidor10.
+        
+        FONTE DE DADOS OBRIGATÓRIA:
+        Use a ferramenta de busca para acessar dados atualizados de **investidor10.com.br** para cada ativo.
         
         OBJETIVO:
-        Pesquise no Google (statusinvest, investidor10, funds explorer) os fundamentos MAIS RECENTES (2024/2025) para os ativos solicitados.
+        Retornar um JSON Array com os indicadores fundamentalistas exatos encontrados no site.
         
-        REGRAS DE RETORNO:
-        1. Retorne APENAS um JSON Array puro. Sem Markdown. Sem explicações.
-        2. Use 0 para dados numéricos não encontrados.
-        3. Para campos percentuais (DY, Vacância), retorne o número (ex: 10.5 para 10,5%).
-        4. Identifique corretamente se é FII ou ACAO pelo ticker (final 11 geralmente FII, 3/4 Ação).
+        MAPEAMENTO DE CAMPOS (Crucial):
+        - p_vp: "P/VP"
+        - dy_12m: "Dividend Yield" (últimos 12 meses)
+        - market_cap: "Valor de Mercado" (Ex: R$ 1,5 B)
+        - liquidity: "Liquidez Diária" (Ex: R$ 2,5 M)
+        - assets_value: "Valor Patrimonial" (para FIIs) ou "Patrimônio Líquido" (para Ações)
+        - management_type: "Tipo de Gestão" (Ativa/Passiva)
+        - last_dividend: "Último Rendimento" (Valor em R$)
+        - vacancy: "Vacância Física" (Apenas FIIs, em %)
+        - p_l: "P/L" (Apenas Ações)
+        - roe: "ROE" (Apenas Ações)
+        - net_debt_ebitda: "Dív. Líquida/EBITDA" (Apenas Ações)
         
-        SCHEMA DO JSON (obrigatório seguir estas chaves exatas):
+        FORMATO:
+        Retorne APENAS o JSON puro. Sem formatação Markdown. Use 0 ou "-" se o dado não existir.
+        
+        EXEMPLO DE SAÍDA:
         [
           {
-            "ticker": "AAAA11",
-            "type": "FII" | "ACAO",
-            "segment": "Logística/Bancos/etc",
-            "p_vp": number,
-            "dy_12m": number,
-            "market_cap": "string formatada (ex: 1.2B)",
-            "liquidity": "string formatada (ex: 5.4M)",
-            "p_l": number,
-            "roe": number,
-            "vacancy": number,
-            "assets_value": "string formatada (Patrimônio Líquido)",
-            "management_type": "Ativa" | "Passiva",
-            "net_margin": number,
-            "net_debt_ebitda": number,
-            "ev_ebitda": number,
-            "last_dividend": number
+            "ticker": "MXRF11",
+            "type": "FII",
+            "segment": "Papel",
+            "p_vp": 1.02,
+            "dy_12m": 12.5,
+            "market_cap": "R$ 3.2B",
+            "liquidity": "R$ 12M",
+            "assets_value": "R$ 3.0B",
+            "management_type": "Ativa",
+            "last_dividend": 0.10,
+            "vacancy": 0
           }
         ]
     `;
@@ -115,7 +116,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (let i = 0; i < allTickers.length; i += CHUNK_SIZE) {
         const batch = allTickers.slice(i, i + CHUNK_SIZE);
         
-        const prompt = `Ativos: ${batch.join(', ')}. Busque e retorne JSON.`;
+        // Prompt otimizado para uma única passada eficiente
+        const prompt = `
+          Extraia os fundamentos do site Investidor10 para os ativos: ${batch.join(', ')}.
+          Para cada ticker, pesquise especificamente: "site:investidor10.com.br ${batch.join(' OR ')}".
+          Preencha todos os campos do schema JSON solicitado.
+        `;
 
         try {
             const response = await ai.models.generateContent({
@@ -123,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               contents: prompt,
               config: {
                 tools: [{ googleSearch: {} }],
-                temperature: 0.1,
+                temperature: 0.1, // Zero criatividade, apenas extração de dados
                 systemInstruction: baseSystemInstruction
               }
             });
@@ -140,35 +146,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 console.error(`Erro parse JSON lote ${i}:`, jsonErr);
             }
         } catch (innerErr) {
-            console.error(`Erro API lote ${i}:`, innerErr);
+            console.error(`Erro API Gemini lote ${i}:`, innerErr);
         }
     }
 
-    // Tratamento e Sanitização dos Dados antes do DB
+    // Processamento e Normalização para o Banco de Dados
     const dbPayload = results.map((item: any) => ({
-        ticker: item.ticker,
+        ticker: item.ticker ? item.ticker.toUpperCase() : '',
         type: item.type,
         segment: item.segment || 'Geral',
-        // Converte tudo para número puro para evitar erros no banco
+        
+        // Converte strings formatadas (R$, %) para números float puros
         pvp: parseRobustNumber(item.p_vp),
         dy_12m: parseRobustNumber(item.dy_12m),
         pl: parseRobustNumber(item.p_l),
         roe: parseRobustNumber(item.roe),
         vacancia: parseRobustNumber(item.vacancy),
-        // Mantém strings formatadas para exibição direta
-        valor_mercado: item.market_cap || '-',
-        liquidez: item.liquidity || '-',
-        // Mais números
         margem_liquida: parseRobustNumber(item.net_margin),
         divida_liquida_ebitda: parseRobustNumber(item.net_debt_ebitda),
         ev_ebitda: parseRobustNumber(item.ev_ebitda),
         ultimo_rendimento: parseRobustNumber(item.last_dividend),
-        // Strings informativas
-        tipo_gestao: item.management_type || '-',
+        
+        // Mantém como string para exibição formatada (ex: 1.5B)
+        valor_mercado: item.market_cap || '-',
+        liquidez: item.liquidity || '-',
         patrimonio_liquido: item.assets_value || '-',
-        taxa_adm: '-', // Geralmente difícil de pegar estruturado
+        tipo_gestao: item.management_type || '-',
+        
         updated_at: new Date().toISOString()
-    }));
+    })).filter(item => item.ticker !== ''); // Remove entradas vazias se houver erro
 
     // Upsert no Supabase
     if (dbPayload.length > 0) {
