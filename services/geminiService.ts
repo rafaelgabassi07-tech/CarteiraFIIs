@@ -40,6 +40,15 @@ export const updateBatchWithAI = async (tickers: string[]): Promise<boolean> => 
     }
 };
 
+// Helper seguro para garantir que a UI receba números, mesmo se o banco devolver string
+const parseNumberSafe = (val: any): number => {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    const str = String(val).replace(',', '.');
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+};
+
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
@@ -87,29 +96,29 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   type: assetType,
                   fundamentals: {
                       // Comuns
-                      p_vp: m.pvp ? Number(m.pvp) : 0,
-                      dy_12m: m.dy_12m ? Number(m.dy_12m) : 0,
-                      p_l: m.pl ? Number(m.pl) : 0,
-                      roe: m.roe ? Number(m.roe) : 0,
+                      p_vp: parseNumberSafe(m.pvp),
+                      dy_12m: parseNumberSafe(m.dy_12m),
+                      p_l: parseNumberSafe(m.pl),
+                      roe: parseNumberSafe(m.roe),
                       liquidity: m.liquidez || '',
                       market_cap: m.valor_mercado || undefined, 
                       
                       // Ações
-                      net_margin: m.margem_liquida ? Number(m.margem_liquida) : undefined,
-                      gross_margin: m.margem_bruta ? Number(m.margem_bruta) : undefined,
-                      cagr_revenue: m.cagr_receita ? Number(m.cagr_receita) : undefined,
-                      cagr_profits: m.cagr_lucro ? Number(m.cagr_lucro) : undefined,
-                      net_debt_ebitda: m.divida_liquida_ebitda ? Number(m.divida_liquida_ebitda) : undefined,
-                      ev_ebitda: m.ev_ebitda ? Number(m.ev_ebitda) : undefined,
-                      lpa: m.lpa ? Number(m.lpa) : undefined,
-                      vpa: m.vpa ? Number(m.vpa) : undefined,
+                      net_margin: parseNumberSafe(m.margem_liquida),
+                      gross_margin: parseNumberSafe(m.margem_bruta),
+                      cagr_revenue: parseNumberSafe(m.cagr_receita),
+                      cagr_profits: parseNumberSafe(m.cagr_lucro),
+                      net_debt_ebitda: parseNumberSafe(m.divida_liquida_ebitda),
+                      ev_ebitda: parseNumberSafe(m.ev_ebitda),
+                      lpa: parseNumberSafe(m.lpa),
+                      vpa: parseNumberSafe(m.vpa),
 
                       // FIIs
-                      vacancy: m.vacancia ? Number(m.vacancia) : 0,
+                      vacancy: parseNumberSafe(m.vacancia),
                       manager_type: m.tipo_gestao || undefined,
                       assets_value: m.patrimonio_liquido || undefined,
                       management_fee: m.taxa_adm || undefined,
-                      last_dividend: m.ultimo_rendimento ? Number(m.ultimo_rendimento) : undefined,
+                      last_dividend: parseNumberSafe(m.ultimo_rendimento),
 
                       sentiment: 'Neutro',
                       sentiment_reason: `Dados Gemini 2.5: ${m.updated_at ? new Date(m.updated_at).toLocaleDateString('pt-BR') : 'Recente'}.`,

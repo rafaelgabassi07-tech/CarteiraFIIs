@@ -11,12 +11,12 @@ const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 // Inicializa Gemini 2.5
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Helper para limpar JSON vindo de Markdown (ex: ```json ... ```)
+// --- HELPERS DE LIMPEZA E PARSE ---
+
+// Remove blocos de código Markdown (```json ... ```)
 function cleanJsonString(str: string): string {
     if (!str) return '[]';
-    // Remove blocos de código markdown
     let cleaned = str.replace(/```json/g, '').replace(/```/g, '').trim();
-    // Tenta encontrar o início e fim do array JSON
     const start = cleaned.indexOf('[');
     const end = cleaned.lastIndexOf(']');
     if (start !== -1 && end !== -1) {
@@ -25,8 +25,36 @@ function cleanJsonString(str: string): string {
     return cleaned;
 }
 
+// Converte formatos variados (1.000,00 | 10,5% | R$ 10) para float JS (1000.00 | 10.5 | 10)
+function parseRobustNumber(val: any): number {
+    if (typeof val === 'number') return val;
+    if (!val || val === 'N/A' || val === '-') return 0;
+    
+    let str = String(val).trim();
+    
+    // Tratamento de multiplicadores (B = Bilhão, M = Milhão - comum em Market Cap)
+    let multiplier = 1;
+    if (str.toUpperCase().includes('B')) multiplier = 1; // Geralmente MarketCap já vem formatado ou queremos manter a grandeza
+    // Mas para campos numéricos puros como P/L, DY, etc, removemos sufixos não numéricos exceto . , -
+    
+    // Remove R$, %, espaços
+    str = str.replace(/[R$%\s]/g, '');
+    
+    // Tratamento de formato BR (1.000,00) vs US (1,000.00)
+    // Se tem vírgula e não tem ponto, assume vírgula como decimal (10,5 -> 10.5)
+    if (str.includes(',') && !str.includes('.')) {
+        str = str.replace(',', '.');
+    } 
+    // Se tem ponto e vírgula (1.200,50), remove ponto e troca vírgula
+    else if (str.includes('.') && str.includes(',')) {
+        str = str.replace(/\./g, '').replace(',', '.');
+    }
+    
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -41,53 +69,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Lista de tickers inválida.' });
     }
 
-    // Normaliza tickers
     const allTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
     
     if (allTickers.length === 0) return res.json({ data: [] });
 
-    // Processamos em lotes para evitar timeouts e limites de tokens
-    const CHUNK_SIZE = 10; 
+    // Lote reduzido para garantir qualidade da busca
+    const CHUNK_SIZE = 5; 
     const results: any[] = [];
 
-    // Prompt Otimizado para Texto Puro (JSON no corpo)
     const baseSystemInstruction = `
-        Você é um analista financeiro expert em B3. 
-        Sua tarefa é usar a ferramenta Google Search para buscar dados fundamentalistas ATUALIZADOS (2024/2025).
+        Você é um API de dados financeiros.
         
-        Você DEVE retornar APENAS um JSON Array válido, sem texto adicional, sem markdown, sem explicações.
+        OBJETIVO:
+        Pesquise no Google (statusinvest, investidor10, funds explorer) os fundamentos MAIS RECENTES (2024/2025) para os ativos solicitados.
         
-        Estrutura do Objeto JSON para cada ativo:
-        {
-          "ticker": "STRING",
-          "type": "FII" ou "ACAO",
-          "segment": "STRING (Setor)",
-          "p_vp": NUMBER (P/VP),
-          "dy_12m": NUMBER (Dividend Yield 12m em %),
-          "market_cap": "STRING (Valor Mercado Formatado ex: 1.2B)",
-          "liquidity": "STRING (Liquidez Diária)",
-          "p_l": NUMBER (P/L - Apenas Ações, 0 se FII),
-          "roe": NUMBER (ROE % - Apenas Ações, 0 se FII),
-          "vacancy": NUMBER (Vacância Física % - Apenas FIIs, 0 se Ação),
-          "assets_value": "STRING (Valor Patrimonial Formatado)",
-          "management_type": "STRING (Gestão Ativa/Passiva)",
-          "management_fee": "STRING (Taxa Adm)",
-          "net_margin": NUMBER (Margem Líq %),
-          "net_debt_ebitda": NUMBER (Dívida Líq/EBITDA),
-          "ev_ebitda": NUMBER (EV/EBITDA),
-          "last_dividend": NUMBER (Último Provento R$)
-        }
+        REGRAS DE RETORNO:
+        1. Retorne APENAS um JSON Array puro. Sem Markdown. Sem explicações.
+        2. Use 0 para dados numéricos não encontrados.
+        3. Para campos percentuais (DY, Vacância), retorne o número (ex: 10.5 para 10,5%).
+        4. Identifique corretamente se é FII ou ACAO pelo ticker (final 11 geralmente FII, 3/4 Ação).
         
-        Se um dado não for encontrado, use 0 ou null.
+        SCHEMA DO JSON (obrigatório seguir estas chaves exatas):
+        [
+          {
+            "ticker": "AAAA11",
+            "type": "FII" | "ACAO",
+            "segment": "Logística/Bancos/etc",
+            "p_vp": number,
+            "dy_12m": number,
+            "market_cap": "string formatada (ex: 1.2B)",
+            "liquidity": "string formatada (ex: 5.4M)",
+            "p_l": number,
+            "roe": number,
+            "vacancy": number,
+            "assets_value": "string formatada (Patrimônio Líquido)",
+            "management_type": "Ativa" | "Passiva",
+            "net_margin": number,
+            "net_debt_ebitda": number,
+            "ev_ebitda": number,
+            "last_dividend": number
+          }
+        ]
     `;
 
     for (let i = 0; i < allTickers.length; i += CHUNK_SIZE) {
         const batch = allTickers.slice(i, i + CHUNK_SIZE);
         
-        const prompt = `
-          Busque dados fundamentalistas para: ${batch.join(', ')}.
-          Retorne o JSON Array com os dados.
-        `;
+        const prompt = `Ativos: ${batch.join(', ')}. Busque e retorne JSON.`;
 
         try {
             const response = await ai.models.generateContent({
@@ -95,7 +123,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               contents: prompt,
               config: {
                 tools: [{ googleSearch: {} }],
-                // IMPORTANTE: Removemos responseSchema e responseMimeType pois conflitam com Google Search em alguns modelos
                 temperature: 0.1,
                 systemInstruction: baseSystemInstruction
               }
@@ -103,52 +130,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             const rawText = response.text || '';
             const cleanedJson = cleanJsonString(rawText);
-            const batchResults = JSON.parse(cleanedJson);
             
-            if (Array.isArray(batchResults)) {
-                results.push(...batchResults);
+            try {
+                const batchResults = JSON.parse(cleanedJson);
+                if (Array.isArray(batchResults)) {
+                    results.push(...batchResults);
+                }
+            } catch (jsonErr) {
+                console.error(`Erro parse JSON lote ${i}:`, jsonErr);
             }
         } catch (innerErr) {
-            console.error(`Erro no lote ${i} (${batch.join(',')}):`, innerErr);
+            console.error(`Erro API lote ${i}:`, innerErr);
         }
     }
 
-    // Mapeamento e Salvamento no Banco
+    // Tratamento e Sanitização dos Dados antes do DB
     const dbPayload = results.map((item: any) => ({
         ticker: item.ticker,
         type: item.type,
         segment: item.segment || 'Geral',
-        pvp: item.p_vp || 0,
-        dy_12m: item.dy_12m || 0,
-        pl: item.p_l || 0,
-        roe: item.roe || 0,
-        vacancia: item.vacancy || 0,
-        valor_mercado: item.market_cap,
-        liquidez: item.liquidity,
-        tipo_gestao: item.management_type,
-        taxa_adm: item.management_fee,
-        margem_liquida: item.net_margin,
-        divida_liquida_ebitda: item.net_debt_ebitda,
-        ev_ebitda: item.ev_ebitda,
-        ultimo_rendimento: item.last_dividend,
-        patrimonio_liquido: item.assets_value,
+        // Converte tudo para número puro para evitar erros no banco
+        pvp: parseRobustNumber(item.p_vp),
+        dy_12m: parseRobustNumber(item.dy_12m),
+        pl: parseRobustNumber(item.p_l),
+        roe: parseRobustNumber(item.roe),
+        vacancia: parseRobustNumber(item.vacancy),
+        // Mantém strings formatadas para exibição direta
+        valor_mercado: item.market_cap || '-',
+        liquidez: item.liquidity || '-',
+        // Mais números
+        margem_liquida: parseRobustNumber(item.net_margin),
+        divida_liquida_ebitda: parseRobustNumber(item.net_debt_ebitda),
+        ev_ebitda: parseRobustNumber(item.ev_ebitda),
+        ultimo_rendimento: parseRobustNumber(item.last_dividend),
+        // Strings informativas
+        tipo_gestao: item.management_type || '-',
+        patrimonio_liquido: item.assets_value || '-',
+        taxa_adm: '-', // Geralmente difícil de pegar estruturado
         updated_at: new Date().toISOString()
     }));
 
+    // Upsert no Supabase
     if (dbPayload.length > 0) {
         const { error } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
-        if (error) console.error("Erro Supabase:", error);
+        if (error) console.error("Erro Supabase Upsert:", error);
     }
 
     return res.status(200).json({ 
         success: true, 
-        data: dbPayload, 
         count: dbPayload.length,
-        source: 'Gemini 2.5 Flash Fundamentals' 
+        data: dbPayload 
     });
 
   } catch (error: any) {
-    console.error("Gemini AI Feed Fatal:", error);
+    console.error("Gemini Feed Fatal:", error);
     return res.status(500).json({ error: error.message });
   }
 }
