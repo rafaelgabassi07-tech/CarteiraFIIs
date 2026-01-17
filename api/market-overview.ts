@@ -15,7 +15,9 @@ const client = axios.create({
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': 'https://investidor10.com.br/'
+        'Referer': 'https://investidor10.com.br/',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
     },
     timeout: 15000
 });
@@ -32,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        // Executa requests em paralelo para otimizar tempo
+        // Executa requests em paralelo
         const [homeResponse, rankingResponse] = await Promise.all([
             client.get('https://investidor10.com.br/'),
             client.get('https://investidor10.com.br/fiis/ranking/')
@@ -43,67 +45,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const gainers: any[] = [];
         const losers: any[] = [];
 
-        // Seletores baseados na estrutura do Investidor10 (Abas de Ações)
-        // Geralmente: #tabs-1 (Ações), #tabs-2 (FIIs). Vamos focar em Ações para High/Low pois oscilam mais.
-        
-        // Extração de Altas (Geralmente a primeira tabela ou lista na home)
-        // Nota: A estrutura pode variar, tentamos capturar os cards de destaque.
-        
-        const extractCards = (containerSelector: string, targetArray: any[], typeLabel: 'gain' | 'loss') => {
-            $home(containerSelector).find('.actions-list > div, .card-ticker').each((_, el) => {
-                if (targetArray.length >= 4) return;
-                
-                const ticker = $home(el).find('.ticker, .name').first().text().trim();
-                const priceStr = $home(el).find('.price, .value').first().text().trim();
-                const changeStr = $home(el).find('.change, .percentage').first().text().trim();
-                
-                // Filtra vazios
+        // Função genérica para extrair dados de uma lista de elementos (cards ou linhas de tabela)
+        const extractAssets = (elements: cheerio.Cheerio, type: 'gain' | 'loss', limit = 4) => {
+            const list: any[] = [];
+            elements.each((_, el) => {
+                if (list.length >= limit) return;
+
+                let ticker = '';
+                let priceStr = '';
+                let changeStr = '';
+
+                // Tenta estrutura de CARD (comum na Home mobile/desktop)
+                if ($home(el).find('.ticker, .name').length > 0) {
+                    ticker = $home(el).find('.ticker, .name').first().text().trim();
+                    priceStr = $home(el).find('.price, .value').first().text().trim();
+                    changeStr = $home(el).find('.change, .percentage').first().text().trim();
+                } 
+                // Tenta estrutura de TABELA (se mudarem para listagem simples)
+                else if ($home(el).find('td').length >= 3) {
+                    ticker = $home(el).find('td').eq(0).text().trim();
+                    priceStr = $home(el).find('td').eq(1).text().trim();
+                    changeStr = $home(el).find('td').eq(2).text().trim();
+                }
+
                 if (!ticker || !changeStr) return;
 
-                const change = parseValue(changeStr);
                 const price = parseValue(priceStr);
+                const change = parseValue(changeStr);
 
-                // Valida se é realmente alta ou baixa baseado na lista que estamos iterando
-                if (typeLabel === 'gain' && change < 0) return;
-                if (typeLabel === 'loss' && change > 0) return;
+                // Filtro de consistência
+                if (type === 'gain' && change <= 0) return;
+                if (type === 'loss' && change >= 0) return;
 
-                targetArray.push({
+                list.push({
                     ticker,
-                    name: ticker, // Nome curto igual ao ticker por padrão
+                    name: ticker,
                     price,
                     change,
-                    assetType: 'STOCK', // Default para Ações na home
-                    type: typeLabel,
-                    description: `Variação: ${changeStr}`
+                    assetType: 'STOCK', // Home page geralmente prioriza Ações nos destaques
+                    type,
+                    description: type === 'gain' ? `Alta de ${changeStr}` : `Queda de ${changeStr}`
                 });
             });
+            return list;
         };
 
-        // Tenta capturar das tabelas de "Altas" e "Baixas" que costumam ter IDs ou classes específicas
-        // Fallback genérico: Procura tabelas com headers "Cotação" e "Variação"
-        $home('.sc-bdfBwQ, .rankings-content').each((_, section) => {
-             const title = $home(section).find('h2, .title').text().toLowerCase();
-             if (title.includes('altas')) {
-                 $home(section).find('table tbody tr').each((i, tr) => {
-                     if (gainers.length >= 4) return;
-                     const ticker = $home(tr).find('td').eq(0).text().trim();
-                     const price = parseValue($home(tr).find('td').eq(1).text());
-                     const change = parseValue($home(tr).find('td').eq(2).text());
-                     if(ticker && change > 0) {
-                         gainers.push({ ticker, name: ticker, price, change, assetType: 'STOCK', type: 'gain', description: 'Alta do dia' });
-                     }
-                 });
-             } else if (title.includes('baixas')) {
-                 $home(section).find('table tbody tr').each((i, tr) => {
-                     if (losers.length >= 4) return;
-                     const ticker = $home(tr).find('td').eq(0).text().trim();
-                     const price = parseValue($home(tr).find('td').eq(1).text());
-                     const change = parseValue($home(tr).find('td').eq(2).text());
-                     if(ticker && change < 0) {
-                         losers.push({ ticker, name: ticker, price, change, assetType: 'STOCK', type: 'loss', description: 'Baixa do dia' });
-                     }
-                 });
-             }
+        // Procura por seções baseando-se no TEXTO do título, não em classes CSS instáveis
+        $home('h2, h3, h4, .title').each((_, titleEl) => {
+            const titleText = $home(titleEl).text().toLowerCase();
+            const parentSection = $home(titleEl).closest('section, div.container, .content, .box');
+
+            if (titleText.includes('maiores altas')) {
+                // Tenta achar a lista dentro desta seção. 
+                // #tabs-1 geralmente é Ações, #tabs-2 FIIs. Tentamos pegar o primeiro visível ou genérico.
+                let container = parentSection.find('#tabs-1, .active, .list-ticker').first();
+                if (container.length === 0) container = parentSection; // Fallback para a própria seção
+                
+                const items = extractAssets(container.find('.card-ticker, .ticker-card, tbody tr, li'), 'gain');
+                if (items.length > 0 && gainers.length === 0) gainers.push(...items);
+            }
+
+            if (titleText.includes('maiores baixas')) {
+                let container = parentSection.find('#tabs-1, .active, .list-ticker').first();
+                if (container.length === 0) container = parentSection;
+
+                const items = extractAssets(container.find('.card-ticker, .ticker-card, tbody tr, li'), 'loss');
+                if (items.length > 0 && losers.length === 0) losers.push(...items);
+            }
         });
 
         // 2. Processar Oportunidades (Ranking FIIs)
@@ -111,48 +119,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const opportunities: any[] = [];
         const candidates: any[] = [];
 
-        $rank('#table-ranking tbody tr').each((_, tr) => {
-            // Colunas usuais: Ticker, Cotação, P/VP, DY, Liquidez...
-            // Precisamos mapear pelo index, mas Investidor10 pode mudar.
-            // Vamos tentar achar o index pelo header se possível, ou assumir padrão.
-            // Padrão visual: Ticker(0), Cotação(1), P/VP(2), DY(3)... (aproximado)
-            
-            // Melhor abordagem: pegar texto e validar
-            const ticker = $rank(tr).find('td').eq(0).text().trim().toUpperCase();
-            const pvpStr = $rank(tr).find('td').eq(2).text().trim(); 
-            const dyStr = $rank(tr).find('td').eq(3).text().trim();
-            const priceStr = $rank(tr).find('td').eq(1).text().trim();
-
-            const pvp = parseValue(pvpStr);
-            const dy = parseValue(dyStr);
-            const price = parseValue(priceStr);
-
-            // Filtro de Oportunidade: FII barato (0.8 < P/VP < 0.98) e bom pagador (DY > 6%)
-            if (pvp > 0.8 && pvp < 0.98 && dy > 6 && price > 0) {
-                candidates.push({
-                    ticker,
-                    name: ticker,
-                    price,
-                    change: 0, // Ranking não mostra variação dia fácil, usamos 0
-                    assetType: 'FII',
-                    type: 'opportunity',
-                    description: `P/VP: ${pvp.toFixed(2)} • DY: ${dy.toFixed(1)}%`,
-                    pvp // guardado para sort
-                });
-            }
+        // Mapeamento dinâmico de colunas (header da tabela)
+        const colIndex: Record<string, number> = { ticker: -1, pvp: -1, dy: -1, price: -1 };
+        
+        $rank('#table-ranking thead th').each((index, th) => {
+            const text = $rank(th).text().toLowerCase();
+            if (text.includes('ativo') || text.includes('ticker')) colIndex.ticker = index;
+            else if (text.includes('p/vp')) colIndex.pvp = index;
+            else if (text.includes('dy') || text.includes('yield')) colIndex.dy = index;
+            else if (text.includes('cota') || text.includes('preço') || text.includes('atual')) colIndex.price = index;
         });
 
-        // Seleciona 4 aleatórios ou os melhores do filtro para variar
-        // Shuffle array
-        const shuffled = candidates.sort(() => 0.5 - Math.random());
-        opportunities.push(...shuffled.slice(0, 4));
+        if (colIndex.ticker !== -1 && colIndex.pvp !== -1) {
+            $rank('#table-ranking tbody tr').each((_, tr) => {
+                const tds = $rank(tr).find('td');
+                const ticker = $rank(tds[colIndex.ticker]).text().trim().toUpperCase();
+                
+                // P/VP
+                const pvpStr = $rank(tds[colIndex.pvp]).text().trim();
+                const pvp = parseValue(pvpStr);
 
-        // Fallback Mock se o scraper falhar totalmente (layout mudou)
+                // DY
+                const dyStr = colIndex.dy !== -1 ? $rank(tds[colIndex.dy]).text().trim() : '0';
+                const dy = parseValue(dyStr);
+
+                // Price
+                const priceStr = colIndex.price !== -1 ? $rank(tds[colIndex.price]).text().trim() : '0';
+                const price = parseValue(priceStr);
+
+                // Lógica de Oportunidade: Desconto saudável (0.80 a 0.98) e DY bom (>8%)
+                if (pvp >= 0.8 && pvp <= 0.98 && dy > 8 && price > 0) {
+                    candidates.push({
+                        ticker,
+                        name: ticker,
+                        price,
+                        change: 0, 
+                        assetType: 'FII',
+                        type: 'opportunity',
+                        description: `P/VP ${pvp.toFixed(2)} • DY ${dy.toFixed(1)}%`,
+                        score: dy // Pontuação baseada no Yield
+                    });
+                }
+            });
+        }
+
+        // Seleciona os melhores (maior DY) e embaralha levemente para variedade
+        candidates.sort((a, b) => b.score - a.score);
+        const topCandidates = candidates.slice(0, 10).sort(() => 0.5 - Math.random()); // Top 10 embaralhados
+        opportunities.push(...topCandidates.slice(0, 4));
+
+        // Fallback Mock se tudo falhar (estrutura do site mudou drasticamente)
         if (gainers.length === 0) {
-            gainers.push({ ticker: 'VALE3', name: 'Vale', price: 62.50, change: 1.2, assetType: 'STOCK', type: 'gain', description: 'Dados simulados (Scraper falhou)' });
+            gainers.push({ ticker: 'VALE3', name: 'Vale', price: 62.50, change: 1.2, assetType: 'STOCK', type: 'gain', description: 'Dados indisponíveis' });
         }
         if (losers.length === 0) {
-            losers.push({ ticker: 'MGLU3', name: 'Magalu', price: 2.10, change: -2.5, assetType: 'STOCK', type: 'loss', description: 'Dados simulados (Scraper falhou)' });
+            losers.push({ ticker: 'MGLU3', name: 'Magalu', price: 2.10, change: -2.5, assetType: 'STOCK', type: 'loss', description: 'Dados indisponíveis' });
         }
 
         return res.status(200).json({
