@@ -45,11 +45,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const gainers: any[] = [];
         const losers: any[] = [];
 
-        // Função genérica para extrair dados de uma lista de elementos (cards ou linhas de tabela)
-        // Fix: Use Cheerio<any> to avoid strict type mismatch with AnyNode/Element
-        const extractAssets = (elements: cheerio.Cheerio<any>, type: 'gain' | 'loss', limit = 4) => {
+        // Função genérica para extrair dados de uma lista de elementos
+        // Changed type to 'any' to fix TS2314/TS2322 build errors with Cheerio generics
+        const extractAssets = (elements: any, type: 'gain' | 'loss', limit = 4) => {
             const list: any[] = [];
-            // Fix: Explicitly type callback parameters
+            
             elements.each((_: any, el: any) => {
                 if (list.length >= limit) return;
 
@@ -92,15 +92,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return list;
         };
 
-        // Procura por seções baseando-se no TEXTO do título, não em classes CSS instáveis
-        // Fix: Explicitly type callback parameters
+        // Procura por seções baseando-se no TEXTO do título
         $home('h2, h3, h4, .title').each((_: any, titleEl: any) => {
             const titleText = $home(titleEl).text().toLowerCase();
             const parentSection = $home(titleEl).closest('section, div.container, .content, .box');
 
             if (titleText.includes('maiores altas')) {
                 // Tenta achar a lista dentro desta seção. 
-                // #tabs-1 geralmente é Ações, #tabs-2 FIIs. Tentamos pegar o primeiro visível ou genérico.
                 let container = parentSection.find('#tabs-1, .active, .list-ticker').first();
                 if (container.length === 0) container = parentSection; // Fallback para a própria seção
                 
@@ -125,7 +123,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Mapeamento dinâmico de colunas (header da tabela)
         const colIndex: Record<string, number> = { ticker: -1, pvp: -1, dy: -1, price: -1 };
         
-        // Fix: Explicitly type callback parameters
         $rank('#table-ranking thead th').each((index: number, th: any) => {
             const text = $rank(th).text().toLowerCase();
             if (text.includes('ativo') || text.includes('ticker')) colIndex.ticker = index;
@@ -135,7 +132,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         if (colIndex.ticker !== -1 && colIndex.pvp !== -1) {
-            // Fix: Explicitly type callback parameters
             $rank('#table-ranking tbody tr').each((_: any, tr: any) => {
                 const tds = $rank(tr).find('td');
                 const ticker = $rank(tds[colIndex.ticker]).text().trim().toUpperCase();
