@@ -1,9 +1,8 @@
 
-const CACHE_NAME = 'investfiis-pwa-v8.3.15'; // Bumped version
+const CACHE_NAME = 'investfiis-pwa-v8.3.16'; // Bumped version
 
 const PRECACHE_ASSETS = [
   './',
-  './index.html',
   './manifest.json',
   './logo.svg'
 ];
@@ -17,7 +16,15 @@ self.addEventListener('message', (event) => {
 self.addEventListener('install', (event) => {
   self.skipWaiting(); // Força instalação imediata
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        // Tenta fazer cache dos assets.
+        // O .catch garante que erros não fatais (ex: um asset falhando)
+        // não impeçam a instalação do SW, embora o ideal seja todos funcionarem.
+        return cache.addAll(PRECACHE_ASSETS).catch(err => {
+            console.warn('SW Precache warning:', err);
+        });
+      })
   );
 });
 
@@ -77,7 +84,8 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
-        .catch(() => caches.match('./index.html'))
+        .catch(() => caches.match('./index.html')) // Fallback offline (se existir no cache)
+        .catch(() => caches.match('./')) // Fallback alternativo para raiz
     );
     return;
   }
@@ -91,6 +99,8 @@ self.addEventListener('fetch', (event) => {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
           }
           return networkResponse;
+        }).catch(() => {
+           // Network fail silently
         });
         return cachedResponse || fetchPromise;
       })
