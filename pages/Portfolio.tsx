@@ -20,17 +20,10 @@ const formatPercent = (val: number, privacy = false) => {
   return `${signal}${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
-const formatCompactNumber = (num: number) => {
-    if (!num) return '-';
-    if (num >= 1000000000) return 'R$ ' + (num / 1000000000).toFixed(1) + 'B';
-    if (num >= 1000000) return 'R$ ' + (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return 'R$ ' + (num / 1000).toFixed(1) + 'K';
-    return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-};
-
 // Componente Visual para Indicadores processados pela IA
 const InsightCard = ({ label, value, subLabel, condition, type = 'neutral' }: any) => {
-    const hasValue = value !== undefined && value !== null && value !== '' && value !== 'N/A' && value !== 0;
+    // Permite 0, mas barra undefined/null/N/A
+    const hasValue = value !== undefined && value !== null && value !== '' && value !== 'N/A';
     const displayValue = hasValue ? value : '-';
     
     // Define cores baseadas na condição (ex: P/VP < 1 é bom)
@@ -60,7 +53,9 @@ const InsightCard = ({ label, value, subLabel, condition, type = 'neutral' }: an
 const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | AssetType>('ALL');
-  const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
+  
+  // Alterado para armazenar apenas o Ticker, permitindo reatividade
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
   const filteredAssets = useMemo(() => {
     return portfolio
@@ -71,6 +66,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
       })
       .sort((a, b) => (b.currentPrice || 0) * b.quantity - (a.currentPrice || 0) * a.quantity); 
   }, [portfolio, searchTerm, filterType]);
+
+  // Deriva o ativo selecionado diretamente da prop portfolio atualizada
+  const activeAsset = useMemo(() => {
+      return portfolio.find(p => p.ticker === selectedTicker) || null;
+  }, [portfolio, selectedTicker]);
 
   return (
     <div className="pb-32 min-h-screen">
@@ -107,7 +107,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                 const isPositive = totalGainValue >= 0;
 
                 return (
-                    <button key={asset.ticker} onClick={() => setSelectedAsset(asset)} className="w-full bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 flex items-center justify-between shadow-sm press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 anim-stagger-item" style={{ animationDelay: `${index * 40}ms` }}>
+                    <button key={asset.ticker} onClick={() => setSelectedTicker(asset.ticker)} className="w-full bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 flex items-center justify-between shadow-sm press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 anim-stagger-item" style={{ animationDelay: `${index * 40}ms` }}>
                         <div className="flex items-center gap-4">
                             <div className="relative">
                                 {asset.logoUrl ? (
@@ -139,16 +139,16 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         )}
       </div>
 
-      <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
-        {selectedAsset && (() => {
-            const currentPrice = selectedAsset.currentPrice || 0;
-            const avgPrice = selectedAsset.averagePrice || 0;
-            const totalCurrent = currentPrice * selectedAsset.quantity;
-            const totalCost = avgPrice * selectedAsset.quantity;
+      <SwipeableModal isOpen={!!activeAsset} onClose={() => setSelectedTicker(null)}>
+        {activeAsset && (() => {
+            const currentPrice = activeAsset.currentPrice || 0;
+            const avgPrice = activeAsset.averagePrice || 0;
+            const totalCurrent = currentPrice * activeAsset.quantity;
+            const totalCost = avgPrice * activeAsset.quantity;
             const totalGainValue = totalCurrent - totalCost;
             const totalGainPercent = totalCost > 0 ? (totalGainValue / totalCost) * 100 : 0;
             const isPositive = totalGainValue >= 0;
-            const isFII = selectedAsset.assetType === AssetType.FII;
+            const isFII = activeAsset.assetType === AssetType.FII;
 
             return (
             <div className="p-6 pb-20 bg-zinc-50 dark:bg-black/95 min-h-full">
@@ -163,19 +163,19 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                 <div className="flex justify-between items-start mb-8 anim-slide-up" style={{ animationDelay: '50ms' }}>
                     <div className="flex items-center gap-4">
                         <div className="w-14 h-14 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center overflow-hidden shadow-lg shadow-zinc-200/50 dark:shadow-none">
-                            {selectedAsset.logoUrl ? <img src={selectedAsset.logoUrl} className="w-full h-full object-contain p-2" /> : <span className="text-lg font-black text-zinc-400">{selectedAsset.ticker.substring(0,2)}</span>}
+                            {activeAsset.logoUrl ? <img src={activeAsset.logoUrl} className="w-full h-full object-contain p-2" /> : <span className="text-lg font-black text-zinc-400">{activeAsset.ticker.substring(0,2)}</span>}
                         </div>
                         <div>
                             <div className="flex items-center gap-2 mb-1">
-                                <h1 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">{selectedAsset.ticker}</h1>
+                                <h1 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">{activeAsset.ticker}</h1>
                                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-200 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 border-sky-200 dark:border-sky-800'}`}>
                                     {isFII ? 'Fundo Imobiliário' : 'Ação'}
                                 </span>
                             </div>
-                            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{selectedAsset.segment || 'Segmento Geral'}</p>
+                            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{activeAsset.segment || 'Segmento Geral'}</p>
                         </div>
                     </div>
-                    <button onClick={() => setSelectedAsset(null)} className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
+                    <button onClick={() => setSelectedTicker(null)} className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
@@ -212,7 +212,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             </div>
                             <div className="text-right">
                                 <span className="block text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Quantidade</span>
-                                <span className="block text-sm font-black text-zinc-900 dark:text-white">{selectedAsset.quantity}</span>
+                                <span className="block text-sm font-black text-zinc-900 dark:text-white">{activeAsset.quantity}</span>
                             </div>
                         </div>
                      </div>
@@ -230,26 +230,26 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         <div className="grid grid-cols-3 gap-2.5">
                             <InsightCard 
                                 label="Dividend Yield" 
-                                value={selectedAsset.dy_12m ? `${selectedAsset.dy_12m}%` : '-'} 
+                                value={activeAsset.dy_12m !== undefined ? `${activeAsset.dy_12m}%` : '-'} 
                                 subLabel="Últimos 12m"
-                                condition={selectedAsset.dy_12m && selectedAsset.dy_12m > 6 ? 'good' : 'neutral'}
+                                condition={activeAsset.dy_12m && activeAsset.dy_12m > 6 ? 'good' : 'neutral'}
                             />
                             <InsightCard 
                                 label="P/VP" 
-                                value={selectedAsset.p_vp} 
-                                condition={selectedAsset.p_vp && selectedAsset.p_vp < 1 ? 'good' : 'neutral'}
+                                value={activeAsset.p_vp} 
+                                condition={activeAsset.p_vp && activeAsset.p_vp < 1 ? 'good' : 'neutral'}
                             />
                             {isFII ? (
                                 <InsightCard 
                                     label="Vacância" 
-                                    value={selectedAsset.vacancy !== undefined ? `${selectedAsset.vacancy}%` : '-'} 
-                                    condition={selectedAsset.vacancy === 0 ? 'good' : selectedAsset.vacancy && selectedAsset.vacancy > 10 ? 'alert' : 'neutral'}
+                                    value={activeAsset.vacancy !== undefined ? `${activeAsset.vacancy}%` : '-'} 
+                                    condition={activeAsset.vacancy === 0 ? 'good' : activeAsset.vacancy && activeAsset.vacancy > 10 ? 'alert' : 'neutral'}
                                 />
                             ) : (
                                 <InsightCard 
                                     label="P/L" 
-                                    value={selectedAsset.p_l} 
-                                    condition={selectedAsset.p_l && selectedAsset.p_l > 0 && selectedAsset.p_l < 15 ? 'good' : 'neutral'}
+                                    value={activeAsset.p_l} 
+                                    condition={activeAsset.p_l && activeAsset.p_l > 0 && activeAsset.p_l < 15 ? 'good' : 'neutral'}
                                 />
                             )}
                         </div>
@@ -258,41 +258,41 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                              <div>
                                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Valor de Mercado</span>
-                                 <span className="text-xs font-black text-zinc-900 dark:text-white">{selectedAsset.market_cap || '-'}</span>
+                                 <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.market_cap || '-'}</span>
                              </div>
                              <div>
                                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Liquidez Diária</span>
-                                 <span className="text-xs font-black text-zinc-900 dark:text-white">{selectedAsset.liquidity || '-'}</span>
+                                 <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.liquidity || '-'}</span>
                              </div>
                              
                              {isFII ? (
                                  <>
                                     <div>
                                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Valor Patrimonial</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{selectedAsset.assets_value || '-'}</span>
+                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.assets_value || '-'}</span>
                                     </div>
                                     <div>
                                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Último Rendimento</span>
-                                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{selectedAsset.last_dividend ? formatBRL(selectedAsset.last_dividend) : '-'}</span>
+                                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{activeAsset.last_dividend !== undefined ? formatBRL(activeAsset.last_dividend) : '-'}</span>
                                     </div>
                                     <div className="col-span-2">
                                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Gestão</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white capitalize">{selectedAsset.manager_type || '-'}</span>
+                                        <span className="text-xs font-black text-zinc-900 dark:text-white capitalize">{activeAsset.manager_type || '-'}</span>
                                     </div>
                                  </>
                              ) : (
                                  <>
                                     <div>
                                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">ROE</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{selectedAsset.roe ? `${selectedAsset.roe}%` : '-'}</span>
+                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.roe !== undefined ? `${activeAsset.roe}%` : '-'}</span>
                                     </div>
                                     <div>
                                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Margem Líquida</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{selectedAsset.net_margin ? `${selectedAsset.net_margin}%` : '-'}</span>
+                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.net_margin !== undefined ? `${activeAsset.net_margin}%` : '-'}</span>
                                     </div>
                                     <div>
                                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Dívida Líq/EBITDA</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{selectedAsset.net_debt_ebitda || '-'}</span>
+                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.net_debt_ebitda !== undefined ? activeAsset.net_debt_ebitda : '-'}</span>
                                     </div>
                                  </>
                              )}
@@ -302,7 +302,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                     {/* Fonte e Links */}
                     <div className="mt-6">
                         <a 
-                            href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${selectedAsset.ticker.toLowerCase()}/`} 
+                            href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${activeAsset.ticker.toLowerCase()}/`} 
                             target="_blank" 
                             rel="noreferrer"
                             className="flex items-center justify-center gap-2 w-full p-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[10px] font-black uppercase tracking-[0.15em] shadow-lg press-effect"
@@ -310,7 +310,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             Ver no Investidor10 <ExternalLink className="w-3 h-3" />
                         </a>
                         <p className="text-[9px] text-center text-zinc-400 mt-3 font-medium">
-                            Última atualização Gemini: {selectedAsset.updated_at ? new Date(selectedAsset.updated_at).toLocaleDateString() : 'Hoje'}
+                            Última atualização Gemini: {activeAsset.updated_at ? new Date(activeAsset.updated_at).toLocaleDateString() : 'Hoje'}
                         </p>
                     </div>
                 </div>
