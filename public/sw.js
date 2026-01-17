@@ -1,10 +1,11 @@
 
-const CACHE_NAME = 'investfiis-pwa-v8.3.16'; // Bumped version
+const CACHE_NAME = 'investfiis-pwa-v8.3.17'; // Bumped version
 
+// Mantemos apenas o essencial no precache para garantir instalação rápida e sem erros.
+// Assets como logo.svg serão cacheados dinamicamente na primeira requisição (estratégia Cache First).
 const PRECACHE_ASSETS = [
   './',
-  './manifest.json',
-  './logo.svg'
+  './manifest.json'
 ];
 
 self.addEventListener('message', (event) => {
@@ -14,15 +15,12 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Força instalação imediata
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        // Tenta fazer cache dos assets.
-        // O .catch garante que erros não fatais (ex: um asset falhando)
-        // não impeçam a instalação do SW, embora o ideal seja todos funcionarem.
         return cache.addAll(PRECACHE_ASSETS).catch(err => {
-            console.warn('SW Precache warning:', err);
+            console.warn('SW Precache warning (non-fatal):', err);
         });
       })
   );
@@ -31,7 +29,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
-      self.clients.claim(), // Assume controle imediato
+      self.clients.claim(),
       caches.keys().then((keys) => {
         return Promise.all(
           keys.map((key) => {
@@ -50,60 +48,58 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.method !== 'GET') return;
 
-  // API Calls: Network First
-  if (url.href.includes('brapi.dev') || url.href.includes('/api/')) {
+  // 1. API Calls (Supabase/Brapi/Gemini): Network First
+  if (url.href.includes('brapi.dev') || url.href.includes('/api/') || url.href.includes('supabase.co')) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
           return networkResponse;
         })
         .catch(() => {
+          // Opcional: Retornar fallback offline para dados se necessário
           return caches.match(event.request);
         })
     );
     return;
   }
 
-  // Static Assets (CDN): Cache First
-  if (url.href.includes('cloudfront.net') || url.href.includes('static.statusinvest')) {
+  // 2. Static Assets (Images, Icons, Fonts): Cache First -> Network -> Cache
+  if (
+    url.pathname.match(/\.(png|jpg|jpeg|svg|ico|json|css|js|woff|woff2)$/) ||
+    url.href.includes('cloudfront.net')
+  ) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) return cachedResponse;
+        
         return fetch(event.request).then((networkResponse) => {
+          // Apenas cacheia se sucesso (200)
+          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+            return networkResponse;
+          }
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
           });
           return networkResponse;
+        }).catch(() => {
+           // Fallback para placeholder se desejar
+           return new Response('', { status: 404, statusText: 'Not Found' });
         });
       })
     );
     return;
   }
 
+  // 3. Navigation (HTML): Network First -> Cache (Offline)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
-        .catch(() => caches.match('./index.html')) // Fallback offline (se existir no cache)
-        .catch(() => caches.match('./')) // Fallback alternativo para raiz
+        .catch(() => {
+          return caches.match('./index.html')
+            .then(r => r || caches.match('./')); 
+        })
     );
     return;
-  }
-
-  if (url.origin === self.location.origin) {
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        const fetchPromise = fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
-          }
-          return networkResponse;
-        }).catch(() => {
-           // Network fail silently
-        });
-        return cachedResponse || fetchPromise;
-      })
-    );
   }
 });
