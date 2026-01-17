@@ -1,6 +1,9 @@
 
-import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators } from "../types";
+import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, MarketOverview } from "../types";
 import { supabase } from "./supabase";
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
@@ -142,4 +145,18 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       console.error("MarketService Fatal:", error);
       return { dividends: [], metadata: {}, error: error.message };
   }
+};
+
+export const fetchMarketOverview = async (): Promise<MarketOverview> => {
+    try {
+        // Substituído chamada Gemini por Scraper dedicado para economizar tokens e requisições
+        const response = await fetch('/api/market-overview');
+        if (!response.ok) throw new Error('Falha no scraper de mercado');
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Erro ao buscar visão de mercado (Scraper):", error);
+        return { gainers: [], losers: [], opportunities: [], lastUpdate: Date.now() };
+    }
 };

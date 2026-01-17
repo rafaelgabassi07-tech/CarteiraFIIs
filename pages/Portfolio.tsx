@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType } from '../types';
-import { Search, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Building2, Wallet, Target, Activity, ExternalLink, BarChart3, Droplets, PieChart as PieIcon, Info, Percent, Scale, X, Layers, Briefcase, Zap, Coins, Calculator, Sparkles, BrainCircuit } from 'lucide-react';
+import { Search, ArrowUpRight, ArrowDownRight, Wallet, ExternalLink, X } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
@@ -20,41 +20,10 @@ const formatPercent = (val: number, privacy = false) => {
   return `${signal}${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
-// Componente Visual para Indicadores processados pela IA
-const InsightCard = ({ label, value, subLabel, condition, type = 'neutral' }: any) => {
-    // Permite 0, mas barra undefined/null/N/A
-    const hasValue = value !== undefined && value !== null && value !== '' && value !== 'N/A';
-    const displayValue = hasValue ? value : '-';
-    
-    // Define cores baseadas na condição (ex: P/VP < 1 é bom)
-    let bgClass = "bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/50 dark:border-zinc-700/50";
-    let textClass = "text-zinc-900 dark:text-zinc-200";
-    let labelClass = "text-zinc-400";
-
-    if (hasValue && condition === 'good') {
-        bgClass = "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30";
-        textClass = "text-emerald-700 dark:text-emerald-400";
-        labelClass = "text-emerald-600/60 dark:text-emerald-400/60";
-    } else if (hasValue && condition === 'alert') {
-        bgClass = "bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30";
-        textClass = "text-amber-700 dark:text-amber-400";
-        labelClass = "text-amber-600/60 dark:text-amber-400/60";
-    }
-
-    return (
-        <div className={`flex flex-col justify-center p-3 rounded-xl border ${bgClass} transition-all`}>
-            <span className={`text-[9px] font-black uppercase tracking-wider mb-1 ${labelClass}`}>{label}</span>
-            <span className={`text-sm font-black tracking-tight leading-none ${textClass}`}>{displayValue}</span>
-            {subLabel && <span className="text-[8px] font-bold opacity-50 mt-1">{subLabel}</span>}
-        </div>
-    );
-};
-
 const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | AssetType>('ALL');
   
-  // Alterado para armazenar apenas o Ticker, permitindo reatividade
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
   const filteredAssets = useMemo(() => {
@@ -67,7 +36,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
       .sort((a, b) => (b.currentPrice || 0) * b.quantity - (a.currentPrice || 0) * a.quantity); 
   }, [portfolio, searchTerm, filterType]);
 
-  // Deriva o ativo selecionado diretamente da prop portfolio atualizada
   const activeAsset = useMemo(() => {
       return portfolio.find(p => p.ticker === selectedTicker) || null;
   }, [portfolio, selectedTicker]);
@@ -153,14 +121,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             return (
             <div className="p-6 pb-20 bg-zinc-50 dark:bg-black/95 min-h-full">
                 
-                {/* AI Header */}
-                <div className="flex items-center justify-center gap-2 mb-8 opacity-70 anim-slide-up">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Powered by Gemini 2.5 Flash</span>
-                </div>
-
                 {/* Main Header */}
-                <div className="flex justify-between items-start mb-8 anim-slide-up" style={{ animationDelay: '50ms' }}>
+                <div className="flex justify-between items-start mb-8 anim-slide-up">
                     <div className="flex items-center gap-4">
                         <div className="w-14 h-14 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center overflow-hidden shadow-lg shadow-zinc-200/50 dark:shadow-none">
                             {activeAsset.logoUrl ? <img src={activeAsset.logoUrl} className="w-full h-full object-contain p-2" /> : <span className="text-lg font-black text-zinc-400">{activeAsset.ticker.substring(0,2)}</span>}
@@ -181,7 +143,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                 </div>
 
                 {/* Section: Minha Posição */}
-                <div className="mb-8 anim-slide-up" style={{ animationDelay: '100ms' }}>
+                <div className="mb-8 anim-slide-up" style={{ animationDelay: '50ms' }}>
                      <h3 className="px-2 mb-3 text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                         <Wallet className="w-3 h-3" /> Minha Posição
                      </h3>
@@ -218,101 +180,16 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                      </div>
                 </div>
 
-                {/* Section: Gemini Intelligence */}
-                <div className="anim-slide-up" style={{ animationDelay: '150ms' }}>
-                    <h3 className="px-2 mb-3 text-[10px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-2">
-                        <BrainCircuit className="w-3 h-3" /> Análise Fundamentalista
-                    </h3>
-                    
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-5">
-                        
-                        {/* Indicadores Chave */}
-                        <div className="grid grid-cols-3 gap-2.5">
-                            <InsightCard 
-                                label="Dividend Yield" 
-                                value={activeAsset.dy_12m !== undefined ? `${activeAsset.dy_12m}%` : '-'} 
-                                subLabel="Últimos 12m"
-                                condition={activeAsset.dy_12m && activeAsset.dy_12m > 6 ? 'good' : 'neutral'}
-                            />
-                            <InsightCard 
-                                label="P/VP" 
-                                value={activeAsset.p_vp} 
-                                condition={activeAsset.p_vp && activeAsset.p_vp < 1 ? 'good' : 'neutral'}
-                            />
-                            {isFII ? (
-                                <InsightCard 
-                                    label="Vacância" 
-                                    value={activeAsset.vacancy !== undefined ? `${activeAsset.vacancy}%` : '-'} 
-                                    condition={activeAsset.vacancy === 0 ? 'good' : activeAsset.vacancy && activeAsset.vacancy > 10 ? 'alert' : 'neutral'}
-                                />
-                            ) : (
-                                <InsightCard 
-                                    label="P/L" 
-                                    value={activeAsset.p_l} 
-                                    condition={activeAsset.p_l && activeAsset.p_l > 0 && activeAsset.p_l < 15 ? 'good' : 'neutral'}
-                                />
-                            )}
-                        </div>
-
-                        {/* Detalhes Secundários */}
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                             <div>
-                                 <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Valor de Mercado</span>
-                                 <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.market_cap || '-'}</span>
-                             </div>
-                             <div>
-                                 <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Liquidez Diária</span>
-                                 <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.liquidity || '-'}</span>
-                             </div>
-                             
-                             {isFII ? (
-                                 <>
-                                    <div>
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Valor Patrimonial</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.assets_value || '-'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Último Rendimento</span>
-                                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{activeAsset.last_dividend !== undefined ? formatBRL(activeAsset.last_dividend) : '-'}</span>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Gestão</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white capitalize">{activeAsset.manager_type || '-'}</span>
-                                    </div>
-                                 </>
-                             ) : (
-                                 <>
-                                    <div>
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">ROE</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.roe !== undefined ? `${activeAsset.roe}%` : '-'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Margem Líquida</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.net_margin !== undefined ? `${activeAsset.net_margin}%` : '-'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Dívida Líq/EBITDA</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{activeAsset.net_debt_ebitda !== undefined ? activeAsset.net_debt_ebitda : '-'}</span>
-                                    </div>
-                                 </>
-                             )}
-                        </div>
-                    </div>
-
-                    {/* Fonte e Links */}
-                    <div className="mt-6">
-                        <a 
-                            href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${activeAsset.ticker.toLowerCase()}/`} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="flex items-center justify-center gap-2 w-full p-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[10px] font-black uppercase tracking-[0.15em] shadow-lg press-effect"
-                        >
-                            Ver no Investidor10 <ExternalLink className="w-3 h-3" />
-                        </a>
-                        <p className="text-[9px] text-center text-zinc-400 mt-3 font-medium">
-                            Última atualização Gemini: {activeAsset.updated_at ? new Date(activeAsset.updated_at).toLocaleDateString() : 'Hoje'}
-                        </p>
-                    </div>
+                {/* Fonte e Links */}
+                <div className="mt-6 anim-slide-up" style={{ animationDelay: '100ms' }}>
+                    <a 
+                        href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${activeAsset.ticker.toLowerCase()}/`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-2 w-full p-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[10px] font-black uppercase tracking-[0.15em] shadow-lg press-effect"
+                    >
+                        Ver no Investidor10 <ExternalLink className="w-3 h-3" />
+                    </a>
                 </div>
 
             </div>

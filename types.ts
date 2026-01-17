@@ -158,3 +158,20 @@ export interface LogEntry {
   message: string;
   data?: any[];
 }
+
+export interface MarketAsset {
+  ticker: string;
+  name: string;
+  price: number;
+  change: number;
+  type: 'gain' | 'loss' | 'opportunity';
+  description?: string;
+  assetType: 'FII' | 'STOCK';
+}
+
+export interface MarketOverview {
+  gainers: MarketAsset[];
+  losers: MarketAsset[];
+  opportunities: MarketAsset[]; // FIIs descontados ou Ações baratas
+  lastUpdate: number;
+}

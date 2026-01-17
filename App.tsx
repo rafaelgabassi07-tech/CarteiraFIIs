@@ -5,6 +5,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
+import { Market } from './pages/Market';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType } from './types';
@@ -67,6 +68,7 @@ const getSupabaseUrl = () => {
 const MemoizedHome = React.memo(Home);
 const MemoizedPortfolio = React.memo(Portfolio);
 const MemoizedTransactions = React.memo(Transactions);
+const MemoizedMarket = React.memo(Market);
 
 const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
@@ -566,13 +568,13 @@ const App: React.FC = () => {
 
         <>
             <Header 
-                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Histórico'} 
+                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : currentTab === 'market' ? 'Mercado' : 'Histórico'} 
                 showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
                 isRefreshing={isRefreshing || isAiLoading || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
                 onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
                 notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} 
                 onRefreshClick={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
-                hideBorder={currentTab === 'transactions'}
+                hideBorder={currentTab === 'transactions' || currentTab === 'market'}
             />
             <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
               {showSettings ? (
@@ -593,6 +595,7 @@ const App: React.FC = () => {
                 <div key={currentTab} className="anim-page-enter">
                   {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} isAiLoading={isAiLoading} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
                   {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} privacyMode={privacyMode} />}
+                  {currentTab === 'market' && <MemoizedMarket />}
                   {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                 </div>
               )}
