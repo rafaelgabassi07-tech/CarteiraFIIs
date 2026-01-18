@@ -4,7 +4,7 @@ import { LogEntry, LogLevel } from '../types';
 class LogManager {
   private logs: LogEntry[] = [];
   private listeners: ((logs: LogEntry[]) => void)[] = [];
-  private maxLogs = 200;
+  private maxLogs = 500; // Aumentado para manter mais histórico
   private initialized = false;
 
   // Guarda as referências originais do console
@@ -12,65 +12,102 @@ class LogManager {
     log: console.log,
     warn: console.warn,
     error: console.error,
-    debug: console.debug
+    debug: console.debug,
+    info: console.info
   };
 
   init() {
     if (this.initialized) return;
     this.initialized = true;
 
-    // Sobrescreve console.log
+    // 1. Sobrescreve métodos do console
     console.log = (...args) => {
       this.addLog('info', args);
       this.originalConsole.log.apply(console, args);
     };
 
-    // Sobrescreve console.warn
     console.warn = (...args) => {
       this.addLog('warn', args);
       this.originalConsole.warn.apply(console, args);
     };
 
-    // Sobrescreve console.error
     console.error = (...args) => {
       this.addLog('error', args);
       this.originalConsole.error.apply(console, args);
     };
     
-    // Sobrescreve console.debug
     console.debug = (...args) => {
         this.addLog('debug', args);
         this.originalConsole.debug.apply(console, args);
     };
 
-    this.addLog('info', ['System Logger Initialized']);
+    console.info = (...args) => {
+        this.addLog('info', args);
+        this.originalConsole.info.apply(console, args);
+    };
+
+    // 2. Captura Erros Globais (Uncaught Exceptions)
+    window.onerror = (message, source, lineno, colno, error) => {
+        this.addLog('error', [
+            'Uncaught Exception:',
+            message,
+            `at ${source}:${lineno}:${colno}`,
+            error ? error.stack : ''
+        ]);
+        // Não retorna true para permitir que o navegador também logue o erro
+    };
+
+    // 3. Captura Promessas Rejeitadas (Unhandled Rejections)
+    window.onunhandledrejection = (event) => {
+        this.addLog('error', ['Unhandled Rejection:', event.reason]);
+    };
+
+    this.addLog('info', ['System Logger Initialized v2.0']);
+    this.addLog('info', [`User Agent: ${navigator.userAgent}`]);
+  }
+
+  private formatArg(arg: any): string {
+      try {
+          if (arg instanceof Error) {
+              return `${arg.name}: ${arg.message}\n${arg.stack || ''}`;
+          }
+          if (typeof arg === 'object') {
+              if (arg === null) return 'null';
+              // Tenta stringify, se falhar (circular), usa fallback
+              try {
+                  return JSON.stringify(arg, null, 2);
+              } catch {
+                  return String(arg);
+              }
+          }
+          return String(arg);
+      } catch {
+          return '[Log Error]';
+      }
   }
 
   private addLog(level: LogLevel, args: any[]) {
     try {
-        const message = args.map(arg => {
-            if (typeof arg === 'object') {
-                try {
-                    return JSON.stringify(arg);
-                } catch {
-                    return '[Circular Object]';
-                }
-            }
-            return String(arg);
-        }).join(' ');
+        // Formata cada argumento individualmente para melhor visualização
+        const formattedArgs = args.map(arg => {
+            if (typeof arg === 'string') return arg;
+            return this.formatArg(arg);
+        });
+
+        // Mensagem curta para a lista
+        const message = formattedArgs.join(' ').substring(0, 300) + (formattedArgs.join(' ').length > 300 ? '...' : '');
 
         const entry: LogEntry = {
             id: crypto.randomUUID(),
             timestamp: Date.now(),
             level,
-            message,
-            data: args
+            message: message, // Resumo
+            data: formattedArgs // Dados completos processados
         };
 
         this.logs = [entry, ...this.logs].slice(0, this.maxLogs);
         this.notifyListeners();
     } catch (e) {
-        // Evita loop infinito se o logger falhar
         this.originalConsole.error('Logger internal error', e);
     }
   }

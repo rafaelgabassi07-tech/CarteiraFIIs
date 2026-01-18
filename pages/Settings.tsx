@@ -10,7 +10,7 @@ import { Transaction, DividendReceipt, ServiceMetric, LogEntry, ThemeType } from
 import { logger } from '../services/logger';
 import { parseB3Excel } from '../services/excelService';
 import { supabase } from '../services/supabase';
-import { SwipeableModal } from '../components/Layout'; // Importação Adicionada
+import { SwipeableModal } from '../components/Layout';
 
 interface SettingsProps {
   user: any;
@@ -66,6 +66,7 @@ export const Settings: React.FC<SettingsProps> = ({
   // States para o Logger
   const [showLogs, setShowLogs] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const logsEndRef = useRef<HTMLDivElement>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +82,13 @@ export const Settings: React.FC<SettingsProps> = ({
       const unsubscribe = logger.subscribe((l) => setLogs([...l])); // Clone array to force re-render
       return unsubscribe;
   }, []);
+  
+  // Auto-scroll logs
+  useEffect(() => {
+      if (showLogs && logsEndRef.current) {
+          logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+  }, [logs, showLogs]);
   
   // Auto-trigger para Health Check ao entrar na seção
   useEffect(() => {
@@ -365,14 +373,13 @@ export const Settings: React.FC<SettingsProps> = ({
             <button onClick={() => setShowLogs(true)} className="w-full p-4 rounded-2xl bg-zinc-950 dark:bg-black border border-zinc-800 flex items-center justify-between group press-effect">
                 <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-zinc-400 border border-zinc-800"><Terminal className="w-5 h-5" /></div>
-                    <div className="text-left"><h4 className="text-xs font-bold text-white mb-0.5">Console de Logs</h4><p className="text-[10px] text-zinc-500 font-mono">{logs.length} registro(s)</p></div>
+                    <div className="text-left"><h4 className="text-xs font-bold text-white mb-0.5">Console do Desenvolvedor</h4><p className="text-[10px] text-zinc-500 font-mono">{logs.length} registro(s)</p></div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
             </button>
           </div>
         )}
 
-        {/* ... (data, privacy, updates, reset sections remain same) ... */}
         {activeSection === 'data' && (
           <div className="space-y-4">
             <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
@@ -471,42 +478,44 @@ export const Settings: React.FC<SettingsProps> = ({
           </div>
         )}
 
-        {/* --- MODAL DE LOGS IMPLEMENTADO --- */}
+        {/* --- MODAL DE LOGS MELHORADO --- */}
         <SwipeableModal isOpen={showLogs} onClose={() => setShowLogs(false)}>
-            <div className="p-6 pb-24 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">System Logs</h2>
+            <div className="p-0 h-full flex flex-col bg-[#0d1117] text-[#c9d1d9]">
+                <div className="flex items-center justify-between p-4 border-b border-[#30363d] bg-[#161b22]">
+                    <div className="flex items-center gap-2">
+                        <Terminal className="w-5 h-5 text-zinc-400" />
+                        <h2 className="text-sm font-bold text-white tracking-wide font-mono">Console</h2>
+                    </div>
                     <div className="flex gap-2">
-                         <button onClick={() => { logger.clear(); setLogs([]); }} className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:text-rose-500 transition-colors">
+                         <button onClick={() => { logger.clear(); setLogs([]); }} className="p-2 rounded hover:bg-[#21262d] text-zinc-400 hover:text-white transition-colors" title="Clear Console">
                             <Trash2 className="w-4 h-4" />
                          </button>
-                         <button onClick={() => setShowLogs(false)} className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
+                         <button onClick={() => setShowLogs(false)} className="p-2 rounded hover:bg-[#21262d] text-zinc-400 hover:text-white transition-colors" title="Close">
                             <XCircle className="w-4 h-4" />
                          </button>
                     </div>
                 </div>
-                <div className="flex-1 bg-zinc-950 rounded-xl border border-zinc-800 p-4 font-mono text-[10px] overflow-y-auto overflow-x-hidden shadow-inner">
+                <div className="flex-1 p-2 font-mono text-[11px] overflow-y-auto overflow-x-hidden">
                     {logs.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-zinc-600">
-                            <Terminal className="w-8 h-8 mb-2 opacity-50" />
-                            <p>No logs recorded</p>
+                        <div className="h-full flex flex-col items-center justify-center text-[#8b949e]">
+                            <Terminal className="w-8 h-8 mb-3 opacity-50" />
+                            <p>Console empty</p>
                         </div>
                     ) : (
-                        logs.map((log) => (
-                            <div key={log.id} className="mb-3 break-all border-b border-zinc-900 pb-2 last:border-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className={`px-1.5 rounded text-[8px] font-bold uppercase ${log.level === 'error' ? 'bg-rose-900/30 text-rose-500' : log.level === 'warn' ? 'bg-amber-900/30 text-amber-500' : 'bg-blue-900/30 text-blue-500'}`}>
-                                        {log.level}
-                                    </span>
-                                    <span className="text-zinc-600">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        logs.slice().reverse().map((log) => (
+                            <div key={log.id} className={`mb-1 p-1.5 rounded flex items-start gap-2 break-all ${log.level === 'error' ? 'bg-[#3c1618] text-[#ff7b72] border-l-2 border-[#ff7b72]' : log.level === 'warn' ? 'bg-[#342a15] text-[#d29922] border-l-2 border-[#d29922]' : 'text-[#c9d1d9] border-l-2 border-transparent'}`}>
+                                <span className="text-[#8b949e] shrink-0 select-none w-14 text-[9px] mt-0.5">{new Date(log.timestamp).toLocaleTimeString([], {hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                                <div className="flex-1">
+                                    {log.data && log.data.map((arg, idx) => (
+                                        <pre key={idx} className="whitespace-pre-wrap font-mono leading-relaxed" style={{ fontFamily: 'Menlo, Monaco, "Courier New", monospace' }}>
+                                            {String(arg)}
+                                        </pre>
+                                    ))}
                                 </div>
-                                <p className="text-zinc-300 leading-relaxed">{log.message}</p>
-                                {log.data && log.data.length > 0 && (
-                                    <pre className="mt-1 text-zinc-500 overflow-x-auto p-1 bg-black/30 rounded">{JSON.stringify(log.data, null, 2)}</pre>
-                                )}
                             </div>
                         ))
                     )}
+                    <div ref={logsEndRef} />
                 </div>
             </div>
         </SwipeableModal>

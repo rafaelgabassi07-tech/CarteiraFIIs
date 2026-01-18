@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, TrendingUp, TrendingDown, ExternalLink, RefreshCw, AlertTriangle, Globe, Zap, Percent, BarChart3, Clock, Lock, Coins } from 'lucide-react';
 import { fetchMarketOverview } from '../services/geminiService';
 import { MarketOverview, MarketHighlightFII, MarketHighlightStock, MarketVariation, MarketHighDividend } from '../types';
@@ -124,11 +124,19 @@ export const Market: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    
+    // Controle de execução única
+    const hasFetched = useRef(false);
 
     const loadMarketData = async (force = false) => {
+        // Previne chamadas duplicadas em modo estrito ou re-renders rápidos
+        if (!force && hasFetched.current) return;
+        
+        hasFetched.current = true;
         setLoading(true);
         setHasError(false);
         setErrorMsg('');
+        
         try {
             if (!force) {
                 const cached = localStorage.getItem('investfiis_market_grounding_cache');
@@ -167,6 +175,8 @@ export const Market: React.FC = () => {
 
     useEffect(() => {
         loadMarketData();
+        // Cleanup para permitir recarregar se o componente for desmontado e montado novamente
+        return () => { hasFetched.current = false; };
     }, []);
 
     const hasData = data && data.highlights;

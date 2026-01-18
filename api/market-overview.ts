@@ -31,7 +31,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
     
-    // Timeout handling wrapper para Vercel
+    // --- CACHE STRATEGY (CRITICAL FOR 429 ERRORS) ---
+    // s-maxage=900: Cache na CDN da Vercel por 15 minutos (900s).
+    // stale-while-revalidate=600: Se o cache expirar, serve o velho por +10 min enquanto busca o novo em background.
+    res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=600');
+    
     const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Timeout de processamento (25s)")), 25000)
     );
@@ -46,44 +50,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         const systemInstruction = `
-            Você é um API Backend Financeiro.
-            Sua tarefa é buscar dados AGORA no Google e retornar JSON PURO.
+            ATUE COMO UM AGREGADOR DE DADOS FINANCEIROS B3 (BRASIL).
             
-            REGRAS ESTRITAS:
-            1. NÃO use Markdown.
-            2. NÃO inclua explicações.
-            3. NÃO inclua citações no JSON (ex: [1]).
-            4. Se faltar dado, use 0 ou null.
+            TAREFA ÚNICA:
+            Faça uma busca no Google AGORA e retorne um resumo do mercado de hoje em JSON.
             
-            DADOS A BUSCAR (HOJE):
-            - 3 FIIs com P/VP < 0.95 e DY > 9% (discounted_fiis)
-            - 3 Ações Blue Chips baratas (P/L baixo) (discounted_stocks)
-            - 3 Maiores Altas do Ibovespa HOJE (top_gainers)
-            - 3 Maiores Baixas do Ibovespa HOJE (top_losers)
-            - 3 Ativos com alto DY (high_dividend_yield)
-
-            SCHEMA DE RESPOSTA:
+            RETORNE APENAS ESTE JSON (Sem markdown, sem texto extra):
             {
-              "market_status": "Aberto" ou "Fechado",
-              "last_update": "HH:mm DD/MM",
+              "market_status": "Aberto" | "Fechado",
+              "last_update": "HH:mm",
               "highlights": {
-                "discounted_fiis": [{ "ticker": "XPLG11", "name": "XP Log", "price": 100.50, "p_vp": 0.90, "dy_12m": 9.5 }],
-                "discounted_stocks": [{ "ticker": "BBAS3", "name": "Banco do Brasil", "price": 27.00, "p_l": 4.5, "p_vp": 0.8 }],
-                "top_gainers": [{ "ticker": "PETR4", "variation_percent": 2.5, "price": 40.00 }],
-                "top_losers": [{ "ticker": "VALE3", "variation_percent": -1.2, "price": 60.00 }],
-                "high_dividend_yield": [{ "ticker": "VGIP11", "type": "FII", "dy_12m": 14.0, "last_dividend": 0.80 }]
+                "discounted_fiis": [ { "ticker": "AAAA11", "name": "Nome", "price": 0.0, "p_vp": 0.0, "dy_12m": 0.0 } ], // Top 3 FIIs descontados
+                "discounted_stocks": [ { "ticker": "AAAA3", "name": "Nome", "price": 0.0, "p_l": 0.0, "p_vp": 0.0 } ], // Top 3 Ações baratas
+                "top_gainers": [ { "ticker": "AAAA3", "variation_percent": 0.0, "price": 0.0 } ], // Top 3 Altas IBOV hoje
+                "top_losers": [ { "ticker": "AAAA3", "variation_percent": -0.0, "price": 0.0 } ], // Top 3 Baixas IBOV hoje
+                "high_dividend_yield": [ { "ticker": "AAAA11", "type": "FII", "dy_12m": 0.0, "last_dividend": 0.0 } ] // Top 3 DY
               }
             }
         `;
 
         const generationPromise = ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: "Gere o JSON de mercado agora.",
+            contents: "Resumo de mercado B3 agora.",
             config: {
                 systemInstruction: systemInstruction,
                 tools: [{ googleSearch: {} }],
                 temperature: 0.1,
-                // Removido responseMimeType para evitar conflito com Google Search tools
                 safetySettings: [
                     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
                     { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -124,8 +116,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (error: any) {
         console.error('Market Overview Error:', error);
         
-        // Estrutura de fallback para a UI não quebrar completamente
-        return res.status(200).json({
+        const isQuotaError = error.message?.includes('429') || error.status === 429;
+        const status = isQuotaError ? 429 : 200; // Se for quota real, avisa o front, senão manda 200 com fallback
+
+        return res.status(status).json({
             market_status: 'Indisponível',
             last_update: new Date().toLocaleString('pt-BR'),
             highlights: {
@@ -137,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
             sources: [],
             error: true,
-            message: error.message || "Erro ao conectar com Gemini."
+            message: isQuotaError ? "Muitas requisições. Tente em 1 min." : (error.message || "Erro ao conectar com Gemini.")
         });
     }
 }

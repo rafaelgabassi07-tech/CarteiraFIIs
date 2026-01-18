@@ -16,7 +16,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.4.4'; // Bump Version
+const APP_VERSION = '8.4.5'; // Bump Version
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -134,7 +134,7 @@ const App: React.FC = () => {
   // Ref para serviços para evitar re-renders cíclicos no checkServiceHealth
   const servicesRef = useRef<ServiceMetric[]>([
     { id: 'db', label: 'Supabase Database', url: getSupabaseUrl(), icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
-    { id: 'ai', label: 'Gemini 2.5 AI', url: 'https://aistudio.google.com', icon: Sparkles, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
+    // Gemini removido da verificação automática para economizar cota
     { id: 'market', label: 'Brapi Market Data', url: 'https://brapi.dev', icon: Activity, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
@@ -229,13 +229,6 @@ const App: React.FC = () => {
                 }
                 message = 'Conexão com Banco de Dados estabelecida.';
             } 
-            else if (s.id === 'ai') {
-                const res = await fetch('/api/ai-status', { signal: controller.signal });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                if (data.status === 'error') throw new Error(data.message || 'Erro AI');
-                message = 'Modelo Gemini 2.5 Flash operacional.';
-            }
             else if (s.id === 'market') {
                 await fetch('https://brapi.dev/api/quote/PETR4', { mode: 'no-cors', signal: controller.signal });
                 message = 'API de Cotações acessível.';
