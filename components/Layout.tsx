@@ -67,7 +67,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  title, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, bannerVisible = false, hideBorder = false
+  title, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, bannerVisible = false, hideBorder = false, onRefresh
 }) => {
   return (
     <header 
@@ -100,6 +100,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onRefresh && !showBack && (
+            <button onClick={onRefresh} disabled={isRefreshing} className={`w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} strokeWidth={2} />
+            </button>
+          )}
           {updateAvailable && !showBack && (
             <button onClick={onUpdateClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-sky-500 text-white press-effect shadow-lg shadow-sky-500/30">
               <Download className="w-4 h-4 animate-bounce" strokeWidth={2.5} />

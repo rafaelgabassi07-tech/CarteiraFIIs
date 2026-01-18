@@ -530,7 +530,7 @@ const App: React.FC = () => {
                 isRefreshing={isRefreshing || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
                 onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
                 notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} 
-                onRefreshClick={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
+                onRefresh={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
                 hideBorder={currentTab === 'transactions'}
             />
             <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
