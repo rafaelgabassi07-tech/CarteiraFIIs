@@ -24,15 +24,17 @@ const DiscountedFIICard: React.FC<{ asset: MarketHighlightFII }> = ({ asset }) =
         <div className="relative z-10 grid grid-cols-2 gap-2 pt-2 border-t border-indigo-50 dark:border-zinc-800">
              <div>
                 <p className="text-[9px] text-zinc-400 font-bold uppercase">P/VP</p>
-                <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{asset.p_vp.toFixed(2)}</p>
+                <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{typeof asset.p_vp === 'number' ? asset.p_vp.toFixed(2) : '-'}</p>
              </div>
              <div className="text-right">
                 <p className="text-[9px] text-zinc-400 font-bold uppercase">DY 12M</p>
-                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{asset.dy_12m.toFixed(1)}%</p>
+                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{typeof asset.dy_12m === 'number' ? asset.dy_12m.toFixed(1) : '-'}%</p>
              </div>
         </div>
         <div className="mt-2 text-center">
-            <span className="text-xs font-black text-zinc-900 dark:text-white">{asset.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            <span className="text-xs font-black text-zinc-900 dark:text-white">
+                {typeof asset.price === 'number' ? asset.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ -'}
+            </span>
         </div>
     </div>
 );
@@ -50,15 +52,17 @@ const DiscountedStockCard: React.FC<{ asset: MarketHighlightStock }> = ({ asset 
         <div className="relative z-10 grid grid-cols-2 gap-2 pt-2 border-t border-sky-50 dark:border-zinc-800">
              <div>
                 <p className="text-[9px] text-zinc-400 font-bold uppercase">P/L</p>
-                <p className="text-sm font-black text-sky-600 dark:text-sky-400">{asset.p_l.toFixed(1)}</p>
+                <p className="text-sm font-black text-sky-600 dark:text-sky-400">{typeof asset.p_l === 'number' ? asset.p_l.toFixed(1) : '-'}</p>
              </div>
              <div className="text-right">
                 <p className="text-[9px] text-zinc-400 font-bold uppercase">P/VP</p>
-                <p className="text-sm font-black text-sky-600 dark:text-sky-400">{asset.p_vp.toFixed(2)}</p>
+                <p className="text-sm font-black text-sky-600 dark:text-sky-400">{typeof asset.p_vp === 'number' ? asset.p_vp.toFixed(2) : '-'}</p>
              </div>
         </div>
         <div className="mt-2 text-center">
-            <span className="text-xs font-black text-zinc-900 dark:text-white">{asset.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            <span className="text-xs font-black text-zinc-900 dark:text-white">
+                {typeof asset.price === 'number' ? asset.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ -'}
+            </span>
         </div>
     </div>
 );
@@ -72,7 +76,9 @@ const VariationCard: React.FC<{ asset: MarketVariation; type: 'gain' | 'loss' }>
         <div className={`flex items-center justify-between p-3 rounded-xl border ${bgClass}`}>
             <div>
                 <span className="text-sm font-black text-zinc-900 dark:text-white block">{asset.ticker}</span>
-                <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">{asset.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
+                    {typeof asset.price === 'number' ? asset.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ -'}
+                </span>
             </div>
             <div className={`flex items-center gap-1 text-sm font-black ${colorClass}`}>
                 {isGain ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
@@ -96,7 +102,9 @@ const HighDividendCard: React.FC<{ asset: MarketHighDividend }> = ({ asset }) =>
         </div>
         <div className="pt-2 border-t border-amber-50 dark:border-zinc-800">
             <p className="text-[9px] text-zinc-400 font-bold uppercase">Último Pag.</p>
-            <p className="text-xs font-black text-zinc-900 dark:text-white">{asset.last_dividend.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+            <p className="text-xs font-black text-zinc-900 dark:text-white">
+                {typeof asset.last_dividend === 'number' ? asset.last_dividend.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ -'}
+            </p>
         </div>
     </div>
 );
@@ -115,10 +123,12 @@ export const Market: React.FC = () => {
     const [data, setData] = useState<ExtendedMarketOverview | null>(null);
     const [loading, setLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
 
     const loadMarketData = async (force = false) => {
         setLoading(true);
         setHasError(false);
+        setErrorMsg('');
         try {
             if (!force) {
                 const cached = localStorage.getItem('investfiis_market_grounding_cache');
@@ -138,6 +148,7 @@ export const Market: React.FC = () => {
             
             if (newData.error || (!newData.highlights?.discounted_fiis?.length && !newData.highlights?.top_gainers?.length)) {
                 setHasError(true);
+                setErrorMsg(typeof newData.message === 'string' ? newData.message : 'Dados inválidos recebidos da IA.');
                 setData(null);
             } else {
                 setData(newData);
@@ -146,8 +157,9 @@ export const Market: React.FC = () => {
                     timestamp: Date.now()
                 }));
             }
-        } catch (e) {
+        } catch (e: any) {
             setHasError(true);
+            setErrorMsg(typeof e.message === 'string' ? e.message : 'Falha na conexão com o servidor.');
         } finally {
             setLoading(false);
         }
@@ -200,8 +212,11 @@ export const Market: React.FC = () => {
                         <AlertTriangle className="w-8 h-8" strokeWidth={1.5} />
                     </div>
                     <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-2">Mercado Indisponível</h3>
-                    <p className="text-sm text-zinc-500 mb-8 max-w-xs leading-relaxed">
-                        Não conseguimos processar os dados do mercado agora. Isso pode ser uma instabilidade temporária na IA.
+                    <p className="text-sm text-zinc-500 mb-2 max-w-xs leading-relaxed">
+                        Não conseguimos processar os dados agora.
+                    </p>
+                    <p className="text-[10px] text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-lg mb-8 font-mono max-w-xs truncate">
+                        {errorMsg}
                     </p>
                     <button 
                         onClick={() => loadMarketData(true)}

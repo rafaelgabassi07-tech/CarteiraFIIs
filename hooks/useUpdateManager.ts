@@ -48,7 +48,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
         const registration = await navigator.serviceWorker.ready;
         await registration.update();
       } catch (e) {
-        console.error('Erro ao atualizar SW:', e);
+        console.warn('Erro ao atualizar SW (pode ser restrição de ambiente):', e);
       }
     }
     return hasJsonUpdate;
@@ -64,16 +64,20 @@ export const useUpdateManager = (currentAppVersion: string) => {
         
         // 1. Remove Service Workers
         if ('serviceWorker' in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            for (const reg of regs) {
-                await reg.unregister();
-            }
+            try {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (const reg of regs) {
+                    await reg.unregister();
+                }
+            } catch (e) { console.warn('Falha ao remover SWs:', e); }
         }
         
         // 2. Limpa Caches de Arquivos (Não localStorage)
         if ('caches' in window) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map(key => caches.delete(key)));
+            try {
+                const keys = await caches.keys();
+                await Promise.all(keys.map(key => caches.delete(key)));
+            } catch (e) { console.warn('Falha ao limpar caches:', e); }
         }
 
         // 3. Reload Forçado
@@ -82,17 +86,21 @@ export const useUpdateManager = (currentAppVersion: string) => {
 
     // Tenta atualização suave primeiro
     if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg) {
-        if (reg.waiting) {
-            setUpdateProgress(50);
-            reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-            return;
-        }
-        setUpdateProgress(30);
-        try {
-            await reg.update();
-        } catch {}
+      try {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            if (reg.waiting) {
+                setUpdateProgress(50);
+                reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+                return;
+            }
+            setUpdateProgress(30);
+            try {
+                await reg.update();
+            } catch {}
+          }
+      } catch (e) {
+          console.warn('Falha ao obter registro SW:', e);
       }
     }
 
@@ -103,20 +111,26 @@ export const useUpdateManager = (currentAppVersion: string) => {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistration().then(reg => {
-          if (reg?.waiting) {
-              setIsUpdateAvailable(true);
-              checkVersionMetadata();
-          }
-      });
+      try {
+          navigator.serviceWorker.getRegistration().then(reg => {
+              if (reg?.waiting) {
+                  setIsUpdateAvailable(true);
+                  checkVersionMetadata();
+              }
+          }).catch(err => {
+              console.warn("SW getRegistration failed:", err);
+          });
 
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!refreshing) {
-              refreshing = true;
-              window.location.reload();
-          }
-      });
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+              if (!refreshing) {
+                  refreshing = true;
+                  window.location.reload();
+              }
+          });
+      } catch (e) {
+          console.warn("Service Worker not supported or restricted:", e);
+      }
     }
     checkVersionMetadata();
   }, [checkVersionMetadata]);

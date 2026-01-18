@@ -5,6 +5,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -19,8 +20,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
+    const start = Date.now();
     // Teste com o modelo padrão recomendado
-    const response = await ai.models.generateContent({
+    await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: 'Ping',
         config: { 
@@ -28,17 +30,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             temperature: 0
         }
     });
+    const duration = Date.now() - start;
     
     return res.status(200).json({ 
         status: 'ok', 
         message: 'Gemini Operacional',
+        latency: duration,
         timestamp: Date.now()
     });
 
   } catch (error: any) {
     console.error("Health Check Failed:", error);
     
-    // Retorna mensagem de erro detalhada
     return res.status(500).json({ 
         status: 'error', 
         message: error.message || 'Erro desconhecido ao conectar com Gemini API',

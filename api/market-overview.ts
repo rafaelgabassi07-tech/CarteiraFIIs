@@ -2,9 +2,40 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 
+// Função utilitária para extrair JSON de texto misto (com markdown ou citações)
+function extractJson(text: string) {
+    if (!text) return null;
+    try {
+        // Tenta parse direto
+        return JSON.parse(text);
+    } catch (e) {
+        // Tenta limpar blocos de código
+        let clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        // Tenta encontrar o objeto JSON principal
+        const start = clean.indexOf('{');
+        const end = clean.lastIndexOf('}');
+        
+        if (start !== -1 && end !== -1) {
+            try {
+                return JSON.parse(clean.substring(start, end + 1));
+            } catch (e2) {
+                console.error("Falha ao extrair JSON substring:", clean.substring(start, end + 1));
+            }
+        }
+        return null;
+    }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+    
+    // Timeout handling wrapper para Vercel
+    const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout de processamento (25s)")), 25000)
+    );
+
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     if (!process.env.API_KEY) {
@@ -15,61 +46,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         const systemInstruction = `
-Você é um Analista de Mercado Financeiro Especialista em B3 (Brasil), integrado a um aplicativo de investimentos. Sua função é buscar dados atualizados da web e estruturá-los estritamente em formato JSON para serem consumidos pelo front-end.
+            Você é um API Backend Financeiro.
+            Sua tarefa é buscar dados AGORA no Google e retornar JSON PURO.
+            
+            REGRAS ESTRITAS:
+            1. NÃO use Markdown.
+            2. NÃO inclua explicações.
+            3. NÃO inclua citações no JSON (ex: [1]).
+            4. Se faltar dado, use 0 ou null.
+            
+            DADOS A BUSCAR (HOJE):
+            - 3 FIIs com P/VP < 0.95 e DY > 9% (discounted_fiis)
+            - 3 Ações Blue Chips baratas (P/L baixo) (discounted_stocks)
+            - 3 Maiores Altas do Ibovespa HOJE (top_gainers)
+            - 3 Maiores Baixas do Ibovespa HOJE (top_losers)
+            - 3 Ativos com alto DY (high_dividend_yield)
 
-### SUAS FONTES DE DADOS
-Você DEVE utilizar a ferramenta 'Google Search' para encontrar as cotações, indicadores e variações mais recentes do dia para Ações e FIIs na B3.
-
-### REGRAS DE NEGÓCIO PARA A PÁGINA "MERCADO"
-
-1.  **Ativos Descontados (Oportunidades):**
-    * **FIIs:** Busque fundos com P/VP (Preço sobre Valor Patrimonial) abaixo de 0.95, mas que tenham liquidez média diária acima de R$ 500k.
-    * **Ações:** Busque empresas sólidas (Blue Chips ou Mid Caps) com P/L (Preço sobre Lucro) baixo em relação ao histórico ou P/VP descontado.
-
-2.  **Maiores Variações (Do Dia):**
-    * Identifique os 5 ativos (Ações ou FIIs) com maior variação positiva (%) no pregão de hoje.
-    * Identifique os 5 ativos com maior variação negativa (%).
-
-3.  **Dividendos (Maiores DY):**
-    * Liste ativos com Dividend Yield (DY) anualizado (12 meses) superior a 10% (FIIs) ou superior à média do setor (Ações).
-
-### FORMATO DE RESPOSTA OBRIGATÓRIO (JSON)
-Não inclua "markdown", crases ou textos introdutórios. Retorne APENAS o objeto JSON seguindo este schema:
-
-{
-  "market_status": "Open/Closed",
-  "last_update": "DD/MM/YYYY HH:mm",
-  "highlights": {
-    "discounted_fiis": [
-      { "ticker": "ABCD11", "name": "Nome do Fundo", "price": 0.00, "p_vp": 0.00, "dy_12m": 0.00 }
-    ],
-    "discounted_stocks": [
-      { "ticker": "ABCD3", "name": "Nome da Empresa", "price": 0.00, "p_l": 0.00, "p_vp": 0.00 }
-    ],
-    "top_gainers": [
-      { "ticker": "ABCD3", "variation_percent": 0.00, "price": 0.00 }
-    ],
-    "top_losers": [
-      { "ticker": "ABCD3", "variation_percent": -0.00, "price": 0.00 }
-    ],
-    "high_dividend_yield": [
-      { "ticker": "ABCD11", "type": "FII/Ação", "dy_12m": 0.00, "last_dividend": 0.00 }
-    ]
-  }
-}
-
-### TRATAMENTO DE ERROS
-Caso não consiga encontrar dados específicos para uma categoria, retorne um array vazio [] naquela chave, mas nunca quebre o formato JSON.
+            SCHEMA DE RESPOSTA:
+            {
+              "market_status": "Aberto" ou "Fechado",
+              "last_update": "HH:mm DD/MM",
+              "highlights": {
+                "discounted_fiis": [{ "ticker": "XPLG11", "name": "XP Log", "price": 100.50, "p_vp": 0.90, "dy_12m": 9.5 }],
+                "discounted_stocks": [{ "ticker": "BBAS3", "name": "Banco do Brasil", "price": 27.00, "p_l": 4.5, "p_vp": 0.8 }],
+                "top_gainers": [{ "ticker": "PETR4", "variation_percent": 2.5, "price": 40.00 }],
+                "top_losers": [{ "ticker": "VALE3", "variation_percent": -1.2, "price": 60.00 }],
+                "high_dividend_yield": [{ "ticker": "VGIP11", "type": "FII", "dy_12m": 14.0, "last_dividend": 0.80 }]
+              }
+            }
         `;
 
-        const response = await ai.models.generateContent({
+        const generationPromise = ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: "Gere o relatório de mercado agora.",
+            contents: "Gere o JSON de mercado agora.",
             config: {
                 systemInstruction: systemInstruction,
                 tools: [{ googleSearch: {} }],
                 temperature: 0.1,
-                responseMimeType: "application/json",
+                // Removido responseMimeType para evitar conflito com Google Search tools
                 safetySettings: [
                     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
                     { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -79,7 +93,10 @@ Caso não consiga encontrar dados específicos para uma categoria, retorne um ar
             }
         });
 
-        // 1. Extração de Fontes (Grounding Metadata)
+        // Race entre a geração e o timeout
+        const response: any = await Promise.race([generationPromise, timeoutPromise]);
+
+        // 1. Extração de Fontes
         const sources: { title: string; uri: string }[] = [];
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
         if (groundingChunks) {
@@ -91,24 +108,12 @@ Caso não consiga encontrar dados específicos para uma categoria, retorne um ar
         }
 
         // 2. Parse do JSON
-        let rawText = response.text || '{}';
-        
-        // Embora responseMimeType ajude, o modelo ainda pode mandar markdown em alguns casos edge
-        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        const startIndex = rawText.indexOf('{');
-        const endIndex = rawText.lastIndexOf('}');
-        
-        if (startIndex !== -1 && endIndex !== -1) {
-            rawText = rawText.substring(startIndex, endIndex + 1);
-        }
+        const rawText = response.text || '{}';
+        const data = extractJson(rawText);
 
-        let data;
-        try {
-            data = JSON.parse(rawText);
-        } catch (e) {
-            console.error("Falha no parse JSON Gemini:", rawText);
-            throw new Error("O modelo retornou dados mal formatados.");
+        if (!data) {
+            console.error("Falha Parse JSON:", rawText);
+            throw new Error("IA retornou formato inválido.");
         }
 
         // Adiciona as fontes ao objeto de resposta
@@ -117,10 +122,11 @@ Caso não consiga encontrar dados específicos para uma categoria, retorne um ar
         return res.status(200).json(data);
 
     } catch (error: any) {
-        console.error('Market Overview Fatal Error:', error);
+        console.error('Market Overview Error:', error);
         
+        // Estrutura de fallback para a UI não quebrar completamente
         return res.status(200).json({
-            market_status: 'Erro',
+            market_status: 'Indisponível',
             last_update: new Date().toLocaleString('pt-BR'),
             highlights: {
                 discounted_fiis: [],
@@ -131,7 +137,7 @@ Caso não consiga encontrar dados específicos para uma categoria, retorne um ar
             },
             sources: [],
             error: true,
-            message: "Não foi possível analisar o mercado no momento."
+            message: error.message || "Erro ao conectar com Gemini."
         });
     }
 }
