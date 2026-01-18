@@ -1,6 +1,6 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,29 +15,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         const prompt = `
-            Atue como um analista de mercado financeiro brasileiro (B3).
-            Pesquise dados ATUALIZADOS de HOJE sobre o Ibovespa e IFIX.
-
-            Tarefa 1: Identifique as 4 ações com MAIOR ALTA percentual hoje no Ibovespa.
-            Tarefa 2: Identifique as 4 ações com MAIOR BAIXA percentual hoje no Ibovespa.
-            Tarefa 3: Identifique 4 Fundos Imobiliários (FIIs) "Oportunidade" que tenham:
-                      - P/VP entre 0.80 e 0.98 (descontados)
-                      - Dividend Yield (DY) anual acima de 9%
-                      - Boa liquidez.
-
-            Retorne APENAS um objeto JSON (sem markdown) seguindo estritamente esta estrutura:
-            {
-                "gainers": [
-                    { "ticker": "ABCD3", "name": "Nome Empresa", "price": 10.50, "change": 5.2, "assetType": "STOCK", "type": "gain", "description": "Alta de 5.2%" }
-                ],
-                "losers": [
-                    { "ticker": "EFGH3", "name": "Nome Empresa", "price": 20.00, "change": -3.1, "assetType": "STOCK", "type": "loss", "description": "Queda de 3.1%" }
-                ],
-                "opportunities": [
-                    { "ticker": "ABCD11", "name": "Nome Fundo", "price": 100.00, "change": 0, "assetType": "FII", "type": "opportunity", "description": "P/VP 0.90 • DY 11%" }
-                ]
-            }
+            Você é um analista de mercado B3. Pesquise dados de HOJE.
+            
+            1. Encontre 4 maiores ALTAS do IBOV hoje.
+            2. Encontre 4 maiores BAIXAS do IBOV hoje.
+            3. Encontre 4 FIIs descontados (P/VP < 1, DY > 9%).
+            
+            Preencha os campos estritamente.
         `;
+
+        // Definição do Schema para garantir JSON perfeito
+        const marketAssetSchema = {
+            type: Type.OBJECT,
+            properties: {
+                ticker: { type: Type.STRING },
+                name: { type: Type.STRING },
+                price: { type: Type.NUMBER },
+                change: { type: Type.NUMBER },
+                assetType: { type: Type.STRING, enum: ["STOCK", "FII"] },
+                type: { type: Type.STRING, enum: ["gain", "loss", "opportunity"] },
+                description: { type: Type.STRING }
+            },
+            required: ["ticker", "price", "change", "type", "assetType"]
+        };
 
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
@@ -45,6 +45,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             config: {
                 tools: [{ googleSearch: {} }],
                 responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        gainers: { type: Type.ARRAY, items: marketAssetSchema },
+                        losers: { type: Type.ARRAY, items: marketAssetSchema },
+                        opportunities: { type: Type.ARRAY, items: marketAssetSchema }
+                    },
+                    required: ["gainers", "losers", "opportunities"]
+                },
                 temperature: 0.1
             }
         });
@@ -55,8 +64,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         try {
             data = JSON.parse(rawText);
         } catch (e) {
+            // Fallback agressivo se o schema falhar (raro com responseSchema)
             const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-            data = JSON.parse(cleanText);
+            const start = cleanText.indexOf('{');
+            const end = cleanText.lastIndexOf('}');
+            if (start !== -1 && end !== -1) {
+                data = JSON.parse(cleanText.substring(start, end + 1));
+            } else {
+                throw new Error("Formato JSON inválido");
+            }
         }
 
         const result = {
@@ -66,8 +82,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             lastUpdate: Date.now()
         };
 
+        // Fallback visual caso venha vazio
         if (result.gainers.length === 0) {
-            result.gainers.push({ ticker: 'IBOV', name: 'Ibovespa', price: 0, change: 0, assetType: 'STOCK', type: 'gain', description: 'Dados indisponíveis' });
+            result.gainers.push({ 
+                ticker: 'IBOV', 
+                name: 'Ibovespa', 
+                price: 0, 
+                change: 0, 
+                assetType: 'STOCK', 
+                type: 'gain', 
+                description: 'Mercado em análise...' 
+            });
         }
 
         return res.status(200).json(result);
@@ -75,8 +100,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (error: any) {
         console.error('Gemini Market Data Error:', error);
         
+        // Retorna estrutura válida mesmo em erro para não quebrar a UI
         return res.status(200).json({
-            gainers: [{ ticker: 'ERROR', name: 'Falha na API', price: 0, change: 0, assetType: 'STOCK', type: 'gain', description: 'Tente novamente mais tarde' }],
+            gainers: [{ ticker: 'OFFLINE', name: 'Serviço Indisponível', price: 0, change: 0, assetType: 'STOCK', type: 'gain', description: 'Tente recarregar' }],
             losers: [],
             opportunities: [],
             lastUpdate: Date.now(),
