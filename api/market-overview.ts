@@ -2,17 +2,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from "@google/genai";
 
-// Inicializa o cliente Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // Configuração de CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
+    if (!process.env.API_KEY) {
+        return res.status(500).json({ error: "API Key not configured" });
+    }
+
     try {
-        // Prompt otimizado para busca de dados em tempo real
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
         const prompt = `
             Atue como um analista de mercado financeiro brasileiro (B3).
             Pesquise dados ATUALIZADOS de HOJE sobre o Ibovespa e IFIX.
@@ -39,28 +40,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
-                tools: [{ googleSearch: {} }], // Ativa busca em tempo real
+                tools: [{ googleSearch: {} }],
                 responseMimeType: 'application/json',
-                temperature: 0.1 // Baixa temperatura para dados factuais
+                temperature: 0.1
             }
         });
 
-        // Parse e Validação do JSON
         let data;
         const rawText = response.text || '{}';
         
         try {
             data = JSON.parse(rawText);
         } catch (e) {
-            // Limpeza de fallback caso venha com markdown ```json
             const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
             data = JSON.parse(cleanText);
         }
 
-        // Garante que os arrays existam
         const result = {
             gainers: Array.isArray(data.gainers) ? data.gainers : [],
             losers: Array.isArray(data.losers) ? data.losers : [],
@@ -68,9 +66,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             lastUpdate: Date.now()
         };
 
-        // Fallback Mock apenas se a IA falhar completamente em trazer dados
         if (result.gainers.length === 0) {
-            result.gainers.push({ ticker: 'VALE3', name: 'Vale', price: 0, change: 0, assetType: 'STOCK', type: 'gain', description: 'Dados indisponíveis' });
+            result.gainers.push({ ticker: 'IBOV', name: 'Ibovespa', price: 0, change: 0, assetType: 'STOCK', type: 'gain', description: 'Dados indisponíveis' });
         }
 
         return res.status(200).json(result);
@@ -78,9 +75,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (error: any) {
         console.error('Gemini Market Data Error:', error);
         
-        // Fallback Gracioso em caso de erro da API (Quota ou Timeout)
         return res.status(200).json({
-            gainers: [{ ticker: 'IBOV', name: 'Ibovespa', price: 0, change: 0, assetType: 'STOCK', type: 'gain', description: 'Mercado (Offline)' }],
+            gainers: [{ ticker: 'ERROR', name: 'Falha na API', price: 0, change: 0, assetType: 'STOCK', type: 'gain', description: 'Tente novamente mais tarde' }],
             losers: [],
             opportunities: [],
             lastUpdate: Date.now(),
