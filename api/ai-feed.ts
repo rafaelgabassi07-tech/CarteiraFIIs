@@ -63,50 +63,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     if (allTickers.length === 0) return res.json({ data: [] });
 
-    const CHUNK_SIZE = 20; 
+    // Reduzido o tamanho do lote para o modelo Pro processar melhor
+    const CHUNK_SIZE = 10; 
     const results: any[] = [];
 
     const baseSystemInstruction = `
-        Você é um Crawler de Dados Financeiros especializado no site Investidor10.
+        Você é um Extrator de Dados Financeiros de Alta Precisão.
         
-        FONTE DE DADOS OBRIGATÓRIA:
-        Use a ferramenta de busca para acessar dados atualizados de **investidor10.com.br** para cada ativo.
+        FONTE: Use o Google Search para encontrar os dados ATUAIS no site "investidor10.com.br" ou "statusinvest.com.br".
         
-        OBJETIVO:
-        Retornar um JSON Array com os indicadores fundamentalistas exatos encontrados no site.
+        EXTRAÇÃO:
+        Retorne um JSON Array com objetos contendo:
+        - p_vp, dy_12m, market_cap, liquidity
+        - assets_value (Patrimônio Líquido)
+        - management_type (Gestão Ativa/Passiva)
+        - last_dividend (Valor em R$)
+        - vacancy (Vacância Física %)
+        - p_l, roe, net_debt_ebitda
         
-        MAPEAMENTO DE CAMPOS:
-        - p_vp: "P/VP"
-        - dy_12m: "Dividend Yield"
-        - market_cap: "Valor de Mercado"
-        - liquidity: "Liquidez Diária"
-        - assets_value: "Valor Patrimonial" ou "Patrimônio Líquido"
-        - management_type: "Tipo de Gestão"
-        - last_dividend: "Último Rendimento"
-        - vacancy: "Vacância Física"
-        - p_l: "P/L"
-        - roe: "ROE"
-        - net_debt_ebitda: "Dív. Líquida/EBITDA"
-        
-        FORMATO:
-        Retorne APENAS o JSON puro. Sem Markdown. Use 0 ou "-" se o dado não existir.
+        IMPORTANTE: Se o dado não existir, use "-". Seja preciso nos números.
     `;
 
     for (let i = 0; i < allTickers.length; i += CHUNK_SIZE) {
         const batch = allTickers.slice(i, i + CHUNK_SIZE);
         
         const prompt = `
-          Extraia fundamentos de: ${batch.join(', ')}.
-          Pesquise: "site:investidor10.com.br ${batch.join(' OR ')}".
+          Extraia fundamentos numéricos exatos para: ${batch.join(', ')}.
         `;
 
         try {
             const response = await ai.models.generateContent({
-              model: 'gemini-3-flash-preview',
+              model: 'gemini-3-pro-preview', // Modelo Pro para maior precisão nos números
               contents: prompt,
               config: {
                 tools: [{ googleSearch: {} }],
-                temperature: 0.1,
+                temperature: 0.0, // Zero criatividade, apenas dados
                 systemInstruction: baseSystemInstruction
               }
             });
