@@ -8,15 +8,15 @@ import { Transactions } from './pages/Transactions';
 import { Market } from './pages/Market';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
-import { Transaction, AssetPosition, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType } from './types';
+import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType } from './types';
 import { getQuotes } from './services/brapiService';
-import { fetchUnifiedMarketData, updateBatchWithAI } from './services/geminiService';
-import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe, Sparkles } from 'lucide-react';
+import { fetchUnifiedMarketData } from './services/geminiService';
+import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.4.5'; // Bump Version
+const APP_VERSION = '8.4.6'; // Bump Version
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -134,7 +134,6 @@ const App: React.FC = () => {
   // Ref para serviços para evitar re-renders cíclicos no checkServiceHealth
   const servicesRef = useRef<ServiceMetric[]>([
     { id: 'db', label: 'Supabase Database', url: getSupabaseUrl(), icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
-    // Gemini removido da verificação automática para economizar cota
     { id: 'market', label: 'Brapi Market Data', url: 'https://brapi.dev', icon: Activity, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
@@ -191,20 +190,6 @@ const App: React.FC = () => {
       toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3500); 
     }, 50);
   }, []);
-
-  const addNotification = useCallback((title: string, message: string, type: 'info' | 'success' | 'warning' | 'update' = 'info', category: any = 'general') => {
-      const newNotif: AppNotification = {
-          id: crypto.randomUUID(),
-          title,
-          message,
-          type,
-          category,
-          timestamp: Date.now(),
-          read: false
-      };
-      setNotifications(prev => [newNotif, ...prev]);
-      if (!showNotifications) showToast('info', title);
-  }, [showToast, showNotifications]);
 
   const checkServiceHealth = useCallback(async () => {
     setIsCheckingServices(true);
@@ -279,18 +264,8 @@ const App: React.FC = () => {
       // 1. Busca dados iniciais do banco
       let aiData = await fetchUnifiedMarketData(tickers, startDate, force);
       
-      // 2. Se for forçado ou dados essenciais faltarem, chama a IA
-      const missingTickers = tickers.filter(t => {
-          const meta = aiData.metadata[t];
-          return force || !meta || (!meta.fundamentals?.p_vp && !meta.fundamentals?.dy_12m);
-      });
-
-      if (missingTickers.length > 0) {
-          console.log(`[Gemini Batch] Atualizando ${missingTickers.length} ativos via AI Feed...`);
-          await updateBatchWithAI(missingTickers);
-          // Recarrega os dados atualizados do banco
-          aiData = await fetchUnifiedMarketData(tickers, startDate, true);
-      }
+      // NOTA: Chamada ao Gemini (updateBatchWithAI) removida para economizar cota e focar apenas no Mercado.
+      // Dados fundamentais agora dependem exclusivamente do scraper backend (update-all-stocks.ts).
 
       if (aiData.dividends.length > 0) {
           setGeminiDividends(aiData.dividends);
@@ -308,7 +283,7 @@ const App: React.FC = () => {
       
       if (initialLoad) setLoadingProgress(100); 
     } catch (e) { console.error(e); } finally { setIsRefreshing(false); setIsAiLoading(false); }
-  }, [geminiDividends, pushEnabled, addNotification, assetsMetadata]);
+  }, [geminiDividends, pushEnabled, assetsMetadata]);
 
   const fetchTransactionsFromCloud = useCallback(async (currentSession: Session | null, force = false, initialLoad = false) => {
     setCloudStatus('syncing');
@@ -326,7 +301,6 @@ const App: React.FC = () => {
         if (cloudTxs.length > 0) {
             await syncMarketData(force, cloudTxs, initialLoad);
         } else {
-            // Se não tem transações, não há o que buscar
              if (initialLoad) setLoadingProgress(100);
         }
     } catch (err) { 
@@ -372,19 +346,16 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
         setSession(newSession);
-        
-        // CORREÇÃO: Busca dados ao logar (SIGNED_IN) para evitar tela zerada
         if (event === 'SIGNED_IN' && newSession) {
             fetchTransactionsFromCloud(newSession, false, true);
         }
-        
         if (!newSession) {
             setTransactions([]);
             setGeminiDividends([]);
         }
     });
     return () => subscription.unsubscribe();
-  }, []); // Remove dependencies to avoid loop
+  }, []); 
 
   // --- HANDLERS DA UI ---
 
@@ -415,9 +386,9 @@ const App: React.FC = () => {
   }, []);
 
   const handleManualScraperTrigger = async () => {
-      showToast('info', 'Iniciando busca de fundamentos...');
+      showToast('info', 'Sincronizando...');
       await handleSyncAll(true);
-      showToast('success', 'Dados atualizados via Gemini 2.5!');
+      showToast('success', 'Dados atualizados!');
   };
 
   const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
