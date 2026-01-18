@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, TrendingDown, Sparkles, ArrowRight, Loader2, Target, BarChart3, Percent, Globe } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, Sparkles, ArrowRight, Loader2, Target, BarChart3, Percent, Globe, RefreshCw, AlertTriangle } from 'lucide-react';
 import { fetchMarketOverview } from '../services/geminiService';
 import { MarketOverview, MarketAsset } from '../types';
 
@@ -63,28 +63,48 @@ export const Market: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [data, setData] = useState<MarketOverview | null>(null);
     const [loading, setLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
 
-    useEffect(() => {
-        const load = async () => {
-            // Tenta pegar cache recente (5min)
-            const cached = localStorage.getItem('investfiis_market_cache');
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (Date.now() - parsed.lastUpdate < 1000 * 60 * 5) {
-                    setData(parsed);
-                    setLoading(false);
-                    return;
+    const loadMarketData = async (force = false) => {
+        setLoading(true);
+        setHasError(false);
+        try {
+            // Cache check
+            if (!force) {
+                const cached = localStorage.getItem('investfiis_market_cache');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    // 10 minutos de cache
+                    if (Date.now() - parsed.lastUpdate < 1000 * 60 * 10) {
+                        setData(parsed);
+                        setLoading(false);
+                        return;
+                    }
                 }
             }
-            
-            // Busca novo
+
             const newData = await fetchMarketOverview();
-            setData(newData);
-            localStorage.setItem('investfiis_market_cache', JSON.stringify(newData));
+            
+            // Verifica se veio com flag de erro ou vazio
+            if ((newData as any).error || (newData.gainers.length === 0 && newData.opportunities.length === 0)) {
+                setHasError(true);
+                setData(null);
+            } else {
+                setData(newData);
+                localStorage.setItem('investfiis_market_cache', JSON.stringify(newData));
+            }
+        } catch (e) {
+            setHasError(true);
+        } finally {
             setLoading(false);
-        };
-        load();
+        }
+    };
+
+    useEffect(() => {
+        loadMarketData();
     }, []);
+
+    const hasData = data && (data.gainers.length > 0 || data.opportunities.length > 0);
 
     return (
         <div className="pb-32 min-h-screen">
@@ -113,47 +133,66 @@ export const Market: React.FC = () => {
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-zinc-400 anim-fade-in">
                     <Loader2 className="w-8 h-8 animate-spin mb-4 text-accent" />
-                    <p className="text-xs font-bold uppercase tracking-widest">Coletando dados...</p>
-                    <p className="text-[10px] mt-2 opacity-50">Investidor10 Feed</p>
+                    <p className="text-xs font-bold uppercase tracking-widest">Analisando Mercado...</p>
+                    <p className="text-[10px] mt-2 opacity-50">Gemini 3 Flash • Buscando dados recentes</p>
                 </div>
-            ) : data ? (
+            ) : hasError || !hasData ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center anim-fade-in px-6">
+                    <div className="w-16 h-16 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-500 mb-4 border border-rose-100 dark:border-rose-900/30">
+                        <AlertTriangle className="w-8 h-8" strokeWidth={1.5} />
+                    </div>
+                    <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-2">Dados Indisponíveis</h3>
+                    <p className="text-xs text-zinc-500 mb-6 max-w-xs">Não foi possível conectar com a IA de mercado no momento. Tente novamente.</p>
+                    <button 
+                        onClick={() => loadMarketData(true)}
+                        className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 press-effect shadow-lg"
+                    >
+                        <RefreshCw className="w-3 h-3" /> Tentar Novamente
+                    </button>
+                </div>
+            ) : (
                 <div className="space-y-8 pt-6">
                     
                     {/* Maiores Altas */}
-                    <div className="anim-slide-up" style={{ animationDelay: '0ms' }}>
-                        <SectionHeader title="Maiores Altas Hoje" icon={TrendingUp} colorClass="bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600" />
-                        <div className="flex gap-3 overflow-x-auto no-scrollbar px-1 pb-4 -mx-1 snap-x">
-                            {data.gainers.map((asset, i) => <AssetCard key={i} asset={asset} />)}
+                    {data && data.gainers.length > 0 && (
+                        <div className="anim-slide-up" style={{ animationDelay: '0ms' }}>
+                            <SectionHeader title="Maiores Altas Hoje" icon={TrendingUp} colorClass="bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600" />
+                            <div className="flex gap-3 overflow-x-auto no-scrollbar px-1 pb-4 -mx-1 snap-x">
+                                {data.gainers.map((asset, i) => <AssetCard key={i} asset={asset} />)}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Oportunidades (P/VP Baixo) */}
-                    <div className="anim-slide-up" style={{ animationDelay: '100ms' }}>
-                        <SectionHeader title="FIIs Descontados" icon={Target} colorClass="bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600" />
-                        <div className="flex gap-3 overflow-x-auto no-scrollbar px-1 pb-4 -mx-1 snap-x">
-                            {data.opportunities.map((asset, i) => <AssetCard key={i} asset={asset} />)}
+                    {data && data.opportunities.length > 0 && (
+                        <div className="anim-slide-up" style={{ animationDelay: '100ms' }}>
+                            <SectionHeader title="FIIs Descontados" icon={Target} colorClass="bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600" />
+                            <div className="flex gap-3 overflow-x-auto no-scrollbar px-1 pb-4 -mx-1 snap-x">
+                                {data.opportunities.map((asset, i) => <AssetCard key={i} asset={asset} />)}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Maiores Baixas */}
-                    <div className="anim-slide-up" style={{ animationDelay: '200ms' }}>
-                        <SectionHeader title="Maiores Baixas Hoje" icon={TrendingDown} colorClass="bg-rose-100 dark:bg-rose-900/20 text-rose-600" />
-                        <div className="flex gap-3 overflow-x-auto no-scrollbar px-1 pb-4 -mx-1 snap-x">
-                            {data.losers.map((asset, i) => <AssetCard key={i} asset={asset} />)}
+                    {data && data.losers.length > 0 && (
+                        <div className="anim-slide-up" style={{ animationDelay: '200ms' }}>
+                            <SectionHeader title="Maiores Baixas Hoje" icon={TrendingDown} colorClass="bg-rose-100 dark:bg-rose-900/20 text-rose-600" />
+                            <div className="flex gap-3 overflow-x-auto no-scrollbar px-1 pb-4 -mx-1 snap-x">
+                                {data.losers.map((asset, i) => <AssetCard key={i} asset={asset} />)}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="mt-8 px-4 py-6 bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl border border-zinc-100 dark:border-zinc-800 text-center anim-fade-in">
                         <Globe className="w-6 h-6 text-zinc-400 mx-auto mb-3" />
                         <h3 className="text-sm font-black text-zinc-900 dark:text-white mb-1">Dados de Mercado</h3>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-xs mx-auto">
-                            As informações de altas, baixas e oportunidades são coletadas em tempo real de fontes públicas (Investidor10).
+                            As informações são geradas por IA (Gemini 3) com base em buscas recentes na internet. Podem haver atrasos ou imprecisões.
                         </p>
+                        <button onClick={() => loadMarketData(true)} className="mt-4 text-[10px] font-bold text-accent uppercase tracking-wider hover:underline">
+                            Atualizar Agora
+                        </button>
                     </div>
-                </div>
-            ) : (
-                <div className="text-center py-20 opacity-50">
-                    <p>Não foi possível carregar os dados de mercado.</p>
                 </div>
             )}
         </div>

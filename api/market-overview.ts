@@ -1,6 +1,6 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,98 +15,93 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         const prompt = `
-            Você é um analista de mercado B3. Pesquise dados de HOJE.
-            
-            1. Encontre 4 maiores ALTAS do IBOV hoje.
-            2. Encontre 4 maiores BAIXAS do IBOV hoje.
-            3. Encontre 4 FIIs descontados (P/VP < 1, DY > 9%).
-            
-            Preencha os campos estritamente.
+            Você é um especialista em mercado financeiro (B3).
+            Use o Google Search para encontrar as cotações e variações de HOJE (dados mais recentes possíveis).
+
+            TAREFAS:
+            1. Liste as 4 ações do Ibovespa com MAIOR ALTA percentual hoje (Gainers).
+            2. Liste as 4 ações do Ibovespa com MAIOR BAIXA percentual hoje (Losers).
+            3. Liste 4 Fundos Imobiliários (FIIs) que sejam boas oportunidades (P/VP < 0.98 e DY anual > 9%).
+
+            FORMATO DE RESPOSTA (JSON PURO):
+            Retorne APENAS um objeto JSON válido, sem markdown (\`\`\`json), sem comentários.
+            Siga estritamente esta estrutura:
+            {
+                "gainers": [
+                    { "ticker": "PETR4", "name": "Petrobras", "price": 40.50, "change": 2.5, "assetType": "STOCK", "type": "gain", "description": "Alta do petróleo no exterior" }
+                ],
+                "losers": [
+                    { "ticker": "VALE3", "name": "Vale", "price": 60.20, "change": -1.2, "assetType": "STOCK", "type": "loss", "description": "Queda do minério" }
+                ],
+                "opportunities": [
+                    { "ticker": "MXRF11", "name": "Maxi Renda", "price": 10.50, "change": 0, "assetType": "FII", "type": "opportunity", "description": "P/VP 0.98 • DY 12%" }
+                ]
+            }
         `;
 
-        // Definição do Schema para garantir JSON perfeito
-        const marketAssetSchema = {
-            type: Type.OBJECT,
-            properties: {
-                ticker: { type: Type.STRING },
-                name: { type: Type.STRING },
-                price: { type: Type.NUMBER },
-                change: { type: Type.NUMBER },
-                assetType: { type: Type.STRING, enum: ["STOCK", "FII"] },
-                type: { type: Type.STRING, enum: ["gain", "loss", "opportunity"] },
-                description: { type: Type.STRING }
-            },
-            required: ["ticker", "price", "change", "type", "assetType"]
-        };
-
+        // Removido responseSchema para evitar conflito com Google Search Grounding
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }],
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        gainers: { type: Type.ARRAY, items: marketAssetSchema },
-                        losers: { type: Type.ARRAY, items: marketAssetSchema },
-                        opportunities: { type: Type.ARRAY, items: marketAssetSchema }
-                    },
-                    required: ["gainers", "losers", "opportunities"]
-                },
                 temperature: 0.1
             }
         });
 
-        let data;
-        const rawText = response.text || '{}';
+        // Limpeza robusta do texto para extrair apenas o JSON
+        let rawText = response.text || '{}';
+        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
         
+        const startIndex = rawText.indexOf('{');
+        const endIndex = rawText.lastIndexOf('}');
+        
+        if (startIndex !== -1 && endIndex !== -1) {
+            rawText = rawText.substring(startIndex, endIndex + 1);
+        }
+
+        let data;
         try {
             data = JSON.parse(rawText);
         } catch (e) {
-            // Fallback agressivo se o schema falhar (raro com responseSchema)
-            const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-            const start = cleanText.indexOf('{');
-            const end = cleanText.lastIndexOf('}');
-            if (start !== -1 && end !== -1) {
-                data = JSON.parse(cleanText.substring(start, end + 1));
-            } else {
-                throw new Error("Formato JSON inválido");
-            }
+            console.error("Falha no parse JSON Gemini:", rawText);
+            throw new Error("O modelo não retornou um JSON válido.");
         }
 
-        const result = {
-            gainers: Array.isArray(data.gainers) ? data.gainers : [],
-            losers: Array.isArray(data.losers) ? data.losers : [],
-            opportunities: Array.isArray(data.opportunities) ? data.opportunities : [],
-            lastUpdate: Date.now()
+        // Função auxiliar para garantir tipos
+        const normalize = (arr: any[], defaultType: string, defaultAsset: string) => {
+            if (!Array.isArray(arr)) return [];
+            return arr.slice(0, 4).map(item => ({
+                ticker: item.ticker?.toUpperCase() || 'N/A',
+                name: item.name || item.ticker,
+                price: Number(item.price) || 0,
+                change: Number(item.change) || 0,
+                assetType: item.assetType || defaultAsset,
+                type: defaultType,
+                description: item.description || ''
+            }));
         };
 
-        // Fallback visual caso venha vazio
-        if (result.gainers.length === 0) {
-            result.gainers.push({ 
-                ticker: 'IBOV', 
-                name: 'Ibovespa', 
-                price: 0, 
-                change: 0, 
-                assetType: 'STOCK', 
-                type: 'gain', 
-                description: 'Mercado em análise...' 
-            });
-        }
+        const result = {
+            gainers: normalize(data.gainers, 'gain', 'STOCK'),
+            losers: normalize(data.losers, 'loss', 'STOCK'),
+            opportunities: normalize(data.opportunities, 'opportunity', 'FII'),
+            lastUpdate: Date.now()
+        };
 
         return res.status(200).json(result);
 
     } catch (error: any) {
-        console.error('Gemini Market Data Error:', error);
+        console.error('Market Overview Fatal Error:', error);
         
-        // Retorna estrutura válida mesmo em erro para não quebrar a UI
+        // Retorna objeto vazio com flag de erro para a UI tratar, em vez de 500
         return res.status(200).json({
-            gainers: [{ ticker: 'OFFLINE', name: 'Serviço Indisponível', price: 0, change: 0, assetType: 'STOCK', type: 'gain', description: 'Tente recarregar' }],
+            gainers: [],
             losers: [],
             opportunities: [],
             lastUpdate: Date.now(),
-            error: true
+            error: true,
+            message: "Serviço de inteligência momentaneamente indisponível."
         });
     }
 }
