@@ -56,8 +56,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         });
 
-        // 1. Extração de Fontes (Grounding Metadata)
-        const sources = [];
+        // 1. Extração de Fontes (Grounding Metadata) - Adicionada tipagem explícita
+        const sources: { title: string; uri: string }[] = [];
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
         if (groundingChunks) {
             groundingChunks.forEach((chunk: any) => {
