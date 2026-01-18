@@ -68,6 +68,7 @@ export interface AssetPosition extends AssetFundamentals {
   logoUrl?: string;
   totalDividends?: number;
   segment?: string;
+  updated_at?: string;
 }
 
 export interface DividendReceipt {

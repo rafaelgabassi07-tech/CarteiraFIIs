@@ -190,6 +190,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                     >
                         Ver no Investidor10 <ExternalLink className="w-3 h-3" />
                     </a>
+                    {activeAsset.updated_at && (
+                        <p className="text-[9px] text-zinc-400 text-center mt-4">
+                            Atualizado em: {new Date(activeAsset.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                    )}
                 </div>
 
             </div>
