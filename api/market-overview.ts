@@ -31,13 +31,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
     
-    // --- CACHE STRATEGY (CRITICAL FOR 429 ERRORS) ---
-    // s-maxage=900: Cache na CDN da Vercel por 15 minutos (900s).
-    // stale-while-revalidate=600: Se o cache expirar, serve o velho por +10 min enquanto busca o novo em background.
+    // Default Cache: 15 min na CDN, update em background
     res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=600');
     
+    // Timeout reduzido para 15s para evitar 504 do Vercel (Hobby Tier limit ~10s, Pro ~60s)
     const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout de processamento (25s)")), 25000)
+        setTimeout(() => reject(new Error("Timeout de processamento (15s)")), 15000)
     );
 
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -116,10 +115,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (error: any) {
         console.error('Market Overview Error:', error);
         
+        // IMPORTANTE: Remove cache em caso de erro para não persistir o estado de falha
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
+        
         const isQuotaError = error.message?.includes('429') || error.status === 429;
-        const status = isQuotaError ? 429 : 200; // Se for quota real, avisa o front, senão manda 200 com fallback
-
-        return res.status(status).json({
+        
+        // Retorna 200 com flag de erro para que o frontend receba o JSON e exiba a mensagem amigável
+        return res.status(200).json({
             market_status: 'Indisponível',
             last_update: new Date().toLocaleString('pt-BR'),
             highlights: {

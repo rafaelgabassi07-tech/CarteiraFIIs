@@ -150,12 +150,23 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 export const fetchMarketOverview = async (): Promise<MarketOverview> => {
     try {
         const response = await fetch('/api/market-overview');
-        if (!response.ok) throw new Error('Falha no scraper de mercado');
         
-        const data = await response.json();
+        // Tenta processar o JSON mesmo se não for OK, pois o backend pode mandar detalhes do erro
+        let data;
+        try {
+            data = await response.json();
+        } catch {
+            // Se falhar o parse JSON (ex: timeout 504 HTML), força um erro manual
+            throw new Error(`Erro de conexão (${response.status})`);
+        }
+
+        if (!response.ok && !data) {
+             throw new Error('Falha no scraper de mercado');
+        }
+        
         return data;
-    } catch (error) {
-        console.error("Erro ao buscar visão de mercado (Gemini):", error);
+    } catch (error: any) {
+        console.warn("Recovered from Market Overview Error:", error.message);
         return { 
             market_status: 'Indisponível', 
             last_update: '', 
@@ -165,7 +176,11 @@ export const fetchMarketOverview = async (): Promise<MarketOverview> => {
                 top_gainers: [],
                 top_losers: [],
                 high_dividend_yield: []
-            }
+            },
+            // Adiciona flag de erro para UI
+            // @ts-ignore
+            error: true,
+            message: "Serviço temporariamente indisponível."
         };
     }
 };
