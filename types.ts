@@ -160,19 +160,46 @@ export interface LogEntry {
   data?: any[];
 }
 
-export interface MarketAsset {
-  ticker: string;
-  name: string;
-  price: number;
-  change: number;
-  type: 'gain' | 'loss' | 'opportunity';
-  description?: string;
-  assetType: 'FII' | 'STOCK';
+// Novos tipos para a página de Mercado (Gemini Grounding)
+
+export interface MarketHighlightFII {
+    ticker: string;
+    name: string;
+    price: number;
+    p_vp: number;
+    dy_12m: number;
+}
+
+export interface MarketHighlightStock {
+    ticker: string;
+    name: string;
+    price: number;
+    p_l: number;
+    p_vp: number;
+}
+
+export interface MarketVariation {
+    ticker: string;
+    variation_percent: number;
+    price: number;
+}
+
+export interface MarketHighDividend {
+    ticker: string;
+    type: string;
+    dy_12m: number;
+    last_dividend: number;
 }
 
 export interface MarketOverview {
-  gainers: MarketAsset[];
-  losers: MarketAsset[];
-  opportunities: MarketAsset[]; // FIIs descontados ou Ações baratas
-  lastUpdate: number;
+    market_status: string;
+    last_update: string;
+    highlights: {
+        discounted_fiis: MarketHighlightFII[];
+        discounted_stocks: MarketHighlightStock[];
+        top_gainers: MarketVariation[];
+        top_losers: MarketVariation[];
+        high_dividend_yield: MarketHighDividend[];
+    };
+    sources?: { title: string; uri: string }[];
 }

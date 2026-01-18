@@ -149,14 +149,23 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
 export const fetchMarketOverview = async (): Promise<MarketOverview> => {
     try {
-        // Substituído chamada Gemini por Scraper dedicado para economizar tokens e requisições
         const response = await fetch('/api/market-overview');
         if (!response.ok) throw new Error('Falha no scraper de mercado');
         
         const data = await response.json();
         return data;
     } catch (error) {
-        console.error("Erro ao buscar visão de mercado (Scraper):", error);
-        return { gainers: [], losers: [], opportunities: [], lastUpdate: Date.now() };
+        console.error("Erro ao buscar visão de mercado (Gemini):", error);
+        return { 
+            market_status: 'Indisponível', 
+            last_update: '', 
+            highlights: {
+                discounted_fiis: [],
+                discounted_stocks: [],
+                top_gainers: [],
+                top_losers: [],
+                high_dividend_yield: []
+            }
+        };
     }
 };
