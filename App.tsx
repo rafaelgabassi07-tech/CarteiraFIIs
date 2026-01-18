@@ -5,18 +5,17 @@ import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
-import { Market } from './pages/Market';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType } from './types';
 import { getQuotes } from './services/brapiService';
-import { fetchUnifiedMarketData } from './services/geminiService';
+import { fetchUnifiedMarketData } from './services/dataService';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.4.6'; // Bump Version
+const APP_VERSION = '8.5.0'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -68,7 +67,6 @@ const getSupabaseUrl = () => {
 const MemoizedHome = React.memo(Home);
 const MemoizedPortfolio = React.memo(Portfolio);
 const MemoizedTransactions = React.memo(Transactions);
-const MemoizedMarket = React.memo(Market);
 
 const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
@@ -110,7 +108,7 @@ const App: React.FC = () => {
     try { const s = localStorage.getItem(STORAGE_KEYS.QUOTES); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
   
-  const [geminiDividends, setGeminiDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [dividends, setDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
   
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { 
       try { 
@@ -124,7 +122,6 @@ const App: React.FC = () => {
   });
 
   // Status de Processos
-  const [isAiLoading, setIsAiLoading] = useState(false);
   const [isScraping, setIsScraping] = useState(false); 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -140,7 +137,7 @@ const App: React.FC = () => {
   const [services, setServices] = useState<ServiceMetric[]>(servicesRef.current);
 
   // --- EFEITOS DE PERSISTÊNCIA ---
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(geminiDividends)); }, [geminiDividends]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(dividends)); }, [dividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.NOTIF_HISTORY, JSON.stringify(notifications.slice(0, 50))); }, [notifications]);
@@ -258,32 +255,28 @@ const App: React.FC = () => {
       
       if (initialLoad) setLoadingProgress(70); 
       
-      setIsAiLoading(true);
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
       
       // 1. Busca dados iniciais do banco
-      let aiData = await fetchUnifiedMarketData(tickers, startDate, force);
-      
-      // NOTA: Chamada ao Gemini (updateBatchWithAI) removida para economizar cota e focar apenas no Mercado.
-      // Dados fundamentais agora dependem exclusivamente do scraper backend (update-all-stocks.ts).
+      let data = await fetchUnifiedMarketData(tickers, startDate, force);
 
-      if (aiData.dividends.length > 0) {
-          setGeminiDividends(aiData.dividends);
+      if (data.dividends.length > 0) {
+          setDividends(data.dividends);
       }
-      if (Object.keys(aiData.metadata).length > 0) {
-          setAssetsMetadata(prev => ({...prev, ...aiData.metadata}));
+      if (Object.keys(data.metadata).length > 0) {
+          setAssetsMetadata(prev => ({...prev, ...data.metadata}));
       }
       
-      if (aiData.indicators) {
+      if (data.indicators) {
          setMarketIndicators({ 
-             ipca: aiData.indicators.ipca_cumulative || 4.62, 
-             startDate: aiData.indicators.start_date_used 
+             ipca: data.indicators.ipca_cumulative || 4.62, 
+             startDate: data.indicators.start_date_used 
          });
       }
       
       if (initialLoad) setLoadingProgress(100); 
-    } catch (e) { console.error(e); } finally { setIsRefreshing(false); setIsAiLoading(false); }
-  }, [geminiDividends, pushEnabled, assetsMetadata]);
+    } catch (e) { console.error(e); } finally { setIsRefreshing(false); }
+  }, [dividends, pushEnabled, assetsMetadata]);
 
   const fetchTransactionsFromCloud = useCallback(async (currentSession: Session | null, force = false, initialLoad = false) => {
     setCloudStatus('syncing');
@@ -351,7 +344,7 @@ const App: React.FC = () => {
         }
         if (!newSession) {
             setTransactions([]);
-            setGeminiDividends([]);
+            setDividends([]);
         }
     });
     return () => subscription.unsubscribe();
@@ -362,7 +355,7 @@ const App: React.FC = () => {
   const handleLogout = useCallback(async () => {
     setSession(null);
     setTransactions([]);
-    setGeminiDividends([]);
+    setDividends([]);
     await supabase.auth.signOut();
     try {
         Object.keys(localStorage).forEach(key => {
@@ -427,7 +420,7 @@ const App: React.FC = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
-    const receipts = geminiDividends.map(d => {
+    const receipts = dividends.map(d => {
         const qty = getQuantityOnDate(d.ticker, d.dateCom, sortedTxs);
         return { 
             ...d, 
@@ -498,7 +491,7 @@ const App: React.FC = () => {
     });
 
     return { portfolio: finalPortfolio, dividendReceipts: receipts, totalDividendsReceived, invested, balance, salesGain };
-  }, [transactions, quotes, geminiDividends, assetsMetadata]);
+  }, [transactions, quotes, dividends, assetsMetadata]);
 
   // --- RENDERIZAÇÃO ---
 
@@ -532,20 +525,20 @@ const App: React.FC = () => {
 
         <>
             <Header 
-                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : currentTab === 'market' ? 'Mercado' : 'Histórico'} 
+                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Ordens'} 
                 showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
-                isRefreshing={isRefreshing || isAiLoading || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
+                isRefreshing={isRefreshing || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
                 onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
                 notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} 
                 onRefreshClick={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
-                hideBorder={currentTab === 'transactions' || currentTab === 'market'}
+                hideBorder={currentTab === 'transactions'}
             />
             <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
               {showSettings ? (
                 <div className="anim-page-enter pt-4">
                   <Settings 
                       onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} 
-                      geminiDividends={geminiDividends} onImportDividends={setGeminiDividends} onResetApp={handleSoftReset} 
+                      dividends={dividends} onImportDividends={setDividends} onResetApp={handleSoftReset} 
                       theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} 
                       privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} 
                       updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
@@ -557,9 +550,8 @@ const App: React.FC = () => {
                 </div>
               ) : (
                 <div key={currentTab} className="anim-page-enter">
-                  {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} isAiLoading={isAiLoading} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
+                  {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
                   {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} privacyMode={privacyMode} />}
-                  {currentTab === 'market' && <MemoizedMarket />}
                   {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                 </div>
               )}

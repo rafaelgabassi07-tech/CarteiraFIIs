@@ -16,7 +16,7 @@ interface SettingsProps {
   user: any;
   transactions: Transaction[];
   onImportTransactions: (data: Transaction[]) => void;
-  geminiDividends: DividendReceipt[];
+  dividends: DividendReceipt[];
   onImportDividends: (data: DividendReceipt[]) => void;
   onLogout: () => void;
   onResetApp: () => void;
@@ -51,7 +51,7 @@ const ACCENT_COLORS = [
 ];
 
 export const Settings: React.FC<SettingsProps> = ({ 
-  user, onLogout, transactions, onImportTransactions, geminiDividends, 
+  user, onLogout, transactions, onImportTransactions, dividends, 
   onImportDividends, onResetApp, theme, onSetTheme, privacyMode, 
   onSetPrivacyMode, appVersion, updateAvailable, onCheckUpdates, 
   onShowChangelog, pushEnabled, onRequestPushPermission,
@@ -115,7 +115,7 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleExport = () => {
-    const data = { transactions, dividends: geminiDividends, exportedAt: new Date().toISOString(), version: appVersion };
+    const data = { transactions, dividends: dividends, exportedAt: new Date().toISOString(), version: appVersion };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -172,7 +172,7 @@ export const Settings: React.FC<SettingsProps> = ({
                   onImportTransactions([...transactions, ...txsToAdd]);
               }
 
-              const combinedDivs = [...geminiDividends];
+              const combinedDivs = [...dividends];
               let divsAddedCount = 0;
               const divsToSync: DividendReceipt[] = [];
               

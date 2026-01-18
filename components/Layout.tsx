@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, BarChart3 } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X } from 'lucide-react';
 
 // Utility for smooth visibility transitions
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -63,12 +63,11 @@ interface HeaderProps {
   onUpdateClick?: () => void;
   appVersion?: string;
   bannerVisible?: boolean;
-  onRefreshClick?: () => void; // Novo prop para o botão manual
-  hideBorder?: boolean; // Prop para remover borda inferior (fusão visual)
+  hideBorder?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  title, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, bannerVisible = false, onRefreshClick, hideBorder = false
+  title, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, bannerVisible = false, hideBorder = false
 }) => {
   return (
     <header 
@@ -101,16 +100,6 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {onRefreshClick && !showBack && (
-            <button 
-                onClick={onRefreshClick} 
-                disabled={isRefreshing}
-                className="w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} strokeWidth={2} />
-            </button>
-          )}
-
           {updateAvailable && !showBack && (
             <button onClick={onUpdateClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-sky-500 text-white press-effect shadow-lg shadow-sky-500/30">
               <Download className="w-4 h-4 animate-bounce" strokeWidth={2.5} />
@@ -141,9 +130,8 @@ interface BottomNavProps {
 }
 
 const navItems = [
-  { id: 'home', icon: Home, label: 'Início' },
+  { id: 'home', icon: Home, label: 'Visão Geral' },
   { id: 'portfolio', icon: PieChart, label: 'Custódia' },
-  { id: 'market', icon: BarChart3, label: 'Mercado' },
   { id: 'transactions', icon: ArrowRightLeft, label: 'Ordens' },
 ];
 
@@ -153,11 +141,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
       {/* Sólido, sem blur */}
-      <nav className="pointer-events-auto bg-white dark:bg-zinc-900 border border-white/20 dark:border-zinc-800 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[22rem] mx-4 relative overflow-hidden transition-all duration-300">
+      <nav className="pointer-events-auto bg-white dark:bg-zinc-900 border border-white/20 dark:border-zinc-800 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[20rem] mx-4 relative overflow-hidden transition-all duration-300">
         
         {/* Sliding Active Indicator with Bouncier Physics */}
         <div 
-            className="absolute top-1.5 bottom-1.5 w-[calc(25%-0.25rem)] bg-zinc-100 dark:bg-zinc-800 rounded-xl shadow-inner border border-black/5 dark:border-white/5 transition-all duration-500 ease-out-mola will-change-transform z-0"
+            className="absolute top-1.5 bottom-1.5 w-[calc(33.333%-0.25rem)] bg-zinc-100 dark:bg-zinc-800 rounded-xl shadow-inner border border-black/5 dark:border-white/5 transition-all duration-500 ease-out-mola will-change-transform z-0"
             style={{ 
                 left: '0.125rem',
                 transform: `translateX(calc(${activeIndex} * 100% + ${activeIndex * 0.25}rem))`
@@ -165,7 +153,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
         ></div>
 
         {/* Buttons Grid */}
-        <div className="relative z-10 grid grid-cols-4 h-14">
+        <div className="relative z-10 grid grid-cols-3 h-14">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (

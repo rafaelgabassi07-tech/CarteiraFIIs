@@ -1,98 +1,91 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { createClient } from '@supabase/supabase-js';
 
-function extractJson(text: string) {
-    if (!text) return null;
-    try {
-        return JSON.parse(text);
-    } catch (e) {
-        let clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const start = clean.indexOf('{');
-        const end = clean.lastIndexOf('}');
-        if (start !== -1 && end !== -1) {
-            try { return JSON.parse(clean.substring(start, end + 1)); } catch (e2) {}
-        }
-        return null;
-    }
-}
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '',
+  process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || ''
+);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-    // Cache agressivo de 1 hora na CDN e revalidação em background
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
     
-    // Timeout ajustado para 25s
-    const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout de processamento (25s)")), 25000)
-    );
+    // Cache de 10 minutos para não sobrecarregar o banco
+    res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1200');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    if (!process.env.API_KEY) return res.status(500).json({ error: "API Key missing" });
-
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        // 1. Buscar Ações descontadas (P/L > 0 e baixo, P/VP razoável)
+        const { data: stocks, error: stockError } = await supabase
+            .from('ativos_metadata')
+            .select('ticker, segment, pl, pvp, current_price')
+            .eq('type', 'ACAO')
+            .gt('pl', 0.1) // Filtra P/L negativo ou zero
+            .lt('pl', 15)  // P/L atrativo
+            .lt('pvp', 2.0)
+            .order('pl', { ascending: true }) // Menores P/Ls primeiro
+            .limit(20);
 
-        // Prompt ajustado para o modelo 1.5 Pro (Estável)
-        const prompt = `
-            ATUE COMO UM ANALISTA SÊNIOR DE MERCADO (CNPI).
-            
-            Tarefa:
-            1. Pesquise no Google as condições atuais da B3.
-            2. Selecione as 3 melhores oportunidades REAIS de FIIs (foco em Renda/DY) e 3 Ações (foco em Valor/PL) do momento.
-            3. Resuma o sentimento do mercado em exatamente 3 palavras.
-            
-            JSON ESTRITO:
-            {
-              "sentiment_summary": "Otimista/Cautela/Baixa",
-              "last_update": "HH:mm",
-              "highlights": {
-                "discounted_fiis": [{ "ticker": "XXXX11", "name": "Nome", "price": 0.0, "p_vp": 0.0, "dy_12m": 0.0 }],
-                "discounted_stocks": [{ "ticker": "XXXX3", "name": "Nome", "price": 0.0, "p_l": 0.0, "p_vp": 0.0 }]
-              }
-            }
-        `;
+        if (stockError) throw stockError;
 
-        const generationPromise = ai.models.generateContent({
-            model: 'gemini-1.5-pro-002', // Modelo Produção Estável (Sem Preview)
-            contents: prompt,
-            config: {
-                tools: [{ googleSearch: {} }],
-                temperature: 0.1, // Baixa temperatura para dados factuais
-                safetySettings: [
-                    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE }
-                ]
-            }
-        });
+        // 2. Buscar FIIs de Renda (DY alto, P/VP próximo de 1)
+        const { data: fiis, error: fiiError } = await supabase
+            .from('ativos_metadata')
+            .select('ticker, segment, dy_12m, pvp, current_price')
+            .eq('type', 'FII')
+            .gt('dy_12m', 6)  // Mínimo de yield
+            .lt('dy_12m', 25) // Filtra distorções muito altas
+            .gt('pvp', 0.8)   // Evita fundos muito descontados (risco)
+            .lt('pvp', 1.1)   // Preço justo
+            .order('dy_12m', { ascending: false }) // Maiores DYs primeiro
+            .limit(20);
 
-        // Race entre a geração e o timeout
-        const response: any = await Promise.race([generationPromise, timeoutPromise]);
+        if (fiiError) throw fiiError;
 
-        const data = extractJson(response.text || '{}');
-        
-        // Grounding Metadata
-        const sources: { title: string; uri: string }[] = [];
-        response.candidates?.[0]?.groundingMetadata?.groundingChunks?.forEach((c: any) => {
-             if (c.web?.uri) sources.push({ title: c.web.title || 'Source', uri: c.web.uri });
-        });
+        // Formatação
+        const discountedStocks = (stocks || []).slice(0, 6).map(s => ({
+            ticker: s.ticker,
+            name: s.segment || 'Ação',
+            price: s.current_price || 0,
+            p_l: s.pl,
+            p_vp: s.pvp
+        }));
 
-        if (!data || !data.highlights) throw new Error("Formato inválido retornado pela IA");
-        
-        data.sources = sources.slice(0, 3);
-        
-        return res.status(200).json(data);
+        const discountedFiis = (fiis || []).slice(0, 6).map(f => ({
+            ticker: f.ticker,
+            name: f.segment || 'FII',
+            price: f.current_price || 0,
+            p_vp: f.pvp,
+            dy_12m: f.dy_12m
+        }));
+
+        const response = {
+            market_status: "Aberto",
+            sentiment_summary: "Análise Quantitativa",
+            last_update: new Date().toISOString(),
+            highlights: {
+                discounted_fiis: discountedFiis,
+                discounted_stocks: discountedStocks,
+                top_gainers: [],
+                top_losers: [],
+                high_dividend_yield: []
+            },
+            sources: [
+                { title: 'Investidor10 (Scraper)', uri: 'https://investidor10.com.br' },
+                { title: 'Brapi (Cotações)', uri: 'https://brapi.dev' }
+            ]
+        };
+
+        return res.status(200).json(response);
 
     } catch (error: any) {
-        console.error('Market API Error:', error);
-        res.setHeader('Cache-Control', 'no-store, max-age=0');
-        
-        return res.status(200).json({
-            error: true,
-            message: error.message || "Serviço indisponível.",
-            highlights: { discounted_fiis: [], discounted_stocks: [] }
+        console.error('Market Overview Error:', error);
+        return res.status(500).json({ 
+            error: true, 
+            message: "Erro ao consultar base de dados.",
+            details: error.message 
         });
     }
 }

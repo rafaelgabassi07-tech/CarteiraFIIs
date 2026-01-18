@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, RefreshCw, AlertTriangle, Globe, Sparkles, TrendingUp, TrendingDown, DollarSign, Building2, BarChart3, Clock, ArrowRight, ShieldCheck } from 'lucide-react';
-import { fetchMarketOverview } from '../services/geminiService';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, AlertTriangle, Globe, Sparkles, Building2, BarChart3, Database } from 'lucide-react';
+import { fetchMarketOverview } from '../services/dataService';
 import { MarketOverview } from '../types';
 
 interface ExtendedMarketOverview extends MarketOverview {
@@ -10,8 +10,8 @@ interface ExtendedMarketOverview extends MarketOverview {
     cachedAt?: number;
 }
 
-const CACHE_KEY = 'investfiis_market_data_v3';
-const CACHE_DURATION = 1000 * 60 * 60; // 1 Hora
+const CACHE_KEY = 'investfiis_market_data_v4';
+const CACHE_DURATION = 1000 * 60 * 30; // 30 Minutos
 
 // --- Componentes UI ---
 
@@ -61,7 +61,7 @@ const OpportunityCard: React.FC<{ type: 'FII' | 'STOCK'; data: any; index: numbe
             
             {/* Click Area */}
             <a 
-                href={`https://www.google.com/search?q=${data.ticker}+investidor10`} 
+                href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${data.ticker.toLowerCase()}/`} 
                 target="_blank" 
                 rel="noreferrer"
                 className="absolute inset-0 z-20 rounded-2xl ring-2 ring-transparent group-hover:ring-zinc-900/5 dark:group-hover:ring-white/5 transition-all"
@@ -84,7 +84,6 @@ export const Market: React.FC = () => {
     const [isRefetching, setIsRefetching] = useState(false);
     const [errorMode, setErrorMode] = useState(false);
     
-    // Carrega cache inicial
     useEffect(() => {
         const loadCache = () => {
             const cached = localStorage.getItem(CACHE_KEY);
@@ -96,11 +95,10 @@ export const Market: React.FC = () => {
                     if (age < CACHE_DURATION) {
                         setData(parsed);
                         setLoading(false);
-                        return true; // Cache válido
+                        return true;
                     } else {
-                        // Cache existe mas é velho, mostra ele enquanto atualiza
                         setData(parsed);
-                        return false; // Precisa atualizar
+                        return false;
                     }
                 } catch { return false; }
             }
@@ -108,7 +106,7 @@ export const Market: React.FC = () => {
         };
 
         const isValid = loadCache();
-        fetchData(!isValid); // Se cache inválido ou inexistente, busca
+        fetchData(!isValid);
     }, []);
 
     const fetchData = async (forceLoadingState = false) => {
@@ -119,11 +117,9 @@ export const Market: React.FC = () => {
         try {
             const result = await fetchMarketOverview();
             
-            // Se a API retornar erro (ex: cota excedida), mantemos o cache antigo se existir
             // @ts-ignore
-            if (result.error || (!result.highlights?.discounted_fiis?.length && !result.highlights?.discounted_stocks?.length)) {
-                if (!data) setErrorMode(true); // Só mostra erro se não tiver nada na tela
-                // Se já tem data (cache), ignora o erro silenciosamente ou mostra toast (opcional)
+            if (result.error) {
+                if (!data) setErrorMode(true);
             } else {
                 const newData = { ...result, cachedAt: Date.now() };
                 setData(newData);
@@ -153,9 +149,9 @@ export const Market: React.FC = () => {
                 <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/10 rounded-3xl flex items-center justify-center text-rose-500 mb-6 border border-rose-100 dark:border-rose-900/30">
                     <AlertTriangle className="w-10 h-10" strokeWidth={1.5} />
                 </div>
-                <h2 className="text-xl font-black text-zinc-900 dark:text-white mb-2">Radar Indisponível</h2>
+                <h2 className="text-xl font-black text-zinc-900 dark:text-white mb-2">Dados Indisponíveis</h2>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 max-w-xs leading-relaxed">
-                    Não foi possível conectar à Inteligência Artificial no momento. Tente novamente em alguns instantes.
+                    Não foi possível conectar ao banco de dados de mercado. Tente novamente.
                 </p>
                 <button 
                     onClick={() => fetchData(true)}
@@ -180,13 +176,13 @@ export const Market: React.FC = () => {
                             {isRefetching ? (
                                 <><RefreshCw className="w-3 h-3 animate-spin" /> Atualizando...</>
                             ) : (
-                                <><Sparkles className="w-3 h-3 text-emerald-500" /> Seleção IA</>
+                                <><Database className="w-3 h-3 text-emerald-500" /> Dados B3</>
                             )}
                         </p>
                     </div>
                     {data?.sentiment_summary && (
-                        <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 ${data.sentiment_summary.includes('negativ') || data.sentiment_summary.includes('cautela') ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400'}`}>
-                            <span className="text-[9px] font-black uppercase tracking-wider max-w-[80px] truncate text-right">
+                        <div className="px-3 py-1.5 rounded-xl border flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                            <span className="text-[9px] font-black uppercase tracking-wider max-w-[100px] truncate text-right">
                                 {data.sentiment_summary}
                             </span>
                         </div>
@@ -201,7 +197,7 @@ export const Market: React.FC = () => {
                     <div className="anim-fade-in">
                         <div className="flex items-center gap-2 mb-4 px-1">
                             <Building2 className="w-4 h-4 text-indigo-500" />
-                            <h3 className="text-xs font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">FIIs (Foco em Renda)</h3>
+                            <h3 className="text-xs font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">FIIs (Maiores DY, P/VP &lt; 1.1)</h3>
                         </div>
                         <div className="space-y-3">
                             {data.highlights.discounted_fiis.map((asset, i) => (
@@ -216,7 +212,7 @@ export const Market: React.FC = () => {
                     <div className="anim-fade-in" style={{ animationDelay: '200ms' }}>
                         <div className="flex items-center gap-2 mb-4 px-1">
                             <BarChart3 className="w-4 h-4 text-sky-500" />
-                            <h3 className="text-xs font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Ações (Descontadas)</h3>
+                            <h3 className="text-xs font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Ações (Menores P/L, P/VP &lt; 2)</h3>
                         </div>
                         <div className="space-y-3">
                             {data.highlights.discounted_stocks.map((asset, i) => (
@@ -231,7 +227,7 @@ export const Market: React.FC = () => {
                     <div className="pt-8 pb-4 text-center opacity-60">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[9px] font-bold text-zinc-500">
                             <Globe className="w-3 h-3" />
-                            Dados agregados via Google Search
+                            Dados agregados via Scrapers (Investidor10/StatusInvest)
                         </div>
                     </div>
                 )}
