@@ -1,120 +1,118 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, TrendingUp, TrendingDown, ExternalLink, RefreshCw, AlertTriangle, Globe, Zap, Percent, BarChart3, Clock, Lock, Coins } from 'lucide-react';
+import { Search, RefreshCw, AlertTriangle, Globe, Sparkles, TrendingUp, TrendingDown, DollarSign, Building2, BarChart3, Clock, ArrowRight } from 'lucide-react';
 import { fetchMarketOverview } from '../services/geminiService';
-import { MarketOverview, MarketHighlightFII, MarketHighlightStock, MarketVariation, MarketHighDividend } from '../types';
+import { MarketOverview, MarketHighlightFII, MarketHighlightStock } from '../types';
 
 interface ExtendedMarketOverview extends MarketOverview {
     error?: boolean;
     message?: string;
 }
 
-// --- Componentes de Card Específicos ---
+// --- Componentes UI Novos ---
 
-const DiscountedFIICard: React.FC<{ asset: MarketHighlightFII }> = ({ asset }) => (
-    <div className="flex-shrink-0 w-48 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 bg-white dark:bg-zinc-900 shadow-sm snap-start flex flex-col justify-between group relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-50 dark:bg-indigo-900/10 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110"></div>
-        <div className="relative z-10">
-            <div className="flex justify-between items-start mb-2">
-                <span className="text-base font-black text-zinc-900 dark:text-white">{asset.ticker}</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-100 dark:border-indigo-800">FII</span>
-            </div>
-            <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 line-clamp-1 mb-3">{asset.name}</p>
-        </div>
-        <div className="relative z-10 grid grid-cols-2 gap-2 pt-2 border-t border-indigo-50 dark:border-zinc-800">
-             <div>
-                <p className="text-[9px] text-zinc-400 font-bold uppercase">P/VP</p>
-                <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{typeof asset.p_vp === 'number' ? asset.p_vp.toFixed(2) : '-'}</p>
-             </div>
-             <div className="text-right">
-                <p className="text-[9px] text-zinc-400 font-bold uppercase">DY 12M</p>
-                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{typeof asset.dy_12m === 'number' ? asset.dy_12m.toFixed(1) : '-'}%</p>
-             </div>
-        </div>
-        <div className="mt-2 text-center">
-            <span className="text-xs font-black text-zinc-900 dark:text-white">
-                {typeof asset.price === 'number' ? asset.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ -'}
-            </span>
-        </div>
-    </div>
-);
-
-const DiscountedStockCard: React.FC<{ asset: MarketHighlightStock }> = ({ asset }) => (
-    <div className="flex-shrink-0 w-48 p-4 rounded-2xl border border-sky-100 dark:border-sky-900/30 bg-white dark:bg-zinc-900 shadow-sm snap-start flex flex-col justify-between group relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-16 h-16 bg-sky-50 dark:bg-sky-900/10 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110"></div>
-        <div className="relative z-10">
-            <div className="flex justify-between items-start mb-2">
-                <span className="text-base font-black text-zinc-900 dark:text-white">{asset.ticker}</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase bg-sky-50 dark:bg-sky-900/20 text-sky-600 border-sky-100 dark:border-sky-800">Ação</span>
-            </div>
-            <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 line-clamp-1 mb-3">{asset.name}</p>
-        </div>
-        <div className="relative z-10 grid grid-cols-2 gap-2 pt-2 border-t border-sky-50 dark:border-zinc-800">
-             <div>
-                <p className="text-[9px] text-zinc-400 font-bold uppercase">P/L</p>
-                <p className="text-sm font-black text-sky-600 dark:text-sky-400">{typeof asset.p_l === 'number' ? asset.p_l.toFixed(1) : '-'}</p>
-             </div>
-             <div className="text-right">
-                <p className="text-[9px] text-zinc-400 font-bold uppercase">P/VP</p>
-                <p className="text-sm font-black text-sky-600 dark:text-sky-400">{typeof asset.p_vp === 'number' ? asset.p_vp.toFixed(2) : '-'}</p>
-             </div>
-        </div>
-        <div className="mt-2 text-center">
-            <span className="text-xs font-black text-zinc-900 dark:text-white">
-                {typeof asset.price === 'number' ? asset.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ -'}
-            </span>
-        </div>
-    </div>
-);
-
-const VariationCard: React.FC<{ asset: MarketVariation; type: 'gain' | 'loss' }> = ({ asset, type }) => {
-    const isGain = type === 'gain';
-    const colorClass = isGain ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
-    const bgClass = isGain ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-900/30';
+const SentimentBanner: React.FC<{ status: string; summary: string; lastUpdate: string }> = ({ status, summary, lastUpdate }) => {
+    const isBullish = summary.toLowerCase().includes('alta') || summary.toLowerCase().includes('otimism') || summary.toLowerCase().includes('positivo');
+    const isBearish = summary.toLowerCase().includes('baixa') || summary.toLowerCase().includes('cautela') || summary.toLowerCase().includes('queda');
+    
+    // Gradiente baseado no sentimento da frase
+    const bgClass = isBullish 
+        ? 'bg-gradient-to-br from-emerald-600 to-teal-700' 
+        : isBearish 
+            ? 'bg-gradient-to-br from-rose-600 to-orange-700' 
+            : 'bg-gradient-to-br from-indigo-600 to-violet-700';
 
     return (
-        <div className={`flex items-center justify-between p-3 rounded-xl border ${bgClass}`}>
-            <div>
-                <span className="text-sm font-black text-zinc-900 dark:text-white block">{asset.ticker}</span>
-                <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
-                    {typeof asset.price === 'number' ? asset.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ -'}
-                </span>
-            </div>
-            <div className={`flex items-center gap-1 text-sm font-black ${colorClass}`}>
-                {isGain ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                {asset.variation_percent > 0 ? '+' : ''}{asset.variation_percent}%
+        <div className={`w-full p-6 rounded-3xl ${bgClass} text-white shadow-xl relative overflow-hidden mb-8`}>
+            {/* Background Pattern */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+            
+            <div className="relative z-10">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-2 bg-black/20 px-2.5 py-1 rounded-lg backdrop-blur-sm border border-white/10">
+                        <div className={`w-2 h-2 rounded-full ${status.includes('Aberto') ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/90">{status}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-white/60">
+                        <Clock className="w-3 h-3" /> {lastUpdate}
+                    </div>
+                </div>
+                
+                <h2 className="text-xl md:text-2xl font-black leading-tight tracking-tight mb-2">
+                    "{summary}"
+                </h2>
+                <div className="flex items-center gap-2 mt-2 opacity-80">
+                    <Sparkles className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wide">Análise Gemini AI</span>
+                </div>
             </div>
         </div>
     );
 };
 
-const HighDividendCard: React.FC<{ asset: MarketHighDividend }> = ({ asset }) => (
-    <div className="flex-shrink-0 w-40 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30 bg-white dark:bg-zinc-900 shadow-sm snap-start flex flex-col justify-between">
-        <div>
-            <div className="flex justify-between items-start mb-2">
-                <span className="text-sm font-black text-zinc-900 dark:text-white">{asset.ticker}</span>
-                <span className="text-[8px] font-bold px-1 py-0.5 rounded border uppercase bg-zinc-50 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700">{asset.type}</span>
-            </div>
-            <div className="flex items-end gap-1 mb-1">
-                <span className="text-xl font-black text-amber-500">{asset.dy_12m}%</span>
-                <span className="text-[9px] font-bold text-zinc-400 mb-1">DY 12M</span>
-            </div>
-        </div>
-        <div className="pt-2 border-t border-amber-50 dark:border-zinc-800">
-            <p className="text-[9px] text-zinc-400 font-bold uppercase">Último Pag.</p>
-            <p className="text-xs font-black text-zinc-900 dark:text-white">
-                {typeof asset.last_dividend === 'number' ? asset.last_dividend.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ -'}
-            </p>
-        </div>
-    </div>
-);
+const OpportunityCard: React.FC<{ type: 'FII' | 'STOCK'; data: any; delay: number }> = ({ type, data, delay }) => {
+    const isFII = type === 'FII';
+    const mainMetricLabel = isFII ? 'Dividend Yield' : 'P/VP';
+    const mainMetricValue = isFII ? `${data.dy_12m}%` : data.p_vp;
+    const secondaryMetricLabel = isFII ? 'P/VP' : 'P/L';
+    const secondaryMetricValue = isFII ? data.p_vp : data.p_l;
 
-const SectionHeader = ({ title, icon: Icon, colorClass }: any) => (
-    <div className="flex items-center gap-2 mb-3 px-1 mt-8 first:mt-4">
-        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${colorClass}`}>
-            <Icon className="w-3.5 h-3.5" />
+    return (
+        <div 
+            className="group relative bg-white dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/50 rounded-2xl p-5 shadow-sm hover:shadow-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-500 anim-slide-up"
+            style={{ animationDelay: `${delay}ms` }}
+        >
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black border shadow-sm transition-transform group-hover:scale-110 ${isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 border-sky-100 dark:border-sky-900/30'}`}>
+                        {data.ticker.substring(0,2)}
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-black text-zinc-900 dark:text-white leading-none mb-1">{data.ticker}</h3>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider truncate max-w-[120px]">{data.name}</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <p className="text-sm font-black text-zinc-900 dark:text-white">
+                        {typeof data.price === 'number' ? data.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ -'}
+                    </p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800/50">
+                <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-xl p-2.5 text-center">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">{mainMetricLabel}</p>
+                    <p className={`text-sm font-black ${isFII ? 'text-emerald-500' : 'text-zinc-700 dark:text-zinc-200'}`}>{mainMetricValue}</p>
+                </div>
+                <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-xl p-2.5 text-center">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">{secondaryMetricLabel}</p>
+                    <p className="text-sm font-black text-zinc-700 dark:text-zinc-200">{secondaryMetricValue}</p>
+                </div>
+            </div>
+            
+            <a 
+                href={`https://www.google.com/search?q=${data.ticker}+investidor10`} 
+                target="_blank" 
+                rel="noreferrer"
+                className="absolute inset-0 rounded-2xl ring-2 ring-transparent group-hover:ring-zinc-900/5 dark:group-hover:ring-white/5 transition-all"
+            />
         </div>
-        <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wide">{title}</h3>
+    );
+};
+
+const SkeletonCard = () => (
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+        <div className="flex gap-3 mb-4">
+            <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-xl animate-pulse"></div>
+            <div className="flex-1 space-y-2 py-1">
+                <div className="w-20 h-4 bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse"></div>
+                <div className="w-32 h-3 bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse"></div>
+            </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-zinc-50 dark:border-zinc-800">
+            <div className="h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl animate-pulse"></div>
+            <div className="h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl animate-pulse"></div>
+        </div>
     </div>
 );
 
@@ -129,7 +127,6 @@ export const Market: React.FC = () => {
     const hasFetched = useRef(false);
 
     const loadMarketData = async (force = false) => {
-        // Previne chamadas duplicadas em modo estrito ou re-renders rápidos
         if (!force && hasFetched.current) return;
         
         hasFetched.current = true;
@@ -139,11 +136,11 @@ export const Market: React.FC = () => {
         
         try {
             if (!force) {
-                const cached = localStorage.getItem('investfiis_market_grounding_cache');
+                const cached = localStorage.getItem('investfiis_market_radar_cache_v2');
                 if (cached) {
                     const parsed = JSON.parse(cached);
-                    // Cache de 30 minutos
                     const lastTime = new Date(parsed.timestamp).getTime();
+                    // Cache de 30 minutos
                     if (Date.now() - lastTime < 1000 * 60 * 30) {
                         setData(parsed.data);
                         setLoading(false);
@@ -154,20 +151,28 @@ export const Market: React.FC = () => {
 
             const newData = await fetchMarketOverview() as ExtendedMarketOverview;
             
-            if (newData.error || (!newData.highlights?.discounted_fiis?.length && !newData.highlights?.top_gainers?.length)) {
+            if (newData.error || (!newData.highlights?.discounted_fiis?.length && !newData.highlights?.discounted_stocks?.length)) {
                 setHasError(true);
-                setErrorMsg(typeof newData.message === 'string' ? newData.message : 'Dados inválidos recebidos da IA.');
-                setData(null);
+                setErrorMsg(typeof newData.message === 'string' ? newData.message : 'Dados indisponíveis.');
+                // Tenta usar cache antigo em caso de erro se existir
+                const cached = localStorage.getItem('investfiis_market_radar_cache_v2');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    setData(parsed.data);
+                    setHasError(false); // Recuperação silenciosa
+                } else {
+                    setData(null);
+                }
             } else {
                 setData(newData);
-                localStorage.setItem('investfiis_market_grounding_cache', JSON.stringify({
+                localStorage.setItem('investfiis_market_radar_cache_v2', JSON.stringify({
                     data: newData,
                     timestamp: Date.now()
                 }));
             }
         } catch (e: any) {
             setHasError(true);
-            setErrorMsg(typeof e.message === 'string' ? e.message : 'Falha na conexão com o servidor.');
+            setErrorMsg('Erro de conexão.');
         } finally {
             setLoading(false);
         }
@@ -175,7 +180,6 @@ export const Market: React.FC = () => {
 
     useEffect(() => {
         loadMarketData();
-        // Cleanup para permitir recarregar se o componente for desmontado e montado novamente
         return () => { hasFetched.current = false; };
     }, []);
 
@@ -183,150 +187,113 @@ export const Market: React.FC = () => {
 
     return (
         <div className="pb-32 min-h-screen">
-            {/* Search Header */}
-            <div className="sticky top-20 z-40 -mx-4 px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300">
-                 <div className="relative flex items-center">
-                    <Search className="w-4 h-4 absolute left-4 text-zinc-400" />
-                    <input 
-                        type="text" 
-                        placeholder="Pesquisar ativos, notícias..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 pl-11 pr-4 py-3 rounded-2xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-accent/10 transition-all shadow-inner"
-                    />
-                    {searchTerm && (
-                        <button 
-                            onClick={() => window.open(`https://www.google.com/search?q=ação+${searchTerm}+fundamentos`, '_blank')}
-                            className="absolute right-2 px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-wider"
-                        >
-                            Google
-                        </button>
-                    )}
+            {/* Sticky Header minimalista */}
+            <div className="sticky top-20 z-40 -mx-4 px-4 py-3 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 transition-all">
+                 <div className="flex items-center justify-between">
+                    <h1 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
+                        Radar <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
+                    </h1>
+                    <button 
+                        onClick={() => window.open(`https://www.google.com/search?q=notícias+mercado+financeiro+hoje`, '_blank')}
+                        className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                    >
+                        Google News
+                    </button>
                 </div>
             </div>
 
-            {loading ? (
-                <div className="flex flex-col items-center justify-center py-32 text-zinc-400 anim-fade-in">
-                    <div className="relative mb-6">
-                         <div className="w-12 h-12 rounded-full border-4 border-zinc-100 dark:border-zinc-800 border-t-accent animate-spin"></div>
-                         <div className="absolute inset-0 flex items-center justify-center">
-                             <Globe className="w-4 h-4 text-zinc-300" />
-                         </div>
-                    </div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Analisando Mercado...</p>
-                    <p className="text-[10px] mt-2 opacity-50 max-w-[200px] text-center">Gemini 3 + Google Search em tempo real</p>
-                </div>
-            ) : hasError || !hasData ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center anim-fade-in px-6 mt-10">
-                    <div className="w-16 h-16 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-500 mb-6 border border-rose-100 dark:border-rose-900/30">
-                        <AlertTriangle className="w-8 h-8" strokeWidth={1.5} />
-                    </div>
-                    <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-2">Mercado Indisponível</h3>
-                    <p className="text-sm text-zinc-500 mb-2 max-w-xs leading-relaxed">
-                        Não conseguimos processar os dados agora.
-                    </p>
-                    <p className="text-[10px] text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-lg mb-8 font-mono max-w-xs truncate">
-                        {errorMsg}
-                    </p>
-                    <button 
-                        onClick={() => loadMarketData(true)}
-                        className="px-6 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-3 press-effect shadow-xl"
-                    >
-                        <RefreshCw className="w-4 h-4" /> Tentar Novamente
-                    </button>
-                </div>
-            ) : (
-                <div className="pt-6 anim-fade-in space-y-2">
-                    
-                    {/* Status Bar */}
-                    <div className="flex items-center justify-between px-1 mb-6">
-                        <div className="flex items-center gap-2">
-                             <div className={`w-2 h-2 rounded-full animate-pulse ${data.market_status?.toLowerCase().includes('open') || data.market_status?.toLowerCase().includes('aberto') ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-                             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{data.market_status || 'Status N/A'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400">
-                             <Clock className="w-3 h-3" />
-                             <span>Atualizado: {data.last_update}</span>
+            <div className="pt-6 px-1">
+                {loading ? (
+                    <div className="space-y-6 animate-pulse">
+                        <div className="h-48 bg-zinc-100 dark:bg-zinc-800 rounded-3xl w-full"></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
                         </div>
                     </div>
-
-                    {/* FIIs Descontados */}
-                    {data.highlights.discounted_fiis.length > 0 && (
-                        <div className="anim-slide-up" style={{ animationDelay: '0ms' }}>
-                            <SectionHeader title="FIIs Descontados" icon={Percent} colorClass="bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600" />
-                            <div className="flex gap-3 overflow-x-auto no-scrollbar px-1 pb-4 -mx-1 snap-x">
-                                {data.highlights.discounted_fiis.map((asset, i) => <DiscountedFIICard key={i} asset={asset} />)}
-                            </div>
+                ) : hasError || !hasData ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center anim-fade-in">
+                        <div className="w-16 h-16 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-500 mb-6 border border-rose-100 dark:border-rose-900/30">
+                            <AlertTriangle className="w-8 h-8" strokeWidth={1.5} />
                         </div>
-                    )}
+                        <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-2">Radar Offline</h3>
+                        <p className="text-sm text-zinc-500 mb-6 max-w-xs">{errorMsg}</p>
+                        <button onClick={() => loadMarketData(true)} className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2">
+                            <RefreshCw className="w-4 h-4" /> Recarregar
+                        </button>
+                    </div>
+                ) : (
+                    <div className="anim-fade-in">
+                        {/* 1. Market Sentiment Banner */}
+                        <SentimentBanner 
+                            status={data.market_status || 'Aberto'} 
+                            summary={data.sentiment_summary || 'Mercado operando com volatilidade.'}
+                            lastUpdate={data.last_update}
+                        />
 
-                    {/* Ações Descontadas */}
-                    {data.highlights.discounted_stocks.length > 0 && (
-                        <div className="anim-slide-up" style={{ animationDelay: '100ms' }}>
-                            <SectionHeader title="Ações Oportunidades" icon={BarChart3} colorClass="bg-sky-100 dark:bg-sky-900/20 text-sky-600" />
-                            <div className="flex gap-3 overflow-x-auto no-scrollbar px-1 pb-4 -mx-1 snap-x">
-                                {data.highlights.discounted_stocks.map((asset, i) => <DiscountedStockCard key={i} asset={asset} />)}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Variações do Dia */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 anim-slide-up" style={{ animationDelay: '200ms' }}>
-                        {data.highlights.top_gainers.length > 0 && (
-                            <div>
-                                <SectionHeader title="Maiores Altas" icon={TrendingUp} colorClass="bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600" />
-                                <div className="space-y-2">
-                                    {data.highlights.top_gainers.map((asset, i) => <VariationCard key={i} asset={asset} type="gain" />)}
+                        {/* 2. Top FIIs Section */}
+                        {data.highlights.discounted_fiis.length > 0 && (
+                            <div className="mb-10">
+                                <div className="flex items-center gap-2 mb-4 px-2">
+                                    <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg flex items-center justify-center">
+                                        <Building2 className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wide">Top FIIs (Renda)</h3>
+                                        <p className="text-[10px] text-zinc-500 font-medium">Oportunidades com DY alto e P/VP descontado</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {data.highlights.discounted_fiis.map((asset, i) => (
+                                        <OpportunityCard key={i} type="FII" data={asset} delay={i * 100} />
+                                    ))}
                                 </div>
                             </div>
                         )}
-                        {data.highlights.top_losers.length > 0 && (
-                            <div>
-                                <SectionHeader title="Maiores Baixas" icon={TrendingDown} colorClass="bg-rose-100 dark:bg-rose-900/20 text-rose-600" />
-                                <div className="space-y-2">
-                                    {data.highlights.top_losers.map((asset, i) => <VariationCard key={i} asset={asset} type="loss" />)}
+
+                        {/* 3. Top Stocks Section */}
+                        {data.highlights.discounted_stocks.length > 0 && (
+                            <div className="mb-8">
+                                <div className="flex items-center gap-2 mb-4 px-2">
+                                    <div className="w-8 h-8 bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-lg flex items-center justify-center">
+                                        <BarChart3 className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wide">Top Ações (Valor)</h3>
+                                        <p className="text-[10px] text-zinc-500 font-medium">Empresas sólidas com múltiplos atrativos</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {data.highlights.discounted_stocks.map((asset, i) => (
+                                        <OpportunityCard key={i} type="STOCK" data={asset} delay={300 + (i * 100)} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 4. Sources Footer */}
+                        {data.sources && data.sources.length > 0 && (
+                            <div className="mt-12 pt-6 border-t border-zinc-100 dark:border-zinc-800 text-center">
+                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-3 flex items-center justify-center gap-2">
+                                    <Globe className="w-3 h-3" /> Fontes Analisadas
+                                </p>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {data.sources.map((source, i) => (
+                                        <a 
+                                            key={i} 
+                                            href={source.uri} 
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            className="px-3 py-1 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[9px] font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors truncate max-w-[150px]"
+                                        >
+                                            {source.title}
+                                        </a>
+                                    ))}
                                 </div>
                             </div>
                         )}
                     </div>
-
-                    {/* Dividendos Altos */}
-                    {data.highlights.high_dividend_yield.length > 0 && (
-                        <div className="anim-slide-up" style={{ animationDelay: '300ms' }}>
-                            <SectionHeader title="Altos Dividendos" icon={Coins} colorClass="bg-amber-100 dark:bg-amber-900/20 text-amber-600" />
-                            <div className="flex gap-3 overflow-x-auto no-scrollbar px-1 pb-4 -mx-1 snap-x">
-                                {data.highlights.high_dividend_yield.map((asset, i) => <HighDividendCard key={i} asset={asset} />)}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Grounding Sources (Fontes) */}
-                    {data?.sources && data.sources.length > 0 && (
-                        <div className="mt-8 px-5 py-6 bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl border border-zinc-100 dark:border-zinc-800 text-left anim-fade-in">
-                            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <Globe className="w-3 h-3" /> Fontes de Dados
-                            </h3>
-                            <div className="space-y-2">
-                                {data.sources.map((source, idx) => (
-                                    <a 
-                                        key={idx} 
-                                        href={source.uri} 
-                                        target="_blank" 
-                                        rel="noreferrer"
-                                        className="block text-[10px] font-medium text-zinc-500 hover:text-accent truncate transition-colors flex items-center gap-2"
-                                    >
-                                        <ExternalLink className="w-3 h-3 shrink-0 opacity-50" />
-                                        {source.title}
-                                    </a>
-                                ))}
-                            </div>
-                            <p className="text-[9px] text-zinc-400 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 leading-relaxed">
-                                Gerado por IA (Gemini 3) via Google Search. Verifique sempre os dados em sua corretora antes de investir.
-                            </p>
-                        </div>
-                    )}
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

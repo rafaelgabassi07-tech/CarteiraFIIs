@@ -49,28 +49,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         const systemInstruction = `
-            ATUE COMO UM AGREGADOR DE DADOS FINANCEIROS B3 (BRASIL).
+            ATUE COMO UM ANALISTA FINANCEIRO SÊNIOR ESPECIALIZADO EM BOLSA BRASILEIRA (B3).
             
-            TAREFA ÚNICA:
-            Faça uma busca no Google AGORA e retorne um resumo do mercado de hoje em JSON.
+            SUA MISSÃO:
+            Identificar as MELHORES OPORTUNIDADES do momento para o investidor de varejo.
             
-            RETORNE APENAS ESTE JSON (Sem markdown, sem texto extra):
+            1. Analise o mercado de hoje.
+            2. Selecione 3 FIIs que estão baratos (P/VP < 1.0) e pagam bons dividendos (DY > 9%).
+            3. Selecione 3 Ações Sólidas que estão descontadas (P/L baixo, P/VP atrativo).
+            4. Escreva uma frase curta (máximo 15 palavras) resumindo o sentimento geral do mercado hoje (Ex: "Otimismo com queda de juros impulsiona setor imobiliário").
+            
+            RETORNE ESTRITAMENTE ESTE JSON:
             {
               "market_status": "Aberto" | "Fechado",
+              "sentiment_summary": "Resumo do sentimento em uma frase.",
               "last_update": "HH:mm",
               "highlights": {
-                "discounted_fiis": [ { "ticker": "AAAA11", "name": "Nome", "price": 0.0, "p_vp": 0.0, "dy_12m": 0.0 } ], // Top 3 FIIs descontados
-                "discounted_stocks": [ { "ticker": "AAAA3", "name": "Nome", "price": 0.0, "p_l": 0.0, "p_vp": 0.0 } ], // Top 3 Ações baratas
-                "top_gainers": [ { "ticker": "AAAA3", "variation_percent": 0.0, "price": 0.0 } ], // Top 3 Altas IBOV hoje
-                "top_losers": [ { "ticker": "AAAA3", "variation_percent": -0.0, "price": 0.0 } ], // Top 3 Baixas IBOV hoje
-                "high_dividend_yield": [ { "ticker": "AAAA11", "type": "FII", "dy_12m": 0.0, "last_dividend": 0.0 } ] // Top 3 DY
+                "discounted_fiis": [ 
+                    { "ticker": "XXXX11", "name": "Nome Curto", "price": 0.0, "p_vp": 0.0, "dy_12m": 0.0 } 
+                ],
+                "discounted_stocks": [ 
+                    { "ticker": "XXXX3", "name": "Nome Curto", "price": 0.0, "p_l": 0.0, "p_vp": 0.0 } 
+                ],
+                "top_gainers": [], // Deixe vazio, foco é qualidade
+                "top_losers": [], // Deixe vazio
+                "high_dividend_yield": [] // Deixe vazio, já incluído em FIIs
               }
             }
         `;
 
         const generationPromise = ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: "Resumo de mercado B3 agora.",
+            contents: "Quais as melhores oportunidades de FIIs e Ações hoje na B3?",
             config: {
                 systemInstruction: systemInstruction,
                 tools: [{ googleSearch: {} }],
@@ -123,6 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Retorna 200 com flag de erro para que o frontend receba o JSON e exiba a mensagem amigável
         return res.status(200).json({
             market_status: 'Indisponível',
+            sentiment_summary: "Serviço temporariamente indisponível.",
             last_update: new Date().toLocaleString('pt-BR'),
             highlights: {
                 discounted_fiis: [],

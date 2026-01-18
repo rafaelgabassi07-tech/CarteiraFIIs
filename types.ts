@@ -193,12 +193,13 @@ export interface MarketHighDividend {
 
 export interface MarketOverview {
     market_status: string;
+    sentiment_summary: string; // Novo campo
     last_update: string;
     highlights: {
         discounted_fiis: MarketHighlightFII[];
         discounted_stocks: MarketHighlightStock[];
-        top_gainers: MarketVariation[];
-        top_losers: MarketVariation[];
+        top_gainers: MarketVariation[]; // Mantido para compatibilidade, mas pode vir vazio
+        top_losers: MarketVariation[]; // Mantido para compatibilidade
         high_dividend_yield: MarketHighDividend[];
     };
     sources?: { title: string; uri: string }[];
