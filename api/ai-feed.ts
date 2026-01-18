@@ -63,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     if (allTickers.length === 0) return res.json({ data: [] });
 
-    // Reduzido o tamanho do lote para o modelo Pro processar melhor
+    // Tamanho do lote ajustado para modelo Pro
     const CHUNK_SIZE = 10; 
     const results: any[] = [];
 
@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         try {
             const response = await ai.models.generateContent({
-              model: 'gemini-3-pro-preview', // Modelo Pro para maior precisão nos números
+              model: 'gemini-1.5-pro-002', // Modelo Produção Estável
               contents: prompt,
               config: {
                 tools: [{ googleSearch: {} }],

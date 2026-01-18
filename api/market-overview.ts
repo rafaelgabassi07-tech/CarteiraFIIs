@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Cache agressivo de 1 hora na CDN e revalidação em background
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
     
-    // Timeout ajustado para 25s para acomodar o modelo Pro (mais lento, mas mais inteligente)
+    // Timeout ajustado para 25s
     const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Timeout de processamento (25s)")), 25000)
     );
@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-        // Prompt ajustado para o modelo Pro
+        // Prompt ajustado para o modelo 1.5 Pro (Estável)
         const prompt = `
             ATUE COMO UM ANALISTA SÊNIOR DE MERCADO (CNPI).
             
@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `;
 
         const generationPromise = ai.models.generateContent({
-            model: 'gemini-3-pro-preview', // Modelo Pro para maior inteligência
+            model: 'gemini-1.5-pro-002', // Modelo Produção Estável (Sem Preview)
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }],
