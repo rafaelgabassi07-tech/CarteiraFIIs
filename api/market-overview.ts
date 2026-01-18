@@ -14,68 +14,71 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+        // Prompt otimizado para ser mais direto e rápido
         const prompt = `
-            Você é um especialista em mercado financeiro (B3).
-            Use o Google Search para encontrar as cotações e variações de HOJE (dados mais recentes possíveis).
-
-            TAREFAS:
-            1. Liste as 4 ações do Ibovespa com MAIOR ALTA percentual hoje (Gainers).
-            2. Liste as 4 ações do Ibovespa com MAIOR BAIXA percentual hoje (Losers).
-            3. Liste 4 Fundos Imobiliários (FIIs) que sejam boas oportunidades (P/VP < 0.98 e DY anual > 9%).
-
-            FORMATO DE RESPOSTA (JSON PURO):
-            Retorne APENAS um objeto JSON válido, sem markdown (\`\`\`json), sem comentários.
-            Siga estritamente esta estrutura:
+            Gere um JSON com dados de mercado do Brasil (B3) de HOJE (ou último fechamento).
+            
+            1. "gainers": Top 3 ações do Ibovespa com maior alta (Ticker, Nome, Preço, Variação%).
+            2. "losers": Top 3 ações do Ibovespa com maior baixa.
+            3. "opportunities": 3 FIIs com P/VP < 1.0 e DY > 9%.
+            
+            Retorne APENAS o JSON. Formato:
             {
-                "gainers": [
-                    { "ticker": "PETR4", "name": "Petrobras", "price": 40.50, "change": 2.5, "assetType": "STOCK", "type": "gain", "description": "Alta do petróleo no exterior" }
-                ],
-                "losers": [
-                    { "ticker": "VALE3", "name": "Vale", "price": 60.20, "change": -1.2, "assetType": "STOCK", "type": "loss", "description": "Queda do minério" }
-                ],
-                "opportunities": [
-                    { "ticker": "MXRF11", "name": "Maxi Renda", "price": 10.50, "change": 0, "assetType": "FII", "type": "opportunity", "description": "P/VP 0.98 • DY 12%" }
-                ]
+                "gainers": [{"ticker": "AAA3", "name": "Nome", "price": 10.0, "change": 5.0, "assetType": "STOCK", "type": "gain"}],
+                "losers": [{"ticker": "BBB3", "name": "Nome", "price": 20.0, "change": -5.0, "assetType": "STOCK", "type": "loss"}],
+                "opportunities": [{"ticker": "CCC11", "name": "Nome", "price": 100.0, "change": 0, "assetType": "FII", "type": "opportunity"}]
             }
         `;
 
-        // Removido responseSchema para evitar conflito com Google Search Grounding
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }],
-                temperature: 0.1
+                temperature: 0.1,
+                // Configurações de segurança para evitar bloqueios indevidos em dados financeiros
+                safetySettings: [
+                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+                ]
             }
         });
 
-        // Limpeza robusta do texto para extrair apenas o JSON
-        let rawText = response.text || '{}';
+        let rawText = response.text || '';
+        
+        // Limpeza agressiva de Markdown
         rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const start = rawText.indexOf('{');
+        const end = rawText.lastIndexOf('}');
         
-        const startIndex = rawText.indexOf('{');
-        const endIndex = rawText.lastIndexOf('}');
-        
-        if (startIndex !== -1 && endIndex !== -1) {
-            rawText = rawText.substring(startIndex, endIndex + 1);
+        if (start !== -1 && end !== -1) {
+            rawText = rawText.substring(start, end + 1);
         }
 
         let data;
         try {
             data = JSON.parse(rawText);
         } catch (e) {
-            console.error("Falha no parse JSON Gemini:", rawText);
-            throw new Error("O modelo não retornou um JSON válido.");
+            console.error("JSON Parse Error:", rawText);
+            // Fallback: tentar corrigir JSON mal formatado simples (ex: vírgulas extras)
+            try {
+                // Tenta remover vírgulas trailing
+                const fixedText = rawText.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+                data = JSON.parse(fixedText);
+            } catch (e2) {
+                 throw new Error("Falha ao processar resposta do Gemini");
+            }
         }
 
-        // Função auxiliar para garantir tipos
         const normalize = (arr: any[], defaultType: string, defaultAsset: string) => {
             if (!Array.isArray(arr)) return [];
             return arr.slice(0, 4).map(item => ({
                 ticker: item.ticker?.toUpperCase() || 'N/A',
                 name: item.name || item.ticker,
-                price: Number(item.price) || 0,
-                change: Number(item.change) || 0,
+                price: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
+                change: typeof item.change === 'number' ? item.change : parseFloat(item.change) || 0,
                 assetType: item.assetType || defaultAsset,
                 type: defaultType,
                 description: item.description || ''
@@ -89,19 +92,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             lastUpdate: Date.now()
         };
 
+        // Verificação final de dados vazios
+        if (result.gainers.length === 0 && result.losers.length === 0) {
+            throw new Error("Dados vazios retornados pela IA");
+        }
+
         return res.status(200).json(result);
 
     } catch (error: any) {
-        console.error('Market Overview Fatal Error:', error);
+        console.error('Market Overview Error:', error);
         
-        // Retorna objeto vazio com flag de erro para a UI tratar, em vez de 500
+        // Em caso de erro, retorna estrutura de erro para o frontend tratar (mostrar botão de retry)
         return res.status(200).json({
-            gainers: [],
-            losers: [],
-            opportunities: [],
-            lastUpdate: Date.now(),
             error: true,
-            message: "Serviço de inteligência momentaneamente indisponível."
+            message: error.message || "Erro ao buscar dados de mercado.",
+            gainers: [], losers: [], opportunities: [],
+            lastUpdate: Date.now()
         });
     }
 }
