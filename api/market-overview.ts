@@ -14,19 +14,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-        // Prompt otimizado para ser mais direto e rápido
+        // Prompt específico para forçar o uso de dados recentes e formato estrito
         const prompt = `
-            Gere um JSON com dados de mercado do Brasil (B3) de HOJE (ou último fechamento).
+            ATUE COMO UM ANALISTA DE MERCADO FINANCEIRO B3 (BRASIL).
             
-            1. "gainers": Top 3 ações do Ibovespa com maior alta (Ticker, Nome, Preço, Variação%).
-            2. "losers": Top 3 ações do Ibovespa com maior baixa.
-            3. "opportunities": 3 FIIs com P/VP < 1.0 e DY > 9%.
+            TAREFA:
+            Use o Google Search para encontrar os dados de mercado MAIS RECENTES DE HOJE (cotações, altas, baixas).
             
-            Retorne APENAS o JSON. Formato:
+            1. Encontre as 3 Ações do Ibovespa com MAIOR ALTA percentual hoje (Gainers).
+            2. Encontre as 3 Ações do Ibovespa com MAIOR BAIXA percentual hoje (Losers).
+            3. Encontre 3 Fundos Imobiliários (FIIs) que sejam boas oportunidades (P/VP < 1.0 e DY anual > 9%).
+            
+            SAÍDA OBRIGATÓRIA (JSON):
+            Retorne APENAS um objeto JSON válido. Não use Markdown. Não explique nada.
+            Siga estritamente esta estrutura:
             {
-                "gainers": [{"ticker": "AAA3", "name": "Nome", "price": 10.0, "change": 5.0, "assetType": "STOCK", "type": "gain"}],
-                "losers": [{"ticker": "BBB3", "name": "Nome", "price": 20.0, "change": -5.0, "assetType": "STOCK", "type": "loss"}],
-                "opportunities": [{"ticker": "CCC11", "name": "Nome", "price": 100.0, "change": 0, "assetType": "FII", "type": "opportunity"}]
+                "gainers": [
+                    { "ticker": "PETR4", "name": "Petrobras", "price": 40.50, "change": 2.5, "assetType": "STOCK", "type": "gain", "description": "Motivo resumido da alta" }
+                ],
+                "losers": [
+                    { "ticker": "VALE3", "name": "Vale", "price": 60.20, "change": -1.2, "assetType": "STOCK", "type": "loss", "description": "Motivo resumido da baixa" }
+                ],
+                "opportunities": [
+                    { "ticker": "MXRF11", "name": "Maxi Renda", "price": 10.50, "change": 0, "assetType": "FII", "type": "opportunity", "description": "Indicadores chave (P/VP, DY)" }
+                ]
             }
         `;
 
@@ -35,8 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }],
-                temperature: 0.1,
-                // Configurações de segurança utilizando Enums corretos do SDK
+                temperature: 0.2, // Baixa temperatura para dados mais factuais
                 safetySettings: [
                     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
                     { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -46,39 +56,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         });
 
-        let rawText = response.text || '';
+        // 1. Extração de Fontes (Grounding Metadata)
+        const sources = [];
+        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        if (groundingChunks) {
+            groundingChunks.forEach((chunk: any) => {
+                if (chunk.web?.uri && chunk.web?.title) {
+                    sources.push({ title: chunk.web.title, uri: chunk.web.uri });
+                }
+            });
+        }
+
+        // 2. Limpeza e Parse do JSON
+        let rawText = response.text || '{}';
         
-        // Limpeza agressiva de Markdown
+        // Remove blocos de código markdown se existirem
         rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const start = rawText.indexOf('{');
-        const end = rawText.lastIndexOf('}');
         
-        if (start !== -1 && end !== -1) {
-            rawText = rawText.substring(start, end + 1);
+        // Encontra o primeiro '{' e o último '}' para isolar o JSON
+        const startIndex = rawText.indexOf('{');
+        const endIndex = rawText.lastIndexOf('}');
+        
+        if (startIndex !== -1 && endIndex !== -1) {
+            rawText = rawText.substring(startIndex, endIndex + 1);
         }
 
         let data;
         try {
             data = JSON.parse(rawText);
         } catch (e) {
-            console.error("JSON Parse Error:", rawText);
-            // Fallback: tentar corrigir JSON mal formatado simples (ex: vírgulas extras)
-            try {
-                // Tenta remover vírgulas trailing
-                const fixedText = rawText.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
-                data = JSON.parse(fixedText);
-            } catch (e2) {
-                 throw new Error("Falha ao processar resposta do Gemini");
-            }
+            console.error("Falha no parse JSON Gemini:", rawText);
+            throw new Error("O modelo retornou dados mal formatados.");
         }
 
+        // 3. Normalização dos Dados
         const normalize = (arr: any[], defaultType: string, defaultAsset: string) => {
             if (!Array.isArray(arr)) return [];
-            return arr.slice(0, 4).map(item => ({
+            return arr.slice(0, 3).map(item => ({
                 ticker: item.ticker?.toUpperCase() || 'N/A',
                 name: item.name || item.ticker,
-                price: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
-                change: typeof item.change === 'number' ? item.change : parseFloat(item.change) || 0,
+                price: typeof item.price === 'string' ? parseFloat(item.price.replace(',', '.')) : (item.price || 0),
+                change: typeof item.change === 'string' ? parseFloat(item.change.replace(',', '.')) : (item.change || 0),
                 assetType: item.assetType || defaultAsset,
                 type: defaultType,
                 description: item.description || ''
@@ -89,25 +107,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             gainers: normalize(data.gainers, 'gain', 'STOCK'),
             losers: normalize(data.losers, 'loss', 'STOCK'),
             opportunities: normalize(data.opportunities, 'opportunity', 'FII'),
-            lastUpdate: Date.now()
+            lastUpdate: Date.now(),
+            sources: sources.slice(0, 3) // Limita a 3 fontes para não poluir a UI
         };
-
-        // Verificação final de dados vazios
-        if (result.gainers.length === 0 && result.losers.length === 0) {
-            throw new Error("Dados vazios retornados pela IA");
-        }
 
         return res.status(200).json(result);
 
     } catch (error: any) {
-        console.error('Market Overview Error:', error);
+        console.error('Market Overview Fatal Error:', error);
         
-        // Em caso de erro, retorna estrutura de erro para o frontend tratar (mostrar botão de retry)
+        // Retorna erro estruturado para a UI lidar (Botão Tentar Novamente)
         return res.status(200).json({
             error: true,
-            message: error.message || "Erro ao buscar dados de mercado.",
-            gainers: [], losers: [], opportunities: [],
-            lastUpdate: Date.now()
+            message: "Não foi possível analisar o mercado no momento.",
+            details: error.message,
+            gainers: [], losers: [], opportunities: [], lastUpdate: Date.now()
         });
     }
 }
