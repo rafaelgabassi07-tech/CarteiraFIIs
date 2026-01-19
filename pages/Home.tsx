@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp, Layers } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp, Layers, CheckCircle2 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, Sector } from 'recharts';
 
@@ -83,7 +83,7 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, isJCP 
             textClass: 'text-orange-700 dark:text-orange-300',
             valueClass: 'text-orange-800 dark:text-orange-200 font-bold',
             icon: Coins,
-            label: isToday ? 'JCP Hoje' : 'Pagamento JCP'
+            label: isToday ? 'Cai Hoje' : 'Pagamento JCP'
         };
     }
 
@@ -149,25 +149,60 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
   const isProfitPositive = totalProfitValue >= 0;
 
-  const { upcomingEvents, received } = useMemo(() => {
+  const { upcomingEvents, received, groupedEvents } = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const allEvents: any[] = [];
     let receivedTotal = 0;
     
-    // dividendReceipts já vem filtrado do App.tsx para conter apenas itens com quantityOwned > 0
+    // Filtro inicial e cálculo de recebidos
     dividendReceipts.forEach(r => {
         if (r.paymentDate <= todayStr) receivedTotal += r.totalReceived;
-        if (r.paymentDate >= todayStr) allEvents.push({ ...r, eventType: 'payment', date: r.paymentDate });
-        // Data com futura é rara nos dados recebidos, mas se houver
-        if (r.dateCom >= todayStr) allEvents.push({ ...r, eventType: 'datacom', date: r.dateCom });
+        
+        // Pagamento Futuro ou Hoje
+        if (r.paymentDate >= todayStr) {
+            allEvents.push({ ...r, eventType: 'payment', date: r.paymentDate });
+        }
+        // Data Com Futura ou Hoje
+        if (r.dateCom >= todayStr) {
+            allEvents.push({ ...r, eventType: 'datacom', date: r.dateCom });
+        }
     });
     
+    // Deduplicação e Ordenação
     const uniqueEvents = allEvents.sort((a, b) => a.date.localeCompare(b.date)).reduce((acc: any[], current) => {
         if (!acc.find((i: any) => i.date === current.date && i.ticker === current.ticker && i.eventType === current.eventType)) acc.push(current);
         return acc;
     }, []);
 
-    return { upcomingEvents: uniqueEvents, received: receivedTotal };
+    // Agrupamento para o Modal Agenda (Nova Lógica)
+    const grouped: Record<string, any[]> = {
+        'Hoje': [],
+        'Amanhã': [],
+        'Esta Semana': [],
+        'Futuro': []
+    };
+
+    const todayDate = new Date();
+    todayDate.setHours(0,0,0,0);
+    const tomorrowDate = new Date(todayDate);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const nextWeekDate = new Date(todayDate);
+    nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+
+    uniqueEvents.forEach((ev: any) => {
+        const evDate = new Date(ev.date + 'T00:00:00');
+        if (evDate.getTime() === todayDate.getTime()) {
+            grouped['Hoje'].push(ev);
+        } else if (evDate.getTime() === tomorrowDate.getTime()) {
+            grouped['Amanhã'].push(ev);
+        } else if (evDate <= nextWeekDate) {
+            grouped['Esta Semana'].push(ev);
+        } else {
+            grouped['Futuro'].push(ev);
+        }
+    });
+
+    return { upcomingEvents: uniqueEvents, received: receivedTotal, groupedEvents: grouped };
   }, [dividendReceipts]);
 
   const { history, average, maxVal, receiptsByMonth, realYieldMetrics, last12MonthsData, provisionedMap, provisionedTotal, sortedProvisionedMonths, dividendsChartData } = useMemo(() => {
@@ -587,57 +622,69 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="p-6 pb-20">
-            <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-6 px-2">Agenda Completa</h2>
-            <div className="space-y-3">
-                {upcomingEvents.map((e: any, i: number) => {
-                    const style = getEventStyle(e.eventType, e.date, e.type === 'JCP');
-                    return (
-                        <div key={i} className={`p-4 rounded-2xl flex items-center justify-between anim-slide-up ${style.containerClass}`} style={{ animationDelay: `${i * 50}ms` }}>
-                            <div className="flex items-center gap-4">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 shadow-sm ${style.iconClass}`}>
-                                    <style.icon className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase flex items-center gap-2">
-                                        {e.ticker}
-                                        {e.type === 'JCP' && (
-                                            <span className="text-[8px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">JCP</span>
-                                        )}
-                                    </h4>
-                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${style.textClass}`}>{style.label}</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className="flex items-center justify-end gap-1 mb-0.5 text-[10px] font-bold text-zinc-400">
-                                    <Clock className="w-3 h-3" />
-                                    <span>{getDaysUntil(e.date)}</span>
-                                </div>
-                                <p className="text-sm font-black text-zinc-900 dark:text-white">{formatDateShort(e.date)}</p>
-                                {e.eventType === 'payment' && (
-                                    <div className="mt-1 flex flex-col items-end">
-                                        <p className={`text-xs ${style.valueClass}`}>{formatBRL(e.totalReceived, privacyMode)}</p>
-                                        <div className="flex items-center justify-end gap-1.5 mt-1">
-                                            <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded border border-black/5 dark:border-white/5">
-                                                {e.quantityOwned} un
-                                            </span>
-                                            <span className="text-[9px] text-zinc-400">x</span>
-                                            <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded border border-black/5 dark:border-white/5">
-                                                {formatBRL(e.rate, privacyMode)}
-                                            </span>
+            <div className="flex items-center gap-4 mb-8 px-2">
+                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30">
+                    <CalendarDays className="w-6 h-6" />
+                </div>
+                <div>
+                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2>
+                    <p className="text-xs text-zinc-500 font-medium">Próximos Eventos e Pagamentos</p>
+                </div>
+            </div>
+
+            {Object.keys(groupedEvents).map((groupKey) => {
+                const events = groupedEvents[groupKey];
+                if (events.length === 0) return null;
+
+                return (
+                    <div key={groupKey} className="mb-6 anim-slide-up">
+                        <h3 className="px-3 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sticky top-0 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm py-2 z-10">
+                            {groupKey}
+                        </h3>
+                        <div className="space-y-3">
+                            {events.map((e: any, i: number) => {
+                                const style = getEventStyle(e.eventType, e.date, e.type === 'JCP');
+                                return (
+                                    <div key={i} className={`p-4 rounded-2xl flex items-center justify-between border ${style.containerClass}`}>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5 shadow-sm ${style.iconClass}`}>
+                                                <style.icon className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase">{e.ticker}</h4>
+                                                    {e.type === 'JCP' && <span className="text-[8px] font-bold px-1.5 rounded bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300">JCP</span>}
+                                                </div>
+                                                <p className={`text-[10px] font-bold uppercase tracking-widest ${style.textClass}`}>{style.label}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            {e.eventType === 'payment' ? (
+                                                <>
+                                                    <span className={`block text-sm font-black ${style.valueClass}`}>{formatBRL(e.totalReceived, privacyMode)}</span>
+                                                    <span className="text-[9px] font-bold text-zinc-400 block mt-0.5">{formatDateShort(e.date)}</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="block text-sm font-black text-zinc-900 dark:text-white">{formatDateShort(e.date)}</span>
+                                                    <span className="text-[9px] font-bold text-zinc-400 block mt-0.5">Data de Corte</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
-                                )}
-                            </div>
+                                );
+                            })}
                         </div>
-                    );
-                })}
-                {upcomingEvents.length === 0 && (
-                     <div className="text-center py-10 opacity-50">
-                        <CalendarClock className="w-12 h-12 mx-auto mb-2 text-zinc-300" />
-                        <p className="text-xs font-bold text-zinc-500">Nada agendado para os próximos dias.</p>
-                     </div>
-                )}
-            </div>
+                    </div>
+                );
+            })}
+
+            {upcomingEvents.length === 0 && (
+                 <div className="text-center py-20 opacity-50 flex flex-col items-center">
+                    <CalendarClock className="w-16 h-16 mb-4 text-zinc-200 dark:text-zinc-800" strokeWidth={1} />
+                    <p className="text-sm font-bold text-zinc-500">Nenhum evento previsto.</p>
+                 </div>
+            )}
         </div>
       </SwipeableModal>
 

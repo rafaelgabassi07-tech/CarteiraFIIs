@@ -15,7 +15,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.5.0'; 
+const APP_VERSION = '8.6.0'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -25,7 +25,7 @@ const STORAGE_KEYS = {
   PRIVACY: 'investfiis_privacy_mode',
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
-  NOTIF_HISTORY: 'investfiis_notification_history_v2',
+  NOTIF_HISTORY: 'investfiis_notification_history_v3', // Version bumped
   METADATA: 'investfiis_metadata_v2' 
 };
 
@@ -155,6 +155,63 @@ const App: React.FC = () => {
     document.documentElement.style.setProperty('--color-accent-rgb', accentColor.replace('#', '').match(/.{2}/g)?.map(x => parseInt(x, 16)).join(' ') || '14 165 233');
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
   }, [accentColor]);
+
+  // --- LOGICA DE NOTIFICAÇÕES INTELIGENTES ---
+  useEffect(() => {
+      if (dividends.length === 0 || transactions.length === 0) return;
+
+      const today = new Date().toISOString().split('T')[0];
+      const newNotifs: AppNotification[] = [];
+      const existingIds = new Set(notifications.map(n => n.id));
+
+      // 1. Verifica pagamentos de Hoje
+      dividends.forEach(div => {
+          // Só notifica se o usuário tem o ativo
+          const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
+          if (qty > 0) {
+              const total = qty * div.rate;
+              
+              // Notificação de Pagamento (Hoje)
+              if (div.paymentDate === today) {
+                  const id = `pay-${div.ticker}-${div.paymentDate}`;
+                  if (!existingIds.has(id)) {
+                      newNotifs.push({
+                          id,
+                          title: 'Pagamento Recebido 💰',
+                          message: `${div.ticker} pagou R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})} hoje!`,
+                          type: 'success',
+                          category: 'payment',
+                          timestamp: Date.now(),
+                          read: false
+                      });
+                  }
+              }
+
+              // Notificação de Data Com (Hoje)
+              if (div.dateCom === today) {
+                  const id = `datacom-${div.ticker}-${div.dateCom}`;
+                  if (!existingIds.has(id)) {
+                      newNotifs.push({
+                          id,
+                          title: 'Data Com Hoje 📅',
+                          message: `Último dia para garantir proventos de ${div.ticker}.`,
+                          type: 'info',
+                          category: 'datacom',
+                          timestamp: Date.now(),
+                          read: false
+                      });
+                  }
+              }
+          }
+      });
+
+      if (newNotifs.length > 0) {
+          setNotifications(prev => [...newNotifs, ...prev]);
+          // Opcional: Vibrar dispositivo se suportado
+          if (navigator.vibrate) navigator.vibrate(200);
+      }
+
+  }, [dividends, transactions]); // Dependências controladas para rodar apenas quando dados mudam
 
   // --- PWA INSTALL HANDLER ---
   useEffect(() => {
@@ -415,6 +472,11 @@ const App: React.FC = () => {
       });
   }, [session, fetchTransactionsFromCloud, showToast]);
 
+  const handleClearNotifications = useCallback(() => {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      // Mantém histórico, mas marca como lido visualmente no modal
+  }, []);
+
   // --- CÁLCULOS DE PORTFÓLIO (Memoized) ---
   const memoizedPortfolioData = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -558,7 +620,7 @@ const App: React.FC = () => {
             </main>
             {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
             <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
-            <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={() => setNotifications([])} />
+            <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={handleClearNotifications} />
             <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />
             <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
         </>

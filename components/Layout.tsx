@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail } from 'lucide-react';
 
 // Utility for smooth visibility transitions
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -365,34 +365,43 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes 
 
 export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notifications, onClear }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-8 pb-24">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                  <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Notificações</h2>
-                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Avisos e Pagamentos</p>
+        <div className="p-6 pb-20">
+            <div className="flex justify-between items-center mb-8 px-2">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/20 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-900/30">
+                        <Inbox className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Notificações</h2>
+                        <p className="text-xs text-zinc-500 font-medium">Caixa de Entrada</p>
+                    </div>
                 </div>
                 {notifications.length > 0 && (
-                  <button onClick={onClear} className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center border border-rose-100 dark:border-rose-900/30 press-effect">
-                    <Trash2 className="w-5 h-5" />
+                  <button onClick={onClear} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors press-effect" title="Marcar como lidas">
+                    <Check className="w-5 h-5" />
                   </button>
                 )}
             </div>
+            
             {notifications.length === 0 ? (
-                <div className="text-center py-20 opacity-40">
-                  <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Inbox className="w-10 h-10 text-zinc-300 dark:text-zinc-600" strokeWidth={1} />
-                  </div>
-                  <p className="text-sm font-black text-zinc-500 uppercase tracking-widest">Nada por aqui</p>
+                <div className="text-center py-20 opacity-40 flex flex-col items-center">
+                  <Mail className="w-16 h-16 mb-4 text-zinc-200 dark:text-zinc-800" strokeWidth={1} />
+                  <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Tudo limpo por aqui</p>
                 </div>
             ) : (
                 <div className="space-y-3">
                     {notifications.map((n: any, i: number) => (
-                        <div key={n.id} className="p-5 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-stagger-item" style={{ animationDelay: `${i * 50}ms` }}>
-                            <h4 className="font-black text-zinc-900 dark:text-white tracking-tight">{n.title}</h4>
-                            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed font-medium">{n.message}</p>
-                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-4">
-                              {new Date(n.timestamp).toLocaleDateString('pt-BR')} às {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
+                        <div key={n.id} className={`p-4 rounded-2xl border flex gap-4 anim-stagger-item ${n.read ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 opacity-60' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700'}`} style={{ animationDelay: `${i * 50}ms` }}>
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${n.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-900/30' : n.type === 'info' ? 'bg-sky-100 dark:bg-sky-900/20 text-sky-600 border-sky-200 dark:border-sky-900/30' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500 border-zinc-300 dark:border-zinc-600'}`}>
+                                {n.type === 'success' ? <DollarSignIcon /> : <InfoIcon />}
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{n.title}</h4>
+                                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed font-medium">{n.message}</p>
+                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-2">
+                                  {new Date(n.timestamp).toLocaleDateString('pt-BR')} • {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -400,3 +409,7 @@ export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notificatio
         </div>
     </SwipeableModal>
 );
+
+// Ícones simples para uso interno
+const DollarSignIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
+const InfoIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
