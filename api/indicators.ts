@@ -17,6 +17,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // 1. TENTATIVA PRINCIPAL: API Oficial do Banco Central (Série 13522 - IPCA 12m)
+  try {
+      // Série 13522: IPCA - Acumulado em 12 meses
+      const bcbUrl = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json';
+      const { data } = await axios.get(bcbUrl, { 
+          timeout: 5000,
+          httpsAgent,
+          headers: { 'Accept': 'application/json' }
+      });
+      
+      if (Array.isArray(data) && data.length > 0 && data[0].valor) {
+          const val = parseFloat(data[0].valor);
+          if (!isNaN(val)) {
+              return res.status(200).json({
+                  value: val,
+                  date: new Date().toISOString(),
+                  source: 'Banco Central do Brasil (SGS)',
+                  refDate: data[0].data
+              });
+          }
+      }
+  } catch (e: any) {
+      console.warn('[Indicators] BCB API falhou, tentando scraper:', e.message);
+  }
+
+  // 2. FALLBACK: Scraper Investidor10
   try {
     const targetUrl = 'https://investidor10.com.br/indices/ipca/';
     
@@ -33,38 +59,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let acumulado12m = 0;
     let found = false;
 
-    // Estratégia 1: Tabela Dinâmica (Procura coluna "Acumulado 12 meses")
+    // Estratégia 1: Tabela Dinâmica
     $('table').each((_, table) => {
         let idx12m = -1;
-        
-        // Acha o index da coluna
         $(table).find('thead th, tr:first-child td').each((idx, col) => {
             const txt = $(col).text().toLowerCase();
             if (txt.includes('12 meses') || txt.includes('acumulado')) idx12m = idx;
         });
 
         if (idx12m !== -1) {
-            // Pega a primeira linha de dados válida
             $(table).find('tbody tr').each((_, tr) => {
                 const tds = $(tr).find('td');
                 if (tds.length > idx12m) {
                     const valStr = $(tds[idx12m]).text().trim();
-                    // Limpa string (ex: "4,50%")
                     if (valStr && valStr !== '-') {
                          const val = parseFloat(valStr.replace('.', '').replace(',', '.').replace('%', ''));
                          if (!isNaN(val)) {
                              acumulado12m = val;
                              found = true;
-                             return false; // break rows
+                             return false; 
                          }
                     }
                 }
             });
         }
-        if (found) return false; // break tables
+        if (found) return false;
     });
 
-    // Estratégia 2: Widgets de Destaque (Fallback)
+    // Estratégia 2: Widgets
     if (!found) {
         $('.value').each((_, el) => {
             const parentText = $(el).parent().text().toLowerCase();
@@ -78,20 +100,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
     }
 
-    // Fallback Final
-    if (acumulado12m === 0) acumulado12m = 4.62;
+    if (acumulado12m > 0) {
+        return res.status(200).json({
+            value: acumulado12m,
+            date: new Date().toISOString(),
+            source: 'Investidor10 (Scraper)'
+        });
+    }
 
-    return res.status(200).json({
-        value: acumulado12m,
-        date: new Date().toISOString(),
-        source: 'Investidor10 (Robust Scraper)'
-    });
+    throw new Error("Nenhum dado encontrado nas fontes.");
 
   } catch (error: any) {
-    console.error('[Indicators Scraper] Erro:', error.message);
-    return res.status(200).json({
-        value: 4.62,
-        source: 'Fallback Static',
+    console.error('[Indicators] Erro Fatal - Não foi possível obter Inflação Real:', error.message);
+    // Retorna erro explícito para o frontend usar o cache local
+    return res.status(503).json({
+        error: "Unable to fetch real inflation data",
         isError: true
     });
   }

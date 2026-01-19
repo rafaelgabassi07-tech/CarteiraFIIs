@@ -10,17 +10,41 @@ export interface UnifiedMarketData {
 }
 
 const fetchInflationData = async (): Promise<number> => {
-    const FALLBACK_IPCA = 4.62;
+    // 1. Tenta recuperar o último valor REAL conhecido do cache local
+    // Isso garante que se a API falhar, usamos um dado real anterior, não um número mágico.
+    let lastKnownReal = 0;
+    try {
+        const s = localStorage.getItem('investfiis_v4_indicators');
+        if (s) {
+            const p = JSON.parse(s);
+            if (p.ipca && typeof p.ipca === 'number' && p.ipca > 0) {
+                lastKnownReal = p.ipca;
+            }
+        }
+    } catch {}
+
+    // Fallback de emergência (apenas se nunca houve conexão na vida do app)
+    // Usamos 4.50 como estimativa conservadora, mas será substituído na primeira conexão bem sucedida
+    if (lastKnownReal === 0) lastKnownReal = 4.50; 
+
     try {
         const response = await fetch('/api/indicators', { 
             headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(10000) 
+            signal: AbortSignal.timeout(8000) 
         });
-        if (!response.ok) return FALLBACK_IPCA;
+        
+        if (!response.ok) return lastKnownReal;
+        
         const data = await response.json();
-        return (data && typeof data.value === 'number') ? data.value : FALLBACK_IPCA;
+        
+        // Só aceita o dado novo se for numérico, válido e não for erro
+        if (data && typeof data.value === 'number' && !data.isError && data.value > 0) {
+            return data.value;
+        }
+        
+        return lastKnownReal;
     } catch (e) {
-        return FALLBACK_IPCA;
+        return lastKnownReal;
     }
 };
 
@@ -115,7 +139,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           });
       }
 
-      // 3. Busca Inflação
+      // 3. Busca Inflação (IPCA 12 Meses Real)
       const ipca = await fetchInflationData();
 
       return { 

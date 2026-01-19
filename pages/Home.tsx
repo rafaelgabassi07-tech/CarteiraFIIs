@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp, Layers } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, Sector } from 'recharts';
 
@@ -45,7 +45,21 @@ const formatDateShort = (dateStr: string) => {
     return `${day}/${month}`;
 };
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e', '#84cc16', '#14b8a6'];
+// Paleta de cores profissional para gráficos
+const CHART_COLORS = [
+    '#3b82f6', // Blue 500
+    '#10b981', // Emerald 500
+    '#f59e0b', // Amber 500
+    '#8b5cf6', // Violet 500
+    '#ec4899', // Pink 500
+    '#06b6d4', // Cyan 500
+    '#6366f1', // Indigo 500
+    '#f43f5e', // Rose 500
+    '#84cc16', // Lime 500
+    '#14b8a6', // Teal 500
+    '#a855f7', // Purple 500
+    '#ef4444'  // Red 500
+];
 
 const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, isJCP = false) => {
     const isToday = new Date(dateStr + 'T00:00:00').getTime() === new Date().setHours(0,0,0,0);
@@ -102,21 +116,12 @@ const renderActiveShape = (props: any) => {
         cx={cx}
         cy={cy}
         innerRadius={innerRadius}
-        outerRadius={outerRadius + 8}
+        outerRadius={outerRadius + 6}
         startAngle={startAngle}
         endAngle={endAngle}
         fill={fill}
-        className="drop-shadow-lg filter"
-      />
-      <Sector
-        cx={cx}
-        cy={cy}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        innerRadius={outerRadius + 12}
-        outerRadius={outerRadius + 14}
-        fill={fill}
-        opacity={0.3}
+        className="drop-shadow-md filter"
+        cornerRadius={4}
       />
     </g>
   );
@@ -129,6 +134,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showRealYieldModal, setShowRealYieldModal] = useState(false);
   const [showPatrimonyHelp, setShowPatrimonyHelp] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  
+  // Estado para controlar a aba ativa no modal de alocação
+  const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET'>('CLASS');
   
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   const [activeIndexAsset, setActiveIndexAsset] = useState<number | undefined>(undefined);
@@ -299,20 +307,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const total = fiisTotal + stocksTotal || 1;
       
       const sortedByValue = [...enriched].sort((a, b) => b.totalValue - a.totalValue);
-      const topLimit = 6; // Mostra top 6, resto é Outros
-      const topAssetsChart = sortedByValue.slice(0, topLimit).map(a => ({
+      // Pega todos os ativos para o gráfico, agrupando apenas se for muito pequeno (< 1%) para limpar visual
+      // Mas para a lista vamos mostrar todos.
+      
+      const assetsChartData = sortedByValue.map((a, idx) => ({
           name: a.ticker,
-          value: a.totalValue
+          value: a.totalValue,
+          type: a.assetType,
+          percent: (a.totalValue / total) * 100,
+          color: CHART_COLORS[idx % CHART_COLORS.length]
       }));
-      const othersValue = sortedByValue.slice(topLimit).reduce((acc, curr) => acc + curr.totalValue, 0);
-      const assetsChartData = [...topAssetsChart];
-      if (othersValue > 0) {
-          assetsChartData.push({ name: 'Outros', value: othersValue });
-      }
       
       const classChartData = [
-          { name: 'FIIs', value: fiisTotal, color: '#6366f1' },
-          { name: 'Ações', value: stocksTotal, color: '#0ea5e9' }
+          { name: 'FIIs', value: fiisTotal, color: '#6366f1', percent: (fiisTotal / total) * 100 },
+          { name: 'Ações', value: stocksTotal, color: '#0ea5e9', percent: (stocksTotal / total) * 100 }
       ].filter(d => d.value > 0);
 
       return {
@@ -335,7 +343,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         <div className="bg-white/95 dark:bg-zinc-800/95 backdrop-blur-md p-3 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 z-50">
           <p className="text-xs font-black text-zinc-900 dark:text-white mb-0.5">{payload[0].name}</p>
           <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
-            {formatBRL(payload[0].value, privacyMode)} ({formatPercent((payload[0].value / typeData.total) * 100)})
+            {formatBRL(payload[0].value, privacyMode)} ({formatPercent(payload[0].payload.percent)})
           </p>
         </div>
       );
@@ -898,123 +906,183 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         <div className="p-6 pb-20">
-             <div className="flex items-center gap-4 mb-6 anim-slide-up">
+         <div className="p-6 pb-20 flex flex-col h-full">
+             <div className="flex items-center gap-4 mb-6 anim-slide-up shrink-0">
                 <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm border border-blue-200 dark:border-blue-900/50">
                     <PieIcon className="w-6 h-6" strokeWidth={1.5} />
                 </div>
                 <div>
                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Toque nos gráficos para detalhes</p>
+                    <p className="text-xs text-zinc-500 font-medium">Diversificação da Carteira</p>
                 </div>
              </div>
 
-             <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 anim-slide-up shadow-sm anim-graph-grow relative overflow-visible" style={{ animationDelay: '100ms' }}>
-                 <div className="flex items-center gap-2 mb-2 px-2">
-                     <LayoutGrid className="w-3 h-3 text-zinc-400" />
-                     <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Por Classe</h3>
-                 </div>
-                 <div className="h-48 w-full relative z-10">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie 
-                                data={classChartData} 
-                                innerRadius={60} 
-                                outerRadius={80} 
-                                paddingAngle={4} 
-                                dataKey="value" 
-                                stroke="none"
-                                isAnimationActive={true}
-                                animationDuration={1400}
-                                animationBegin={200}
-                                animationEasing="ease-out"
-                                activeIndex={activeIndexClass}
-                                activeShape={renderActiveShape}
-                                onMouseEnter={(_, index) => setActiveIndexClass(index)}
-                                onTouchStart={(_, index) => setActiveIndexClass(index)}
-                                onMouseLeave={() => setActiveIndexClass(undefined)}
-                            >
-                                {classChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                            </Pie>
-                            <RechartsTooltip content={<CustomPieTooltip />} />
-                        </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none anim-fade-in" style={{ animationDelay: '1000ms' }}>
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase">Total</span>
-                        <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(typeData.total, privacyMode)}</span>
-                    </div>
-                 </div>
-                 <div className="grid grid-cols-2 gap-3 mt-2">
-                     <div 
-                        className={`p-3 rounded-xl border flex items-center justify-between transition-all duration-300 ${activeIndexClass === 0 ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-500/30' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-700/50'}`}
-                        onClick={() => setActiveIndexClass(0)}
-                     >
-                         <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-indigo-500"></div><span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">FIIs</span></div>
-                         <span className="text-xs font-black text-zinc-900 dark:text-white">{formatPercent(typeData.fiis.percent, privacyMode)}</span>
-                     </div>
-                     <div 
-                        className={`p-3 rounded-xl border flex items-center justify-between transition-all duration-300 ${activeIndexClass === 1 ? 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-500/30' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-700/50'}`}
-                        onClick={() => setActiveIndexClass(1)}
-                     >
-                         <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-sky-500"></div><span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">Ações</span></div>
-                         <span className="text-xs font-black text-zinc-900 dark:text-white">{formatPercent(typeData.stocks.percent, privacyMode)}</span>
-                     </div>
-                 </div>
+             {/* Seletor de Tipo (Segmented Control) */}
+             <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl flex gap-1 mb-6 anim-slide-up shrink-0" style={{ animationDelay: '50ms' }}>
+                 <button 
+                    onClick={() => setAllocationTab('CLASS')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'CLASS' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-300'}`}
+                 >
+                    Por Classe
+                 </button>
+                 <button 
+                    onClick={() => setAllocationTab('ASSET')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${allocationTab === 'ASSET' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-300'}`}
+                 >
+                    Por Ativo
+                 </button>
              </div>
 
-             {assetsChartData.length > 0 && (
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 p-4 anim-slide-up shadow-sm anim-graph-grow overflow-visible" style={{ animationDelay: '300ms' }}>
-                    <div className="flex items-center gap-2 mb-2 px-2">
-                        <Gem className="w-3 h-3 text-zinc-400" />
-                        <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Por Ativo</h3>
-                    </div>
-                    <div className="h-56 w-full relative z-10">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie 
-                                    data={assetsChartData} 
-                                    innerRadius={50} 
-                                    outerRadius={80} 
-                                    paddingAngle={3} 
-                                    dataKey="value" 
-                                    stroke="none"
-                                    isAnimationActive={true}
-                                    animationDuration={1600}
-                                    animationBegin={300}
-                                    animationEasing="ease-out"
-                                    activeIndex={activeIndexAsset}
-                                    activeShape={renderActiveShape}
-                                    onMouseEnter={(_, index) => setActiveIndexAsset(index)}
-                                    onTouchStart={(_, index) => setActiveIndexAsset(index)}
-                                    onMouseLeave={() => setActiveIndexAsset(undefined)}
-                                >
-                                    {assetsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                </Pie>
-                                <RechartsTooltip content={<CustomPieTooltip />} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="space-y-2 mt-2">
-                        {assetsChartData.map((entry, index) => (
-                            <div 
-                                key={index} 
-                                className={`flex items-center justify-between p-2 rounded-lg transition-all anim-stagger-item cursor-pointer ${activeIndexAsset === index ? 'bg-zinc-100 dark:bg-zinc-800 scale-105' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800'}`} 
-                                style={{ animationDelay: `${500 + index * 50}ms` }}
-                                onClick={() => setActiveIndexAsset(index)}
-                            >
-                                <div className="flex items-center gap-2.5 overflow-hidden">
-                                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                                    <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 truncate max-w-[150px]">{entry.name}</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-[10px] text-zinc-400 font-medium">{formatBRL(entry.value, privacyMode)}</span>
-                                    <span className="text-xs font-black text-zinc-900 dark:text-white min-w-[40px] text-right">{formatPercent((entry.value / typeData.total) * 100, privacyMode)}</span>
+             <div className="flex-1 overflow-y-auto min-h-0 anim-slide-up" style={{ animationDelay: '100ms' }}>
+                 {/* Conteúdo Dinâmico Baseado na Aba */}
+                 {allocationTab === 'CLASS' ? (
+                     <div className="space-y-6">
+                         {/* Gráfico de Classes */}
+                         <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 shadow-sm relative overflow-visible">
+                            <div className="h-64 w-full relative z-10">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie 
+                                            data={classChartData} 
+                                            innerRadius={60} 
+                                            outerRadius={85} 
+                                            paddingAngle={4}
+                                            cornerRadius={6}
+                                            dataKey="value" 
+                                            stroke="none"
+                                            isAnimationActive={true}
+                                            animationDuration={1400}
+                                            animationEasing="ease-out"
+                                            activeIndex={activeIndexClass}
+                                            activeShape={renderActiveShape}
+                                            onMouseEnter={(_, index) => setActiveIndexClass(index)}
+                                            onTouchStart={(_, index) => setActiveIndexClass(index)}
+                                            onMouseLeave={() => setActiveIndexClass(undefined)}
+                                        >
+                                            {classChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                        </Pie>
+                                        <RechartsTooltip content={<CustomPieTooltip />} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                {/* Texto Central Dinâmico */}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none anim-fade-in">
+                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
+                                        {activeIndexClass !== undefined ? classChartData[activeIndexClass].name : 'Total'}
+                                    </span>
+                                    <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">
+                                        {activeIndexClass !== undefined 
+                                            ? formatPercent(classChartData[activeIndexClass].percent, privacyMode)
+                                            : formatBRL(typeData.total, privacyMode)
+                                        }
+                                    </span>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
-             )}
+                         </div>
+
+                         {/* Lista Detalhada de Classes */}
+                         <div className="space-y-3">
+                             {classChartData.map((item, index) => (
+                                 <div 
+                                    key={index} 
+                                    onClick={() => setActiveIndexClass(index === activeIndexClass ? undefined : index)}
+                                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${activeIndexClass === index ? 'bg-zinc-50 dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-600 scale-[1.02]' : 'bg-white dark:bg-zinc-900 border-zinc-200/40 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+                                 >
+                                     <div className="flex items-center justify-between mb-2">
+                                         <div className="flex items-center gap-3">
+                                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                                             <span className="text-sm font-bold text-zinc-900 dark:text-white">{item.name}</span>
+                                         </div>
+                                         <span className="text-sm font-black text-zinc-900 dark:text-white">{formatPercent(item.percent, privacyMode)}</span>
+                                     </div>
+                                     <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                                         <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div>
+                                     </div>
+                                     <p className="text-[10px] text-zinc-400 font-medium mt-2 text-right">{formatBRL(item.value, privacyMode)}</p>
+                                 </div>
+                             ))}
+                         </div>
+                     </div>
+                 ) : (
+                     <div className="space-y-6">
+                         {/* Gráfico de Ativos */}
+                         {assetsChartData.length > 0 ? (
+                            <>
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 shadow-sm relative overflow-visible">
+                                    <div className="h-64 w-full relative z-10">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie 
+                                                    data={assetsChartData} 
+                                                    innerRadius={60} 
+                                                    outerRadius={85} 
+                                                    paddingAngle={2}
+                                                    cornerRadius={4}
+                                                    dataKey="value" 
+                                                    stroke="none"
+                                                    isAnimationActive={true}
+                                                    animationDuration={1400}
+                                                    animationEasing="ease-out"
+                                                    activeIndex={activeIndexAsset}
+                                                    activeShape={renderActiveShape}
+                                                    onMouseEnter={(_, index) => setActiveIndexAsset(index)}
+                                                    onTouchStart={(_, index) => setActiveIndexAsset(index)}
+                                                    onMouseLeave={() => setActiveIndexAsset(undefined)}
+                                                >
+                                                    {assetsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                                </Pie>
+                                                <RechartsTooltip content={<CustomPieTooltip />} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none anim-fade-in">
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
+                                                {activeIndexAsset !== undefined ? assetsChartData[activeIndexAsset].name : 'Total'}
+                                            </span>
+                                            <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">
+                                                {activeIndexAsset !== undefined 
+                                                    ? formatPercent(assetsChartData[activeIndexAsset].percent, privacyMode)
+                                                    : formatBRL(typeData.total, privacyMode)
+                                                }
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Lista Detalhada de Ativos */}
+                                <div className="space-y-2 pb-6">
+                                    {assetsChartData.map((asset, index) => (
+                                        <div 
+                                            key={index}
+                                            onClick={() => setActiveIndexAsset(index === activeIndexAsset ? undefined : index)}
+                                            className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer anim-stagger-item ${activeIndexAsset === index ? 'bg-zinc-50 dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-600' : 'bg-white dark:bg-zinc-900 border-zinc-200/40 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                                            style={{ animationDelay: `${index * 30}ms` }}
+                                        >
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${asset.type === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600'}`}>
+                                                    {asset.name.substring(0,2)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-bold text-zinc-900 dark:text-white truncate">{asset.name}</span>
+                                                        <span className="text-xs font-black text-zinc-900 dark:text-white ml-2">{formatPercent(asset.percent, privacyMode)}</span>
+                                                    </div>
+                                                    <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1 overflow-hidden">
+                                                        <div className="h-full rounded-full" style={{ width: `${asset.percent}%`, backgroundColor: asset.color }}></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                         ) : (
+                            <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                                <Gem className="w-12 h-12 text-zinc-300 mb-4" strokeWidth={1} />
+                                <p className="text-xs font-bold text-zinc-500">Nenhum ativo na carteira</p>
+                            </div>
+                         )}
+                     </div>
+                 )}
+             </div>
          </div>
       </SwipeableModal>
       
