@@ -79,7 +79,7 @@ export const Settings: React.FC<SettingsProps> = ({
   });
 
   useEffect(() => {
-      const unsubscribe = logger.subscribe((l) => setLogs([...l])); // Clone array to force re-render
+      const unsubscribe = logger.subscribe((l: LogEntry[]) => setLogs([...l])); // Clone array to force re-render
       return unsubscribe;
   }, []);
   
