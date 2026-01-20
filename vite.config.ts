@@ -1,3 +1,4 @@
+
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -5,14 +6,8 @@ export default defineConfig(({ mode }) => {
   // Carrega variáveis de .env, .env.local, etc.
   const env = loadEnv(mode, '.', '');
   
-  // Função helper para recuperar variáveis de ambiente com fallback
-  // Prioridade:
-  // 1. Sistema (process.env) - ex: Vercel Dashboard, CI/CD
-  // 2. Arquivo .env (loadEnv)
-  // Verifica primeiro a chave exata, depois a versão com VITE_
   const getEnvVar = (key: string, viteKey: string) => {
-    const val = process.env[key] || env[key] || process.env[viteKey] || env[viteKey] || '';
-    return JSON.stringify(val);
+    return JSON.stringify(env[key] || process.env[key] || env[viteKey] || process.env[viteKey] || '');
   };
 
   return {
@@ -49,8 +44,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      // Polyfill para process.env e mapeamento das variáveis
-      // Isso permite usar process.env.VAR no código cliente, independente de como foi definida (com ou sem VITE_)
+      // Polyfill crítico para navegadores desktop que não têm o objeto 'process'
+      // Isso previne o erro "ReferenceError: process is not defined"
       'process.env': {}, 
       'process.env.API_KEY': getEnvVar('API_KEY', 'VITE_API_KEY'),
       'process.env.BRAPI_TOKEN': getEnvVar('BRAPI_TOKEN', 'VITE_BRAPI_TOKEN'),

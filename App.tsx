@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal } from './components/Layout';
+import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
@@ -9,11 +10,10 @@ import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData } from './services/dataService';
-import { Check, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
+import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
-import { SplashScreen } from './components/SplashScreen';
 
 const APP_VERSION = '8.6.0'; 
 
@@ -74,8 +74,7 @@ const App: React.FC = () => {
   
   // Controle de Inicialização
   const [isReady, setIsReady] = useState(false); 
-  const [loadingProgress, setLoadingProgress] = useState(0); // Novo estado para barra de progresso
-  const [initError, setInitError] = useState<Error | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState(0); 
   
   // Auth
   const [session, setSession] = useState<Session | null>(null);
@@ -136,9 +135,6 @@ const App: React.FC = () => {
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
   const [services, setServices] = useState<ServiceMetric[]>(servicesRef.current);
-
-  // Se houver erro de inicialização (ex: config), lança para o ErrorBoundary
-  if (initError) throw initError;
 
   // --- EFEITOS DE PERSISTÊNCIA ---
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(dividends)); }, [dividends]);
@@ -306,12 +302,15 @@ const App: React.FC = () => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) return;
     setIsRefreshing(true);
+    if (initialLoad) setLoadingProgress(50);
     
     try {
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
       }
+      
+      if (initialLoad) setLoadingProgress(70); 
       
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
       
@@ -332,18 +331,17 @@ const App: React.FC = () => {
          });
       }
       
+      if (initialLoad) setLoadingProgress(100); 
     } catch (e) { console.error(e); } finally { setIsRefreshing(false); }
   }, [dividends, pushEnabled, assetsMetadata]);
 
   const fetchTransactionsFromCloud = useCallback(async (currentSession: Session | null, force = false, initialLoad = false) => {
     setCloudStatus('syncing');
-    setLoadingProgress(30); // Progresso fictício inicial
+    if (initialLoad) setLoadingProgress(25);
     try {
         if (!currentSession?.user?.id) return;
         const { data, error } = await supabase.from('transactions').select('*').eq('user_id', currentSession.user.id);
         if (error) throw error;
-        
-        setLoadingProgress(60);
         
         const cloudTxs = (data || []).map(mapSupabaseToTx);
         setTransactions(cloudTxs);
@@ -352,49 +350,46 @@ const App: React.FC = () => {
         
         if (cloudTxs.length > 0) {
             await syncMarketData(force, cloudTxs, initialLoad);
+        } else {
+             if (initialLoad) setLoadingProgress(100);
         }
-        setLoadingProgress(100);
     } catch (err) { 
         console.error(err);
         showToast('error', 'Erro na nuvem.'); 
         setCloudStatus('disconnected'); 
-        setLoadingProgress(100);
     }
   }, [syncMarketData, showToast]);
 
   // --- INICIALIZAÇÃO CRÍTICA ---
   useEffect(() => {
     const initApp = async () => {
-        // Validação de Configuração do Supabase
-        const sbUrl = (import.meta as any).env?.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-        const sbKey = (import.meta as any).env?.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY;
-
+        const startTime = Date.now();
+        const MIN_SPLASH_TIME = 2500;
         setLoadingProgress(10);
-
-        if (!sbUrl || !sbKey || sbUrl.includes('placeholder')) {
-            setInitError(new Error('Supabase configuration missing: Verifique as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_KEY.'));
-            return;
-        }
-
         try {
-            const { data, error } = await supabase.auth.getSession();
+            const sessionPromise = supabase.auth.getSession();
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Timeout')), 5000));
+            // @ts-ignore
+            const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
             if (error) throw error;
-            setLoadingProgress(20);
-            
             const initialSession = data?.session;
             setSession(initialSession);
+            setLoadingProgress(50);
             if (initialSession) {
                 fetchTransactionsFromCloud(initialSession, false, true);
-            } else {
-                setLoadingProgress(100);
             }
-        } catch (e) {
-            console.warn("Auth check finished with error, defaulting to Login screen.", e);
-            setSession(null);
+            const elapsed = Date.now() - startTime;
+            const remainingTime = Math.max(0, MIN_SPLASH_TIME - elapsed);
+            if (remainingTime > 0) {
+                setLoadingProgress(80);
+                await new Promise(resolve => setTimeout(resolve, remainingTime));
+            }
             setLoadingProgress(100);
+        } catch (e) {
+            console.warn("Auth check finished with error or timeout, defaulting to Login screen.", e);
+            setSession(null);
         } finally {
-            // Pequeno delay para garantir que a animação da splash seja apreciada se for muito rápido
-            setTimeout(() => setIsReady(true), 500); 
+            setIsReady(true);
         }
     };
     initApp();
@@ -562,27 +557,21 @@ const App: React.FC = () => {
 
   // --- RENDERIZAÇÃO ---
 
+  if (!isReady) return <SplashScreen finishLoading={false} realProgress={loadingProgress} />;
+
   if (!session) {
-      // Se não houver sessão e estiver pronto, mostra Login.
-      // Se não estiver pronto (checando auth), mostra Splash.
       return (
           <>
-            <SplashScreen finishLoading={isReady} realProgress={loadingProgress} />
-            {isReady && (
-                <>
-                    <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
-                    <Login />
-                </>
-            )}
+            <SplashScreen finishLoading={true} realProgress={100} />
+            <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
+            <Login />
           </>
       );
   }
 
   return (
     <div className="min-h-screen bg-primary-light dark:bg-primary-dark">
-      {/* Splash Screen Component: Handles the exit animation */}
-      <SplashScreen finishLoading={isReady} realProgress={loadingProgress} />
-
+      <SplashScreen finishLoading={true} realProgress={100} />
       <CloudStatusBanner status={cloudStatus} />
       
       {toast && ( 
@@ -596,47 +585,45 @@ const App: React.FC = () => {
         </div> 
       )}
 
-        {isReady && (
-            <>
-                <Header 
-                    title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Ordens'} 
-                    showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
-                    isRefreshing={isRefreshing || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
-                    onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
-                    notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} 
-                    onRefresh={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
-                    hideBorder={currentTab === 'transactions'}
-                />
-                <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
-                  {showSettings ? (
-                    <div className="anim-page-enter pt-4">
-                      <Settings 
-                          onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} 
-                          dividends={dividends} onImportDividends={setDividends} onResetApp={handleSoftReset} 
-                          theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} 
-                          privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} 
-                          updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
-                          onShowChangelog={() => updateManager.setShowChangelog(true)} pushEnabled={pushEnabled} 
-                          onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={handleSyncAll} 
-                          onForceUpdate={() => window.location.reload()} currentVersionDate={updateManager.currentVersionDate}
-                          services={services} onCheckConnection={checkServiceHealth} isCheckingConnection={isCheckingServices}
-                      />
-                    </div>
-                  ) : (
-                    <div key={currentTab} className="anim-page-enter">
-                      {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
-                      {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} privacyMode={privacyMode} />}
-                      {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
-                    </div>
-                  )}
-                </main>
-                {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
-                <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
-                <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={handleClearNotifications} />
-                <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />
-                <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
-            </>
-        )}
+        <>
+            <Header 
+                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : 'Ordens'} 
+                showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
+                isRefreshing={isRefreshing || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
+                onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
+                notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} 
+                onRefresh={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
+                hideBorder={currentTab === 'transactions'}
+            />
+            <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
+              {showSettings ? (
+                <div className="anim-page-enter pt-4">
+                  <Settings 
+                      onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} 
+                      dividends={dividends} onImportDividends={setDividends} onResetApp={handleSoftReset} 
+                      theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} 
+                      privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} 
+                      updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
+                      onShowChangelog={() => updateManager.setShowChangelog(true)} pushEnabled={pushEnabled} 
+                      onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={handleSyncAll} 
+                      onForceUpdate={() => window.location.reload()} currentVersionDate={updateManager.currentVersionDate}
+                      services={services} onCheckConnection={checkServiceHealth} isCheckingConnection={isCheckingServices}
+                  />
+                </div>
+              ) : (
+                <div key={currentTab} className="anim-page-enter">
+                  {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
+                  {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} privacyMode={privacyMode} />}
+                  {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
+                </div>
+              )}
+            </main>
+            {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
+            <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
+            <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={handleClearNotifications} />
+            <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />
+            <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
+        </>
     </div>
   );
 };
