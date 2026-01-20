@@ -1,32 +1,33 @@
-
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
 <defs>
-<linearGradient id="grad_roof" x1="256" y1="40" x2="256" y2="280" gradientUnits="userSpaceOnUse">
-<stop offset="0%" stop-color="#34d399"/> <!-- Emerald 400 -->
-<stop offset="100%" stop-color="#0ea5e9"/> <!-- Sky 500 -->
-</linearGradient>
-<linearGradient id="grad_body" x1="256" y1="200" x2="256" y2="480" gradientUnits="userSpaceOnUse">
-<stop offset="0%" stop-color="#3b82f6"/> <!-- Blue 500 -->
+<linearGradient id="logo_grad" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#10b981"/> <!-- Emerald 500 -->
+<stop offset="50%" stop-color="#0ea5e9"/> <!-- Sky 500 -->
 <stop offset="100%" stop-color="#4f46e5"/> <!-- Indigo 600 -->
 </linearGradient>
-<filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
-<feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.15"/>
+<filter id="glow" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+<feGaussianBlur stdDeviation="12" result="blur"/>
+<feComposite in="SourceGraphic" in2="blur" operator="over"/>
+</filter>
+<filter id="dropShadow" x="0" y="0" width="512" height="530" filterUnits="userSpaceOnUse">
+<feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0ea5e9" flood-opacity="0.25"/>
 </filter>
 </defs>
 
-<g filter="url(#softShadow)">
-<!-- Telhado (Seta para cima) -->
-<path d="M256 64 L448 224 H384 L256 118 L128 224 H64 L256 64 Z" fill="url(#grad_roof)"/>
+<g filter="url(#dropShadow)">
+<!-- Telhado / Seta de Crescimento -->
+<path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad)"/>
 
-<!-- Lintel (Barra superior) -->
-<rect x="112" y="248" width="288" height="32" rx="4" fill="url(#grad_body)" fill-opacity="0.9"/>
+<!-- Estrutura do Banco (FIIs/Instituição) -->
+<!-- Frontão -->
+<path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad)"/>
 
 <!-- Colunas -->
-<rect x="136" y="300" width="48" height="100" rx="4" fill="url(#grad_body)"/>
-<rect x="232" y="300" width="48" height="100" rx="4" fill="url(#grad_body)"/>
-<rect x="328" y="300" width="48" height="100" rx="4" fill="url(#grad_body)"/>
+<rect x="184" y="328" width="32" height="104" rx="6" fill="url(#logo_grad)"/>
+<rect x="240" y="328" width="32" height="104" rx="6" fill="url(#logo_grad)"/>
+<rect x="296" y="328" width="32" height="104" rx="6" fill="url(#logo_grad)"/>
 
 <!-- Base -->
-<path d="M96 424 H416 C424.8 424 432 431.2 432 440 V448 H80 V440 C80 431.2 87.2 424 96 424 Z" fill="url(#grad_body)"/>
+<path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad)"/>
 </g>
 </svg>
