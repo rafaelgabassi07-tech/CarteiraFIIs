@@ -11,9 +11,9 @@
     <meta name="app-version" content="8.6.2" />
     <title>InvestFIIs - Carteira</title>
     
-    <link rel="manifest" href="./manifest.json?v=10" />
-    <link rel="icon" type="image/svg+xml" href="./logo.svg?v=10" />
-    <link rel="apple-touch-icon" href="./logo.svg?v=10" />
+    <link rel="manifest" href="./manifest.json?v=12" />
+    <link rel="icon" type="image/svg+xml" href="./logo.svg?v=12" />
+    <link rel="apple-touch-icon" href="./logo.svg?v=12" />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,11 +23,13 @@
       :root {
         --bg-splash: #F4F4F5;
         --accent: #0ea5e9;
+        --text-main: #18181b;
       }
       
       @media (prefers-color-scheme: dark) {
         :root {
           --bg-splash: #09090b;
+          --text-main: #ffffff;
         }
       }
       
@@ -39,12 +41,11 @@
         font-family: 'Inter', sans-serif;
         background-color: var(--bg-splash);
         -webkit-font-smoothing: antialiased;
+        overflow: hidden; /* Prevent scroll on splash */
       }
 
-      body.is-loading {
-        overflow: hidden !important;
-        position: fixed;
-        width: 100%;
+      body.app-revealed {
+        overflow-y: auto;
       }
       
       #root-splash {
@@ -56,8 +57,7 @@
         align-items: center;
         justify-content: center;
         background-color: var(--bg-splash);
-        transition: opacity 0.6s ease-out, visibility 0.6s;
-        perspective: 1000px; /* Habilita 3D scene */
+        transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.6s;
       }
 
       #root-splash.splash-exit {
@@ -70,125 +70,118 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        width: 100%;
-        transform-style: preserve-3d;
+        position: relative;
+        z-index: 10;
       }
 
-      .s-brand-container {
+      /* Container da Marca (Logo + Texto) */
+      .s-brand-wrapper {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px; 
-        margin-bottom: 64px;
-        position: relative;
-        transform-style: preserve-3d;
-        animation: brandFloat 6s ease-in-out infinite;
-      }
-
-      .s-logo-wrapper {
-        width: 84px; 
-        height: 84px;
-        position: relative;
-        filter: drop-shadow(0 20px 40px rgba(59, 130, 246, 0.4));
-        opacity: 0;
-        transform: rotateX(20deg) rotateY(-20deg) translateZ(-50px);
-        animation: logoEntrance 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        gap: 16px;
+        margin-bottom: 48px;
       }
 
       .s-logo-img {
-        width: 100%;
-        height: 100%;
+        width: 80px; 
+        height: 80px;
         object-fit: contain;
+        filter: drop-shadow(0 12px 24px rgba(14, 165, 233, 0.25));
+        opacity: 0;
+        transform: scale(0.8) translateY(10px);
+        animation: iconEnter 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
       }
 
       .s-brand-text {
         font-family: 'Outfit', sans-serif;
-        font-size: 56px; 
-        font-weight: 900; 
-        letter-spacing: -0.05em; 
-        line-height: 1;
-        margin-top: 8px;
-        margin-left: -2px; 
+        font-size: 52px; 
+        font-weight: 800; 
+        letter-spacing: -0.04em; 
+        color: var(--text-main);
+        opacity: 0;
+        transform: translateX(-15px);
+        animation: textEnter 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s forwards;
         
-        /* Efeito Metálico/Gradiente no Texto */
-        background: linear-gradient(135deg, #1e293b 0%, #64748b 50%, #0f172a 100%);
+        /* Gradiente sutil no texto para dar profundidade */
+        background: linear-gradient(135deg, var(--text-main) 30%, #94a3b8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        
-        opacity: 0;
-        transform: translateX(-20px);
-        filter: blur(10px);
-        animation: textEntrance 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s forwards;
       }
 
-      @media (prefers-color-scheme: dark) {
-        .s-brand-text {
-          background: linear-gradient(135deg, #ffffff 0%, #94a3b8 50%, #cbd5e1 100%);
-          -webkit-background-clip: text;
-          background-clip: text;
-          text-shadow: 0 4px 30px rgba(255,255,255,0.15);
-        }
-      }
-
-      .s-progress-wrapper {
+      /* Barra de Progresso Minimalista */
+      .s-progress-container {
         position: relative;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        opacity: 0;
-        transform: translateY(20px);
-        animation: fadeUpContent 0.8s ease-out 0.8s forwards;
-      }
-
-      .s-status {
-        font-family: 'Outfit', sans-serif;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.2em;
-        color: var(--accent);
-        margin-bottom: 16px;
-      }
-
-      .s-progress-track {
-        width: 160px;
-        height: 4px;
+        width: 140px;
+        height: 3px;
         background: rgba(128,128,128,0.1);
         border-radius: 99px;
         overflow: hidden;
+        opacity: 0;
+        animation: fadeUp 0.8s ease-out 0.6s forwards;
       }
 
       @media (prefers-color-scheme: dark) {
-        .s-progress-track { background: rgba(255,255,255,0.1); }
+        .s-progress-container { background: rgba(255,255,255,0.1); }
       }
 
       .s-progress-bar {
         height: 100%;
         width: 0%;
-        background: linear-gradient(90deg, #34d399, #0ea5e9, #6366f1);
+        background: linear-gradient(90deg, #10b981, #0ea5e9, #6366f1);
         border-radius: 99px;
-        transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 0 15px rgba(14, 165, 233, 0.5);
+        transition: width 0.3s ease-out;
+        box-shadow: 0 0 10px rgba(14, 165, 233, 0.4);
       }
 
-      @keyframes logoEntrance {
-        from { opacity: 0; transform: rotateX(40deg) rotateY(-30deg) translateZ(-100px) scale(0.5); }
-        to { opacity: 1; transform: rotateX(0) rotateY(0) translateZ(0) scale(1); }
+      .s-status-text {
+        margin-top: 16px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: #64748b; /* Slate 500 */
+        opacity: 0;
+        animation: fadeUp 0.8s ease-out 0.7s forwards;
       }
 
-      @keyframes textEntrance {
-        from { opacity: 0; transform: translateX(-40px) scale(0.9); filter: blur(12px); }
-        to { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
+      @media (prefers-color-scheme: dark) {
+        .s-status-text { color: #94a3b8; } /* Slate 400 */
       }
 
-      @keyframes fadeUpContent {
+      /* Animações Keyframes */
+      @keyframes iconEnter {
+        to { opacity: 1; transform: scale(1) translateY(0); }
+      }
+
+      @keyframes textEnter {
+        to { opacity: 1; transform: translateX(0); }
+      }
+
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
       }
+      
+      /* Efeito de Fundo (Glow) */
+      .s-glow {
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(0,0,0,0) 70%);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 0;
+        animation: pulseGlow 4s infinite alternate;
+      }
 
-      @keyframes brandFloat {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
+      @keyframes pulseGlow {
+        from { opacity: 0.5; transform: translate(-50%, -50%) scale(0.8); }
+        to { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
       }
     </style>
 
@@ -217,20 +210,18 @@
 </head>
   <body class="is-loading">
     <div id="root-splash">
+        <div class="s-glow"></div>
         <div class="s-content">
-            <div class="s-brand-container">
-                <div class="s-logo-wrapper">
-                   <img src="./logo.svg" alt="Logo" class="s-logo-img" />
-                </div>
+            <div class="s-brand-wrapper">
+                <!-- LOGO DA CASINHA ATUALIZADO -->
+                <img src="./logo.svg?v=12" alt="Logo InvestFIIs" class="s-logo-img" />
                 <span class="s-brand-text">NVEST</span>
             </div>
             
-            <div class="s-progress-wrapper">
-                <div id="splash-status-text" class="s-status">Carregando...</div>
-                <div class="s-progress-track">
-                    <div id="splash-progress-bar" class="s-progress-bar"></div>
-                </div>
+            <div class="s-progress-container">
+                <div id="splash-progress-bar" class="s-progress-bar"></div>
             </div>
+            <div id="splash-status-text" class="s-status-text">Carregando...</div>
         </div>
     </div>
 

@@ -10,7 +10,6 @@ const STATUS_TEXTS = [
   "Iniciando...",
   "Conectando...",
   "Sincronizando...",
-  "Validando sessão...",
   "Preparando ambiente...",
   "Carregando ativos...",
   "Quase pronto..."
@@ -28,7 +27,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
     const reactProgress = document.getElementById('react-splash-progress');
     const reactStatus = document.getElementById('react-splash-status');
 
-    const width = `${Math.max(10, realProgress)}%`;
+    const width = `${Math.max(5, realProgress)}%`;
     const textIndex = Math.min(
         Math.floor((realProgress / 100) * STATUS_TEXTS.length),
         STATUS_TEXTS.length - 1
@@ -66,7 +65,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         }
         
         setShouldRender(false);
-      }, 600);
+      }, 600); // Tempo da transição CSS
 
       return () => clearTimeout(timer);
     }
@@ -76,25 +75,30 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
 
   return (
     <div 
-        className={`fixed inset-0 z-[9998] flex flex-col items-center justify-center bg-primary-light dark:bg-primary-dark transition-opacity duration-500 ease-out-soft ${isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-        style={{ perspective: '1000px' }}
+        className={`fixed inset-0 z-[9998] flex flex-col items-center justify-center bg-primary-light dark:bg-primary-dark transition-opacity duration-700 ease-in-out ${isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
     >
-        <div className="flex flex-col items-center w-full animate-[float_6s_ease-in-out_infinite]">
-            {/* BRAND CONTAINER 3D */}
-            <div className="flex items-center justify-center gap-2 mb-16 relative select-none transform-style-3d">
-                <div className="w-[84px] h-[84px] flex items-center justify-center relative z-10 drop-shadow-[0_20px_40px_rgba(59,130,246,0.3)]">
-                   <img src="./logo.svg" alt="Logo" className="w-full h-full object-contain" />
+        {/* Glow Background */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-sky-500/10 rounded-full blur-[100px] pointer-events-none animate-pulse"></div>
+
+        <div className="relative z-10 flex flex-col items-center">
+            {/* BRAND CONTAINER */}
+            <div className="flex items-center justify-center gap-4 mb-12 select-none">
+                <div className="w-20 h-20 relative drop-shadow-2xl">
+                   {/* Usa query string ?v=12 para evitar cache antigo */}
+                   <img src="./logo.svg?v=12" alt="Logo InvestFIIs" className="w-full h-full object-contain" />
                 </div>
-                <span className="font-display text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-500 to-zinc-800 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-2 -ml-1 drop-shadow-sm">
+                <span className="font-display text-[52px] font-extrabold tracking-tighter leading-none text-zinc-900 dark:text-white drop-shadow-sm">
                     NVEST
                 </span>
             </div>
             
-            <div id="react-splash-status" className="font-display text-[11px] font-bold text-accent uppercase tracking-[0.2em] mb-4">
-                Iniciando...
+            {/* Barra de Progresso */}
+            <div className="w-[140px] h-[3px] bg-black/5 dark:bg-white/10 rounded-full overflow-hidden mb-4">
+                <div id="react-splash-progress" className="h-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 rounded-full transition-all duration-300 ease-out w-0 shadow-[0_0_10px_rgba(14,165,233,0.5)]"></div>
             </div>
-            <div className="w-[160px] h-[4px] bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                <div id="react-splash-progress" className="h-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 rounded-full transition-all duration-300 ease-out w-0 shadow-[0_0_12px_rgba(14,165,233,0.5)]"></div>
+            
+            <div id="react-splash-status" className="font-display text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.15em] animate-pulse">
+                Carregando...
             </div>
         </div>
     </div>
