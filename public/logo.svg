@@ -1,28 +1,32 @@
+
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
 <defs>
-    <linearGradient id="grad_main" x1="256" y1="50" x2="256" y2="462" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stop-color="#34d399"/>
-        <stop offset="100%" stop-color="#0ea5e9"/>
-    </linearGradient>
-    <linearGradient id="grad_shadow" x1="256" y1="200" x2="256" y2="472" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stop-color="#0ea5e9"/>
-        <stop offset="100%" stop-color="#4f46e5"/>
-    </linearGradient>
-    <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="16"/>
-        <feOffset dx="0" dy="24" result="offsetblur"/>
-        <feFlood flood-color="#0ea5e9" flood-opacity="0.25"/>
-        <feComposite in2="offsetblur" operator="in"/>
-        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+<linearGradient id="grad_roof" x1="256" y1="40" x2="256" y2="280" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#34d399"/> <!-- Emerald 400 -->
+<stop offset="100%" stop-color="#0ea5e9"/> <!-- Sky 500 -->
+</linearGradient>
+<linearGradient id="grad_body" x1="256" y1="200" x2="256" y2="480" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#3b82f6"/> <!-- Blue 500 -->
+<stop offset="100%" stop-color="#4f46e5"/> <!-- Indigo 600 -->
+</linearGradient>
+<filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+<feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.15"/>
+</filter>
 </defs>
-<g filter="url(#dropShadow)">
-    <path d="M256 64 L400 208 H328 L256 136 L184 208 H112 L256 64 Z" fill="url(#grad_main)"/>
-    <rect x="144" y="224" width="224" height="32" rx="4" fill="url(#grad_shadow)" fill-opacity="0.9"/>
-    <rect x="160" y="272" width="48" height="112" rx="4" fill="url(#grad_main)"/>
-    <rect x="232" y="272" width="48" height="112" rx="4" fill="url(#grad_main)"/>
-    <rect x="304" y="272" width="48" height="112" rx="4" fill="url(#grad_main)"/>
-    <path d="M128 400 H384 C392.8 400 400 407.2 400 416 V432 H112 V416 C112 407.2 119.2 400 128 400 Z" fill="url(#grad_shadow)"/>
-    <path d="M256 64 L200 120 L256 176 L312 120 L256 64 Z" fill="white" fill-opacity="0.15"/>
+
+<g filter="url(#softShadow)">
+<!-- Telhado (Seta para cima) -->
+<path d="M256 64 L448 224 H384 L256 118 L128 224 H64 L256 64 Z" fill="url(#grad_roof)"/>
+
+<!-- Lintel (Barra superior) -->
+<rect x="112" y="248" width="288" height="32" rx="4" fill="url(#grad_body)" fill-opacity="0.9"/>
+
+<!-- Colunas -->
+<rect x="136" y="300" width="48" height="100" rx="4" fill="url(#grad_body)"/>
+<rect x="232" y="300" width="48" height="100" rx="4" fill="url(#grad_body)"/>
+<rect x="328" y="300" width="48" height="100" rx="4" fill="url(#grad_body)"/>
+
+<!-- Base -->
+<path d="M96 424 H416 C424.8 424 432 431.2 432 440 V448 H80 V440 C80 431.2 87.2 424 96 424 Z" fill="url(#grad_body)"/>
 </g>
 </svg>
