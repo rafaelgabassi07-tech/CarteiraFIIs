@@ -26,41 +26,63 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   const isSelectionMode = data.isSelectionMode;
   const isSelected = data.selectedIds.has(item.data?.id);
   
+  // Header Mensal com Saldo
   if (item.type === 'header') {
+      const netValue = item.monthlyNet || 0;
+      const isPositive = netValue >= 0;
       return (
-          <div className={`px-2 pt-6 pb-2 flex items-center justify-between anim-fade-in ${index === 0 ? 'mt-2' : ''}`}>
-              <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{formatMonthHeader(item.monthKey)}</h3>
-              <div className="h-px bg-zinc-100 dark:bg-zinc-800 flex-1 ml-4"></div>
+          <div className={`pl-4 pr-2 pt-8 pb-4 flex items-end justify-between anim-fade-in relative z-10 bg-primary-light dark:bg-primary-dark ${index === 0 ? 'mt-2' : ''}`}>
+              <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-zinc-300 dark:bg-zinc-700 border-4 border-white dark:border-zinc-900 shadow-sm"></div>
+                  <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{formatMonthHeader(item.monthKey)}</h3>
+              </div>
+              <div className="flex flex-col items-end">
+                  <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Saldo do Mês</span>
+                  <span className={`text-[10px] font-black ${isPositive ? 'text-indigo-500' : 'text-rose-500'}`}>
+                      {isPositive ? '+' : ''}{formatBRL(netValue, privacyMode)}
+                  </span>
+              </div>
           </div>
       );
   }
 
   const t = item.data;
   const isBuy = t.type === 'BUY';
+  const isLastInGroup = data.items[index + 1]?.type === 'header' || index === data.items.length - 1;
   
   return (
-      <div className="px-0.5 py-1 anim-stagger-item" style={{ animationDelay: `${(index % 10) * 30}ms` }}>
+      <div className="relative pl-4 pr-1 anim-stagger-item" style={{ animationDelay: `${(index % 10) * 30}ms` }}>
+          {/* Linha do Tempo */}
+          <div className={`absolute left-[5px] top-0 w-[2px] bg-zinc-200 dark:bg-zinc-800 ${isLastInGroup ? 'h-1/2' : 'h-full'}`}></div>
+          
           <button 
             onClick={() => isSelectionMode ? data.onToggleSelect(t.id) : data.onRowClick(t)}
-            className={`w-full text-left p-4 rounded-2xl flex items-center justify-between shadow-[0_1px_2px_rgba(0,0,0,0.03)] press-effect transition-all duration-300 border ${
+            className={`relative ml-4 w-[calc(100%-1rem)] text-left p-4 mb-3 rounded-2xl flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.03)] dark:shadow-none press-effect transition-all duration-300 border group ${
                 isSelected 
-                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 dark:border-indigo-400' 
-                : 'bg-white dark:bg-zinc-900 border-transparent dark:border-zinc-800'
+                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 dark:border-indigo-400 z-10' 
+                : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 z-0'
             }`}
           >
+              <div className="absolute -left-[21px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-zinc-200 dark:bg-zinc-700 border-2 border-white dark:border-zinc-900 group-hover:bg-indigo-500 transition-colors"></div>
+
               <div className="flex items-center gap-4">
                   {isSelectionMode ? (
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-600'}`}>
                           {isSelected ? <CheckCircle2 className="w-6 h-6" /> : <Square className="w-6 h-6" />}
                       </div>
                   ) : (
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${isBuy ? 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30'}`}>
-                          {isBuy ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border text-xs font-black shadow-sm ${isBuy ? 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30'}`}>
+                          {t.ticker.substring(0,2)}
                       </div>
                   )}
                   
                   <div>
-                      <h4 className={`font-black text-base ${isSelected ? 'text-indigo-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>{t.ticker}</h4>
+                      <h4 className={`font-black text-sm flex items-center gap-2 ${isSelected ? 'text-indigo-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>
+                          {t.ticker}
+                          <span className={`text-[8px] font-bold px-1 rounded uppercase ${isBuy ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
+                              {isBuy ? 'Compra' : 'Venda'}
+                          </span>
+                      </h4>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.date.split('-').reverse().slice(0,2).join('/')}</span>
                         <span className="text-[10px] text-zinc-300 dark:text-zinc-600">•</span>
@@ -124,17 +146,21 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         sorted.forEach((t: any) => {
             const k = t.date.substring(0, 7);
             if (!groups[k]) {
-                groups[k] = { items: [], totalBuy: 0 };
+                groups[k] = { items: [], totalNet: 0 };
             }
             groups[k].items.push(t);
-            if (t.type === 'BUY') {
-                groups[k].totalBuy += (t.price * t.quantity);
-            }
+            const val = t.price * t.quantity;
+            // Cálculo de Saldo (Compra = Saída de Caixa negativo?, Venda = Entrada positivo?)
+            // Para visualização de "Volume de Investimento", geralmente soma-se Compras como positivo (Aporte)
+            // Se o usuário quer ver Fluxo de Caixa: Compra (-), Venda (+).
+            // Vamos adotar: Saldo de Movimentação. (Quanto comprei - Quanto vendi)
+            if (t.type === 'BUY') groups[k].totalNet -= val; // Gastei dinheiro
+            else groups[k].totalNet += val; // Recebi dinheiro
         });
 
         const list: any[] = [];
         Object.keys(groups).sort((a,b) => b.localeCompare(a)).forEach(k => {
-            list.push({ type: 'header', monthKey: k, monthlyTotal: groups[k].totalBuy });
+            list.push({ type: 'header', monthKey: k, monthlyNet: groups[k].totalNet });
             groups[k].items.forEach((t: any) => list.push({ type: 'item', data: t }));
         });
         return list; 
@@ -309,9 +335,9 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             </div>
 
             {/* Lista de Transações */}
-            <div className="px-1 pt-4">
+            <div className="px-1 pt-0">
                 {flatTransactions.length > 0 ? (
-                    <div className="space-y-1">
+                    <div className="space-y-0">
                         {flatTransactions.map((item: any, index: number) => (
                             <TransactionRow 
                                 key={item.data?.id || `header-${index}`} 

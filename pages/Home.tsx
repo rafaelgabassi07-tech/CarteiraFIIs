@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp, Layers, CheckCircle2, HelpCircle, Activity, Percent, TrendingUp as TrendingUpIcon } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp, Layers, CheckCircle2, HelpCircle, Activity, Percent, TrendingUp as TrendingUpIcon, Hourglass } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, Sector, AreaChart, Area } from 'recharts';
 
@@ -276,6 +276,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const realReturn = userDy - safeInflation;
     const coverageRatio = accumulatedInflationCost > 0 ? sum12mDividends / accumulatedInflationCost : 0;
     
+    // Payback estimado (Regra dos 72 com ajuste)
+    const paybackYears = userDy > 0 ? 72 / userDy : 0;
+
     return { 
         history: sortedHistory, 
         receiptsByMonth: receiptsByMonthMap,
@@ -286,7 +289,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             inflationCost: accumulatedInflationCost, 
             baseValue,
             yieldOnCost,
-            coverageRatio
+            coverageRatio,
+            paybackYears
         },
         last12MonthsData,
         provisionedMap: provMap, 
@@ -886,7 +890,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
       
-      {/* Raio-X Modal: HIGH-TECH REDESIGN */}
+      {/* Raio-X Modal: HIGH-TECH REDESIGN V2 */}
       <SwipeableModal isOpen={showRealYieldModal} onClose={() => setShowRealYieldModal(false)}>
           <div className="p-6 pb-20">
               <div className="flex items-center gap-4 mb-8 anim-slide-up">
@@ -903,31 +907,35 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <div className="space-y-6">
                       {/* Hero Card */}
                       <div className="relative overflow-hidden rounded-3xl p-6 text-white shadow-xl anim-scale-in">
-                          <div className={`absolute inset-0 bg-gradient-to-br ${realYieldMetrics.realReturn >= 0 ? 'from-emerald-600 to-teal-800' : 'from-rose-600 to-pink-800'}`}></div>
+                          <div className={`absolute inset-0 bg-gradient-to-br ${realYieldMetrics.realReturn >= 0 ? 'from-emerald-600 via-emerald-700 to-teal-800' : 'from-rose-600 via-rose-700 to-pink-800'}`}></div>
+                          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
                           <div className="relative z-10 text-center">
                               <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-2">Resultado Real Líquido</p>
-                              <div className="text-5xl font-black tracking-tighter mb-2">
+                              <div className="text-5xl font-black tracking-tighter mb-2 drop-shadow-sm">
                                   {realYieldMetrics.realReturn > 0 ? '+' : ''}{formatPercent(realYieldMetrics.realReturn, privacyMode)}
                               </div>
-                              <p className="text-xs font-medium opacity-90 max-w-[200px] mx-auto leading-tight">
-                                  {realYieldMetrics.realReturn >= 0 
-                                      ? 'Seus proventos superaram a inflação acumulada.' 
-                                      : 'A inflação corroeu parte dos seus ganhos.'}
-                              </p>
+                              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+                                  {realYieldMetrics.realReturn >= 0 ? <CheckCircle2 className="w-3 h-3" /> : <Info className="w-3 h-3" />}
+                                  <p className="text-[10px] font-bold uppercase tracking-wide">
+                                      {realYieldMetrics.realReturn >= 0 
+                                          ? 'Superando a inflação' 
+                                          : 'Perdendo poder de compra'}
+                                  </p>
+                              </div>
                           </div>
                       </div>
 
                       {/* Equation Bar */}
                       <div className="flex items-center justify-between px-2 anim-slide-up" style={{animationDelay: '100ms'}}>
                           <div className="text-center">
-                              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Nominal</p>
+                              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Nominal (DY)</p>
                               <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatPercent(realYieldMetrics.userDy, privacyMode)}</p>
                           </div>
                           <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800 mx-3 relative">
                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 bg-white dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400">-</div>
                           </div>
                           <div className="text-center">
-                              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">IPCA</p>
+                              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">IPCA (12m)</p>
                               <p className="text-sm font-black text-rose-500">{formatPercent(Number(inflationRate || 4.62), privacyMode)}</p>
                           </div>
                           <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800 mx-3 relative">
@@ -947,7 +955,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                   <p className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Yield on Cost</p>
                               </div>
                               <p className="text-lg font-black text-zinc-900 dark:text-white">{formatPercent(realYieldMetrics.yieldOnCost, privacyMode)}</p>
-                              <p className="text-[9px] text-zinc-400 leading-tight mt-1">Retorno sobre valor investido.</p>
+                              <p className="text-[9px] text-zinc-400 leading-tight mt-1">Retorno s/ investido.</p>
                           </div>
                           
                           <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
@@ -958,15 +966,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               <p className={`text-lg font-black ${realYieldMetrics.coverageRatio >= 1 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                   {realYieldMetrics.coverageRatio.toFixed(1)}x
                               </p>
-                              <p className="text-[9px] text-zinc-400 leading-tight mt-1">Fator de proteção do capital.</p>
+                              <p className="text-[9px] text-zinc-400 leading-tight mt-1">Fator de proteção.</p>
                           </div>
 
                           <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
                               <div className="flex items-center gap-2 mb-2">
-                                  <TrendingUpIcon className="w-3.5 h-3.5 text-zinc-400" />
-                                  <p className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Recebido 12m</p>
+                                  <Hourglass className="w-3.5 h-3.5 text-zinc-400" />
+                                  <p className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Payback Estimado</p>
                               </div>
-                              <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.sum12m, privacyMode)}</p>
+                              <p className="text-lg font-black text-zinc-900 dark:text-white">
+                                  {realYieldMetrics.paybackYears > 0 ? `~${Math.round(realYieldMetrics.paybackYears)} anos` : '-'}
+                              </p>
+                              <p className="text-[9px] text-zinc-400 leading-tight mt-1">Regra dos 72 (Reinvestindo).</p>
                           </div>
 
                           <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
@@ -974,7 +985,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                   <TrendingDown className="w-3.5 h-3.5 text-zinc-400" />
                                   <p className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Custo Inflação</p>
                               </div>
-                              <p className="text-sm font-black text-rose-500">-{formatBRL(realYieldMetrics.inflationCost, privacyMode)}</p>
+                              <p className="text-lg font-black text-rose-500">-{formatBRL(realYieldMetrics.inflationCost, privacyMode)}</p>
+                              <p className="text-[9px] text-zinc-400 leading-tight mt-1">Perda monetária no período.</p>
                           </div>
                       </div>
 
