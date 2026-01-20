@@ -1,5 +1,4 @@
 
-// @ts-nocheck
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -11,49 +10,58 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
-// --- AGENTE HTTPS ---
+// --- AGENTE HTTPS (Bypass TLS Fingerprinting básico) ---
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 128,
     maxFreeSockets: 20,
-    timeout: 8000,
-    rejectUnauthorized: false
+    timeout: 10000,
+    rejectUnauthorized: false,
+    ciphers: 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384'
 });
 
 const client = axios.create({
     httpsAgent,
     headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
         'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
         'Referer': 'https://investidor10.com.br/'
     },
-    timeout: 12000
+    timeout: 15000
 });
 
-// --- HELPERS (Lógica fiel ao snippet fornecido) ---
+// --- HELPERS ---
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
-function parseValue(valueStr) {
+function parseValue(valueStr: any): number {
     if (!valueStr) return 0;
     if (typeof valueStr === 'number') return valueStr;
     try {
-        // Remove caracteres não numéricos exceto vírgula e hífen
-        let clean = valueStr.replace(REGEX_CLEAN_NUMBER, "").trim();
-        // Corrige casos onde sobra porcentagem ou espaços
+        let clean = String(valueStr).replace(REGEX_CLEAN_NUMBER, "").trim();
         if (!clean || clean === '-') return 0;
-        return parseFloat(clean.replace(',', '.')) || 0;
+        // Se houver mais de um ponto/vírgula, assume milhar. Ex: 1.024,50
+        if (clean.includes('.') && clean.includes(',')) {
+            clean = clean.replace(/\./g, '').replace(',', '.');
+        } else if (clean.includes(',')) {
+            clean = clean.replace(',', '.');
+        }
+        return parseFloat(clean) || 0;
     } catch (e) { return 0; }
 }
 
-function normalize(str) {
+function normalize(str: string): string {
     if (!str) return '';
     return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
-function cleanDoubledString(str) {
+function cleanDoubledString(str: string): string {
     if (!str) return "";
+    // Remove duplicatas comuns em scraping de texto visível e oculto
     const parts = str.split('R$');
     if (parts.length > 2) {
         return 'R$' + parts[1].trim(); 
@@ -61,7 +69,7 @@ function cleanDoubledString(str) {
     return str;
 }
 
-function parseExtendedValue(str) {
+function parseExtendedValue(str: string): number {
     if (!str) return 0;
     const val = parseValue(str);
     const lower = str.toLowerCase();
@@ -71,7 +79,7 @@ function parseExtendedValue(str) {
     return val;
 }
 
-function formatCurrency(value) {
+function formatCurrency(value: number): string {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
@@ -79,28 +87,32 @@ function formatCurrency(value) {
 // SCRAPER DE FUNDAMENTOS
 // ---------------------------------------------------------
 
-async function scrapeInvestidor10(ticker) {
+async function scrapeInvestidor10(ticker: string) {
     try {
         let html;
         let finalType = 'ACAO';
         let urlUsed = '';
 
-        // Tenta identificar URL correta
+        // Tenta identificar URL correta (FII vs Ação)
         try {
             urlUsed = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
             const res = await client.get(urlUsed);
             html = res.data;
             finalType = 'FII';
-        } catch (e) {
-            urlUsed = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
-            const res = await client.get(urlUsed);
-            html = res.data;
-            finalType = 'ACAO';
+        } catch (e: any) {
+            if (e.response && e.response.status === 404) {
+                urlUsed = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
+                const res = await client.get(urlUsed);
+                html = res.data;
+                finalType = 'ACAO';
+            } else {
+                throw e;
+            }
         }
 
         const $ = cheerio.load(html);
 
-        let dados = {
+        let dados: any = {
             ticker: ticker.toUpperCase(),
             type: finalType,
             
@@ -125,7 +137,7 @@ async function scrapeInvestidor10(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        const processPair = (tituloRaw, valorRaw, origem = 'table', indicatorAttr = null) => {
+        const processPair = (tituloRaw: string, valorRaw: string, origem = 'table', indicatorAttr: string | null = null) => {
             const titulo = normalize(tituloRaw); 
             let valor = valorRaw.trim();
 
@@ -136,7 +148,7 @@ async function scrapeInvestidor10(ticker) {
 
             if (!valor) return;
 
-            // Prioridade: Atributo data-indicator (se existir)
+            // Prioridade: Atributo data-indicator (se existir na tabela é mais confiável)
             if (indicatorAttr) {
                 const ind = indicatorAttr.toUpperCase();
                 if (ind === 'DIVIDA_LIQUIDA_EBITDA') { dados.divida_liquida_ebitda = valor; return; }
@@ -145,12 +157,14 @@ async function scrapeInvestidor10(ticker) {
                 if (ind === 'P_VP') { dados.pvp = valor; return; }
                 if (ind === 'ROE') { dados.roe = valor; return; }
                 if (ind === 'MARGEM_LIQUIDA') { dados.margem_liquida = valor; return; }
+                if (ind === 'LPA') { dados.lpa = valor; return; }
+                if (ind === 'VPA') { dados.vp_cota = valor; return; }
             }
 
             // Fallback por Texto
             // Geral
-            if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || titulo.includes('dy ('))) dados.dy = valor;
-            if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
+            if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield'))) dados.dy = valor;
+            if (dados.pvp === 'N/A' && (titulo.includes('p/vp') || titulo === 'vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
             if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
@@ -199,6 +213,7 @@ async function scrapeInvestidor10(ticker) {
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
+                // Se for muito grande ou tiver milh/bilh, é patrimonio total, senão pode ser VPA
                 if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
                     if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
                 } else {
@@ -213,30 +228,38 @@ async function scrapeInvestidor10(ticker) {
         };
 
         // --- EXECUÇÃO ---
-        $('._card').each((i, el) => {
-            const titulo = $(el).find('._card-header').text().trim();
-            const valor = $(el).find('._card-body').text().trim();
+        
+        // 1. Cards do Topo
+        $('div._card').each((i, el) => {
+            const titulo = $(el).find('div._card-header').text().trim();
+            const valor = $(el).find('div._card-body').text().trim();
             processPair(titulo, valor, 'card');
+            
+            // Cotação
             if (normalize(titulo).includes('cotacao')) cotacao_atual = parseValue(valor);
         });
 
         if (cotacao_atual === 0) {
-             const cEl = $('._card.cotacao ._card-body span').first();
+             const cEl = $('div._card.cotacao div._card-body span').first();
              if (cEl.length) cotacao_atual = parseValue(cEl.text());
         }
 
-        $('.cell').each((i, el) => {
+        // 2. Tabela de Indicadores (Fundamental)
+        $('#table-indicators .cell').each((i, el) => {
             let titulo = $(el).find('.name').text().trim();
+            // Fallback se não achar .name
             if (!titulo) titulo = $(el).children('span').first().text().trim();
+            
             let valorEl = $(el).find('.value span').first();
             let valor = (valorEl.length > 0) ? valorEl.text().trim() : $(el).find('.value').text().trim();
             processPair(titulo, valor, 'cell');
         });
 
+        // 3. Tabelas Gerais (Dados do fundo, etc)
         $('table tbody tr').each((i, row) => {
             const cols = $(row).find('td');
             if (cols.length >= 2) {
-                const indicatorAttr = $(cols[0]).find('[data-indicator]').attr('data-indicator');
+                const indicatorAttr = $(cols[0]).find('[data-indicator]').attr('data-indicator') || null;
                 processPair($(cols[0]).text(), $(cols[1]).text(), 'table', indicatorAttr);
             }
         });
@@ -259,8 +282,8 @@ async function scrapeInvestidor10(ticker) {
 
         return dados;
 
-    } catch (error) {
-        console.error(`Erro fatal em ${ticker}:`, error.message);
+    } catch (error: any) {
+        console.error(`Erro scraping ${ticker}:`, error.message);
         return null;
     }
 }
@@ -268,7 +291,7 @@ async function scrapeInvestidor10(ticker) {
 // ---------------------------------------------------------
 // PROVENTOS (STATUS INVEST)
 // ---------------------------------------------------------
-async function scrapeStatusInvestProventos(ticker) {
+async function scrapeStatusInvestProventos(ticker: string) {
     try {
         const t = ticker.toUpperCase().replace(/F$/, '');
         let type = 'acao';
@@ -280,14 +303,15 @@ async function scrapeStatusInvestProventos(ticker) {
             headers: { 
                 'X-Requested-With': 'XMLHttpRequest',
                 'Referer': 'https://statusinvest.com.br/',
-                'User-Agent': 'Mozilla/5.0'
+                // Header crucial para evitar 403/Empty Response
+                'Accept': 'application/json, text/javascript, */*; q=0.01' 
             } 
         });
 
         const earnings = data.assetEarningsModels || [];
 
-        return earnings.map(d => {
-            const parseDateJSON = (dStr) => {
+        return earnings.map((d: any) => {
+            const parseDateJSON = (dStr: string) => {
                 if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
                 const parts = dStr.split('/');
                 if (parts.length !== 3) return null;
@@ -304,9 +328,10 @@ async function scrapeStatusInvestProventos(ticker) {
                 payment_date: parseDateJSON(d.pd),
                 rate: d.v
             };
-        }).filter(d => d.payment_date !== null && d.rate > 0);
+        }).filter((d: any) => d.payment_date !== null && d.rate > 0);
 
     } catch (error) { 
+        // Silently fail for proventos to not block metadata
         return []; 
     }
 }
@@ -314,7 +339,7 @@ async function scrapeStatusInvestProventos(ticker) {
 // ---------------------------------------------------------
 // HANDLER
 // ---------------------------------------------------------
-export default async function handler(req, res) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -340,14 +365,12 @@ export default async function handler(req, res) {
                 valor_mercado: metadata.val_mercado,
                 updated_at: metadata.updated_at,
                 
-                // Mapeia campos extras para colunas específicas ou JSON se o DB suportar
-                // Como não podemos migrar o DB agora, tentamos enviar. Se falhar, o Supabase ignora ou erra.
-                // Idealmente, o usuário deve ter colunas para isso ou uma coluna json 'extra_data'.
-                // Vamos tentar enviar os mais importantes que mapeiam para o AssetFundamentals
                 lpa: parseValue(metadata.lpa),
                 vpa: parseValue(metadata.vp_cota),
                 margem_liquida: parseValue(metadata.margem_liquida),
+                margem_bruta: parseValue(metadata.margem_bruta),
                 divida_liquida_ebitda: parseValue(metadata.divida_liquida_ebitda),
+                ev_ebitda: parseValue(metadata.ev_ebitda),
                 cagr_receita: parseValue(metadata.cagr_receita_5a),
                 cagr_lucro: parseValue(metadata.cagr_lucros_5a),
                 tipo_gestao: metadata.tipo_gestao,
@@ -368,7 +391,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true, data: metadata });
 
-    } catch (e) {
+    } catch (e: any) {
         console.error(`Erro Handler ${ticker}:`, e);
         return res.status(500).json({ error: e.message });
     }

@@ -33,10 +33,10 @@ const formatBRL = (val: any, privacy = false) => {
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-const formatPercent = (val: any, privacy = false) => {
+const formatPercent = (val: any, privacy = false, decimals = 1) => {
   if (privacy) return '•••%';
   const num = typeof val === 'number' ? val : 0;
-  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}%`;
 };
 
 const formatDateShort = (dateStr: string) => {
@@ -137,6 +137,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   
   // Estado para controlar a aba ativa no modal de alocação
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET'>('CLASS');
+  const [proventosTab, setProventosTab] = useState<'CHART' | 'HISTORY'>('CHART');
   
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   const [activeIndexAsset, setActiveIndexAsset] = useState<number | undefined>(undefined);
@@ -307,6 +308,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const userDy = baseValue > 0 ? (sum12mDividends / baseValue) * 100 : 0;
     const effectiveInflationImpact = baseValue > 0 ? (accumulatedInflationCost / baseValue) * 100 : 0;
     const realReturn = userDy - effectiveInflationImpact;
+    const purchasingPowerRetention = 100 + realReturn;
     
     return { 
         history: sortedHistory, 
@@ -318,7 +320,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             realReturn, 
             sum12m: sum12mDividends, 
             inflationCost: accumulatedInflationCost, 
-            baseValue 
+            baseValue,
+            purchasingPowerRetention
         },
         last12MonthsData,
         provisionedMap: provMap, 
@@ -689,8 +692,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); }}>
-         <div className="p-6 pb-20">
-             <div className="flex items-center justify-between mb-6 anim-slide-up">
+         <div className="p-6 pb-20 flex flex-col h-full">
+             <div className="flex items-center justify-between mb-6 anim-slide-up shrink-0">
                  <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200 dark:border-emerald-900">
                         <Wallet className="w-6 h-6" strokeWidth={1.5} />
@@ -707,248 +710,265 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  )}
              </div>
 
-             {/* Cards de Resumo */}
+             {/* Seletor de Abas para Renda Passiva */}
              {!selectedProventosMonth && (
-                 <div className="grid grid-cols-2 gap-3 mb-6 anim-slide-up" style={{ animationDelay: '50ms' }}>
-                     <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-3xl text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
-                         <div className="absolute top-0 right-0 p-4 opacity-10"><Coins className="w-12 h-12" /></div>
-                         <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
-                         <p className="text-2xl font-black">{formatBRL(received, privacyMode)}</p>
-                     </div>
-                     <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
-                         <div className="absolute top-0 right-0 p-4 opacity-5"><BarChart3 className="w-12 h-12" /></div>
-                         <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
-                         <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(average, privacyMode)}</p>
-                     </div>
-                 </div>
-             )}
-             
-             {/* Gráfico Interativo */}
-             {dividendsChartData.length > 0 && (
-                 <div className="mb-8 p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 anim-graph-grow shadow-sm">
-                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Evolução Mensal</h3>
-                     </div>
-                     <div className="h-48 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart 
-                                data={dividendsChartData} 
-                                margin={{ top: 10, right: 0, left: -24, bottom: 0 }}
-                                onClick={(data) => {
-                                    if (data && data.activePayload && data.activePayload.length > 0) {
-                                        const clickedMonth = data.activePayload[0].payload.fullDate;
-                                        setSelectedProventosMonth(clickedMonth === selectedProventosMonth ? null : clickedMonth);
-                                    }
-                                }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b20" />
-                                <XAxis 
-                                    dataKey="name" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} 
-                                    dy={10} 
-                                    interval={0}
-                                />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fontSize: 9, fill: '#a1a1aa' }} 
-                                    tickFormatter={(val) => `${val/1000}k`} 
-                                />
-                                <RechartsTooltip 
-                                    content={({ active, payload, label }) => {
-                                        if (active && payload && payload.length) {
-                                            return (
-                                                <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50">
-                                                    <p className="text-xs font-black text-zinc-900 dark:text-white mb-1 uppercase tracking-wider">{label}</p>
-                                                    <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value, privacyMode)}</p>
-                                                    <p className="text-[9px] text-zinc-400 mt-1">Toque para filtrar</p>
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    }} 
-                                    cursor={{ fill: '#71717a10', radius: 8 }} 
-                                />
-                                <Bar 
-                                    dataKey="value" 
-                                    radius={[6, 6, 6, 6]} 
-                                    isAnimationActive={true}
-                                    animationDuration={1500}
-                                    animationBegin={200}
-                                    animationEasing="ease-out"
-                                >
-                                    {dividendsChartData.map((entry, index) => (
-                                        <Cell 
-                                            key={`cell-${index}`} 
-                                            fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} 
-                                            className="cursor-pointer transition-all duration-300 hover:opacity-80"
-                                        />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                     </div>
+                 <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl flex gap-1 mb-6 anim-slide-up shrink-0" style={{ animationDelay: '50ms' }}>
+                     <button 
+                        onClick={() => setProventosTab('CHART')}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${proventosTab === 'CHART' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-300'}`}
+                     >
+                        Gráfico
+                     </button>
+                     <button 
+                        onClick={() => setProventosTab('HISTORY')}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${proventosTab === 'HISTORY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-300'}`}
+                     >
+                        Histórico
+                     </button>
                  </div>
              )}
 
-             {/* Lista Detalhada */}
-             {selectedProventosMonth ? (
-                 <div className="anim-slide-up">
-                     <div className="flex items-center justify-between mb-4 px-2">
-                         <h3 className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                             <Calendar className="w-4 h-4" /> {new Date(selectedProventosMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                         </h3>
-                         <span className="text-sm font-black text-zinc-900 dark:text-white">
-                             {formatBRL(history.find(([key]) => key === selectedProventosMonth)?.[1], privacyMode)}
-                         </span>
-                     </div>
-                     
-                     <div className="space-y-2">
-                        {(receiptsByMonth[selectedProventosMonth] || [])
-                            .sort((a, b) => b.totalReceived - a.totalReceived)
-                            .map((detail, idx) => (
-                            <div key={idx} className="flex justify-between items-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/40 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-700 transition-colors anim-stagger-item" style={{ animationDelay: `${idx * 50}ms` }}>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-700 flex items-center justify-center text-xs font-black text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-600 shadow-sm">
-                                        {detail.ticker.substring(0,2)}
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                                            {detail.ticker}
-                                            <span className={`text-[8px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wider ${detail.type === 'JCP' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'}`}>
-                                                {detail.type || 'DIV'}
-                                            </span>
-                                        </p>
-                                        <p className="text-[10px] text-zinc-400 font-medium mt-0.5">
-                                            Pag: {formatDateShort(detail.paymentDate)}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <span className="block text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(detail.totalReceived, privacyMode)}</span>
-                                    <div className="flex items-center justify-end gap-1 mt-0.5 text-[9px] text-zinc-400">
-                                        <span className="font-bold">{detail.quantityOwned} un</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                     </div>
-                 </div>
-             ) : (
-                 // Histórico Completo
-                 <div className="space-y-4">
-                     {sortedProvisionedMonths.length > 0 && (
-                         <div className="mb-6 anim-slide-up">
-                             <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest px-2 mb-2 flex items-center gap-2">
-                                 <CalendarClock className="w-3 h-3" /> Provisionados (Futuros)
-                             </h3>
-                             <div className="space-y-2">
-                                {sortedProvisionedMonths.map((month: string) => {
-                                    const [year, m] = month.split('-');
-                                    const monthName = new Date(parseInt(year), parseInt(m)-1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-                                    const monthTotal = provisionedMap[month].reduce((acc: number, r: DividendReceipt) => acc + r.totalReceived, 0);
-
-                                    return (
-                                        <div key={month} className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl overflow-hidden">
-                                             <div className="p-4 flex justify-between items-center bg-amber-100/50 dark:bg-amber-900/30">
-                                                 <span className="text-xs font-black uppercase text-amber-800 dark:text-amber-200">{monthName}</span>
-                                                 <span className="text-sm font-black text-amber-700 dark:text-amber-300">{formatBRL(monthTotal, privacyMode)}</span>
-                                             </div>
-                                             <div className="p-2 space-y-1">
-                                                 {provisionedMap[month].map((detail: DividendReceipt, idx: number) => (
-                                                     <div key={idx} className="flex justify-between items-center p-2 rounded-xl bg-white/50 dark:bg-zinc-900/50">
-                                                          <div className="flex items-center gap-2">
-                                                              <span className="text-xs font-bold text-zinc-900 dark:text-white">{detail.ticker}</span>
-                                                              <span className={`text-[8px] px-1 rounded uppercase font-bold ${detail.type === 'JCP' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>{detail.type}</span>
-                                                          </div>
-                                                          <div className="text-right">
-                                                              <span className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(detail.totalReceived, privacyMode)}</span>
-                                                              <div className="flex items-center justify-end gap-1 mt-0.5 text-[8px] text-zinc-400">
-                                                                  <span className="font-bold">{detail.quantityOwned} un</span>
-                                                              </div>
-                                                          </div>
-                                                     </div>
-                                                 ))}
-                                             </div>
-                                        </div>
-                                    )
-                                })}
+             <div className="flex-1 overflow-y-auto min-h-0 anim-slide-up" style={{ animationDelay: '100ms' }}>
+                 {/* Conteúdo Dinâmico Baseado na Aba */}
+                 {proventosTab === 'CHART' && !selectedProventosMonth ? (
+                     <>
+                         <div className="grid grid-cols-2 gap-3 mb-6">
+                             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-3xl text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
+                                 <div className="absolute top-0 right-0 p-4 opacity-10"><Coins className="w-12 h-12" /></div>
+                                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
+                                 <p className="text-2xl font-black">{formatBRL(received, privacyMode)}</p>
+                             </div>
+                             <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                 <div className="absolute top-0 right-0 p-4 opacity-5"><BarChart3 className="w-12 h-12" /></div>
+                                 <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
+                                 <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(average, privacyMode)}</p>
                              </div>
                          </div>
-                     )}
+                         
+                         {dividendsChartData.length > 0 && (
+                             <div className="mb-8 p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 anim-graph-grow shadow-sm">
+                                 <div className="h-48 w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart 
+                                            data={dividendsChartData} 
+                                            margin={{ top: 10, right: 0, left: -24, bottom: 0 }}
+                                            onClick={(data) => {
+                                                if (data && data.activePayload && data.activePayload.length > 0) {
+                                                    const clickedMonth = data.activePayload[0].payload.fullDate;
+                                                    setSelectedProventosMonth(clickedMonth === selectedProventosMonth ? null : clickedMonth);
+                                                }
+                                            }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b20" />
+                                            <XAxis 
+                                                dataKey="name" 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} 
+                                                dy={10} 
+                                                interval={0}
+                                            />
+                                            <YAxis 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fontSize: 9, fill: '#a1a1aa' }} 
+                                                tickFormatter={(val) => `${val/1000}k`} 
+                                            />
+                                            <RechartsTooltip 
+                                                content={({ active, payload, label }) => {
+                                                    if (active && payload && payload.length) {
+                                                        return (
+                                                            <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50">
+                                                                <p className="text-xs font-black text-zinc-900 dark:text-white mb-1 uppercase tracking-wider">{label}</p>
+                                                                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value, privacyMode)}</p>
+                                                                <p className="text-[9px] text-zinc-400 mt-1">Toque para detalhes</p>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }} 
+                                                cursor={{ fill: '#71717a10', radius: 8 }} 
+                                            />
+                                            <Bar 
+                                                dataKey="value" 
+                                                radius={[6, 6, 6, 6]} 
+                                                isAnimationActive={true}
+                                                animationDuration={1500}
+                                                animationBegin={200}
+                                                animationEasing="ease-out"
+                                            >
+                                                {dividendsChartData.map((entry, index) => (
+                                                    <Cell 
+                                                        key={`cell-${index}`} 
+                                                        fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} 
+                                                        className="cursor-pointer transition-all duration-300 hover:opacity-80"
+                                                    />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                 </div>
+                             </div>
+                         )}
+                     </>
+                 ) : null}
 
-                     <div className="space-y-4">
-                         <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-2 anim-slide-up" style={{ animationDelay: '300ms' }}>Histórico Completo</h3>
-                         {history.length > 0 ? (
-                             <div className="space-y-4">
-                                {history.map(([month, val]: [string, number], i: number) => {
-                                    const [year, m] = month.split('-');
-                                    const dateObj = new Date(parseInt(year), parseInt(m)-1, 1);
-                                    const monthName = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-                                    const percentage = (val / (maxVal || 1)) * 100;
-                                    const isExpanded = expandedMonth === month;
-                                    const monthlyDetails = receiptsByMonth[month] || [];
+                 {/* Lista Detalhada (Mês Selecionado ou Aba Histórico) */}
+                 {(selectedProventosMonth || proventosTab === 'HISTORY') && (
+                     selectedProventosMonth ? (
+                         <div className="anim-slide-up">
+                             <div className="flex items-center justify-between mb-4 px-2">
+                                 <h3 className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                                     <Calendar className="w-4 h-4" /> {new Date(selectedProventosMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                                 </h3>
+                                 <span className="text-sm font-black text-zinc-900 dark:text-white">
+                                     {formatBRL(history.find(([key]) => key === selectedProventosMonth)?.[1], privacyMode)}
+                                 </span>
+                             </div>
+                             
+                             <div className="space-y-2">
+                                {(receiptsByMonth[selectedProventosMonth] || [])
+                                    .sort((a, b) => b.totalReceived - a.totalReceived)
+                                    .map((detail, idx) => (
+                                    <div key={idx} className="flex justify-between items-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/40 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-700 transition-colors anim-stagger-item" style={{ animationDelay: `${idx * 50}ms` }}>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-700 flex items-center justify-center text-xs font-black text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-600 shadow-sm">
+                                                {detail.ticker.substring(0,2)}
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                                                    {detail.ticker}
+                                                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wider ${detail.type === 'JCP' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'}`}>
+                                                        {detail.type || 'DIV'}
+                                                    </span>
+                                                </p>
+                                                <p className="text-[10px] text-zinc-400 font-medium mt-0.5">
+                                                    Pag: {formatDateShort(detail.paymentDate)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(detail.totalReceived, privacyMode)}</span>
+                                            <div className="flex items-center justify-end gap-1 mt-0.5 text-[9px] text-zinc-400">
+                                                <span className="font-bold">{detail.quantityOwned} un</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                             </div>
+                         </div>
+                     ) : (
+                         // Histórico Completo
+                         <div className="space-y-4">
+                             {sortedProvisionedMonths.length > 0 && (
+                                 <div className="mb-6 anim-slide-up">
+                                     <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest px-2 mb-2 flex items-center gap-2">
+                                         <CalendarClock className="w-3 h-3" /> Provisionados (Futuros)
+                                     </h3>
+                                     <div className="space-y-2">
+                                        {sortedProvisionedMonths.map((month: string) => {
+                                            const [year, m] = month.split('-');
+                                            const monthName = new Date(parseInt(year), parseInt(m)-1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                                            const monthTotal = provisionedMap[month].reduce((acc: number, r: DividendReceipt) => acc + r.totalReceived, 0);
 
-                                    return (
-                                        <div key={month} className={`group rounded-2xl transition-all duration-500 border overflow-hidden anim-slide-up ${isExpanded ? 'bg-white dark:bg-zinc-900 border-emerald-500 shadow-lg scale-[1.02] z-10 ring-4 ring-emerald-500/5' : 'bg-surface-light dark:bg-surface-dark border-zinc-200/40 dark:border-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700'}`} style={{ animationDelay: `${400 + (i * 50)}ms` }}>
-                                            <button onClick={() => toggleMonthExpand(month)} className="w-full p-5 flex flex-col gap-2 relative">
-                                                <div className="w-full flex justify-between items-center relative z-10">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors border border-zinc-100 dark:border-zinc-800 ${isExpanded ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
-                                                            <Receipt className="w-5 h-5" strokeWidth={2} />
-                                                        </div>
-                                                        <div className="text-left">
-                                                            <span className={`text-sm font-black capitalize block leading-tight ${isExpanded ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-200'}`}>{monthName}</span>
-                                                            {isExpanded ? (
-                                                                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                                                                    <ChevronUp className="w-3 h-3" /> Detalhes
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-[10px] text-zinc-400 font-medium mt-0.5">{monthlyDetails.length} {monthlyDetails.length === 1 ? 'pagamento' : 'pagamentos'}</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <span className={`text-base font-black block ${isExpanded ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(val, privacyMode)}</span>
-                                                    </div>
+                                            return (
+                                                <div key={month} className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl overflow-hidden">
+                                                     <div className="p-4 flex justify-between items-center bg-amber-100/50 dark:bg-amber-900/30">
+                                                         <span className="text-xs font-black uppercase text-amber-800 dark:text-amber-200">{monthName}</span>
+                                                         <span className="text-sm font-black text-amber-700 dark:text-amber-300">{formatBRL(monthTotal, privacyMode)}</span>
+                                                     </div>
+                                                     <div className="p-2 space-y-1">
+                                                         {provisionedMap[month].map((detail: DividendReceipt, idx: number) => (
+                                                             <div key={idx} className="flex justify-between items-center p-2 rounded-xl bg-white/50 dark:bg-zinc-900/50">
+                                                                  <div className="flex items-center gap-2">
+                                                                      <span className="text-xs font-bold text-zinc-900 dark:text-white">{detail.ticker}</span>
+                                                                      <span className={`text-[8px] px-1 rounded uppercase font-bold ${detail.type === 'JCP' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>{detail.type}</span>
+                                                                  </div>
+                                                                  <div className="text-right">
+                                                                      <span className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(detail.totalReceived, privacyMode)}</span>
+                                                                  </div>
+                                                             </div>
+                                                         ))}
+                                                     </div>
                                                 </div>
-                                                {!isExpanded && <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800"><div style={{ width: `${percentage}%` }} className="h-full bg-emerald-500 opacity-60 rounded-r-full"></div></div>}
-                                            </button>
-                                            
-                                            {isExpanded && (
-                                                <div className="px-5 pb-5 anim-fade-in">
-                                                    <div className="h-px w-full bg-zinc-100 dark:bg-zinc-800 mb-4"></div>
-                                                    <div className="space-y-2">
-                                                        {monthlyDetails.sort((a: DividendReceipt, b: DividendReceipt) => b.totalReceived - a.totalReceived).map((detail: DividendReceipt, idx: number) => (
-                                                            <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-700 transition-colors">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-700 flex items-center justify-center text-[10px] font-black text-zinc-600 dark:text-zinc-300 border border-zinc-100 dark:border-zinc-600">{detail.ticker.substring(0,2)}</div>
-                                                                    <div>
-                                                                        <p className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                                                                            {detail.ticker}
-                                                                            <span className={`text-[8px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wider ${detail.type === 'JCP' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' : 'bg-zinc-200 dark:bg-zinc-600 text-zinc-500 dark:text-zinc-300'}`}>{detail.type || 'DIV'}</span>
-                                                                        </p>
-                                                                        <p className="text-[10px] text-zinc-400 font-medium mt-0.5">Com: <span className="text-zinc-500 dark:text-zinc-300 font-bold">{formatDateShort(detail.dateCom)}</span> • Pag: <span className="text-zinc-500 dark:text-zinc-300 font-bold">{formatDateShort(detail.paymentDate)}</span></p>
-                                                                    </div>
+                                            )
+                                        })}
+                                     </div>
+                                 </div>
+                             )}
+
+                             <div className="space-y-4">
+                                 <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-2 anim-slide-up" style={{ animationDelay: '300ms' }}>Histórico Completo</h3>
+                                 {history.length > 0 ? (
+                                     <div className="space-y-4">
+                                        {history.map(([month, val]: [string, number], i: number) => {
+                                            const [year, m] = month.split('-');
+                                            const dateObj = new Date(parseInt(year), parseInt(m)-1, 1);
+                                            const monthName = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                                            const percentage = (val / (maxVal || 1)) * 100;
+                                            const isExpanded = expandedMonth === month;
+                                            const monthlyDetails = receiptsByMonth[month] || [];
+
+                                            return (
+                                                <div key={month} className={`group rounded-2xl transition-all duration-500 border overflow-hidden anim-slide-up ${isExpanded ? 'bg-white dark:bg-zinc-900 border-emerald-500 shadow-lg scale-[1.02] z-10 ring-4 ring-emerald-500/5' : 'bg-surface-light dark:bg-surface-dark border-zinc-200/40 dark:border-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700'}`} style={{ animationDelay: `${400 + (i * 50)}ms` }}>
+                                                    <button onClick={() => toggleMonthExpand(month)} className="w-full p-5 flex flex-col gap-2 relative">
+                                                        <div className="w-full flex justify-between items-center relative z-10">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors border border-zinc-100 dark:border-zinc-800 ${isExpanded ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
+                                                                    <Receipt className="w-5 h-5" strokeWidth={2} />
                                                                 </div>
-                                                                <div className="text-right">
-                                                                    <span className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-1 rounded-lg">{formatBRL(detail.totalReceived, privacyMode)}</span>
+                                                                <div className="text-left">
+                                                                    <span className={`text-sm font-black capitalize block leading-tight ${isExpanded ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-200'}`}>{monthName}</span>
+                                                                    {isExpanded ? (
+                                                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                                                                            <ChevronUp className="w-3 h-3" /> Detalhes
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-[10px] text-zinc-400 font-medium mt-0.5">{monthlyDetails.length} {monthlyDetails.length === 1 ? 'pagamento' : 'pagamentos'}</span>
+                                                                    )}
                                                                 </div>
                                                             </div>
-                                                        ))}
-                                                    </div>
+                                                            <div className="text-right">
+                                                                <span className={`text-base font-black block ${isExpanded ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(val, privacyMode)}</span>
+                                                            </div>
+                                                        </div>
+                                                        {!isExpanded && <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800"><div style={{ width: `${percentage}%` }} className="h-full bg-emerald-500 opacity-60 rounded-r-full"></div></div>}
+                                                    </button>
+                                                    
+                                                    {isExpanded && (
+                                                        <div className="px-5 pb-5 anim-fade-in">
+                                                            <div className="h-px w-full bg-zinc-100 dark:bg-zinc-800 mb-4"></div>
+                                                            <div className="space-y-2">
+                                                                {monthlyDetails.sort((a: DividendReceipt, b: DividendReceipt) => b.totalReceived - a.totalReceived).map((detail: DividendReceipt, idx: number) => (
+                                                                    <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-700 transition-colors">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-700 flex items-center justify-center text-[10px] font-black text-zinc-600 dark:text-zinc-300 border border-zinc-100 dark:border-zinc-600">{detail.ticker.substring(0,2)}</div>
+                                                                            <div>
+                                                                                <p className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                                                                                    {detail.ticker}
+                                                                                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wider ${detail.type === 'JCP' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' : 'bg-zinc-200 dark:bg-zinc-600 text-zinc-500 dark:text-zinc-300'}`}>{detail.type || 'DIV'}</span>
+                                                                                </p>
+                                                                                <p className="text-[10px] text-zinc-400 font-medium mt-0.5">Com: <span className="text-zinc-500 dark:text-zinc-300 font-bold">{formatDateShort(detail.dateCom)}</span> • Pag: <span className="text-zinc-500 dark:text-zinc-300 font-bold">{formatDateShort(detail.paymentDate)}</span></p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <span className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-1 rounded-lg">{formatBRL(detail.totalReceived, privacyMode)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                                            );
+                                        })}
+                                     </div>
+                                 ) : <div className="text-center py-10 opacity-50"><p className="text-xs">Nenhum provento registrado ainda.</p></div>}
                              </div>
-                         ) : <div className="text-center py-10 opacity-50"><p className="text-xs">Nenhum provento registrado ainda.</p></div>}
-                     </div>
-                 </div>
-             )}
+                         </div>
+                     )
+                 )}
+             </div>
          </div>
       </SwipeableModal>
 
@@ -980,13 +1000,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </button>
              </div>
 
-             <div className="flex-1 overflow-y-auto min-h-0 anim-slide-up" style={{ animationDelay: '100ms' }}>
+             <div className="flex-1 flex flex-col min-h-0 anim-slide-up" style={{ animationDelay: '100ms' }}>
                  {/* Conteúdo Dinâmico Baseado na Aba */}
                  {allocationTab === 'CLASS' ? (
-                     <div className="space-y-6">
+                     <div className="flex flex-col h-full">
                          {/* Gráfico de Classes */}
-                         <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 shadow-sm relative overflow-visible">
-                            <div className="h-64 w-full relative z-10">
+                         <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 shadow-sm relative overflow-visible shrink-0 mb-6">
+                            <div className="h-56 w-full relative z-10">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie 
@@ -1018,7 +1038,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     </span>
                                     <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">
                                         {activeIndexClass !== undefined 
-                                            ? formatPercent(classChartData[activeIndexClass].percent, privacyMode)
+                                            ? formatPercent(classChartData[activeIndexClass].percent, privacyMode, 1)
                                             : formatBRL(typeData.total, privacyMode)
                                         }
                                     </span>
@@ -1026,8 +1046,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             </div>
                          </div>
 
-                         {/* Lista Detalhada de Classes */}
-                         <div className="space-y-3">
+                         {/* Lista Detalhada de Classes (Scrollável) */}
+                         <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                              {classChartData.map((item, index) => (
                                  <div 
                                     key={index} 
@@ -1039,7 +1059,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
                                              <span className="text-sm font-bold text-zinc-900 dark:text-white">{item.name}</span>
                                          </div>
-                                         <span className="text-sm font-black text-zinc-900 dark:text-white">{formatPercent(item.percent, privacyMode)}</span>
+                                         <span className="text-sm font-black text-zinc-900 dark:text-white">{formatPercent(item.percent, privacyMode, 1)}</span>
                                      </div>
                                      <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
                                          <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div>
@@ -1050,12 +1070,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          </div>
                      </div>
                  ) : (
-                     <div className="space-y-6">
+                     <div className="flex flex-col h-full">
                          {/* Gráfico de Ativos */}
                          {assetsChartData.length > 0 ? (
                             <>
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 shadow-sm relative overflow-visible">
-                                    <div className="h-64 w-full relative z-10">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 shadow-sm relative overflow-visible shrink-0 mb-6">
+                                    <div className="h-56 w-full relative z-10">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie 
@@ -1086,7 +1106,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                             </span>
                                             <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">
                                                 {activeIndexAsset !== undefined 
-                                                    ? formatPercent(assetsChartData[activeIndexAsset].percent, privacyMode)
+                                                    ? formatPercent(assetsChartData[activeIndexAsset].percent, privacyMode, 2)
                                                     : formatBRL(typeData.total, privacyMode)
                                                 }
                                             </span>
@@ -1094,14 +1114,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     </div>
                                 </div>
 
-                                {/* Lista Detalhada de Ativos */}
-                                <div className="space-y-2 pb-6">
+                                {/* Lista Detalhada de Ativos (Scrollável e Compacta) */}
+                                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 pb-6">
                                     {assetsChartData.map((asset, index) => (
                                         <div 
                                             key={index}
                                             onClick={() => setActiveIndexAsset(index === activeIndexAsset ? undefined : index)}
-                                            className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer anim-stagger-item ${activeIndexAsset === index ? 'bg-zinc-50 dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-600' : 'bg-white dark:bg-zinc-900 border-zinc-200/40 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
-                                            style={{ animationDelay: `${index * 30}ms` }}
+                                            className={`flex items-center justify-between py-2 px-3 rounded-xl border transition-all cursor-pointer anim-stagger-item ${activeIndexAsset === index ? 'bg-zinc-50 dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-600' : 'bg-white dark:bg-zinc-900 border-zinc-200/40 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                                            style={{ animationDelay: `${index * 20}ms` }}
                                         >
                                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${asset.type === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600'}`}>
@@ -1110,7 +1130,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex justify-between items-center mb-1">
                                                         <span className="text-xs font-bold text-zinc-900 dark:text-white truncate">{asset.name}</span>
-                                                        <span className="text-xs font-black text-zinc-900 dark:text-white ml-2">{formatPercent(asset.percent, privacyMode)}</span>
+                                                        <span className="text-xs font-black text-zinc-900 dark:text-white ml-2">{formatPercent(asset.percent, privacyMode, 2)}</span>
                                                     </div>
                                                     <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1 overflow-hidden">
                                                         <div className="h-full rounded-full" style={{ width: `${asset.percent}%`, backgroundColor: asset.color }}></div>
@@ -1163,7 +1183,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          </div>
                      </div>
 
-                     <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm anim-graph-grow" style={{ animationDelay: '200ms' }}>
+                     {/* NOVO: Card de Poder de Compra */}
+                     <div className="mb-6 p-5 rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 text-white shadow-xl relative overflow-hidden anim-slide-up" style={{ animationDelay: '250ms' }}>
+                         <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-16 h-16 text-white" /></div>
+                         <div className="relative z-10">
+                             <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest mb-1">Poder de Compra</h3>
+                             <p className="text-sm font-medium text-zinc-400 mb-3">
+                                 R$ 1.000,00 investidos no início do período equivalem hoje a:
+                             </p>
+                             <div className="flex items-end gap-3">
+                                 <span className="text-3xl font-black tracking-tight text-emerald-400">
+                                     {formatBRL(1000 * (realYieldMetrics.purchasingPowerRetention / 100), privacyMode)}
+                                 </span>
+                                 <span className="text-[10px] font-bold bg-white/10 px-2 py-1 rounded mb-1.5">
+                                     {formatPercent(realYieldMetrics.realReturn, false, 2)} Real
+                                 </span>
+                             </div>
+                         </div>
+                     </div>
+
+                     <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm anim-graph-grow" style={{ animationDelay: '300ms' }}>
                          <div className="flex items-center justify-between mb-4 px-2">
                              <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-3 h-3" /> Evolução do Saldo Real</h3>
                          </div>
@@ -1193,7 +1232,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          </div>
                      </div>
 
-                     <div className="space-y-4 anim-slide-up" style={{ animationDelay: '300ms' }}>
+                     <div className="space-y-4 anim-slide-up" style={{ animationDelay: '400ms' }}>
                          <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Detalhamento Mensal</h3>
                          <div className="space-y-2">
                              {last12MonthsData.slice().reverse().map((item: MonthlyInflationData, i: number) => {
@@ -1233,7 +1272,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              
              <div className="mt-8 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex gap-3 anim-fade-in">
                  <Info className="w-5 h-5 text-blue-500 shrink-0" />
-                 <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed"><strong>Nota Técnica:</strong> O cálculo de inflação é aplicado sobre o saldo histórico investido em cada mês. Meses anteriores ao seu primeiro aporte não sofrem desconto inflacionário.</p>
+                 <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed"><strong>Nota Técnica:</strong> O cálculo de inflação é aplicado sobre o saldo histórico investido em cada mês. Meses anteriores ao seu primeiro aporte não sofrem desconto inflacionário. O ganho real considera o reinvestimento implícito dos proventos.</p>
              </div>
          </div>
       </SwipeableModal>

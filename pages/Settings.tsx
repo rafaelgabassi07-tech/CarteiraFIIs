@@ -447,22 +447,31 @@ export const Settings: React.FC<SettingsProps> = ({
           <div className="space-y-4">
             <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center overflow-hidden">
                 <div className="flex items-center justify-center gap-1 mb-6 relative select-none scale-90">
-                    <div className="w-[68px] h-[80px] flex items-center justify-center relative z-10">
-                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_12px_24px_rgba(14,165,233,0.3)]">
+                    <div className="w-[72px] h-[72px] flex items-center justify-center relative z-10">
+                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_16px_32px_rgba(79,70,229,0.3)]">
                             <defs>
-                                <linearGradient id="logo_grad_about" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0%" stopColor="#10b981"/>
-                                    <stop offset="50%" stopColor="#0ea5e9"/>
+                                <linearGradient id="grad_top_about" x1="256" y1="128" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stopColor="#34d399"/>
+                                    <stop offset="100%" stopColor="#0ea5e9"/>
+                                </linearGradient>
+                                <linearGradient id="grad_right_about" x1="366" y1="192" x2="366" y2="448" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stopColor="#0ea5e9"/>
+                                    <stop offset="100%" stopColor="#6366f1"/>
+                                </linearGradient>
+                                <linearGradient id="grad_left_about" x1="146" y1="192" x2="146" y2="448" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stopColor="#0284c7"/>
                                     <stop offset="100%" stopColor="#4f46e5"/>
                                 </linearGradient>
                             </defs>
-                            <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_about)"/>
-                            <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_about)"/>
-                            <rect x="184" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_about)"/><rect x="240" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_about)"/><rect x="296" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_about)"/>
-                            <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_about)"/>
+                            <path d="M256 64L448 160L256 256L64 160L256 64Z" fill="url(#grad_top_about)"/>
+                            <path d="M448 160V352L256 448V256L448 160Z" fill="url(#grad_right_about)"/>
+                            <path d="M64 160V352L256 448V256L64 160Z" fill="url(#grad_left_about)"/>
+                            <path d="M256 64L256 256" stroke="white" strokeOpacity="0.2" strokeWidth="2"/>
+                            <path d="M256 256L448 160" stroke="white" strokeOpacity="0.1" strokeWidth="2"/>
+                            <path d="M256 256L64 160" stroke="white" strokeOpacity="0.1" strokeWidth="2"/>
                     </svg>
                     </div>
-                    <span className="font-display text-[52px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-1 -ml-2 drop-shadow-sm">NVEST</span>
+                    <span className="font-display text-[52px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-2 -ml-2 drop-shadow-sm">NVEST</span>
                 </div>
               <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-4">Built for Investors</p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-6">Focado em performance, design e simplicidade para a gestão inteligente de dividendos na B3.</p>
