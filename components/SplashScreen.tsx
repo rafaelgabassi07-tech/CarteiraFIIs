@@ -88,7 +88,27 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
             {/* BRAND CONTAINER - Mesma estrutura do HTML */}
             <div className="flex items-center justify-center gap-4 mb-12 select-none">
                 <div className="w-[72px] h-[72px] relative drop-shadow-2xl">
-                   <img src="./logo.svg?v=13" alt="Logo" className="w-full h-full object-contain" />
+                   {/* INLINE SVG para garantir renderização sem cache externo */}
+                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full object-contain">
+                        <defs>
+                            <linearGradient id="logo_grad_react" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stopColor="#10b981"/>
+                                <stop offset="50%" stopColor="#0ea5e9"/>
+                                <stop offset="100%" stopColor="#4f46e5"/>
+                            </linearGradient>
+                            <filter id="dropShadow_react" x="0" y="0" width="512" height="530" filterUnits="userSpaceOnUse">
+                                <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="#0ea5e9" floodOpacity="0.25"/>
+                            </filter>
+                        </defs>
+                        <g filter="url(#dropShadow_react)">
+                            <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_react)"/>
+                            <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_react)"/>
+                            <rect x="184" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_react)"/>
+                            <rect x="240" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_react)"/>
+                            <rect x="296" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_react)"/>
+                            <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_react)"/>
+                        </g>
+                    </svg>
                 </div>
                 <span className="font-display text-[56px] font-extrabold tracking-tighter leading-none text-zinc-900 dark:text-white drop-shadow-sm">
                     NVEST
