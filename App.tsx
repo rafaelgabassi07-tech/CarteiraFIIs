@@ -482,10 +482,14 @@ const App: React.FC = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
+    // CORREÇÃO: Garante que o ticker do dividendo esteja perfeitamente normalizado
+    // para evitar falhas de match com transações (caso de ITSA4 com espaço ou case diff)
     const receipts = dividends.map(d => {
-        const qty = getQuantityOnDate(d.ticker, d.dateCom, sortedTxs);
+        const normalizedTicker = d.ticker.trim().toUpperCase();
+        const qty = getQuantityOnDate(normalizedTicker, d.dateCom, sortedTxs);
         return { 
             ...d, 
+            ticker: normalizedTicker,
             quantityOwned: qty, 
             totalReceived: qty * d.rate 
         };
@@ -502,8 +506,9 @@ const App: React.FC = () => {
 
     const positions: Record<string, any> = {};
     sortedTxs.forEach(t => {
-      if (!positions[t.ticker]) positions[t.ticker] = { ticker: t.ticker, quantity: 0, averagePrice: 0, assetType: t.assetType };
-      const p = positions[t.ticker];
+      const normalizedTicker = t.ticker.trim().toUpperCase();
+      if (!positions[normalizedTicker]) positions[normalizedTicker] = { ticker: normalizedTicker, quantity: 0, averagePrice: 0, assetType: t.assetType };
+      const p = positions[normalizedTicker];
       if (t.type === 'BUY') { 
           const newQuantity = p.quantity + t.quantity;
           if (newQuantity > 0.000001) {
@@ -546,8 +551,9 @@ const App: React.FC = () => {
     
     let salesGain = 0; const tracker: Record<string, { q: number; c: number }> = {};
     sortedTxs.forEach(t => {
-      if (!tracker[t.ticker]) tracker[t.ticker] = { q: 0, c: 0 };
-      const a = tracker[t.ticker];
+      const normalizedTicker = t.ticker.trim().toUpperCase();
+      if (!tracker[normalizedTicker]) tracker[normalizedTicker] = { q: 0, c: 0 };
+      const a = tracker[normalizedTicker];
       if (t.type === 'BUY') { a.q += t.quantity; a.c += round(t.quantity * t.price); } 
       else if (a.q > 0) { const cost = round(t.quantity * (a.c / a.q)); salesGain += round((t.quantity * t.price) - cost); a.c -= cost; a.q -= t.quantity; }
     });

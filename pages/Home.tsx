@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp, Layers, CheckCircle2, HelpCircle, Activity, Percent, TrendingUp as TrendingUpIcon, Hourglass } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp, Layers, CheckCircle2, HelpCircle, Activity, Percent, TrendingUp as TrendingUpIcon, Hourglass, Landmark } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, Sector, AreaChart, Area } from 'recharts';
 
@@ -59,8 +59,9 @@ const CHART_COLORS = [
     '#f43f5e', // Rose
 ];
 
-const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, isJCP = false) => {
+const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, typeRaw: string) => {
     const isToday = new Date(dateStr + 'T00:00:00').getTime() === new Date().setHours(0,0,0,0);
+    const type = typeRaw ? typeRaw.toUpperCase() : 'DIV';
     
     if (eventType === 'datacom') {
         return { 
@@ -74,7 +75,7 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, isJCP 
     }
     
     // Pagamento
-    if (isJCP) {
+    if (type === 'JCP') {
         return {
             containerClass: 'bg-orange-50 dark:bg-orange-950/20 border-l-2 border-l-orange-500',
             iconClass: 'text-orange-500',
@@ -85,13 +86,25 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, isJCP 
         };
     }
 
+    if (type === 'AMORT') {
+        return {
+            containerClass: 'bg-violet-50 dark:bg-violet-950/20 border-l-2 border-l-violet-500',
+            iconClass: 'text-violet-500',
+            textClass: 'text-violet-700 dark:text-violet-300',
+            valueClass: 'text-violet-800 dark:text-violet-200 font-bold',
+            icon: Landmark, // Ícone diferente para Amortização (Capital de volta)
+            label: isToday ? 'Cai Hoje' : 'Amortização'
+        };
+    }
+
+    // Default: DIV ou REND
     return {
         containerClass: 'bg-emerald-50 dark:bg-emerald-950/20 border-l-2 border-l-emerald-500',
         iconClass: 'text-emerald-500',
         textClass: 'text-emerald-700 dark:text-emerald-300',
         valueClass: 'text-emerald-800 dark:text-emerald-200 font-bold',
         icon: Banknote,
-        label: isToday ? 'Cai Hoje' : 'Div.'
+        label: isToday ? 'Cai Hoje' : (type === 'REND' ? 'Rendimento' : 'Dividendo')
     };
 };
 
@@ -145,17 +158,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         if (r.dateCom >= todayStr) allEvents.push({ ...r, eventType: 'datacom', date: r.dateCom });
     });
     
-    const uniqueEvents = allEvents.sort((a, b) => a.date.localeCompare(b.date)).reduce((acc: any[], current) => {
-        if (!acc.find((i: any) => i.date === current.date && i.ticker === current.ticker && i.eventType === current.eventType)) acc.push(current);
-        return acc;
-    }, []);
+    // Mantém todos os eventos (sem deduplicação agressiva)
+    const sortedEvents = allEvents.sort((a, b) => a.date.localeCompare(b.date));
 
     const grouped: Record<string, any[]> = { 'Hoje': [], 'Amanhã': [], 'Esta Semana': [], 'Futuro': [] };
     const todayDate = new Date(); todayDate.setHours(0,0,0,0);
     const tomorrowDate = new Date(todayDate); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
     const nextWeekDate = new Date(todayDate); nextWeekDate.setDate(nextWeekDate.getDate() + 7);
 
-    uniqueEvents.forEach((ev: any) => {
+    sortedEvents.forEach((ev: any) => {
         const evDate = new Date(ev.date + 'T00:00:00');
         if (evDate.getTime() === todayDate.getTime()) grouped['Hoje'].push(ev);
         else if (evDate.getTime() === tomorrowDate.getTime()) grouped['Amanhã'].push(ev);
@@ -163,7 +174,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         else grouped['Futuro'].push(ev);
     });
 
-    return { upcomingEvents: uniqueEvents, received: receivedTotal, groupedEvents: grouped };
+    return { upcomingEvents: sortedEvents, received: receivedTotal, groupedEvents: grouped };
   }, [dividendReceipts]);
 
   const { history, receiptsByMonth, realYieldMetrics, last12MonthsData, provisionedMap, provisionedTotal, sortedProvisionedMonths, dividendsChartData } = useMemo(() => {
@@ -564,7 +575,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </h3>
                         <div className="space-y-2">
                             {events.map((e: any, i: number) => {
-                                const style = getEventStyle(e.eventType, e.date, e.type === 'JCP');
+                                const style = getEventStyle(e.eventType, e.date, e.type);
                                 return (
                                     <div key={i} className={`p-4 rounded-xl flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 ${style.containerClass}`}>
                                         <div className="flex items-center gap-3">
@@ -575,6 +586,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                 <div className="flex items-center gap-2">
                                                     <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase">{e.ticker}</h4>
                                                     {e.type === 'JCP' && <span className="text-[8px] font-bold px-1 rounded bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300">JCP</span>}
+                                                    {e.type === 'AMORT' && <span className="text-[8px] font-bold px-1 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">AMORT</span>}
                                                 </div>
                                                 <p className={`text-[10px] font-bold uppercase tracking-widest ${style.textClass}`}>{style.label}</p>
                                             </div>
@@ -710,7 +722,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     <div>
                                         <p className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
                                             {detail.ticker}
-                                            <span className={`text-[8px] px-1 rounded font-bold uppercase ${detail.type === 'JCP' ? 'text-orange-500 bg-orange-50 dark:bg-orange-900/20' : 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'}`}>
+                                            <span className={`text-[8px] px-1 rounded font-bold uppercase ${detail.type === 'JCP' ? 'text-orange-500 bg-orange-50 dark:bg-orange-900/20' : detail.type === 'AMORT' ? 'text-violet-500 bg-violet-50 dark:bg-violet-900/20' : 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'}`}>
                                                 {detail.type || 'DIV'}
                                             </span>
                                         </p>

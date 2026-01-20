@@ -114,7 +114,8 @@ export const parseB3Excel = async (file: File): Promise<{ transactions: Transact
           const typeVal = String(row[keys['movimentação'] || keys['tipo de movimentação'] || keys['histórico'] || keys['natureza'] || ''] || '').toLowerCase();
           
           // --- FLUXO DE DIVIDENDOS ---
-          if (typeVal.includes('dividendo') || typeVal.includes('juros') || typeVal.includes('rendimento') || typeVal.includes('jcp')) {
+          // Inclui Amortização e Restituição
+          if (typeVal.includes('dividendo') || typeVal.includes('juros') || typeVal.includes('rendimento') || typeVal.includes('jcp') || typeVal.includes('amortiza') || typeVal.includes('restitui')) {
               if (!dateStr || !tickerStr) continue;
 
               const valKey = keys['valor da operação'] || keys['valor total'] || keys['valor líquido'] || keys['valor'] || keys['crédito/débito'];
@@ -125,9 +126,10 @@ export const parseB3Excel = async (file: File): Promise<{ transactions: Transact
               const quantity = Math.abs(parseBrNumber(row[qtyKey]));
 
               if (totalVal > 0) {
-                  // Normalização de Tipo para bater com API (JCP, DIV, REND)
+                  // Normalização de Tipo para bater com API (JCP, DIV, REND, AMORT)
                   let type = 'DIV';
                   if (typeVal.includes('juros') || typeVal.includes('jcp')) type = 'JCP';
+                  else if (typeVal.includes('amortiza') || typeVal.includes('restitui')) type = 'AMORT';
                   else if (typeVal.includes('rendimento')) type = 'REND';
 
                   // Normalização de Rate (Máximo 6 casas decimais para evitar conflito de float no DB)

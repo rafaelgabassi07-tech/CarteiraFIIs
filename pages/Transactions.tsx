@@ -29,6 +29,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   // Header Mensal com Saldo
   if (item.type === 'header') {
       const netValue = item.monthlyNet || 0;
+      // Considera positivo se investiu mais do que vendeu (Saldo de Aporte)
       const isPositive = netValue >= 0;
       return (
           <div className={`pl-4 pr-2 pt-8 pb-4 flex items-end justify-between anim-fade-in relative z-10 bg-primary-light dark:bg-primary-dark ${index === 0 ? 'mt-2' : ''}`}>
@@ -37,7 +38,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
                   <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{formatMonthHeader(item.monthKey)}</h3>
               </div>
               <div className="flex flex-col items-end">
-                  <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Saldo do Mês</span>
+                  <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Movimentação</span>
                   <span className={`text-[10px] font-black ${isPositive ? 'text-indigo-500' : 'text-rose-500'}`}>
                       {isPositive ? '+' : ''}{formatBRL(netValue, privacyMode)}
                   </span>
@@ -150,12 +151,12 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             }
             groups[k].items.push(t);
             const val = t.price * t.quantity;
-            // Cálculo de Saldo (Compra = Saída de Caixa negativo?, Venda = Entrada positivo?)
-            // Para visualização de "Volume de Investimento", geralmente soma-se Compras como positivo (Aporte)
-            // Se o usuário quer ver Fluxo de Caixa: Compra (-), Venda (+).
-            // Vamos adotar: Saldo de Movimentação. (Quanto comprei - Quanto vendi)
-            if (t.type === 'BUY') groups[k].totalNet -= val; // Gastei dinheiro
-            else groups[k].totalNet += val; // Recebi dinheiro
+            
+            // Lógica de Saldo de Movimentação (Investimento Líquido)
+            // BUY = Aporte (Soma ao volume investido no mês)
+            // SELL = Retirada (Subtrai do volume investido)
+            if (t.type === 'BUY') groups[k].totalNet += val; 
+            else groups[k].totalNet -= val; 
         });
 
         const list: any[] = [];
