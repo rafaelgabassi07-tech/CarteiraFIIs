@@ -285,7 +285,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     <SettingItem icon={ShieldAlert} label="Resetar App" color="bg-rose-100 dark:bg-rose-900/20 text-rose-600" onClick={() => setActiveSection('reset')} isLast />
                 </Group>
 
-                <button onClick={onLogout} className="w-full p-4 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 mt-6 active:scale-95 transition-transform">
+                <button onClick={onLogout} className="w-full py-4 rounded-2xl bg-white dark:bg-zinc-900 border border-rose-100 dark:border-rose-900/30 text-rose-600 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 mt-6 active:scale-95 transition-all shadow-sm hover:bg-rose-50 dark:hover:bg-rose-900/10">
                     <LogOut className="w-4 h-4" /> Sair da Conta
                 </button>
             </div>
@@ -446,33 +446,16 @@ export const Settings: React.FC<SettingsProps> = ({
         {activeSection === 'about' && (
           <div className="space-y-4">
             <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center overflow-hidden">
-                <div className="flex items-center justify-center gap-1 mb-6 relative select-none scale-90">
-                    <div className="w-[72px] h-[72px] flex items-center justify-center relative z-10">
-                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_16px_32px_rgba(79,70,229,0.3)]">
-                            <defs>
-                                <linearGradient id="grad_top_about" x1="256" y1="128" x2="256" y2="256" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0%" stopColor="#34d399"/>
-                                    <stop offset="100%" stopColor="#0ea5e9"/>
-                                </linearGradient>
-                                <linearGradient id="grad_right_about" x1="366" y1="192" x2="366" y2="448" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0%" stopColor="#0ea5e9"/>
-                                    <stop offset="100%" stopColor="#6366f1"/>
-                                </linearGradient>
-                                <linearGradient id="grad_left_about" x1="146" y1="192" x2="146" y2="448" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0%" stopColor="#0284c7"/>
-                                    <stop offset="100%" stopColor="#4f46e5"/>
-                                </linearGradient>
-                            </defs>
-                            <path d="M256 64L448 160L256 256L64 160L256 64Z" fill="url(#grad_top_about)"/>
-                            <path d="M448 160V352L256 448V256L448 160Z" fill="url(#grad_right_about)"/>
-                            <path d="M64 160V352L256 448V256L64 160Z" fill="url(#grad_left_about)"/>
-                            <path d="M256 64L256 256" stroke="white" strokeOpacity="0.2" strokeWidth="2"/>
-                            <path d="M256 256L448 160" stroke="white" strokeOpacity="0.1" strokeWidth="2"/>
-                            <path d="M256 256L64 160" stroke="white" strokeOpacity="0.1" strokeWidth="2"/>
-                    </svg>
+                {/* 3D BRAND COMPOSITION */}
+                <div className="flex items-center justify-center gap-4 mb-8 relative select-none">
+                    <div className="w-[72px] h-[72px] flex items-center justify-center relative z-10 drop-shadow-[0_12px_24px_rgba(59,130,246,0.3)]">
+                       <img src="./logo.svg?v=4" alt="InvestFIIs Logo" className="w-full h-full object-contain" />
                     </div>
-                    <span className="font-display text-[52px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-2 -ml-2 drop-shadow-sm">NVEST</span>
+                    <span className="font-display text-[48px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-500 to-zinc-800 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-2 -ml-1">
+                        NVEST
+                    </span>
                 </div>
+                
               <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-4">Built for Investors</p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-6">Focado em performance, design e simplicidade para a gestão inteligente de dividendos na B3.</p>
               <div className="flex justify-center gap-3">

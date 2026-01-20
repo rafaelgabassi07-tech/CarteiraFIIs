@@ -25,7 +25,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
     const htmlProgress = document.getElementById('splash-progress-bar');
     const htmlStatus = document.getElementById('splash-status-text');
     
-    // Atualiza elementos DOM do React Splash (se montado)
     const reactProgress = document.getElementById('react-splash-progress');
     const reactStatus = document.getElementById('react-splash-status');
 
@@ -47,7 +46,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
   // Gerencia a saída
   useEffect(() => {
     if (finishLoading) {
-      // 1. Trigger exit animation on HTML Splash
       const htmlSplash = document.getElementById('root-splash');
       if (htmlSplash) {
         const htmlProgress = document.getElementById('splash-progress-bar');
@@ -57,10 +55,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         htmlSplash.classList.add('splash-exit');
       }
 
-      // 2. Trigger exit animation on React Splash
       setIsExiting(true);
 
-      // 3. Reveal App Content after small delay
       const timer = setTimeout(() => {
         document.body.classList.remove('is-loading');
         document.body.classList.add('app-revealed');
@@ -70,7 +66,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         }
         
         setShouldRender(false);
-      }, 600); // Sync with CSS transition
+      }, 600);
 
       return () => clearTimeout(timer);
     }
@@ -78,47 +74,27 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
 
   if (!shouldRender) return null;
 
-  // React Splash Fallback
   return (
     <div 
         className={`fixed inset-0 z-[9998] flex flex-col items-center justify-center bg-primary-light dark:bg-primary-dark transition-opacity duration-500 ease-out-soft ${isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+        style={{ perspective: '1000px' }}
     >
-        <div className="flex flex-col items-center w-full">
-            <div className="flex items-center justify-center gap-1 mb-14 relative select-none">
-                <div className="w-[72px] h-[72px] flex items-center justify-center animate-[float_6s_ease-in-out_infinite]">
-                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_16px_32px_rgba(79,70,229,0.3)]">
-                        <defs>
-                            <linearGradient id="grad_top_splash" x1="256" y1="128" x2="256" y2="256" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stopColor="#34d399"/>
-                                <stop offset="100%" stopColor="#0ea5e9"/>
-                            </linearGradient>
-                            <linearGradient id="grad_right_splash" x1="366" y1="192" x2="366" y2="448" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stopColor="#0ea5e9"/>
-                                <stop offset="100%" stopColor="#6366f1"/>
-                            </linearGradient>
-                            <linearGradient id="grad_left_splash" x1="146" y1="192" x2="146" y2="448" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stopColor="#0284c7"/>
-                                <stop offset="100%" stopColor="#4f46e5"/>
-                            </linearGradient>
-                        </defs>
-                        <path d="M256 64L448 160L256 256L64 160L256 64Z" fill="url(#grad_top_splash)"/>
-                        <path d="M448 160V352L256 448V256L448 160Z" fill="url(#grad_right_splash)"/>
-                        <path d="M64 160V352L256 448V256L64 160Z" fill="url(#grad_left_splash)"/>
-                        <path d="M256 64L256 256" stroke="white" strokeOpacity="0.2" strokeWidth="2"/>
-                        <path d="M256 256L448 160" stroke="white" strokeOpacity="0.1" strokeWidth="2"/>
-                        <path d="M256 256L64 160" stroke="white" strokeOpacity="0.1" strokeWidth="2"/>
-                   </svg>
+        <div className="flex flex-col items-center w-full animate-[float_6s_ease-in-out_infinite]">
+            {/* BRAND CONTAINER 3D */}
+            <div className="flex items-center justify-center gap-4 mb-16 relative select-none transform-style-3d">
+                <div className="w-[84px] h-[84px] flex items-center justify-center relative z-10 drop-shadow-[0_20px_40px_rgba(59,130,246,0.3)]">
+                   <img src="./logo.svg?v=4" alt="Logo" className="w-full h-full object-contain" />
                 </div>
-                <span className="font-display text-[52px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-zinc-200 dark:via-zinc-100 dark:to-zinc-400 mt-2 -ml-2 drop-shadow-sm">
+                <span className="font-display text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-500 to-zinc-800 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-2 -ml-1 drop-shadow-sm">
                     NVEST
                 </span>
             </div>
             
-            <div id="react-splash-status" className="font-display text-[10px] font-bold text-accent uppercase tracking-[0.25em] mb-6 h-[14px]">
+            <div id="react-splash-status" className="font-display text-[11px] font-bold text-accent uppercase tracking-[0.2em] mb-4">
                 Iniciando...
             </div>
-            <div className="w-[140px] h-[3px] bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                <div id="react-splash-progress" className="h-full bg-gradient-to-r from-emerald-500 to-sky-500 rounded-full transition-all duration-300 ease-out w-0 shadow-[0_0_12px_rgba(14,165,233,0.6)]"></div>
+            <div className="w-[160px] h-[4px] bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+                <div id="react-splash-progress" className="h-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 rounded-full transition-all duration-300 ease-out w-0 shadow-[0_0_12px_rgba(14,165,233,0.5)]"></div>
             </div>
         </div>
     </div>

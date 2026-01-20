@@ -116,12 +116,12 @@ const renderActiveShape = (props: any) => {
         cx={cx}
         cy={cy}
         innerRadius={innerRadius}
-        outerRadius={outerRadius + 6}
+        outerRadius={outerRadius + 4}
         startAngle={startAngle}
         endAngle={endAngle}
         fill={fill}
-        className="drop-shadow-md filter"
-        cornerRadius={4}
+        className="drop-shadow-sm"
+        cornerRadius={3}
       />
     </g>
   );
@@ -705,7 +705,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
                  {selectedProventosMonth && (
                      <button onClick={() => setSelectedProventosMonth(null)} className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-[10px] font-black uppercase tracking-wider text-zinc-500 flex items-center gap-2 anim-scale-in">
-                         <X className="w-3 h-3" /> Limpar
+                         <X className="w-3 h-3" /> Limpar Filtro
                      </button>
                  )}
              </div>
@@ -729,25 +729,28 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              )}
 
              <div className="flex-1 overflow-y-auto min-h-0 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                 {/* Conteúdo Dinâmico Baseado na Aba */}
-                 {proventosTab === 'CHART' && !selectedProventosMonth ? (
+                 {/* Aba Gráfico */}
+                 {proventosTab === 'CHART' && (
                      <>
-                         <div className="grid grid-cols-2 gap-3 mb-6">
-                             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-3xl text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
-                                 <div className="absolute top-0 right-0 p-4 opacity-10"><Coins className="w-12 h-12" /></div>
-                                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
-                                 <p className="text-2xl font-black">{formatBRL(received, privacyMode)}</p>
+                         {/* Stats Cards (Só aparecem se nenhum mês selecionado para economizar espaço) */}
+                         {!selectedProventosMonth && (
+                             <div className="grid grid-cols-2 gap-3 mb-6">
+                                 <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-3xl text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
+                                     <div className="absolute top-0 right-0 p-4 opacity-10"><Coins className="w-12 h-12" /></div>
+                                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Recebido</p>
+                                     <p className="text-2xl font-black">{formatBRL(received, privacyMode)}</p>
+                                 </div>
+                                 <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                     <div className="absolute top-0 right-0 p-4 opacity-5"><BarChart3 className="w-12 h-12" /></div>
+                                     <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
+                                     <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(average, privacyMode)}</p>
+                                 </div>
                              </div>
-                             <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
-                                 <div className="absolute top-0 right-0 p-4 opacity-5"><BarChart3 className="w-12 h-12" /></div>
-                                 <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
-                                 <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(average, privacyMode)}</p>
-                             </div>
-                         </div>
+                         )}
                          
-                         {dividendsChartData.length > 0 && (
-                             <div className="mb-8 p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 anim-graph-grow shadow-sm">
-                                 <div className="h-48 w-full">
+                         {dividendsChartData.length > 0 ? (
+                             <div className={`mb-6 p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 anim-graph-grow shadow-sm transition-all duration-500 ${selectedProventosMonth ? 'h-40' : 'h-48'}`}>
+                                <div className="w-full h-full">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart 
                                             data={dividendsChartData} 
@@ -755,6 +758,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                             onClick={(data) => {
                                                 if (data && data.activePayload && data.activePayload.length > 0) {
                                                     const clickedMonth = data.activePayload[0].payload.fullDate;
+                                                    // Toggle: se clicar no mesmo, desmarca. Se clicar em outro, troca.
                                                     setSelectedProventosMonth(clickedMonth === selectedProventosMonth ? null : clickedMonth);
                                                 }
                                             }}
@@ -781,7 +785,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                             <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50">
                                                                 <p className="text-xs font-black text-zinc-900 dark:text-white mb-1 uppercase tracking-wider">{label}</p>
                                                                 <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value, privacyMode)}</p>
-                                                                <p className="text-[9px] text-zinc-400 mt-1">Toque para detalhes</p>
+                                                                <p className="text-[9px] text-zinc-400 mt-1">Clique para filtrar</p>
                                                             </div>
                                                         );
                                                     }
@@ -809,9 +813,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     </ResponsiveContainer>
                                  </div>
                              </div>
-                         )}
+                         ) : null}
                      </>
-                 ) : null}
+                 )}
 
                  {/* Lista Detalhada (Mês Selecionado ou Aba Histórico) */}
                  {(selectedProventosMonth || proventosTab === 'HISTORY') && (
@@ -826,7 +830,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                  </span>
                              </div>
                              
-                             <div className="space-y-2">
+                             <div className="space-y-2 pb-6">
                                 {(receiptsByMonth[selectedProventosMonth] || [])
                                     .sort((a, b) => b.totalReceived - a.totalReceived)
                                     .map((detail, idx) => (
@@ -1000,19 +1004,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </button>
              </div>
 
-             <div className="flex-1 flex flex-col min-h-0 anim-slide-up" style={{ animationDelay: '100ms' }}>
+             <div className="flex-1 flex flex-col min-h-0 anim-slide-up overflow-hidden" style={{ animationDelay: '100ms' }}>
                  {/* Conteúdo Dinâmico Baseado na Aba */}
                  {allocationTab === 'CLASS' ? (
-                     <div className="flex flex-col h-full">
+                     <div className="flex flex-col h-full overflow-hidden">
                          {/* Gráfico de Classes */}
-                         <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 shadow-sm relative overflow-visible shrink-0 mb-6">
-                            <div className="h-56 w-full relative z-10">
+                         <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 shadow-sm relative overflow-visible shrink-0 mb-4 h-48">
+                            <div className="h-full w-full relative z-10">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie 
                                             data={classChartData} 
-                                            innerRadius={60} 
-                                            outerRadius={85} 
+                                            innerRadius={50} 
+                                            outerRadius={70} 
                                             paddingAngle={4}
                                             cornerRadius={6}
                                             dataKey="value" 
@@ -1047,12 +1051,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          </div>
 
                          {/* Lista Detalhada de Classes (Scrollável) */}
-                         <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                         <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1 pb-4">
                              {classChartData.map((item, index) => (
                                  <div 
                                     key={index} 
                                     onClick={() => setActiveIndexClass(index === activeIndexClass ? undefined : index)}
-                                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${activeIndexClass === index ? 'bg-zinc-50 dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-600 scale-[1.02]' : 'bg-white dark:bg-zinc-900 border-zinc-200/40 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+                                    className={`p-3 rounded-2xl border transition-all cursor-pointer ${activeIndexClass === index ? 'bg-zinc-50 dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-600 scale-[1.02]' : 'bg-white dark:bg-zinc-900 border-zinc-200/40 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
                                  >
                                      <div className="flex items-center justify-between mb-2">
                                          <div className="flex items-center gap-3">
@@ -1070,18 +1074,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          </div>
                      </div>
                  ) : (
-                     <div className="flex flex-col h-full">
+                     <div className="flex flex-col h-full overflow-hidden">
                          {/* Gráfico de Ativos */}
                          {assetsChartData.length > 0 ? (
                             <>
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 shadow-sm relative overflow-visible shrink-0 mb-6">
-                                    <div className="h-56 w-full relative z-10">
+                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200/40 dark:border-zinc-800/40 shadow-sm relative overflow-visible shrink-0 mb-4 h-48">
+                                    <div className="h-full w-full relative z-10">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie 
                                                     data={assetsChartData} 
-                                                    innerRadius={60} 
-                                                    outerRadius={85} 
+                                                    innerRadius={50} 
+                                                    outerRadius={70} 
                                                     paddingAngle={2}
                                                     cornerRadius={4}
                                                     dataKey="value" 
@@ -1115,7 +1119,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 </div>
 
                                 {/* Lista Detalhada de Ativos (Scrollável e Compacta) */}
-                                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 pb-6">
+                                <div className="flex-1 overflow-y-auto min-h-0 space-y-1.5 pr-1 pb-4">
                                     {assetsChartData.map((asset, index) => (
                                         <div 
                                             key={index}
