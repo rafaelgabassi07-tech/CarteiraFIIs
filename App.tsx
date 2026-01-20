@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -9,7 +8,7 @@ import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType } from './types';
 import { getQuotes } from './services/brapiService';
-import { fetchUnifiedMarketData } from './services/dataService';
+import { fetchUnifiedMarketData, triggerScraperUpdate } from './services/dataService';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
@@ -436,9 +435,35 @@ const App: React.FC = () => {
   }, []);
 
   const handleManualScraperTrigger = async () => {
-      showToast('info', 'Sincronizando...');
-      await handleSyncAll(true);
-      showToast('success', 'Dados atualizados!');
+      if (transactions.length === 0) {
+          showToast('info', 'Adicione ativos primeiro.');
+          return;
+      }
+      
+      setIsScraping(true);
+      showToast('info', 'Iniciando busca profunda...');
+      
+      // Explicitly typing tickers as string[] to satisfy TypeScript compiler
+      const tickers = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))) as string[];
+      
+      try {
+          // 1. Aciona o Scraper (Lento, mas necessário)
+          await triggerScraperUpdate(tickers, (current, total) => {
+              // Opcional: Poderia atualizar um estado de progresso aqui
+          });
+          
+          showToast('info', 'Atualizando banco de dados...');
+          
+          // 2. Sincroniza os dados atualizados do banco
+          await handleSyncAll(true);
+          
+          showToast('success', 'Dados atualizados com sucesso!');
+      } catch (e) {
+          console.error(e);
+          showToast('error', 'Falha na atualização.');
+      } finally {
+          setIsScraping(false);
+      }
   };
 
   const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {

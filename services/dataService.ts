@@ -11,7 +11,6 @@ export interface UnifiedMarketData {
 
 const fetchInflationData = async (): Promise<number> => {
     // 1. Tenta recuperar o último valor REAL conhecido do cache local
-    // Isso garante que se a API falhar, usamos um dado real anterior, não um número mágico.
     let lastKnownReal = 0;
     try {
         const s = localStorage.getItem('investfiis_v4_indicators');
@@ -23,8 +22,6 @@ const fetchInflationData = async (): Promise<number> => {
         }
     } catch {}
 
-    // Fallback de emergência (apenas se nunca houve conexão na vida do app)
-    // Usamos 4.50 como estimativa conservadora, mas será substituído na primeira conexão bem sucedida
     if (lastKnownReal === 0) lastKnownReal = 4.50; 
 
     try {
@@ -37,7 +34,6 @@ const fetchInflationData = async (): Promise<number> => {
         
         const data = await response.json();
         
-        // Só aceita o dado novo se for numérico, válido e não for erro
         if (data && typeof data.value === 'number' && !data.isError && data.value > 0) {
             return data.value;
         }
@@ -48,13 +44,42 @@ const fetchInflationData = async (): Promise<number> => {
     }
 };
 
-// Helper seguro para garantir que a UI receba números, mesmo se o banco devolver string
 const parseNumberSafe = (val: any): number => {
     if (typeof val === 'number') return val;
     if (!val) return 0;
     const str = String(val).replace(',', '.');
     const num = parseFloat(str);
     return isNaN(num) ? 0 : num;
+};
+
+// Função para acionar o Scraper no Backend (Serverless)
+export const triggerScraperUpdate = async (tickers: string[], onProgress?: (current: number, total: number) => void) => {
+    const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
+    let processed = 0;
+
+    // Processa em lotes pequenos para evitar timeout do navegador ou rate limit
+    const BATCH_SIZE = 3;
+    
+    for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
+        const batch = uniqueTickers.slice(i, i + BATCH_SIZE);
+        
+        await Promise.all(batch.map(async (ticker) => {
+            try {
+                // Chama o endpoint que faz o scrape real (Investidor10/StatusInvest)
+                await fetch(`/api/update-stock?ticker=${ticker}`);
+            } catch (e) {
+                console.warn(`Falha ao atualizar ${ticker}`, e);
+            } finally {
+                processed++;
+                if (onProgress) onProgress(processed, uniqueTickers.length);
+            }
+        }));
+
+        // Pequeno delay entre lotes para gentileza com a API de destino
+        if (i + BATCH_SIZE < uniqueTickers.length) {
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    }
 };
 
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
