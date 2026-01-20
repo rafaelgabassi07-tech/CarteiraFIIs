@@ -1,31 +1,22 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Função segura para obter URL e KEY
-// O acesso deve ser ESTÁTICO (process.env.NOME) para o Vite conseguir substituir o valor no build.
-// Acesso dinâmico (process.env[key]) falha e causa crash no navegador.
+// Graças à configuração do 'define' no vite.config.ts, process.env.KEY é substituído
+// pelo valor correto (vindo de KEY ou VITE_KEY) em tempo de build.
+// Mantemos o fallback para import.meta.env apenas como segurança extra.
 
 const getSupabaseUrl = () => {
-    // 1. Vite (dev/build padrão)
-    const vite = (import.meta as any).env?.VITE_SUPABASE_URL;
-    if (vite) return vite;
-    
-    // 2. Process Env (Vercel/Define Plugin)
     try {
-        return process.env.SUPABASE_URL;
+        // Tenta process.env mapeado primeiro, depois fallback direto para VITE_
+        return process.env.SUPABASE_URL || (import.meta as any).env?.VITE_SUPABASE_URL || '';
     } catch {
         return '';
     }
 };
 
 const getSupabaseKey = () => {
-    // 1. Vite (dev/build padrão)
-    const vite = (import.meta as any).env?.VITE_SUPABASE_KEY;
-    if (vite) return vite;
-    
-    // 2. Process Env (Vercel/Define Plugin)
     try {
-        return process.env.SUPABASE_KEY;
+        return process.env.SUPABASE_KEY || (import.meta as any).env?.VITE_SUPABASE_KEY || '';
     } catch {
         return '';
     }

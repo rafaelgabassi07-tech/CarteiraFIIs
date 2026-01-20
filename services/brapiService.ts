@@ -1,16 +1,13 @@
 
 import { BrapiQuote } from '../types';
 
-// Função segura para obter o Token
+// Graças à configuração do 'define' no vite.config.ts, process.env.BRAPI_TOKEN é substituído
+// pelo valor correto (vindo de BRAPI_TOKEN ou VITE_BRAPI_TOKEN) em tempo de build.
+
 const getBrapiToken = () => {
-    // 1. Tenta via Vite
-    const vite = (import.meta as any).env?.VITE_BRAPI_TOKEN;
-    if (vite) return vite;
-    
-    // 2. Tenta via Process (Vite define substitui isso por string estática)
-    // O try/catch previne "ReferenceError: process is not defined" se a substituição falhar
     try {
-        return process.env.BRAPI_TOKEN;
+        // Prioriza a substituição do Vite (process.env), fallback para import.meta.env
+        return process.env.BRAPI_TOKEN || (import.meta as any).env?.VITE_BRAPI_TOKEN;
     } catch {
         return undefined;
     }
