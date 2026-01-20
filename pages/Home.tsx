@@ -979,7 +979,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
       
-      {/* Raio-X Modal */}
+      {/* Raio-X Modal: CLEAN & INFORMATIVE REDESIGN */}
       <SwipeableModal isOpen={showRealYieldModal} onClose={() => setShowRealYieldModal(false)}>
           <div className="p-6 pb-20">
               <div className="flex items-center gap-4 mb-8 anim-slide-up">
@@ -994,7 +994,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
               {realYieldMetrics.baseValue > 0 ? (
                   <div className="space-y-8">
-                      {/* Hero Percentage */}
+                      {/* Hero Section - Clean Metric */}
                       <div className="text-center anim-scale-in">
                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-2">Ganho Real (12 Meses)</p>
                           <div className={`text-6xl font-black tracking-tighter ${realYieldMetrics.realReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -1007,53 +1007,50 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           </p>
                       </div>
 
-                      {/* Comparison Bars */}
-                      <div className="bg-zinc-50 dark:bg-zinc-800/30 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{animationDelay: '100ms'}}>
-                          <div className="space-y-4">
-                              <div>
-                                  <div className="flex justify-between text-[10px] font-black uppercase tracking-wider mb-1.5">
-                                      <span className="text-zinc-500">Rendimento Nominal</span>
-                                      <span className="text-zinc-900 dark:text-white">{formatPercent(realYieldMetrics.userDy, privacyMode)}</span>
-                                  </div>
-                                  <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                                      <div className="h-full bg-indigo-500 rounded-full" style={{width: '100%'}}></div>
-                                  </div>
+                      {/* Resumo Financeiro (Estilo Extrato Clean) */}
+                      <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-200 dark:border-zinc-800 anim-slide-up shadow-sm" style={{animationDelay: '100ms'}}>
+                          <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 flex items-center gap-2">
+                              <Banknote className="w-3 h-3" /> Resumo Financeiro
+                          </h3>
+                          <div className="space-y-3">
+                              <div className="flex justify-between items-center">
+                                  <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">Renda Recebida</span>
+                                  <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">+ {formatBRL(realYieldMetrics.sum12m, privacyMode)}</span>
                               </div>
-                              
-                              <div>
-                                  <div className="flex justify-between text-[10px] font-black uppercase tracking-wider mb-1.5">
-                                      <span className="text-zinc-500">Inflação (IPCA)</span>
-                                      <span className="text-rose-500">{formatPercent(Number(inflationRate || 4.62), privacyMode)}</span>
-                                  </div>
-                                  <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                                      <div 
-                                          className="h-full bg-rose-500 rounded-full" 
-                                          style={{width: `${Math.min((Number(inflationRate || 4.62) / (realYieldMetrics.userDy || 1)) * 100, 100)}%`}}
-                                      ></div>
-                                  </div>
+                              <div className="flex justify-between items-center">
+                                  <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">Perda para Inflação</span>
+                                  <span className="text-sm font-black text-rose-500">- {formatBRL(realYieldMetrics.inflationCost, privacyMode)}</span>
+                              </div>
+                              <div className="h-px w-full bg-zinc-100 dark:bg-zinc-800 my-1"></div>
+                              <div className="flex justify-between items-center">
+                                  <span className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Resultado Líquido</span>
+                                  <span className={`text-base font-black ${realYieldMetrics.sum12m - realYieldMetrics.inflationCost >= 0 ? 'text-indigo-500' : 'text-amber-500'}`}>
+                                      {formatBRL(realYieldMetrics.sum12m - realYieldMetrics.inflationCost, privacyMode)}
+                                  </span>
                               </div>
                           </div>
                       </div>
 
-                      {/* Monetary Cards */}
-                      <div className="grid grid-cols-2 gap-3 anim-slide-up" style={{animationDelay: '200ms'}}>
-                          <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
-                              <p className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1">Recebido (Bruto)</p>
-                              <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.sum12m, privacyMode)}</p>
-                          </div>
-                          <div className="p-4 bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-900/30">
-                              <p className="text-[9px] font-black uppercase text-rose-600 dark:text-rose-400 mb-1">Perda Inflacionária</p>
-                              <p className="text-lg font-black text-zinc-900 dark:text-white">-{formatBRL(realYieldMetrics.inflationCost, privacyMode)}</p>
-                          </div>
-                          <div className="col-span-2 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex justify-between items-center">
-                              <div>
-                                  <p className="text-[9px] font-black uppercase text-zinc-400">Ganho Real Líquido</p>
-                                  <p className="text-[10px] text-zinc-500">O que sobrou no bolso</p>
-                              </div>
-                              <p className={`text-2xl font-black ${realYieldMetrics.sum12m - realYieldMetrics.inflationCost >= 0 ? 'text-indigo-500' : 'text-amber-500'}`}>
-                                  {formatBRL(realYieldMetrics.sum12m - realYieldMetrics.inflationCost, privacyMode)}
-                              </p>
-                          </div>
+                      {/* Entenda o Cálculo (Educational Section) */}
+                      <div className="bg-zinc-50 dark:bg-zinc-800/30 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800/50 anim-slide-up" style={{animationDelay: '200ms'}}>
+                         <div className="flex items-center gap-2 mb-3">
+                             <HelpCircle className="w-4 h-4 text-zinc-400" />
+                             <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Entenda o Cálculo</h3>
+                         </div>
+                         <ul className="space-y-3">
+                             <li className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed pl-2 border-l-2 border-emerald-500">
+                                 <strong className="text-emerald-600 dark:text-emerald-400 block mb-0.5">Renda Nominal ({formatPercent(realYieldMetrics.userDy)})</strong>
+                                 Soma bruta de todos os dividendos recebidos nos últimos 12 meses em relação ao capital investido.
+                             </li>
+                             <li className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed pl-2 border-l-2 border-rose-500">
+                                 <strong className="text-rose-500 block mb-0.5">Inflação IPCA ({formatPercent(Number(inflationRate || 4.62))})</strong>
+                                 Quanto o dinheiro perdeu de valor no período. Usamos o índice oficial acumulado.
+                             </li>
+                             <li className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed pl-2 border-l-2 border-indigo-500">
+                                 <strong className="text-indigo-500 block mb-0.5">Ganho Real</strong>
+                                 O que de fato "sobrou" no seu bolso. Se for positivo, sua renda passiva está vencendo a inflação e aumentando seu poder de compra.
+                             </li>
+                         </ul>
                       </div>
 
                       {/* Monthly Chart (Net) */}
