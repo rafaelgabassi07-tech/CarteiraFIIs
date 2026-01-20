@@ -70,7 +70,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
         }
         
         setShouldRender(false);
-      }, 600); // Sync with CSS transition
+      }, 800); // Sync with HTML CSS transition duration (0.8s)
 
       return () => clearTimeout(timer);
     }
@@ -79,39 +79,45 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
   if (!shouldRender) return null;
 
   // React Splash Fallback
+  // Matches index.html style exactly
   return (
     <div 
-        className={`fixed inset-0 z-[9998] flex flex-col items-center justify-center bg-primary-light dark:bg-primary-dark transition-opacity duration-500 ease-out-soft ${isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+        className={`fixed inset-0 z-[9998] flex flex-col items-center justify-center transition-all duration-800 cubic-bezier(0.19, 1, 0.22, 1) ${isExiting ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100'}`}
+        style={{
+            background: 'radial-gradient(circle at 50% 30%, var(--bg-grad-start) 0%, var(--bg-grad-end) 100%)',
+            ['--bg-grad-start' as any]: document.documentElement.classList.contains('dark') ? '#18181b' : '#ffffff',
+            ['--bg-grad-end' as any]: document.documentElement.classList.contains('dark') ? '#09090b' : '#F4F4F5'
+        }}
     >
         <div className="flex flex-col items-center w-full">
-            <div className="flex items-center justify-center gap-1 mb-14 relative select-none">
-                <div className="w-[68px] h-[80px] flex items-center justify-center animate-[float_6s_ease-in-out_infinite]">
-                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_12px_24px_rgba(14,165,233,0.3)]">
+            <div className="flex items-center justify-center gap-0.5 mb-16 relative select-none">
+                <div className="w-[72px] h-[80px] flex items-center justify-center animate-[float_6s_ease-in-out_infinite]" style={{ filter: 'drop-shadow(0 0 20px rgba(14, 165, 233, 0.15))' }}>
+                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
                         <defs>
-                            <linearGradient id="logo_grad_splash" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
+                            <linearGradient id="logo_grad_splash_react" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
                                 <stop offset="0%" stopColor="#10b981"/>
                                 <stop offset="50%" stopColor="#0ea5e9"/>
                                 <stop offset="100%" stopColor="#4f46e5"/>
                             </linearGradient>
                         </defs>
-                        <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_splash)"/>
-                        <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_splash)"/>
-                        <rect x="184" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
-                        <rect x="240" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
-                        <rect x="296" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
-                        <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_splash)"/>
+                        <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_splash_react)"/>
+                        <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_splash_react)"/>
+                        <rect x="184" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash_react)"/>
+                        <rect x="240" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash_react)"/>
+                        <rect x="296" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash_react)"/>
+                        <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_splash_react)"/>
                    </svg>
                 </div>
-                <span className="font-display text-[52px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-zinc-200 dark:via-zinc-100 dark:to-zinc-400 mt-1 -ml-2 drop-shadow-sm">
+                <span className="font-display text-[56px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-900 to-zinc-800 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-1 -ml-2.5">
                     NVEST
                 </span>
             </div>
             
-            <div id="react-splash-status" className="font-display text-[10px] font-bold text-accent uppercase tracking-[0.25em] mb-6 h-[14px]">
+            <div id="react-splash-status" className="font-sans text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.2em] mb-4 h-[14px]">
                 Iniciando...
             </div>
-            <div className="w-[140px] h-[3px] bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                <div id="react-splash-progress" className="h-full bg-gradient-to-r from-emerald-500 to-sky-500 rounded-full transition-all duration-300 ease-out w-0 shadow-[0_0_12px_rgba(14,165,233,0.6)]"></div>
+            <div className="w-[140px] h-[2px] bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
+                <div id="react-splash-progress" className="h-full bg-accent rounded-full transition-all duration-300 ease-out w-0 shadow-[0_0_10px_rgba(14,165,233,0.5)]"></div>
             </div>
         </div>
     </div>
