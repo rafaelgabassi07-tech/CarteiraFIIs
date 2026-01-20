@@ -5,48 +5,90 @@ import * as cheerio from 'cheerio';
 import https from 'https';
 import { createClient } from '@supabase/supabase-js';
 
+// --- CONFIGURAÇÃO ---
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '',
   process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || ''
 );
 
-const httpsAgent = new https.Agent({ keepAlive: true, rejectUnauthorized: false });
+// --- AGENTE & HEADERS ---
+const httpsAgent = new https.Agent({ 
+    keepAlive: true,
+    maxSockets: 128,
+    timeout: 20000,
+    rejectUnauthorized: false
+});
+
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0'
+];
+
+const getRandomAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+
 const client = axios.create({
     httpsAgent,
     headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Referer': 'https://investidor10.com.br/'
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://investidor10.com.br/',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1'
     },
-    timeout: 20000
+    timeout: 25000
 });
 
-// Helpers duplicados do update-stock.ts para garantir independência da Serverless Function
+async function fetchWithRetry(url: string) {
+    // Configura UA randômico por requisição
+    const config = {
+        headers: { 'User-Agent': getRandomAgent() }
+    };
+    
+    for (let i = 0; i < 3; i++) {
+        try {
+            return await client.get(url, config);
+        } catch (error: any) {
+            const status = error.response?.status;
+            if (status === 404) throw error; 
+            if (i === 2) throw error;
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+        }
+    }
+}
+
+// --- HELPERS ---
 function parseValue(valueStr: any): number {
     if (!valueStr) return 0;
     if (typeof valueStr === 'number') return valueStr;
-    let clean = String(valueStr).replace(/R\$|\%|\s|\n/g, '').trim();
-    if (clean === '-' || clean === '--') return 0;
-    if (clean.includes('.') && clean.includes(',')) clean = clean.replace(/\./g, '').replace(',', '.');
-    else if (clean.includes(',')) clean = clean.replace(',', '.');
-    else if (clean.includes('.') && !clean.includes(',')) clean = clean.replace(/\./g, '');
-    const floatVal = parseFloat(clean);
-    return isNaN(floatVal) ? 0 : floatVal;
+    try {
+        let clean = String(valueStr).replace(/[^0-9,-]+/g, '').trim();
+        if (!clean || clean === '-') return 0;
+        return parseFloat(clean.replace(',', '.')) || 0;
+    } catch { return 0; }
 }
 
 function normalizeKey(str: string) {
     return str ? str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").trim() : '';
 }
 
+// Mapa de chaves do Investidor10 para colunas DB
 const KEY_MAP: Record<string, string> = {
-    'cotacao': 'current_price', 'valoratual': 'current_price', 'preconofechamento': 'current_price',
+    'cotacao': 'current_price', 'valoratual': 'current_price',
     'pvp': 'pvp', 'p/vp': 'pvp', 'vp': 'pvp',
     'pl': 'pl', 'p/l': 'pl',
-    'dividendyield': 'dy_12m', 'dy': 'dy_12m', 'yield': 'dy_12m',
-    'roe': 'roe', 'returnonequity': 'roe',
+    'dividendyield': 'dy_12m', 'dy': 'dy_12m',
+    'roe': 'roe',
     'vacanciafisica': 'vacancia', 'vacancia': 'vacancia',
     'liquidezmediadiaria': 'liquidez', 'liquidez': 'liquidez',
-    'valordemercado': 'valor_mercado'
+    'valordemercado': 'valor_mercado',
+    'margemliquida': 'margem_liquida',
+    'dividaliquida/ebitda': 'divida_liquida_ebitda',
+    'ev/ebitda': 'ev_ebitda'
 };
 
 async function scrapeInvestidor10(ticker: string) {
@@ -56,18 +98,19 @@ async function scrapeInvestidor10(ticker: string) {
     try {
         let response;
         try {
-            response = await client.get(url);
+            response = await fetchWithRetry(url);
         } catch (e: any) {
             if (e.response?.status === 404) {
+                // Tenta tipo inverso se falhar (ex: ticker 11 que é ação)
                 url = `https://investidor10.com.br/${isFII ? 'acoes' : 'fiis'}/${ticker.toLowerCase()}/`;
-                response = await client.get(url);
+                response = await fetchWithRetry(url);
             } else throw e;
         }
 
         const $ = cheerio.load(response.data);
         const extracted: Record<string, any> = {};
 
-        // Cards e Tabela
+        // Varre Cards e Tabelas com lógica unificada
         $('div._card, #table-indicators .cell').each((_, el) => {
             const label = $(el).find('div._card-header span, span.name').first().text() || $(el).find('div._card-header').text();
             const value = $(el).find('div._card-body span, div.value span, span.value').first().text() || $(el).find('div._card-body').text();
@@ -80,7 +123,7 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        // Segmento
+        // Extração de Segmento Robusta
         let segmento = '';
         $('#breadcrumbs li span a span, .breadcrumb-item').each((_, el) => {
             const txt = $(el).text().trim();
@@ -92,6 +135,7 @@ async function scrapeInvestidor10(ticker: string) {
             ticker,
             type: isFII ? 'FII' : 'ACAO',
             segment: extracted.segment || 'Geral',
+            // Principais
             current_price: extracted.current_price || 0,
             pvp: extracted.pvp || 0,
             pl: extracted.pl || 0,
@@ -100,6 +144,10 @@ async function scrapeInvestidor10(ticker: string) {
             vacancia: extracted.vacancia || 0,
             liquidez: extracted.liquidez || '',
             valor_mercado: extracted.valor_mercado || '',
+            // Extras
+            margem_liquida: extracted.margem_liquida || 0,
+            divida_liquida_ebitda: extracted.divida_liquida_ebitda || 0,
+            ev_ebitda: extracted.ev_ebitda || 0,
             updated_at: new Date().toISOString()
         };
     } catch (e) {
@@ -114,6 +162,7 @@ function chunkArray(arr: any[], size: number) {
     return res;
 }
 
+// HANDLER DO CRON
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -124,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         if (tickers.length === 0) return res.json({ message: "No tickers." });
 
-        // Processa em lotes de 3 para não estourar timeout da Vercel
+        // Lotes de 3 para respeitar timeout de Serverless (Max 10s-30s)
         const batches = chunkArray(tickers, 3);
         let processedCount = 0;
 
@@ -136,7 +185,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     processedCount++;
                 }
             }));
-            await new Promise(r => setTimeout(r, 1000)); // Delay gentil
+            // Delay gentil entre lotes para não floodar o site alvo
+            await new Promise(r => setTimeout(r, 2000));
         }
 
         return res.json({ success: true, processed: processedCount, total: tickers.length });

@@ -9,6 +9,13 @@ const httpsAgent = new https.Agent({
     rejectUnauthorized: false 
 });
 
+const MODERN_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Connection': 'keep-alive'
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -17,9 +24,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // 1. TENTATIVA PRINCIPAL: API Oficial do Banco Central (Série 13522 - IPCA 12m)
+  // 1. API Banco Central (Série 13522 - IPCA 12m)
   try {
-      // Série 13522: IPCA - Acumulado em 12 meses
       const bcbUrl = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json';
       const { data } = await axios.get(bcbUrl, { 
           timeout: 5000,
@@ -49,17 +55,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const response = await axios.get(targetUrl, { 
         timeout: 10000,
         httpsAgent,
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-        }
+        headers: MODERN_HEADERS
     });
 
     const $ = cheerio.load(response.data);
     let acumulado12m = 0;
     let found = false;
 
-    // Estratégia 1: Tabela Dinâmica
     $('table').each((_, table) => {
         let idx12m = -1;
         $(table).find('thead th, tr:first-child td').each((idx, col) => {
@@ -86,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (found) return false;
     });
 
-    // Estratégia 2: Widgets
+    // Fallback Widgets
     if (!found) {
         $('.value').each((_, el) => {
             const parentText = $(el).parent().text().toLowerCase();
@@ -111,8 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     throw new Error("Nenhum dado encontrado nas fontes.");
 
   } catch (error: any) {
-    console.error('[Indicators] Erro Fatal - Não foi possível obter Inflação Real:', error.message);
-    // Retorna erro explícito para o frontend usar o cache local
+    console.error('[Indicators] Erro Fatal:', error.message);
     return res.status(503).json({
         error: "Unable to fetch real inflation data",
         isError: true
