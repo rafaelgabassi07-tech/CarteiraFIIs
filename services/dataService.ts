@@ -52,9 +52,20 @@ const parseNumberSafe = (val: any): number => {
     return isNaN(num) ? 0 : num;
 };
 
+// Helper para normalizar tickers fracionários (ITSA4F -> ITSA4)
+const normalizeTickerRoot = (t: string) => {
+    let clean = t.trim().toUpperCase();
+    // Remove "F" final apenas se não for FII (terminado em 11 ou 11B) e tiver tamanho típico de ação
+    if (clean.endsWith('F') && !clean.endsWith('11') && !clean.endsWith('11B') && clean.length <= 6) {
+        return clean.slice(0, -1);
+    }
+    return clean;
+};
+
 // Função para acionar o Scraper no Backend (Serverless)
 export const triggerScraperUpdate = async (tickers: string[], onProgress?: (current: number, total: number) => void) => {
-    const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
+    // Normaliza para remover o F de fracionário, pois o scraper busca pelo ticker padrão
+    const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
     let processed = 0;
 
     // Processa em lotes pequenos para evitar timeout do navegador ou rate limit
@@ -85,7 +96,8 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
-  const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
+  // Normaliza tickers para remover "F" fracionário e garantir match com banco de dados
+  const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
 
   try {
       // 1. Busca Dividendos
@@ -98,7 +110,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       const dividends: DividendReceipt[] = (dividendsData || []).map((d: any) => ({
             id: d.id,
-            ticker: d.ticker,
+            ticker: d.ticker, // Ticker vindo do banco (geralmente sem F)
             type: d.type,
             dateCom: d.date_com, 
             paymentDate: d.payment_date,

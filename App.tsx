@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -31,15 +32,23 @@ const STORAGE_KEYS = {
 // Arredonda para 2 casas decimais
 const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
+// Calcula quantidade acumulada em uma data, considerando fracionário
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!dateCom || dateCom.length < 10) return 0;
   const targetDateStr = dateCom.substring(0, 10);
-  const targetTicker = ticker.trim().toUpperCase();
+  const targetTicker = ticker.trim().toUpperCase(); // Ticker do Provento (Normalmente ITSA4)
 
   return transactions
     .filter(t => {
         const txDateStr = (t.date || '').substring(0, 10);
-        return t.ticker.trim().toUpperCase() === targetTicker && txDateStr <= targetDateStr;
+        let txTicker = t.ticker.trim().toUpperCase(); // Ticker da Transação (Pode ser ITSA4F)
+        
+        // Normaliza ticker da transação para match: se for ITSA4F vira ITSA4
+        if (txTicker.endsWith('F') && !txTicker.endsWith('11') && !txTicker.endsWith('11B') && txTicker.length <= 6) {
+            txTicker = txTicker.slice(0, -1);
+        }
+
+        return txTicker === targetTicker && txDateStr <= targetDateStr;
     })
     .reduce((acc, t) => {
         if (t.type === 'BUY') return acc + t.quantity;
@@ -510,8 +519,12 @@ const App: React.FC = () => {
     // CORREÇÃO: Garante que o ticker do dividendo esteja perfeitamente normalizado
     // para evitar falhas de match com transações (caso de ITSA4 com espaço ou case diff)
     const receipts = dividends.map(d => {
+        // Ticker do dividendo vem do DB (ex: ITSA4)
         const normalizedTicker = d.ticker.trim().toUpperCase();
+        
+        // Quantidade deve considerar ITSA4F
         const qty = getQuantityOnDate(normalizedTicker, d.dateCom, sortedTxs);
+        
         return { 
             ...d, 
             ticker: normalizedTicker,
@@ -552,7 +565,13 @@ const App: React.FC = () => {
         .filter(p => p.quantity > 0.001)
         .map(p => {
             const normalizedTicker = p.ticker.trim().toUpperCase();
-            const meta = assetsMetadata[normalizedTicker];
+            // Tenta buscar metadados para ITSA4F ou ITSA4
+            // Se não achar metadata para ITSA4F, tenta ITSA4
+            let meta = assetsMetadata[normalizedTicker];
+            if (!meta && normalizedTicker.endsWith('F') && !normalizedTicker.endsWith('11F')) {
+                meta = assetsMetadata[normalizedTicker.slice(0, -1)];
+            }
+
             const quote = quotes[normalizedTicker];
             
             let segment = meta?.segment || 'Geral';
@@ -561,7 +580,8 @@ const App: React.FC = () => {
 
             return { 
                 ...p, 
-                totalDividends: divPaidMap[p.ticker] || 0, 
+                // Se ticker for ITSA4F, tenta buscar dividendos de ITSA4
+                totalDividends: divPaidMap[p.ticker] || (p.ticker.endsWith('F') ? divPaidMap[p.ticker.slice(0, -1)] : 0) || 0, 
                 segment: segment, 
                 currentPrice: quote?.regularMarketPrice || p.averagePrice, 
                 dailyChange: quote?.regularMarketChangePercent || 0, 
