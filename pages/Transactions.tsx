@@ -28,13 +28,9 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   
   if (item.type === 'header') {
       return (
-          <div className={`px-2 pt-8 pb-3 flex items-end justify-between border-b border-zinc-200/50 dark:border-zinc-800/50 mb-2 anim-fade-in ${index === 0 ? 'mt-4' : ''}`}>
+          <div className={`px-2 pt-6 pb-2 flex items-center justify-between anim-fade-in ${index === 0 ? 'mt-2' : ''}`}>
               <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{formatMonthHeader(item.monthKey)}</h3>
-              {item.monthlyTotal > 0 && (
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded uppercase tracking-wider">
-                      Aporte: {formatBRL(item.monthlyTotal, privacyMode)}
-                  </span>
-              )}
+              <div className="h-px bg-zinc-100 dark:bg-zinc-800 flex-1 ml-4"></div>
           </div>
       );
   }
@@ -46,10 +42,10 @@ const TransactionRow = React.memo(({ index, data }: any) => {
       <div className="px-0.5 py-1 anim-stagger-item" style={{ animationDelay: `${(index % 10) * 30}ms` }}>
           <button 
             onClick={() => isSelectionMode ? data.onToggleSelect(t.id) : data.onRowClick(t)}
-            className={`w-full text-left p-4 rounded-2xl border flex items-center justify-between shadow-sm press-effect transition-all duration-300 ${
+            className={`w-full text-left p-4 rounded-2xl flex items-center justify-between shadow-[0_1px_2px_rgba(0,0,0,0.03)] press-effect transition-all duration-300 border ${
                 isSelected 
-                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 dark:border-indigo-400 shadow-lg shadow-indigo-500/5' 
-                : 'bg-surface-light dark:bg-surface-dark border-zinc-200/40 dark:border-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700'
+                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 dark:border-indigo-400' 
+                : 'bg-white dark:bg-zinc-900 border-transparent dark:border-zinc-800'
             }`}
           >
               <div className="flex items-center gap-4">
@@ -58,24 +54,25 @@ const TransactionRow = React.memo(({ index, data }: any) => {
                           {isSelected ? <CheckCircle2 className="w-6 h-6" /> : <Square className="w-6 h-6" />}
                       </div>
                   ) : (
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isBuy ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${isBuy ? 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30'}`}>
                           {isBuy ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                       </div>
                   )}
                   
                   <div>
                       <h4 className={`font-black text-base ${isSelected ? 'text-indigo-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>{t.ticker}</h4>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.date.split('-').reverse().slice(0,2).join('/')}</span>
-                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase ${t.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800'}`}>
+                        <span className="text-[10px] text-zinc-300 dark:text-zinc-600">•</span>
+                        <span className={`text-[9px] font-bold uppercase ${t.assetType === AssetType.FII ? 'text-indigo-400' : 'text-sky-400'}`}>
                             {t.assetType === AssetType.FII ? 'FII' : 'Ação'}
                         </span>
                       </div>
                   </div>
               </div>
               <div className="text-right">
-                  <p className={`text-base font-black ${isSelected ? 'text-indigo-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(t.price * t.quantity, privacyMode)}</p>
-                  <p className={`text-[11px] font-medium ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.quantity}x {t.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  <p className={`text-sm font-black ${isSelected ? 'text-indigo-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(t.price * t.quantity, privacyMode)}</p>
+                  <p className={`text-[10px] font-medium ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.quantity} un x {t.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
               </div>
           </button>
       </div>
@@ -232,8 +229,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
     return (
         <div className="anim-fade-in relative min-h-screen pb-60">
-            {/* Header Sticky (Corrigido para sticky em vez de fixed para evitar conflito com transform) */}
-            <div className="sticky top-20 z-30 -mx-4 px-4 py-2 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300">
+            {/* Header Sticky */}
+            <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all -mx-4 px-4 py-3">
                 <div className="flex items-center justify-between">
                     <div>
                         {isSelectionMode ? (
@@ -296,14 +293,14 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 </div>
 
                 {isFilterOpen && !isSelectionMode && (
-                    <div className="absolute top-full left-0 right-0 p-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 anim-slide-up grid grid-cols-5 gap-2 shadow-2xl">
+                    <div className="absolute top-full left-0 right-0 p-4 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 anim-slide-up grid grid-cols-5 gap-2 shadow-2xl z-20">
                         {filters.map(f => (
                             <button
                                 key={f.id}
                                 onClick={() => { setActiveFilter(f.id); setIsFilterOpen(false); }}
-                                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all ${activeFilter === f.id ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400'}`}
+                                className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${activeFilter === f.id ? 'bg-zinc-900 dark:bg-zinc-800 border-zinc-900 dark:border-zinc-800 text-white' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400'}`}
                             >
-                                <f.icon className="w-4 h-4 mb-1" />
+                                <f.icon className="w-5 h-5 mb-1" />
                                 <span className="text-[8px] font-black uppercase tracking-tighter">{f.label}</span>
                             </button>
                         ))}
@@ -311,7 +308,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
-            {/* Lista de Transações (Sem spacer pt-24 manual, pois sticky ocupa espaço) */}
+            {/* Lista de Transações */}
             <div className="px-1 pt-4">
                 {flatTransactions.length > 0 ? (
                     <div className="space-y-1">

@@ -50,6 +50,21 @@ const ACCENT_COLORS = [
   { hex: '#10b981', name: 'Emerald' },
 ];
 
+const UserProfileCard: React.FC<{ email: string }> = ({ email }) => {
+    const initials = email.substring(0, 2).toUpperCase();
+    return (
+        <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 mb-6 shadow-sm">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-sm shadow-md">
+                {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Conta Conectada</p>
+                <p className="text-sm font-bold text-zinc-900 dark:text-white truncate">{email}</p>
+            </div>
+        </div>
+    );
+};
+
 export const Settings: React.FC<SettingsProps> = ({ 
   user, onLogout, transactions, onImportTransactions, dividends, 
   onImportDividends, onResetApp, theme, onSetTheme, privacyMode, 
@@ -180,7 +195,7 @@ export const Settings: React.FC<SettingsProps> = ({
                   const paymentMonth = d.paymentDate.substring(0, 7);
                   const exists = combinedDivs.some(existing => {
                       const existingMonth = existing.paymentDate.substring(0, 7);
-                      return existing.ticker.trim().toUpperCase() === d.ticker.trim().toUpperCase() && existing.type === d.type && existingMonth === paymentMonth;
+                      return existing.ticker.trim().toUpperCase() && existing.type === d.type && existingMonth === paymentMonth;
                   });
                   if (!exists) {
                       combinedDivs.push(d);
@@ -268,6 +283,9 @@ export const Settings: React.FC<SettingsProps> = ({
 
         {activeSection === 'menu' && (
             <div className="space-y-4 anim-slide-up">
+                
+                {user && <UserProfileCard email={user.email} />}
+
                 <Group title="Geral">
                     <SettingItem icon={Palette} label="Aparência" value={theme === 'system' ? 'Auto' : theme === 'dark' ? 'Escuro' : 'Claro'} color="bg-purple-100 dark:bg-purple-900/20 text-purple-600" onClick={() => setActiveSection('appearance')} />
                     <SettingItem icon={privacyMode ? EyeOff : Eye} label="Privacidade" value={privacyMode ? 'Ativo' : 'Inativo'} color="bg-teal-100 dark:bg-teal-900/20 text-teal-600" onClick={() => setActiveSection('privacy')} />
@@ -285,9 +303,15 @@ export const Settings: React.FC<SettingsProps> = ({
                     <SettingItem icon={ShieldAlert} label="Resetar App" color="bg-rose-100 dark:bg-rose-900/20 text-rose-600" onClick={() => setActiveSection('reset')} isLast />
                 </Group>
 
-                <button onClick={onLogout} className="w-full p-4 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 mt-6 active:scale-95 transition-transform">
-                    <LogOut className="w-4 h-4" /> Sair da Conta
-                </button>
+                <div className="pt-4 pb-8">
+                     <button 
+                        onClick={onLogout} 
+                        className="w-full p-4 rounded-2xl bg-white dark:bg-zinc-900 text-rose-500 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 border border-rose-100 dark:border-zinc-800 active:scale-95 transition-transform hover:bg-rose-50 dark:hover:bg-rose-900/10"
+                     >
+                        <LogOut className="w-4 h-4" /> Desconectar Conta
+                    </button>
+                    <p className="text-[9px] text-zinc-400 text-center mt-3">ID: {user?.id}</p>
+                </div>
             </div>
         )}
 
