@@ -843,7 +843,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         <div className="p-6 pb-20 flex flex-col h-full bg-zinc-50 dark:bg-zinc-950">
+         <div className="p-6 pb-20">
              <div className="flex items-center gap-4 mb-6 anim-slide-up shrink-0">
                 <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
                     <PieIcon className="w-6 h-6" strokeWidth={1.5} />
@@ -870,7 +870,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </button>
              </div>
 
-             <div className="flex-1 overflow-y-auto min-h-0 anim-slide-up px-1" style={{ animationDelay: '100ms' }}>
+             <div className="anim-slide-up px-1" style={{ animationDelay: '100ms' }}>
                  {/* Conteúdo Dinâmico Baseado na Aba */}
                  {allocationTab === 'CLASS' ? (
                      <div className="space-y-6">
@@ -979,103 +979,108 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
       
+      {/* Raio-X Modal */}
       <SwipeableModal isOpen={showRealYieldModal} onClose={() => setShowRealYieldModal(false)}>
-         <div className="p-6 pb-20">
-             <div className="flex items-center gap-4 mb-6 anim-slide-up">
-                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl flex items-center justify-center text-indigo-500 border border-indigo-100 dark:border-indigo-900/30">
-                    <Scale className="w-6 h-6" strokeWidth={1.5} />
-                </div>
-                <div>
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Raio-X da Inflação</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Análise de Poder de Compra</p>
-                </div>
-             </div>
-             
-             {realYieldMetrics.baseValue > 0 ? (
-                 <>
-                     {/* Cards de Resumo */}
-                     <div className="grid grid-cols-3 gap-3 mb-6 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                         <div className="p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center anim-scale-in" style={{ animationDelay: '200ms' }}>
-                             <p className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1">Recebido</p>
-                             <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.sum12m, privacyMode)}</p>
-                         </div>
-                         <div className="p-3 bg-rose-50 dark:bg-rose-900/10 rounded-xl border border-rose-100 dark:border-rose-900/30 text-center anim-scale-in" style={{ animationDelay: '300ms' }}>
-                             <p className="text-[9px] font-black uppercase text-rose-600 dark:text-rose-400 mb-1">Inflação</p>
-                             <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.inflationCost, privacyMode)}</p>
-                         </div>
-                         <div className={`p-3 rounded-xl text-center border anim-scale-in ${realYieldMetrics.sum12m >= realYieldMetrics.inflationCost ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'}`} style={{ animationDelay: '400ms' }}>
-                             <p className={`text-[9px] font-black uppercase mb-1 ${realYieldMetrics.sum12m >= realYieldMetrics.inflationCost ? 'text-indigo-600 dark:text-indigo-400' : 'text-amber-600 dark:text-amber-400'}`}>Real</p>
-                             <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.sum12m - realYieldMetrics.inflationCost, privacyMode)}</p>
-                         </div>
-                     </div>
-                     
-                     {/* Nova Seção: Entenda o Cálculo */}
-                     <div className="mb-6 anim-slide-up" style={{ animationDelay: '150ms' }}>
-                         <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
-                             <div className="flex items-center gap-2 mb-3">
-                                 <HelpCircle className="w-4 h-4 text-zinc-400" />
-                                 <h3 className="text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wide">Entenda a Mágica</h3>
-                             </div>
-                             <div className="space-y-3">
-                                 <div className="flex items-start gap-3">
-                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0"></div>
-                                     <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                                         <strong className="text-emerald-600 dark:text-emerald-400">Renda Recebida:</strong> Soma de todos os dividendos dos últimos 12 meses.
-                                     </p>
-                                 </div>
-                                 <div className="flex items-start gap-3">
-                                     <div className="w-1.5 h-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0"></div>
-                                     <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                                         <strong className="text-rose-600 dark:text-rose-400">Perda Inflacionária:</strong> Quanto o seu dinheiro investido perdeu de valor devido ao IPCA acumulado ({formatPercent(Number(inflationRate || 4.62))}) no período.
-                                     </p>
-                                 </div>
-                                 <div className="flex items-start gap-3">
-                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></div>
-                                     <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                                         <strong className="text-indigo-600 dark:text-indigo-400">Ganho Real:</strong> O que sobra no seu bolso. Se for positivo, sua renda passiva venceu a inflação e aumentou seu poder de compra.
-                                     </p>
-                                 </div>
-                             </div>
-                         </div>
-                     </div>
+          <div className="p-6 pb-20">
+              <div className="flex items-center gap-4 mb-8 anim-slide-up">
+                  <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl flex items-center justify-center text-indigo-500 border border-indigo-100 dark:border-indigo-900/30">
+                      <Scale className="w-6 h-6" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                      <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Raio-X</h2>
+                      <p className="text-xs text-zinc-500 font-medium">Rentabilidade Real</p>
+                  </div>
+              </div>
 
-                     <div className="mb-6 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 anim-slide-up shadow-sm anim-graph-grow" style={{ animationDelay: '200ms' }}>
-                         <div className="flex items-center justify-between mb-4 px-2">
-                             <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2"><BarChart3 className="w-3 h-3" /> Evolução do Saldo Real</h3>
-                         </div>
-                         <div className="h-48 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={last12MonthsData.slice().reverse()} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b40" />
-                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `R$${val/1000}k`} />
-                                    <ReferenceLine y={0} stroke="#71717a" />
-                                    <RechartsTooltip content={<NetBarTooltip />} cursor={{ fill: '#71717a10', radius: 4 }} />
-                                    <Bar 
-                                        dataKey="net" 
-                                        radius={[2, 2, 2, 2]} 
-                                        barSize={12}
-                                        isAnimationActive={true}
-                                        animationDuration={1500}
-                                        animationBegin={200}
-                                        animationEasing="ease-out"
-                                    >
-                                        {last12MonthsData.slice().reverse().map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.net >= 0 ? '#10b981' : '#f43f5e'} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                         </div>
-                     </div>
-                 </>
-             ) : (
-                 <div className="flex flex-col items-center justify-center py-6 opacity-60 text-center">
-                     <Coins className="w-12 h-12 mb-3 text-zinc-300" strokeWidth={1} />
-                     <p className="text-xs font-bold text-zinc-500">Adicione ativos para ver o impacto.</p>
-                 </div>
-             )}
-         </div>
+              {realYieldMetrics.baseValue > 0 ? (
+                  <div className="space-y-8">
+                      {/* Hero Percentage */}
+                      <div className="text-center anim-scale-in">
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-2">Ganho Real (12 Meses)</p>
+                          <div className={`text-6xl font-black tracking-tighter ${realYieldMetrics.realReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                              {realYieldMetrics.realReturn > 0 ? '+' : ''}{formatPercent(realYieldMetrics.realReturn, privacyMode)}
+                          </div>
+                          <p className="text-xs font-medium text-zinc-500 mt-2">
+                              {realYieldMetrics.realReturn >= 0 
+                                  ? 'Seu patrimônio cresceu acima da inflação.' 
+                                  : 'A inflação superou seus rendimentos.'}
+                          </p>
+                      </div>
+
+                      {/* Comparison Bars */}
+                      <div className="bg-zinc-50 dark:bg-zinc-800/30 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{animationDelay: '100ms'}}>
+                          <div className="space-y-4">
+                              <div>
+                                  <div className="flex justify-between text-[10px] font-black uppercase tracking-wider mb-1.5">
+                                      <span className="text-zinc-500">Rendimento Nominal</span>
+                                      <span className="text-zinc-900 dark:text-white">{formatPercent(realYieldMetrics.userDy, privacyMode)}</span>
+                                  </div>
+                                  <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                      <div className="h-full bg-indigo-500 rounded-full" style={{width: '100%'}}></div>
+                                  </div>
+                              </div>
+                              
+                              <div>
+                                  <div className="flex justify-between text-[10px] font-black uppercase tracking-wider mb-1.5">
+                                      <span className="text-zinc-500">Inflação (IPCA)</span>
+                                      <span className="text-rose-500">{formatPercent(Number(inflationRate || 4.62), privacyMode)}</span>
+                                  </div>
+                                  <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                      <div 
+                                          className="h-full bg-rose-500 rounded-full" 
+                                          style={{width: `${Math.min((Number(inflationRate || 4.62) / (realYieldMetrics.userDy || 1)) * 100, 100)}%`}}
+                                      ></div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Monetary Cards */}
+                      <div className="grid grid-cols-2 gap-3 anim-slide-up" style={{animationDelay: '200ms'}}>
+                          <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                              <p className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1">Recebido (Bruto)</p>
+                              <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(realYieldMetrics.sum12m, privacyMode)}</p>
+                          </div>
+                          <div className="p-4 bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+                              <p className="text-[9px] font-black uppercase text-rose-600 dark:text-rose-400 mb-1">Perda Inflacionária</p>
+                              <p className="text-lg font-black text-zinc-900 dark:text-white">-{formatBRL(realYieldMetrics.inflationCost, privacyMode)}</p>
+                          </div>
+                          <div className="col-span-2 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex justify-between items-center">
+                              <div>
+                                  <p className="text-[9px] font-black uppercase text-zinc-400">Ganho Real Líquido</p>
+                                  <p className="text-[10px] text-zinc-500">O que sobrou no bolso</p>
+                              </div>
+                              <p className={`text-2xl font-black ${realYieldMetrics.sum12m - realYieldMetrics.inflationCost >= 0 ? 'text-indigo-500' : 'text-amber-500'}`}>
+                                  {formatBRL(realYieldMetrics.sum12m - realYieldMetrics.inflationCost, privacyMode)}
+                              </p>
+                          </div>
+                      </div>
+
+                      {/* Monthly Chart (Net) */}
+                      <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{animationDelay: '300ms'}}>
+                          <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 text-center">Evolução Mensal (Líquida)</h3>
+                          <div className="h-32 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={last12MonthsData.slice().reverse()}>
+                                      <ReferenceLine y={0} stroke="#52525b" strokeDasharray="3 3" />
+                                      <RechartsTooltip content={<NetBarTooltip />} cursor={{fill: 'transparent'}} />
+                                      <Bar dataKey="net" radius={[2, 2, 2, 2]}>
+                                          {last12MonthsData.slice().reverse().map((entry, index) => (
+                                              <Cell key={`cell-${index}`} fill={entry.net >= 0 ? '#10b981' : '#f43f5e'} />
+                                          ))}
+                                      </Bar>
+                                  </BarChart>
+                              </ResponsiveContainer>
+                          </div>
+                      </div>
+                  </div>
+              ) : (
+                  <div className="flex flex-col items-center justify-center py-10 opacity-50">
+                      <Scale className="w-12 h-12 mb-4 text-zinc-300" strokeWidth={1} />
+                      <p className="text-xs font-bold text-zinc-500">Adicione ativos para calcular.</p>
+                  </div>
+              )}
+          </div>
       </SwipeableModal>
     </div>
   );
