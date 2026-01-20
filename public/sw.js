@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'investfiis-pwa-v8.6.1-fix-logo'; // Bumped version to force update
+const CACHE_NAME = 'investfiis-pwa-v8.6.2-force-logo-b64'; 
 
 // Mantemos apenas o essencial no precache para garantir instalação rápida e sem erros.
 // Assets como logo.svg serão cacheados dinamicamente na primeira requisição (estratégia Cache First).
