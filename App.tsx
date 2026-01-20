@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal } from './components/Layout';
-import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
@@ -74,7 +73,7 @@ const App: React.FC = () => {
   
   // Controle de Inicialização
   const [isReady, setIsReady] = useState(false); 
-  const [loadingProgress, setLoadingProgress] = useState(0); 
+  const [initError, setInitError] = useState<Error | null>(null);
   
   // Auth
   const [session, setSession] = useState<Session | null>(null);
@@ -135,6 +134,9 @@ const App: React.FC = () => {
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
   const [services, setServices] = useState<ServiceMetric[]>(servicesRef.current);
+
+  // Se houver erro de inicialização (ex: config), lança para o ErrorBoundary
+  if (initError) throw initError;
 
   // --- EFEITOS DE PERSISTÊNCIA ---
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(dividends)); }, [dividends]);
@@ -302,15 +304,12 @@ const App: React.FC = () => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) return;
     setIsRefreshing(true);
-    if (initialLoad) setLoadingProgress(50);
     
     try {
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
       }
-      
-      if (initialLoad) setLoadingProgress(70); 
       
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
       
@@ -331,13 +330,11 @@ const App: React.FC = () => {
          });
       }
       
-      if (initialLoad) setLoadingProgress(100); 
     } catch (e) { console.error(e); } finally { setIsRefreshing(false); }
   }, [dividends, pushEnabled, assetsMetadata]);
 
   const fetchTransactionsFromCloud = useCallback(async (currentSession: Session | null, force = false, initialLoad = false) => {
     setCloudStatus('syncing');
-    if (initialLoad) setLoadingProgress(25);
     try {
         if (!currentSession?.user?.id) return;
         const { data, error } = await supabase.from('transactions').select('*').eq('user_id', currentSession.user.id);
@@ -350,8 +347,6 @@ const App: React.FC = () => {
         
         if (cloudTxs.length > 0) {
             await syncMarketData(force, cloudTxs, initialLoad);
-        } else {
-             if (initialLoad) setLoadingProgress(100);
         }
     } catch (err) { 
         console.error(err);
@@ -363,33 +358,30 @@ const App: React.FC = () => {
   // --- INICIALIZAÇÃO CRÍTICA ---
   useEffect(() => {
     const initApp = async () => {
-        const startTime = Date.now();
-        const MIN_SPLASH_TIME = 2500;
-        setLoadingProgress(10);
+        // Validação de Configuração do Supabase antes de qualquer coisa
+        const sbUrl = (import.meta as any).env?.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const sbKey = (import.meta as any).env?.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY;
+
+        if (!sbUrl || !sbKey || sbUrl.includes('placeholder')) {
+            setInitError(new Error('Supabase configuration missing: Verifique as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_KEY.'));
+            return;
+        }
+
         try {
-            const sessionPromise = supabase.auth.getSession();
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Timeout')), 5000));
-            // @ts-ignore
-            const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
+            const { data, error } = await supabase.auth.getSession();
             if (error) throw error;
             const initialSession = data?.session;
             setSession(initialSession);
-            setLoadingProgress(50);
             if (initialSession) {
                 fetchTransactionsFromCloud(initialSession, false, true);
             }
-            const elapsed = Date.now() - startTime;
-            const remainingTime = Math.max(0, MIN_SPLASH_TIME - elapsed);
-            if (remainingTime > 0) {
-                setLoadingProgress(80);
-                await new Promise(resolve => setTimeout(resolve, remainingTime));
-            }
-            setLoadingProgress(100);
         } catch (e) {
-            console.warn("Auth check finished with error or timeout, defaulting to Login screen.", e);
+            console.warn("Auth check finished with error, defaulting to Login screen.", e);
             setSession(null);
         } finally {
             setIsReady(true);
+            document.body.classList.remove('is-loading');
+            document.body.classList.add('app-revealed');
         }
     };
     initApp();
@@ -557,12 +549,18 @@ const App: React.FC = () => {
 
   // --- RENDERIZAÇÃO ---
 
-  if (!isReady) return <SplashScreen finishLoading={false} realProgress={loadingProgress} />;
+  // Enquanto inicializa, mostra um spinner simples (substituto da Splash)
+  if (!isReady) {
+      return (
+          <div className="flex h-screen w-full items-center justify-center bg-primary-light dark:bg-primary-dark">
+              <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          </div>
+      );
+  }
 
   if (!session) {
       return (
           <>
-            <SplashScreen finishLoading={true} realProgress={100} />
             <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
             <Login />
           </>
@@ -571,7 +569,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-primary-light dark:bg-primary-dark">
-      <SplashScreen finishLoading={true} realProgress={100} />
       <CloudStatusBanner status={cloudStatus} />
       
       {toast && ( 
