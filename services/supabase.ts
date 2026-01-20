@@ -1,14 +1,15 @@
-
 import { createClient } from '@supabase/supabase-js';
 
-// Graças à configuração do 'define' no vite.config.ts, process.env.KEY é substituído
-// pelo valor correto (vindo de KEY ou VITE_KEY) em tempo de build.
-// Mantemos o fallback para import.meta.env apenas como segurança extra.
-
+// Função robusta para obter URL/KEY
 const getSupabaseUrl = () => {
     try {
-        // Tenta process.env mapeado primeiro, depois fallback direto para VITE_
-        return process.env.SUPABASE_URL || (import.meta as any).env?.VITE_SUPABASE_URL || '';
+        // 1. Tenta via process.env (Vite Define replacement)
+        if (process.env.SUPABASE_URL && process.env.SUPABASE_URL !== 'undefined') return process.env.SUPABASE_URL;
+        
+        // 2. Tenta via import.meta.env (Vite Nativo)
+        if ((import.meta as any).env?.VITE_SUPABASE_URL) return (import.meta as any).env.VITE_SUPABASE_URL;
+        
+        return '';
     } catch {
         return '';
     }
@@ -16,7 +17,9 @@ const getSupabaseUrl = () => {
 
 const getSupabaseKey = () => {
     try {
-        return process.env.SUPABASE_KEY || (import.meta as any).env?.VITE_SUPABASE_KEY || '';
+        if (process.env.SUPABASE_KEY && process.env.SUPABASE_KEY !== 'undefined') return process.env.SUPABASE_KEY;
+        if ((import.meta as any).env?.VITE_SUPABASE_KEY) return (import.meta as any).env.VITE_SUPABASE_KEY;
+        return '';
     } catch {
         return '';
     }
@@ -26,9 +29,10 @@ const SUPABASE_URL = getSupabaseUrl();
 const SUPABASE_KEY = getSupabaseKey();
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.warn("Supabase credentials missing. App will likely fail during auth/sync.");
+  console.warn("Supabase credentials missing or invalid. App will likely fail during auth/sync.");
 }
 
+// Inicializa o cliente com configurações de resiliência
 export const supabase = createClient(SUPABASE_URL || 'https://placeholder.supabase.co', SUPABASE_KEY || 'placeholder', {
   auth: {
     persistSession: true,
