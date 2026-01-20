@@ -107,6 +107,8 @@ async function scrapeInvestidor10(ticker: string) {
             } else throw e;
         }
 
+        if (!response || !response.data) return null;
+
         const $ = cheerio.load(response.data);
         const extracted: Record<string, any> = {};
 
