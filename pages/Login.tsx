@@ -67,12 +67,12 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-zinc-950 relative overflow-hidden font-sans text-zinc-100 selection:bg-sky-500/30">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#09090b] relative overflow-hidden font-sans text-zinc-100 selection:bg-sky-500/30">
       
-      {/* Background Ambience */}
+      {/* Background Ambience - Increased opacity for better visibility */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-sky-500/10 rounded-full blur-[100px]" />
+          <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-indigo-500/15 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-sky-500/15 rounded-full blur-[100px]" />
       </div>
 
       <div className="w-full max-w-[380px] flex flex-col relative z-10" style={{ perspective: '1000px' }}>
@@ -80,9 +80,9 @@ export const Login: React.FC = () => {
         {/* Header Section com Logo 3D */}
         <div className="mb-10 text-center anim-fade-in-up">
             {/* BRAND COMPOSITION */}
-            <div className="flex items-center justify-center gap-4 mb-8 relative select-none animate-[float_6s_ease-in-out_infinite] transform-style-3d">
+            <div className="flex items-center justify-center gap-2 mb-8 relative select-none animate-[float_6s_ease-in-out_infinite] transform-style-3d">
                 <div className="w-[84px] h-[84px] relative z-10 drop-shadow-[0_24px_48px_rgba(79,70,229,0.4)]">
-                   <img src="./logo.svg?v=4" alt="InvestFIIs Logo" className="w-full h-full object-contain" />
+                   <img src="./logo.svg?v=5" alt="InvestFIIs Logo" className="w-full h-full object-contain" />
                 </div>
                 <span className="font-display text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-white via-zinc-200 to-zinc-400 mt-2 -ml-1 drop-shadow-lg">
                     NVEST
@@ -94,14 +94,14 @@ export const Login: React.FC = () => {
                 <h1 className="text-2xl font-bold tracking-tight text-white">
                     {mode === 'signin' ? 'Bem-vindo de volta' : mode === 'signup' ? 'Criar Conta' : 'Recuperar Acesso'}
                 </h1>
-                <p className="text-sm text-zinc-500 font-medium">
+                <p className="text-sm text-zinc-400 font-medium">
                     {mode === 'signin' ? 'Sua carteira inteligente de FIIs e Ações.' : mode === 'signup' ? 'Comece a acompanhar sua evolução.' : 'Vamos te ajudar a voltar.'}
                 </p>
             </div>
         </div>
 
         {isVerificationSent ? (
-            <div className="text-center anim-scale-in bg-zinc-900/50 p-8 rounded-[2rem] border border-white/5 backdrop-blur-xl">
+            <div className="text-center anim-scale-in bg-zinc-900 p-8 rounded-[2rem] border border-zinc-800 backdrop-blur-xl shadow-2xl">
                 <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
                     <MailCheck className="w-10 h-10" strokeWidth={1.5} />
                 </div>
@@ -119,18 +119,18 @@ export const Login: React.FC = () => {
         ) : (
             <div className="anim-fade-in-up" style={{ animationDelay: '100ms' }}>
                 
-                {/* Tab Switcher (Glassmorphism) */}
+                {/* Tab Switcher (Glassmorphism) - High Contrast */}
                 {mode !== 'recovery' && (
-                    <div className="flex bg-zinc-900/40 p-1 rounded-2xl mb-8 border border-white/5 backdrop-blur-md">
+                    <div className="flex bg-zinc-900 p-1 rounded-2xl mb-8 border border-zinc-800 shadow-lg">
                         <button
                             onClick={() => toggleMode('signin')}
-                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${mode === 'signin' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${mode === 'signin' ? 'bg-zinc-800 text-white shadow-md border border-zinc-700' : 'text-zinc-500 hover:text-zinc-300'}`}
                         >
                             Login
                         </button>
                         <button
                             onClick={() => toggleMode('signup')}
-                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${mode === 'signup' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+                            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${mode === 'signup' ? 'bg-zinc-800 text-white shadow-md border border-zinc-700' : 'text-zinc-500 hover:text-zinc-300'}`}
                         >
                             Cadastro
                         </button>
@@ -149,11 +149,11 @@ export const Login: React.FC = () => {
                     )}
 
                     <div className="space-y-4">
-                        {/* Email Input */}
+                        {/* Email Input - Improved Contrast */}
                         <div className="group">
-                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 ml-1 block">E-mail</label>
+                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2 ml-1 block group-focus-within:text-sky-400 transition-colors">E-mail</label>
                             <div className="relative">
-                                <div className="absolute left-4 top-4 text-zinc-600 group-focus-within:text-sky-500 transition-colors pointer-events-none">
+                                <div className="absolute left-4 top-4 text-zinc-500 group-focus-within:text-sky-400 transition-colors pointer-events-none">
                                     <Mail className="w-5 h-5" />
                                 </div>
                                 <input
@@ -161,7 +161,7 @@ export const Login: React.FC = () => {
                                     placeholder="seu@email.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-zinc-900/60 pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-700 outline-none border border-zinc-800 focus:border-sky-500 focus:bg-zinc-900 transition-all backdrop-blur-sm"
+                                    className="w-full bg-zinc-900 border border-zinc-800 text-white placeholder:text-zinc-600 pl-12 pr-4 py-4 rounded-2xl text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20 transition-all shadow-sm"
                                     required
                                 />
                             </div>
@@ -169,9 +169,9 @@ export const Login: React.FC = () => {
 
                         {mode !== 'recovery' && (
                             <div className="group">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 ml-1 block">Senha</label>
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2 ml-1 block group-focus-within:text-sky-400 transition-colors">Senha</label>
                                 <div className="relative">
-                                    <div className="absolute left-4 top-4 text-zinc-600 group-focus-within:text-sky-500 transition-colors pointer-events-none">
+                                    <div className="absolute left-4 top-4 text-zinc-500 group-focus-within:text-sky-400 transition-colors pointer-events-none">
                                         <Lock className="w-5 h-5" />
                                     </div>
                                     <input
@@ -179,10 +179,10 @@ export const Login: React.FC = () => {
                                         placeholder="••••••••"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-zinc-900/60 pl-12 pr-12 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-700 outline-none border border-zinc-800 focus:border-sky-500 focus:bg-zinc-900 transition-all backdrop-blur-sm"
+                                        className="w-full bg-zinc-900 border border-zinc-800 text-white placeholder:text-zinc-600 pl-12 pr-12 py-4 rounded-2xl text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20 transition-all shadow-sm"
                                         required
                                     />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-zinc-600 hover:text-white transition-colors p-1">
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-zinc-500 hover:text-white transition-colors p-1">
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
@@ -192,9 +192,9 @@ export const Login: React.FC = () => {
                         {/* Smooth Slide Transition for Confirm Password */}
                         <div className={`transition-all duration-500 ease-out-mola overflow-hidden ${mode === 'signup' ? 'max-h-28 opacity-100' : 'max-h-0 opacity-0'}`}>
                             <div className="group pt-1">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 ml-1 block">Confirmar Senha</label>
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2 ml-1 block group-focus-within:text-sky-400 transition-colors">Confirmar Senha</label>
                                 <div className="relative">
-                                    <div className="absolute left-4 top-4 text-zinc-600 group-focus-within:text-sky-500 transition-colors pointer-events-none">
+                                    <div className="absolute left-4 top-4 text-zinc-500 group-focus-within:text-sky-400 transition-colors pointer-events-none">
                                         <ShieldCheck className="w-5 h-5" />
                                     </div>
                                     <input
@@ -202,7 +202,7 @@ export const Login: React.FC = () => {
                                         placeholder="••••••••"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-zinc-900/60 pl-12 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-zinc-700 outline-none border border-zinc-800 focus:border-sky-500 focus:bg-zinc-900 transition-all backdrop-blur-sm"
+                                        className="w-full bg-zinc-900 border border-zinc-800 text-white placeholder:text-zinc-600 pl-12 pr-4 py-4 rounded-2xl text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20 transition-all shadow-sm"
                                         required={mode === 'signup'}
                                     />
                                 </div>
@@ -212,11 +212,11 @@ export const Login: React.FC = () => {
 
                     <div className="flex items-center justify-between pt-1">
                         {mode === 'signin' ? (
-                            <button type="button" onClick={() => setMode('recovery')} className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 transition-colors uppercase tracking-widest ml-1">
+                            <button type="button" onClick={() => setMode('recovery')} className="text-[10px] font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest ml-1">
                                 Esqueci a senha
                             </button>
                         ) : mode === 'recovery' && (
-                            <button type="button" onClick={() => setMode('signin')} className="text-[10px] font-bold text-zinc-500 hover:text-white transition-colors uppercase tracking-widest ml-1 flex items-center gap-1">
+                            <button type="button" onClick={() => setMode('signin')} className="text-[10px] font-bold text-zinc-400 hover:text-white transition-colors uppercase tracking-widest ml-1 flex items-center gap-1">
                                 <ArrowLeft className="w-3 h-3" /> Voltar
                             </button>
                         )}
@@ -244,7 +244,7 @@ export const Login: React.FC = () => {
       
       {/* Footer minimalista */}
       <div className="absolute bottom-6 left-0 right-0 text-center">
-        <p className="text-[10px] font-medium text-zinc-700 uppercase tracking-widest">
+        <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-widest">
              InvestFIIs Cloud &copy; {new Date().getFullYear()}
         </p>
       </div>
