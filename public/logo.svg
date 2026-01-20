@@ -1,44 +1,28 @@
-
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
 <defs>
-    <linearGradient id="grad_main" x1="256" y1="40" x2="256" y2="472" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stop-color="#34d399"/> <!-- Emerald 400 -->
-        <stop offset="100%" stop-color="#0ea5e9"/> <!-- Sky 500 -->
+    <linearGradient id="grad_main" x1="256" y1="50" x2="256" y2="462" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#34d399"/>
+        <stop offset="100%" stop-color="#0ea5e9"/>
     </linearGradient>
-    
     <linearGradient id="grad_shadow" x1="256" y1="200" x2="256" y2="472" gradientUnits="userSpaceOnUse">
         <stop offset="0%" stop-color="#0ea5e9"/>
         <stop offset="100%" stop-color="#4f46e5"/>
     </linearGradient>
-
     <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur in="SourceAlpha" stdDeviation="16"/>
         <feOffset dx="0" dy="24" result="offsetblur"/>
         <feFlood flood-color="#0ea5e9" flood-opacity="0.25"/>
         <feComposite in2="offsetblur" operator="in"/>
-        <feMerge>
-            <feMergeNode/>
-            <feMergeNode in="SourceGraphic"/>
-        </feMerge>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
 </defs>
-
 <g filter="url(#dropShadow)">
-    <!-- Telhado (Seta de Crescimento) -->
-    <path d="M256 64 L464 256 H384 L256 128 L128 256 H48 L256 64 Z" fill="url(#grad_main)"/>
-    
-    <!-- Corpo (Colunas/Estrutura) -->
-    <path d="M112 288 H400 V320 H112 V288 Z" fill="url(#grad_shadow)" fill-opacity="0.8"/>
-    
-    <!-- Pilares -->
-    <rect x="128" y="336" width="48" height="96" rx="4" fill="url(#grad_main)"/>
-    <rect x="232" y="336" width="48" height="96" rx="4" fill="url(#grad_main)"/>
-    <rect x="336" y="336" width="48" height="96" rx="4" fill="url(#grad_main)"/>
-    
-    <!-- Base -->
-    <path d="M96 448 H416 C424.8 448 432 455.2 432 464 V480 H80 V464 C80 455.2 87.2 448 96 448 Z" fill="url(#grad_shadow)"/>
-    
-    <!-- Detalhe de Brilho -->
-    <path d="M256 64 L160 160 L256 256 L352 160 L256 64 Z" fill="white" fill-opacity="0.1"/>
+    <path d="M256 64 L400 208 H328 L256 136 L184 208 H112 L256 64 Z" fill="url(#grad_main)"/>
+    <rect x="144" y="224" width="224" height="32" rx="4" fill="url(#grad_shadow)" fill-opacity="0.9"/>
+    <rect x="160" y="272" width="48" height="112" rx="4" fill="url(#grad_main)"/>
+    <rect x="232" y="272" width="48" height="112" rx="4" fill="url(#grad_main)"/>
+    <rect x="304" y="272" width="48" height="112" rx="4" fill="url(#grad_main)"/>
+    <path d="M128 400 H384 C392.8 400 400 407.2 400 416 V432 H112 V416 C112 407.2 119.2 400 128 400 Z" fill="url(#grad_shadow)"/>
+    <path d="M256 64 L200 120 L256 176 L312 120 L256 64 Z" fill="white" fill-opacity="0.15"/>
 </g>
 </svg>
