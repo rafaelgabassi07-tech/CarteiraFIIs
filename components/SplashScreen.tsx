@@ -83,7 +83,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
             {/* BRAND CONTAINER 3D */}
             <div className="flex items-center justify-center gap-2 mb-16 relative select-none transform-style-3d">
                 <div className="w-[84px] h-[84px] flex items-center justify-center relative z-10 drop-shadow-[0_20px_40px_rgba(59,130,246,0.3)]">
-                   <img src="./logo.svg?v=5" alt="Logo" className="w-full h-full object-contain" />
+                   <img src="./logo.svg?v=6" alt="Logo" className="w-full h-full object-contain" />
                 </div>
                 <span className="font-display text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-500 to-zinc-800 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-2 -ml-1 drop-shadow-sm">
                     NVEST

@@ -82,7 +82,7 @@ export const Login: React.FC = () => {
             {/* BRAND COMPOSITION */}
             <div className="flex items-center justify-center gap-2 mb-8 relative select-none animate-[float_6s_ease-in-out_infinite] transform-style-3d">
                 <div className="w-[84px] h-[84px] relative z-10 drop-shadow-[0_24px_48px_rgba(79,70,229,0.4)]">
-                   <img src="./logo.svg?v=5" alt="InvestFIIs Logo" className="w-full h-full object-contain" />
+                   <img src="./logo.svg?v=6" alt="InvestFIIs Logo" className="w-full h-full object-contain" />
                 </div>
                 <span className="font-display text-[56px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-white via-zinc-200 to-zinc-400 mt-2 -ml-1 drop-shadow-lg">
                     NVEST

@@ -8,12 +8,12 @@
     <meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
     
-    <meta name="app-version" content="8.6.0" />
+    <meta name="app-version" content="8.6.1" />
     <title>InvestFIIs - Carteira</title>
     
-    <link rel="manifest" href="./manifest.json" />
-    <link rel="icon" type="image/svg+xml" href="./logo.svg" />
-    <link rel="apple-touch-icon" href="./logo.svg" />
+    <link rel="manifest" href="./manifest.json?v=6" />
+    <link rel="icon" type="image/svg+xml" href="./logo.svg?v=6" />
+    <link rel="apple-touch-icon" href="./logo.svg?v=6" />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -78,7 +78,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px; /* Reduzido de 12px para 6px */
+        gap: 6px; 
         margin-bottom: 64px;
         position: relative;
         transform-style: preserve-3d;
@@ -108,7 +108,7 @@
         letter-spacing: -0.05em; 
         line-height: 1;
         margin-top: 8px;
-        margin-left: -2px; /* Ajuste fino */
+        margin-left: -2px; 
         
         /* Efeito Metálico/Gradiente no Texto */
         background: linear-gradient(135deg, #1e293b 0%, #64748b 50%, #0f172a 100%);
@@ -220,8 +220,8 @@
         <div class="s-content">
             <div class="s-brand-container">
                 <div class="s-logo-wrapper">
-                   <!-- Timestamp to force refresh -->
-                   <img src="./logo.svg?v=5" alt="Logo" class="s-logo-img" />
+                   <!-- Timestamp to force refresh (v6) -->
+                   <img src="./logo.svg?v=6" alt="Logo" class="s-logo-img" />
                 </div>
                 <span class="s-brand-text">NVEST</span>
             </div>
