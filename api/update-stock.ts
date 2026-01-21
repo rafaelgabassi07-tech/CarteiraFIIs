@@ -65,6 +65,9 @@ function parseValue(valueStr: any): number {
     if (!str || str === '-' || str === 'N/A' || str === '--') return 0;
 
     try {
+        // Remove currency symbols and percentages
+        str = str.replace('R$', '').replace('%', '').trim();
+        
         const isNegative = str.startsWith('-');
         str = str.replace(/[^0-9,.-]/g, ''); 
         
@@ -93,7 +96,7 @@ const KEY_MAP: Record<string, string> = {
     'pvp': 'pvp', 'vp': 'pvp',
     'pl': 'pl',
     'dy': 'dy', 'dividendyield': 'dy', 'dy12m': 'dy',
-    'vpa': 'vp_cota', 'vp': 'vp_cota', 'valorpatrimonial': 'vp_cota',
+    'vpa': 'vp_cota', 'vp': 'vp_cota', 'valorpatrimonial': 'vp_cota', 'vpqa': 'vp_cota',
     'lpa': 'lpa',
     'vacanciafisica': 'vacancia', 'vacancia': 'vacancia',
     'ultimorendimento': 'ultimo_rendimento', 
@@ -106,7 +109,9 @@ const KEY_MAP: Record<string, string> = {
     'margemliquida': 'margem_liquida',
     'margembruta': 'margem_bruta',
     'evebitda': 'ev_ebitda',
-    'dividaliquidaebitda': 'divida_liquida_ebitda'
+    'dividaliquidaebitda': 'divida_liquida_ebitda',
+    'cagrreceita5anos': 'cagr_receita',
+    'cagrlucros5anos': 'cagr_lucro'
 };
 
 // ---------------------------------------------------------
@@ -117,6 +122,7 @@ async function scrapeInvestidor10(ticker: string) {
     try {
         const isFII = ticker.endsWith('11') || ticker.endsWith('11B');
         
+        // Estratégia de tentativa de URL (Prioriza o tipo mais provável)
         const strategies = isFII 
             ? [`/fiis/${ticker.toLowerCase()}/`, `/acoes/${ticker.toLowerCase()}/`]
             : [`/acoes/${ticker.toLowerCase()}/`, `/bdrs/${ticker.toLowerCase()}/`, `/fiis/${ticker.toLowerCase()}/`];
@@ -140,10 +146,10 @@ async function scrapeInvestidor10(ticker: string) {
         const extracted: any = {};
 
         // 1. Extração via Cards (Nova Estrutura do Investidor10)
-        // Eles usam <div class="_card {tipo}"> <div class="_card-header">Título</div> <div class="_card-body">Valor</div> </div>
-        $('div._card').each((_, el) => {
-            const headerText = $(el).find('div._card-header').text().trim();
-            const bodyText = $(el).find('div._card-body').text().trim();
+        // Seletores variados para garantir captura
+        $('div._card, div.card-body, div.indicators').each((_, el) => {
+            const headerText = $(el).find('div._card-header, div.header, span.title').first().text().trim();
+            const bodyText = $(el).find('div._card-body, div.value, span.value').first().text().trim();
             
             if (headerText && bodyText) {
                 const normKey = normalizeKey(headerText);
@@ -156,9 +162,9 @@ async function scrapeInvestidor10(ticker: string) {
         });
 
         // 2. Extração via Tabela de Indicadores (Ações usam muito isso)
-        $('div#table-indicators div.cell').each((_, el) => {
-            const headerText = $(el).find('span.name').text().trim() || $(el).find('div.name').text().trim();
-            const bodyText = $(el).find('div.value span').text().trim() || $(el).find('span.value').text().trim();
+        $('div#table-indicators div.cell, div.indicator-card').each((_, el) => {
+            const headerText = $(el).find('span.name, div.name, h3').text().trim();
+            const bodyText = $(el).find('div.value span, span.value, strong').text().trim();
 
             if (headerText && bodyText) {
                 const normKey = normalizeKey(headerText);
@@ -180,7 +186,7 @@ async function scrapeInvestidor10(ticker: string) {
         let segmento = '';
         $('#breadcrumbs li span a span, .breadcrumb-item').each((_, el) => {
             const txt = $(el).text().trim();
-            if (txt && !['Início', 'Ações', 'FIIs', 'Home', 'BDRs'].includes(txt) && txt.toUpperCase() !== ticker) segmento = txt;
+            if (txt && !['Início', 'Ações', 'FIIs', 'Home', 'BDRs', 'ETFs'].includes(txt) && txt.toUpperCase() !== ticker) segmento = txt;
         });
         extracted.segmento = segmento;
 
@@ -198,7 +204,7 @@ async function scrapeInvestidor10(ticker: string) {
             vp_cota: parseValue(extracted.vp_cota),
             lpa: parseValue(extracted.lpa),
             
-            // Campos específicos FII (agora via cards específicos)
+            // Campos específicos FII
             vacancia: parseValue(extracted.vacancia),
             ultimo_rendimento: parseValue(extracted.ultimo_rendimento),
             patrimonio_liquido: extracted.patrimonio_liquido || 'N/A',
@@ -211,7 +217,9 @@ async function scrapeInvestidor10(ticker: string) {
             margem_liquida: parseValue(extracted.margem_liquida),
             margem_bruta: parseValue(extracted.margem_bruta),
             divida_liquida_ebitda: parseValue(extracted.divida_liquida_ebitda),
-            ev_ebitda: parseValue(extracted.ev_ebitda)
+            ev_ebitda: parseValue(extracted.ev_ebitda),
+            cagr_receita: parseValue(extracted.cagr_receita),
+            cagr_lucro: parseValue(extracted.cagr_lucro)
         };
 
         return result;
@@ -331,7 +339,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 tipo_gestao: metadata.tipo_gestao,
                 patrimonio_liquido: metadata.patrimonio_liquido,
                 taxa_adm: metadata.taxa_adm,
-                ultimo_rendimento: metadata.ultimo_rendimento
+                ultimo_rendimento: metadata.ultimo_rendimento,
+                cagr_receita: metadata.cagr_receita,
+                cagr_lucro: metadata.cagr_lucro
             };
 
             // Remove chaves undefined

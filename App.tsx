@@ -383,6 +383,9 @@ const App: React.FC = () => {
                           const newVal = mergedFundamentals?.[field];
                           const oldVal = existing.fundamentals?.[field];
                           
+                          // Lógica de Preservação: Se o valor novo for inválido/zero e o antigo for bom, mantém o antigo.
+                          // A menos que estejamos atualizando via scraper manual (que já cuidou disso no handleManualScraperTrigger),
+                          // mas aqui estamos no fluxo geral de sync.
                           const isNewInvalid = newVal === undefined || newVal === null || 
                                                (field !== 'vacancy' && newVal === 0) || 
                                                newVal === 'N/A' || newVal === '-' || newVal === '' || newVal === '0';
@@ -557,10 +560,13 @@ const App: React.FC = () => {
 
               if (r.status === 'success' && r.rawFundamentals) {
                   const mappedFundamentals = mapScraperToFundamentals(r.rawFundamentals);
-                  const isFII = r.ticker.endsWith('11') || r.ticker.endsWith('11B');
+                  
+                  // Correção: Usa o tipo vindo do scraper se disponível, senão fallback simples
+                  // Scraper retorna "FII" ou "ACAO" no r.rawFundamentals.type
+                  const isFII = r.rawFundamentals.type === 'FII' || r.ticker.endsWith('11') || r.ticker.endsWith('11B');
                   
                   newMetadata[r.ticker] = {
-                      segment: r.rawFundamentals.segment || newMetadata[r.ticker]?.segment || 'Geral',
+                      segment: r.rawFundamentals.segment || r.rawFundamentals.segmento || newMetadata[r.ticker]?.segment || 'Geral', // Suporta ambas chaves
                       type: isFII ? AssetType.FII : AssetType.STOCK,
                       fundamentals: mappedFundamentals
                   };
