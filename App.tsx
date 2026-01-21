@@ -36,19 +36,26 @@ const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!dateCom || dateCom.length < 10) return 0;
   const targetDateStr = dateCom.substring(0, 10);
-  const targetTicker = ticker.trim().toUpperCase(); // Ticker do Provento (Normalmente ITSA4)
+  
+  // Normaliza o ticker do PROVENTO para a raiz (ex: ITSA4F -> ITSA4)
+  // Isso garante que se o banco tiver ITSA4F por engano, ele vira ITSA4 para comparar
+  let targetRoot = ticker.trim().toUpperCase();
+  if (targetRoot.endsWith('F') && !targetRoot.endsWith('11') && !targetRoot.endsWith('11B') && targetRoot.length <= 6) {
+      targetRoot = targetRoot.slice(0, -1);
+  }
 
   return transactions
     .filter(t => {
         const txDateStr = (t.date || '').substring(0, 10);
-        let txTicker = t.ticker.trim().toUpperCase(); // Ticker da Transação (Pode ser ITSA4F)
+        let txRoot = t.ticker.trim().toUpperCase(); // Ticker da Transação
         
-        // Normaliza ticker da transação para match: se for ITSA4F vira ITSA4
-        if (txTicker.endsWith('F') && !txTicker.endsWith('11') && !txTicker.endsWith('11B') && txTicker.length <= 6) {
-            txTicker = txTicker.slice(0, -1);
+        // Normaliza o ticker da TRANSAÇÃO para a raiz (ex: ITSA4F -> ITSA4)
+        if (txRoot.endsWith('F') && !txRoot.endsWith('11') && !txRoot.endsWith('11B') && txRoot.length <= 6) {
+            txRoot = txRoot.slice(0, -1);
         }
 
-        return txTicker === targetTicker && txDateStr <= targetDateStr;
+        // Compara raízes
+        return txRoot === targetRoot && txDateStr <= targetDateStr;
     })
     .reduce((acc, t) => {
         if (t.type === 'BUY') return acc + t.quantity;
@@ -531,12 +538,10 @@ const App: React.FC = () => {
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
     // CORREÇÃO: Garante que o ticker do dividendo esteja perfeitamente normalizado
-    // para evitar falhas de match com transações (caso de ITSA4 com espaço ou case diff)
     const receipts = dividends.map(d => {
-        // Ticker do dividendo vem do DB (ex: ITSA4)
         const normalizedTicker = d.ticker.trim().toUpperCase();
         
-        // Quantidade deve considerar ITSA4F
+        // Quantidade deve considerar ITSA4F vs ITSA4 (bidirecional)
         const qty = getQuantityOnDate(normalizedTicker, d.dateCom, sortedTxs);
         
         return { 
