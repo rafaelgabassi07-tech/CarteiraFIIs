@@ -57,8 +57,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
 
   return (
     <div className="pb-32 min-h-screen">
-      {/* Search Bar Refinada */}
-      <div className="sticky top-20 z-40 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all -mx-4 px-4 py-2">
+      {/* Search Bar Refinada - Removido Sticky para rolar com a página */}
+      <div className="relative z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all -mx-4 px-4 py-2">
         <div className="flex flex-col gap-3 pb-2">
             <div className="relative flex items-center group">
                 <Search className="w-4 h-4 absolute left-4 text-zinc-400 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-200 transition-colors" />

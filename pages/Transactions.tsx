@@ -256,8 +256,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
     return (
         <div className="anim-fade-in relative min-h-screen pb-60">
-            {/* Header Sticky */}
-            <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all -mx-4 px-4 py-3">
+            {/* Header Sticky removido para Relative - Permite scroll natural */}
+            <div className="relative z-20 bg-primary-light dark:bg-primary-dark border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all -mx-4 px-4 py-3">
                 <div className="flex items-center justify-between">
                     <div>
                         {isSelectionMode ? (

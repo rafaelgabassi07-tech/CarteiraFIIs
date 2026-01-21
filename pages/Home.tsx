@@ -1109,8 +1109,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                           <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} minTickGap={20} />
                                           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `${val/1000}k`} />
                                           <RechartsTooltip content={<SpreadTooltip />} cursor={{fill: '#f4f4f5', opacity: 0.1}} />
-                                          <Bar dataKey="accDiv" name="Dividendos" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={12} />
-                                          <Bar dataKey="accInf" name="Inflação" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                                          <Bar dataKey="accDiv" name="Dividendos" fill="#10b981" radius={[0, 0, 4, 4]} stackId="a" maxBarSize={24} />
+                                          <Bar dataKey="accInf" name="Inflação" fill="#f43f5e" radius={[4, 4, 0, 0]} stackId="a" maxBarSize={24} />
                                       </BarChart>
                                   )}
                               </ResponsiveContainer>
