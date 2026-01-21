@@ -36,13 +36,13 @@ async function fetchHTML(url: string, referer: string) {
                     'Upgrade-Insecure-Requests': '1',
                     'Cache-Control': 'no-cache'
                 },
-                timeout: 10000
+                timeout: 15000 // Aumentado timeout para garantir carregamento completo
             });
             return response.data;
         } catch (e: any) {
             if (e.response?.status === 404) throw e; 
             if (i === 1) throw e;
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise(r => setTimeout(r, 2500));
         }
     }
 }
@@ -207,45 +207,64 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        // Fallbacks
+        // Fallbacks de Cotação
         if (!extracted.cotacao_atual) {
             const headerVal = $('div._card.cotacao div._card-body span').text();
             if (headerVal) extracted.cotacao_atual = headerVal;
         }
 
-        // 2. Extração de Dividendos (Tabela Histórica do Investidor10)
-        // Isso captura pagamentos provisionados e futuros
+        // 2. Extração de Dividendos (SCANNER GENÉRICO)
+        // Varre TODAS as tabelas em busca de colunas chave, em vez de depender de IDs
         const dividends: any[] = [];
-        $('#table-dividends-history tbody tr').each((_, tr) => {
-            const tds = $(tr).find('td');
-            if (tds.length >= 3) {
-                // Colunas típicas: Tipo | Data Com | Data Pagamento | Valor
-                const typeRaw = $(tds[0]).text().trim().toLowerCase();
-                const dateComRaw = $(tds[1]).text().trim();
-                const datePayRaw = $(tds[2]).text().trim();
-                const valRaw = $(tds[3]).text().trim();
+        
+        $('table').each((_, table) => {
+            // Detecta índices das colunas analisando o cabeçalho
+            const headers = $(table).find('thead th').map((_, th) => $(th).text().trim().toLowerCase()).get();
+            
+            // Busca índices baseados em palavras-chave flexíveis
+            let idxType = headers.findIndex(h => h.includes('tipo'));
+            let idxCom = headers.findIndex(h => h.includes('data com') || h.includes('data-com') || h.includes('base'));
+            let idxPay = headers.findIndex(h => h.includes('pagamento') || h.includes('data pag'));
+            let idxVal = headers.findIndex(h => h.includes('valor'));
 
-                const dateCom = parseToISODate(dateComRaw);
-                const datePay = parseToISODate(datePayRaw); // Pode ser null se for "-"
-                const val = parseValue(valRaw);
+            // Se encontrou pelo menos Data Com e Valor, processa a tabela
+            if (idxCom > -1 && idxVal > -1) {
+                // Se Tipo ou Pagamento não forem encontrados, tenta inferir posições padrão ou usa 0/2 como fallback
+                if (idxType === -1) idxType = 0; // Geralmente a primeira coluna
+                if (idxPay === -1) idxPay = 2;   // Geralmente a terceira coluna
 
-                // Normalização de Nomenclaturas
-                let type = 'DIV';
-                if (typeRaw.includes('juros') || typeRaw.includes('jcp')) type = 'JCP';
-                else if (typeRaw.includes('rendimento')) type = 'REND';
-                else if (typeRaw.includes('amortiza') || typeRaw.includes('restitui')) type = 'AMORT';
-                else if (typeRaw.includes('dividend')) type = 'DIV';
+                $(table).find('tbody tr').each((_, tr) => {
+                    const tds = $(tr).find('td');
+                    if (tds.length >= 3) {
+                        const typeRaw = $(tds[idxType]).text().trim().toLowerCase();
+                        const dateComRaw = $(tds[idxCom]).text().trim();
+                        const datePayRaw = idxPay < tds.length ? $(tds[idxPay]).text().trim() : '';
+                        const valRaw = $(tds[idxVal]).text().trim();
 
-                if (dateCom && val > 0) {
-                    dividends.push({
-                        ticker: ticker.toUpperCase(),
-                        type,
-                        date_com: dateCom,
-                        payment_date: datePay || null, // Se null, é futuro sem data definida
-                        rate: val,
-                        source: 'INV10'
-                    });
-                }
+                        const dateCom = parseToISODate(dateComRaw);
+                        const datePay = parseToISODate(datePayRaw); // Pode ser null
+                        const val = parseValue(valRaw);
+
+                        // Normalização de Nomenclaturas
+                        let type = 'DIV';
+                        if (typeRaw.includes('juros') || typeRaw.includes('jcp')) type = 'JCP';
+                        else if (typeRaw.includes('rendimento')) type = 'REND';
+                        else if (typeRaw.includes('amortiza') || typeRaw.includes('restitui')) type = 'AMORT';
+                        else if (typeRaw.includes('dividend')) type = 'DIV';
+
+                        // Só adiciona se tiver Data Com e Valor positivo
+                        if (dateCom && val > 0) {
+                            dividends.push({
+                                ticker: ticker.toUpperCase(),
+                                type,
+                                date_com: dateCom,
+                                payment_date: datePay || null, // Se null, é futuro sem data definida (será tratado no handler)
+                                rate: val,
+                                source: 'INV10'
+                            });
+                        }
+                    }
+                });
             }
         });
 
