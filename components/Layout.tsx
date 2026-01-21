@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="flex items-center gap-2">
           {onRefresh && !showBack && (
-            <button onClick={onRefresh} disabled={isRefreshing} className={`w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <button onClick={onRefresh} disabled={isRefreshing} className={`w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800 ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}>
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} strokeWidth={2} />
             </button>
           )}
@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
           {onNotificationClick && !showBack && (
-            <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+            <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800">
               <Bell className="w-4 h-4" strokeWidth={2} />
               {notificationCount > 0 && 
                 <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
@@ -119,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
           {!showBack && onSettingsClick && (
-            <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+            <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-xl bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800">
               <Settings className="w-4 h-4" strokeWidth={2} />
             </button>
           )}
@@ -146,10 +146,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-      {/* Sólido, sem blur */}
-      <nav className="pointer-events-auto bg-white dark:bg-zinc-900 border border-white/20 dark:border-zinc-800 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[22rem] mx-4 relative overflow-hidden transition-all duration-300">
+      {/* Totalmente Sólido */}
+      <nav className="pointer-events-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[22rem] mx-4 relative overflow-hidden transition-all duration-300">
         
-        {/* Sliding Active Indicator - Adjusted for 4 columns */}
+        {/* Sliding Active Indicator */}
         <div 
             className="absolute top-1.5 bottom-1.5 w-[calc(25%-0.25rem)] bg-zinc-100 dark:bg-zinc-800 rounded-xl shadow-inner border border-black/5 dark:border-white/5 transition-all duration-500 ease-out-mola will-change-transform z-0"
             style={{ 
@@ -158,7 +158,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
             }}
         ></div>
 
-        {/* Buttons Grid - Adjusted for 4 columns */}
+        {/* Buttons Grid */}
         <div className="relative z-10 grid grid-cols-4 h-14">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
@@ -168,22 +168,20 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
                 onClick={() => onTabChange(item.id)}
                 className="flex flex-col items-center justify-center relative outline-none select-none press-effect group"
               >
-                {/* Icon Wrapper with Pop Animation */}
+                {/* Icon Wrapper */}
                 <div className={`relative transition-all duration-500 ease-out-mola ${isActive ? '-translate-y-1.5 scale-110' : 'translate-y-1 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-400'}`}>
                     
-                    {/* Active Glow Behind Icon */}
-                    <div className={`absolute inset-0 bg-accent/20 blur-xl rounded-full transition-all duration-500 ${isActive ? 'opacity-100 scale-150' : 'opacity-0 scale-0'}`}></div>
-                    
+                    {/* Active Glow Removed, just solid color icon */}
                     <item.icon 
                         className={`w-6 h-6 relative z-10 transition-all duration-500 ${
                             isActive 
-                                ? 'text-accent stroke-[2.5px] drop-shadow-sm' 
+                                ? 'text-accent stroke-[2.5px]' 
                                 : 'stroke-[2px]'
                         }`} 
                     />
                 </div>
                 
-                {/* Label Slide Up Animation */}
+                {/* Label */}
                 <span className={`absolute bottom-2 text-[8px] font-black uppercase tracking-wider transition-all duration-500 ease-out-mola ${
                     isActive 
                         ? 'opacity-100 translate-y-0 text-zinc-900 dark:text-white delay-75' 
@@ -239,19 +237,19 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 
   return createPortal(
     <div className={`fixed inset-0 z-[200] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
-      {/* Backdrop without blur for cleaner solid look, just slight dark overlay */}
+      {/* Solid Dimmed Backdrop */}
       <div 
           onClick={onClose} 
-          className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 bg-black/80 transition-opacity duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       ></div>
       
       <div
         ref={modalRef}
         style={{
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
-            transition: isDragging ? 'none' : 'transform 600ms cubic-bezier(0.34, 1.56, 0.64, 1)' // Spring transition
+            transition: isDragging ? 'none' : 'transform 600ms cubic-bezier(0.34, 1.56, 0.64, 1)' 
         }}
-        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-3xl h-[92vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_40px_rgba(0,0,0,0.3)] border-t border-white/20 dark:border-white/5 will-change-transform`}
+        className={`relative bg-white dark:bg-zinc-900 rounded-t-3xl h-[92vh] w-full overflow-hidden flex flex-col shadow-2xl border-t border-zinc-200 dark:border-zinc-800 will-change-transform`}
       >
         <div 
             onTouchStart={handleTouchStart}
@@ -259,8 +257,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             onTouchEnd={handleTouchEnd}
             className="flex-none p-4 flex justify-center bg-transparent cursor-grab active:cursor-grabbing touch-none z-10"
         >
-            {/* Cleaner Drag Handle */}
-            <div className="w-12 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full opacity-50"></div>
+            <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full"></div>
         </div>
         
         <div className={`flex-1 overflow-y-auto overscroll-contain pb-safe transition-opacity duration-500 delay-100 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
@@ -277,7 +274,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
   if (!isMounted) return null;
   return createPortal(
     <div className={`fixed inset-0 z-[1000] flex items-center justify-center p-6 ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
-      <div className={`absolute inset-0 bg-zinc-950/60 dark:bg-black/80 transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
+      <div className={`absolute inset-0 bg-black/80 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onCancel}></div>
       <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-xs p-8 text-center shadow-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) border border-zinc-100 dark:border-zinc-800 ${isVisible ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-8 opacity-0'}`}>
         <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-6 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 shadow-sm">
           <AlertTriangle className="w-8 h-8" strokeWidth={2.5} />
@@ -319,7 +316,7 @@ export const UpdateReportModal: React.FC<{ isOpen: boolean; onClose: () => void;
 
             {/* Summary Cards */}
             <div className="grid grid-cols-3 gap-3 mb-6">
-                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl text-center border border-zinc-100 dark:border-zinc-800">
+                <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl text-center border border-zinc-100 dark:border-zinc-800">
                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Ativos</p>
                     <p className="text-lg font-black text-zinc-900 dark:text-white">{results.results.length}</p>
                 </div>
@@ -451,8 +448,8 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({ isOpen, 
 
     return createPortal(
         <div className={`fixed inset-0 z-[2000] flex items-center justify-center p-6 ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
-            <div className={`absolute inset-0 bg-zinc-950/80 transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onDismiss}></div>
-            <div className={`relative bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2rem] p-8 shadow-2xl border border-zinc-200/50 dark:border-zinc-700/50 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-20 opacity-0 scale-95'}`}>
+            <div className={`absolute inset-0 bg-black/80 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onDismiss}></div>
+            <div className={`relative bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2rem] p-8 shadow-2xl border border-zinc-200 dark:border-zinc-800 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-20 opacity-0 scale-95'}`}>
                 <div className="flex flex-col items-center text-center">
                     <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-sky-500 rounded-3xl flex items-center justify-center text-white mb-6 shadow-xl shadow-sky-500/20 animate-[float_4s_ease-in-out_infinite]">
                         <Smartphone className="w-10 h-10" strokeWidth={1.5} />

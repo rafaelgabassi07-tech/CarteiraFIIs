@@ -57,9 +57,9 @@
   .no-scrollbar::-webkit-scrollbar { display: none; width: 0px; background: transparent; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+  /* Redefinição para Sólido - Sem Transparência */
   .glass-effect {
-    /* Alterado para sólido conforme solicitado */
-    @apply bg-white dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800;
+    @apply bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800;
   }
 
   .anim-fade-in { animation: fadeIn 0.5s var(--ease-out-soft) forwards; }

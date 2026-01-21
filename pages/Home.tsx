@@ -350,11 +350,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const toggleMonthExpand = (monthKey: string) => setExpandedMonth(expandedMonth === monthKey ? null : monthKey);
 
-  // Custom Tooltips
+  // Custom Tooltips - Solid Background
   const CustomPieTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white/95 dark:bg-zinc-800/95 backdrop-blur-md p-3 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 z-50">
+        <div className="bg-white dark:bg-zinc-800 p-3 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-700 z-50">
           <p className="text-xs font-black text-zinc-900 dark:text-white mb-0.5">{payload[0].name}</p>
           <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
             {formatBRL(payload[0].value, privacyMode)} ({formatPercent(payload[0].payload.percent)})
@@ -371,16 +371,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           const divData = payload.find((p: any) => p.dataKey === 'accDiv' || p.dataKey === 'dividends' || p.name === 'Dividendos');
           const infData = payload.find((p: any) => p.dataKey === 'accInf' || p.dataKey === 'inflation' || p.name === 'Inflação');
           
-          // Get the raw monthly data from payload to show monthly details even in Accumulated view
           const rawData = divData?.payload;
           const monthlyInfCost = rawData?.inflation || 0;
           const monthlyDiv = rawData?.dividends || 0;
 
-          // Determine label context
           const isAccumulated = divData?.dataKey === 'accDiv';
 
           return (
-              <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50 min-w-[140px]">
+              <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 z-50 min-w-[140px]">
                   <p className="text-xs font-black text-zinc-900 dark:text-white mb-2 uppercase tracking-wider">{label} {isAccumulated ? '(Acum.)' : '(Mês)'}</p>
                   <div className="space-y-1">
                       <div className="flex items-center justify-between gap-4">
@@ -392,7 +390,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           <span className="text-[10px] text-zinc-900 dark:text-white font-bold">{formatBRL(infData?.value, privacyMode)}</span>
                       </div>
                       
-                      {/* Destaque para o valor MENSAL se estivermos no modo acumulado, para clareza */}
                       {isAccumulated && (
                           <div className="pt-2 mt-2 border-t border-zinc-100 dark:border-zinc-800">
                               <div className="flex items-center justify-between gap-2">
@@ -414,11 +411,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-4 pb-8">
-      {/* ... (Existing Components: Patrimonio Total, Agenda, Grid Buttons, Raio-X Button) ... */}
+      {/* Patrimony Card - Solid Background */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        <div className="w-full rounded-[2rem] relative overflow-hidden shadow-lg shadow-zinc-200/50 dark:shadow-black/50 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 dark:from-zinc-900 dark:to-black border border-white/5">
-            {/* ... (Patrimonio Total Content) ... */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+        <div className="w-full rounded-[2rem] relative overflow-hidden shadow-lg shadow-zinc-200/50 dark:shadow-black/50 bg-zinc-900 dark:bg-black border border-zinc-800 dark:border-zinc-900">
             <div className="px-6 pt-6 flex justify-between items-start relative z-10">
                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] flex items-center gap-1.5"><Wallet className="w-3 h-3 text-zinc-500" /> Patrimônio Total</span>
                 <button onClick={(e) => { e.stopPropagation(); setShowPatrimonyHelp(true); }} className="text-zinc-500 hover:text-white transition-colors"><Info className="w-4 h-4" /></button>
@@ -428,7 +423,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
             <div className="h-px bg-white/10 w-full relative z-10"></div>
             <div className="grid grid-cols-2 relative z-10">
-                <div className="p-5 border-r border-white/10 flex flex-col justify-center bg-white/5 backdrop-blur-sm">
+                <div className="p-5 border-r border-white/10 flex flex-col justify-center bg-zinc-900 dark:bg-black">
                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">Rentabilidade</p>
                     <div className="flex flex-col">
                         <span className={`text-sm font-black flex items-center gap-1 ${isProfitPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -440,7 +435,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </span>
                     </div>
                 </div>
-                <div className="p-5 flex flex-col justify-center bg-white/5 backdrop-blur-sm">
+                <div className="p-5 flex flex-col justify-center bg-zinc-900 dark:bg-black">
                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">Proventos Totais</p>
                     <div className="flex flex-col">
                         <span className="text-sm font-black text-white flex items-center gap-1"><Coins className="w-3 h-3 text-amber-400" /> {formatBRL(totalDividendsReceived, privacyMode)}</span>
@@ -499,7 +494,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
          <button onClick={() => setShowRealYieldModal(true)} className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-5 shadow-sm relative overflow-hidden text-left press-effect group">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-800 dark:to-zinc-900 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none opacity-50"></div>
              <div className="flex items-center justify-between mb-4 relative z-10">
                  <div className="flex items-center gap-2">
                      <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 border border-zinc-100 dark:border-zinc-700"><Scale className="w-4 h-4" /></div>
@@ -540,7 +534,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 if (events.length === 0) return null;
                 return (
                     <div key={groupKey} className="mb-6 anim-slide-up">
-                        <h3 className="px-3 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm py-2 z-10">{groupKey}</h3>
+                        <h3 className="px-3 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10">{groupKey}</h3>
                         <div className="space-y-2">
                             {events.map((e: any, i: number) => {
                                 const style = getEventStyle(e.eventType, e.date, e.type);
@@ -583,7 +577,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             <BarChart data={dividendsChartData} margin={{ top: 10, right: 0, left: -24, bottom: 0 }} onClick={(data) => { if (data && data.activePayload && data.activePayload.length > 0) { const clickedMonth = data.activePayload[0].payload.fullDate; setSelectedProventosMonth(clickedMonth === selectedProventosMonth ? null : clickedMonth); } }}>
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `${val/1000}k`} />
-                                <RechartsTooltip content={({ active, payload, label }) => { if (active && payload && payload.length) { return (<div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50"><p className="text-xs font-black text-zinc-900 dark:text-white mb-1 uppercase tracking-wider">{label}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value, privacyMode)}</p></div>); } return null; }} cursor={{ fill: '#71717a10', radius: 8 }} />
+                                <RechartsTooltip content={({ active, payload, label }) => { if (active && payload && payload.length) { return (<div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 z-50"><p className="text-xs font-black text-zinc-900 dark:text-white mb-1 uppercase tracking-wider">{label}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value, privacyMode)}</p></div>); } return null; }} cursor={{ fill: '#71717a10', radius: 8 }} />
                                 <Bar dataKey="value" radius={[4, 4, 4, 4]} isAnimationActive={true} animationDuration={1500} animationBegin={200} animationEasing="ease-out">
                                     {dividendsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} className="cursor-pointer transition-all duration-300 hover:opacity-80" />)}
                                 </Bar>
@@ -644,7 +638,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     const showYearHeader = year !== previousYear;
                                     return (
                                         <React.Fragment key={month}>
-                                            {showYearHeader && (<div className="sticky top-0 z-10 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm"><h4 className="text-xs font-black text-zinc-300 dark:text-zinc-600 px-2 tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-1">{year}</h4></div>)}
+                                            {showYearHeader && (<div className="sticky top-0 z-10 py-2 bg-white dark:bg-zinc-900"><h4 className="text-xs font-black text-zinc-300 dark:text-zinc-600 px-2 tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-1">{year}</h4></div>)}
                                             <div className={`rounded-2xl transition-all duration-300 overflow-hidden anim-slide-up ${isExpanded ? 'bg-zinc-50 dark:bg-zinc-800 my-2' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`} style={{ animationDelay: `${400 + (i * 30)}ms` }}>
                                                 <button onClick={() => toggleMonthExpand(month)} className="w-full p-3 flex items-center justify-between">
                                                     <div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isExpanded ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-400'}`}><Receipt className="w-4 h-4" /></div><span className="text-sm font-bold capitalize text-zinc-700 dark:text-zinc-200">{monthName}</span></div>
@@ -831,7 +825,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           </div>
                       </div>
 
-                      {/* Area Chart: Spread Analysis (Visualizacao Corrigida e Toggle Implementado) */}
+                      {/* Area Chart: Spread Analysis */}
                       <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{animationDelay: '300ms'}}>
                           <div className="flex items-center justify-between mb-4 px-2">
                               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
