@@ -1,9 +1,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp, Layers, CheckCircle2, HelpCircle, Activity, Percent, TrendingUp as TrendingUpIcon, Hourglass, Landmark, BarChart2, LineChart, Target } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, Sector, AreaChart, Area } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, Sector } from 'recharts';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -72,6 +72,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [selectedProventosMonth, setSelectedProventosMonth] = useState<string | null>(null);
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
@@ -116,9 +117,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [dividendReceipts]);
 
   // --- LOGICA DE HISTORICO E GRAFICOS ---
-  const { history, dividendsChartData, provisionedTotal } = useMemo(() => {
+  const { history, dividendsChartData, provisionedTotal, receiptsByMonth } = useMemo(() => {
     const map: Record<string, number> = {};
     const provMap: Record<string, number> = {};
+    const receiptsMap: Record<string, DividendReceipt[]> = {};
     let provTotal = 0;
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -129,10 +131,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         if (r.paymentDate <= todayStr) {
             map[key] = (map[key] || 0) + r.totalReceived;
+            if (!receiptsMap[key]) receiptsMap[key] = [];
+            receiptsMap[key].push(r);
         } else {
             provMap[key] = (provMap[key] || 0) + r.totalReceived;
             provTotal += r.totalReceived;
         }
+    });
+
+    // Ordenação dos detalhes por valor (maior para menor)
+    Object.keys(receiptsMap).forEach(k => {
+        receiptsMap[k].sort((a, b) => b.totalReceived - a.totalReceived);
     });
 
     const sortedHistory = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
@@ -151,7 +160,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return { 
         history: sortedHistory, 
         dividendsChartData,
-        provisionedTotal: provTotal
+        provisionedTotal: provTotal,
+        receiptsByMonth: receiptsMap
     };
   }, [dividendReceipts]);
 
@@ -201,6 +211,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       );
     }
     return null;
+  };
+
+  const toggleMonthExpand = (monthKey: string) => {
+      setExpandedMonth(expandedMonth === monthKey ? null : monthKey);
   };
 
   return (
@@ -505,38 +519,71 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* MODAL PROVENTOS (Mantido, apenas referenciado) */}
-      <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); }}>
-         {/* Conteúdo já existente... */}
-         <div className="p-6 pb-20">
-             {/* ... (código existente do modal de proventos) ... */}
-             <div className="flex items-center justify-between mb-8 anim-slide-up">
-                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-zinc-200 dark:border-zinc-700 shadow-sm"><Wallet className="w-6 h-6" strokeWidth={1.5} /></div>
-                    <div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Proventos</h2><p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Histórico</p></div>
-                 </div>
+      {/* MODAL PROVENTOS (RESTAURADO E MELHORADO) */}
+      <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); setExpandedMonth(null); }}>
+         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
+             <div className="flex items-center gap-4 mb-8 px-2">
+                <div className="w-12 h-12 bg-white dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-zinc-200 dark:border-zinc-700 shadow-sm"><Wallet className="w-6 h-6" strokeWidth={1.5} /></div>
+                <div>
+                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Proventos</h2>
+                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Histórico de Recebimentos</p>
+                </div>
              </div>
-             {/* ... O restante do código do modal de proventos pode ser mantido ou melhorado similarmente ... */}
+             
              {dividendsChartData.length > 0 && (
-                 <div className="mb-8 h-48 w-full bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                 <div className="mb-8 h-48 w-full bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm anim-slide-up">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dividendsChartData}>
+                        <BarChart data={dividendsChartData} onClick={(data) => { if (data && data.activePayload && data.activePayload[0]) { const date = data.activePayload[0].payload.fullDate; setSelectedProventosMonth(date); toggleMonthExpand(date); } }}>
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} />
                             <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomPieTooltip />} />
                             <Bar dataKey="value" radius={[4, 4, 4, 4]}>
-                                {dividendsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} />)}
+                                {dividendsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} className="transition-colors duration-300 hover:opacity-80 dark:fill-zinc-700 dark:hover:fill-emerald-600" />)}
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                  </div>
              )}
              
-             {/* Lista de Histórico simplificada para brevidade neste update... */}
-             <div className="space-y-2">
+             <div className="space-y-3">
                 {history.map(([month, val], i) => (
-                    <div key={month} className="flex justify-between items-center p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{new Date(month + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
-                        <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(val, privacyMode)}</span>
+                    <div key={month} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden anim-stagger-item" style={{ animationDelay: `${i * 30}ms` }}>
+                        <button 
+                            onClick={() => toggleMonthExpand(month)}
+                            className="w-full flex justify-between items-center p-4 bg-white dark:bg-zinc-900 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${expandedMonth === month ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+                                    {expandedMonth === month ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                </div>
+                                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                                    {new Date(month + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                                </span>
+                            </div>
+                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(val, privacyMode)}</span>
+                        </button>
+                        
+                        {/* Detalhes Expansíveis */}
+                        {expandedMonth === month && receiptsByMonth[month] && (
+                            <div className="bg-zinc-50 dark:bg-zinc-950/50 border-t border-zinc-100 dark:border-zinc-800 px-4 py-2 space-y-2">
+                                {receiptsByMonth[month].map((r, idx) => (
+                                    <div key={idx} className="flex justify-between items-center py-2 border-b border-dashed border-zinc-200 dark:border-zinc-800 last:border-0">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+                                            <div>
+                                                <span className="text-xs font-black text-zinc-900 dark:text-white block">{r.ticker}</span>
+                                                <span className="text-[9px] text-zinc-400 font-bold uppercase">{new Date(r.paymentDate).toLocaleDateString('pt-BR')}</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">{formatBRL(r.totalReceived, privacyMode)}</span>
+                                            <span className="text-[9px] text-zinc-400 font-medium">
+                                                {r.quantityOwned} un x {r.rate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 ))}
              </div>
