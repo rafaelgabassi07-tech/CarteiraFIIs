@@ -150,7 +150,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
         // MODO PADRÃO (Feeds Separados)
         // 1. Definição das Queries (Otimizadas para evitar contaminação cruzada)
-        const queryFII = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII" when:7d';
+        // Adicionado filtros negativos cruzados para garantir pureza das abas
+        const queryFII = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII" -"Ações" -"Ibovespa" when:7d';
         const queryStocks = '"Ações" OR "Ibovespa" OR "Dividendos Ações" OR "Mercado de Ações" -FII -"Fundos Imobiliários" when:7d';
 
         const feedUrlFII = `https://news.google.com/rss/search?q=${encodeURIComponent(queryFII)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;

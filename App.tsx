@@ -180,7 +180,7 @@ const App: React.FC = () => {
   useEffect(() => {
       // Salva apenas se houver dados, usando debounce implícito do React ou lógica de lote
       if (Object.keys(assetsMetadata).length > 0) {
-          const list = Object.entries(assetsMetadata).map(([ticker, data]) => ({ ticker, ...data }));
+          const list = Object.entries(assetsMetadata).map(([ticker, data]) => ({ ticker, ...(data as any) }));
           db.saveBulkMetadata(list).catch(err => console.warn('Save to IDB failed', err));
       }
   }, [assetsMetadata]);
