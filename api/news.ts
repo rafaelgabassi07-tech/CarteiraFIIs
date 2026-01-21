@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Parser from 'rss-parser';
 
@@ -146,7 +145,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
                 category: categorizeItem(item.title, item.summary)
             }));
 
-            return response.status(200).json(processed);
+            // Ordenação explícita por data (mais recente primeiro)
+            const sorted = processed.sort((a, b) => new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime());
+
+            return response.status(200).json(sorted);
         }
 
         // MODO PADRÃO (Feeds Separados)
@@ -168,7 +170,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         const articlesFII = processItems(feedFII.items || [], seenTitles).map(item => ({ ...item, category: 'FIIs' }));
         const articlesStocks = processItems(feedStocks.items || [], seenTitles).map(item => ({ ...item, category: 'Ações' }));
 
-        // 4. União e Ordenação Final
+        // 4. União e Ordenação Final (Garante que a lista combinada esteja ordenada)
         const allArticles = [...articlesFII, ...articlesStocks]
             .sort((a, b) => new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime());
 

@@ -80,6 +80,19 @@ function normalizeKey(str: string) {
         .trim();
 }
 
+const parseBrDate = (val: any): string | null => {
+    if (!val) return null;
+    const str = String(val).trim();
+    if (str === '-' || str === '') return null;
+    
+    // DD/MM/YYYY
+    if (str.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+        const parts = str.split('/');
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return null;
+}
+
 // Mapa de chaves normalizadas para colunas do Banco de Dados
 const KEY_MAP: Record<string, string> = {
     // Cotação
@@ -148,12 +161,7 @@ async function scrapeInvestidor10(ticker: string) {
         const $ = cheerio.load(html);
         const extracted: any = {};
 
-        const targetTexts = [
-            'P/VP', 'Dividend Yield', 'DY', 'Cotação', 'P/L', 'Vacância Física', 
-            'Último Rendimento', 'Valor de Mercado', 'Liquidez', 'ROE', 'VPA', 
-            'Margem Líquida', 'Dívida Líquida / EBITDA', 'Patrimônio Líquido'
-        ];
-
+        // 1. Extração de Metadados (Cards)
         $('span, div, td, strong, b, h3, h4').each((_, el) => {
             const text = $(el).clone().children().remove().end().text().trim();
             if (!text || text.length > 50) return; 
@@ -192,43 +200,73 @@ async function scrapeInvestidor10(ticker: string) {
             if (headerVal) extracted.cotacao_atual = headerVal;
         }
 
-        if (!extracted.dy) {
-            $('div._card').each((_, el) => {
-                const title = $(el).find('._card-header').text().toLowerCase();
-                if (title.includes('dy') || title.includes('yield')) {
-                    extracted.dy = $(el).find('._card-body').text();
+        // 2. Extração de Dividendos (Tabela Histórica)
+        // Isso captura pagamentos provisionados que o StatusInvest pode não mostrar
+        const dividends: any[] = [];
+        $('#table-dividends-history tbody tr').each((_, tr) => {
+            const tds = $(tr).find('td');
+            if (tds.length >= 3) {
+                // Colunas típicas: Tipo | Data Com | Data Pagamento | Valor
+                const typeRaw = $(tds[0]).text().trim().toLowerCase();
+                const dateComRaw = $(tds[1]).text().trim();
+                const datePayRaw = $(tds[2]).text().trim();
+                const valRaw = $(tds[3]).text().trim();
+
+                const dateCom = parseBrDate(dateComRaw);
+                const datePay = parseBrDate(datePayRaw); // Pode ser null se for "-"
+                const val = parseValue(valRaw);
+
+                // Normalização de Nomenclaturas
+                let type = 'DIV';
+                if (typeRaw.includes('juros') || typeRaw.includes('jcp')) type = 'JCP';
+                else if (typeRaw.includes('rendimento')) type = 'REND';
+                else if (typeRaw.includes('amortiza') || typeRaw.includes('restitui')) type = 'AMORT';
+                else if (typeRaw.includes('dividend')) type = 'DIV';
+
+                if (dateCom && val > 0) {
+                    dividends.push({
+                        ticker: ticker.toUpperCase(),
+                        type,
+                        date_com: dateCom,
+                        payment_date: datePay || null, // Se null, é futuro sem data definida (mas raro no INV10)
+                        rate: val,
+                        source: 'INV10'
+                    });
                 }
-            });
-        }
+            }
+        });
 
         const result = {
-            ticker: ticker.toUpperCase(),
-            type: finalType,
-            segmento: extracted.segmento || 'Geral',
-            updated_at: new Date().toISOString(),
-            
-            // Mapeamento explícito para o Supabase
-            cotacao_atual: parseValue(extracted.cotacao_atual),
-            dy: parseValue(extracted.dy),
-            pvp: parseValue(extracted.pvp),
-            pl: parseValue(extracted.pl),
-            roe: parseValue(extracted.roe),
-            vp_cota: parseValue(extracted.vp_cota),
-            lpa: parseValue(extracted.lpa),
-            vacancia: parseValue(extracted.vacancia),
-            ultimo_rendimento: parseValue(extracted.ultimo_rendimento),
-            margem_liquida: parseValue(extracted.margem_liquida),
-            margem_bruta: parseValue(extracted.margem_bruta),
-            divida_liquida_ebitda: parseValue(extracted.divida_liquida_ebitda),
-            ev_ebitda: parseValue(extracted.ev_ebitda),
-            cagr_receita_5a: parseValue(extracted.cagr_receita_5a),
-            cagr_lucros_5a: parseValue(extracted.cagr_lucros_5a),
-            liquidez: extracted.liquidez || 'N/A',
-            val_mercado: extracted.val_mercado || 'N/A',
-            tipo_gestao: extracted.tipo_gestao || 'N/A',
-            taxa_adm: extracted.taxa_adm || 'N/A',
-            patrimonio_liquido: extracted.patrimonio_liquido || 'N/A',
-            num_cotistas: extracted.num_cotistas || 'N/A'
+            metadata: {
+                ticker: ticker.toUpperCase(),
+                type: finalType,
+                segmento: extracted.segmento || 'Geral',
+                updated_at: new Date().toISOString(),
+                
+                // Mapeamento explícito para o Supabase
+                cotacao_atual: parseValue(extracted.cotacao_atual),
+                dy: parseValue(extracted.dy),
+                pvp: parseValue(extracted.pvp),
+                pl: parseValue(extracted.pl),
+                roe: parseValue(extracted.roe),
+                vp_cota: parseValue(extracted.vp_cota),
+                lpa: parseValue(extracted.lpa),
+                vacancia: parseValue(extracted.vacancia),
+                ultimo_rendimento: parseValue(extracted.ultimo_rendimento),
+                margem_liquida: parseValue(extracted.margem_liquida),
+                margem_bruta: parseValue(extracted.margem_bruta),
+                divida_liquida_ebitda: parseValue(extracted.divida_liquida_ebitda),
+                ev_ebitda: parseValue(extracted.ev_ebitda),
+                cagr_receita_5a: parseValue(extracted.cagr_receita_5a),
+                cagr_lucros_5a: parseValue(extracted.cagr_lucros_5a),
+                liquidez: extracted.liquidez || 'N/A',
+                val_mercado: extracted.val_mercado || 'N/A',
+                tipo_gestao: extracted.tipo_gestao || 'N/A',
+                taxa_adm: extracted.taxa_adm || 'N/A',
+                patrimonio_liquido: extracted.patrimonio_liquido || 'N/A',
+                num_cotistas: extracted.num_cotistas || 'N/A'
+            },
+            dividends: dividends
         };
 
         return result;
@@ -250,7 +288,9 @@ async function scrapeStatusInvestProventos(ticker: string) {
 
         const refererUrl = `https://statusinvest.com.br/${type}/${t.toLowerCase()}`;
         
-        // Parâmetros exatos que o site usa (chartProventsType=2 geralmente traz tudo para ações)
+        // chartProventsType=1 costuma trazer tudo (pagos e provisionados) ou 2 para pagos. 
+        // Tentamos 2 padrão, mas o app quer futuros também.
+        // O StatusInvest às vezes separa provisionados em outro endpoint, mas aqui vamos tentar o geral.
         const apiUrl = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
         const data = await fetchHTML(apiUrl, refererUrl);
@@ -259,42 +299,37 @@ async function scrapeStatusInvestProventos(ticker: string) {
         const earnings = data.assetEarningsModels || [];
 
         return earnings.map((d: any) => {
-            // Parser robusto para datas DD/MM/YYYY ou YYYY-MM-DD
             const parseDateJSON = (dStr: string) => {
                 if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
-                
-                // Formato Brasileiro
                 if (dStr.includes('/')) {
                     const parts = dStr.split('/');
                     if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
                 }
-                
-                // Formato ISO
-                if (dStr.includes('-') && dStr.length >= 10) {
-                    return dStr.substring(0, 10);
-                }
-                
+                if (dStr.includes('-') && dStr.length >= 10) return dStr.substring(0, 10);
                 return null;
             };
             
-            // Tipos: 1=Dividendos, 2=JCP, 3=Rendimento (FIIs)
+            // Tipos Avançados
             let labelTipo = 'REND'; 
+            const labelLower = String(d.etLabel || '').toLowerCase();
+
             if (d.et === 1) labelTipo = 'DIV';
             else if (d.et === 2) labelTipo = 'JCP';
-            else if (d.et === 3 || type === 'fiis') labelTipo = 'REND'; 
-            else if (String(d.etLabel).toLowerCase().includes('juros')) labelTipo = 'JCP';
+            else if (d.et === 3 || type === 'fiis') labelTipo = 'REND';
+            // Detecção via texto (mais seguro)
+            else if (labelLower.includes('juros') || labelLower.includes('jcp')) labelTipo = 'JCP';
+            else if (labelLower.includes('dividendo')) labelTipo = 'DIV';
+            else if (labelLower.includes('amortiza') || labelLower.includes('restitui')) labelTipo = 'AMORT';
             
-            // d.ed = Data Com (Ex-Date previous day basically)
-            // d.pd = Payment Date
-            // d.v = Valor
             return {
-                ticker: ticker.toUpperCase(), // Usa o ticker original da requisição (com F se tiver)
+                ticker: ticker.toUpperCase(),
                 type: labelTipo,
                 date_com: parseDateJSON(d.ed),
                 payment_date: parseDateJSON(d.pd),
-                rate: d.v
+                rate: d.v,
+                source: 'STATUS'
             };
-        }).filter((d: any) => d.payment_date !== null && d.rate > 0);
+        }).filter((d: any) => d.rate > 0 && d.date_com); // Permite sem payment_date se for futuro
 
     } catch (error: any) { 
         console.warn(`Erro scraping proventos ${ticker}: ${error.message}`);
@@ -315,28 +350,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         // Executa em paralelo
-        const [metadata, proventos] = await Promise.all([
+        const [inv10Data, statusData] = await Promise.all([
             scrapeInvestidor10(ticker),
             scrapeStatusInvestProventos(ticker)
         ]);
         
+        const metadata = inv10Data?.metadata;
+        const inv10Dividends = inv10Data?.dividends || [];
+        const statusDividends = statusData || [];
+
+        // FUSÃO DE DIVIDENDOS (Merge inteligente)
+        // Prioriza StatusInvest (geralmente mais limpo), mas preenche lacunas com Investidor10
+        // Especialmente para "provisionados" que o StatusInvest pode esconder em type=2
+        const finalDividends = [...statusDividends];
+        
+        inv10Dividends.forEach(dInv => {
+            // Verifica duplicidade (mesmo tipo, valor e data com)
+            const exists = finalDividends.find(dStatus => 
+                dStatus.type === dInv.type &&
+                dStatus.date_com === dInv.date_com &&
+                Math.abs(dStatus.rate - dInv.rate) < 0.0001
+            );
+
+            if (!exists) {
+                // Se não existe, adiciona (provavelmente é um futuro que só tem no INV10)
+                finalDividends.push(dInv);
+            } else {
+                // Se existe, enriquece. Se StatusInvest não tinha data de pagamento (ex: futuro), mas INV10 tem
+                if (!exists.payment_date && dInv.payment_date) {
+                    exists.payment_date = dInv.payment_date;
+                }
+            }
+        });
+
+        // Persistência
         if (metadata) {
-            // Mapeia para o Supabase (garante que chaves batam com colunas)
             const dbPayload = {
                 ticker: metadata.ticker,
                 type: metadata.type,
                 segment: metadata.segmento,
                 pvp: metadata.pvp,
                 pl: metadata.pl,
-                dy_12m: metadata.dy, // Importante: dy_12m no DB, dy no objeto interno
+                dy_12m: metadata.dy,
                 roe: metadata.roe,
                 vacancia: metadata.vacancia,
                 liquidez: metadata.liquidez,
                 valor_mercado: metadata.val_mercado,
                 updated_at: metadata.updated_at,
                 lpa: metadata.lpa,
-                vpa: metadata.vp_cota, // vp_cota no objeto, vpa no DB (ajuste se necessário)
-                vp_cota: metadata.vp_cota, // Envia ambos para garantir
+                vpa: metadata.vp_cota, 
+                vp_cota: metadata.vp_cota,
                 margem_liquida: metadata.margem_liquida,
                 margem_bruta: metadata.margem_bruta,
                 divida_liquida_ebitda: metadata.divida_liquida_ebitda,
@@ -349,15 +412,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 ultimo_rendimento: metadata.ultimo_rendimento
             };
 
-            // Remove chaves undefined para não zerar dados existentes errados
+            // Limpa undefined
             Object.keys(dbPayload).forEach(key => dbPayload[key] === undefined && delete dbPayload[key]);
 
             const { error: metaError } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
             if (metaError) console.error('Supabase Meta Error:', metaError);
         }
 
-        if (proventos.length > 0) {
-             await supabase.from('market_dividends').upsert(proventos, { 
+        if (finalDividends.length > 0) {
+             // Prepara payload final, filtrando campos auxiliares
+             const divPayload = finalDividends.map(d => ({
+                 ticker: d.ticker,
+                 type: d.type,
+                 date_com: d.date_com,
+                 payment_date: d.payment_date || '2099-12-31', // Garante que entre no banco mesmo sem data (placeholder futuro)
+                 rate: d.rate
+             }));
+
+             await supabase.from('market_dividends').upsert(divPayload, { 
                 onConflict: 'ticker, type, date_com, payment_date, rate', 
                 ignoreDuplicates: true 
             });
@@ -367,7 +439,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(404).json({ success: false, error: 'Dados não encontrados.' });
         }
 
-        return res.status(200).json({ success: true, data: metadata, dividends: proventos });
+        return res.status(200).json({ success: true, data: metadata, dividends: finalDividends });
 
     } catch (e: any) {
         console.error(`Erro Handler ${ticker}:`, e);
