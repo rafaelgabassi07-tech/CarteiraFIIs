@@ -11,55 +11,45 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
-// --- AGENTE HTTPS & HEADERS MODERNOS ---
+// --- CONFIGURAÇÃO AXIOS ---
+// Agente simplificado para evitar timeouts em Serverless
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
-    maxSockets: 128,
-    maxFreeSockets: 20,
-    timeout: 15000,
-    rejectUnauthorized: false // Permite contornar alguns erros de SSL restritivos em proxies
+    rejectUnauthorized: false
 });
 
 const USER_AGENTS = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0'
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
 ];
 
 const getRandomAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
-// Cliente base configurado para parecer um navegador real
-const createClient = (referer: string) => axios.create({
-    httpsAgent,
-    headers: {
-        'User-Agent': getRandomAgent(),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': referer,
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'same-origin',
-        'Sec-Fetch-User': '?1',
-        'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"'
-    },
-    timeout: 15000
-});
-
-async function fetchWithRetry(url: string, clientInstance: any, retries = 3): Promise<any> {
-    for (let i = 0; i < retries; i++) {
+// Função de Fetch com Retry e Rotação de UA
+async function fetchHTML(url: string, referer: string) {
+    for (let i = 0; i < 2; i++) { // 2 tentativas
         try {
-            return await clientInstance.get(url);
-        } catch (error: any) {
-            const status = error.response?.status;
-            // Se for 404, não adianta tentar de novo. Se for erro de rede ou 429/403, tenta.
-            if (status === 404) throw error;
-            if (i === retries - 1) throw error;
-            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); // Backoff exponencial
+            const response = await axios.get(url, {
+                httpsAgent,
+                headers: {
+                    'User-Agent': getRandomAgent(),
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Referer': referer,
+                    'Upgrade-Insecure-Requests': '1',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'same-origin',
+                    'Cache-Control': 'no-cache'
+                },
+                timeout: 8000 // Timeout mais curto para falhar rápido e tentar prox
+            });
+            return response.data;
+        } catch (e: any) {
+            if (e.response?.status === 404) throw e; // 404 é definitivo
+            if (i === 1) throw e; // Se falhar na última, lança erro
+            await new Promise(r => setTimeout(r, 1000));
         }
     }
 }
@@ -85,11 +75,8 @@ function normalize(str: any) {
 
 function cleanDoubledString(str: string) {
     if (!str) return "";
-    // Corrige erro comum de scraping onde o texto vem duplicado "R$ 10,00R$ 10,00"
     const parts = str.split('R$');
-    if (parts.length > 2) {
-        return 'R$' + parts[1].trim(); 
-    }
+    if (parts.length > 2) return 'R$' + parts[1].trim(); 
     return str;
 }
 
@@ -115,23 +102,32 @@ async function scrapeInvestidor10(ticker: string) {
     try {
         let html;
         let finalType = 'ACAO';
-        let urlUsed = '';
+        const baseUrl = 'https://investidor10.com.br';
         
-        const client = createClient('https://investidor10.com.br/');
+        // Estratégia de URL:
+        // 1. Tenta /fiis/ se terminar com 11/11B
+        // 2. Se falhar ou não for, tenta /acoes/
+        // 3. Se falhar, tenta /bdrs/
+        
+        const isFII = ticker.endsWith('11') || ticker.endsWith('11B');
+        let strategies = isFII 
+            ? [`/fiis/${ticker.toLowerCase()}/`, `/acoes/${ticker.toLowerCase()}/`, `/bdrs/${ticker.toLowerCase()}/`]
+            : [`/acoes/${ticker.toLowerCase()}/`, `/bdrs/${ticker.toLowerCase()}/`, `/fiis/${ticker.toLowerCase()}/`];
 
-        // Lógica de Tentativa de URL (FII vs Ação)
-        try {
-            urlUsed = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
-            const res = await fetchWithRetry(urlUsed, client);
-            html = res.data;
-            finalType = 'FII';
-        } catch (e: any) {
-            // Se falhar FII (404), tenta Ação
-            urlUsed = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
-            const res = await fetchWithRetry(urlUsed, client);
-            html = res.data;
-            finalType = 'ACAO';
+        for (const path of strategies) {
+            try {
+                html = await fetchHTML(`${baseUrl}${path}`, baseUrl);
+                if (path.includes('fiis')) finalType = 'FII';
+                else if (path.includes('bdrs')) finalType = 'BDR';
+                else finalType = 'ACAO';
+                break; // Sucesso
+            } catch (e: any) {
+                if (e.response?.status !== 404) console.warn(`Erro scraping ${path}: ${e.message}`);
+                // Se for 404, continua para próxima estratégia
+            }
         }
+
+        if (!html) return null;
 
         const $ = cheerio.load(html);
 
@@ -172,7 +168,7 @@ async function scrapeInvestidor10(ticker: string) {
 
             if (!valor) return;
 
-            // 1. Prioridade: Atributo data-indicator (mais confiável)
+            // 1. Prioridade: Atributo data-indicator
             if (indicatorAttr) {
                 const ind = indicatorAttr.toUpperCase();
                 if (ind === 'DIVIDA_LIQUIDA_EBITDA') { dados.divida_liquida_ebitda = valor; return; }
@@ -184,7 +180,6 @@ async function scrapeInvestidor10(ticker: string) {
             }
 
             // 2. Fallback: Matching por Texto
-            // Geral
             if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield'))) dados.dy = valor;
             if (dados.pvp === 'N/A' && (titulo === 'p/vp' || titulo === 'vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
@@ -204,26 +199,24 @@ async function scrapeInvestidor10(ticker: string) {
             if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
             if (dados.payout === 'N/A' && titulo.includes('payout')) dados.payout = valor;
             if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
+            if (dados.margem_bruta === 'N/A' && titulo.includes('margem bruta')) dados.margem_bruta = valor;
             
-            // VPA e Patrimônio
-            if (dados.vp_cota === 'N/A') {
-                if (titulo === 'vpa' || titulo.replace(/\./g, '') === 'vpa' || titulo.includes('vp por cota')) dados.vp_cota = valor;
-            }
+            // VPA
+            if (dados.vp_cota === 'N/A' && (titulo === 'vpa' || titulo.includes('vp por cota'))) dados.vp_cota = valor;
+            
+            // Patrimônio
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
-                // Se for valor muito alto, é Patrimônio Líquido total, senão pode ser VPA
-                if (valorNumerico > 5000) {
+                if (valorNumerico > 5000) { // Valor alto = Patrimônio total
                     if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
-                } else {
+                } else { // Valor baixo = VPA
                     if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
 
-            // Dívidas
             if (dados.divida_liquida_ebitda === 'N/A' && titulo.includes('div') && titulo.includes('liq') && titulo.includes('ebitda')) dados.divida_liquida_ebitda = valor;
             if (dados.ev_ebitda === 'N/A' && titulo.includes('ev/ebitda')) dados.ev_ebitda = valor;
 
-            // CAGR
             if (titulo.includes('cagr') && titulo.includes('receita')) dados.cagr_receita_5a = valor;
             if (titulo.includes('cagr') && titulo.includes('lucro')) dados.cagr_lucros_5a = valor;
 
@@ -233,7 +226,7 @@ async function scrapeInvestidor10(ticker: string) {
             }
         };
 
-        // --- EXECUÇÃO DO PARSING ---
+        // --- PARSING ---
         
         // 1. Cards do Topo
         $('._card').each((i, el) => {
@@ -243,24 +236,21 @@ async function scrapeInvestidor10(ticker: string) {
             if (normalize(titulo).includes('cotacao')) cotacao_atual = parseValue(valor);
         });
 
-        // Fallback cotação
         if (cotacao_atual === 0) {
              const cEl = $('._card.cotacao ._card-body span').first();
              if (cEl.length) cotacao_atual = parseValue(cEl.text());
         }
 
-        // 2. Células de Indicadores (Layout Grid)
+        // 2. Células de Indicadores
         $('.cell').each((i, el) => {
             let titulo = $(el).find('.name').text().trim();
             if (!titulo) titulo = $(el).children('span').first().text().trim();
-            
             let valorEl = $(el).find('.value span').first();
             let valor = (valorEl.length > 0) ? valorEl.text().trim() : $(el).find('.value').text().trim();
-            
             processPair(titulo, valor, 'cell');
         });
 
-        // 3. Tabelas Detalhadas
+        // 3. Tabelas
         $('table tbody tr').each((i, row) => {
             const cols = $(row).find('td');
             if (cols.length >= 2) {
@@ -269,7 +259,7 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        // Cálculo de Valor de Mercado (Se falhar scraper direto)
+        // Valor de Mercado Fallback
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -278,7 +268,6 @@ async function scrapeInvestidor10(ticker: string) {
                 const pvp = parseValue(dados.pvp);
                 if (pl > 0 && pvp > 0) mercadoCalc = pl * pvp;
             }
-            
             if (mercadoCalc > 0) {
                 if (mercadoCalc > 1e9) dados.val_mercado = `R$ ${(mercadoCalc / 1e9).toFixed(2)} Bilhões`;
                 else if (mercadoCalc > 1e6) dados.val_mercado = `R$ ${(mercadoCalc / 1e6).toFixed(2)} Milhões`;
@@ -286,6 +275,7 @@ async function scrapeInvestidor10(ticker: string) {
             }
         }
 
+        dados.cotacao_atual = cotacao_atual; // Inclui cotação no objeto final
         return dados;
 
     } catch (error: any) {
@@ -299,19 +289,14 @@ async function scrapeInvestidor10(ticker: string) {
 // ---------------------------------------------------------
 async function scrapeStatusInvestProventos(ticker: string) {
     try {
-        const t = ticker.toUpperCase().replace(/F$/, ''); // Remove 'F' fracionário se existir
+        const t = ticker.toUpperCase().replace(/F$/, '');
         let type = 'acoes';
         if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('33') || t.endsWith('34')) type = 'fiis'; 
 
-        // Referer exato é obrigatório para o StatusInvest não bloquear
         const refererUrl = `https://statusinvest.com.br/${type}/${t.toLowerCase()}`;
         const apiUrl = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
-        const client = createClient(refererUrl);
-        
-        // Sobrescreve headers específicos para API JSON
-        const { data } = await fetchWithRetry(apiUrl, client);
-
+        const data = await fetchHTML(apiUrl, refererUrl);
         const earnings = data.assetEarningsModels || [];
 
         return earnings.map((d: any) => {
@@ -325,6 +310,7 @@ async function scrapeStatusInvestProventos(ticker: string) {
             let labelTipo = 'REND'; 
             if (d.et === 1) labelTipo = 'DIV';
             if (d.et === 2) labelTipo = 'JCP';
+            if (d.et === 3) labelTipo = 'REND'; // As vezes JCP/Rend misturam
             
             return {
                 ticker: ticker.toUpperCase(),
@@ -336,8 +322,7 @@ async function scrapeStatusInvestProventos(ticker: string) {
         }).filter((d: any) => d.payment_date !== null && d.rate > 0);
 
     } catch (error: any) { 
-        console.warn(`Erro StatusInvest Proventos ${ticker}: ${error.message}`);
-        return []; 
+        return []; // Falha silenciosa para proventos
     }
 }
 
@@ -345,7 +330,6 @@ async function scrapeStatusInvestProventos(ticker: string) {
 // HANDLER
 // ---------------------------------------------------------
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // Config CORS Permissiva
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -357,7 +341,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const metadata = await scrapeInvestidor10(ticker);
         
         if (metadata) {
-            // Payload para Supabase
+            // Upsert Metadata
             const dbPayload = {
                 ticker: metadata.ticker,
                 type: metadata.type,
@@ -370,8 +354,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 liquidez: metadata.liquidez,
                 valor_mercado: metadata.val_mercado,
                 updated_at: metadata.updated_at,
-                
-                // Campos Adicionais (mapeados se coluna existir ou ignorados)
                 lpa: parseValue(metadata.lpa),
                 vpa: parseValue(metadata.vp_cota),
                 margem_liquida: parseValue(metadata.margem_liquida),
@@ -385,21 +367,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 taxa_adm: metadata.taxa_adm
             };
 
-            await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
+            const { error: metaError } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
+            if (metaError) console.error('Supabase Meta Error:', metaError);
         }
 
         const proventos = await scrapeStatusInvestProventos(ticker);
         if (proventos.length > 0) {
-             await supabase.from('market_dividends').upsert(proventos, { 
+             const { error: divError } = await supabase.from('market_dividends').upsert(proventos, { 
                 onConflict: 'ticker, type, date_com, payment_date, rate', 
                 ignoreDuplicates: true 
             });
+            if (divError) console.error('Supabase Div Error:', divError);
+        }
+
+        if (!metadata) {
+            return res.status(404).json({ success: false, error: 'Dados não encontrados no provedor.' });
         }
 
         return res.status(200).json({ success: true, data: metadata });
 
     } catch (e: any) {
         console.error(`Erro Handler ${ticker}:`, e);
-        return res.status(500).json({ error: e.message });
+        return res.status(500).json({ success: false, error: e.message });
     }
 }
