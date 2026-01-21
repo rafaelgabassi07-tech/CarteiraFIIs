@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity } from 'lucide-react';
 import { UpdateReportData } from '../types';
 
 // Utility for smooth visibility transitions
@@ -346,27 +346,51 @@ export const UpdateReportModal: React.FC<{ isOpen: boolean; onClose: () => void;
                     results.results.length === 0 ? (
                         <div className="text-center py-10 opacity-40"><Server className="w-12 h-12 mx-auto mb-2" /><p className="text-xs font-bold">Nada atualizado</p></div>
                     ) : (
-                        results.results.map((r, i) => (
-                            <div key={i} className={`p-4 rounded-2xl border flex gap-4 anim-stagger-item ${r.status === 'success' ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800' : 'bg-rose-50/50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/30'}`} style={{ animationDelay: `${i * 50}ms` }}>
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${r.status === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/20 text-rose-600 border-rose-200 dark:border-rose-900/30'}`}>
-                                    {r.status === 'success' ? <CheckCircle className="w-5 h-5" /> : <WifiOff className="w-5 h-5" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <h4 className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{r.ticker}</h4>
-                                        {r.status === 'success' && r.details?.price && <span className="text-xs font-bold text-zinc-900 dark:text-white">R$ {r.details.price.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>}
+                        results.results.map((r, i) => {
+                            const isBrapiPrice = r.sourceMap?.price === 'Brapi';
+                            const isInv10Fund = r.sourceMap?.fundamentals === 'Investidor10';
+                            
+                            return (
+                                <div key={i} className={`p-4 rounded-2xl border flex gap-4 anim-stagger-item relative overflow-hidden ${r.status === 'success' ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800' : 'bg-rose-50/50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/30'}`} style={{ animationDelay: `${i * 50}ms` }}>
+                                    
+                                    {/* Column 1: Status Icon */}
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${r.status === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/20 text-rose-600 border-rose-200 dark:border-rose-900/30'}`}>
+                                        {r.status === 'success' ? <CheckCircle className="w-5 h-5" /> : <WifiOff className="w-5 h-5" />}
                                     </div>
-                                    {r.status === 'success' && r.details ? (
-                                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] text-zinc-500 font-medium">
-                                            {r.details.dy && <span className="text-indigo-500">DY {r.details.dy}%</span>}
-                                            {r.details.pvp && <span>P/VP {r.details.pvp}</span>}
+                                    
+                                    {/* Column 2: Data */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <div>
+                                                <h4 className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{r.ticker}</h4>
+                                                <div className="flex gap-1 mt-1">
+                                                    {isBrapiPrice && <span className="text-[8px] font-bold bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 px-1.5 py-0.5 rounded border border-sky-200 dark:border-sky-800">BRAPI</span>}
+                                                    {isInv10Fund && <span className="text-[8px] font-bold bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded border border-violet-200 dark:border-violet-800">INV10</span>}
+                                                </div>
+                                            </div>
+                                            
+                                            {r.status === 'success' && r.details?.price && (
+                                                <div className="text-right">
+                                                    <span className="block text-xs font-black text-zinc-900 dark:text-white">R$ {r.details.price.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                                                    <span className="text-[9px] font-bold text-zinc-400">{isBrapiPrice ? 'Tempo Real' : 'Fechamento'}</span>
+                                                </div>
+                                            )}
                                         </div>
-                                    ) : (
-                                        <p className="text-xs text-rose-500 mt-1 leading-tight font-medium">{r.message}</p>
-                                    )}
+                                        
+                                        {r.status === 'success' && r.details ? (
+                                            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 pt-2 border-t border-dashed border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-500 font-medium">
+                                                {r.details.dy !== undefined && <span className="text-emerald-600 dark:text-emerald-400">DY {r.details.dy}%</span>}
+                                                {r.details.pvp !== undefined && <span>P/VP {r.details.pvp}</span>}
+                                                {r.details.pl !== undefined && r.details.pl > 0 && <span>P/L {r.details.pl}</span>}
+                                                {r.details.vacancy !== undefined && r.details.vacancy > 0 && <span className="text-rose-500">Vacância {r.details.vacancy}%</span>}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-rose-500 mt-1 leading-tight font-medium">{r.message}</p>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )
                 )}
 

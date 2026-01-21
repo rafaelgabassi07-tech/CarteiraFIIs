@@ -471,27 +471,62 @@ const App: React.FC = () => {
       }
       
       setIsScraping(true);
-      showToast('info', 'Iniciando busca profunda...');
+      showToast('info', 'Iniciando busca combinada...');
       
       // Explicitly typing tickers as string[] to satisfy TypeScript compiler
       const tickers = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))) as string[];
       
       try {
-          // 1. Aciona o Scraper e captura o resultado
-          const results = await triggerScraperUpdate(tickers, (current, total) => {
+          // 1. Aciona o Scraper (Investidor10/StatusInvest)
+          const scrapePromise = triggerScraperUpdate(tickers, (current, total) => {
               // Opcional: Atualizar UI de progresso
           });
+
+          // 2. Aciona Brapi (Cotações em Tempo Real)
+          // Isso é importante para preencher a lacuna caso o Scraper tenha cotação defasada (D-1)
+          const brapiPromise = getQuotes(tickers);
+
+          const [results, brapiData] = await Promise.all([scrapePromise, brapiPromise]);
           
-          showToast('info', 'Atualizando banco de dados...');
+          showToast('info', 'Consolidando dados...');
+
+          // 3. Mescla os resultados para o relatório
+          const enrichedResults: ScrapeResult[] = results.map(r => {
+              // Encontra cotação Brapi correspondente
+              const brapiQuote = brapiData.quotes.find(q => q.symbol === r.ticker);
+              
+              let finalPrice = r.details?.price;
+              let priceSource: 'Brapi' | 'Investidor10' | 'N/A' = 'Investidor10';
+
+              // Prioriza preço da Brapi se disponível e válido
+              if (brapiQuote && brapiQuote.regularMarketPrice > 0) {
+                  finalPrice = brapiQuote.regularMarketPrice;
+                  priceSource = 'Brapi';
+              } else if (!finalPrice) {
+                  priceSource = 'N/A';
+              }
+
+              return {
+                  ...r,
+                  details: {
+                      ...r.details,
+                      price: finalPrice
+                  },
+                  sourceMap: {
+                      price: priceSource,
+                      fundamentals: r.status === 'success' ? 'Investidor10' : 'N/A'
+                  }
+              };
+          });
           
-          // 2. Sincroniza os dados atualizados do banco (Isso traz a inflação e consolida)
+          // 4. Sincroniza os dados atualizados do banco (Isso traz a inflação e consolida)
           await handleSyncAll(true);
           
-          // 3. Monta o relatório completo
-          const totalDividends = results.reduce((acc, r) => acc + (r.dividendsFound?.length || 0), 0);
+          // 5. Monta o relatório completo
+          const totalDividends = enrichedResults.reduce((acc, r) => acc + (r.dividendsFound?.length || 0), 0);
           
           setLastUpdateReport({
-              results: results,
+              results: enrichedResults,
               inflationRate: marketIndicators.ipca || 0, // Pega do estado atualizado pós-sync
               totalDividendsFound: totalDividends
           });

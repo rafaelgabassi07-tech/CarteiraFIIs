@@ -210,11 +210,16 @@ export interface ScrapeResult {
     ticker: string;
     status: 'success' | 'error';
     message?: string;
+    sourceMap?: {
+        price: 'Brapi' | 'Investidor10' | 'N/A';
+        fundamentals: 'Investidor10' | 'N/A';
+    };
     details?: {
         price?: number;
         dy?: number;
         pvp?: number;
         pl?: number;
+        vacancy?: number;
     };
     dividendsFound?: {
         type: string;
