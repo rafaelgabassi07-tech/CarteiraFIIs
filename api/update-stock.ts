@@ -80,16 +80,31 @@ function normalizeKey(str: string) {
         .trim();
 }
 
-const parseBrDate = (val: any): string | null => {
+// Parser de data unificado e robusto (Garante YYYY-MM-DD com padding)
+// Resolve problemas de datas como "1/3/2024" virando "2024-3-1" (inválido pro frontend)
+const parseToISODate = (val: any): string | null => {
     if (!val) return null;
     const str = String(val).trim();
-    if (str === '-' || str === '') return null;
+    if (str === '-' || str === '' || str.toLowerCase() === 'n/a') return null;
     
-    // DD/MM/YYYY
-    if (str.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-        const parts = str.split('/');
-        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    // Tenta extrair formato DD/MM/YYYY (com ou sem zero à esquerda)
+    const matchBR = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (matchBR) {
+        const day = matchBR[1].padStart(2, '0');
+        const month = matchBR[2].padStart(2, '0');
+        const year = matchBR[3];
+        return `${year}-${month}-${day}`;
     }
+    
+    // Tenta extrair formato YYYY-MM-DD (às vezes vem sem padding do JSON)
+    const matchISO = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (matchISO) {
+        const year = matchISO[1];
+        const month = matchISO[2].padStart(2, '0');
+        const day = matchISO[3].padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
     return null;
 }
 
@@ -212,8 +227,8 @@ async function scrapeInvestidor10(ticker: string) {
                 const datePayRaw = $(tds[2]).text().trim();
                 const valRaw = $(tds[3]).text().trim();
 
-                const dateCom = parseBrDate(dateComRaw);
-                const datePay = parseBrDate(datePayRaw); // Pode ser null se for "-"
+                const dateCom = parseToISODate(dateComRaw);
+                const datePay = parseToISODate(datePayRaw); // Pode ser null se for "-"
                 const val = parseValue(valRaw);
 
                 // Normalização de Nomenclaturas
@@ -299,16 +314,6 @@ async function scrapeStatusInvestProventos(ticker: string) {
         const earnings = data.assetEarningsModels || [];
 
         return earnings.map((d: any) => {
-            const parseDateJSON = (dStr: string) => {
-                if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
-                if (dStr.includes('/')) {
-                    const parts = dStr.split('/');
-                    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-                }
-                if (dStr.includes('-') && dStr.length >= 10) return dStr.substring(0, 10);
-                return null;
-            };
-            
             // Tipos Avançados
             let labelTipo = 'REND'; 
             const labelLower = String(d.etLabel || '').toLowerCase();
@@ -324,8 +329,8 @@ async function scrapeStatusInvestProventos(ticker: string) {
             return {
                 ticker: ticker.toUpperCase(),
                 type: labelTipo,
-                date_com: parseDateJSON(d.ed),
-                payment_date: parseDateJSON(d.pd),
+                date_com: parseToISODate(d.ed),
+                payment_date: parseToISODate(d.pd),
                 rate: d.v,
                 source: 'STATUS'
             };
@@ -366,6 +371,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         inv10Dividends.forEach(dInv => {
             // Verifica duplicidade (mesmo tipo, valor e data com)
+            // Agora que ambos usam parseToISODate, a comparação de string date_com é segura
             const exists = finalDividends.find(dStatus => 
                 dStatus.type === dInv.type &&
                 dStatus.date_com === dInv.date_com &&
