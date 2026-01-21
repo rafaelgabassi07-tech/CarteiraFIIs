@@ -93,6 +93,9 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
             fetchNews(); // Reseta para feed geral
             return;
         }
+        // Importante: Ao buscar algo específico, muda para a aba 'Todas' 
+        // para garantir que o resultado apareça mesmo que a categoria seja diferente da atual.
+        setActiveTab('Todas');
         fetchNews(searchTerm);
     };
 
@@ -138,7 +141,7 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">Feed de Mercado</p>
                         </div>
                         <button 
-                            onClick={() => fetchNews(searchTerm)} 
+                            onClick={handleSearchSubmit} 
                             disabled={loading}
                             className={`w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm active:scale-95 transition-all ${loading ? 'opacity-50' : ''}`}
                         >
