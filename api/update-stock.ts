@@ -310,6 +310,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const metadata = inv10Data.metadata;
         const dividends = inv10Data.dividends || [];
 
+        // Deduplicação em memória para garantir
+        const uniqueMap = new Map();
+        dividends.forEach(d => {
+            // Chave única composta ignorando a data de pagamento inicialmente
+            // Isso agrupa o "mesmo evento" que pode ter vindo duplicado do HTML
+            const key = `${d.type}|${d.date_com}|${d.rate}`; 
+            
+            const existing = uniqueMap.get(key);
+            if (!existing) {
+                uniqueMap.set(key, d);
+            } else {
+                // Se já existe, mantemos a versão que tiver a data de pagamento definida
+                if (!existing.payment_date && d.payment_date) {
+                    uniqueMap.set(key, d);
+                }
+            }
+        });
+        const cleanDividends = Array.from(uniqueMap.values());
+
         // Persistência no Supabase (Metadata)
         if (metadata) {
             const dbPayload = {
@@ -347,8 +366,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Persistência no Supabase (Dividendos)
-        if (dividends.length > 0) {
-             const divPayload = dividends.map(d => ({
+        if (cleanDividends.length > 0) {
+             const divPayload = cleanDividends.map(d => ({
                  ticker: d.ticker,
                  type: d.type,
                  date_com: d.date_com,
@@ -357,13 +376,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                  rate: d.rate
              }));
 
+             // CORREÇÃO CRÍTICA PARA DUPLICIDADE:
+             // Identifica quais dividendos agora possuem data real e deleta seus placeholders (Provisionados)
+             const datesWithRealPayment = divPayload
+                .filter(d => d.payment_date !== '2099-12-31')
+                .map(d => d.date_com);
+
+             if (datesWithRealPayment.length > 0) {
+                 await supabase.from('market_dividends')
+                    .delete()
+                    .eq('ticker', ticker) // Remove apenas deste ativo
+                    .eq('payment_date', '2099-12-31') // Remove apenas os placeholders (futuros)
+                    .in('date_com', datesWithRealPayment); // Remove apenas para as datas que agora são reais
+             }
+
              await supabase.from('market_dividends').upsert(divPayload, { 
                 onConflict: 'ticker, type, date_com, payment_date, rate', 
                 ignoreDuplicates: true 
             });
         }
 
-        return res.status(200).json({ success: true, data: metadata, dividends: dividends });
+        return res.status(200).json({ success: true, data: metadata, dividends: cleanDividends });
 
     } catch (e: any) {
         console.error(`Erro Handler ${ticker}:`, e);
