@@ -204,3 +204,16 @@ export interface MarketOverview {
     };
     sources?: { title: string; uri: string }[];
 }
+
+// Resultado da atualização do Scraper
+export interface ScrapeResult {
+    ticker: string;
+    status: 'success' | 'error';
+    message?: string;
+    details?: {
+        price?: number;
+        dy?: number;
+        pvp?: number;
+        pl?: number;
+    };
+}

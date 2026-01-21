@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal } from './components/Layout';
+import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
-import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType } from './types';
+import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData, triggerScraperUpdate } from './services/dataService';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
@@ -92,6 +92,7 @@ const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUpdateReport, setShowUpdateReport] = useState(false);
   
   // PWA Install State
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -107,6 +108,7 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
+  const [lastUpdateResults, setLastUpdateResults] = useState<ScrapeResult[]>([]);
   
   // Dados de Negócio
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -456,10 +458,12 @@ const App: React.FC = () => {
       const tickers = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))) as string[];
       
       try {
-          // 1. Aciona o Scraper (Lento, mas necessário)
-          await triggerScraperUpdate(tickers, (current, total) => {
-              // Opcional: Poderia atualizar um estado de progresso aqui
+          // 1. Aciona o Scraper e captura o resultado
+          const results = await triggerScraperUpdate(tickers, (current, total) => {
+              // Opcional: Atualizar UI de progresso
           });
+          
+          setLastUpdateResults(results);
           
           showToast('info', 'Atualizando banco de dados...');
           
@@ -467,6 +471,7 @@ const App: React.FC = () => {
           await handleSyncAll(true);
           
           showToast('success', 'Dados atualizados com sucesso!');
+          setShowUpdateReport(true); // Abre o modal de relatório
       } catch (e) {
           console.error(e);
           showToast('error', 'Falha na atualização.');
@@ -674,6 +679,7 @@ const App: React.FC = () => {
             <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={handleClearNotifications} />
             <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />
             <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
+            <UpdateReportModal isOpen={showUpdateReport} onClose={() => setShowUpdateReport(false)} results={lastUpdateResults} />
         </>
     </div>
   );

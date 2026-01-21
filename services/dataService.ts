@@ -1,5 +1,5 @@
 
-import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, MarketOverview } from "../types";
+import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, MarketOverview, ScrapeResult } from "../types";
 import { supabase } from "./supabase";
 
 export interface UnifiedMarketData {
@@ -63,10 +63,11 @@ const normalizeTickerRoot = (t: string) => {
 };
 
 // Função para acionar o Scraper no Backend (Serverless)
-export const triggerScraperUpdate = async (tickers: string[], onProgress?: (current: number, total: number) => void) => {
+export const triggerScraperUpdate = async (tickers: string[], onProgress?: (current: number, total: number) => void): Promise<ScrapeResult[]> => {
     // Normaliza para remover o F de fracionário, pois o scraper busca pelo ticker padrão
     const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
     let processed = 0;
+    const results: ScrapeResult[] = [];
 
     // Processa em lotes pequenos para evitar timeout do navegador ou rate limit
     const BATCH_SIZE = 3;
@@ -77,9 +78,31 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
         await Promise.all(batch.map(async (ticker) => {
             try {
                 // Chama o endpoint que faz o scrape real (Investidor10/StatusInvest)
-                await fetch(`/api/update-stock?ticker=${ticker}`);
-            } catch (e) {
+                const res = await fetch(`/api/update-stock?ticker=${ticker}`);
+                const data = await res.json();
+
+                if (data.success && data.data) {
+                    const meta = data.data;
+                    results.push({
+                        ticker,
+                        status: 'success',
+                        details: {
+                            price: parseNumberSafe(meta.cotacao_atual || meta.current_price),
+                            dy: parseNumberSafe(meta.dy || meta.dy_12m),
+                            pvp: parseNumberSafe(meta.pvp),
+                            pl: parseNumberSafe(meta.pl)
+                        }
+                    });
+                } else {
+                    throw new Error(data.error || 'Falha na resposta da API');
+                }
+            } catch (e: any) {
                 console.warn(`Falha ao atualizar ${ticker}`, e);
+                results.push({
+                    ticker,
+                    status: 'error',
+                    message: e.message || 'Erro de conexão'
+                });
             } finally {
                 processed++;
                 if (onProgress) onProgress(processed, uniqueTickers.length);
@@ -91,6 +114,8 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
             await new Promise(r => setTimeout(r, 1000));
         }
     }
+    
+    return results;
 };
 
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
