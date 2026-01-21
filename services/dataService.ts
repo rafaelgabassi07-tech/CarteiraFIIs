@@ -47,8 +47,12 @@ const fetchInflationData = async (): Promise<number> => {
 const parseNumberSafe = (val: any): number => {
     if (typeof val === 'number') return val;
     if (!val) return 0;
-    const str = String(val).replace(',', '.');
-    const num = parseFloat(str);
+    // Tenta limpar strings comuns de porcentagem ou moeda
+    const str = String(val).trim().replace('R$', '').replace('%', '').trim();
+    // Substitui vírgula por ponto apenas se for o separador decimal (simples)
+    // Ex: 1.050,00 -> 1050.00 | 10,5 -> 10.5
+    const cleanStr = str.replace(/\./g, '').replace(',', '.');
+    const num = parseFloat(cleanStr);
     return isNaN(num) ? 0 : num;
 };
 
@@ -67,31 +71,39 @@ const normalizeTickerRoot = (t: string) => {
  * Centraliza a lógica de mapeamento para garantir consistência.
  */
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
+    // Helper para buscar valor em múltiplas chaves possíveis
+    const getVal = (...keys: string[]) => {
+        for (const k of keys) {
+            if (m[k] !== undefined && m[k] !== null) return m[k];
+        }
+        return undefined;
+    };
+
     return {
         // Comuns
-        p_vp: parseNumberSafe(m.pvp ?? m.p_vp),
-        dy_12m: parseNumberSafe(m.dy_12m ?? m.dy), // Scraper usa 'dy', DB usa 'dy_12m'
-        p_l: parseNumberSafe(m.pl ?? m.p_l),
-        roe: parseNumberSafe(m.roe),
-        liquidity: m.liquidez || '',
-        market_cap: m.valor_mercado || m.val_mercado || undefined, 
+        p_vp: parseNumberSafe(getVal('pvp', 'p_vp', 'vp')),
+        dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield')), 
+        p_l: parseNumberSafe(getVal('pl', 'p_l')),
+        roe: parseNumberSafe(getVal('roe')),
+        liquidity: getVal('liquidez', 'liquidez_media_diaria') || '',
+        market_cap: getVal('valor_mercado', 'val_mercado', 'market_cap') || undefined, 
         
         // Ações
-        net_margin: parseNumberSafe(m.margem_liquida),
-        gross_margin: parseNumberSafe(m.margem_bruta),
-        cagr_revenue: parseNumberSafe(m.cagr_receita ?? m.cagr_receita_5a),
-        cagr_profits: parseNumberSafe(m.cagr_lucro ?? m.cagr_lucros_5a),
-        net_debt_ebitda: parseNumberSafe(m.divida_liquida_ebitda),
-        ev_ebitda: parseNumberSafe(m.ev_ebitda),
-        lpa: parseNumberSafe(m.lpa),
-        vpa: parseNumberSafe(m.vpa ?? m.vp_cota),
+        net_margin: parseNumberSafe(getVal('margem_liquida', 'net_margin')),
+        gross_margin: parseNumberSafe(getVal('margem_bruta', 'gross_margin')),
+        cagr_revenue: parseNumberSafe(getVal('cagr_receita', 'cagr_receita_5a')),
+        cagr_profits: parseNumberSafe(getVal('cagr_lucro', 'cagr_lucros_5a')),
+        net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'net_debt_ebitda')),
+        ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
+        lpa: parseNumberSafe(getVal('lpa')),
+        vpa: parseNumberSafe(getVal('vpa', 'vp_cota', 'vp')), // FIIs usam vp_cota/vpa
 
-        // FIIs
-        vacancy: parseNumberSafe(m.vacancia),
-        manager_type: m.tipo_gestao || undefined,
-        assets_value: m.patrimonio_liquido || undefined,
-        management_fee: m.taxa_adm || undefined,
-        last_dividend: parseNumberSafe(m.ultimo_rendimento),
+        // FIIs (Chaves críticas revisadas)
+        vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica', 'vacancy')),
+        manager_type: getVal('tipo_gestao', 'manager_type') || undefined,
+        assets_value: getVal('patrimonio_liquido', 'assets_value') || undefined,
+        management_fee: getVal('taxa_adm', 'management_fee') || undefined,
+        last_dividend: parseNumberSafe(getVal('ultimo_rendimento', 'last_dividend', 'rendimento')),
         
         updated_at: m.updated_at,
         
@@ -197,7 +209,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       
       if (metaData) {
           metaData.forEach((m: any) => {
+              // Determina tipo
               let assetType = AssetType.STOCK;
+              // Check robusto para FIIs: 'FII' explícito ou ticker terminando em 11/11B (padrão)
               if (m.type === 'FII' || m.ticker.endsWith('11') || m.ticker.endsWith('11B')) {
                   assetType = AssetType.FII;
               }
