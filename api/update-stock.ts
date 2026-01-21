@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
@@ -81,14 +80,12 @@ function normalizeKey(str: string) {
 }
 
 // Parser de data unificado e robusto (Garante YYYY-MM-DD com padding)
-// Resolve problemas de datas como "1/3/2024" virando "2024-03-01"
 const parseToISODate = (val: any): string | null => {
     if (!val) return null;
     const str = String(val).trim();
     if (str === '-' || str === '' || str.toLowerCase() === 'n/a') return null;
     
     // Tenta extrair formato DD/MM/YYYY (com ou sem zero à esquerda)
-    // Ex: 1/3/2024 ou 01/03/2024
     const matchBR = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if (matchBR) {
         const day = matchBR[1].padStart(2, '0');
@@ -97,8 +94,7 @@ const parseToISODate = (val: any): string | null => {
         return `${year}-${month}-${day}`;
     }
     
-    // Tenta extrair formato YYYY-MM-DD (às vezes vem sem padding do JSON do StatusInvest ex: 2024-3-1)
-    // Regex captura YYYY - M(M) - D(D)
+    // Tenta extrair formato YYYY-MM-DD
     const matchISO = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
     if (matchISO) {
         const year = matchISO[1];
@@ -218,7 +214,7 @@ async function scrapeInvestidor10(ticker: string) {
         }
 
         // 2. Extração de Dividendos (Tabela Histórica do Investidor10)
-        // Isso captura pagamentos provisionados que o StatusInvest pode não mostrar
+        // Isso captura pagamentos provisionados e futuros
         const dividends: any[] = [];
         $('#table-dividends-history tbody tr').each((_, tr) => {
             const tds = $(tr).find('td');
@@ -253,7 +249,7 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        const result = {
+        return {
             metadata: {
                 ticker: ticker.toUpperCase(),
                 type: finalType,
@@ -286,59 +282,9 @@ async function scrapeInvestidor10(ticker: string) {
             dividends: dividends
         };
 
-        return result;
-
     } catch (e: any) {
         console.error(`Erro Scraping ${ticker}: ${e.message}`);
         return null;
-    }
-}
-
-// ---------------------------------------------------------
-// PROVENTOS (STATUS INVEST)
-// ---------------------------------------------------------
-async function scrapeStatusInvestProventos(ticker: string) {
-    try {
-        const t = ticker.toUpperCase().replace(/F$/, ''); // ITSA4F -> ITSA4
-        let type = 'acoes';
-        if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('33') || t.endsWith('34')) type = 'fiis'; 
-
-        const refererUrl = `https://statusinvest.com.br/${type}/${t.toLowerCase()}`;
-        
-        // chartProventsType=2 costuma trazer pagos. 
-        const apiUrl = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
-
-        const data = await fetchHTML(apiUrl, refererUrl);
-        
-        // StatusInvest retorna { assetEarningsModels: [...] }
-        const earnings = data.assetEarningsModels || [];
-
-        return earnings.map((d: any) => {
-            // Tipos Avançados e Normalização
-            let labelTipo = 'REND'; 
-            const labelLower = String(d.etLabel || '').toLowerCase();
-
-            if (d.et === 1) labelTipo = 'DIV';
-            else if (d.et === 2) labelTipo = 'JCP';
-            else if (d.et === 3 || type === 'fiis') labelTipo = 'REND';
-            // Detecção via texto (mais seguro)
-            else if (labelLower.includes('juros') || labelLower.includes('jcp')) labelTipo = 'JCP';
-            else if (labelLower.includes('dividendo')) labelTipo = 'DIV';
-            else if (labelLower.includes('amortiza') || labelLower.includes('restitui')) labelTipo = 'AMORT';
-            
-            return {
-                ticker: ticker.toUpperCase(),
-                type: labelTipo,
-                date_com: parseToISODate(d.ed), // Aplica parser com padding
-                payment_date: parseToISODate(d.pd), // Aplica parser com padding
-                rate: d.v,
-                source: 'STATUS'
-            };
-        }).filter((d: any) => d.rate > 0 && d.date_com); 
-
-    } catch (error: any) { 
-        console.warn(`Erro scraping proventos ${ticker}: ${error.message}`);
-        return []; 
     }
 }
 
@@ -354,42 +300,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
-        // Executa em paralelo: Metadata/Dividends do Investidor10 E Dividends do StatusInvest
-        const [inv10Data, statusData] = await Promise.all([
-            scrapeInvestidor10(ticker),
-            scrapeStatusInvestProventos(ticker)
-        ]);
+        // Busca exclusivamente no Investidor10
+        const inv10Data = await scrapeInvestidor10(ticker);
         
-        const metadata = inv10Data?.metadata;
-        const inv10Dividends = inv10Data?.dividends || [];
-        const statusDividends = statusData || [];
+        if (!inv10Data || !inv10Data.metadata) {
+            return res.status(404).json({ success: false, error: 'Dados não encontrados no Investidor10.' });
+        }
 
-        // FUSÃO DE DIVIDENDOS (Merge inteligente)
-        // Começa com os dados do StatusInvest
-        const finalDividends = [...statusDividends];
-        
-        // Adiciona ou enriquece com dados do Investidor10
-        inv10Dividends.forEach(dInv => {
-            // Verifica duplicidade baseada em Tipo, Data COM e Valor
-            const exists = finalDividends.find(dStatus => 
-                dStatus.type === dInv.type &&
-                dStatus.date_com === dInv.date_com &&
-                Math.abs(dStatus.rate - dInv.rate) < 0.0001
-            );
+        const metadata = inv10Data.metadata;
+        const dividends = inv10Data.dividends || [];
 
-            if (!exists) {
-                // Se não existe no StatusInvest, adiciona (provavelmente é um futuro que só tem no INV10)
-                finalDividends.push(dInv);
-            } else {
-                // Se existe, verifica se podemos enriquecer a data de pagamento
-                // StatusInvest às vezes tem data "-" enquanto INV10 já tem a data confirmada
-                if (!exists.payment_date && dInv.payment_date) {
-                    exists.payment_date = dInv.payment_date;
-                }
-            }
-        });
-
-        // Persistência no Supabase
+        // Persistência no Supabase (Metadata)
         if (metadata) {
             const dbPayload = {
                 ticker: metadata.ticker,
@@ -425,12 +346,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             if (metaError) console.error('Supabase Meta Error:', metaError);
         }
 
-        if (finalDividends.length > 0) {
-             const divPayload = finalDividends.map(d => ({
+        // Persistência no Supabase (Dividendos)
+        if (dividends.length > 0) {
+             const divPayload = dividends.map(d => ({
                  ticker: d.ticker,
                  type: d.type,
                  date_com: d.date_com,
-                 // Garante que entre no banco mesmo sem data de pagamento (placeholder futuro)
+                 // Garante que entre no banco mesmo sem data de pagamento (placeholder futuro para ordenação)
                  payment_date: d.payment_date || '2099-12-31', 
                  rate: d.rate
              }));
@@ -441,11 +363,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        if (!metadata) {
-            return res.status(404).json({ success: false, error: 'Dados não encontrados.' });
-        }
-
-        return res.status(200).json({ success: true, data: metadata, dividends: finalDividends });
+        return res.status(200).json({ success: true, data: metadata, dividends: dividends });
 
     } catch (e: any) {
         console.error(`Erro Handler ${ticker}:`, e);
