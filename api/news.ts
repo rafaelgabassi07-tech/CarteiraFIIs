@@ -136,8 +136,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
         // MODO BUSCA (Se 'q' foi passado na URL)
         if (q && typeof q === 'string') {
-            // Encode e busca
-            const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+            // Adiciona filtro temporal de 30 dias na busca específica também
+            const queryWithTime = `${q} when:30d`;
+            const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(queryWithTime)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
             const feed = await parser.parseURL(feedUrl);
             
             const processed = processItems(feed.items || [], seenTitles).map(item => ({
@@ -150,8 +151,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
         // MODO PADRÃO (Feeds Separados)
         // 1. Definição das Queries (Otimizadas para evitar contaminação cruzada)
-        const queryFII = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII" when:7d';
-        const queryStocks = '"Ações" OR "Ibovespa" OR "Dividendos Ações" OR "Mercado de Ações" -FII -"Fundos Imobiliários" when:7d';
+        // Alterado de when:7d para when:30d conforme solicitado
+        const queryFII = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII" when:30d';
+        const queryStocks = '"Ações" OR "Ibovespa" OR "Dividendos Ações" OR "Mercado de Ações" -FII -"Fundos Imobiliários" when:30d';
 
         const feedUrlFII = `https://news.google.com/rss/search?q=${encodeURIComponent(queryFII)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
         const feedUrlStocks = `https://news.google.com/rss/search?q=${encodeURIComponent(queryStocks)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
