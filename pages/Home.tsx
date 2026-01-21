@@ -257,7 +257,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
         
         const dividends = receiptsByMonthMap[key]?.reduce((acc, r) => acc + r.totalReceived, 0) || 0;
-        const investedAtThatTime = investedByMonth[key] || (invested > 0 ? invested : balance); // Fallback to current
+        
+        // CORREÇÃO: Respeita o tempo de existência da carteira.
+        // Se a chave não existe no mapa de investido, assume 0 (carteira não criada) 
+        // ao invés de usar o valor atual (invested/balance).
+        const investedAtThatTime = investedByMonth[key] || 0;
         
         const monthInflationCost = investedAtThatTime > 0 ? investedAtThatTime * monthlyInflationRate : 0;
         
