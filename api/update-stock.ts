@@ -36,7 +36,7 @@ async function fetchHTML(url: string, referer: string) {
                     'Upgrade-Insecure-Requests': '1',
                     'Cache-Control': 'no-cache'
                 },
-                timeout: 15000 // Aumentado timeout para garantir carregamento completo
+                timeout: 15000 
             });
             return response.data;
         } catch (e: any) {
@@ -47,7 +47,7 @@ async function fetchHTML(url: string, referer: string) {
     }
 }
 
-// --- HELPERS DE PARSING AVANÇADO ---
+// --- HELPERS DE PARSING ---
 
 function parseValue(valueStr: any): number {
     if (!valueStr) return 0;
@@ -74,19 +74,18 @@ function parseValue(valueStr: any): number {
 function normalizeKey(str: string) {
     if (!str) return '';
     return str.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
-        .replace(/[^a-z0-9]/g, "") // Remove especiais
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+        .replace(/[^a-z0-9]/g, "") 
         .trim();
 }
 
-// Parser de data unificado e robusto (Garante YYYY-MM-DD com padding)
 const parseToISODate = (val: any): string | null => {
     if (!val) return null;
     const str = String(val).trim();
     if (str === '-' || str === '' || str.toLowerCase() === 'n/a') return null;
     
-    // Tenta extrair formato DD/MM/YYYY (com ou sem zero à esquerda)
-    const matchBR = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    // Formato DD/MM/YYYY
+    const matchBR = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if (matchBR) {
         const day = matchBR[1].padStart(2, '0');
         const month = matchBR[2].padStart(2, '0');
@@ -94,67 +93,49 @@ const parseToISODate = (val: any): string | null => {
         return `${year}-${month}-${day}`;
     }
     
-    // Tenta extrair formato YYYY-MM-DD
+    // Formato YYYY-MM-DD
     const matchISO = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
     if (matchISO) {
-        const year = matchISO[1];
-        const month = matchISO[2].padStart(2, '0');
-        const day = matchISO[3].padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        return str;
     }
 
     return null;
 }
 
-// Mapa de chaves normalizadas para colunas do Banco de Dados
 const KEY_MAP: Record<string, string> = {
-    // Cotação
     'cotacao': 'cotacao_atual', 'valoratual': 'cotacao_atual', 'preco': 'cotacao_atual',
-    
-    // Valuation
     'pvp': 'pvp', 'vp': 'pvp', 'psobrevp': 'pvp',
     'pl': 'pl', 'psorel': 'pl', 'precolucro': 'pl',
     'dy': 'dy', 'dividendyield': 'dy', 'dy12m': 'dy',
     'vpa': 'vp_cota', 'vpporcota': 'vp_cota', 'valorpatrimonialporcota': 'vp_cota',
     'lpa': 'lpa', 'lucroporacao': 'lpa',
     'evebitda': 'ev_ebitda',
-    
-    // Eficiência
     'roe': 'roe',
     'margemliquida': 'margem_liquida',
     'margembruta': 'margem_bruta',
-    'margemebit': 'margem_ebit',
     'dividaliquidaebitda': 'divida_liquida_ebitda',
-    
-    // Crescimento
     'cagrreceita5anos': 'cagr_receita_5a', 
     'cagrlucros5anos': 'cagr_lucros_5a',
-    
-    // FIIs Específico
     'vacanciafisica': 'vacancia', 'vacancia': 'vacancia',
-    'ultimorendimento': 'ultimo_rendimento', 'rendimento': 'ultimo_rendimento', 'ultrendimento': 'ultimo_rendimento',
+    'ultimorendimento': 'ultimo_rendimento', 'rendimento': 'ultimo_rendimento',
     'patrimonioliquido': 'patrimonio_liquido',
-    'numerodecotistas': 'num_cotistas', 'cotistas': 'num_cotistas',
     'taxadeadministracao': 'taxa_adm',
-    'segmento': 'segmento', 'segmentodeatuacao': 'segmento',
+    'segmento': 'segmento',
     'tipodegestao': 'tipo_gestao',
-    
-    // Geral
     'liquidezmediadiaria': 'liquidez', 'liquidez': 'liquidez',
     'valordemercado': 'val_mercado'
 };
 
 // ---------------------------------------------------------
-// SCRAPER ENGINE "HUNTER" (Investidor10)
+// SCRAPER ENGINE
 // ---------------------------------------------------------
 
 async function scrapeInvestidor10(ticker: string) {
     try {
         const isFII = ticker.endsWith('11') || ticker.endsWith('11B');
-        
         const strategies = isFII 
-            ? [`/fiis/${ticker.toLowerCase()}/`, `/acoes/${ticker.toLowerCase()}/`, `/bdrs/${ticker.toLowerCase()}/`]
-            : [`/acoes/${ticker.toLowerCase()}/`, `/bdrs/${ticker.toLowerCase()}/`, `/fiis/${ticker.toLowerCase()}/`];
+            ? [`/fiis/${ticker.toLowerCase()}/`, `/acoes/${ticker.toLowerCase()}/`]
+            : [`/acoes/${ticker.toLowerCase()}/`, `/fiis/${ticker.toLowerCase()}/`, `/bdrs/${ticker.toLowerCase()}/`];
 
         let html = null;
         let finalType = isFII ? 'FII' : 'ACAO';
@@ -174,93 +155,85 @@ async function scrapeInvestidor10(ticker: string) {
         const $ = cheerio.load(html);
         const extracted: any = {};
 
-        // 1. Extração de Metadados (Cards)
+        // 1. Extração de Metadados
         $('span, div, td, strong, b, h3, h4').each((_, el) => {
             const text = $(el).clone().children().remove().end().text().trim();
             if (!text || text.length > 50) return; 
-
             const normText = normalizeKey(text);
-            
-            if (KEY_MAP[normText]) {
-                const dbKey = KEY_MAP[normText];
-                if (extracted[dbKey]) return;
-
-                let value = $(el).next().text().trim();
-                if (!value) value = $(el).siblings('.value').text().trim();
-                if (!value) value = $(el).siblings('span').text().trim();
-                
-                if (!value) {
-                    const parent = $(el).parent();
-                    value = parent.find('.value').text().trim();
-                    if (!value) value = parent.next().text().trim();
-                    if (!value) value = parent.find('div[class*="body"] span').text().trim();
-                    if (!value) value = parent.find('span').last().text().trim();
-                }
-
-                if (!value && $(el).is('td')) {
-                    value = $(el).next('td').text().trim();
-                }
-
+            if (KEY_MAP[normText] && !extracted[KEY_MAP[normText]]) {
+                let value = $(el).next().text().trim() || $(el).siblings('.value').text().trim() || $(el).parent().find('.value').text().trim();
                 if (value && (/[0-9]/.test(value) || value === '-')) {
-                    extracted[dbKey] = value;
+                    extracted[KEY_MAP[normText]] = value;
                 }
             }
         });
 
-        // Fallbacks de Cotação
         if (!extracted.cotacao_atual) {
-            const headerVal = $('div._card.cotacao div._card-body span').text();
-            if (headerVal) extracted.cotacao_atual = headerVal;
+            extracted.cotacao_atual = $('div._card.cotacao div._card-body span').text();
         }
 
-        // 2. Extração de Dividendos (SCANNER GENÉRICO)
-        // Varre TODAS as tabelas em busca de colunas chave, em vez de depender de IDs
+        // 2. Extração de Dividendos (SCANNER INTELIGENTE V2)
         const dividends: any[] = [];
         
         $('table').each((_, table) => {
-            // Detecta índices das colunas analisando o cabeçalho
-            const headers = $(table).find('thead th').map((_, th) => $(th).text().trim().toLowerCase()).get();
-            
-            // Busca índices baseados em palavras-chave flexíveis
+            const $table = $(table);
+            const headers = $table.find('thead th').map((_, th) => $(th).text().trim().toLowerCase()).get();
+            const rows = $table.find('tbody tr');
+
+            // Estratégia A: Headers Conhecidos
             let idxType = headers.findIndex(h => h.includes('tipo'));
             let idxCom = headers.findIndex(h => h.includes('data com') || h.includes('data-com') || h.includes('base'));
             let idxPay = headers.findIndex(h => h.includes('pagamento') || h.includes('data pag'));
             let idxVal = headers.findIndex(h => h.includes('valor'));
 
-            // Se encontrou pelo menos Data Com e Valor, processa a tabela
-            if (idxCom > -1 && idxVal > -1) {
-                // Se Tipo ou Pagamento não forem encontrados, tenta inferir posições padrão ou usa 0/2 como fallback
-                if (idxType === -1) idxType = 0; // Geralmente a primeira coluna
-                if (idxPay === -1) idxPay = 2;   // Geralmente a terceira coluna
+            // Estratégia B: Scanner Heurístico (Se headers falharem ou não existirem)
+            // Analisa o conteúdo da primeira linha para "adivinhar" as colunas
+            if (idxCom === -1 || idxVal === -1) {
+                const firstRowTds = $(rows[0]).find('td');
+                firstRowTds.each((i, td) => {
+                    const txt = $(td).text().trim();
+                    // Regex Data: DD/MM/AAAA
+                    if (/\d{2}\/\d{2}\/\d{4}/.test(txt)) {
+                        if (idxCom === -1) idxCom = i; // Assume a primeira data como Data Com
+                        else if (idxPay === -1) idxPay = i; // Assume a segunda data como Pagamento
+                    }
+                    // Regex Valor: R$ 0,00 ou 0,0000
+                    if ((txt.includes(',') || txt.includes('.')) && /[0-9]/.test(txt) && !/\d{2}\/\d{2}\/\d{4}/.test(txt)) {
+                        if (idxVal === -1) idxVal = i;
+                    }
+                    // Regex Tipo
+                    if (/(div|jcp|rend|juros|amor)/i.test(txt)) {
+                        idxType = i;
+                    }
+                });
+            }
 
-                $(table).find('tbody tr').each((_, tr) => {
+            // Se achamos pelo menos Data Com e Valor, processa
+            if (idxCom > -1 && idxVal > -1) {
+                rows.each((_, tr) => {
                     const tds = $(tr).find('td');
                     if (tds.length >= 3) {
-                        const typeRaw = $(tds[idxType]).text().trim().toLowerCase();
+                        const typeRaw = idxType > -1 ? $(tds[idxType]).text().trim().toLowerCase() : 'div';
                         const dateComRaw = $(tds[idxCom]).text().trim();
-                        const datePayRaw = idxPay < tds.length ? $(tds[idxPay]).text().trim() : '';
+                        const datePayRaw = idxPay > -1 ? $(tds[idxPay]).text().trim() : '';
                         const valRaw = $(tds[idxVal]).text().trim();
 
                         const dateCom = parseToISODate(dateComRaw);
-                        const datePay = parseToISODate(datePayRaw); // Pode ser null
+                        const datePay = parseToISODate(datePayRaw);
                         const val = parseValue(valRaw);
 
-                        // Normalização de Nomenclaturas
-                        let type = 'DIV';
-                        if (typeRaw.includes('juros') || typeRaw.includes('jcp')) type = 'JCP';
-                        else if (typeRaw.includes('rendimento')) type = 'REND';
-                        else if (typeRaw.includes('amortiza') || typeRaw.includes('restitui')) type = 'AMORT';
-                        else if (typeRaw.includes('dividend')) type = 'DIV';
-
-                        // Só adiciona se tiver Data Com e Valor positivo
                         if (dateCom && val > 0) {
+                            let type = 'DIV';
+                            if (typeRaw.includes('juros') || typeRaw.includes('jcp')) type = 'JCP';
+                            else if (typeRaw.includes('rend')) type = 'REND';
+                            else if (typeRaw.includes('amort') || typeRaw.includes('restitui')) type = 'AMORT';
+
                             dividends.push({
                                 ticker: ticker.toUpperCase(),
                                 type,
                                 date_com: dateCom,
-                                payment_date: datePay || null, // Se null, é futuro sem data definida (será tratado no handler)
-                                rate: val,
-                                source: 'INV10'
+                                payment_date: datePay || null,
+                                rate: val
                             });
                         }
                     }
@@ -274,8 +247,6 @@ async function scrapeInvestidor10(ticker: string) {
                 type: finalType,
                 segmento: extracted.segmento || 'Geral',
                 updated_at: new Date().toISOString(),
-                
-                // Mapeamento explícito para o Supabase
                 cotacao_atual: parseValue(extracted.cotacao_atual),
                 dy: parseValue(extracted.dy),
                 pvp: parseValue(extracted.pvp),
@@ -307,9 +278,6 @@ async function scrapeInvestidor10(ticker: string) {
     }
 }
 
-// ---------------------------------------------------------
-// HANDLER
-// ---------------------------------------------------------
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -319,7 +287,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
-        // Busca exclusivamente no Investidor10
         const inv10Data = await scrapeInvestidor10(ticker);
         
         if (!inv10Data || !inv10Data.metadata) {
@@ -329,26 +296,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const metadata = inv10Data.metadata;
         const dividends = inv10Data.dividends || [];
 
-        // Deduplicação em memória para garantir
+        // Deduplicação inteligente
         const uniqueMap = new Map();
         dividends.forEach(d => {
-            // Chave única composta ignorando a data de pagamento inicialmente
-            // Isso agrupa o "mesmo evento" que pode ter vindo duplicado do HTML
-            const key = `${d.type}|${d.date_com}|${d.rate}`; 
-            
+            // Chave ignora a data de pagamento para agrupar eventos iguais
+            const key = `${d.type}|${d.date_com}|${d.rate.toFixed(4)}`; 
             const existing = uniqueMap.get(key);
+            
+            // Prefere o registro que tenha Data de Pagamento preenchida
             if (!existing) {
                 uniqueMap.set(key, d);
-            } else {
-                // Se já existe, mantemos a versão que tiver a data de pagamento definida
-                if (!existing.payment_date && d.payment_date) {
-                    uniqueMap.set(key, d);
-                }
+            } else if (!existing.payment_date && d.payment_date) {
+                uniqueMap.set(key, d);
             }
         });
         const cleanDividends = Array.from(uniqueMap.values());
 
-        // Persistência no Supabase (Metadata)
         if (metadata) {
             const dbPayload = {
                 ticker: metadata.ticker,
@@ -376,27 +339,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 taxa_adm: metadata.taxa_adm,
                 ultimo_rendimento: metadata.ultimo_rendimento
             };
-
-            // Remove undefined para não quebrar o banco
             Object.keys(dbPayload).forEach(key => dbPayload[key] === undefined && delete dbPayload[key]);
-
-            const { error: metaError } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
-            if (metaError) console.error('Supabase Meta Error:', metaError);
+            await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
         }
 
-        // Persistência no Supabase (Dividendos)
         if (cleanDividends.length > 0) {
              const divPayload = cleanDividends.map(d => ({
                  ticker: d.ticker,
                  type: d.type,
                  date_com: d.date_com,
-                 // Garante que entre no banco mesmo sem data de pagamento (placeholder futuro para ordenação)
                  payment_date: d.payment_date || '2099-12-31', 
                  rate: d.rate
              }));
 
-             // CORREÇÃO CRÍTICA PARA DUPLICIDADE:
-             // Identifica quais dividendos agora possuem data real e deleta seus placeholders (Provisionados)
+             // Limpeza de provisionados antigos
              const datesWithRealPayment = divPayload
                 .filter(d => d.payment_date !== '2099-12-31')
                 .map(d => d.date_com);
@@ -404,9 +360,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
              if (datesWithRealPayment.length > 0) {
                  await supabase.from('market_dividends')
                     .delete()
-                    .eq('ticker', ticker) // Remove apenas deste ativo
-                    .eq('payment_date', '2099-12-31') // Remove apenas os placeholders (futuros)
-                    .in('date_com', datesWithRealPayment); // Remove apenas para as datas que agora são reais
+                    .eq('ticker', ticker) 
+                    .eq('payment_date', '2099-12-31')
+                    .in('date_com', datesWithRealPayment); 
              }
 
              await supabase.from('market_dividends').upsert(divPayload, { 
