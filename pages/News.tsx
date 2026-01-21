@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, Wallet } from 'lucide-react';
 import { NewsItem, Transaction } from '../types';
@@ -166,7 +167,7 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     return (
         <div className="pb-32 min-h-screen">
             {/* Header Sticky */}
-            <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all -mx-4 px-6 py-3 mb-4">
+            <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all -mx-4 px-4 py-3 mb-4">
                 <div className="flex flex-col gap-3">
                     
                     {/* Linha 1: Busca e Refresh */}
@@ -230,7 +231,7 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                 </div>
             </div>
 
-            <div className="px-4">
+            <div className="-mx-2">
                 {loading ? (
                     <SkeletonNews />
                 ) : error ? (
@@ -259,7 +260,7 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                                         href={item.url}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="block bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all press-effect group anim-slide-up relative overflow-hidden"
+                                        className="block bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all press-effect group anim-slide-up relative overflow-hidden"
                                         style={{ animationDelay: `${index * 50}ms` }}
                                     >
                                         <div className="flex justify-between items-start mb-3 relative z-10">
