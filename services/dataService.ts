@@ -164,27 +164,29 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
               const normalizedTicker = m.ticker.trim().toUpperCase();
 
+              // Mapeamento Defensivo: Verifica múltiplas chaves possíveis vindas do Scraper/DB
+              // O Scraper pode salvar como 'pvp' ou 'p_vp', 'dy' ou 'dy_12m' dependendo da versão do parser
               metadata[normalizedTicker] = {
                   segment: m.segment || 'Geral',
                   type: assetType,
                   fundamentals: {
                       // Comuns
-                      p_vp: parseNumberSafe(m.pvp),
-                      dy_12m: parseNumberSafe(m.dy_12m),
-                      p_l: parseNumberSafe(m.pl),
+                      p_vp: parseNumberSafe(m.pvp ?? m.p_vp),
+                      dy_12m: parseNumberSafe(m.dy_12m ?? m.dy),
+                      p_l: parseNumberSafe(m.pl ?? m.p_l),
                       roe: parseNumberSafe(m.roe),
                       liquidity: m.liquidez || '',
-                      market_cap: m.valor_mercado || undefined, 
+                      market_cap: m.valor_mercado || m.val_mercado || undefined, 
                       
                       // Ações
                       net_margin: parseNumberSafe(m.margem_liquida),
                       gross_margin: parseNumberSafe(m.margem_bruta),
-                      cagr_revenue: parseNumberSafe(m.cagr_receita),
-                      cagr_profits: parseNumberSafe(m.cagr_lucro),
+                      cagr_revenue: parseNumberSafe(m.cagr_receita ?? m.cagr_receita_5a),
+                      cagr_profits: parseNumberSafe(m.cagr_lucro ?? m.cagr_lucros_5a),
                       net_debt_ebitda: parseNumberSafe(m.divida_liquida_ebitda),
                       ev_ebitda: parseNumberSafe(m.ev_ebitda),
                       lpa: parseNumberSafe(m.lpa),
-                      vpa: parseNumberSafe(m.vpa),
+                      vpa: parseNumberSafe(m.vpa ?? m.vp_cota),
 
                       // FIIs
                       vacancy: parseNumberSafe(m.vacancia),

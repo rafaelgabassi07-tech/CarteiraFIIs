@@ -1,6 +1,6 @@
 
-import React, { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Plus, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Square, CheckCircle2 } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, Plus, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Square, CheckCircle2, Calculator } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 import { supabase } from '../services/supabase';
@@ -128,6 +128,13 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [quantity, setQuantity] = useState('');
     const [price, setPrice] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    
+    // Cálculo de total em tempo real para UX
+    const estimatedTotal = useMemo(() => {
+        const q = parseFloat(quantity) || 0;
+        const p = parseFloat(price) || 0;
+        return q * p;
+    }, [quantity, price]);
 
     const filteredTransactions = useMemo(() => {
         if (activeFilter === 'ALL') return transactions;
@@ -151,10 +158,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             }
             groups[k].items.push(t);
             const val = t.price * t.quantity;
-            
-            // Lógica de Saldo de Movimentação (Investimento Líquido)
-            // BUY = Aporte (Soma ao volume investido no mês)
-            // SELL = Retirada (Subtrai do volume investido)
             if (t.type === 'BUY') groups[k].totalNet += val; 
             else groups[k].totalNet -= val; 
         });
@@ -253,6 +256,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         { id: 'FII', label: 'FIIs', icon: Building2 },
         { id: 'STOCK', label: 'Ações', icon: CandlestickChart },
     ];
+
+    const isBuy = type === 'BUY';
 
     return (
         <div className="anim-fade-in relative min-h-screen pb-60">
@@ -363,98 +368,135 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             </div>
 
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                <div className="p-6 pb-12">
-                    <div className="flex items-center justify-between mb-8 anim-slide-up">
-                        <div>
-                            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">
-                                {editingId ? 'Editar Ordem' : 'Nova Ordem'}
-                            </h2>
-                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-2">
-                                {editingId ? 'Atualizar registro' : 'Lançar movimentação'}
-                            </p>
+                <div className="p-6 pb-12 bg-white dark:bg-zinc-950 min-h-full">
+                    {/* Header do Modal */}
+                    <div className="flex items-center justify-between mb-6 anim-slide-up">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm ${editingId ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30 text-amber-600' : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white'}`}>
+                                {editingId ? <ArrowRightLeft className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">
+                                    {editingId ? 'Editar Ordem' : 'Nova Ordem'}
+                                </h2>
+                                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">
+                                    {editingId ? 'Atualizar registro' : 'Lançar movimentação'}
+                                </p>
+                            </div>
                         </div>
                         {editingId && (
                             <button 
                                 onClick={() => onRequestDeleteConfirmation(editingId)}
-                                className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl flex items-center justify-center border border-rose-100 dark:border-rose-900/30 press-effect"
+                                className="w-10 h-10 bg-rose-50 dark:bg-rose-900/10 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100 dark:border-rose-900/30 press-effect hover:bg-rose-100 dark:hover:bg-rose-900/20"
                             >
                                 <Trash2 className="w-5 h-5" />
                             </button>
                         )}
                     </div>
 
-                    <div className="space-y-5">
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 block">Ativo (Ticker)</label>
+                    <div className="space-y-4">
+                        {/* Seletor de Tipo (Switch estilo Segmented Control) */}
+                        <div className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-xl flex relative anim-slide-up" style={{ animationDelay: '50ms' }}>
+                            <div 
+                                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola ${isBuy ? 'left-1 bg-emerald-500' : 'translate-x-[100%] left-1 bg-rose-500'}`}
+                            ></div>
+                            <button 
+                                onClick={() => setType('BUY')} 
+                                className={`relative z-10 flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${isBuy ? 'text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            >
+                                <span className="flex items-center justify-center gap-1.5"><TrendingUp className="w-3 h-3" /> Compra</span>
+                            </button>
+                            <button 
+                                onClick={() => setType('SELL')} 
+                                className={`relative z-10 flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${!isBuy ? 'text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            >
+                                <span className="flex items-center justify-center gap-1.5"><TrendingDown className="w-3 h-3" /> Venda</span>
+                            </button>
+                        </div>
+
+                        {/* Input Ticker */}
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 focus-within:border-zinc-400 dark:focus-within:border-zinc-600 transition-colors anim-slide-up" style={{ animationDelay: '100ms' }}>
+                            <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 block flex items-center gap-1">
+                                <Hash className="w-3 h-3" /> Ticker do Ativo
+                            </label>
                             <input 
                                 type="text" 
                                 value={ticker}
                                 onChange={handleTickerChange}
                                 placeholder="EX: HGLG11"
-                                className="w-full bg-transparent text-3xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-200 dark:placeholder:text-zinc-800 outline-none uppercase tracking-tight"
+                                className="w-full bg-transparent text-3xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-300 dark:placeholder:text-zinc-700 outline-none uppercase tracking-tight"
                                 autoFocus={!editingId}
                             />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 anim-slide-up" style={{ animationDelay: '150ms' }}>
-                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 flex relative">
-                                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ease-out-soft ${type === 'SELL' ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
-                                <button onClick={() => setType('BUY')} className={`relative z-10 flex-1 py-3 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>Compra</button>
-                                <button onClick={() => setType('SELL')} className={`relative z-10 flex-1 py-3 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${type === 'SELL' ? 'text-rose-500' : 'text-zinc-400'}`}>Venda</button>
-                            </div>
-
-                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 flex relative">
-                                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ease-out-soft ${assetType === AssetType.STOCK ? 'translate-x-[100%] translate-x-1' : 'left-1.5'}`}></div>
-                                <button onClick={() => setAssetType(AssetType.FII)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${assetType === AssetType.FII ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>FII</button>
-                                <button onClick={() => setAssetType(AssetType.STOCK)} className={`relative z-10 flex-1 py-3 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-center transition-colors ${assetType === AssetType.STOCK ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>Ação</button>
+                            {/* Tipo de Ativo Automático */}
+                            <div className="flex gap-2 mt-3">
+                                <button onClick={() => setAssetType(AssetType.FII)} className={`px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider border transition-colors ${assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-200 dark:border-indigo-900/30' : 'bg-transparent text-zinc-400 border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}>
+                                    FII
+                                </button>
+                                <button onClick={() => setAssetType(AssetType.STOCK)} className={`px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider border transition-colors ${assetType === AssetType.STOCK ? 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 border-sky-200 dark:border-sky-900/30' : 'bg-transparent text-zinc-400 border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}>
+                                    Ação
+                                </button>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 anim-slide-up" style={{ animationDelay: '200ms' }}>
-                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40">
-                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Quantidade</label>
+                        {/* Grid Quantidade e Preço */}
+                        <div className="grid grid-cols-2 gap-3 anim-slide-up" style={{ animationDelay: '150ms' }}>
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 focus-within:border-zinc-400 dark:focus-within:border-zinc-600 transition-colors">
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1 block">Quantidade</label>
                                 <input 
                                     type="number" 
                                     inputMode="numeric"
                                     value={quantity}
                                     onChange={e => setQuantity(e.target.value)}
                                     placeholder="0"
-                                    className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-200 outline-none"
+                                    className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white placeholder:text-zinc-300 outline-none"
                                 />
                             </div>
 
-                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40">
-                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Preço (Unit)</label>
+                            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 focus-within:border-zinc-400 dark:focus-within:border-zinc-600 transition-colors">
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1 block">Preço (R$)</label>
                                 <input 
                                     type="number" 
                                     inputMode="decimal"
                                     value={price}
                                     onChange={e => setPrice(e.target.value)}
                                     placeholder="0.00"
-                                    className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-200 outline-none"
+                                    className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white placeholder:text-zinc-300 outline-none"
                                 />
                             </div>
                         </div>
 
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 flex items-center gap-4 anim-slide-up" style={{ animationDelay: '250ms' }}>
-                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-zinc-500">
+                        {/* Total Estimado */}
+                        <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl flex justify-between items-center anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
+                            <div className="flex items-center gap-2 text-zinc-400">
+                                <Calculator className="w-4 h-4" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">Total Operação</span>
+                            </div>
+                            <span className={`text-lg font-black ${isBuy ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                {formatBRL(estimatedTotal)}
+                            </span>
+                        </div>
+
+                        {/* Data */}
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 flex items-center gap-4 anim-slide-up" style={{ animationDelay: '250ms' }}>
+                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-zinc-500 shadow-sm">
                                 <Calendar className="w-5 h-5" />
                             </div>
                             <div className="flex-1">
-                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Data da Operação</label>
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Data do Pregão</label>
                                 <input 
                                     type="date" 
                                     value={date}
                                     onChange={e => setDate(e.target.value)}
-                                    className="w-full bg-transparent text-sm font-black text-zinc-900 dark:text-white outline-none"
+                                    className="w-full bg-transparent text-sm font-bold text-zinc-900 dark:text-white outline-none"
                                 />
                             </div>
                         </div>
 
+                        {/* Botão Salvar */}
                         <button 
                             onClick={handleSave}
                             disabled={!ticker || !quantity || !price}
-                            className={`w-full py-5 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-xl press-effect mt-6 transition-all ${(!ticker || !quantity || !price) ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'}`}
+                            className={`w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-xl press-effect mt-6 transition-all ${(!ticker || !quantity || !price) ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100'}`}
                             style={{ animationDelay: '300ms' }}
                         >
                             <Save className="w-4 h-4" />

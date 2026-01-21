@@ -145,6 +145,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [chartType, setChartType] = useState<'AREA' | 'BAR'>('AREA');
   
   const safeInflation = Number(inflationRate) || 4.62;
+  const monthlyInflationRate = Math.pow(1 + (safeInflation) / 100, 1 / 12) - 1;
 
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
@@ -218,24 +219,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     }).reverse();
 
     // --- CÁLCULO DE INFLAÇÃO ACUMULADA (LIFETIME) ---
-    // Recalcula o histórico de investimento desde o início para aplicar inflação composta
     const investedByMonth: Record<string, number> = {};
     let lifetimeInflationCost = 0;
-    const monthlyInflationRate = Math.pow(1 + (safeInflation) / 100, 1 / 12) - 1;
     
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
     if (sortedTxs.length > 0) {
-        // Data da primeira transação
         const startYear = parseInt(sortedTxs[0].date.substring(0,4));
-        // Safety: Se data for muito antiga (erro de importação), clamp em 2000
         const safeStartYear = Math.max(startYear, 2000); 
         const startMonth = parseInt(sortedTxs[0].date.substring(5,7)) - 1;
         
         let currentInvested = 0;
         let txIndex = 0;
         
-        // Loop mês a mês do início até hoje
         const cursorDate = new Date(safeStartYear, startMonth, 1);
         const endDate = new Date(); 
         
@@ -243,11 +239,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             const cursorKey = cursorDate.toISOString().substring(0, 7);
             const endOfMonth = new Date(cursorDate.getFullYear(), cursorDate.getMonth() + 1, 0).toISOString().split('T')[0];
             
-            // Processa transações até o fim deste mês
             while(txIndex < sortedTxs.length && sortedTxs[txIndex].date <= endOfMonth) {
                 const t = sortedTxs[txIndex];
                 if (t.type === 'BUY') currentInvested += (t.price * t.quantity);
-                // Na venda, reduzimos o capital investido "proporcionalmente" ao valor de saída (simplificação aceitável sem FIFO)
                 else currentInvested -= (t.price * t.quantity);
                 txIndex++;
             }
@@ -255,7 +249,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             const investedThisMonth = Math.max(0, currentInvested);
             investedByMonth[cursorKey] = investedThisMonth;
             
-            // Custo de inflação do mês sobre o capital investido
             if (investedThisMonth > 0) {
                 lifetimeInflationCost += investedThisMonth * monthlyInflationRate;
             }
@@ -265,7 +258,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     }
 
     // --- DADOS PARA O GRÁFICO (Últimos 12 Meses) ---
-    // Geração: De T-11 até T-0 (Cronológico: Antigo -> Novo)
     const last12MonthsData: MonthlyInflationData[] = [];
     let accDiv = 0;
     let accInf = 0;
@@ -286,7 +278,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             month: monthLabel,
             fullDate: key,
             dividends: dividends,
-            inflation: monthInflationCost,
+            inflation: monthInflationCost, // Valor do custo mensal
             net: dividends - monthInflationCost,
             accDiv,
             accInf
@@ -304,22 +296,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         history: sortedHistory, 
         receiptsByMonth: receiptsByMonthMap,
         realYieldMetrics: { 
-            realReturn: realTotalReturnPercent, // Agora inclui valorização
+            realReturn: realTotalReturnPercent,
             realReturnValue: realTotalGainValue,
             inflationCost: lifetimeInflationCost, 
             baseValue: invested,
             yieldOnCost,
             coverageRatio,
             paybackYears,
-            totalNominalGain: totalProfitValue // Lucro Nominal Total
+            totalNominalGain: totalProfitValue
         },
-        last12MonthsData, // Dados já estão em ordem cronológica (Jan -> Dec)
+        last12MonthsData,
         provisionedMap: provMap, 
         provisionedTotal: provTotal,
         sortedProvisionedMonths,
         dividendsChartData
     };
-  }, [dividendReceipts, received, invested, balance, safeInflation, transactions, totalProfitValue, totalDividendsReceived]);
+  }, [dividendReceipts, received, invested, balance, safeInflation, transactions, totalProfitValue, totalDividendsReceived, monthlyInflationRate]);
 
   const { typeData, classChartData, assetsChartData } = useMemo(() => {
       let fiisTotal = 0;
@@ -374,18 +366,41 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const SpreadTooltip = ({ active, payload, label }: any) => {
       if (active && payload && payload.length) {
+          // Payload[0] = Dividends, Payload[1] = Inflation (from dataKey order in charts)
+          const divData = payload.find((p: any) => p.dataKey === 'accDiv' || p.name === 'Dividendos');
+          const infData = payload.find((p: any) => p.dataKey === 'accInf' || p.name === 'Inflação');
+          
+          // No gráfico de barras, 'inflation' é o valor mensal direto no dataKey 'inflation' se quiséssemos mostrar o mês
+          // Mas como usamos accInf/accDiv para área, e no BarChart usamos accDiv/accInf também?
+          // No BarChart usamos 'accDiv' e 'accInf' que são acumulados? NÃO.
+          // Espera, no código anterior:
+          // AreaChart usa 'accDiv' e 'accInf'.
+          // BarChart usa 'accDiv' e 'accInf' também.
+          // Se queremos mostrar o custo mensal no tooltip, precisamos pegar do payload original.
+          
+          const rawData = divData?.payload;
+          const monthlyInfCost = rawData?.inflation || 0;
+
           return (
-              <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50">
+              <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50 min-w-[140px]">
                   <p className="text-xs font-black text-zinc-900 dark:text-white mb-2 uppercase tracking-wider">{label}</p>
                   <div className="space-y-1">
                       <div className="flex items-center justify-between gap-4">
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Dividendos</span>
-                          <span className="text-[10px] text-zinc-900 dark:text-white font-bold">{formatBRL(payload[0].value, privacyMode)}</span>
+                          <span className="text-[10px] text-zinc-900 dark:text-white font-bold">{formatBRL(divData?.value, privacyMode)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-4">
-                          <span className="text-[10px] text-rose-500 font-bold">Inflação</span>
-                          <span className="text-[10px] text-zinc-900 dark:text-white font-bold">{formatBRL(payload[1].value, privacyMode)}</span>
+                          <span className="text-[10px] text-rose-500 font-bold">Custo Inflação</span>
+                          <span className="text-[10px] text-zinc-900 dark:text-white font-bold">{formatBRL(infData?.value, privacyMode)}</span>
                       </div>
+                      
+                      {/* Destaque para o custo mensal subtraído */}
+                      {monthlyInfCost > 0 && (
+                          <div className="pt-2 mt-2 border-t border-zinc-100 dark:border-zinc-800">
+                              <p className="text-[8px] font-medium text-zinc-400">Neste mês foi subtraído:</p>
+                              <p className="text-[9px] font-black text-rose-500">-{formatBRL(monthlyInfCost, privacyMode)} (IPCA)</p>
+                          </div>
+                      )}
                   </div>
               </div>
           );
@@ -1043,7 +1058,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                       {/* Area Chart: Spread Analysis (Visualizacao Corrigida e Toggle Implementado) */}
                       <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{animationDelay: '300ms'}}>
-                          <div className="flex items-center justify-between mb-6 px-2">
+                          <div className="flex items-center justify-between mb-4 px-2">
                               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                                   <Layers className="w-3 h-3" /> Spread de Rendimento (12 Meses)
                               </h3>
@@ -1064,6 +1079,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                   </button>
                               </div>
                           </div>
+                          
+                          <p className="px-2 mb-4 text-[9px] font-medium text-zinc-500 leading-relaxed max-w-sm">
+                              Inflação aplicada mensalmente: <strong className="text-zinc-700 dark:text-zinc-300">{(monthlyInflationRate * 100).toFixed(2)}%</strong> (eq. {safeInflation}% a.a.) sobre o saldo investido no início de cada mês.
+                          </p>
                           
                           <div className="h-48 w-full">
                               <ResponsiveContainer width="100%" height="100%">

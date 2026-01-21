@@ -58,23 +58,12 @@ function parseValue(valueStr: any): number {
     if (!str || str === '-' || str === 'N/A' || str === '--') return 0;
 
     try {
-        // Estratégia: Limpar tudo que não é número, vírgula, ponto ou traço
-        // Preserva o sinal negativo se estiver no início
         const isNegative = str.startsWith('-');
-        
-        // Remove caracteres de moeda, porcentagem e letras
         str = str.replace(/[^0-9,.-]/g, ''); 
         
-        // Lógica Brasileira (PT-BR): Vírgula é decimal
         if (str.includes(',')) {
-            str = str.replace(/\./g, ''); // Remove milhar (pontos)
-            str = str.replace(',', '.');  // Transforma vírgula em ponto
-        } else {
-            // Se não tem vírgula, mas tem ponto:
-            // "1.200" -> Pode ser 1200 ou 1.2. Assumimos 1200 se for > 100 ou se tiver cara de milhar
-            // Mas em sites BR, 10.50 geralmente não existe, é 10,50. 
-            // Se tiver ponto, removemos assumindo que é milhar, a menos que seja pequeno.
-            // Para simplificar: No Investidor10, números inteiros grandes usam ponto (ex: cotas).
+            str = str.replace(/\./g, ''); // Remove milhar
+            str = str.replace(',', '.');  // Decimal
         }
 
         const num = parseFloat(str);
@@ -159,73 +148,50 @@ async function scrapeInvestidor10(ticker: string) {
         const $ = cheerio.load(html);
         const extracted: any = {};
 
-        // --- ESTRATÉGIA "HUNTER" (CAÇADOR) ---
-        // Em vez de procurar classes específicas, procuramos pelo TEXTO do rótulo e pegamos o valor próximo.
-        // Isso é muito mais robusto contra mudanças de layout.
-
-        // Lista de textos que nos interessam (chaves do mapa desnormalizadas para busca fuzzy)
         const targetTexts = [
             'P/VP', 'Dividend Yield', 'DY', 'Cotação', 'P/L', 'Vacância Física', 
             'Último Rendimento', 'Valor de Mercado', 'Liquidez', 'ROE', 'VPA', 
             'Margem Líquida', 'Dívida Líquida / EBITDA', 'Patrimônio Líquido'
         ];
 
-        // Varre todos os elementos que podem conter labels
         $('span, div, td, strong, b, h3, h4').each((_, el) => {
-            // Pega apenas o texto direto do elemento, sem filhos, para evitar pegar o card inteiro
             const text = $(el).clone().children().remove().end().text().trim();
-            
-            if (!text || text.length > 50) return; // Ignora textos longos
+            if (!text || text.length > 50) return; 
 
-            // Verifica se o texto contém algum dos nossos alvos
-            // Normaliza para comparação
             const normText = normalizeKey(text);
             
             if (KEY_MAP[normText]) {
                 const dbKey = KEY_MAP[normText];
-                
-                // Se já temos valor, pula (prioriza ocorrências no topo da página)
                 if (extracted[dbKey]) return;
 
-                // Tenta encontrar o valor nas proximidades:
-                
-                // 1. Irmão (Sibling)
                 let value = $(el).next().text().trim();
                 if (!value) value = $(el).siblings('.value').text().trim();
                 if (!value) value = $(el).siblings('span').text().trim();
                 
-                // 2. Filho do Pai (Tio/Primo) - Comum em cards
-                // Ex: <div class="card"><div class="header">Label</div><div class="body">Value</div></div>
                 if (!value) {
                     const parent = $(el).parent();
                     value = parent.find('.value').text().trim();
-                    if (!value) value = parent.next().text().trim(); // Se header e body são irmãos
+                    if (!value) value = parent.next().text().trim();
                     if (!value) value = parent.find('div[class*="body"] span').text().trim();
                     if (!value) value = parent.find('span').last().text().trim();
                 }
 
-                // 3. Estrutura de Tabela (td anterior -> td atual)
                 if (!value && $(el).is('td')) {
                     value = $(el).next('td').text().trim();
                 }
 
-                // Salva se achou algo que parece valor (contém número ou R$)
                 if (value && (/[0-9]/.test(value) || value === '-')) {
                     extracted[dbKey] = value;
                 }
             }
         });
 
-        // --- FALLBACKS ESPECÍFICOS (SELETORES RÍGIDOS) ---
-        // Caso o Hunter falhe, tentamos seletores conhecidos do Investidor10
-        
-        // Cotação no Header
+        // Fallbacks
         if (!extracted.cotacao_atual) {
             const headerVal = $('div._card.cotacao div._card-body span').text();
             if (headerVal) extracted.cotacao_atual = headerVal;
         }
 
-        // Cards Padrão
         if (!extracted.dy) {
             $('div._card').each((_, el) => {
                 const title = $(el).find('._card-header').text().toLowerCase();
@@ -235,14 +201,13 @@ async function scrapeInvestidor10(ticker: string) {
             });
         }
 
-        // PÓS-PROCESSAMENTO
         const result = {
             ticker: ticker.toUpperCase(),
             type: finalType,
             segmento: extracted.segmento || 'Geral',
             updated_at: new Date().toISOString(),
             
-            // Valores Numéricos
+            // Mapeamento explícito para o Supabase
             cotacao_atual: parseValue(extracted.cotacao_atual),
             dy: parseValue(extracted.dy),
             pvp: parseValue(extracted.pvp),
@@ -252,16 +217,12 @@ async function scrapeInvestidor10(ticker: string) {
             lpa: parseValue(extracted.lpa),
             vacancia: parseValue(extracted.vacancia),
             ultimo_rendimento: parseValue(extracted.ultimo_rendimento),
-            
-            // Margens e Dívidas
             margem_liquida: parseValue(extracted.margem_liquida),
             margem_bruta: parseValue(extracted.margem_bruta),
             divida_liquida_ebitda: parseValue(extracted.divida_liquida_ebitda),
             ev_ebitda: parseValue(extracted.ev_ebitda),
             cagr_receita_5a: parseValue(extracted.cagr_receita_5a),
             cagr_lucros_5a: parseValue(extracted.cagr_lucros_5a),
-
-            // Strings / Mistos
             liquidez: extracted.liquidez || 'N/A',
             val_mercado: extracted.val_mercado || 'N/A',
             tipo_gestao: extracted.tipo_gestao || 'N/A',
@@ -283,31 +244,51 @@ async function scrapeInvestidor10(ticker: string) {
 // ---------------------------------------------------------
 async function scrapeStatusInvestProventos(ticker: string) {
     try {
-        const t = ticker.toUpperCase().replace(/F$/, '');
+        const t = ticker.toUpperCase().replace(/F$/, ''); // ITSA4F -> ITSA4
         let type = 'acoes';
         if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('33') || t.endsWith('34')) type = 'fiis'; 
 
         const refererUrl = `https://statusinvest.com.br/${type}/${t.toLowerCase()}`;
+        
+        // Parâmetros exatos que o site usa (chartProventsType=2 geralmente traz tudo para ações)
         const apiUrl = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
         const data = await fetchHTML(apiUrl, refererUrl);
+        
+        // StatusInvest retorna { assetEarningsModels: [...] }
         const earnings = data.assetEarningsModels || [];
 
         return earnings.map((d: any) => {
+            // Parser robusto para datas DD/MM/YYYY ou YYYY-MM-DD
             const parseDateJSON = (dStr: string) => {
                 if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
-                const parts = dStr.split('/');
-                if (parts.length !== 3) return null;
-                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                
+                // Formato Brasileiro
+                if (dStr.includes('/')) {
+                    const parts = dStr.split('/');
+                    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+                
+                // Formato ISO
+                if (dStr.includes('-') && dStr.length >= 10) {
+                    return dStr.substring(0, 10);
+                }
+                
+                return null;
             };
             
+            // Tipos: 1=Dividendos, 2=JCP, 3=Rendimento (FIIs)
             let labelTipo = 'REND'; 
             if (d.et === 1) labelTipo = 'DIV';
-            if (d.et === 2) labelTipo = 'JCP';
-            if (d.et === 3) labelTipo = 'REND'; 
+            else if (d.et === 2) labelTipo = 'JCP';
+            else if (d.et === 3 || type === 'fiis') labelTipo = 'REND'; 
+            else if (String(d.etLabel).toLowerCase().includes('juros')) labelTipo = 'JCP';
             
+            // d.ed = Data Com (Ex-Date previous day basically)
+            // d.pd = Payment Date
+            // d.v = Valor
             return {
-                ticker: ticker.toUpperCase(),
+                ticker: ticker.toUpperCase(), // Usa o ticker original da requisição (com F se tiver)
                 type: labelTipo,
                 date_com: parseDateJSON(d.ed),
                 payment_date: parseDateJSON(d.pd),
@@ -316,6 +297,7 @@ async function scrapeStatusInvestProventos(ticker: string) {
         }).filter((d: any) => d.payment_date !== null && d.rate > 0);
 
     } catch (error: any) { 
+        console.warn(`Erro scraping proventos ${ticker}: ${error.message}`);
         return []; 
     }
 }
@@ -332,24 +314,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
-        const metadata = await scrapeInvestidor10(ticker);
-        const proventos = await scrapeStatusInvestProventos(ticker);
+        // Executa em paralelo
+        const [metadata, proventos] = await Promise.all([
+            scrapeInvestidor10(ticker),
+            scrapeStatusInvestProventos(ticker)
+        ]);
         
         if (metadata) {
+            // Mapeia para o Supabase (garante que chaves batam com colunas)
             const dbPayload = {
                 ticker: metadata.ticker,
                 type: metadata.type,
                 segment: metadata.segmento,
                 pvp: metadata.pvp,
                 pl: metadata.pl,
-                dy_12m: metadata.dy,
+                dy_12m: metadata.dy, // Importante: dy_12m no DB, dy no objeto interno
                 roe: metadata.roe,
                 vacancia: metadata.vacancia,
                 liquidez: metadata.liquidez,
                 valor_mercado: metadata.val_mercado,
                 updated_at: metadata.updated_at,
                 lpa: metadata.lpa,
-                vpa: metadata.vp_cota,
+                vpa: metadata.vp_cota, // vp_cota no objeto, vpa no DB (ajuste se necessário)
+                vp_cota: metadata.vp_cota, // Envia ambos para garantir
                 margem_liquida: metadata.margem_liquida,
                 margem_bruta: metadata.margem_bruta,
                 divida_liquida_ebitda: metadata.divida_liquida_ebitda,
@@ -361,6 +348,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 taxa_adm: metadata.taxa_adm,
                 ultimo_rendimento: metadata.ultimo_rendimento
             };
+
+            // Remove chaves undefined para não zerar dados existentes errados
+            Object.keys(dbPayload).forEach(key => dbPayload[key] === undefined && delete dbPayload[key]);
 
             const { error: metaError } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
             if (metaError) console.error('Supabase Meta Error:', metaError);
@@ -377,7 +367,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(404).json({ success: false, error: 'Dados não encontrados.' });
         }
 
-        // Retorna o objeto exatamente como esperado pelo frontend
         return res.status(200).json({ success: true, data: metadata, dividends: proventos });
 
     } catch (e: any) {
