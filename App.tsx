@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -32,10 +31,19 @@ const STORAGE_KEYS = {
 // Arredonda para 2 casas decimais
 const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
+// Helper de data seguro para comparações cronológicas precisas
+const safeDate = (dateStr: string) => {
+    if (!dateStr || dateStr.length < 10) return null;
+    const d = new Date(dateStr);
+    // Ajusta para meio-dia UTC para evitar problemas de timezone virando o dia
+    d.setUTCHours(12, 0, 0, 0);
+    return isNaN(d.getTime()) ? null : d.getTime();
+};
+
 // Calcula quantidade acumulada em uma data, considerando fracionário
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
-  if (!dateCom || dateCom.length < 10) return 0;
-  const targetDateStr = dateCom.substring(0, 10);
+  const targetTime = safeDate(dateCom);
+  if (!targetTime) return 0;
   
   // Normaliza o ticker do PROVENTO para a raiz (ex: ITSA4F -> ITSA4)
   // Isso garante que se o banco tiver ITSA4F por engano, ele vira ITSA4 para comparar
@@ -46,7 +54,9 @@ const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transa
 
   return transactions
     .filter(t => {
-        const txDateStr = (t.date || '').substring(0, 10);
+        const txTime = safeDate(t.date);
+        if (!txTime) return false; // Ignora transações sem data válida
+
         let txRoot = t.ticker.trim().toUpperCase(); // Ticker da Transação
         
         // Normaliza o ticker da TRANSAÇÃO para a raiz (ex: ITSA4F -> ITSA4)
@@ -54,8 +64,8 @@ const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transa
             txRoot = txRoot.slice(0, -1);
         }
 
-        // Compara raízes
-        return txRoot === targetRoot && txDateStr <= targetDateStr;
+        // Compara raízes e datas (via timestamp para precisão)
+        return txRoot === targetRoot && txTime <= targetTime;
     })
     .reduce((acc, t) => {
         if (t.type === 'BUY') return acc + t.quantity;
@@ -542,6 +552,7 @@ const App: React.FC = () => {
         const normalizedTicker = d.ticker.trim().toUpperCase();
         
         // Quantidade deve considerar ITSA4F vs ITSA4 (bidirecional)
+        // Utiliza a nova função com timestamp para garantir elegibilidade exata
         const qty = getQuantityOnDate(normalizedTicker, d.dateCom, sortedTxs);
         
         return { 
