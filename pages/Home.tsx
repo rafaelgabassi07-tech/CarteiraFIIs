@@ -295,65 +295,94 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
       
-      {/* 3. GRID PROVENTOS & ALOCAÇÃO & RAIO-X */}
+      {/* 3. GRID PROVENTOS & RAIO-X (NOVO LAYOUT) */}
       <div className="grid grid-cols-2 gap-3 anim-stagger-item" style={{ animationDelay: '200ms' }}>
-        <button onClick={() => setShowProventosModal(true)} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-sm relative overflow-hidden group">
-            <div className="relative z-10">
-                <div className="flex justify-between items-start mb-3">
-                    <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center"><CircleDollarSign className="w-4 h-4" /></div>
-                    <div className="text-[8px] font-black uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
-                        Média {formatBRL(divStats.monthlyAvg, true).split('R$')[1]}
+        
+        {/* Card Proventos (Aumentado) */}
+        <button onClick={() => setShowProventosModal(true)} className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-40 shadow-sm relative overflow-hidden group">
+            <div className="relative z-10 h-full flex flex-col justify-between">
+                <div>
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center"><CircleDollarSign className="w-5 h-5" /></div>
                     </div>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Renda Passiva</span>
+                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">{formatBRL(received, privacyMode)}</p>
                 </div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-0.5">Renda Passiva</span>
-                <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-tight">{formatBRL(received, privacyMode)}</p>
+                {provisionedTotal > 0 ? (
+                    <div className="py-1.5 px-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700 w-fit">
+                        <p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide flex items-center gap-1">
+                            + {formatBRL(provisionedTotal, privacyMode)} <span className="opacity-50">Futuro</span>
+                        </p>
+                    </div>
+                ) : (
+                    <div className="py-1.5 px-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700 w-fit">
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">Média {formatBRL(divStats.monthlyAvg, true).split('R$')[1]}</p>
+                    </div>
+                )}
             </div>
-            {provisionedTotal > 0 && (
-                <div className="mt-3 py-1.5 px-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700 self-start relative z-10">
-                    <p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide flex items-center gap-1">
-                        + {formatBRL(provisionedTotal, privacyMode)} <span className="opacity-50">Futuro</span>
-                    </p>
-                </div>
-            )}
             {/* Efeito de brilho ao hover */}
-            <div className="absolute -right-4 -bottom-4 w-20 h-20 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
+            <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
         </button>
 
-        <div className="flex flex-col gap-3">
-            <button onClick={() => setShowAllocationModal(true)} className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center"><PieIcon className="w-3.5 h-3.5" /></div>
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Alocação</span>
-                </div>
-                <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 mb-1">
-                    <div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-indigo-500"></div>
-                    <div style={{ width: `${typeData.stocks.percent}%` }} className="h-full bg-sky-500"></div>
-                </div>
-                <div className="flex justify-between text-[8px] font-bold uppercase tracking-widest">
-                    <span className="text-indigo-600 dark:text-indigo-400">FIIs {Math.round(typeData.fiis.percent)}%</span>
-                    <span className="text-sky-600 dark:text-sky-400">Ações {Math.round(typeData.stocks.percent)}%</span>
-                </div>
-            </button>
-
-            {/* Cartão RAIO-X (Antigo Inflação) */}
-            <button onClick={() => setShowRaioXModal(true)} className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-left press-effect hover:border-rose-300 dark:hover:border-rose-700 shadow-sm flex-1 relative overflow-hidden group">
-                <div className="flex justify-between items-center relative z-10">
-                    <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-rose-50 dark:bg-rose-900/10 rounded-lg flex items-center justify-center text-rose-500 border border-rose-100 dark:border-rose-900/30">
-                            <Activity className="w-3.5 h-3.5" />
+        {/* Card RAIO-X (Aumentado e Simétrico) */}
+        <button onClick={() => setShowRaioXModal(true)} className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-left press-effect hover:border-rose-300 dark:hover:border-rose-700 shadow-sm h-40 relative overflow-hidden group flex flex-col justify-between">
+            <div className="relative z-10 h-full flex flex-col justify-between">
+                <div>
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/10 rounded-xl flex items-center justify-center text-rose-500 border border-rose-100 dark:border-rose-900/30">
+                            <Activity className="w-5 h-5" />
                         </div>
-                        <div>
-                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Ganho Real</span>
-                            <p className="text-xs font-black text-zinc-900 dark:text-white">{realReturnPercent > 0 ? '+' : ''}{realReturnPercent.toFixed(2)}%</p>
-                        </div>
+                        <ArrowUpRight className="w-4 h-4 text-zinc-300 group-hover:text-rose-500 transition-colors" />
                     </div>
-                    <ArrowUpRight className="w-4 h-4 text-zinc-300 group-hover:text-rose-500 transition-colors" />
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Ganho Real</span>
+                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{realReturnPercent > 0 ? '+' : ''}{realReturnPercent.toFixed(2)}%</p>
                 </div>
-                <div className="absolute right-0 bottom-0 opacity-10">
-                    <BarChart3 className="w-12 h-12 text-rose-500 -mb-2 -mr-2" />
+                
+                <div className="py-1.5 px-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700 w-fit">
+                    <p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                        IPCA (12m) {safeInflation}%
+                    </p>
                 </div>
-            </button>
-        </div>
+            </div>
+            <div className="absolute right-0 bottom-0 opacity-10">
+                <BarChart3 className="w-20 h-20 text-rose-500 -mb-4 -mr-4" />
+            </div>
+        </button>
+      </div>
+
+      {/* 4. CARD ALOCAÇÃO (LARGURA TOTAL E AUMENTADO) */}
+      <div className="anim-stagger-item" style={{ animationDelay: '250ms' }}>
+        <button onClick={() => setShowAllocationModal(true)} className="w-full bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm relative group overflow-hidden">
+            <div className="flex justify-between items-end mb-4 relative z-10">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center"><PieIcon className="w-6 h-6" /></div>
+                    <div>
+                        <h3 className="text-lg font-black text-zinc-900 dark:text-white">Alocação</h3>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Diversificação da Carteira</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <span className="text-xs font-black text-zinc-900 dark:text-white block">{typeData.total > 0 ? 'Balanceado' : 'Vazio'}</span>
+                </div>
+            </div>
+            
+            <div className="relative z-10">
+                <div className="flex h-3 w-full rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 mb-3 shadow-inner">
+                    <div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-indigo-500 transition-all duration-1000 ease-out"></div>
+                    <div style={{ width: `${typeData.stocks.percent}%` }} className="h-full bg-sky-500 transition-all duration-1000 ease-out"></div>
+                </div>
+                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                        <span className="text-indigo-600 dark:text-indigo-400">FIIs {Math.round(typeData.fiis.percent)}%</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-sky-600 dark:text-sky-400">Ações {Math.round(typeData.stocks.percent)}%</span>
+                        <div className="w-2 h-2 rounded-full bg-sky-500"></div>
+                    </div>
+                </div>
+            </div>
+        </button>
       </div>
 
       {/* MODAIS */}
