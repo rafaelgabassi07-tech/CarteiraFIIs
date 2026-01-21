@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType } from '../types';
-import { Search, ArrowUpRight, ArrowDownRight, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle } from 'lucide-react';
+import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
@@ -20,20 +20,26 @@ const formatPercent = (val: number, privacy = false) => {
   return `${signal}${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
-// Componente auxiliar para Cards de Métricas no Modal
-const MetricCard = ({ label, value, subtext, icon: Icon, colorClass }: any) => (
-    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-start justify-between relative overflow-hidden group">
-        <div className="relative z-10">
-            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                {Icon && <Icon className="w-3 h-3" />} {label}
-            </p>
-            <p className={`text-lg font-black tracking-tight ${colorClass || 'text-zinc-900 dark:text-white'}`}>
+// Componente auxiliar para Cards de Métricas mais limpo e moderno
+const MetricCard = ({ label, value, subtext, highlight = false, colorClass, icon: Icon }: any) => (
+    <div className={`p-4 rounded-2xl flex flex-col justify-between h-full transition-all ${highlight ? 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-sm' : 'bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800/50'}`}>
+        <div>
+            <div className="flex items-center gap-1.5 mb-1.5">
+                {Icon && <Icon className="w-3 h-3 text-zinc-400" />}
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{label}</p>
+            </div>
+            <p className={`text-lg font-black tracking-tight leading-none ${colorClass || 'text-zinc-900 dark:text-white'}`}>
                 {value !== undefined && value !== null && value !== '' ? value : '-'}
             </p>
-            {subtext && <p className="text-[9px] font-bold text-zinc-400 mt-0.5">{subtext}</p>}
         </div>
-        {Icon && <Icon className="absolute -bottom-2 -right-2 w-12 h-12 text-zinc-200 dark:text-zinc-700/30 opacity-20 group-hover:scale-110 transition-transform" strokeWidth={1} />}
+        {subtext && <p className="text-[9px] font-bold text-zinc-400/70 mt-2">{subtext}</p>}
     </div>
+);
+
+const SectionHeader = ({ title, icon: Icon }: { title: string; icon: any }) => (
+    <h3 className="px-1 mb-3 mt-6 text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+        <Icon className="w-3 h-3" /> {title}
+    </h3>
 );
 
 const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode = false }) => {
@@ -162,8 +168,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                 </div>
 
                 {/* Bloco 1: Minha Posição */}
-                <div className="mb-8 anim-slide-up" style={{ animationDelay: '50ms' }}>
-                     <h3 className="px-2 mb-3 text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                <div className="mb-4 anim-slide-up" style={{ animationDelay: '50ms' }}>
+                     <h3 className="px-1 mb-3 text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                         <Wallet className="w-3 h-3" /> Minha Posição
                      </h3>
                      <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
@@ -204,84 +210,160 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                      </div>
                 </div>
 
-                {/* Bloco 2: Indicadores Fundamentalistas (Vem do Scraper) */}
-                <div className="mb-8 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                    <div className="flex justify-between items-center px-2 mb-3">
+                {/* FUNDAMENTOS */}
+                <div className="anim-slide-up" style={{ animationDelay: '100ms' }}>
+                    <div className="flex justify-between items-center px-1 mb-2 mt-6">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                             <Activity className="w-3 h-3" /> Fundamentos
                         </h3>
                         {activeAsset.updated_at && (
-                            <span className="text-[8px] font-bold text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-                                Atualizado em {new Date(activeAsset.updated_at).toLocaleDateString()}
+                            <span className="text-[8px] font-bold text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-2 py-1 rounded-md">
+                                Atualizado: {new Date(activeAsset.updated_at).toLocaleDateString()}
                             </span>
                         )}
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-3">
-                        {isFII ? (
-                            <>
+                    {isFII ? (
+                        <>
+                            {/* Valuation & Rendimentos FII */}
+                            <div className="grid grid-cols-2 gap-3">
                                 <MetricCard 
                                     label="P/VP" 
                                     value={activeAsset.p_vp !== undefined ? activeAsset.p_vp.toFixed(2) : '-'} 
-                                    subtext="Preço / Valor Patrimonial" 
-                                    icon={Scale}
+                                    subtext="Preço Justo ~ 1.0" 
+                                    highlight
                                     colorClass={activeAsset.p_vp && activeAsset.p_vp < 1 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}
+                                    icon={Scale}
                                 />
                                 <MetricCard 
                                     label="Dividend Yield (12m)" 
                                     value={activeAsset.dy_12m !== undefined ? `${activeAsset.dy_12m.toFixed(2)}%` : '-'} 
-                                    subtext="Retorno anual em proventos" 
-                                    icon={Percent}
+                                    subtext="Retorno Isento" 
+                                    highlight
                                     colorClass="text-indigo-500"
-                                />
-                                <MetricCard 
-                                    label="Vacância Física" 
-                                    value={activeAsset.vacancy !== undefined ? `${activeAsset.vacancy.toFixed(2)}%` : '0.00%'} 
-                                    subtext="Imóveis desocupados" 
-                                    icon={AlertCircle}
-                                    colorClass={activeAsset.vacancy && activeAsset.vacancy > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}
+                                    icon={Percent}
                                 />
                                 <MetricCard 
                                     label="Último Rendimento" 
                                     value={activeAsset.last_dividend !== undefined ? `R$ ${activeAsset.last_dividend.toFixed(2)}` : '-'} 
-                                    subtext="Valor pago por cota" 
+                                    subtext="Por cota" 
                                     icon={Wallet}
                                 />
-                            </>
-                        ) : (
-                            <>
+                                <MetricCard 
+                                    label="Valor Patrimonial" 
+                                    value={activeAsset.vpa !== undefined ? `R$ ${activeAsset.vpa.toFixed(2)}` : '-'} 
+                                    subtext="VP por cota" 
+                                    icon={Building2}
+                                />
+                            </div>
+
+                            {/* Qualidade e Risco FII */}
+                            <SectionHeader title="Carteira & Risco" icon={Building2} />
+                            <div className="grid grid-cols-2 gap-3">
+                                <MetricCard 
+                                    label="Vacância Física" 
+                                    value={activeAsset.vacancy !== undefined ? `${activeAsset.vacancy.toFixed(2)}%` : '0.00%'} 
+                                    subtext="Imóveis Vagos" 
+                                    colorClass={activeAsset.vacancy && activeAsset.vacancy > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}
+                                    icon={AlertCircle}
+                                />
+                                <MetricCard 
+                                    label="Liquidez Diária" 
+                                    value={activeAsset.liquidity || '-'} 
+                                    subtext="Volume Médio" 
+                                    icon={Activity}
+                                />
+                                <MetricCard 
+                                    label="Patrimônio Líquido" 
+                                    value={activeAsset.assets_value || '-'} 
+                                    subtext="Valor dos Ativos" 
+                                    icon={Landmark}
+                                />
+                                <MetricCard 
+                                    label="Gestão" 
+                                    value={activeAsset.manager_type || '-'} 
+                                    subtext="Tipo de Gestão" 
+                                    icon={Scale}
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {/* Valuation Ações */}
+                            <div className="grid grid-cols-2 gap-3">
                                 <MetricCard 
                                     label="P/L" 
                                     value={activeAsset.p_l !== undefined ? activeAsset.p_l.toFixed(2) : '-'} 
-                                    subtext="Preço / Lucro" 
+                                    subtext="Anos p/ retorno" 
+                                    highlight
                                     icon={Scale}
                                 />
                                 <MetricCard 
                                     label="P/VP" 
                                     value={activeAsset.p_vp !== undefined ? activeAsset.p_vp.toFixed(2) : '-'} 
-                                    subtext="Preço / Valor Patrimonial" 
+                                    subtext="Preço / Patrimônio" 
+                                    highlight
                                     icon={Building2}
                                 />
                                 <MetricCard 
-                                    label="ROE" 
-                                    value={activeAsset.roe !== undefined ? `${activeAsset.roe.toFixed(2)}%` : '-'} 
-                                    subtext="Retorno sobre Patrimônio" 
-                                    icon={Activity}
-                                    colorClass="text-sky-500"
+                                    label="LPA" 
+                                    value={activeAsset.lpa !== undefined ? `R$ ${activeAsset.lpa.toFixed(2)}` : '-'} 
+                                    subtext="Lucro por Ação" 
+                                    icon={DollarSign}
                                 />
                                 <MetricCard 
-                                    label="Margem Líquida" 
-                                    value={activeAsset.net_margin !== undefined ? `${activeAsset.net_margin.toFixed(2)}%` : '-'} 
-                                    subtext="Eficiência da operação" 
-                                    icon={BarChart3}
+                                    label="VPA" 
+                                    value={activeAsset.vpa !== undefined ? `R$ ${activeAsset.vpa.toFixed(2)}` : '-'} 
+                                    subtext="Valor Patrimonial/Ação" 
+                                    icon={Banknote}
                                 />
-                            </>
-                        )}
-                    </div>
+                            </div>
+
+                            {/* Eficiência */}
+                            <SectionHeader title="Eficiência & Rentabilidade" icon={BarChart3} />
+                            <div className="grid grid-cols-3 gap-3">
+                                <MetricCard 
+                                    label="ROE" 
+                                    value={activeAsset.roe !== undefined ? `${activeAsset.roe.toFixed(1)}%` : '-'} 
+                                    subtext="Retorno s/ PL" 
+                                    colorClass="text-emerald-500"
+                                />
+                                <MetricCard 
+                                    label="Margem Líq." 
+                                    value={activeAsset.net_margin !== undefined ? `${activeAsset.net_margin.toFixed(1)}%` : '-'} 
+                                    subtext="Lucro / Receita" 
+                                />
+                                <MetricCard 
+                                    label="Div. Yield" 
+                                    value={activeAsset.dy_12m !== undefined ? `${activeAsset.dy_12m.toFixed(1)}%` : '-'} 
+                                    subtext="12 Meses" 
+                                    colorClass="text-indigo-500"
+                                />
+                            </div>
+
+                            {/* Crescimento e Dívida */}
+                            <SectionHeader title="Crescimento & Dívida" icon={LineChart} />
+                            <div className="grid grid-cols-2 gap-3">
+                                <MetricCard 
+                                    label="CAGR Lucros (5a)" 
+                                    value={activeAsset.cagr_profits !== undefined ? `${activeAsset.cagr_profits.toFixed(1)}%` : '-'} 
+                                    subtext="Cresc. Médio Anual" 
+                                    icon={TrendingUp}
+                                />
+                                <MetricCard 
+                                    label="Dív. Líq / EBITDA" 
+                                    value={activeAsset.net_debt_ebitda !== undefined ? activeAsset.net_debt_ebitda.toFixed(2) : '-'} 
+                                    subtext="Alavancagem" 
+                                    colorClass={activeAsset.net_debt_ebitda && activeAsset.net_debt_ebitda > 3 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}
+                                    icon={AlertCircle}
+                                />
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Fonte e Links */}
-                <div className="mt-6 anim-slide-up" style={{ animationDelay: '150ms' }}>
+                <div className="mt-8 anim-slide-up" style={{ animationDelay: '150ms' }}>
                     <a 
                         href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${activeAsset.ticker.toLowerCase()}/`} 
                         target="_blank" 
