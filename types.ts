@@ -1,4 +1,5 @@
 
+
 export enum AssetType {
   STOCK = 'ACAO',
   FII = 'FII'
@@ -235,4 +236,15 @@ export interface UpdateReportData {
     results: ScrapeResult[];
     inflationRate: number;
     totalDividendsFound: number;
+}
+
+export interface NewsItem {
+    id: string;
+    title: string;
+    summary: string;
+    source: string;
+    url: string;
+    date: string;
+    imageUrl?: string;
+    category: 'FIIs' | 'Ações' | 'Macro' | 'Geral';
 }

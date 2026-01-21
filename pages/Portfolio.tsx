@@ -84,13 +84,14 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
         const filtered = dividends.filter(d => {
             if (!d.paymentDate || d.ticker !== asset.ticker) return false;
             const pDate = new Date(d.paymentDate);
-            pDate.setUTCHours(12); 
+            pDate.setUTCHours(12); // Garante meio-dia para evitar problemas de fuso
             return pDate >= cutoffDate;
         });
 
+        // Agrupa por mês (YYYY-MM)
         const grouped: Record<string, number> = {};
         
-        // Inicializa meses com 0
+        // Inicializa os meses com 0 para o gráfico ficar bonito
         for (let i = monthsBack - 1; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const key = d.toISOString().slice(0, 7); // YYYY-MM

@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper } from 'lucide-react';
 import { UpdateReportData } from '../types';
 
 // Utility for smooth visibility transitions
@@ -136,9 +135,10 @@ interface BottomNavProps {
 }
 
 const navItems = [
-  { id: 'home', icon: Home, label: 'Visão Geral' },
+  { id: 'home', icon: Home, label: 'Geral' },
   { id: 'portfolio', icon: PieChart, label: 'Custódia' },
   { id: 'transactions', icon: ArrowRightLeft, label: 'Ordens' },
+  { id: 'news', icon: Newspaper, label: 'Notícias' },
 ];
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
@@ -147,19 +147,19 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
       {/* Sólido, sem blur */}
-      <nav className="pointer-events-auto bg-white dark:bg-zinc-900 border border-white/20 dark:border-zinc-800 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[20rem] mx-4 relative overflow-hidden transition-all duration-300">
+      <nav className="pointer-events-auto bg-white dark:bg-zinc-900 border border-white/20 dark:border-zinc-800 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1.5 w-full max-w-[22rem] mx-4 relative overflow-hidden transition-all duration-300">
         
-        {/* Sliding Active Indicator with Bouncier Physics */}
+        {/* Sliding Active Indicator - Adjusted for 4 columns */}
         <div 
-            className="absolute top-1.5 bottom-1.5 w-[calc(33.333%-0.25rem)] bg-zinc-100 dark:bg-zinc-800 rounded-xl shadow-inner border border-black/5 dark:border-white/5 transition-all duration-500 ease-out-mola will-change-transform z-0"
+            className="absolute top-1.5 bottom-1.5 w-[calc(25%-0.25rem)] bg-zinc-100 dark:bg-zinc-800 rounded-xl shadow-inner border border-black/5 dark:border-white/5 transition-all duration-500 ease-out-mola will-change-transform z-0"
             style={{ 
                 left: '0.125rem',
                 transform: `translateX(calc(${activeIndex} * 100% + ${activeIndex * 0.25}rem))`
             }}
         ></div>
 
-        {/* Buttons Grid */}
-        <div className="relative z-10 grid grid-cols-3 h-14">
+        {/* Buttons Grid - Adjusted for 4 columns */}
+        <div className="relative z-10 grid grid-cols-4 h-14">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
