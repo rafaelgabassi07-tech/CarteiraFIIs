@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -15,7 +16,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.6.4'; 
+const APP_VERSION = '8.6.5'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -574,7 +575,15 @@ const App: React.FC = () => {
                   sourceMap: {
                       price: priceSource,
                       fundamentals: r.status === 'success' ? 'Investidor10' : 'N/A'
-                  }
+                  },
+                  // CRITICAL FIX: Mapeamento manual de snake_case para camelCase
+                  // Isso corrige o problema do "Invalid Date" no Modal de Relatório
+                  dividendsFound: (r.dividendsFound || []).map((d: any) => ({
+                      type: d.type,
+                      dateCom: d.date_com,
+                      paymentDate: d.payment_date,
+                      rate: d.rate
+                  }))
               };
           });
           
