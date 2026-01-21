@@ -12,7 +12,6 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SU
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
 // --- CONFIGURAÇÃO AXIOS ---
-// Agente simplificado para evitar timeouts em Serverless
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     rejectUnauthorized: false
@@ -43,12 +42,12 @@ async function fetchHTML(url: string, referer: string) {
                     'Sec-Fetch-Site': 'same-origin',
                     'Cache-Control': 'no-cache'
                 },
-                timeout: 8000 // Timeout mais curto para falhar rápido e tentar prox
+                timeout: 8000
             });
             return response.data;
         } catch (e: any) {
-            if (e.response?.status === 404) throw e; // 404 é definitivo
-            if (i === 1) throw e; // Se falhar na última, lança erro
+            if (e.response?.status === 404) throw e; 
+            if (i === 1) throw e;
             await new Promise(r => setTimeout(r, 1000));
         }
     }
@@ -104,11 +103,6 @@ async function scrapeInvestidor10(ticker: string) {
         let finalType = 'ACAO';
         const baseUrl = 'https://investidor10.com.br';
         
-        // Estratégia de URL:
-        // 1. Tenta /fiis/ se terminar com 11/11B
-        // 2. Se falhar ou não for, tenta /acoes/
-        // 3. Se falhar, tenta /bdrs/
-        
         const isFII = ticker.endsWith('11') || ticker.endsWith('11B');
         let strategies = isFII 
             ? [`/fiis/${ticker.toLowerCase()}/`, `/acoes/${ticker.toLowerCase()}/`, `/bdrs/${ticker.toLowerCase()}/`]
@@ -120,10 +114,9 @@ async function scrapeInvestidor10(ticker: string) {
                 if (path.includes('fiis')) finalType = 'FII';
                 else if (path.includes('bdrs')) finalType = 'BDR';
                 else finalType = 'ACAO';
-                break; // Sucesso
+                break; 
             } catch (e: any) {
                 if (e.response?.status !== 404) console.warn(`Erro scraping ${path}: ${e.message}`);
-                // Se for 404, continua para próxima estratégia
             }
         }
 
@@ -135,17 +128,14 @@ async function scrapeInvestidor10(ticker: string) {
             ticker: ticker.toUpperCase(),
             type: finalType,
             
-            // Campos Comuns
             dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
             val_mercado: 'N/A', liquidez: 'N/A', variacao_12m: 'N/A',
 
-            // FIIs
             segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A', vacancia: 'N/A',
             patrimonio_liquido: 'N/A', ultimo_rendimento: 'N/A', cnpj: 'N/A',
             num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
             taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A',
 
-            // Ações
             margem_liquida: 'N/A', margem_bruta: 'N/A', margem_ebit: 'N/A',
             divida_liquida_ebitda: 'N/A', divida_liquida_pl: 'N/A', ev_ebitda: 'N/A',
             payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A',
@@ -162,7 +152,6 @@ async function scrapeInvestidor10(ticker: string) {
 
             if (titulo.includes('mercado')) {
                 valor = cleanDoubledString(valor);
-                // Evita sobrescrever valor de mercado da tabela se já pegamos do card (geralmente card é mais limpo)
                 if (dados.val_mercado !== 'N/A' && origem === 'table' && dados.val_mercado.includes('R$')) return;
             }
 
@@ -179,16 +168,24 @@ async function scrapeInvestidor10(ticker: string) {
                 if (ind === 'MARGEM_LIQUIDA') { dados.margem_liquida = valor; return; }
             }
 
-            // 2. Fallback: Matching por Texto
-            if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield'))) dados.dy = valor;
-            if (dados.pvp === 'N/A' && (titulo === 'p/vp' || titulo === 'vp')) dados.pvp = valor;
+            // 2. Fallback: Matching por Texto (Melhorado para ser mais flexível)
+            
+            // DY: Pega 'dy' exato ou qualquer coisa contendo 'dividend yield' ou 'dy (12m)'
+            if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || (titulo.includes('dy') && titulo.includes('12')))) dados.dy = valor;
+            
+            // P/VP: Pega 'p/vp', 'vp' ou variações
+            if (dados.pvp === 'N/A' && (titulo === 'p/vp' || titulo === 'vp' || titulo === 'pvp')) dados.pvp = valor;
+            
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
             
             // FIIs
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
-            if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
+            
+            // Último Rendimento: Flexibilizado para pegar "último rendimento" ou apenas "rendimento" se o contexto for FII
+            if (dados.ultimo_rendimento === 'N/A' && (titulo.includes('ultimo rendimento') || (finalType === 'FII' && titulo === 'rendimento'))) dados.ultimo_rendimento = valor;
+            
             if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
             if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
@@ -207,9 +204,9 @@ async function scrapeInvestidor10(ticker: string) {
             // Patrimônio
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
-                if (valorNumerico > 5000) { // Valor alto = Patrimônio total
+                if (valorNumerico > 5000) { 
                     if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
-                } else { // Valor baixo = VPA
+                } else { 
                     if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
@@ -228,12 +225,14 @@ async function scrapeInvestidor10(ticker: string) {
 
         // --- PARSING ---
         
-        // 1. Cards do Topo
-        $('._card').each((i, el) => {
-            const titulo = $(el).find('._card-header').text().trim();
-            const valor = $(el).find('._card-body').text().trim();
-            processPair(titulo, valor, 'card');
-            if (normalize(titulo).includes('cotacao')) cotacao_atual = parseValue(valor);
+        // 1. Cards do Topo (Seletor mais amplo para pegar cards sem classe específica)
+        $('div[class*="card"], div._card').each((i, el) => {
+            const titulo = $(el).find('div[class*="header"], div._card-header, span.title').first().text().trim();
+            const valor = $(el).find('div[class*="body"], div._card-body, div.value').first().text().trim();
+            if (titulo && valor) {
+                processPair(titulo, valor, 'card');
+                if (normalize(titulo).includes('cotacao')) cotacao_atual = parseValue(valor);
+            }
         });
 
         if (cotacao_atual === 0) {
@@ -275,7 +274,7 @@ async function scrapeInvestidor10(ticker: string) {
             }
         }
 
-        dados.cotacao_atual = cotacao_atual; // Inclui cotação no objeto final
+        dados.cotacao_atual = cotacao_atual; 
         return dados;
 
     } catch (error: any) {
@@ -310,7 +309,7 @@ async function scrapeStatusInvestProventos(ticker: string) {
             let labelTipo = 'REND'; 
             if (d.et === 1) labelTipo = 'DIV';
             if (d.et === 2) labelTipo = 'JCP';
-            if (d.et === 3) labelTipo = 'REND'; // As vezes JCP/Rend misturam
+            if (d.et === 3) labelTipo = 'REND'; 
             
             return {
                 ticker: ticker.toUpperCase(),
@@ -322,7 +321,7 @@ async function scrapeStatusInvestProventos(ticker: string) {
         }).filter((d: any) => d.payment_date !== null && d.rate > 0);
 
     } catch (error: any) { 
-        return []; // Falha silenciosa para proventos
+        return []; 
     }
 }
 
@@ -364,7 +363,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 cagr_lucro: parseValue(metadata.cagr_lucros_5a),
                 tipo_gestao: metadata.tipo_gestao,
                 patrimonio_liquido: metadata.patrimonio_liquido,
-                taxa_adm: metadata.taxa_adm
+                taxa_adm: metadata.taxa_adm,
+                ultimo_rendimento: parseValue(metadata.ultimo_rendimento) // Campo Adicionado!
             };
 
             const { error: metaError } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
@@ -384,7 +384,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(404).json({ success: false, error: 'Dados não encontrados no provedor.' });
         }
 
-        // RETORNA METADADOS E PROVENTOS
         return res.status(200).json({ success: true, data: metadata, dividends: proventos });
 
     } catch (e: any) {
