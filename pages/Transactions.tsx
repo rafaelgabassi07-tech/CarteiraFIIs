@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Plus, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Square, CheckCircle2, Calculator } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Square, CheckCircle2, Calculator, Loader2 } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 import { supabase } from '../services/supabase';
@@ -117,6 +117,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [activeFilter, setActiveFilter] = useState<FilterOption>('ALL');
+    const [isSaving, setIsSaving] = useState(false);
     
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -202,7 +203,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     };
 
     const handleSave = async () => {
-        if (!ticker || !quantity || !price || !date) return;
+        if (!ticker || !quantity || !price || !date || isSaving) return;
+        setIsSaving(true);
         const payload = {
             ticker: ticker.toUpperCase(),
             type,
@@ -211,9 +213,16 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             price: Number(price.replace(',', '.')),
             date
         };
-        setIsModalOpen(false); 
-        if (editingId) await onUpdateTransaction(editingId, payload);
-        else await onAddTransaction(payload);
+        
+        try {
+            if (editingId) await onUpdateTransaction(editingId, payload);
+            else await onAddTransaction(payload);
+            setIsModalOpen(false); 
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const toggleSelectionMode = () => {
@@ -495,12 +504,12 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         {/* Botão Salvar */}
                         <button 
                             onClick={handleSave}
-                            disabled={!ticker || !quantity || !price}
-                            className={`w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-xl press-effect mt-6 transition-all ${(!ticker || !quantity || !price) ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100'}`}
+                            disabled={!ticker || !quantity || !price || isSaving}
+                            className={`w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-xl press-effect mt-6 transition-all ${(!ticker || !quantity || !price || isSaving) ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100'}`}
                             style={{ animationDelay: '300ms' }}
                         >
-                            <Save className="w-4 h-4" />
-                            {editingId ? 'Salvar Alterações' : 'Confirmar Ordem'}
+                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            {isSaving ? 'Salvando...' : editingId ? 'Salvar Alterações' : 'Confirmar Ordem'}
                         </button>
                     </div>
                 </div>

@@ -221,6 +221,8 @@ export interface ScrapeResult {
         pl?: number;
         vacancy?: number;
     };
+    // Novo: Dados brutos retornados pelo scraper para atualização imediata
+    rawFundamentals?: any; 
     dividendsFound?: {
         type: string;
         dateCom: string;

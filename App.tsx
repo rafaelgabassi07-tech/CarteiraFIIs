@@ -8,7 +8,7 @@ import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData } from './types';
 import { getQuotes } from './services/brapiService';
-import { fetchUnifiedMarketData, triggerScraperUpdate } from './services/dataService';
+import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals } from './services/dataService';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
@@ -478,32 +478,46 @@ const App: React.FC = () => {
       
       try {
           // 1. Aciona o Scraper (Investidor10/StatusInvest)
+          // Agora retorna os dados brutos também (rawFundamentals)
           const scrapePromise = triggerScraperUpdate(tickers, (current, total) => {
               // Opcional: Atualizar UI de progresso
           });
 
           // 2. Aciona Brapi (Cotações em Tempo Real)
-          // Isso é importante para preencher a lacuna caso o Scraper tenha cotação defasada (D-1)
           const brapiPromise = getQuotes(tickers);
 
           const [results, brapiData] = await Promise.all([scrapePromise, brapiPromise]);
           
-          showToast('info', 'Consolidando dados...');
+          showToast('info', 'Processando dados...');
 
-          // 3. Mescla os resultados para o relatório
+          // 3. Atualização Otimista: Injeta os dados do Scraper diretamente na memória do App
+          // Isso resolve o problema de dados não aparecerem até o próximo sync do banco
+          const newMetadata = { ...assetsMetadata };
+          let updatedCount = 0;
+
           const enrichedResults: ScrapeResult[] = results.map(r => {
-              // Encontra cotação Brapi correspondente
               const brapiQuote = brapiData.quotes.find(q => q.symbol === r.ticker);
-              
               let finalPrice = r.details?.price;
               let priceSource: 'Brapi' | 'Investidor10' | 'N/A' = 'Investidor10';
 
-              // Prioriza preço da Brapi se disponível e válido
               if (brapiQuote && brapiQuote.regularMarketPrice > 0) {
                   finalPrice = brapiQuote.regularMarketPrice;
                   priceSource = 'Brapi';
               } else if (!finalPrice) {
                   priceSource = 'N/A';
+              }
+
+              // Se o scraper trouxe dados, atualiza o state global AGORA
+              if (r.status === 'success' && r.rawFundamentals) {
+                  const mappedFundamentals = mapScraperToFundamentals(r.rawFundamentals);
+                  const isFII = r.ticker.endsWith('11') || r.ticker.endsWith('11B');
+                  
+                  newMetadata[r.ticker] = {
+                      segment: r.rawFundamentals.segment || newMetadata[r.ticker]?.segment || 'Geral',
+                      type: isFII ? AssetType.FII : AssetType.STOCK,
+                      fundamentals: mappedFundamentals
+                  };
+                  updatedCount++;
               }
 
               return {
@@ -519,20 +533,26 @@ const App: React.FC = () => {
               };
           });
           
-          // 4. Sincroniza os dados atualizados do banco (Isso traz a inflação e consolida)
-          await handleSyncAll(true);
+          // Aplica a atualização otimista
+          if (updatedCount > 0) {
+              setAssetsMetadata(newMetadata);
+          }
           
-          // 5. Monta o relatório completo
+          // 4. Sincroniza em background para persistência (Dividendos, Inflação, etc)
+          // Não bloqueia a UI esperando isso terminar
+          handleSyncAll(true);
+          
+          // 5. Monta o relatório
           const totalDividends = enrichedResults.reduce((acc, r) => acc + (r.dividendsFound?.length || 0), 0);
           
           setLastUpdateReport({
               results: enrichedResults,
-              inflationRate: marketIndicators.ipca || 0, // Pega do estado atualizado pós-sync
+              inflationRate: marketIndicators.ipca || 0,
               totalDividendsFound: totalDividends
           });
           
           showToast('success', 'Dados atualizados com sucesso!');
-          setShowUpdateReport(true); // Abre o modal de relatório
+          setShowUpdateReport(true); 
       } catch (e) {
           console.error(e);
           showToast('error', 'Falha na atualização.');

@@ -62,6 +62,44 @@ const normalizeTickerRoot = (t: string) => {
     return clean;
 };
 
+/**
+ * Converte dados brutos do Scraper/Banco (chaves do DB) para a interface do Frontend (AssetFundamentals)
+ * Centraliza a lógica de mapeamento para garantir consistência.
+ */
+export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
+    return {
+        // Comuns
+        p_vp: parseNumberSafe(m.pvp ?? m.p_vp),
+        dy_12m: parseNumberSafe(m.dy_12m ?? m.dy), // Scraper usa 'dy', DB usa 'dy_12m'
+        p_l: parseNumberSafe(m.pl ?? m.p_l),
+        roe: parseNumberSafe(m.roe),
+        liquidity: m.liquidez || '',
+        market_cap: m.valor_mercado || m.val_mercado || undefined, 
+        
+        // Ações
+        net_margin: parseNumberSafe(m.margem_liquida),
+        gross_margin: parseNumberSafe(m.margem_bruta),
+        cagr_revenue: parseNumberSafe(m.cagr_receita ?? m.cagr_receita_5a),
+        cagr_profits: parseNumberSafe(m.cagr_lucro ?? m.cagr_lucros_5a),
+        net_debt_ebitda: parseNumberSafe(m.divida_liquida_ebitda),
+        ev_ebitda: parseNumberSafe(m.ev_ebitda),
+        lpa: parseNumberSafe(m.lpa),
+        vpa: parseNumberSafe(m.vpa ?? m.vp_cota),
+
+        // FIIs
+        vacancy: parseNumberSafe(m.vacancia),
+        manager_type: m.tipo_gestao || undefined,
+        assets_value: m.patrimonio_liquido || undefined,
+        management_fee: m.taxa_adm || undefined,
+        last_dividend: parseNumberSafe(m.ultimo_rendimento),
+        
+        updated_at: m.updated_at,
+        
+        sentiment: 'Neutro',
+        sources: []
+    };
+};
+
 // Função para acionar o Scraper no Backend (Serverless)
 export const triggerScraperUpdate = async (tickers: string[], onProgress?: (current: number, total: number) => void): Promise<ScrapeResult[]> => {
     // Normaliza para remover o F de fracionário, pois o scraper busca pelo ticker padrão
@@ -92,6 +130,8 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
                             pvp: parseNumberSafe(meta.pvp),
                             pl: parseNumberSafe(meta.pl)
                         },
+                        // Importante: Passa os dados brutos para o frontend atualizar state imediatamente
+                        rawFundamentals: meta,
                         dividendsFound: data.dividends // Captura os dividendos retornados pela API
                     });
                 } else {
@@ -164,42 +204,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
               const normalizedTicker = m.ticker.trim().toUpperCase();
 
-              // Mapeamento Defensivo: Verifica múltiplas chaves possíveis vindas do Scraper/DB
-              // O Scraper pode salvar como 'pvp' ou 'p_vp', 'dy' ou 'dy_12m' dependendo da versão do parser
+              // Usa o helper centralizado para mapear dados
               metadata[normalizedTicker] = {
                   segment: m.segment || 'Geral',
                   type: assetType,
-                  fundamentals: {
-                      // Comuns
-                      p_vp: parseNumberSafe(m.pvp ?? m.p_vp),
-                      dy_12m: parseNumberSafe(m.dy_12m ?? m.dy),
-                      p_l: parseNumberSafe(m.pl ?? m.p_l),
-                      roe: parseNumberSafe(m.roe),
-                      liquidity: m.liquidez || '',
-                      market_cap: m.valor_mercado || m.val_mercado || undefined, 
-                      
-                      // Ações
-                      net_margin: parseNumberSafe(m.margem_liquida),
-                      gross_margin: parseNumberSafe(m.margem_bruta),
-                      cagr_revenue: parseNumberSafe(m.cagr_receita ?? m.cagr_receita_5a),
-                      cagr_profits: parseNumberSafe(m.cagr_lucro ?? m.cagr_lucros_5a),
-                      net_debt_ebitda: parseNumberSafe(m.divida_liquida_ebitda),
-                      ev_ebitda: parseNumberSafe(m.ev_ebitda),
-                      lpa: parseNumberSafe(m.lpa),
-                      vpa: parseNumberSafe(m.vpa ?? m.vp_cota),
-
-                      // FIIs
-                      vacancy: parseNumberSafe(m.vacancia),
-                      manager_type: m.tipo_gestao || undefined,
-                      assets_value: m.patrimonio_liquido || undefined,
-                      management_fee: m.taxa_adm || undefined,
-                      last_dividend: parseNumberSafe(m.ultimo_rendimento),
-                      
-                      updated_at: m.updated_at,
-                      
-                      sentiment: 'Neutro',
-                      sources: []
-                  }
+                  fundamentals: mapScraperToFundamentals(m)
               };
           });
       }
