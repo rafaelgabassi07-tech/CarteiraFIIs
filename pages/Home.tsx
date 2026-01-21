@@ -280,8 +280,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             dividends: dividends,
             inflation: monthInflationCost, // Valor do custo mensal
             net: dividends - monthInflationCost,
-            accDiv,
-            accInf
+            accDiv, // Valor acumulado
+            accInf  // Valor acumulado
         });
     }
 
@@ -313,6 +313,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     };
   }, [dividendReceipts, received, invested, balance, safeInflation, transactions, totalProfitValue, totalDividendsReceived, monthlyInflationRate]);
 
+  // ... (useMemo for typeData and classChartData remains unchanged)
   const { typeData, classChartData, assetsChartData } = useMemo(() => {
       let fiisTotal = 0;
       let stocksTotal = 0;
@@ -366,24 +367,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const SpreadTooltip = ({ active, payload, label }: any) => {
       if (active && payload && payload.length) {
-          // Payload[0] = Dividends, Payload[1] = Inflation (from dataKey order in charts)
-          const divData = payload.find((p: any) => p.dataKey === 'accDiv' || p.name === 'Dividendos');
-          const infData = payload.find((p: any) => p.dataKey === 'accInf' || p.name === 'Inflação');
+          // Robust key finding
+          const divData = payload.find((p: any) => p.dataKey === 'accDiv' || p.dataKey === 'dividends' || p.name === 'Dividendos');
+          const infData = payload.find((p: any) => p.dataKey === 'accInf' || p.dataKey === 'inflation' || p.name === 'Inflação');
           
-          // No gráfico de barras, 'inflation' é o valor mensal direto no dataKey 'inflation' se quiséssemos mostrar o mês
-          // Mas como usamos accInf/accDiv para área, e no BarChart usamos accDiv/accInf também?
-          // No BarChart usamos 'accDiv' e 'accInf' que são acumulados? NÃO.
-          // Espera, no código anterior:
-          // AreaChart usa 'accDiv' e 'accInf'.
-          // BarChart usa 'accDiv' e 'accInf' também.
-          // Se queremos mostrar o custo mensal no tooltip, precisamos pegar do payload original.
-          
+          // Get the raw monthly data from payload to show monthly details even in Accumulated view
           const rawData = divData?.payload;
           const monthlyInfCost = rawData?.inflation || 0;
+          const monthlyDiv = rawData?.dividends || 0;
+
+          // Determine label context
+          const isAccumulated = divData?.dataKey === 'accDiv';
 
           return (
               <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50 min-w-[140px]">
-                  <p className="text-xs font-black text-zinc-900 dark:text-white mb-2 uppercase tracking-wider">{label}</p>
+                  <p className="text-xs font-black text-zinc-900 dark:text-white mb-2 uppercase tracking-wider">{label} {isAccumulated ? '(Acum.)' : '(Mês)'}</p>
                   <div className="space-y-1">
                       <div className="flex items-center justify-between gap-4">
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Dividendos</span>
@@ -394,11 +392,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           <span className="text-[10px] text-zinc-900 dark:text-white font-bold">{formatBRL(infData?.value, privacyMode)}</span>
                       </div>
                       
-                      {/* Destaque para o custo mensal subtraído */}
-                      {monthlyInfCost > 0 && (
+                      {/* Destaque para o valor MENSAL se estivermos no modo acumulado, para clareza */}
+                      {isAccumulated && (
                           <div className="pt-2 mt-2 border-t border-zinc-100 dark:border-zinc-800">
-                              <p className="text-[8px] font-medium text-zinc-400">Neste mês foi subtraído:</p>
-                              <p className="text-[9px] font-black text-rose-500">-{formatBRL(monthlyInfCost, privacyMode)} (IPCA)</p>
+                              <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[8px] font-medium text-zinc-400">Neste mês:</p>
+                                  <p className="text-[9px] font-bold text-zinc-500">{formatBRL(monthlyDiv, privacyMode)}</p>
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[8px] font-medium text-zinc-400">Inflação mês:</p>
+                                  <p className="text-[9px] font-bold text-rose-500">-{formatBRL(monthlyInfCost, privacyMode)}</p>
+                              </div>
                           </div>
                       )}
                   </div>
@@ -410,41 +414,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-4 pb-8">
-      {/* 1. Patrimonio Total - Redesenhado Limpo */}
+      {/* ... (Existing Components: Patrimonio Total, Agenda, Grid Buttons, Raio-X Button) ... */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
         <div className="w-full rounded-[2rem] relative overflow-hidden shadow-lg shadow-zinc-200/50 dark:shadow-black/50 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 dark:from-zinc-900 dark:to-black border border-white/5">
-            
-            {/* Background Effect */}
+            {/* ... (Patrimonio Total Content) ... */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-            
-            {/* Header: Label + Info */}
             <div className="px-6 pt-6 flex justify-between items-start relative z-10">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] flex items-center gap-1.5">
-                    <Wallet className="w-3 h-3 text-zinc-500" />
-                    Patrimônio Total
-                </span>
-                <button onClick={(e) => { e.stopPropagation(); setShowPatrimonyHelp(true); }} className="text-zinc-500 hover:text-white transition-colors">
-                    <Info className="w-4 h-4" />
-                </button>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] flex items-center gap-1.5"><Wallet className="w-3 h-3 text-zinc-500" /> Patrimônio Total</span>
+                <button onClick={(e) => { e.stopPropagation(); setShowPatrimonyHelp(true); }} className="text-zinc-500 hover:text-white transition-colors"><Info className="w-4 h-4" /></button>
             </div>
-            
-            {/* Hero Value: Balance */}
             <div className="px-6 pt-2 pb-6 relative z-10">
-                <h2 className="text-4xl font-black text-white tracking-tighter tabular-nums leading-none">
-                    {formatBRL(balance, privacyMode)}
-                </h2>
+                <h2 className="text-4xl font-black text-white tracking-tighter tabular-nums leading-none">{formatBRL(balance, privacyMode)}</h2>
             </div>
-            
-            {/* Divider */}
             <div className="h-px bg-white/10 w-full relative z-10"></div>
-            
-            {/* Bottom Grid: Metrics */}
             <div className="grid grid-cols-2 relative z-10">
-                {/* Metric 1: Resultado */}
                 <div className="p-5 border-r border-white/10 flex flex-col justify-center bg-white/5 backdrop-blur-sm">
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">
-                        Rentabilidade
-                    </p>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">Rentabilidade</p>
                     <div className="flex flex-col">
                         <span className={`text-sm font-black flex items-center gap-1 ${isProfitPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {isProfitPositive ? <TrendingUpIcon className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -455,85 +440,50 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </span>
                     </div>
                 </div>
-
-                {/* Metric 2: Proventos */}
                 <div className="p-5 flex flex-col justify-center bg-white/5 backdrop-blur-sm">
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">
-                        Proventos Totais
-                    </p>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">Proventos Totais</p>
                     <div className="flex flex-col">
-                        <span className="text-sm font-black text-white flex items-center gap-1">
-                            <Coins className="w-3 h-3 text-amber-400" />
-                            {formatBRL(totalDividendsReceived, privacyMode)}
-                        </span>
-                        <span className="text-[10px] font-bold text-zinc-500 mt-0.5">
-                             Acumulado histórico
-                        </span>
+                        <span className="text-sm font-black text-white flex items-center gap-1"><Coins className="w-3 h-3 text-amber-400" /> {formatBRL(totalDividendsReceived, privacyMode)}</span>
+                        <span className="text-[10px] font-bold text-zinc-500 mt-0.5">Acumulado histórico</span>
                     </div>
                 </div>
             </div>
         </div>
       </div>
 
-      {/* ... (Other sections like Agenda, Grid Buttons etc remain unchanged) ... */}
-      
-      {/* 2. Agenda Simplificada */}
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
         <button onClick={() => setShowAgendaModal(true)} className="w-full text-left bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 press-effect group hover:border-zinc-200 dark:hover:border-zinc-700 shadow-sm">
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-400 border border-zinc-100 dark:border-zinc-700">
-                        <CalendarDays className="w-5 h-5" strokeWidth={1.5} />
-                    </div>
+                    <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-400 border border-zinc-100 dark:border-zinc-700"><CalendarDays className="w-5 h-5" strokeWidth={1.5} /></div>
                     <div>
                         <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Agenda</h3>
-                        <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide">
-                            {upcomingEvents.length > 0 ? `${upcomingEvents.length} Eventos` : 'Sem eventos'}
-                        </p>
+                        <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide">{upcomingEvents.length > 0 ? `${upcomingEvents.length} Eventos` : 'Sem eventos'}</p>
                     </div>
                 </div>
                 {upcomingEvents.length > 0 && (
                     <div className="flex -space-x-2">
-                         {upcomingEvents.slice(0,3).map((ev: any, i: number) => (
-                             <div key={i} className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black text-zinc-600 dark:text-zinc-400">
-                                 {ev.ticker.substring(0,1)}
-                             </div>
-                         ))}
-                         {upcomingEvents.length > 3 && (
-                             <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700 border border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black text-zinc-500">
-                                 +{upcomingEvents.length - 3}
-                             </div>
-                         )}
+                         {upcomingEvents.slice(0,3).map((ev: any, i: number) => <div key={i} className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black text-zinc-600 dark:text-zinc-400">{ev.ticker.substring(0,1)}</div>)}
+                         {upcomingEvents.length > 3 && <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700 border border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black text-zinc-500">+{upcomingEvents.length - 3}</div>}
                     </div>
                 )}
             </div>
         </button>
       </div>
       
-      {/* 3. Grid Buttons */}
       <div className="grid grid-cols-2 gap-3 anim-stagger-item" style={{ animationDelay: '200ms' }}>
         <button onClick={() => setShowProventosModal(true)} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-left press-effect hover:border-zinc-200 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-sm">
             <div className="mb-4">
-                <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center mb-3">
-                    <CircleDollarSign className="w-4 h-4" />
-                </div>
+                <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center mb-3"><CircleDollarSign className="w-4 h-4" /></div>
                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-0.5">Renda Passiva</span>
                 <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-tight">{formatBRL(received, privacyMode)}</p>
             </div>
-            {provisionedTotal > 0 && (
-                <div className="py-1 px-2 rounded-lg bg-amber-50 dark:bg-amber-900/10 self-start">
-                    <p className="text-[9px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wide">
-                        + {formatBRL(provisionedTotal, privacyMode)} Futuro
-                    </p>
-                </div>
-            )}
+            {provisionedTotal > 0 && <div className="py-1 px-2 rounded-lg bg-amber-50 dark:bg-amber-900/10 self-start"><p className="text-[9px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wide">+ {formatBRL(provisionedTotal, privacyMode)} Futuro</p></div>}
         </button>
 
         <button onClick={() => setShowAllocationModal(true)} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-left press-effect hover:border-zinc-200 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-sm">
             <div>
-                <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3">
-                    <PieIcon className="w-4 h-4" />
-                </div>
+                <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3"><PieIcon className="w-4 h-4" /></div>
                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-0.5">Alocação</span>
                 <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 mt-2 mb-2">
                     <div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-indigo-500 transition-all duration-1000"></div>
@@ -547,42 +497,29 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* 4. Raio-X Inflação */}
       <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
          <button onClick={() => setShowRealYieldModal(true)} className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-5 shadow-sm relative overflow-hidden text-left press-effect group">
              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-800 dark:to-zinc-900 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none opacity-50"></div>
-             
              <div className="flex items-center justify-between mb-4 relative z-10">
                  <div className="flex items-center gap-2">
-                     <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 border border-zinc-100 dark:border-zinc-700">
-                          <Scale className="w-4 h-4" />
-                     </div>
-                     <div>
-                         <h3 className="text-sm font-black text-zinc-900 dark:text-white leading-none">Ganho Real</h3>
-                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">Patrimônio vs Inflação</p>
-                     </div>
+                     <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 border border-zinc-100 dark:border-zinc-700"><Scale className="w-4 h-4" /></div>
+                     <div><h3 className="text-sm font-black text-zinc-900 dark:text-white leading-none">Ganho Real</h3><p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">Patrimônio vs Inflação</p></div>
                  </div>
              </div>
-             
              {realYieldMetrics.baseValue > 0 ? (
-                 <>
-                     <div className="flex items-end gap-2 mb-4 relative z-10">
-                          <span className={`text-3xl font-black tracking-tight ${realYieldMetrics.realReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                             {realYieldMetrics.realReturn > 0 ? '+' : ''}{formatPercent(realYieldMetrics.realReturn, privacyMode)}
-                          </span>
-                          <span className="text-xs font-bold text-zinc-400 mb-1.5 uppercase tracking-wide">Acima da inflação</span>
-                     </div>
-                 </>
-             ) : (
-                 <div className="flex flex-col items-center justify-center py-2 opacity-60 text-center">
-                     <p className="text-xs font-bold text-zinc-500">Adicione ativos para análise.</p>
+                 <div className="flex items-end gap-2 mb-4 relative z-10">
+                      <span className={`text-3xl font-black tracking-tight ${realYieldMetrics.realReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                         {realYieldMetrics.realReturn > 0 ? '+' : ''}{formatPercent(realYieldMetrics.realReturn, privacyMode)}
+                      </span>
+                      <span className="text-xs font-bold text-zinc-400 mb-1.5 uppercase tracking-wide">Acima da inflação</span>
                  </div>
+             ) : (
+                 <div className="flex flex-col items-center justify-center py-2 opacity-60 text-center"><p className="text-xs font-bold text-zinc-500">Adicione ativos para análise.</p></div>
              )}
          </button>
       </div>
 
-      {/* ... (Previous Modals) ... */}
-      
+      {/* ... (Modals: PatrimonyHelp, Agenda, Proventos, Allocation remain unchanged) ... */}
       <SwipeableModal isOpen={showPatrimonyHelp} onClose={() => setShowPatrimonyHelp(false)}>
           <div className="p-6 pb-20">
               <h2 className="text-2xl font-black mb-4">Sobre os Valores</h2>
@@ -592,56 +529,32 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
+        {/* ... Agenda Content ... */}
         <div className="p-6 pb-20">
             <div className="flex items-center gap-4 mb-8 px-2">
-                <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30">
-                    <CalendarDays className="w-6 h-6" />
-                </div>
-                <div>
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Próximos Eventos e Pagamentos</p>
-                </div>
+                <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30"><CalendarDays className="w-6 h-6" /></div>
+                <div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2><p className="text-xs text-zinc-500 font-medium">Próximos Eventos e Pagamentos</p></div>
             </div>
-
             {Object.keys(groupedEvents).map((groupKey) => {
                 const events = groupedEvents[groupKey];
                 if (events.length === 0) return null;
-
                 return (
                     <div key={groupKey} className="mb-6 anim-slide-up">
-                        <h3 className="px-3 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm py-2 z-10">
-                            {groupKey}
-                        </h3>
+                        <h3 className="px-3 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm py-2 z-10">{groupKey}</h3>
                         <div className="space-y-2">
                             {events.map((e: any, i: number) => {
                                 const style = getEventStyle(e.eventType, e.date, e.type);
                                 return (
                                     <div key={i} className={`p-4 rounded-xl flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 ${style.containerClass}`}>
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-zinc-800 shadow-sm ${style.iconClass}`}>
-                                                <style.icon className="w-4 h-4" />
-                                            </div>
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-zinc-800 shadow-sm ${style.iconClass}`}><style.icon className="w-4 h-4" /></div>
                                             <div>
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase">{e.ticker}</h4>
-                                                    {e.type === 'JCP' && <span className="text-[8px] font-bold px-1 rounded bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300">JCP</span>}
-                                                    {e.type === 'AMORT' && <span className="text-[8px] font-bold px-1 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">AMORT</span>}
-                                                </div>
+                                                <div className="flex items-center gap-2"><h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase">{e.ticker}</h4>{e.type === 'JCP' && <span className="text-[8px] font-bold px-1 rounded bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300">JCP</span>}{e.type === 'AMORT' && <span className="text-[8px] font-bold px-1 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">AMORT</span>}</div>
                                                 <p className={`text-[10px] font-bold uppercase tracking-widest ${style.textClass}`}>{style.label}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            {e.eventType === 'payment' ? (
-                                                <>
-                                                    <span className={`block text-xs font-black ${style.valueClass}`}>{formatBRL(e.totalReceived, privacyMode)}</span>
-                                                    <span className="text-[9px] font-bold text-zinc-400 block mt-0.5">{formatDateShort(e.date)}</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatDateShort(e.date)}</span>
-                                                    <span className="text-[9px] font-bold text-zinc-400 block mt-0.5">Data de Corte</span>
-                                                </>
-                                            )}
+                                            {e.eventType === 'payment' ? (<><span className={`block text-xs font-black ${style.valueClass}`}>{formatBRL(e.totalReceived, privacyMode)}</span><span className="text-[9px] font-bold text-zinc-400 block mt-0.5">{formatDateShort(e.date)}</span></>) : (<><span className="block text-xs font-black text-zinc-900 dark:text-white">{formatDateShort(e.date)}</span><span className="text-[9px] font-bold text-zinc-400 block mt-0.5">Data de Corte</span></>)}
                                         </div>
                                     </div>
                                 );
@@ -654,124 +567,45 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); }}>
-         {/* ... (Proventos Modal Content) ... */}
+         {/* ... Proventos Content ... */}
          <div className="p-6 pb-20">
              <div className="flex items-center justify-between mb-8 anim-slide-up">
                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
-                        <Wallet className="w-6 h-6" strokeWidth={1.5} />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Proventos</h2>
-                        <p className="text-xs text-zinc-500 font-medium">Histórico e Previsão</p>
-                    </div>
+                    <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"><Wallet className="w-6 h-6" strokeWidth={1.5} /></div>
+                    <div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Proventos</h2><p className="text-xs text-zinc-500 font-medium">Histórico e Previsão</p></div>
                  </div>
-                 {selectedProventosMonth && (
-                     <button onClick={() => setSelectedProventosMonth(null)} className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-[10px] font-black uppercase tracking-wider text-zinc-500 flex items-center gap-2 anim-scale-in hover:bg-zinc-200 transition-colors">
-                         <X className="w-3 h-3" /> Limpar
-                     </button>
-                 )}
+                 {selectedProventosMonth && <button onClick={() => setSelectedProventosMonth(null)} className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-[10px] font-black uppercase tracking-wider text-zinc-500 flex items-center gap-2 anim-scale-in hover:bg-zinc-200 transition-colors"><X className="w-3 h-3" /> Limpar</button>}
              </div>
-
              {dividendsChartData.length > 0 && (
                  <div className="mb-8 anim-graph-grow">
                      <div className="h-40 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart 
-                                data={dividendsChartData} 
-                                margin={{ top: 10, right: 0, left: -24, bottom: 0 }}
-                                onClick={(data) => {
-                                    if (data && data.activePayload && data.activePayload.length > 0) {
-                                        const clickedMonth = data.activePayload[0].payload.fullDate;
-                                        setSelectedProventosMonth(clickedMonth === selectedProventosMonth ? null : clickedMonth);
-                                    }
-                                }}
-                            >
-                                <XAxis 
-                                    dataKey="name" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} 
-                                    dy={10} 
-                                    interval={0}
-                                />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fontSize: 9, fill: '#a1a1aa' }} 
-                                    tickFormatter={(val) => `${val/1000}k`} 
-                                />
-                                <RechartsTooltip 
-                                    content={({ active, payload, label }) => {
-                                        if (active && payload && payload.length) {
-                                            return (
-                                                <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50">
-                                                    <p className="text-xs font-black text-zinc-900 dark:text-white mb-1 uppercase tracking-wider">{label}</p>
-                                                    <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value, privacyMode)}</p>
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    }} 
-                                    cursor={{ fill: '#71717a10', radius: 8 }} 
-                                />
-                                <Bar 
-                                    dataKey="value" 
-                                    radius={[4, 4, 4, 4]} 
-                                    isAnimationActive={true}
-                                    animationDuration={1500}
-                                    animationBegin={200}
-                                    animationEasing="ease-out"
-                                >
-                                    {dividendsChartData.map((entry, index) => (
-                                        <Cell 
-                                            key={`cell-${index}`} 
-                                            fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} 
-                                            className="cursor-pointer transition-all duration-300 hover:opacity-80"
-                                        />
-                                    ))}
+                            <BarChart data={dividendsChartData} margin={{ top: 10, right: 0, left: -24, bottom: 0 }} onClick={(data) => { if (data && data.activePayload && data.activePayload.length > 0) { const clickedMonth = data.activePayload[0].payload.fullDate; setSelectedProventosMonth(clickedMonth === selectedProventosMonth ? null : clickedMonth); } }}>
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `${val/1000}k`} />
+                                <RechartsTooltip content={({ active, payload, label }) => { if (active && payload && payload.length) { return (<div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 z-50"><p className="text-xs font-black text-zinc-900 dark:text-white mb-1 uppercase tracking-wider">{label}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value, privacyMode)}</p></div>); } return null; }} cursor={{ fill: '#71717a10', radius: 8 }} />
+                                <Bar dataKey="value" radius={[4, 4, 4, 4]} isAnimationActive={true} animationDuration={1500} animationBegin={200} animationEasing="ease-out">
+                                    {dividendsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} className="cursor-pointer transition-all duration-300 hover:opacity-80" />)}
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                      </div>
                  </div>
              )}
-
              {selectedProventosMonth ? (
                  <div className="anim-slide-up">
                      <div className="flex items-center justify-between mb-4 px-1">
-                         <h3 className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                             <Calendar className="w-4 h-4" /> {new Date(selectedProventosMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                         </h3>
-                         <span className="text-sm font-black text-zinc-900 dark:text-white">
-                             {formatBRL(history.find(([key]) => key === selectedProventosMonth)?.[1], privacyMode)}
-                         </span>
+                         <h3 className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-2"><Calendar className="w-4 h-4" /> {new Date(selectedProventosMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
+                         <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(history.find(([key]) => key === selectedProventosMonth)?.[1], privacyMode)}</span>
                      </div>
-                     
                      <div className="space-y-1">
-                        {(receiptsByMonth[selectedProventosMonth] || [])
-                            .sort((a, b) => b.totalReceived - a.totalReceived)
-                            .map((detail, idx) => (
+                        {(receiptsByMonth[selectedProventosMonth] || []).sort((a, b) => b.totalReceived - a.totalReceived).map((detail, idx) => (
                             <div key={idx} className="flex justify-between items-center p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors anim-stagger-item" style={{ animationDelay: `${idx * 50}ms` }}>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500 dark:text-zinc-400">
-                                        {detail.ticker.substring(0,2)}
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                                            {detail.ticker}
-                                            <span className={`text-[8px] px-1 rounded font-bold uppercase ${detail.type === 'JCP' ? 'text-orange-500 bg-orange-50 dark:bg-orange-900/20' : detail.type === 'AMORT' ? 'text-violet-500 bg-violet-50 dark:bg-violet-900/20' : 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'}`}>
-                                                {detail.type || 'DIV'}
-                                            </span>
-                                        </p>
-                                        <p className="text-[10px] text-zinc-400 font-medium">
-                                            {formatDateShort(detail.paymentDate)}
-                                        </p>
-                                    </div>
+                                    <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500 dark:text-zinc-400">{detail.ticker.substring(0,2)}</div>
+                                    <div><p className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">{detail.ticker} <span className={`text-[8px] px-1 rounded font-bold uppercase ${detail.type === 'JCP' ? 'text-orange-500 bg-orange-50 dark:bg-orange-900/20' : detail.type === 'AMORT' ? 'text-violet-500 bg-violet-50 dark:bg-violet-900/20' : 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'}`}>{detail.type || 'DIV'}</span></p><p className="text-[10px] text-zinc-400 font-medium">{formatDateShort(detail.paymentDate)}</p></div>
                                 </div>
-                                <div className="text-right">
-                                    <span className="block text-xs font-black text-emerald-600 dark:text-emerald-400">{formatBRL(detail.totalReceived, privacyMode)}</span>
-                                </div>
+                                <div className="text-right"><span className="block text-xs font-black text-emerald-600 dark:text-emerald-400">{formatBRL(detail.totalReceived, privacyMode)}</span></div>
                             </div>
                         ))}
                      </div>
@@ -780,28 +614,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  <div className="space-y-4">
                      {sortedProvisionedMonths.length > 0 && (
                          <div className="mb-6 anim-slide-up">
-                             <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest px-2 mb-2 flex items-center gap-2">
-                                 <CalendarClock className="w-3 h-3" /> Provisionados
-                             </h3>
+                             <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest px-2 mb-2 flex items-center gap-2"><CalendarClock className="w-3 h-3" /> Provisionados</h3>
                              <div className="space-y-2">
                                 {sortedProvisionedMonths.map((month: string) => {
                                     const [year, m] = month.split('-');
                                     const monthName = new Date(parseInt(year), parseInt(m)-1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
                                     const monthTotal = provisionedMap[month].reduce((acc: number, r: DividendReceipt) => acc + r.totalReceived, 0);
-
                                     return (
                                         <div key={month} className="bg-amber-50/50 dark:bg-amber-900/10 rounded-xl overflow-hidden">
-                                             <div className="p-3 flex justify-between items-center">
-                                                 <span className="text-xs font-black uppercase text-amber-700 dark:text-amber-400">{monthName}</span>
-                                                 <span className="text-xs font-black text-amber-700 dark:text-amber-400">{formatBRL(monthTotal, privacyMode)}</span>
-                                             </div>
+                                             <div className="p-3 flex justify-between items-center"><span className="text-xs font-black uppercase text-amber-700 dark:text-amber-400">{monthName}</span><span className="text-xs font-black text-amber-700 dark:text-amber-400">{formatBRL(monthTotal, privacyMode)}</span></div>
                                         </div>
                                     )
                                 })}
                              </div>
                          </div>
                      )}
-
                      <div className="space-y-1">
                          <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2 mb-2 anim-slide-up" style={{ animationDelay: '300ms' }}>Histórico</h3>
                          {history.length > 0 ? (
@@ -812,46 +639,24 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     const monthName = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
                                     const isExpanded = expandedMonth === month;
                                     const monthlyDetails = receiptsByMonth[month] || [];
-                                    
-                                    // Verificação de mudança de ano para inserir separador
                                     const previousItem = history[i - 1];
                                     const previousYear = previousItem ? previousItem[0].split('-')[0] : null;
                                     const showYearHeader = year !== previousYear;
-
                                     return (
                                         <React.Fragment key={month}>
-                                            {showYearHeader && (
-                                                <div className="sticky top-0 z-10 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm">
-                                                    <h4 className="text-xs font-black text-zinc-300 dark:text-zinc-600 px-2 tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-1">
-                                                        {year}
-                                                    </h4>
-                                                </div>
-                                            )}
+                                            {showYearHeader && (<div className="sticky top-0 z-10 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm"><h4 className="text-xs font-black text-zinc-300 dark:text-zinc-600 px-2 tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-1">{year}</h4></div>)}
                                             <div className={`rounded-2xl transition-all duration-300 overflow-hidden anim-slide-up ${isExpanded ? 'bg-zinc-50 dark:bg-zinc-800 my-2' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`} style={{ animationDelay: `${400 + (i * 30)}ms` }}>
                                                 <button onClick={() => toggleMonthExpand(month)} className="w-full p-3 flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isExpanded ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-400'}`}>
-                                                            <Receipt className="w-4 h-4" />
-                                                        </div>
-                                                        <span className="text-sm font-bold capitalize text-zinc-700 dark:text-zinc-200">{monthName}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <span className={`text-sm font-black ${isExpanded ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(val, privacyMode)}</span>
-                                                        <ChevronDown className={`w-4 h-4 text-zinc-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                                    </div>
+                                                    <div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isExpanded ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-400'}`}><Receipt className="w-4 h-4" /></div><span className="text-sm font-bold capitalize text-zinc-700 dark:text-zinc-200">{monthName}</span></div>
+                                                    <div className="flex items-center gap-3"><span className={`text-sm font-black ${isExpanded ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(val, privacyMode)}</span><ChevronDown className={`w-4 h-4 text-zinc-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`} /></div>
                                                 </button>
-                                                
                                                 {isExpanded && (
                                                     <div className="px-3 pb-3 anim-fade-in">
                                                         <div className="h-px w-full bg-zinc-200 dark:bg-zinc-700 mb-3 opacity-50"></div>
                                                         <div className="space-y-1">
                                                             {monthlyDetails.sort((a: DividendReceipt, b: DividendReceipt) => b.totalReceived - a.totalReceived).map((detail: DividendReceipt, idx: number) => (
                                                                 <div key={idx} className="flex justify-between items-center p-2 rounded-lg hover:bg-white dark:hover:bg-zinc-700/50 transition-colors">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-xs font-bold text-zinc-900 dark:text-white w-12">{detail.ticker}</span>
-                                                                        <span className="text-[10px] text-zinc-400">{formatDateShort(detail.paymentDate)}</span>
-                                                                    </div>
-                                                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(detail.totalReceived, privacyMode)}</span>
+                                                                    <div className="flex items-center gap-2"><span className="text-xs font-bold text-zinc-900 dark:text-white w-12">{detail.ticker}</span><span className="text-[10px] text-zinc-400">{formatDateShort(detail.paymentDate)}</span></div><span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(detail.totalReceived, privacyMode)}</span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -869,26 +674,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* ... (Rest of the modals remain unchanged) ... */}
-      
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         {/* ... (Allocation Modal Content) ... */}
+         {/* ... Allocation Content ... */}
          <div className="p-6 pb-20">
              <div className="flex items-center gap-4 mb-6 anim-slide-up shrink-0">
-                <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
-                    <PieIcon className="w-6 h-6" strokeWidth={1.5} />
-                </div>
-                <div>
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Diversificação da Carteira</p>
-                </div>
+                <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30"><PieIcon className="w-6 h-6" strokeWidth={1.5} /></div>
+                <div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2><p className="text-xs text-zinc-500 font-medium">Diversificação da Carteira</p></div>
              </div>
-
              <div className="bg-white dark:bg-zinc-900 p-1 rounded-xl flex gap-1 mb-6 shadow-sm border border-zinc-100 dark:border-zinc-800 anim-slide-up shrink-0" style={{ animationDelay: '50ms' }}>
                  <button onClick={() => setAllocationTab('CLASS')} className={`flex-1 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-300 ${allocationTab === 'CLASS' ? 'bg-zinc-900 dark:bg-zinc-800 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Por Classe</button>
                  <button onClick={() => setAllocationTab('ASSET')} className={`flex-1 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-300 ${allocationTab === 'ASSET' ? 'bg-zinc-900 dark:bg-zinc-800 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Por Ativo</button>
              </div>
-
              <div className="anim-slide-up px-1 pb-10" style={{ animationDelay: '100ms' }}>
                  {allocationTab === 'CLASS' ? (
                      <div className="space-y-6">
@@ -912,15 +708,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                              {classChartData.map((item, index) => (
                                  <button key={index} onClick={() => setActiveIndexClass(index === activeIndexClass ? undefined : index)} className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 group hover:border-zinc-200 dark:hover:border-zinc-700 transition-all">
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm" style={{ backgroundColor: item.color }}>{Math.round(item.percent)}%</div>
-                                    <div className="flex-1 text-left">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="text-sm font-bold text-zinc-900 dark:text-white">{item.name}</span>
-                                            <span className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</span>
-                                        </div>
-                                        <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                                            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div>
-                                        </div>
-                                    </div>
+                                    <div className="flex-1 text-left"><div className="flex justify-between items-center mb-1"><span className="text-sm font-bold text-zinc-900 dark:text-white">{item.name}</span><span className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</span></div><div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden"><div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div></div></div>
                                  </button>
                              ))}
                          </div>
@@ -932,24 +720,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 {assetsChartData.map((asset, index) => (
                                     <button key={index} onClick={() => setActiveIndexAsset(index === activeIndexAsset ? undefined : index)} className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3 anim-stagger-item hover:scale-[1.01] transition-transform" style={{ animationDelay: `${index * 30}ms` }}>
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0 border border-zinc-100 dark:border-zinc-800" style={{ color: asset.color, backgroundColor: `${asset.color}15` }}>{asset.name.substring(0,2)}</div>
-                                        <div className="flex-1 text-left">
-                                            <div className="flex justify-between items-center mb-0.5">
-                                                <span className="text-xs font-bold text-zinc-900 dark:text-white">{asset.name}</span>
-                                                <span className="text-xs font-black text-zinc-900 dark:text-white">{formatPercent(asset.percent, privacyMode)}</span>
-                                            </div>
-                                            <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1 overflow-hidden">
-                                                <div className="h-full rounded-full opacity-80" style={{ width: `${asset.percent}%`, backgroundColor: asset.color }}></div>
-                                            </div>
-                                        </div>
+                                        <div className="flex-1 text-left"><div className="flex justify-between items-center mb-0.5"><span className="text-xs font-bold text-zinc-900 dark:text-white">{asset.name}</span><span className="text-xs font-black text-zinc-900 dark:text-white">{formatPercent(asset.percent, privacyMode)}</span></div><div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1 overflow-hidden"><div className="h-full rounded-full opacity-80" style={{ width: `${asset.percent}%`, backgroundColor: asset.color }}></div></div></div>
                                     </button>
                                 ))}
                             </div>
-                         ) : (
-                            <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                                <Gem className="w-12 h-12 text-zinc-300 mb-4" strokeWidth={1} />
-                                <p className="text-xs font-bold text-zinc-500">Nenhum ativo na carteira</p>
-                            </div>
-                         )}
+                         ) : <div className="flex flex-col items-center justify-center py-20 opacity-50"><Gem className="w-12 h-12 text-zinc-300 mb-4" strokeWidth={1} /><p className="text-xs font-bold text-zinc-500">Nenhum ativo na carteira</p></div>}
                      </div>
                  )}
              </div>
@@ -1128,8 +903,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                           <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} minTickGap={20} />
                                           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `${val/1000}k`} />
                                           <RechartsTooltip content={<SpreadTooltip />} cursor={{fill: '#f4f4f5', opacity: 0.1}} />
-                                          <Bar dataKey="accDiv" name="Dividendos" fill="#10b981" radius={[0, 0, 4, 4]} stackId="a" maxBarSize={24} />
-                                          <Bar dataKey="accInf" name="Inflação" fill="#f43f5e" radius={[4, 4, 0, 0]} stackId="a" maxBarSize={24} />
+                                          <Bar dataKey="dividends" name="Dividendos" fill="#10b981" radius={[0, 0, 4, 4]} stackId="a" maxBarSize={24} />
+                                          <Bar dataKey="inflation" name="Inflação" fill="#f43f5e" radius={[4, 4, 0, 0]} stackId="a" maxBarSize={24} />
                                       </BarChart>
                                   )}
                               </ResponsiveContainer>
