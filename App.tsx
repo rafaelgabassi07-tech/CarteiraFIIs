@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.6.1'; 
+const APP_VERSION = '8.6.2'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -350,7 +350,7 @@ const App: React.FC = () => {
           setDividends(data.dividends);
       }
       if (Object.keys(data.metadata).length > 0) {
-          // --- SMART MERGE LOGIC ---
+          // --- SMART MERGE LOGIC (Enhanced) ---
           // Previne que dados "vazios" do banco sobrescrevam dados ricos da memória (Optimistic UI)
           setAssetsMetadata(prev => {
               const next = { ...prev };
@@ -362,15 +362,21 @@ const App: React.FC = () => {
                       const mergedFundamentals = { ...(newMeta.fundamentals || {}) };
                       
                       // Campos que costumam desaparecer (FIIs)
-                      // Se o banco retornar 0/null mas nós tivermos valor em memória, mantemos a memória
-                      const criticalFields = ['vacancy', 'last_dividend', 'dy_12m', 'p_vp', 'assets_value'] as const;
+                      // Incluído liquidity, manager_type, assets_value que são strings ou podem ser 'N/A'
+                      const criticalFields = ['vacancy', 'last_dividend', 'dy_12m', 'p_vp', 'assets_value', 'liquidity', 'manager_type'] as const;
                       
                       criticalFields.forEach(field => {
                           const newVal = mergedFundamentals?.[field];
                           const oldVal = existing.fundamentals?.[field];
                           
-                          const isNewInvalid = newVal === undefined || newVal === null || (field !== 'vacancy' && newVal === 0);
-                          const isOldValid = oldVal !== undefined && oldVal !== null && (field === 'vacancy' || oldVal !== 0);
+                          // Validação estrita: se for 0, N/A, traço ou vazio, considera inválido
+                          const isNewInvalid = newVal === undefined || newVal === null || 
+                                               (field !== 'vacancy' && newVal === 0) || // Vacância 0 é válida
+                                               newVal === 'N/A' || newVal === '-' || newVal === '' || newVal === '0';
+
+                          const isOldValid = oldVal !== undefined && oldVal !== null && 
+                                             oldVal !== 'N/A' && oldVal !== '-' && oldVal !== '' &&
+                                             (field === 'vacancy' || oldVal !== 0);
                           
                           if (isNewInvalid && isOldValid) {
                               // @ts-ignore
