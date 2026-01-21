@@ -28,7 +28,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         },
     });
 
-    // Fontes confiáveis
+    // Fontes confiáveis e mapeamento de domínios
     const knownSources: Record<string, { name: string; domain: string }> = {
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
         'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
@@ -50,7 +50,11 @@ export default async function handler(request: VercelRequest, response: VercelRe
         'inteligência financeira': { name: 'Inteligência Financeira', domain: 'inteligenciafinanceira.com.br' },
         'valor econômico': { name: 'Valor Econômico', domain: 'valor.globo.com' },
         'estadao': { name: 'Estadão', domain: 'estadao.com.br' },
-        'folha': { name: 'Folha de S.Paulo', domain: 'folha.uol.com.br' }
+        'folha': { name: 'Folha de S.Paulo', domain: 'folha.uol.com.br' },
+        'cnn brasil': { name: 'CNN Brasil', domain: 'cnnbrasil.com.br' },
+        'uol economia': { name: 'UOL Economia', domain: 'economia.uol.com.br' },
+        'forbes': { name: 'Forbes Brasil', domain: 'forbes.com.br' },
+        'bloomberg línea': { name: 'Bloomberg Línea', domain: 'bloomberglinea.com.br' }
     };
 
     function escapeRegExp(string: string) {
@@ -98,10 +102,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
                 if (foundKey) known = knownSources[foundKey];
             }
 
-            // Se não for uma fonte conhecida/whitelist, ignora (reduz ruído)
-            // Para ser mais permissivo, descomente a linha abaixo e remova o `if (!known) return null;`
-            // if (!known) known = { name: rawSourceName, domain: '' }; 
-            if (!known) return null;
+            // Se não for uma fonte conhecida, usamos o nome cru mas sem domínio para favicon (fallback genérico)
+            // Mas para garantir qualidade, filtramos apenas knownSources por enquanto.
+            if (!known) return null; 
 
             // Verificação de duplicidade de título exato
             if (seenTitles.has(cleanTitle)) return null;
@@ -113,14 +116,14 @@ export default async function handler(request: VercelRequest, response: VercelRe
                 publicationDate: item.pubDate || item.isoDate,
                 sourceName: known.name,
                 sourceHostname: known.domain,
-                // favicon: `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`,
+                imageUrl: `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`,
                 summary: item.contentSnippet || '',
             };
         }).filter(item => item !== null);
     };
 
     try {
-        // 1. Definição das Queries
+        // 1. Definição das Queries (Otimizadas para evitar contaminação cruzada)
         const queryFII = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII" when:7d';
         const queryStocks = '"Ações" OR "Ibovespa" OR "Dividendos Ações" OR "Mercado de Ações" -FII -"Fundos Imobiliários" when:7d';
 
