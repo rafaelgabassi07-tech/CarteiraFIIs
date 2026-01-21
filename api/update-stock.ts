@@ -25,7 +25,6 @@ const USER_AGENTS = [
 
 const getRandomAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
-// Função de Fetch com Retry
 async function fetchHTML(url: string, referer: string) {
     for (let i = 0; i < 2; i++) {
         try {
@@ -35,51 +34,64 @@ async function fetchHTML(url: string, referer: string) {
                     'User-Agent': getRandomAgent(),
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
                     'Referer': referer,
-                    'Upgrade-Insecure-Requests': '1'
+                    'Upgrade-Insecure-Requests': '1',
+                    'Cache-Control': 'no-cache'
                 },
-                timeout: 9000
+                timeout: 10000
             });
             return response.data;
         } catch (e: any) {
             if (e.response?.status === 404) throw e; 
             if (i === 1) throw e;
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 2000));
         }
     }
 }
 
-// --- HELPERS DE PARSING ---
+// --- HELPERS DE PARSING AVANÇADO ---
 
 function parseValue(valueStr: any): number {
     if (!valueStr) return 0;
     if (typeof valueStr === 'number') return valueStr;
     
     let str = String(valueStr).trim();
-    if (!str || str === '-' || str === 'N/A') return 0;
+    if (!str || str === '-' || str === 'N/A' || str === '--') return 0;
 
     try {
-        // Tenta capturar a primeira sequência numérica válida que pareça um float BR ou US
-        // Ex: R$ 1.234,56 -> 1234.56
-        str = str.replace(/[R$%\s]/g, '');
-        str = str.replace(/\./g, ''); // Remove milhar
-        str = str.replace(',', '.'); // Decimais
+        // Estratégia: Limpar tudo que não é número, vírgula, ponto ou traço
+        // Preserva o sinal negativo se estiver no início
+        const isNegative = str.startsWith('-');
         
+        // Remove caracteres de moeda, porcentagem e letras
+        str = str.replace(/[^0-9,.-]/g, ''); 
+        
+        // Lógica Brasileira (PT-BR): Vírgula é decimal
+        if (str.includes(',')) {
+            str = str.replace(/\./g, ''); // Remove milhar (pontos)
+            str = str.replace(',', '.');  // Transforma vírgula em ponto
+        } else {
+            // Se não tem vírgula, mas tem ponto:
+            // "1.200" -> Pode ser 1200 ou 1.2. Assumimos 1200 se for > 100 ou se tiver cara de milhar
+            // Mas em sites BR, 10.50 geralmente não existe, é 10,50. 
+            // Se tiver ponto, removemos assumindo que é milhar, a menos que seja pequeno.
+            // Para simplificar: No Investidor10, números inteiros grandes usam ponto (ex: cotas).
+        }
+
         const num = parseFloat(str);
-        return isNaN(num) ? 0 : num;
+        if (isNaN(num)) return 0;
+        return isNegative && num > 0 ? -num : num;
     } catch { return 0; }
 }
 
 function normalizeKey(str: string) {
     if (!str) return '';
-    // Remove acentos, lowercase, remove caracteres especiais
     return str.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]/g, "")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
+        .replace(/[^a-z0-9]/g, "") // Remove especiais
         .trim();
 }
 
-// --- MAPA DE DADOS ---
-// Mapeia chaves normalizadas (do HTML) para colunas do Banco de Dados
+// Mapa de chaves normalizadas para colunas do Banco de Dados
 const KEY_MAP: Record<string, string> = {
     // Cotação
     'cotacao': 'cotacao_atual', 'valoratual': 'cotacao_atual', 'preco': 'cotacao_atual',
@@ -90,18 +102,18 @@ const KEY_MAP: Record<string, string> = {
     'dy': 'dy', 'dividendyield': 'dy', 'dy12m': 'dy',
     'vpa': 'vp_cota', 'vpporcota': 'vp_cota', 'valorpatrimonialporcota': 'vp_cota',
     'lpa': 'lpa', 'lucroporacao': 'lpa',
-    'ev/ebitda': 'ev_ebitda', 'evebitda': 'ev_ebitda',
+    'evebitda': 'ev_ebitda',
     
     // Eficiência
     'roe': 'roe',
     'margemliquida': 'margem_liquida',
     'margembruta': 'margem_bruta',
     'margemebit': 'margem_ebit',
-    'dividaliquida/ebitda': 'divida_liquida_ebitda', 'dl/ebitda': 'divida_liquida_ebitda',
+    'dividaliquidaebitda': 'divida_liquida_ebitda',
     
     // Crescimento
-    'cagrreceita5anos': 'cagr_receita_5a', 'cagrreceita': 'cagr_receita_5a',
-    'cagrlucros5anos': 'cagr_lucros_5a', 'cagrlucro': 'cagr_lucros_5a',
+    'cagrreceita5anos': 'cagr_receita_5a', 
+    'cagrlucros5anos': 'cagr_lucros_5a',
     
     // FIIs Específico
     'vacanciafisica': 'vacancia', 'vacancia': 'vacancia',
@@ -109,7 +121,7 @@ const KEY_MAP: Record<string, string> = {
     'patrimonioliquido': 'patrimonio_liquido',
     'numerodecotistas': 'num_cotistas', 'cotistas': 'num_cotistas',
     'taxadeadministracao': 'taxa_adm',
-    'segmento': 'segmento',
+    'segmento': 'segmento', 'segmentodeatuacao': 'segmento',
     'tipodegestao': 'tipo_gestao',
     
     // Geral
@@ -118,14 +130,13 @@ const KEY_MAP: Record<string, string> = {
 };
 
 // ---------------------------------------------------------
-// SCRAPER ENGINE
+// SCRAPER ENGINE "HUNTER"
 // ---------------------------------------------------------
 
 async function scrapeInvestidor10(ticker: string) {
     try {
         const isFII = ticker.endsWith('11') || ticker.endsWith('11B');
         
-        // Tenta URLs em ordem de probabilidade
         const strategies = isFII 
             ? [`/fiis/${ticker.toLowerCase()}/`, `/acoes/${ticker.toLowerCase()}/`, `/bdrs/${ticker.toLowerCase()}/`]
             : [`/acoes/${ticker.toLowerCase()}/`, `/bdrs/${ticker.toLowerCase()}/`, `/fiis/${ticker.toLowerCase()}/`];
@@ -148,54 +159,80 @@ async function scrapeInvestidor10(ticker: string) {
         const $ = cheerio.load(html);
         const extracted: any = {};
 
-        // ESTRATÉGIA 1: Cards do Topo (Geralmente contêm Cotação, DY, P/VP, P/L)
-        // Refinado para buscar em estruturas aninhadas
-        $('div._card').each((_, el) => {
-            const key = $(el).find('div._card-header').text();
-            const val = $(el).find('div._card-body').text();
-            if (key && val) {
-                const norm = normalizeKey(key);
-                if (KEY_MAP[norm]) extracted[KEY_MAP[norm]] = val.trim();
-            }
-        });
+        // --- ESTRATÉGIA "HUNTER" (CAÇADOR) ---
+        // Em vez de procurar classes específicas, procuramos pelo TEXTO do rótulo e pegamos o valor próximo.
+        // Isso é muito mais robusto contra mudanças de layout.
 
-        // ESTRATÉGIA FII: Cards Específicos de FIIs (#cards-ticker)
-        $('#cards-ticker ._card').each((_, el) => {
-             const key = $(el).find('._card-header span').text() || $(el).find('._card-header').text();
-             const val = $(el).find('._card-body span').text() || $(el).find('._card-body').text();
-             if (key && val) {
-                const norm = normalizeKey(key);
-                if (KEY_MAP[norm]) extracted[KEY_MAP[norm]] = val.trim();
-             }
-        });
+        // Lista de textos que nos interessam (chaves do mapa desnormalizadas para busca fuzzy)
+        const targetTexts = [
+            'P/VP', 'Dividend Yield', 'DY', 'Cotação', 'P/L', 'Vacância Física', 
+            'Último Rendimento', 'Valor de Mercado', 'Liquidez', 'ROE', 'VPA', 
+            'Margem Líquida', 'Dívida Líquida / EBITDA', 'Patrimônio Líquido'
+        ];
 
-        // ESTRATÉGIA 2: Células de Tabela (Indicadores, Dados FIIs)
-        $('.cell').each((_, el) => {
-            const key = $(el).find('.name').text() || $(el).find('span').first().text();
-            const val = $(el).find('.value').text() || $(el).find('span').last().text();
-            if (key && val) {
-                const norm = normalizeKey(key);
-                if (KEY_MAP[norm] && !extracted[KEY_MAP[norm]]) extracted[KEY_MAP[norm]] = val.trim();
-            }
-        });
+        // Varre todos os elementos que podem conter labels
+        $('span, div, td, strong, b, h3, h4').each((_, el) => {
+            // Pega apenas o texto direto do elemento, sem filhos, para evitar pegar o card inteiro
+            const text = $(el).clone().children().remove().end().text().trim();
+            
+            if (!text || text.length > 50) return; // Ignora textos longos
 
-        // ESTRATÉGIA 3: Tabelas Genéricas (Fallback)
-        $('table tr').each((_, tr) => {
-            const tds = $(tr).find('td');
-            if (tds.length >= 2) {
-                const key = $(tds[0]).text();
-                const val = $(tds[1]).text();
-                if (key && val) {
-                    const norm = normalizeKey(key);
-                    if (KEY_MAP[norm] && !extracted[KEY_MAP[norm]]) extracted[KEY_MAP[norm]] = val.trim();
+            // Verifica se o texto contém algum dos nossos alvos
+            // Normaliza para comparação
+            const normText = normalizeKey(text);
+            
+            if (KEY_MAP[normText]) {
+                const dbKey = KEY_MAP[normText];
+                
+                // Se já temos valor, pula (prioriza ocorrências no topo da página)
+                if (extracted[dbKey]) return;
+
+                // Tenta encontrar o valor nas proximidades:
+                
+                // 1. Irmão (Sibling)
+                let value = $(el).next().text().trim();
+                if (!value) value = $(el).siblings('.value').text().trim();
+                if (!value) value = $(el).siblings('span').text().trim();
+                
+                // 2. Filho do Pai (Tio/Primo) - Comum em cards
+                // Ex: <div class="card"><div class="header">Label</div><div class="body">Value</div></div>
+                if (!value) {
+                    const parent = $(el).parent();
+                    value = parent.find('.value').text().trim();
+                    if (!value) value = parent.next().text().trim(); // Se header e body são irmãos
+                    if (!value) value = parent.find('div[class*="body"] span').text().trim();
+                    if (!value) value = parent.find('span').last().text().trim();
+                }
+
+                // 3. Estrutura de Tabela (td anterior -> td atual)
+                if (!value && $(el).is('td')) {
+                    value = $(el).next('td').text().trim();
+                }
+
+                // Salva se achou algo que parece valor (contém número ou R$)
+                if (value && (/[0-9]/.test(value) || value === '-')) {
+                    extracted[dbKey] = value;
                 }
             }
         });
 
-        // ESTRATÉGIA 4: Cotação Específica (Header)
+        // --- FALLBACKS ESPECÍFICOS (SELETORES RÍGIDOS) ---
+        // Caso o Hunter falhe, tentamos seletores conhecidos do Investidor10
+        
+        // Cotação no Header
         if (!extracted.cotacao_atual) {
-            const headerPrice = $('div._card.cotacao div._card-body').text();
-            if (headerPrice) extracted.cotacao_atual = headerPrice;
+            const headerVal = $('div._card.cotacao div._card-body span').text();
+            if (headerVal) extracted.cotacao_atual = headerVal;
+        }
+
+        // Cards Padrão
+        if (!extracted.dy) {
+            $('div._card').each((_, el) => {
+                const title = $(el).find('._card-header').text().toLowerCase();
+                if (title.includes('dy') || title.includes('yield')) {
+                    extracted.dy = $(el).find('._card-body').text();
+                }
+            });
         }
 
         // PÓS-PROCESSAMENTO
@@ -296,6 +333,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         const metadata = await scrapeInvestidor10(ticker);
+        const proventos = await scrapeStatusInvestProventos(ticker);
         
         if (metadata) {
             const dbPayload = {
@@ -328,7 +366,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             if (metaError) console.error('Supabase Meta Error:', metaError);
         }
 
-        const proventos = await scrapeStatusInvestProventos(ticker);
         if (proventos.length > 0) {
              await supabase.from('market_dividends').upsert(proventos, { 
                 onConflict: 'ticker, type, date_com, payment_date, rate', 
@@ -340,6 +377,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(404).json({ success: false, error: 'Dados não encontrados.' });
         }
 
+        // Retorna o objeto exatamente como esperado pelo frontend
         return res.status(200).json({ success: true, data: metadata, dividends: proventos });
 
     } catch (e: any) {
