@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, PlusCircle, ArrowUpRight, Filter } from 'lucide-react';
+import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, PlusCircle, ArrowUpRight, Filter, MoreHorizontal } from 'lucide-react';
 import { NewsItem, Transaction, AssetType } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -9,13 +9,23 @@ interface NewsProps {
 }
 
 const SkeletonNews = () => (
-    <div className="space-y-3 px-4">
-        {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 animate-pulse items-center">
-                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 shrink-0"></div>
-                <div className="flex-1 space-y-2">
-                    <div className="h-2 w-3/4 bg-zinc-100 dark:bg-zinc-800 rounded"></div>
-                    <div className="h-2 w-1/2 bg-zinc-100 dark:bg-zinc-800 rounded"></div>
+    <div className="space-y-3 px-2">
+        {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-5 rounded-[1.5rem] bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 animate-pulse">
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800"></div>
+                        <div className="h-2 w-20 bg-zinc-100 dark:bg-zinc-800 rounded"></div>
+                    </div>
+                    <div className="h-5 w-12 bg-zinc-100 dark:bg-zinc-800 rounded-full"></div>
+                </div>
+                <div className="space-y-2 mb-4">
+                    <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded"></div>
+                    <div className="h-4 w-2/3 bg-zinc-100 dark:bg-zinc-800 rounded"></div>
+                </div>
+                <div className="flex justify-between items-center pt-2">
+                    <div className="h-2 w-16 bg-zinc-100 dark:bg-zinc-800 rounded"></div>
+                    <div className="h-8 w-24 bg-zinc-100 dark:bg-zinc-800 rounded-lg"></div>
                 </div>
             </div>
         ))}
@@ -31,27 +41,10 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<'Todas' | 'FIIs' | 'Ações'>('Todas');
 
-    // Separação de Tickers da Carteira (para uso futuro ou destaque)
-    const { fiiTickers, stockTickers } = useMemo(() => {
-        const uniqueFIIs = new Set<string>();
-        const uniqueStocks = new Set<string>();
-
-        transactions.forEach(t => {
-            if (t.assetType === AssetType.FII) uniqueFIIs.add(t.ticker.toUpperCase());
-            else uniqueStocks.add(t.ticker.toUpperCase());
-        });
-
-        return {
-            fiiTickers: Array.from(uniqueFIIs),
-            stockTickers: Array.from(uniqueStocks)
-        };
-    }, [transactions]);
-
     const fetchNews = useCallback(async (query?: string) => {
         setLoading(true);
         setError(false);
         try {
-            // Se houver query explícita (busca), usa. Se não, busca o feed geral (sem query params)
             const url = query ? `/api/news?q=${encodeURIComponent(query)}` : '/api/news';
             const res = await fetch(url);
             if (!res.ok) throw new Error('Falha ao carregar');
@@ -80,21 +73,17 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         }
     }, []);
 
-    // Effect inicial: carrega feed geral se não tiver busca
     useEffect(() => {
         if (!searchTerm) {
             fetchNews();
         }
     }, [fetchNews]);
 
-    // Handle Busca
     const handleSearchSubmit = () => {
         if (!searchTerm.trim()) {
-            fetchNews(); // Reseta para feed geral
+            fetchNews(); 
             return;
         }
-        // Importante: Ao buscar algo específico, muda para a aba 'Todas' 
-        // para garantir que o resultado apareça mesmo que a categoria seja diferente da atual.
         setActiveTab('Todas');
         fetchNews(searchTerm);
     };
@@ -103,7 +92,6 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         if (e.key === 'Enter') handleSearchSubmit();
     };
 
-    // Handle Share
     const handleShare = async (e: React.MouseEvent, item: NewsItem) => {
         e.preventDefault();
         e.stopPropagation();
@@ -114,16 +102,12 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                     text: `Confira esta notícia: ${item.title}`,
                     url: item.url
                 });
-            } catch (err) {
-                // Share dismissed
-            }
+            } catch (err) { }
         } else {
             navigator.clipboard.writeText(`${item.title}\n${item.url}`);
-            // Fallback visual opcional
         }
     };
 
-    // Filtragem Local
     const filteredNews = useMemo(() => {
         if (activeTab === 'Todas') return news;
         return news.filter(n => n.category === activeTab);
@@ -137,8 +121,9 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                     
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white">Notícias</h1>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">Feed de Mercado</p>
+                            <h1 className="text-3xl font-black tracking-tighter text-zinc-900 dark:text-white flex items-center gap-2">
+                                Notícias <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
+                            </h1>
                         </div>
                         <button 
                             onClick={handleSearchSubmit} 
@@ -195,57 +180,72 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                         </button>
                     </div>
                 ) : (
-                    <div className="space-y-3 px-4">
+                    <div className="space-y-3 px-2"> 
+                    {/* Padding reduzido para px-2 para melhor aproveitamento lateral em mobile */}
                         
                         {filteredNews.length > 0 ? (
-                            filteredNews.map((item, index) => (
-                                <a 
-                                    key={index}
-                                    href={item.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-start gap-4 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all press-effect group anim-slide-up relative"
-                                    style={{ animationDelay: `${index * 50}ms` }}
-                                >
-                                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center shrink-0 overflow-hidden mt-1">
-                                        {item.imageUrl ? (
-                                            <img src={item.imageUrl} alt={item.source} className="w-6 h-6 object-contain" />
-                                        ) : (
-                                            <Globe className="w-5 h-5 text-zinc-300" />
-                                        )}
-                                    </div>
-                                    
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-start mb-1.5">
-                                            <div className="flex items-center gap-2 max-w-[70%]">
-                                                <span className="text-[9px] font-black text-zinc-500 uppercase tracking-wider truncate">
+                            filteredNews.map((item, index) => {
+                                const isFII = item.category === 'FIIs' || item.title.includes('FII') || item.title.includes('IFIX');
+                                
+                                return (
+                                    <a 
+                                        key={index}
+                                        href={item.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="block bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect group anim-slide-up relative overflow-hidden"
+                                        style={{ animationDelay: `${index * 50}ms` }}
+                                    >
+                                        {/* Header do Card */}
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center overflow-hidden shrink-0">
+                                                    {item.imageUrl ? (
+                                                        <img src={item.imageUrl} alt={item.source} className="w-4 h-4 object-contain" />
+                                                    ) : (
+                                                        <Globe className="w-3 h-3 text-zinc-400" />
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest truncate max-w-[120px]">
                                                     {item.source}
                                                 </span>
                                             </div>
-                                            <span className="text-[9px] font-bold text-zinc-400 whitespace-nowrap bg-zinc-50 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-                                                {item.date}
-                                            </span>
-                                        </div>
-                                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white leading-snug line-clamp-3 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mb-2">
-                                            {item.title}
-                                        </h3>
-                                        
-                                        {/* Actions */}
-                                        <div className="flex items-center justify-end gap-3 relative z-10">
-                                            <button 
-                                                onClick={(e) => handleShare(e, item)}
-                                                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                                                title="Compartilhar"
-                                            >
-                                                <Share2 className="w-4 h-4" />
-                                            </button>
-                                            <div className="text-indigo-500 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                <ArrowUpRight className="w-4 h-4" />
+                                            
+                                            <div className={`px-2 py-1 rounded-md border text-[9px] font-black uppercase tracking-widest ${isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-900/30'}`}>
+                                                {isFII ? 'FIIs' : 'Ações'}
                                             </div>
                                         </div>
-                                    </div>
-                                </a>
-                            ))
+
+                                        {/* Conteúdo */}
+                                        <div className="mb-5">
+                                            <h3 className="text-base font-black text-zinc-900 dark:text-white leading-tight mb-2 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors line-clamp-3">
+                                                {item.title}
+                                            </h3>
+                                            {item.summary && (
+                                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-2 font-medium">
+                                                    {item.summary.replace(/<[^>]*>/g, '')}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Footer / Ações */}
+                                        <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800/50 mt-2">
+                                            <div className="flex items-center gap-1.5 text-zinc-400">
+                                                <Clock className="w-3 h-3" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wide">{item.date}</span>
+                                            </div>
+
+                                            <button 
+                                                onClick={(e) => handleShare(e, item)}
+                                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                                            >
+                                                <Share2 className="w-3.5 h-3.5" />
+                                                Compartilhar
+                                            </button>
+                                        </div>
+                                    </a>
+                                );
+                            })
                         ) : (
                             !loading && (
                                 <div className="text-center py-20 opacity-40 anim-fade-in">
