@@ -28,7 +28,7 @@ const MetricCard = ({ label, value, subtext, icon: Icon, colorClass }: any) => (
                 {Icon && <Icon className="w-3 h-3" />} {label}
             </p>
             <p className={`text-lg font-black tracking-tight ${colorClass || 'text-zinc-900 dark:text-white'}`}>
-                {value !== undefined && value !== null ? value : '-'}
+                {value !== undefined && value !== null && value !== '' ? value : '-'}
             </p>
             {subtext && <p className="text-[9px] font-bold text-zinc-400 mt-0.5">{subtext}</p>}
         </div>
@@ -222,28 +222,28 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             <>
                                 <MetricCard 
                                     label="P/VP" 
-                                    value={activeAsset.p_vp?.toFixed(2)} 
+                                    value={activeAsset.p_vp !== undefined ? activeAsset.p_vp.toFixed(2) : '-'} 
                                     subtext="Preço / Valor Patrimonial" 
                                     icon={Scale}
                                     colorClass={activeAsset.p_vp && activeAsset.p_vp < 1 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}
                                 />
                                 <MetricCard 
                                     label="Dividend Yield (12m)" 
-                                    value={activeAsset.dy_12m ? `${activeAsset.dy_12m.toFixed(2)}%` : '-'} 
+                                    value={activeAsset.dy_12m !== undefined ? `${activeAsset.dy_12m.toFixed(2)}%` : '-'} 
                                     subtext="Retorno anual em proventos" 
                                     icon={Percent}
                                     colorClass="text-indigo-500"
                                 />
                                 <MetricCard 
                                     label="Vacância Física" 
-                                    value={activeAsset.vacancy ? `${activeAsset.vacancy.toFixed(2)}%` : '0%'} 
+                                    value={activeAsset.vacancy !== undefined ? `${activeAsset.vacancy.toFixed(2)}%` : '0.00%'} 
                                     subtext="Imóveis desocupados" 
                                     icon={AlertCircle}
                                     colorClass={activeAsset.vacancy && activeAsset.vacancy > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}
                                 />
                                 <MetricCard 
                                     label="Último Rendimento" 
-                                    value={activeAsset.last_dividend ? `R$ ${activeAsset.last_dividend.toFixed(2)}` : '-'} 
+                                    value={activeAsset.last_dividend !== undefined ? `R$ ${activeAsset.last_dividend.toFixed(2)}` : '-'} 
                                     subtext="Valor pago por cota" 
                                     icon={Wallet}
                                 />
@@ -252,26 +252,26 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             <>
                                 <MetricCard 
                                     label="P/L" 
-                                    value={activeAsset.p_l?.toFixed(2)} 
+                                    value={activeAsset.p_l !== undefined ? activeAsset.p_l.toFixed(2) : '-'} 
                                     subtext="Preço / Lucro" 
                                     icon={Scale}
                                 />
                                 <MetricCard 
                                     label="P/VP" 
-                                    value={activeAsset.p_vp?.toFixed(2)} 
+                                    value={activeAsset.p_vp !== undefined ? activeAsset.p_vp.toFixed(2) : '-'} 
                                     subtext="Preço / Valor Patrimonial" 
                                     icon={Building2}
                                 />
                                 <MetricCard 
                                     label="ROE" 
-                                    value={activeAsset.roe ? `${activeAsset.roe.toFixed(2)}%` : '-'} 
+                                    value={activeAsset.roe !== undefined ? `${activeAsset.roe.toFixed(2)}%` : '-'} 
                                     subtext="Retorno sobre Patrimônio" 
                                     icon={Activity}
                                     colorClass="text-sky-500"
                                 />
                                 <MetricCard 
                                     label="Margem Líquida" 
-                                    value={activeAsset.net_margin ? `${activeAsset.net_margin.toFixed(2)}%` : '-'} 
+                                    value={activeAsset.net_margin !== undefined ? `${activeAsset.net_margin.toFixed(2)}%` : '-'} 
                                     subtext="Eficiência da operação" 
                                     icon={BarChart3}
                                 />
