@@ -123,8 +123,8 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
 
     return (
         <div className="bg-zinc-50 dark:bg-zinc-950 min-h-full pb-20">
-            {/* Sticky Header - Solid */}
-            <div className="sticky top-0 z-20 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 transition-all">
+            {/* Sticky Header */}
+            <div className="sticky top-0 z-20 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 p-4 transition-all">
                 <div className="flex justify-between items-center max-w-xl mx-auto">
                     <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center border text-xs font-black shadow-sm ${isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 border-sky-100 dark:border-sky-900/30'}`}>
@@ -145,7 +145,9 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                 
                 {/* Bloco 1: Minha Posição */}
                 <div className="anim-slide-up">
-                    <div className="bg-zinc-900 dark:bg-zinc-950 rounded-[2rem] p-6 shadow-xl relative overflow-hidden text-white border border-zinc-800">
+                    <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 dark:from-zinc-800 dark:to-zinc-950 rounded-[2rem] p-6 shadow-xl relative overflow-hidden text-white border border-white/10">
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                        
                         <div className="relative z-10 flex justify-between items-start mb-6">
                             <div>
                                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Wallet className="w-3 h-3" /> Meu Patrimônio</p>
@@ -263,7 +265,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={monthlyDividends} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
-                                            <RechartsTooltip content={({ active, payload, label }) => { if (active && payload && payload.length) { return (<div className="bg-white dark:bg-zinc-900 p-2 rounded-lg shadow-xl border border-zinc-100 dark:border-zinc-700 z-50"><p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{label}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value as number, privacyMode)}</p></div>); } return null; }} cursor={{ fill: '#71717a10', radius: 4 }} />
+                                            <RechartsTooltip content={({ active, payload, label }) => { if (active && payload && payload.length) { return (<div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-2 rounded-lg shadow-xl border border-zinc-100 dark:border-zinc-700 z-50"><p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{label}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value as number, privacyMode)}</p></div>); } return null; }} cursor={{ fill: '#71717a10', radius: 4 }} />
                                             <Bar dataKey="value" radius={[4, 4, 4, 4]} maxBarSize={40}>
                                                 {monthlyDividends.map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={entry.value > averageInPeriod ? '#10b981' : '#e4e4e7'} className="transition-all duration-300 hover:opacity-80 dark:fill-zinc-700" />
@@ -317,8 +319,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
 
   return (
     <div className="pb-32 min-h-screen">
-      {/* Search Bar Refinada - Solid */}
-      <div className="relative z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-2">
+      {/* Search Bar Refinada */}
+      <div className="relative z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all -mx-4 px-4 py-2">
         <div className="flex flex-col gap-3 pb-2">
             <div className="relative flex items-center group">
                 <Search className="w-4 h-4 absolute left-4 text-zinc-400 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-200 transition-colors" />

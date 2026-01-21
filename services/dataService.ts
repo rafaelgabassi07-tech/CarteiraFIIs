@@ -209,22 +209,18 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       
       if (metaData) {
           metaData.forEach((m: any) => {
-              // Determina tipo a partir do banco, mas faz fallback inteligente se estiver vazio
+              // Determina tipo
               let assetType = AssetType.STOCK;
-              
-              if (m.type === 'FII' || (m.ticker && (m.ticker.endsWith('11') || m.ticker.endsWith('11B')))) {
+              // Check robusto para FIIs: 'FII' explícito ou ticker terminando em 11/11B (padrão)
+              if (m.type === 'FII' || m.ticker.endsWith('11') || m.ticker.endsWith('11B')) {
                   assetType = AssetType.FII;
-              } else if (m.type === 'BDR') {
-                  // Trata BDR como ação por enquanto
-                  assetType = AssetType.STOCK;
               }
 
               const normalizedTicker = m.ticker.trim().toUpperCase();
 
               // Usa o helper centralizado para mapear dados
-              // Mapeia 'segmento' (DB) para 'segment' (App)
               metadata[normalizedTicker] = {
-                  segment: m.segment || m.segmento || 'Geral',
+                  segment: m.segment || 'Geral',
                   type: assetType,
                   fundamentals: mapScraperToFundamentals(m)
               };
