@@ -19,16 +19,6 @@ interface HomeProps {
   privacyMode?: boolean;
 }
 
-interface MonthlyInflationData {
-    month: string;
-    fullDate: string;
-    dividends: number;
-    inflation: number;
-    net: number;
-    accDiv: number;
-    accInf: number;
-}
-
 const formatBRL = (val: any, privacy = false) => {
   if (privacy) return 'R$ ••••••';
   const num = typeof val === 'number' ? val : 0;
@@ -81,17 +71,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
-  const [showRealYieldModal, setShowRealYieldModal] = useState(false);
-  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  const [selectedProventosMonth, setSelectedProventosMonth] = useState<string | null>(null);
   
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   
-  const [selectedProventosMonth, setSelectedProventosMonth] = useState<string | null>(null);
-  const [chartType, setChartType] = useState<'AREA' | 'BAR'>('AREA');
-  
   const safeInflation = Number(inflationRate) || 4.62;
-  const monthlyInflationRate = Math.pow(1 + (safeInflation) / 100, 1 / 12) - 1;
 
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
@@ -131,10 +116,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [dividendReceipts]);
 
   // --- LOGICA DE HISTORICO E GRAFICOS ---
-  const { history, receiptsByMonth, realYieldMetrics, last12MonthsData, provisionedMap, provisionedTotal, sortedProvisionedMonths, dividendsChartData } = useMemo(() => {
+  const { history, dividendsChartData, provisionedTotal } = useMemo(() => {
     const map: Record<string, number> = {};
-    const receiptsByMonthMap: Record<string, DividendReceipt[]> = {};
-    const provMap: Record<string, DividendReceipt[]> = {};
+    const provMap: Record<string, number> = {};
     let provTotal = 0;
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -145,17 +129,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         if (r.paymentDate <= todayStr) {
             map[key] = (map[key] || 0) + r.totalReceived;
-            if (!receiptsByMonthMap[key]) receiptsByMonthMap[key] = [];
-            receiptsByMonthMap[key].push(r);
         } else {
-            if (!provMap[key]) provMap[key] = [];
-            provMap[key].push(r);
+            provMap[key] = (provMap[key] || 0) + r.totalReceived;
             provTotal += r.totalReceived;
         }
     });
 
     const sortedHistory = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
-    const sortedProvisionedMonths = Object.keys(provMap).sort((a, b) => a.localeCompare(b));
     
     const dividendsChartData = sortedHistory.map(([date, val]) => {
         const [y, m] = date.split('-');
@@ -168,29 +148,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         };
     }).reverse();
 
-    // Lógica Simplificada de Inflação para Performance
-    const lifetimeInflationCost = invested * 0.15; // Estimativa simples para evitar loop pesado no render
-    
-    const realTotalGainValue = totalProfitValue - lifetimeInflationCost;
-    const realTotalReturnPercent = invested > 0 ? (realTotalGainValue / invested) * 100 : 0;
-
     return { 
         history: sortedHistory, 
-        receiptsByMonth: receiptsByMonthMap,
-        realYieldMetrics: { 
-            realReturn: realTotalReturnPercent,
-            realReturnValue: realTotalGainValue,
-            inflationCost: lifetimeInflationCost, 
-            baseValue: invested,
-            totalNominalGain: totalProfitValue
-        },
-        last12MonthsData: [], // Simplificado
-        provisionedMap: provMap, 
-        provisionedTotal: provTotal,
-        sortedProvisionedMonths,
-        dividendsChartData
+        dividendsChartData,
+        provisionedTotal: provTotal
     };
-  }, [dividendReceipts, received, invested, balance, safeInflation, totalProfitValue]);
+  }, [dividendReceipts]);
 
   const { typeData, classChartData, assetsChartData } = useMemo(() => {
       let fiisTotal = 0;
@@ -226,9 +189,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       };
   }, [portfolio]);
 
-  const toggleMonthExpand = (monthKey: string) => setExpandedMonth(expandedMonth === monthKey ? null : monthKey);
-
-  // Custom Pie Tooltip
   const CustomPieTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -308,7 +268,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
       
-      {/* 3. GRID PROVENTOS & ALOCAÇÃO */}
+      {/* 3. GRID PROVENTOS & ALOCAÇÃO & INFLAÇÃO */}
       <div className="grid grid-cols-2 gap-3 anim-stagger-item" style={{ animationDelay: '200ms' }}>
         <button onClick={() => setShowProventosModal(true)} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-left press-effect hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col justify-between h-full shadow-sm">
             <div className="mb-4">
@@ -339,6 +299,25 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
             </div>
         </button>
+      </div>
+
+      {/* Cartão de Inflação / Ganho Real (Restaurado) */}
+      <div className="anim-stagger-item" style={{ animationDelay: '250ms' }}>
+          <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/10 rounded-xl flex items-center justify-center text-rose-500 border border-rose-100 dark:border-rose-900/30">
+                      <Target className="w-5 h-5" />
+                  </div>
+                  <div>
+                      <h3 className="text-sm font-black text-zinc-900 dark:text-white">IPCA 12 Meses</h3>
+                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Inflação Oficial</p>
+                  </div>
+              </div>
+              <div className="text-right">
+                  <p className="text-lg font-black text-rose-600 dark:text-rose-400">{safeInflation.toFixed(2)}%</p>
+                  <p className="text-[9px] text-zinc-400 font-medium">Acumulado</p>
+              </div>
+          </div>
       </div>
 
       {/* 4. MODAL AGENDA (MELHORADO) */}

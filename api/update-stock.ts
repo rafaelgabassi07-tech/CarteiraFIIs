@@ -175,6 +175,7 @@ async function scrapeInvestidor10(ticker: string) {
         // 2. Extração de Dividendos (SCANNER INTELIGENTE V2)
         const dividends: any[] = [];
         
+        // Varre TODAS as tabelas buscando padrões de colunas
         $('table').each((_, table) => {
             const $table = $(table);
             const headers = $table.find('thead th').map((_, th) => $(th).text().trim().toLowerCase()).get();
