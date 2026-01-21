@@ -14,7 +14,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.6.0'; 
+const APP_VERSION = '8.6.1'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -350,7 +350,44 @@ const App: React.FC = () => {
           setDividends(data.dividends);
       }
       if (Object.keys(data.metadata).length > 0) {
-          setAssetsMetadata(prev => ({...prev, ...data.metadata}));
+          // --- SMART MERGE LOGIC ---
+          // Previne que dados "vazios" do banco sobrescrevam dados ricos da memória (Optimistic UI)
+          setAssetsMetadata(prev => {
+              const next = { ...prev };
+              Object.entries(data.metadata).forEach(([ticker, newMeta]) => {
+                  const existing = prev[ticker];
+                  
+                  if (existing) {
+                      // Cria cópia dos fundamentos
+                      const mergedFundamentals = { ...(newMeta.fundamentals || {}) };
+                      
+                      // Campos que costumam desaparecer (FIIs)
+                      // Se o banco retornar 0/null mas nós tivermos valor em memória, mantemos a memória
+                      const criticalFields = ['vacancy', 'last_dividend', 'dy_12m', 'p_vp', 'assets_value'] as const;
+                      
+                      criticalFields.forEach(field => {
+                          const newVal = mergedFundamentals?.[field];
+                          const oldVal = existing.fundamentals?.[field];
+                          
+                          const isNewInvalid = newVal === undefined || newVal === null || (field !== 'vacancy' && newVal === 0);
+                          const isOldValid = oldVal !== undefined && oldVal !== null && (field === 'vacancy' || oldVal !== 0);
+                          
+                          if (isNewInvalid && isOldValid) {
+                              // @ts-ignore
+                              mergedFundamentals[field] = oldVal;
+                          }
+                      });
+                      
+                      next[ticker] = {
+                          ...newMeta,
+                          fundamentals: mergedFundamentals
+                      };
+                  } else {
+                      next[ticker] = newMeta;
+                  }
+              });
+              return next;
+          });
       }
       
       if (data.indicators) {
