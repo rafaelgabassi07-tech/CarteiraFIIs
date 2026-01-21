@@ -14,8 +14,9 @@ import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from '
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
+import { db } from './services/dbService';
 
-const APP_VERSION = '8.6.4'; 
+const APP_VERSION = '8.6.5'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -25,8 +26,8 @@ const STORAGE_KEYS = {
   PRIVACY: 'investfiis_privacy_mode',
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
-  NOTIF_HISTORY: 'investfiis_notification_history_v3', // Version bumped
-  METADATA: 'investfiis_metadata_v2' 
+  NOTIF_HISTORY: 'investfiis_notification_history_v3',
+  // METADATA removido em favor do IndexedDB
 };
 
 // Arredonda para 2 casas decimais
@@ -47,7 +48,6 @@ const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transa
   if (!targetTime) return 0;
   
   // Normaliza o ticker do PROVENTO para a raiz (ex: ITSA4F -> ITSA4)
-  // Isso garante que se o banco tiver ITSA4F por engano, ele vira ITSA4 para comparar
   let targetRoot = ticker.trim().toUpperCase();
   if (targetRoot.endsWith('F') && !targetRoot.endsWith('11') && !targetRoot.endsWith('11B') && targetRoot.length <= 6) {
       targetRoot = targetRoot.slice(0, -1);
@@ -56,16 +56,15 @@ const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transa
   return transactions
     .filter(t => {
         const txTime = safeDate(t.date);
-        if (!txTime) return false; // Ignora transações sem data válida
+        if (!txTime) return false; 
 
-        let txRoot = t.ticker.trim().toUpperCase(); // Ticker da Transação
+        let txRoot = t.ticker.trim().toUpperCase(); 
         
-        // Normaliza o ticker da TRANSAÇÃO para a raiz (ex: ITSA4F -> ITSA4)
+        // Normaliza o ticker da TRANSAÇÃO para a raiz
         if (txRoot.endsWith('F') && !txRoot.endsWith('11') && !txRoot.endsWith('11B') && txRoot.length <= 6) {
             txRoot = txRoot.slice(0, -1);
         }
 
-        // Compara raízes e datas (via timestamp para precisão)
         return txRoot === targetRoot && txTime <= targetTime;
     })
     .reduce((acc, t) => {
@@ -99,39 +98,31 @@ const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
   const updateManager = useUpdateManager(APP_VERSION);
   
-  // Controle de Inicialização
   const [isReady, setIsReady] = useState(false); 
   const [loadingProgress, setLoadingProgress] = useState(0); 
   
-  // Auth
   const [session, setSession] = useState<Session | null>(null);
   
-  // UI States
   const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'hidden' | 'syncing'>('hidden');
   const [currentTab, setCurrentTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUpdateReport, setShowUpdateReport] = useState(false);
   
-  // PWA Install State
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
 
-  // Preferências
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#0ea5e9');
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
   const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(STORAGE_KEYS.PUSH_ENABLED) === 'true');
   
-  // Feedback
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
   
-  // Estado Completo do Relatório
   const [lastUpdateReport, setLastUpdateReport] = useState<UpdateReportData>({ results: [], inflationRate: 0, totalDividendsFound: 0 });
   
-  // Dados de Negócio
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY); return s ? JSON.parse(s) : []; } catch { return []; } });
   
@@ -148,18 +139,13 @@ const App: React.FC = () => {
       } catch { return { ipca: 4.62, startDate: '' }; } 
   });
   
-  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => {
-      try { const s = localStorage.getItem(STORAGE_KEYS.METADATA); return s ? JSON.parse(s) : {}; } catch { return {}; }
-  });
+  // Agora inicializado vazio, carregado via IndexedDB
+  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>({});
 
-  // Status de Processos
   const [isScraping, setIsScraping] = useState(false); 
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Status de Serviços
   const [isCheckingServices, setIsCheckingServices] = useState(false);
   
-  // Ref para serviços para evitar re-renders cíclicos no checkServiceHealth
   const servicesRef = useRef<ServiceMetric[]>([
     { id: 'db', label: 'Supabase Database', url: getSupabaseUrl(), icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'market', label: 'Brapi Market Data', url: 'https://brapi.dev', icon: Activity, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
@@ -167,12 +153,43 @@ const App: React.FC = () => {
   ]);
   const [services, setServices] = useState<ServiceMetric[]>(servicesRef.current);
 
-  // --- EFEITOS DE PERSISTÊNCIA ---
+  // --- PERSISTÊNCIA VIA INDEXEDDB ---
+  
+  // 1. Carregar Metadados ao Iniciar
+  useEffect(() => {
+      const loadMetadata = async () => {
+          try {
+              const list = await db.getAllMetadata();
+              if (list && list.length > 0) {
+                  const map = list.reduce((acc, item) => {
+                      const { ticker, ...rest } = item;
+                      // @ts-ignore
+                      acc[ticker] = rest;
+                      return acc;
+                  }, {} as typeof assetsMetadata);
+                  setAssetsMetadata(map);
+              }
+          } catch (e) {
+              console.warn('Failed to load metadata from IDB', e);
+          }
+      };
+      loadMetadata();
+  }, []);
+
+  // 2. Salvar Metadados ao Alterar
+  useEffect(() => {
+      // Salva apenas se houver dados, usando debounce implícito do React ou lógica de lote
+      if (Object.keys(assetsMetadata).length > 0) {
+          const list = Object.entries(assetsMetadata).map(([ticker, data]) => ({ ticker, ...data }));
+          db.saveBulkMetadata(list).catch(err => console.warn('Save to IDB failed', err));
+      }
+  }, [assetsMetadata]);
+
+  // --- EFEITOS DE PERSISTÊNCIA (Local Storage) ---
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(dividends)); }, [dividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.NOTIF_HISTORY, JSON.stringify(notifications.slice(0, 50))); }, [notifications]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.METADATA, JSON.stringify(assetsMetadata)); }, [assetsMetadata]);
 
   // Tema e Cores
   useEffect(() => {
@@ -195,14 +212,11 @@ const App: React.FC = () => {
       const newNotifs: AppNotification[] = [];
       const existingIds = new Set(notifications.map(n => n.id));
 
-      // 1. Verifica pagamentos de Hoje
       dividends.forEach(div => {
-          // Só notifica se o usuário tem o ativo
           const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
           if (qty > 0) {
               const total = qty * div.rate;
               
-              // Notificação de Pagamento (Hoje)
               if (div.paymentDate === today) {
                   const id = `pay-${div.ticker}-${div.paymentDate}`;
                   if (!existingIds.has(id)) {
@@ -218,7 +232,6 @@ const App: React.FC = () => {
                   }
               }
 
-              // Notificação de Data Com (Hoje)
               if (div.dateCom === today) {
                   const id = `datacom-${div.ticker}-${div.dateCom}`;
                   if (!existingIds.has(id)) {
@@ -238,11 +251,10 @@ const App: React.FC = () => {
 
       if (newNotifs.length > 0) {
           setNotifications(prev => [...newNotifs, ...prev]);
-          // Opcional: Vibrar dispositivo se suportado
           if (navigator.vibrate) navigator.vibrate(200);
       }
 
-  }, [dividends, transactions]); // Dependências controladas para rodar apenas quando dados mudam
+  }, [dividends, transactions]); 
 
   // --- PWA INSTALL HANDLER ---
   useEffect(() => {
@@ -338,7 +350,13 @@ const App: React.FC = () => {
     try {
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
-        setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
+        setQuotes((prev) => {
+          const updates = newQuotesData.reduce((acc, q) => {
+            acc[q.symbol] = q;
+            return acc;
+          }, {} as Record<string, BrapiQuote>);
+          return { ...prev, ...updates };
+        });
       }
       
       if (initialLoad) setLoadingProgress(70); 
@@ -352,28 +370,21 @@ const App: React.FC = () => {
           setDividends(data.dividends);
       }
       if (Object.keys(data.metadata).length > 0) {
-          // --- SMART MERGE LOGIC (Enhanced) ---
-          // Previne que dados "vazios" do banco sobrescrevam dados ricos da memória (Optimistic UI)
           setAssetsMetadata(prev => {
               const next = { ...prev };
               Object.entries(data.metadata).forEach(([ticker, newMeta]) => {
                   const existing = prev[ticker];
                   
                   if (existing) {
-                      // Cria cópia dos fundamentos
                       const mergedFundamentals = { ...(newMeta.fundamentals || {}) };
-                      
-                      // Campos que costumam desaparecer (FIIs)
-                      // Incluído liquidity, manager_type, assets_value que são strings ou podem ser 'N/A'
                       const criticalFields = ['vacancy', 'last_dividend', 'dy_12m', 'p_vp', 'assets_value', 'liquidity', 'manager_type'] as const;
                       
                       criticalFields.forEach(field => {
                           const newVal = mergedFundamentals?.[field];
                           const oldVal = existing.fundamentals?.[field];
                           
-                          // Validação estrita: se for 0, N/A, traço ou vazio, considera inválido
                           const isNewInvalid = newVal === undefined || newVal === null || 
-                                               (field !== 'vacancy' && newVal === 0) || // Vacância 0 é válida
+                                               (field !== 'vacancy' && newVal === 0) || 
                                                newVal === 'N/A' || newVal === '-' || newVal === '' || newVal === '0';
 
                           const isOldValid = oldVal !== undefined && oldVal !== null && 
@@ -502,10 +513,11 @@ const App: React.FC = () => {
     if (session) await fetchTransactionsFromCloud(session, force);
   }, [session, fetchTransactionsFromCloud]);
 
-  const handleSoftReset = useCallback(() => {
+  const handleSoftReset = useCallback(async () => {
       Object.keys(localStorage).forEach(key => {
           if (!key.startsWith('sb-') && !key.includes('supabase')) localStorage.removeItem(key);
       });
+      try { await db.clearMetadata(); } catch(e) { console.warn(e); }
       window.location.reload();
   }, []);
 
@@ -518,25 +530,16 @@ const App: React.FC = () => {
       setIsScraping(true);
       showToast('info', 'Iniciando busca combinada...');
       
-      // Explicitly typing tickers as string[] to satisfy TypeScript compiler
       const tickers = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))) as string[];
       
       try {
-          // 1. Aciona o Scraper (Investidor10/StatusInvest)
-          // Agora retorna os dados brutos também (rawFundamentals)
-          const scrapePromise = triggerScraperUpdate(tickers, (current, total) => {
-              // Opcional: Atualizar UI de progresso
-          });
-
-          // 2. Aciona Brapi (Cotações em Tempo Real)
+          const scrapePromise = triggerScraperUpdate(tickers, (current, total) => {});
           const brapiPromise = getQuotes(tickers);
 
           const [results, brapiData] = await Promise.all([scrapePromise, brapiPromise]);
           
           showToast('info', 'Processando dados...');
 
-          // 3. Atualização Otimista: Injeta os dados do Scraper diretamente na memória do App
-          // Isso resolve o problema de dados não aparecerem até o próximo sync do banco
           const newMetadata = { ...assetsMetadata };
           let updatedCount = 0;
 
@@ -552,7 +555,6 @@ const App: React.FC = () => {
                   priceSource = 'N/A';
               }
 
-              // Se o scraper trouxe dados, atualiza o state global AGORA
               if (r.status === 'success' && r.rawFundamentals) {
                   const mappedFundamentals = mapScraperToFundamentals(r.rawFundamentals);
                   const isFII = r.ticker.endsWith('11') || r.ticker.endsWith('11B');
@@ -578,16 +580,12 @@ const App: React.FC = () => {
               };
           });
           
-          // Aplica a atualização otimista
           if (updatedCount > 0) {
               setAssetsMetadata(newMetadata);
           }
           
-          // 4. Sincroniza em background para persistência (Dividendos, Inflação, etc)
-          // Não bloqueia a UI esperando isso terminar
           handleSyncAll(true);
           
-          // 5. Monta o relatório
           const totalDividends = enrichedResults.reduce((acc, r) => acc + (r.dividendsFound?.length || 0), 0);
           
           setLastUpdateReport({
@@ -639,7 +637,6 @@ const App: React.FC = () => {
 
   const handleClearNotifications = useCallback(() => {
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      // Mantém histórico, mas marca como lido visualmente no modal
   }, []);
 
   // --- CÁLCULOS DE PORTFÓLIO (Memoized) ---
@@ -647,12 +644,8 @@ const App: React.FC = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     
-    // CORREÇÃO: Garante que o ticker do dividendo esteja perfeitamente normalizado
     const receipts = dividends.map(d => {
         const normalizedTicker = d.ticker.trim().toUpperCase();
-        
-        // Quantidade deve considerar ITSA4F vs ITSA4 (bidirecional)
-        // Utiliza a nova função com timestamp para garantir elegibilidade exata
         const qty = getQuantityOnDate(normalizedTicker, d.dateCom, sortedTxs);
         
         return { 
@@ -695,8 +688,6 @@ const App: React.FC = () => {
         .filter(p => p.quantity > 0.001)
         .map(p => {
             const normalizedTicker = p.ticker.trim().toUpperCase();
-            // Tenta buscar metadados para ITSA4F ou ITSA4
-            // Se não achar metadata para ITSA4F, tenta ITSA4
             let meta = assetsMetadata[normalizedTicker];
             if (!meta && normalizedTicker.endsWith('F') && !normalizedTicker.endsWith('11F')) {
                 meta = assetsMetadata[normalizedTicker.slice(0, -1)];
@@ -710,7 +701,6 @@ const App: React.FC = () => {
 
             return { 
                 ...p, 
-                // Se ticker for ITSA4F, tenta buscar dividendos de ITSA4
                 totalDividends: divPaidMap[p.ticker] || (p.ticker.endsWith('F') ? divPaidMap[p.ticker.slice(0, -1)] : 0) || 0, 
                 segment: segment, 
                 currentPrice: quote?.regularMarketPrice || p.averagePrice, 
