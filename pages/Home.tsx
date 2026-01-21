@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp, Layers, CheckCircle2, HelpCircle, Activity, Percent, TrendingUp as TrendingUpIcon, Hourglass, Landmark } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, TrendingUp, CalendarDays, TrendingDown, Banknote, ArrowRight, Loader2, Wallet, Calendar, Clock, ArrowUpRight, ArrowDownRight, LayoutGrid, Gem, CalendarClock, ChevronDown, X, Receipt, Scale, Info, Coins, BarChart3, ChevronUp, Layers, CheckCircle2, HelpCircle, Activity, Percent, TrendingUp as TrendingUpIcon, Hourglass, Landmark, BarChart2, LineChart } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, Sector, AreaChart, Area } from 'recharts';
 
@@ -141,6 +141,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   
   const [selectedProventosMonth, setSelectedProventosMonth] = useState<string | null>(null);
   
+  // Raio-X Chart State
+  const [chartType, setChartType] = useState<'AREA' | 'BAR'>('AREA');
+  
   const safeInflation = Number(inflationRate) || 4.62;
 
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
@@ -225,13 +228,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     if (sortedTxs.length > 0) {
         // Data da primeira transação
         const startYear = parseInt(sortedTxs[0].date.substring(0,4));
+        // Safety: Se data for muito antiga (erro de importação), clamp em 2000
+        const safeStartYear = Math.max(startYear, 2000); 
         const startMonth = parseInt(sortedTxs[0].date.substring(5,7)) - 1;
         
         let currentInvested = 0;
         let txIndex = 0;
         
         // Loop mês a mês do início até hoje
-        const cursorDate = new Date(startYear, startMonth, 1);
+        const cursorDate = new Date(safeStartYear, startMonth, 1);
         const endDate = new Date(); 
         
         while (cursorDate <= endDate) {
@@ -260,6 +265,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     }
 
     // --- DADOS PARA O GRÁFICO (Últimos 12 Meses) ---
+    // Geração: De T-11 até T-0 (Cronológico: Antigo -> Novo)
     const last12MonthsData: MonthlyInflationData[] = [];
     let accDiv = 0;
     let accInf = 0;
@@ -307,7 +313,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             paybackYears,
             totalNominalGain: totalProfitValue // Lucro Nominal Total
         },
-        last12MonthsData,
+        last12MonthsData, // Dados já estão em ordem cronológica (Jan -> Dec)
         provisionedMap: provMap, 
         provisionedTotal: provTotal,
         sortedProvisionedMonths,
@@ -373,11 +379,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <p className="text-xs font-black text-zinc-900 dark:text-white mb-2 uppercase tracking-wider">{label}</p>
                   <div className="space-y-1">
                       <div className="flex items-center justify-between gap-4">
-                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Acum. Divs</span>
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Dividendos</span>
                           <span className="text-[10px] text-zinc-900 dark:text-white font-bold">{formatBRL(payload[0].value, privacyMode)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-4">
-                          <span className="text-[10px] text-rose-500 font-bold">Acum. Inflação</span>
+                          <span className="text-[10px] text-rose-500 font-bold">Inflação</span>
                           <span className="text-[10px] text-zinc-900 dark:text-white font-bold">{formatBRL(payload[1].value, privacyMode)}</span>
                       </div>
                   </div>
@@ -1035,50 +1041,78 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           </div>
                       </div>
 
-                      {/* Area Chart: Spread Analysis (Mantido 12 meses para visualização) */}
+                      {/* Area Chart: Spread Analysis (Visualizacao Corrigida e Toggle Implementado) */}
                       <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up" style={{animationDelay: '300ms'}}>
-                          <div className="flex items-center justify-between mb-4 px-2">
+                          <div className="flex items-center justify-between mb-6 px-2">
                               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                                   <Layers className="w-3 h-3" /> Spread de Rendimento (12 Meses)
                               </h3>
+                              
+                              {/* Chart Toggle */}
+                              <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                                  <button 
+                                    onClick={() => setChartType('AREA')}
+                                    className={`p-1.5 rounded-md transition-all ${chartType === 'AREA' ? 'bg-white dark:bg-zinc-600 text-indigo-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                  >
+                                      <LineChart className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button 
+                                    onClick={() => setChartType('BAR')}
+                                    className={`p-1.5 rounded-md transition-all ${chartType === 'BAR' ? 'bg-white dark:bg-zinc-600 text-indigo-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                  >
+                                      <BarChart2 className="w-3.5 h-3.5" />
+                                  </button>
+                              </div>
                           </div>
-                          <div className="h-40 w-full">
+                          
+                          <div className="h-48 w-full">
                               <ResponsiveContainer width="100%" height="100%">
-                                  <AreaChart data={last12MonthsData.slice().reverse()} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                                      <defs>
-                                          <linearGradient id="colorDiv" x1="0" y1="0" x2="0" y2="1">
-                                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                          </linearGradient>
-                                          <linearGradient id="colorInf" x1="0" y1="0" x2="0" y2="1">
-                                              <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
-                                              <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                                          </linearGradient>
-                                      </defs>
-                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b20" />
-                                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} minTickGap={20} />
-                                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `${val/1000}k`} />
-                                      <RechartsTooltip content={<SpreadTooltip />} />
-                                      <Area 
-                                          type="monotone" 
-                                          dataKey="accDiv" 
-                                          name="Dividendos"
-                                          stroke="#10b981" 
-                                          strokeWidth={2}
-                                          fillOpacity={1} 
-                                          fill="url(#colorDiv)" 
-                                      />
-                                      <Area 
-                                          type="monotone" 
-                                          dataKey="accInf" 
-                                          name="Inflação"
-                                          stroke="#f43f5e" 
-                                          strokeWidth={2}
-                                          strokeDasharray="4 4"
-                                          fillOpacity={1} 
-                                          fill="url(#colorInf)" 
-                                      />
-                                  </AreaChart>
+                                  {chartType === 'AREA' ? (
+                                      <AreaChart data={last12MonthsData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                                          <defs>
+                                              <linearGradient id="colorDiv" x1="0" y1="0" x2="0" y2="1">
+                                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                              </linearGradient>
+                                              <linearGradient id="colorInf" x1="0" y1="0" x2="0" y2="1">
+                                                  <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
+                                                  <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                                              </linearGradient>
+                                          </defs>
+                                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b20" />
+                                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} minTickGap={20} />
+                                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `${val/1000}k`} />
+                                          <RechartsTooltip content={<SpreadTooltip />} />
+                                          <Area 
+                                              type="monotone" 
+                                              dataKey="accDiv" 
+                                              name="Dividendos"
+                                              stroke="#10b981" 
+                                              strokeWidth={2}
+                                              fillOpacity={1} 
+                                              fill="url(#colorDiv)" 
+                                          />
+                                          <Area 
+                                              type="monotone" 
+                                              dataKey="accInf" 
+                                              name="Inflação"
+                                              stroke="#f43f5e" 
+                                              strokeWidth={2}
+                                              strokeDasharray="4 4"
+                                              fillOpacity={1} 
+                                              fill="url(#colorInf)" 
+                                          />
+                                      </AreaChart>
+                                  ) : (
+                                      <BarChart data={last12MonthsData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }} barGap={2}>
+                                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b20" />
+                                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} minTickGap={20} />
+                                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa' }} tickFormatter={(val) => `${val/1000}k`} />
+                                          <RechartsTooltip content={<SpreadTooltip />} cursor={{fill: '#f4f4f5', opacity: 0.1}} />
+                                          <Bar dataKey="accDiv" name="Dividendos" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                                          <Bar dataKey="accInf" name="Inflação" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                                      </BarChart>
+                                  )}
                               </ResponsiveContainer>
                           </div>
                       </div>
