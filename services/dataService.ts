@@ -91,7 +91,8 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
                             dy: parseNumberSafe(meta.dy || meta.dy_12m),
                             pvp: parseNumberSafe(meta.pvp),
                             pl: parseNumberSafe(meta.pl)
-                        }
+                        },
+                        dividendsFound: data.dividends // Captura os dividendos retornados pela API
                     });
                 } else {
                     throw new Error(data.error || 'Falha na resposta da API');

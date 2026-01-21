@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle } from 'lucide-react';
-import { ScrapeResult } from '../types';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign } from 'lucide-react';
+import { UpdateReportData } from '../types';
 
 // Utility for smooth visibility transitions
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -293,14 +293,19 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
   );
 };
 
-// Modal de Relatório de Atualização
-export const UpdateReportModal: React.FC<{ isOpen: boolean; onClose: () => void; results: ScrapeResult[] }> = ({ isOpen, onClose, results }) => (
+// --- Modal de Relatório de Atualização Melhorado ---
+export const UpdateReportModal: React.FC<{ isOpen: boolean; onClose: () => void; results: UpdateReportData }> = ({ isOpen, onClose, results }) => {
+    const [tab, setTab] = useState<'assets' | 'dividends' | 'indicators'>('assets');
+    const allDividends = results.results.flatMap(r => (r.dividendsFound || []).map(d => ({ ...d, ticker: r.ticker })));
+
+    return (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
         <div className="p-6 pb-20">
-            <div className="flex justify-between items-center mb-8 px-2">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6 px-1">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30">
-                        <FileText className="w-6 h-6" />
+                        <FileText className="w-6 h-6" strokeWidth={1.5} />
                     </div>
                     <div>
                         <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Relatório</h2>
@@ -312,42 +317,107 @@ export const UpdateReportModal: React.FC<{ isOpen: boolean; onClose: () => void;
                 </button>
             </div>
 
-            {results.length === 0 ? (
-                <div className="text-center py-20 opacity-40 flex flex-col items-center">
-                    <Server className="w-16 h-16 mb-4 text-zinc-200 dark:text-zinc-800" strokeWidth={1} />
-                    <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Nenhuma atualização registrada</p>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl text-center border border-zinc-100 dark:border-zinc-800">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Ativos</p>
+                    <p className="text-lg font-black text-zinc-900 dark:text-white">{results.results.length}</p>
                 </div>
-            ) : (
-                <div className="space-y-3">
-                    {results.map((r, i) => (
-                        <div key={i} className={`p-4 rounded-2xl border flex gap-4 anim-stagger-item ${r.status === 'success' ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50/50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/30'}`} style={{ animationDelay: `${i * 50}ms` }}>
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${r.status === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/20 text-rose-600 border-rose-200 dark:border-rose-900/30'}`}>
-                                {r.status === 'success' ? <CheckCircle className="w-5 h-5" /> : <WifiOff className="w-5 h-5" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-center mb-1">
-                                    <h4 className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{r.ticker}</h4>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${r.status === 'success' ? 'text-emerald-600 bg-emerald-100/50 dark:bg-emerald-900/30' : 'text-rose-600 bg-rose-100/50 dark:bg-rose-900/30'}`}>
-                                        {r.status === 'success' ? 'Atualizado' : 'Falhou'}
-                                    </span>
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl text-center border border-emerald-100 dark:border-emerald-900/30">
+                    <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Proventos</p>
+                    <p className="text-lg font-black text-emerald-700 dark:text-emerald-300">{results.totalDividendsFound}</p>
+                </div>
+                <div className="bg-rose-50 dark:bg-rose-900/20 p-3 rounded-xl text-center border border-rose-100 dark:border-rose-900/30">
+                    <p className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-1">IPCA (12m)</p>
+                    <p className="text-lg font-black text-rose-700 dark:text-rose-300">{results.inflationRate.toFixed(2)}%</p>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-6">
+                <button onClick={() => setTab('assets')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'assets' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>Cotações</button>
+                <button onClick={() => setTab('dividends')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'dividends' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>Novos Proventos</button>
+                <button onClick={() => setTab('indicators')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === 'indicators' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>Indicadores</button>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-3 min-h-[200px]">
+                {tab === 'assets' && (
+                    results.results.length === 0 ? (
+                        <div className="text-center py-10 opacity-40"><Server className="w-12 h-12 mx-auto mb-2" /><p className="text-xs font-bold">Nada atualizado</p></div>
+                    ) : (
+                        results.results.map((r, i) => (
+                            <div key={i} className={`p-4 rounded-2xl border flex gap-4 anim-stagger-item ${r.status === 'success' ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800' : 'bg-rose-50/50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/30'}`} style={{ animationDelay: `${i * 50}ms` }}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${r.status === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-100 dark:bg-rose-900/20 text-rose-600 border-rose-200 dark:border-rose-900/30'}`}>
+                                    {r.status === 'success' ? <CheckCircle className="w-5 h-5" /> : <WifiOff className="w-5 h-5" />}
                                 </div>
-                                {r.status === 'success' && r.details ? (
-                                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] text-zinc-500 font-medium">
-                                        {r.details.price && <span>R$ {r.details.price.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>}
-                                        {r.details.dy && <span className="text-indigo-500">DY {r.details.dy}%</span>}
-                                        {r.details.pvp && <span>P/VP {r.details.pvp}</span>}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <h4 className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{r.ticker}</h4>
+                                        {r.status === 'success' && r.details?.price && <span className="text-xs font-bold text-zinc-900 dark:text-white">R$ {r.details.price.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>}
                                     </div>
-                                ) : (
-                                    <p className="text-xs text-rose-500 mt-1 leading-tight font-medium">{r.message}</p>
-                                )}
+                                    {r.status === 'success' && r.details ? (
+                                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] text-zinc-500 font-medium">
+                                            {r.details.dy && <span className="text-indigo-500">DY {r.details.dy}%</span>}
+                                            {r.details.pvp && <span>P/VP {r.details.pvp}</span>}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-rose-500 mt-1 leading-tight font-medium">{r.message}</p>
+                                    )}
+                                </div>
                             </div>
+                        ))
+                    )
+                )}
+
+                {tab === 'dividends' && (
+                    allDividends.length === 0 ? (
+                        <div className="text-center py-10 opacity-40"><DollarSign className="w-12 h-12 mx-auto mb-2" /><p className="text-xs font-bold">Nenhum novo provento detectado nesta varredura.</p></div>
+                    ) : (
+                        allDividends.map((d, i) => (
+                            <div key={i} className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 flex justify-between items-center anim-stagger-item" style={{ animationDelay: `${i * 50}ms` }}>
+                                <div>
+                                    <h4 className="text-sm font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                                        {d.ticker} <span className="text-[9px] px-1.5 py-0.5 bg-white dark:bg-emerald-950 rounded border border-emerald-200 dark:border-emerald-800">{d.type}</span>
+                                    </h4>
+                                    <p className="text-[10px] font-bold text-emerald-600/70 dark:text-emerald-400/70 mt-1">
+                                        Data Com: {new Date(d.dateCom).toLocaleDateString('pt-BR')}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-black text-emerald-700 dark:text-emerald-400">R$ {d.rate.toFixed(4)}</p>
+                                    <p className="text-[10px] font-bold text-emerald-600/60 dark:text-emerald-500/60">por cota</p>
+                                </div>
+                            </div>
+                        ))
+                    )
+                )}
+
+                {tab === 'indicators' && (
+                    <div className="space-y-4">
+                        <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30">
+                            <div className="flex items-center gap-3 mb-2">
+                                <TrendingUp className="w-5 h-5 text-rose-500" />
+                                <h3 className="text-sm font-black text-rose-900 dark:text-rose-100">IPCA Acumulado (12 Meses)</h3>
+                            </div>
+                            <p className="text-3xl font-black text-rose-600 dark:text-rose-400">{results.inflationRate.toFixed(2)}%</p>
+                            <p className="text-[10px] text-rose-800/60 dark:text-rose-300/60 mt-2 font-medium">
+                                Fonte: Banco Central do Brasil / Investidor10. Utilizado para cálculo de rentabilidade real.
+                            </p>
                         </div>
-                    ))}
-                </div>
-            )}
+                        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                            <h3 className="text-xs font-bold text-zinc-900 dark:text-white mb-1">Impacto na Carteira</h3>
+                            <p className="text-[10px] text-zinc-500 leading-relaxed">
+                                Seus investimentos precisam render acima de <strong>{results.inflationRate}%</strong> no último ano para garantir ganho real de poder de compra.
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     </SwipeableModal>
-);
+    );
+};
 
 // Modal de Instalação PWA
 interface InstallPromptModalProps { isOpen: boolean; onInstall: () => void; onDismiss: () => void; }

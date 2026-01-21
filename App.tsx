@@ -7,7 +7,7 @@ import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
-import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult } from './types';
+import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData, triggerScraperUpdate } from './services/dataService';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
@@ -108,7 +108,9 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
-  const [lastUpdateResults, setLastUpdateResults] = useState<ScrapeResult[]>([]);
+  
+  // Estado Completo do Relatório
+  const [lastUpdateReport, setLastUpdateReport] = useState<UpdateReportData>({ results: [], inflationRate: 0, totalDividendsFound: 0 });
   
   // Dados de Negócio
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -463,12 +465,19 @@ const App: React.FC = () => {
               // Opcional: Atualizar UI de progresso
           });
           
-          setLastUpdateResults(results);
-          
           showToast('info', 'Atualizando banco de dados...');
           
-          // 2. Sincroniza os dados atualizados do banco
+          // 2. Sincroniza os dados atualizados do banco (Isso traz a inflação e consolida)
           await handleSyncAll(true);
+          
+          // 3. Monta o relatório completo
+          const totalDividends = results.reduce((acc, r) => acc + (r.dividendsFound?.length || 0), 0);
+          
+          setLastUpdateReport({
+              results: results,
+              inflationRate: marketIndicators.ipca || 0, // Pega do estado atualizado pós-sync
+              totalDividendsFound: totalDividends
+          });
           
           showToast('success', 'Dados atualizados com sucesso!');
           setShowUpdateReport(true); // Abre o modal de relatório
@@ -679,7 +688,7 @@ const App: React.FC = () => {
             <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={handleClearNotifications} />
             <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />
             <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
-            <UpdateReportModal isOpen={showUpdateReport} onClose={() => setShowUpdateReport(false)} results={lastUpdateResults} />
+            <UpdateReportModal isOpen={showUpdateReport} onClose={() => setShowUpdateReport(false)} results={lastUpdateReport} />
         </>
     </div>
   );

@@ -384,7 +384,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(404).json({ success: false, error: 'Dados não encontrados no provedor.' });
         }
 
-        return res.status(200).json({ success: true, data: metadata });
+        // RETORNA METADADOS E PROVENTOS
+        return res.status(200).json({ success: true, data: metadata, dividends: proventos });
 
     } catch (e: any) {
         console.error(`Erro Handler ${ticker}:`, e);

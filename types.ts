@@ -216,4 +216,16 @@ export interface ScrapeResult {
         pvp?: number;
         pl?: number;
     };
+    dividendsFound?: {
+        type: string;
+        dateCom: string;
+        paymentDate: string;
+        rate: number;
+    }[];
+}
+
+export interface UpdateReportData {
+    results: ScrapeResult[];
+    inflationRate: number;
+    totalDividendsFound: number;
 }
