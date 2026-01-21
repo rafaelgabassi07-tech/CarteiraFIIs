@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, Wallet } from 'lucide-react';
-import { NewsItem, Transaction } from '../types';
+import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, Wallet, PlusCircle } from 'lucide-react';
+import { NewsItem, Transaction, AssetType } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -47,28 +47,40 @@ const getCategoryIcon = (category: string) => {
 
 export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     const [news, setNews] = useState<NewsItem[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
     
     // Filtros e Abas
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState<'Carteira' | 'FIIs' | 'Ações'>('Carteira');
+    const [activeTab, setActiveTab] = useState<'FIIs' | 'Ações'>('FIIs');
 
-    // Tickers únicos da carteira
-    const portfolioTickers = useMemo(() => {
-        const unique = new Set(transactions.map(t => t.ticker.toUpperCase()));
-        return Array.from(unique);
+    // Separação de Tickers da Carteira
+    const { fiiTickers, stockTickers } = useMemo(() => {
+        const uniqueFIIs = new Set<string>();
+        const uniqueStocks = new Set<string>();
+
+        transactions.forEach(t => {
+            if (t.assetType === AssetType.FII) uniqueFIIs.add(t.ticker.toUpperCase());
+            else uniqueStocks.add(t.ticker.toUpperCase());
+        });
+
+        return {
+            fiiTickers: Array.from(uniqueFIIs),
+            stockTickers: Array.from(uniqueStocks)
+        };
     }, [transactions]);
 
-    const fetchNews = useCallback(async (customQuery?: string) => {
+    const fetchNews = useCallback(async (query: string) => {
+        if (!query) {
+            setNews([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         setError(false);
         try {
-            // Constrói a URL: Se tiver query, usa ela. Se não, usa o endpoint padrão.
-            const url = customQuery 
-                ? `/api/news?q=${encodeURIComponent(customQuery)}`
-                : '/api/news';
-
+            const url = `/api/news?q=${encodeURIComponent(query)}`;
             const res = await fetch(url);
             if (!res.ok) throw new Error('Falha ao carregar');
             const data = await res.json();
@@ -81,7 +93,6 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                     source: item.sourceName || 'Fonte Desconhecida',
                     url: item.link,
                     imageUrl: item.imageUrl,
-                    // Formata data relativa (ex: "há 2 horas")
                     date: item.publicationDate ? formatDistanceToNow(new Date(item.publicationDate), { addSuffix: true, locale: ptBR }) : 'Recentemente',
                     category: (item.category as any) || 'Geral'
                 }));
@@ -97,26 +108,26 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         }
     }, []);
 
-    // Efeito para carregar notícias quando a aba muda
+    // Lógica principal de carregamento ao mudar de aba
     useEffect(() => {
-        if (activeTab === 'Carteira') {
-            if (portfolioTickers.length > 0) {
-                // Monta query OR limitada para não estourar URL (max ~15 tickers)
-                const query = portfolioTickers.slice(0, 15).join(' OR ');
-                fetchNews(query);
-            } else {
-                // Se não tiver ativos, carrega padrão mas filtra visualmente (ou mostra aviso)
-                fetchNews(); 
-            }
+        // Se houver busca manual, ignoramos o carregamento automático da aba
+        if (searchTerm) return;
+
+        const currentTickers = activeTab === 'FIIs' ? fiiTickers : stockTickers;
+
+        if (currentTickers.length > 0) {
+            // Limita a 15 tickers para não estourar a URL
+            const query = currentTickers.slice(0, 15).join(' OR ');
+            fetchNews(query);
         } else {
-            // Abas FIIs/Ações carregam o feed geral e filtram no frontend (ou backend poderia suportar isso melhor)
-            fetchNews();
+            // Se não tiver ativos, limpa a lista para mostrar o estado vazio
+            setNews([]);
+            setLoading(false);
         }
-    }, [activeTab, portfolioTickers, fetchNews]);
+    }, [activeTab, fiiTickers, stockTickers, fetchNews, searchTerm]);
 
     const handleSearchSubmit = () => {
         if (!searchTerm.trim()) return;
-        // Ao buscar, ignoramos a aba ativa temporariamente (ou poderíamos ter uma aba 'Busca')
         fetchNews(searchTerm);
     };
 
@@ -142,26 +153,14 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         }
     };
 
+    // Filtro visual (no caso de busca manual ou retorno misto da API)
     const filteredNews = useMemo(() => {
-        // Se a busca estiver ativa (retornou resultados via API), mostramos tudo
-        // Se não, aplicamos o filtro da aba ATUAL (Client-side filtering para abas padrão)
-        
-        // Se a API retornou coisas baseadas em busca específica (Carteira ou Search), 
-        // a categoria pode vir 'Geral' ou misturada. Nesse caso, não filtramos rigidamente por categoria da aba
-        // a menos que seja FIIs/Ações do feed geral.
-        
-        const isPortfolioMode = activeTab === 'Carteira' && portfolioTickers.length > 0;
-        const isSearchMode = searchTerm.length > 0 && !loading; // Se buscou, mostra tudo que veio
+        return news; // Retorna tudo o que a API trouxe, pois a query já é específica
+    }, [news]);
 
-        return news.filter(item => {
-            if (isSearchMode) return true; // Na busca, mostra tudo que a API retornou
-            if (isPortfolioMode) return true; // Na carteira, mostra tudo que a API retornou (já filtrado lá)
-            
-            // Logica padrão para abas FIIs/Ações (Feed Geral)
-            const matchesCategory = item.category === activeTab;
-            return matchesCategory;
-        });
-    }, [news, activeTab, portfolioTickers, searchTerm, loading]);
+    // Helpers para UI
+    const currentTickers = activeTab === 'FIIs' ? fiiTickers : stockTickers;
+    const hasAssetsInTab = currentTickers.length > 0;
 
     return (
         <div className="pb-32 min-h-screen">
@@ -177,54 +176,43 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                             </button>
                             <input 
                                 type="text" 
-                                placeholder="Buscar notícias (Enter)..." 
+                                placeholder="Pesquisar fora da carteira..." 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 className="w-full bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:bg-white dark:focus:bg-zinc-900 border-zinc-200 dark:border-zinc-700 pl-10 pr-10 py-2.5 rounded-xl text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                             />
                             {searchTerm && (
-                                <button onClick={() => { setSearchTerm(''); fetchNews(); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+                                <button onClick={() => { setSearchTerm(''); if (hasAssetsInTab) fetchNews(currentTickers.join(' OR ')); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
                                     <X className="w-3.5 h-3.5" />
                                 </button>
                             )}
                         </div>
                         <button 
-                            onClick={() => fetchNews(searchTerm || (activeTab === 'Carteira' ? portfolioTickers.join(' OR ') : undefined))} 
-                            disabled={loading}
-                            className={`w-10 shrink-0 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center justify-center transition-all ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
+                            onClick={() => fetchNews(searchTerm || currentTickers.join(' OR '))} 
+                            disabled={loading || (!searchTerm && !hasAssetsInTab)}
+                            className={`w-10 shrink-0 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center justify-center transition-all ${loading || (!searchTerm && !hasAssetsInTab) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
                         >
                             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         </button>
                     </div>
 
-                    {/* Linha 2: Abas (Carteira | FIIs | Ações) */}
+                    {/* Linha 2: Abas (FIIs vs Ações) - Filtradas pela Carteira */}
                     <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl relative">
                         <div 
-                            className={`absolute top-1 bottom-1 w-[calc(33.33%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`}
-                            style={{ 
-                                left: '4px',
-                                transform: `translateX(${activeTab === 'Carteira' ? '0%' : activeTab === 'FIIs' ? '100%' : '200%'})`
-                            }}
+                            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5 ${activeTab === 'FIIs' ? 'left-1' : 'translate-x-[100%] left-1'}`}
                         ></div>
-                        
                         <button 
-                            onClick={() => setActiveTab('Carteira')} 
-                            className={`relative z-10 flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'Carteira' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                        >
-                            <Wallet className="w-3.5 h-3.5" /> Carteira
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('FIIs')} 
+                            onClick={() => { setActiveTab('FIIs'); setSearchTerm(''); }} 
                             className={`relative z-10 flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'FIIs' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
-                            <Building2 className="w-3.5 h-3.5" /> FIIs
+                            <Building2 className="w-3.5 h-3.5" /> FIIs ({fiiTickers.length})
                         </button>
                         <button 
-                            onClick={() => setActiveTab('Ações')} 
+                            onClick={() => { setActiveTab('Ações'); setSearchTerm(''); }} 
                             className={`relative z-10 flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'Ações' ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
-                            <TrendingUp className="w-3.5 h-3.5" /> Ações
+                            <TrendingUp className="w-3.5 h-3.5" /> Ações ({stockTickers.length})
                         </button>
                     </div>
                 </div>
@@ -237,19 +225,30 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                     <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
                         <AlertTriangle className="w-12 h-12 mb-3 text-zinc-300" strokeWidth={1} />
                         <p className="text-xs font-bold text-zinc-500 mb-4">Não foi possível carregar as notícias.</p>
-                        <button onClick={() => fetchNews()} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 press-effect">
+                        <button onClick={() => fetchNews(searchTerm || currentTickers.join(' OR '))} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 press-effect">
                             Tentar Novamente
                         </button>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {activeTab === 'Carteira' && portfolioTickers.length === 0 && !searchTerm && (
-                            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 text-center mb-4">
-                                <p className="text-xs font-bold text-amber-600 dark:text-amber-400">Sua carteira está vazia.</p>
-                                <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 mt-1">Adicione ativos para ver notícias personalizadas aqui.</p>
+                        
+                        {/* Estado Vazio: Sem ativos na categoria selecionada */}
+                        {!searchTerm && !hasAssetsInTab && (
+                            <div className="flex flex-col items-center justify-center py-20 text-center anim-fade-in opacity-80">
+                                <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4 text-zinc-400">
+                                    {activeTab === 'FIIs' ? <Building2 className="w-8 h-8" /> : <TrendingUp className="w-8 h-8" />}
+                                </div>
+                                <h3 className="text-sm font-black text-zinc-900 dark:text-white mb-2">Sem {activeTab} na Carteira</h3>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-[200px] leading-relaxed mb-6">
+                                    Adicione ativos desta categoria para ver um feed de notícias exclusivo.
+                                </p>
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 bg-zinc-50 dark:bg-zinc-900 py-2 px-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                    <PlusCircle className="w-3 h-3" /> Vá para a aba Ordens
+                                </div>
                             </div>
                         )}
 
+                        {/* Lista de Notícias */}
                         {filteredNews.length > 0 ? (
                             filteredNews.map((item, index) => {
                                 const CategoryIcon = getCategoryIcon(item.category);
@@ -306,17 +305,20 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                                 );
                             })
                         ) : (
-                            <div className="text-center py-20 opacity-40 anim-fade-in">
-                                <Search className="w-12 h-12 mx-auto mb-3 text-zinc-300" strokeWidth={1.5} />
-                                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nenhuma notícia encontrada</p>
-                                {searchTerm && <p className="text-[10px] text-zinc-400 mt-1">Tente buscar por outros termos</p>}
-                            </div>
+                            // Estado vazio apenas se houver ativos mas nenhuma notícia (raro) ou busca sem resultados
+                            (searchTerm || hasAssetsInTab) && !loading && (
+                                <div className="text-center py-20 opacity-40 anim-fade-in">
+                                    <Search className="w-12 h-12 mx-auto mb-3 text-zinc-300" strokeWidth={1.5} />
+                                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nenhuma notícia encontrada</p>
+                                    {searchTerm && <p className="text-[10px] text-zinc-400 mt-1">Tente buscar por outros termos</p>}
+                                </div>
+                            )
                         )}
                         
                         {filteredNews.length > 0 && (
                             <div className="pt-4 pb-8 text-center">
                                 <p className="text-[9px] text-zinc-400 font-medium uppercase tracking-widest opacity-60">
-                                    Fonte: Google News RSS
+                                    Fonte: Google News RSS (Filtrado por Carteira)
                                 </p>
                             </div>
                         )}
