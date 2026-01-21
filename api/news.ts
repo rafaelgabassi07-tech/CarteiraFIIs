@@ -122,7 +122,33 @@ export default async function handler(request: VercelRequest, response: VercelRe
         }).filter(item => item !== null);
     };
 
+    // Helper para categorizar notícias de busca avulsa
+    const categorizeItem = (title: string, summary: string) => {
+        const text = (title + ' ' + summary).toLowerCase();
+        if (text.includes('fii') || text.includes('fundo imobili') || text.includes('ifix') || text.match(/[a-z]{4}11/)) return 'FIIs';
+        if (text.includes('ação') || text.includes('ações') || text.includes('ibovespa') || text.includes('dividend')) return 'Ações';
+        return 'Geral';
+    };
+
     try {
+        const { q } = request.query;
+        const seenTitles = new Set<string>();
+
+        // MODO BUSCA (Se 'q' foi passado na URL)
+        if (q && typeof q === 'string') {
+            // Encode e busca
+            const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+            const feed = await parser.parseURL(feedUrl);
+            
+            const processed = processItems(feed.items || [], seenTitles).map(item => ({
+                ...item,
+                category: categorizeItem(item.title, item.summary)
+            }));
+
+            return response.status(200).json(processed);
+        }
+
+        // MODO PADRÃO (Feeds Separados)
         // 1. Definição das Queries (Otimizadas para evitar contaminação cruzada)
         const queryFII = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII" when:7d';
         const queryStocks = '"Ações" OR "Ibovespa" OR "Dividendos Ações" OR "Mercado de Ações" -FII -"Fundos Imobiliários" when:7d';
@@ -135,8 +161,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
             parser.parseURL(feedUrlFII),
             parser.parseURL(feedUrlStocks)
         ]);
-
-        const seenTitles = new Set<string>();
 
         // 3. Processamento separado com categorização
         const articlesFII = processItems(feedFII.items || [], seenTitles).map(item => ({ ...item, category: 'FIIs' }));
