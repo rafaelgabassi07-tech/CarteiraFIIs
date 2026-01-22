@@ -249,7 +249,7 @@ export interface NewsItem {
 }
 
 // --- TIPOS DE INTELIGÊNCIA ---
-export type InsightType = 'opportunity' | 'warning' | 'neutral' | 'success';
+export type InsightType = 'opportunity' | 'warning' | 'neutral' | 'success' | 'news' | 'volatility_up' | 'volatility_down';
 
 export interface PortfolioInsight {
     id: string;
@@ -259,4 +259,7 @@ export interface PortfolioInsight {
     relatedTicker?: string;
     actionLabel?: string;
     score: number; // 0 a 100, usado para prioridade
+    timestamp?: number; // Para controle de expiração
+    url?: string; // Link para notícia
+    imageUrl?: string; // Imagem da notícia
 }

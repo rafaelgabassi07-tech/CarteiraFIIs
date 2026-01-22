@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info } from 'lucide-react';
+import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem } from '../types';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -73,10 +73,13 @@ const StoryOverlay = ({ insight, onClose }: { insight: PortfolioInsight, onClose
     // Configuração de Estilos baseada no tipo
     const getTheme = () => {
         switch(insight.type) {
-            case 'opportunity': return { bg: 'from-sky-500 to-blue-600', icon: Sparkles, accent: 'text-sky-500' };
-            case 'warning': return { bg: 'from-amber-500 to-orange-600', icon: AlertTriangle, accent: 'text-amber-500' };
-            case 'success': return { bg: 'from-emerald-500 to-green-600', icon: TrendingUp, accent: 'text-emerald-500' };
-            default: return { bg: 'from-zinc-500 to-zinc-700', icon: Info, accent: 'text-zinc-500' };
+            case 'volatility_up': return { bg: 'from-emerald-500 to-green-600', icon: TrendingUp, accent: 'text-emerald-500', label: 'Alta' };
+            case 'volatility_down': return { bg: 'from-rose-500 to-red-600', icon: TrendingDown, accent: 'text-rose-500', label: 'Queda' };
+            case 'news': return { bg: 'from-indigo-500 to-violet-600', icon: Newspaper, accent: 'text-indigo-500', label: 'Notícia' };
+            case 'opportunity': return { bg: 'from-sky-500 to-blue-600', icon: Sparkles, accent: 'text-sky-500', label: 'Dica' };
+            case 'warning': return { bg: 'from-amber-500 to-orange-600', icon: AlertTriangle, accent: 'text-amber-500', label: 'Atenção' };
+            case 'success': return { bg: 'from-emerald-500 to-green-600', icon: TrendingUp, accent: 'text-emerald-500', label: 'Sucesso' };
+            default: return { bg: 'from-zinc-500 to-zinc-700', icon: Info, accent: 'text-zinc-500', label: 'Info' };
         }
     };
     const theme = getTheme();
@@ -84,23 +87,29 @@ const StoryOverlay = ({ insight, onClose }: { insight: PortfolioInsight, onClose
 
     // Fecha ao clicar fora ou no botão
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md anim-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md anim-fade-in" onClick={onClose}>
             <div 
-                className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2rem] overflow-hidden shadow-2xl relative anim-scale-in" 
+                className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2rem] overflow-hidden shadow-2xl relative anim-scale-in flex flex-col max-h-[80vh]" 
                 onClick={e => e.stopPropagation()}
             >
                 {/* Barra de Progresso Decorativa */}
-                <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 flex gap-1 p-1">
-                    <div className={`h-full flex-1 rounded-full bg-gradient-to-r ${theme.bg}`}></div>
+                <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 flex gap-1 p-1 shrink-0">
+                    <div className={`h-full flex-1 rounded-full bg-gradient-to-r ${theme.bg} animate-[loading_5s_linear_forwards]`}></div>
                 </div>
 
                 {/* Conteúdo */}
-                <div className="p-8 text-center flex flex-col items-center">
-                    <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${theme.bg} flex items-center justify-center text-white mb-6 shadow-lg shadow-zinc-200 dark:shadow-none`}>
+                <div className="p-8 text-center flex flex-col items-center flex-1 overflow-y-auto">
+                    <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${theme.bg} flex items-center justify-center text-white mb-6 shadow-lg shadow-zinc-200 dark:shadow-none shrink-0`}>
                         <Icon className="w-10 h-10" strokeWidth={1.5} />
                     </div>
                     
-                    <h3 className="text-2xl font-black text-zinc-900 dark:text-white mb-3 tracking-tight leading-none">
+                    <div className="mb-2">
+                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 ${theme.accent}`}>
+                            {theme.label}
+                        </span>
+                    </div>
+
+                    <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-4 tracking-tight leading-tight">
                         {insight.title}
                     </h3>
                     
@@ -108,20 +117,20 @@ const StoryOverlay = ({ insight, onClose }: { insight: PortfolioInsight, onClose
                         {insight.message}
                     </p>
 
-                    {insight.relatedTicker && (
-                        <div className="mt-6 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-xs font-black text-zinc-500 uppercase tracking-widest">
-                            {insight.relatedTicker}
-                        </div>
+                    {insight.url && (
+                        <a href={insight.url} target="_blank" rel="noreferrer" className="mt-6 text-xs font-bold text-sky-500 hover:underline flex items-center gap-1">
+                            Ler notícia completa <ArrowUpRight className="w-3 h-3" />
+                        </a>
                     )}
                 </div>
 
                 {/* Botão Fechar */}
-                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 shrink-0">
                     <button 
                         onClick={onClose}
                         className="w-full py-4 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-xs uppercase tracking-[0.2em] press-effect"
                     >
-                        Entendido
+                        Fechar
                     </button>
                 </div>
             </div>
@@ -141,19 +150,25 @@ const SmartFeed = ({ insights }: { insights: PortfolioInsight[] }) => {
                     let ringColors = '';
                     let Icon = Lightbulb;
                     
-                    if (insight.type === 'opportunity') { 
+                    if (insight.type === 'volatility_up') {
+                        ringColors = 'from-emerald-400 to-green-500';
+                        Icon = TrendingUp;
+                    } else if (insight.type === 'volatility_down') {
+                        ringColors = 'from-rose-400 to-red-500';
+                        Icon = TrendingDown;
+                    } else if (insight.type === 'news') {
+                        ringColors = 'from-indigo-400 to-violet-500';
+                        Icon = Newspaper;
+                    } else if (insight.type === 'opportunity') { 
                         ringColors = 'from-sky-400 to-blue-500'; 
                         Icon = Sparkles; 
-                    }
-                    else if (insight.type === 'warning') { 
+                    } else if (insight.type === 'warning') { 
                         ringColors = 'from-amber-400 to-orange-500'; 
                         Icon = AlertTriangle; 
-                    }
-                    else if (insight.type === 'success') { 
+                    } else if (insight.type === 'success') { 
                         ringColors = 'from-emerald-400 to-green-500'; 
                         Icon = TrendingUp; 
-                    }
-                    else { 
+                    } else { 
                         ringColors = 'from-zinc-400 to-zinc-500'; 
                         Icon = Zap;
                     }
@@ -169,13 +184,20 @@ const SmartFeed = ({ insights }: { insights: PortfolioInsight[] }) => {
                                 <div className="w-[58px] h-[58px] rounded-full bg-white dark:bg-zinc-900 border-[3px] border-transparent flex items-center justify-center relative overflow-hidden">
                                     {/* Icon Background leve */}
                                     <div className={`absolute inset-0 opacity-10 bg-gradient-to-tr ${ringColors}`}></div>
-                                    <Icon className="w-6 h-6 text-zinc-700 dark:text-zinc-200 relative z-10" strokeWidth={2} />
+                                    
+                                    {insight.type === 'news' && insight.imageUrl ? (
+                                        <div className="w-full h-full relative z-10 p-2">
+                                            <img src={insight.imageUrl} alt="" className="w-full h-full object-contain opacity-80" />
+                                        </div>
+                                    ) : (
+                                        <Icon className="w-6 h-6 text-zinc-700 dark:text-zinc-200 relative z-10" strokeWidth={2} />
+                                    )}
                                 </div>
                             </div>
                             
                             {/* Texto Truncado */}
                             <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 w-16 truncate text-center leading-none">
-                                {insight.relatedTicker || (insight.type === 'warning' ? 'Alerta' : insight.type === 'opportunity' ? 'Dica' : 'Info')}
+                                {insight.relatedTicker || (insight.type === 'news' ? 'Notícia' : insight.type === 'warning' ? 'Alerta' : 'Info')}
                             </span>
                         </button>
                     );
@@ -205,14 +227,51 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   
   // Intelligence State
   const [insights, setInsights] = useState<PortfolioInsight[]>([]);
+  const [newsCache, setNewsCache] = useState<NewsItem[]>([]);
 
   const safeInflation = Number(inflationRate) || 4.62;
 
-  // Atualiza insights quando a carteira muda
+  // Busca Notícias para os Stories
   useEffect(() => {
-      const generatedInsights = analyzePortfolio(portfolio, safeInflation);
+      const fetchTopNews = async () => {
+          try {
+              // Busca notícias gerais e da carteira combinadas
+              const portfolioTickers = Array.from(new Set(portfolio.map(p => p.ticker)));
+              const query = portfolioTickers.slice(0, 5).join(' OR '); // Limita query para não quebrar URL
+              
+              const endpoint = query ? `/api/news?q=${encodeURIComponent(query)}` : '/api/news';
+              const res = await fetch(endpoint);
+              if (res.ok) {
+                  const data = await res.json();
+                  // Mapeia resposta bruta para NewsItem se necessário (a API News já retorna formato parecido, ajustando campos)
+                  const formattedNews: NewsItem[] = data.map((item: any, idx: number) => ({
+                      id: String(idx),
+                      title: item.title,
+                      summary: item.summary,
+                      source: item.sourceName,
+                      url: item.link,
+                      imageUrl: item.imageUrl,
+                      date: item.publicationDate,
+                      category: item.category || 'Geral'
+                  }));
+                  setNewsCache(formattedNews);
+              }
+          } catch (e) {
+              console.warn("Home news fetch failed", e);
+          }
+      };
+      
+      // Delay pequeno para não travar a renderização inicial crítica
+      const timer = setTimeout(fetchTopNews, 1000);
+      return () => clearTimeout(timer);
+  }, [portfolio]); // Recarrega se portfólio mudar drasticamente (ex: login)
+
+  // Atualiza insights/stories quando a carteira ou notícias mudam
+  useEffect(() => {
+      // Passa newsCache para a análise
+      const generatedInsights = analyzePortfolio(portfolio, safeInflation, newsCache);
       setInsights(generatedInsights);
-  }, [portfolio, safeInflation]);
+  }, [portfolio, safeInflation, newsCache]);
 
   // Cálculos de Rentabilidade
   const capitalGainValue = useMemo(() => balance - invested, [balance, invested]);

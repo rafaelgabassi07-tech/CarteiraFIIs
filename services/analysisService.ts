@@ -1,16 +1,88 @@
 
-import { AssetPosition, PortfolioInsight, AssetType } from "../types";
+import { AssetPosition, PortfolioInsight, AssetType, NewsItem } from "../types";
 
 /**
  * O "Cérebro" do App.
- * Analisa a carteira do usuário e gera insights baseados em heurísticas financeiras.
+ * Analisa a carteira do usuário e gera insights baseados em:
+ * 1. Oscilações Bruscas (Intraday)
+ * 2. Notícias Relevantes (Últimas 24h)
+ * 3. Análise Fundamentalista (P/VP, Vacância, etc.)
  */
-export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number): PortfolioInsight[] => {
+export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news: NewsItem[] = []): PortfolioInsight[] => {
     const insights: PortfolioInsight[] = [];
+    const now = Date.now();
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
     
-    if (portfolio.length === 0) return [];
+    if (portfolio.length === 0 && news.length === 0) return [];
 
     const totalBalance = portfolio.reduce((acc, p) => acc + (p.currentPrice || p.averagePrice) * p.quantity, 0);
+    
+    // --- 1. OSCILAÇÕES BRUSCAS (Prioridade Máxima) ---
+    // Detecta variações diárias > 1.5% (Positivas ou Negativas)
+    portfolio.forEach(asset => {
+        const change = asset.dailyChange || 0;
+        const absChange = Math.abs(change);
+        
+        // Threshold de 1.5% para ser considerado "Brusco"
+        if (absChange >= 1.5) {
+            const isPositive = change > 0;
+            insights.push({
+                id: `vol-${asset.ticker}-${now}`, // ID único diário
+                type: isPositive ? 'volatility_up' : 'volatility_down',
+                title: isPositive ? `${asset.ticker} Subindo` : `${asset.ticker} Caindo`,
+                message: `${asset.ticker} está com variação de ${isPositive ? '+' : ''}${change.toFixed(2)}% hoje. ${isPositive ? 'Excelente momento!' : 'Atenção ao mercado.'}`,
+                relatedTicker: asset.ticker,
+                score: 100 + absChange, // Quanto maior a variação, maior o score (aparece primeiro)
+                timestamp: now
+            });
+        }
+    });
+
+    // --- 2. NOTÍCIAS RELEVANTES (Últimas 24h) ---
+    // Filtra notícias que mencionam ativos da carteira ou são Macro (FIIs/Ações)
+    const portfolioTickers = new Set(portfolio.map(p => p.ticker));
+    
+    news.forEach(item => {
+        // Verifica se é recente (parsing da string de data relativa ou uso de timestamp se disponível)
+        // Como o app usa 'há x horas', assumimos que a API News já retorna ordenado.
+        // Vamos considerar as top news como recentes.
+        
+        // Tenta associar notícia a um ativo da carteira
+        let relatedTicker = undefined;
+        let score = 50;
+
+        // Se o título menciona um ticker da carteira
+        portfolio.forEach(asset => {
+            if (item.title.toUpperCase().includes(asset.ticker) || item.summary.toUpperCase().includes(asset.ticker)) {
+                relatedTicker = asset.ticker;
+                score = 90; // Notícia direta sobre ativo da carteira tem prioridade alta
+            }
+        });
+
+        // Se não tem ticker, mas é Macro importante
+        if (!relatedTicker) {
+            if (item.category === 'Macro' || item.title.includes('IPCA') || item.title.includes('Selic') || item.title.includes('IFIX')) {
+                score = 85;
+            } else {
+                score = 40; // Notícia geral
+            }
+        }
+
+        insights.push({
+            id: `news-${item.id}`,
+            type: 'news',
+            title: relatedTicker || item.source,
+            message: item.title,
+            relatedTicker: relatedTicker, // Pode ser undefined
+            url: item.url,
+            imageUrl: item.imageUrl,
+            score: score,
+            timestamp: now
+        });
+    });
+
+    // --- 3. ANÁLISE FUNDAMENTALISTA (Baixa Prioridade - Educativo) ---
+    // Só gera se não houver muitos eventos urgentes
     
     // Cálculo do Yield Médio Ponderado da Carteira
     let weightedDySum = 0;
@@ -28,115 +100,47 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number): Port
 
     const portfolioDy = totalBalance > 0 ? weightedDySum / totalBalance : 0;
 
-    // 1. ANÁLISE DE INFLAÇÃO (IPCA)
-    // Só exibe se a diferença for significativa para não ser óbvio demais
-    if (ipca > 0) {
-        const realGain = portfolioDy - ipca;
-        if (realGain < 0) {
-            insights.push({
-                id: 'inflation-loss',
-                type: 'warning',
-                title: 'Perda de Poder de Compra',
-                message: `Yield da carteira (${portfolioDy.toFixed(2)}%) está abaixo da inflação (${ipca.toFixed(2)}%).`,
-                score: 95
-            });
-        }
-    }
-
-    // 2. DESBALANCEAMENTO DE CLASSES
-    if (totalBalance > 0) {
-        const fiiPct = (fiisTotal / totalBalance) * 100;
-        const stockPct = (stocksTotal / totalBalance) * 100;
-
-        if (fiiPct > 85 && stocksTotal > 0) {
-            insights.push({
-                id: 'imbalance-fii',
-                type: 'neutral',
-                title: 'Exposição em FIIs',
-                message: `Sua carteira é ${fiiPct.toFixed(0)}% FIIs. Considere equilibrar com Ações para crescimento.`,
-                score: 50
-            });
-        } else if (stockPct > 85 && fiisTotal > 0) {
-            insights.push({
-                id: 'imbalance-stock',
-                type: 'neutral',
-                title: 'Exposição em Ações',
-                message: `Sua carteira é ${stockPct.toFixed(0)}% Ações. FIIs poderiam reduzir a volatilidade.`,
-                score: 50
-            });
-        }
-    }
-
-    // 3. ANÁLISE DE ATIVOS INDIVIDUAIS
+    // Alerta de Vacância (FIIs) - CRÍTICO
     portfolio.forEach(asset => {
-        const currentVal = (asset.currentPrice || 0) * asset.quantity;
-        const allocation = totalBalance > 0 ? (currentVal / totalBalance) * 100 : 0;
-
-        // A. Risco de Concentração (Apenas se for muito alto)
-        if (allocation > 30 && portfolio.length >= 4) {
-            insights.push({
-                id: `conc-${asset.ticker}`,
-                type: 'warning',
-                title: 'Concentração Alta',
-                message: `${asset.ticker} representa ${allocation.toFixed(0)}% do patrimônio.`,
-                relatedTicker: asset.ticker,
-                score: 70
-            });
-        }
-
-        // B. Alerta de Vacância (FIIs) - CRÍTICO
         if (asset.assetType === AssetType.FII && asset.vacancy !== undefined && asset.vacancy > 15) {
             insights.push({
                 id: `vac-${asset.ticker}`,
                 type: 'warning',
-                title: `Vacância Alta: ${asset.ticker}`,
-                message: `${asset.ticker} está com ${asset.vacancy}% de vacância física. Risco de queda nos proventos.`,
+                title: `Risco: Vacância`,
+                message: `${asset.ticker} reportou ${asset.vacancy}% de vacância física. Fique atento.`,
                 relatedTicker: asset.ticker,
-                score: 90
+                score: 75
             });
         }
-
-        // C. Oportunidades FIIs (Desconto)
-        if (asset.assetType === AssetType.FII && asset.p_vp && asset.p_vp > 0) {
-            if (asset.p_vp < 0.85 && asset.dy_12m && asset.dy_12m > 9 && (!asset.vacancy || asset.vacancy < 10)) {
-                insights.push({
-                    id: `opp-${asset.ticker}`,
-                    type: 'opportunity',
-                    title: 'Desconto Elevado',
-                    message: `${asset.ticker} (P/VP ${asset.p_vp.toFixed(2)}) parece descontado com bons fundamentos.`,
-                    relatedTicker: asset.ticker,
-                    score: 80
-                });
-            } 
-        }
-
-        // D. Dividend Trap Potencial (Yield altíssimo mas P/VP muito baixo pode indicar problema)
-        if (asset.assetType === AssetType.FII && asset.dy_12m && asset.dy_12m > 18 && asset.p_vp && asset.p_vp < 0.7) {
+        
+        // Oportunidade
+        if (asset.assetType === AssetType.FII && asset.p_vp && asset.p_vp < 0.85 && asset.dy_12m && asset.dy_12m > 9) {
              insights.push({
-                id: `trap-${asset.ticker}`,
-                type: 'warning',
-                title: 'Cuidado: Dividend Yield',
-                message: `${asset.ticker} tem DY de ${asset.dy_12m}% mas P/VP de ${asset.p_vp}. Pode ser um risco não recorrente.`,
+                id: `opp-${asset.ticker}`,
+                type: 'opportunity',
+                title: 'Oportunidade',
+                message: `${asset.ticker} está descontado (P/VP ${asset.p_vp}) com alto Yield.`,
                 relatedTicker: asset.ticker,
-                score: 85
+                score: 70
             });
-        }
-
-        // E. Oportunidades Ações (Graham Simplificado)
-        if (asset.assetType === AssetType.STOCK && asset.p_l && asset.p_l > 0 && asset.p_vp && asset.p_vp > 0) {
-            if (asset.p_l * asset.p_vp < 22.5 && asset.roe && asset.roe > 10) {
-                insights.push({
-                    id: `value-${asset.ticker}`,
-                    type: 'opportunity',
-                    title: 'Valor Justo',
-                    message: `${asset.ticker} negocia a múltiplos atrativos (Graham) com ROE de ${asset.roe}%.`,
-                    relatedTicker: asset.ticker,
-                    score: 75
-                });
-            }
         }
     });
-    
-    // Ordena por prioridade (Score maior primeiro) e pega top 4 para não poluir
-    return insights.sort((a, b) => b.score - a.score).slice(0, 4);
+
+    // Inflação (Ocasional)
+    if (ipca > 0 && portfolioDy < ipca) {
+        insights.push({
+            id: 'inflation-loss',
+            type: 'warning',
+            title: 'Inflação Alta',
+            message: `Sua carteira rende ${portfolioDy.toFixed(2)}%, abaixo do IPCA (${ipca.toFixed(2)}%).`,
+            score: 60
+        });
+    }
+
+    // --- FILTRAGEM FINAL ---
+    // 1. Ordena por Score (Decrescente)
+    // 2. Limita a 15 itens
+    return insights
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 15);
 };
