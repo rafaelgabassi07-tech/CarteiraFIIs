@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon } from 'lucide-react';
+import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon, Gem } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { BarChart, Bar, XAxis, YAxis, ReferenceLine, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -56,8 +57,7 @@ const SectionTitle = ({ title, icon: Icon }: { title: string; icon: any }) => (
     </div>
 );
 
-// --- COMPONENTE INTERNO DO MODAL (CORREÇÃO DE HOOKS) ---
-// Extraído para garantir que useMemo e useState sejam chamados corretamente no ciclo de vida do React
+// --- COMPONENTE INTERNO DO MODAL ---
 const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: AssetPosition, dividends: DividendReceipt[], privacyMode: boolean, onClose: () => void }) => {
     const [divRange, setDivRange] = useState<'3M' | '6M' | '12M'>('12M');
 
@@ -76,43 +76,31 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
         
         const now = new Date();
         const monthsBack = divRange === '3M' ? 3 : divRange === '6M' ? 6 : 12;
-        
-        // Data de corte (primeiro dia do mês inicial)
         const cutoffDate = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
         
-        // Normalização do Ticker: Se for ITSA4F, busca por ITSA4 na lista de dividendos
         let targetTicker = asset.ticker.trim().toUpperCase();
         if (targetTicker.endsWith('F') && !targetTicker.endsWith('11F') && targetTicker.length <= 6) {
             targetTicker = targetTicker.slice(0, -1);
         }
 
         const filtered = dividends.filter(d => {
-            // Filtra por ticker (normalizado) e data
             if (!d.paymentDate || !d.ticker) return false;
-            
-            // Compara tickers normalizados
             if (d.ticker.trim().toUpperCase() !== targetTicker) return false;
-
             const pDate = new Date(d.paymentDate);
-            pDate.setUTCHours(12); // Garante meio-dia para evitar problemas de fuso
+            pDate.setUTCHours(12); 
             return pDate >= cutoffDate;
         });
 
-        // Agrupa por mês (YYYY-MM)
         const grouped: Record<string, number> = {};
-        
-        // Inicializa os meses com 0 para o gráfico ficar bonito
         for (let i = monthsBack - 1; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const key = d.toISOString().slice(0, 7); // YYYY-MM
+            const key = d.toISOString().slice(0, 7); 
             grouped[key] = 0;
         }
 
         filtered.forEach(d => {
             const key = d.paymentDate.slice(0, 7);
             if (grouped[key] !== undefined) {
-                // SOMA O RATE (Valor por Cota) em vez do total recebido
-                // Garante que é numérico
                 const rate = typeof d.rate === 'number' ? d.rate : parseFloat(String(d.rate).replace(',', '.')) || 0;
                 grouped[key] += rate;
             }
@@ -133,8 +121,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
 
     const totalInPeriod = monthlyDividends.reduce((acc, curr) => acc + curr.value, 0);
     const averageInPeriod = monthlyDividends.length > 0 ? totalInPeriod / monthlyDividends.length : 0;
-    
-    // Cor dinâmica baseada no tipo de ativo (FII = Indigo, Ação = Sky)
     const chartColor = isFII ? '#6366f1' : '#0ea5e9';
 
     return (
@@ -195,60 +181,68 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                     </div>
                 </div>
 
-                {/* Bloco 2: Fundamentos */}
-                <div className="anim-slide-up" style={{ animationDelay: '100ms' }}>
+                {/* Bloco 2: Fundamentos - Com Stagger Interno */}
+                <div className="space-y-6">
                     {isFII ? (
                         <>
-                            <SectionTitle title="Valuation & Rendimentos" icon={Activity} />
-                            <div className="grid grid-cols-2 gap-3 mb-6">
-                                <StatBox label="Dividend Yield (12m)" value={asset.dy_12m ? `${asset.dy_12m.toFixed(2)}%` : '-'} subtext="Isento de IR" highlight colorClass="text-emerald-600 dark:text-emerald-400" icon={Percent} />
-                                <StatBox label="P/VP" value={asset.p_vp?.toFixed(2)} subtext={asset.p_vp && asset.p_vp < 1 ? 'Descontado' : asset.p_vp && asset.p_vp > 1.1 ? 'Ágio' : 'Preço Justo'} highlight colorClass={asset.p_vp && asset.p_vp <= 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'} icon={Scale} />
-                                <StatBox label="Último Rendimento" value={asset.last_dividend ? `R$ ${asset.last_dividend.toFixed(2)}` : '-'} subtext="Por cota" icon={DollarSign} />
-                                <StatBox label="Valor Patrimonial" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} subtext="VP por cota" icon={Building2} />
+                            <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
+                                <SectionTitle title="Valuation & Rendimentos" icon={Activity} />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <StatBox label="Dividend Yield (12m)" value={asset.dy_12m ? `${asset.dy_12m.toFixed(2)}%` : '-'} subtext="Isento de IR" highlight colorClass="text-emerald-600 dark:text-emerald-400" icon={Percent} />
+                                    <StatBox label="P/VP" value={asset.p_vp?.toFixed(2)} subtext={asset.p_vp && asset.p_vp < 1 ? 'Descontado' : asset.p_vp && asset.p_vp > 1.1 ? 'Ágio' : 'Preço Justo'} highlight colorClass={asset.p_vp && asset.p_vp <= 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'} icon={Scale} />
+                                    <StatBox label="Último Rendimento" value={asset.last_dividend ? `R$ ${asset.last_dividend.toFixed(2)}` : '-'} subtext="Por cota" icon={DollarSign} />
+                                    <StatBox label="Valor Patrimonial" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} subtext="VP por cota" icon={Building2} />
+                                </div>
                             </div>
 
-                            <SectionTitle title="Perfil & Risco" icon={AlertCircle} />
-                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                <DetailRow label="Patrimônio Líquido (Fundo)" value={asset.assets_value} highlight />
-                                <DetailRow label="Vacância Física" value={asset.vacancy !== undefined ? `${asset.vacancy}%` : '-'} highlight={asset.vacancy && asset.vacancy > 0} />
-                                <DetailRow label="Liquidez Diária" value={asset.liquidity} />
-                                <DetailRow label="Tipo de Gestão" value={asset.manager_type} isLast />
+                            <div className="anim-stagger-item" style={{ animationDelay: '150ms' }}>
+                                <SectionTitle title="Perfil & Risco" icon={AlertCircle} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                    <DetailRow label="Patrimônio Líquido (Fundo)" value={asset.assets_value} highlight />
+                                    <DetailRow label="Vacância Física" value={asset.vacancy !== undefined ? `${asset.vacancy}%` : '-'} highlight={asset.vacancy && asset.vacancy > 0} />
+                                    <DetailRow label="Liquidez Diária" value={asset.liquidity} />
+                                    <DetailRow label="Tipo de Gestão" value={asset.manager_type} isLast />
+                                </div>
                             </div>
                         </>
                     ) : (
                         <>
-                            <SectionTitle title="Valuation" icon={Scale} />
-                            <div className="grid grid-cols-2 gap-3 mb-6">
-                                <StatBox label="P/L" value={asset.p_l?.toFixed(2)} subtext="Anos retorno" highlight icon={Activity} />
-                                <StatBox label="P/VP" value={asset.p_vp?.toFixed(2)} subtext="Preço/Patrimônio" highlight icon={Building2} />
-                                <StatBox label="LPA" value={asset.lpa ? `R$ ${asset.lpa.toFixed(2)}` : '-'} subtext="Lucro/Ação" icon={DollarSign} />
-                                <StatBox label="VPA" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} subtext="Valor/Ação" icon={Banknote} />
+                            <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
+                                <SectionTitle title="Valuation" icon={Scale} />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <StatBox label="P/L" value={asset.p_l?.toFixed(2)} subtext="Anos retorno" highlight icon={Activity} />
+                                    <StatBox label="P/VP" value={asset.p_vp?.toFixed(2)} subtext="Preço/Patrimônio" highlight icon={Building2} />
+                                    <StatBox label="LPA" value={asset.lpa ? `R$ ${asset.lpa.toFixed(2)}` : '-'} subtext="Lucro/Ação" icon={DollarSign} />
+                                    <StatBox label="VPA" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} subtext="Valor/Ação" icon={Banknote} />
+                                </div>
                             </div>
 
-                            <SectionTitle title="Eficiência & Saúde" icon={BarChart3} />
-                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-4">
-                                    <div>
-                                        <p className="text-[10px] text-zinc-400 font-bold uppercase mb-1">ROE</p>
-                                        <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{asset.roe ? `${asset.roe.toFixed(1)}%` : '-'}</p>
+                            <div className="anim-stagger-item" style={{ animationDelay: '150ms' }}>
+                                <SectionTitle title="Eficiência & Saúde" icon={BarChart3} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-4">
+                                        <div>
+                                            <p className="text-[10px] text-zinc-400 font-bold uppercase mb-1">ROE</p>
+                                            <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{asset.roe ? `${asset.roe.toFixed(1)}%` : '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-zinc-400 font-bold uppercase mb-1">Margem Líquida</p>
+                                            <p className="text-lg font-black text-zinc-900 dark:text-white">{asset.net_margin ? `${asset.net_margin.toFixed(1)}%` : '-'}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] text-zinc-400 font-bold uppercase mb-1">Margem Líquida</p>
-                                        <p className="text-lg font-black text-zinc-900 dark:text-white">{asset.net_margin ? `${asset.net_margin.toFixed(1)}%` : '-'}</p>
+                                    <div className="border-t border-zinc-100 dark:border-zinc-800 pt-2">
+                                        <DetailRow label="Div. Yield (12m)" value={asset.dy_12m ? `${asset.dy_12m.toFixed(1)}%` : '-'} />
+                                        <DetailRow label="CAGR Lucros (5a)" value={asset.cagr_profits ? `${asset.cagr_profits.toFixed(1)}%` : '-'} />
+                                        <DetailRow label="Dív. Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2)} isLast />
                                     </div>
-                                </div>
-                                <div className="border-t border-zinc-100 dark:border-zinc-800 pt-2">
-                                    <DetailRow label="Div. Yield (12m)" value={asset.dy_12m ? `${asset.dy_12m.toFixed(1)}%` : '-'} />
-                                    <DetailRow label="CAGR Lucros (5a)" value={asset.cagr_profits ? `${asset.cagr_profits.toFixed(1)}%` : '-'} />
-                                    <DetailRow label="Dív. Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2)} isLast />
                                 </div>
                             </div>
                         </>
                     )}
                 </div>
 
-                {/* Bloco 3: Histórico de Proventos Mensal (POR COTA) */}
-                <div className="anim-slide-up" style={{ animationDelay: '200ms' }}>
+                {/* Bloco 3: Histórico de Proventos Mensal */}
+                <div className="anim-stagger-item" style={{ animationDelay: '200ms' }}>
                     <div className="flex items-center justify-between mb-3 mt-6 px-1">
                         <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
@@ -259,7 +253,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                         
                         <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg">
                             {(['3M', '6M', '12M'] as const).map((range) => (
-                                <button key={range} onClick={() => setDivRange(range)} className={`px-2 py-1 text-[9px] font-black rounded-md transition-all ${divRange === range ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{range}</button>
+                                <button key={range} onClick={() => setDivRange(range)} className={`px-2 py-1 text-[9px] font-black rounded-md transition-all press-effect ${divRange === range ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{range}</button>
                             ))}
                         </div>
                     </div>
@@ -323,7 +317,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                             </>
                         ) : (
                             <div className="h-40 flex flex-col items-center justify-center text-center opacity-50">
-                                <BarChartIcon className="w-8 h-8 mb-2 text-zinc-300" strokeWidth={1} />
+                                <BarChartIcon className="w-8 h-8 mb-2 text-zinc-300 anim-float" strokeWidth={1} />
                                 <p className="text-[10px] font-bold text-zinc-400">Sem proventos registrados neste período.</p>
                             </div>
                         )}
@@ -380,9 +374,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
             </div>
             <div className="flex items-center justify-between px-1">
                 <div className="flex gap-2">
-                    <button onClick={() => setFilterType('ALL')} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${filterType === 'ALL' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent' : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>Tudo</button>
-                    <button onClick={() => setFilterType(AssetType.FII)} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${filterType === AssetType.FII ? 'bg-indigo-500 text-white border-transparent' : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>FIIs</button>
-                    <button onClick={() => setFilterType(AssetType.STOCK)} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${filterType === AssetType.STOCK ? 'bg-sky-500 text-white border-transparent' : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>Ações</button>
+                    <button onClick={() => setFilterType('ALL')} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border press-effect ${filterType === 'ALL' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent' : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>Tudo</button>
+                    <button onClick={() => setFilterType(AssetType.FII)} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border press-effect ${filterType === AssetType.FII ? 'bg-indigo-500 text-white border-transparent' : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>FIIs</button>
+                    <button onClick={() => setFilterType(AssetType.STOCK)} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border press-effect ${filterType === AssetType.STOCK ? 'bg-sky-500 text-white border-transparent' : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>Ações</button>
                 </div>
                 <div className="text-[9px] font-bold text-zinc-400">{filteredAssets.length} Ativos</div>
             </div>
@@ -431,7 +425,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
             })
         ) : (
             <div className="text-center py-20 opacity-40 anim-fade-in flex flex-col items-center">
-                <Search className="w-12 h-12 mb-4 text-zinc-300" strokeWidth={1.5} />
+                <Gem className="w-12 h-12 mb-4 text-zinc-300 anim-float" strokeWidth={1.5} />
                 <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Nenhum ativo encontrado</p>
             </div>
         )}

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Plus, Hash, DollarSign, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Square, CheckCircle2, Calculator, Loader2 } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
@@ -338,7 +339,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         )}
                         <button 
                             onClick={toggleSelectionMode}
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isSelectionMode ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all press-effect ${isSelectionMode ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}
                         >
                             <CheckSquare className="w-5 h-5" />
                         </button>
@@ -346,7 +347,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             <>
                                 <button 
                                     onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${activeFilter !== 'ALL' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}
+                                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all press-effect ${activeFilter !== 'ALL' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}
                                 >
                                     <Filter className="w-5 h-5" />
                                 </button>
@@ -362,12 +363,12 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 </div>
 
                 {isFilterOpen && !isSelectionMode && (
-                    <div className="absolute top-full left-0 right-0 p-4 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 anim-slide-up grid grid-cols-5 gap-2 shadow-2xl z-20">
+                    <div className="absolute top-full left-0 right-0 p-4 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 anim-scale-in grid grid-cols-5 gap-2 shadow-2xl z-20 origin-top">
                         {filters.map(f => (
                             <button
                                 key={f.id}
                                 onClick={() => { setActiveFilter(f.id); setIsFilterOpen(false); }}
-                                className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${activeFilter === f.id ? 'bg-zinc-900 dark:bg-zinc-800 border-zinc-900 dark:border-zinc-800 text-white' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400'}`}
+                                className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all press-effect ${activeFilter === f.id ? 'bg-zinc-900 dark:bg-zinc-800 border-zinc-900 dark:border-zinc-800 text-white' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400'}`}
                             >
                                 <f.icon className="w-5 h-5 mb-1" />
                                 <span className="text-[8px] font-black uppercase tracking-tighter">{f.label}</span>
@@ -399,7 +400,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
                 ) : (
                     <div className="h-[50vh] flex flex-col items-center justify-center opacity-40 anim-fade-in">
-                        <ArrowRightLeft className="w-16 h-16 mb-4 text-zinc-300 dark:text-zinc-700" strokeWidth={1} />
+                        <ArrowRightLeft className="w-16 h-16 mb-4 text-zinc-300 dark:text-zinc-700 anim-float" strokeWidth={1} />
                         <p className="text-sm font-bold text-zinc-500">Nenhuma ordem encontrada.</p>
                     </div>
                 )}
