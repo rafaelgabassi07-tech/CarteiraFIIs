@@ -133,6 +133,9 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
 
     const totalInPeriod = monthlyDividends.reduce((acc, curr) => acc + curr.value, 0);
     const averageInPeriod = monthlyDividends.length > 0 ? totalInPeriod / monthlyDividends.length : 0;
+    
+    // Cor dinâmica baseada no tipo de ativo (FII = Indigo, Ação = Sky)
+    const chartColor = isFII ? '#6366f1' : '#0ea5e9';
 
     return (
         <div className="bg-zinc-50 dark:bg-zinc-950 min-h-full pb-20">
@@ -271,16 +274,16 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-0.5">Média (1 Cota)</p>
-                                        <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(averageInPeriod, privacyMode)}</p>
+                                        <p className={`text-sm font-black ${isFII ? 'text-indigo-500' : 'text-sky-500'}`}>{formatBRL(averageInPeriod, privacyMode)}</p>
                                     </div>
                                 </div>
                                 <div className="h-48 w-full">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={monthlyDividends} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                             <defs>
-                                                <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#10b981" stopOpacity={1}/>
-                                                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.6}/>
+                                                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor={chartColor} stopOpacity={1}/>
+                                                    <stop offset="100%" stopColor={chartColor} stopOpacity={0.6}/>
                                                 </linearGradient>
                                             </defs>
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
@@ -294,16 +297,24 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                                                             <div className="bg-zinc-900/95 dark:bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/10 dark:border-zinc-200 z-50 min-w-[100px]">
                                                                 <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-1 uppercase tracking-widest text-center">{label}</p>
                                                                 <p className="text-lg font-black text-white dark:text-zinc-900 text-center tracking-tight leading-none">{formatBRL(payload[0].value as number, privacyMode)}</p>
-                                                                <p className="text-[9px] font-medium text-emerald-400 dark:text-emerald-600 text-center mt-1">Por cota</p>
+                                                                <p className="text-[9px] font-medium text-zinc-400 dark:text-zinc-500 text-center mt-1">Por cota</p>
                                                             </div>
                                                         ); 
                                                     } 
                                                     return null; 
                                                 }} 
                                             />
-                                            <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                                            <Bar dataKey="value" radius={[4, 4, 4, 4]} maxBarSize={48}>
                                                 {monthlyDividends.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.value >= averageInPeriod ? 'url(#barGradient)' : '#e4e4e7'} className="transition-all duration-300 hover:opacity-80 dark:fill-zinc-700" />
+                                                    <Cell 
+                                                        key={`cell-${index}`} 
+                                                        fill="url(#chartGradient)"
+                                                        fillOpacity={entry.value >= averageInPeriod ? 1 : 0.3} // Opacidade para barras menores
+                                                        stroke={entry.value >= averageInPeriod ? 'none' : chartColor} // Borda para definição
+                                                        strokeWidth={entry.value >= averageInPeriod ? 0 : 1}
+                                                        strokeOpacity={0.5}
+                                                        className="transition-all duration-300 hover:fillOpacity-100" 
+                                                    />
                                                 ))}
                                             </Bar>
                                         </BarChart>
