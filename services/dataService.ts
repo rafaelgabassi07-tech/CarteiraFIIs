@@ -74,7 +74,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
     // Helper para buscar valor em múltiplas chaves possíveis
     const getVal = (...keys: string[]) => {
         for (const k of keys) {
-            if (m[k] !== undefined && m[k] !== null) return m[k];
+            if (m[k] !== undefined && m[k] !== null && m[k] !== 'N/A' && m[k] !== '') return m[k];
         }
         return undefined;
     };

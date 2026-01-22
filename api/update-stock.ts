@@ -112,28 +112,29 @@ const KEY_MAP: Record<string, string> = {
     'pvp': 'pvp', 'vp': 'pvp', 'psobrevp': 'pvp',
     'pl': 'pl', 'psorel': 'pl', 'precolucro': 'pl',
     'dy': 'dy', 'dividendyield': 'dy', 'dy12m': 'dy',
-    'vpa': 'vp_cota', 'vpporcota': 'vp_cota', 'valorpatrimonialporcota': 'vp_cota', 'valpatrimonial': 'vp_cota',
+    'vpa': 'vp_cota', 'vpporcota': 'vp_cota', 'valorpatrimonialporcota': 'vp_cota', 'valpatrimonial': 'vp_cota', 'vp_cota': 'vp_cota',
     'lpa': 'lpa', 'lucroporacao': 'lpa',
     'evebitda': 'ev_ebitda',
     'dividaliquidaebitda': 'divida_liquida_ebitda',
+    'divliqebitda': 'divida_liquida_ebitda',
     
     // Rentabilidade e Margens
     'roe': 'roe',
-    'margemliquida': 'margem_liquida',
+    'margemliquida': 'margem_liquida', 'mliquida': 'margem_liquida',
     'margembruta': 'margem_bruta',
-    'cagrreceita5anos': 'cagr_receita_5a', 
-    'cagrlucros5anos': 'cagr_lucros_5a',
+    'cagrreceita5anos': 'cagr_receita_5a', 'cagrreceita': 'cagr_receita_5a',
+    'cagrlucros5anos': 'cagr_lucros_5a', 'cagrlucro': 'cagr_lucros_5a', 'cagrlucros': 'cagr_lucros_5a',
     'ultimorendimento': 'ultimo_rendimento', 'rendimento': 'ultimo_rendimento',
     
     // FIIs Específico
     'vacanciafisica': 'vacancia', 'vacancia': 'vacancia',
-    'patrimonioliquido': 'patrimonio_liquido', 'patrimonio': 'patrimonio_liquido',
-    'valordemercado': 'val_mercado',
-    'taxadeadministracao': 'taxa_adm',
+    'patrimonioliquido': 'patrimonio_liquido', 'patrimonio': 'patrimonio_liquido', 'patrim': 'patrimonio_liquido',
+    'valordemercado': 'val_mercado', 'valormercado': 'val_mercado',
+    'taxadeadministracao': 'taxa_adm', 'taxaadm': 'taxa_adm',
     'segmento': 'segmento',
     'tipodegestao': 'tipo_gestao', 'gestao': 'tipo_gestao',
     'liquidezmediadiaria': 'liquidez', 'liquidez': 'liquidez', 'liquidezdiaria': 'liquidez',
-    'numerodecotistas': 'num_cotistas', 'cotistas': 'num_cotistas'
+    'numerodecotistas': 'num_cotistas', 'cotistas': 'num_cotistas', 'numcotistas': 'num_cotistas'
 };
 
 // ---------------------------------------------------------
@@ -178,9 +179,11 @@ async function scrapeInvestidor10(ticker: string) {
         });
 
         // 2. Extração de Tabela de Indicadores (Muitos dados de ações ficam aqui)
+        // Refinado para buscar o texto do .value mesmo sem span
         $('#table-indicators .cell').each((_, cell) => {
             const name = $(cell).find('.name').text().trim();
-            const value = $(cell).find('.value span').text().trim() || $(cell).find('.value').text().trim();
+            const valueEl = $(cell).find('.value');
+            const value = valueEl.find('span').first().text().trim() || valueEl.text().trim();
             
             if (name && value) {
                 const key = normalizeKey(name);
@@ -188,25 +191,28 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        // 3. Extração Específica para FIIs (Bloco de Informações Básicas)
-        // Vacância, Segmento e Gestão costumam estar em cards laterais ou tabelas de "Informações Básicas"
-        $('#table-basic-data tr').each((_, tr) => {
-             const label = $(tr).find('td').first().text().trim();
-             const val = $(tr).find('td').last().text().trim();
-             if (label && val) {
-                 const key = normalizeKey(label);
-                 if (KEY_MAP[key]) extracted[KEY_MAP[key]] = val;
+        // 3. Extração Específica para FIIs (Bloco de Informações Básicas e Características)
+        // Varre tabelas de dados básicos onde Patrimônio, Cotistas e Segmento costumam ficar
+        $('#table-basic-data tr, .basic-data tr').each((_, tr) => {
+             const tds = $(tr).find('td');
+             if (tds.length >= 2) {
+                 const label = $(tds[0]).text().trim();
+                 const val = $(tds[1]).text().trim();
+                 if (label && val) {
+                     const key = normalizeKey(label);
+                     if (KEY_MAP[key]) extracted[KEY_MAP[key]] = val;
+                 }
              }
         });
         
-        // Fallback genérico para cards que não foram pegos acima
-        // Ex: Vacância Física as vezes está solta
+        // Fallback genérico para cards que não foram pegos acima (divs soltas de dados)
         if (!extracted.vacancia && finalType === 'FII') {
-             $('div.data-item').each((_, item) => {
-                 const label = $(item).find('.label').text().trim();
-                 const val = $(item).find('.data').text().trim();
+             $('div.data-item, div.item').each((_, item) => {
+                 const label = $(item).find('.label, .title').text().trim();
+                 const val = $(item).find('.data, .value').text().trim();
                  const key = normalizeKey(label);
                  if (key.includes('vacancia')) extracted['vacancia'] = val;
+                 if (key.includes('patrimonio') && !extracted.patrimonio_liquido) extracted['patrimonio_liquido'] = val;
              });
         }
 
@@ -310,7 +316,7 @@ async function scrapeInvestidor10(ticker: string) {
                 ev_ebitda: parseValue(extracted.ev_ebitda),
                 cagr_receita_5a: parseValue(extracted.cagr_receita_5a),
                 cagr_lucros_5a: parseValue(extracted.cagr_lucros_5a),
-                // Strings preservadas
+                // Strings preservadas - Tenta capturar a string original se não for 0
                 liquidez: extracted.liquidez || 'N/A',
                 val_mercado: extracted.val_mercado || 'N/A',
                 tipo_gestao: extracted.tipo_gestao || 'N/A',
@@ -373,7 +379,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 updated_at: metadata.updated_at,
                 lpa: metadata.lpa,
                 vpa: metadata.vp_cota, 
-                vp_cota: metadata.vp_cota,
+                vp_cota: metadata.vp_cota, // Garante que o campo correto do DB seja preenchido
                 margem_liquida: metadata.margem_liquida,
                 margem_bruta: metadata.margem_bruta,
                 divida_liquida_ebitda: metadata.divida_liquida_ebitda,
