@@ -39,6 +39,18 @@ const formatDateShort = (dateStr: string) => {
     return `${day}/${month}`;
 };
 
+// Função simples de Hash para Strings (usada para gerar ID estável da notícia)
+const generateStableId = (str: string) => {
+    let hash = 0;
+    if (str.length === 0) return '0';
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return `news-${Math.abs(hash)}`;
+};
+
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e'];
 
 const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, typeRaw: string) => {
@@ -404,8 +416,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               if (res.ok) {
                   const data = await res.json();
                   if (Array.isArray(data)) {
-                      const formattedNews: NewsItem[] = data.map((item: any, idx: number) => ({
-                          id: String(idx),
+                      const formattedNews: NewsItem[] = data.map((item: any) => ({
+                          id: generateStableId(item.title), // ID Estável baseado no hash do título
                           title: item.title,
                           summary: item.summary,
                           source: item.sourceName,
@@ -700,6 +712,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </div>
 
+      {/* ... Resto do componente mantido ... */}
+      
       {/* 2. BOTÃO AGENDA */}
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
         <button onClick={() => setShowAgendaModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>

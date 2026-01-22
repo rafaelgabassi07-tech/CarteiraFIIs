@@ -10,6 +10,8 @@ import { AssetPosition, PortfolioInsight, AssetType, NewsItem } from "../types";
  */
 export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news: NewsItem[] = []): PortfolioInsight[] => {
     const insights: PortfolioInsight[] = [];
+    // Data string YYYY-MM-DD para garantir IDs estáveis durante o dia
+    const today = new Date().toISOString().split('T')[0];
     const now = Date.now();
     
     // Verificação de segurança: Se portfolio não for array, retorna vazio
@@ -31,8 +33,11 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news:
         // Threshold de 1.5% para ser considerado "Brusco"
         if (absChange >= 1.5) {
             const isPositive = change > 0;
+            // ID determinístico: Tipo + Ticker + Data
+            const stableId = `vol-${asset.ticker}-${today}`;
+            
             insights.push({
-                id: `vol-${asset.ticker}-${now}`, // ID único diário
+                id: stableId,
                 type: isPositive ? 'volatility_up' : 'volatility_down',
                 title: isPositive ? `${asset.ticker} Subindo` : `${asset.ticker} Caindo`,
                 message: `${asset.ticker} está com variação de ${isPositive ? '+' : ''}${change.toFixed(2)}% hoje. ${isPositive ? 'Excelente momento!' : 'Atenção ao mercado.'}`,
@@ -76,8 +81,9 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news:
                 }
             }
 
+            // ID já vem estável da Home (hash do título)
             insights.push({
-                id: `news-${item.id}`,
+                id: item.id, 
                 type: 'news',
                 title: relatedTicker || item.source || 'Notícia',
                 message: item.title,
@@ -108,7 +114,7 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news:
     safePortfolio.forEach(asset => {
         if (asset.assetType === AssetType.FII && asset.vacancy !== undefined && asset.vacancy > 15) {
             insights.push({
-                id: `vac-${asset.ticker}`,
+                id: `vac-${asset.ticker}-${today}`, // ID diário
                 type: 'warning',
                 title: `Risco: Vacância`,
                 message: `${asset.ticker} reportou ${asset.vacancy}% de vacância física. Fique atento.`,
@@ -121,7 +127,7 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news:
         // Oportunidade
         if (asset.assetType === AssetType.FII && asset.p_vp && asset.p_vp < 0.85 && asset.dy_12m && asset.dy_12m > 9) {
              insights.push({
-                id: `opp-${asset.ticker}`,
+                id: `opp-${asset.ticker}-${today}`, // ID diário
                 type: 'opportunity',
                 title: 'Oportunidade',
                 message: `${asset.ticker} está descontado (P/VP ${asset.p_vp}) com alto Yield.`,
@@ -132,10 +138,12 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news:
         }
     });
 
-    // Inflação (Ocasional)
+    // Inflação (Ocasional - Semanal)
+    // ID baseado na semana do ano para não repetir todo dia
+    const currentWeek = Math.floor(now / (1000 * 60 * 60 * 24 * 7));
     if (ipca > 0 && portfolioDy < ipca) {
         insights.push({
-            id: 'inflation-loss',
+            id: `inflation-loss-${currentWeek}`,
             type: 'warning',
             title: 'Inflação Alta',
             message: `Sua carteira rende ${portfolioDy.toFixed(2)}%, abaixo do IPCA (${ipca.toFixed(2)}%).`,
