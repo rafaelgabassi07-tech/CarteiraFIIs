@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, Wallet } from 'lucide-react';
 import { NewsItem, Transaction } from '../types';
@@ -15,7 +14,7 @@ const SkeletonNews = () => (
             <div key={i} className="p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 animate-pulse">
                 <div className="flex justify-between items-center mb-3">
                     <div className="flex gap-2 items-center">
-                        <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
+                        <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
                         <div className="h-3 w-20 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
                     </div>
                     <div className="h-3 w-16 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
@@ -264,12 +263,12 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                                         style={{ animationDelay: `${index * 50}ms` }}
                                     >
                                         <div className="flex justify-between items-start mb-3 relative z-10">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-3">
                                                 {item.imageUrl ? (
-                                                    <img src={item.imageUrl} alt={item.source} className="w-5 h-5 rounded-full object-contain bg-white p-0.5 border border-zinc-100 dark:border-zinc-800" />
+                                                    <img src={item.imageUrl} alt={item.source} className="w-8 h-8 rounded-full object-contain bg-white p-1 border border-zinc-100 dark:border-zinc-800 shadow-sm" />
                                                 ) : (
-                                                    <div className="w-5 h-5 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
-                                                        <Globe className="w-3 h-3" />
+                                                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                                                        <Globe className="w-4 h-4" />
                                                     </div>
                                                 )}
                                                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide truncate max-w-[120px]">
