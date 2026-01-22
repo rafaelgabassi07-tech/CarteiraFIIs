@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -15,7 +16,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.6.5'; 
+const APP_VERSION = '8.6.6'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -43,6 +44,7 @@ const safeDate = (dateStr: string) => {
 
 // Calcula quantidade acumulada em uma data, considerando fracionário
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
+  if (!ticker || !dateCom) return 0; // Guard clause
   const targetTime = safeDate(dateCom);
   if (!targetTime) return 0;
   
@@ -55,6 +57,7 @@ const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transa
 
   return transactions
     .filter(t => {
+        if (!t || !t.date || !t.ticker) return false;
         const txTime = safeDate(t.date);
         if (!txTime) return false; // Ignora transações sem data válida
 
@@ -194,7 +197,7 @@ const App: React.FC = () => {
 
   // --- LOGICA DE NOTIFICAÇÕES INTELIGENTES ---
   useEffect(() => {
-      if (dividends.length === 0 || transactions.length === 0) return;
+      if (!dividends || dividends.length === 0 || !transactions || transactions.length === 0) return;
 
       const today = new Date().toISOString().split('T')[0];
       const newNotifs: AppNotification[] = [];
@@ -202,6 +205,7 @@ const App: React.FC = () => {
 
       // 1. Verifica pagamentos de Hoje
       dividends.forEach(div => {
+          if (!div || !div.ticker) return;
           // Só notifica se o usuário tem o ativo
           const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
           if (qty > 0) {
@@ -658,10 +662,16 @@ const App: React.FC = () => {
   // --- CÁLCULOS DE PORTFÓLIO (Memoized) ---
   const memoizedPortfolioData = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+    // Proteção: transactions deve ser array
+    const safeTxs = Array.isArray(transactions) ? transactions : [];
+    const sortedTxs = [...safeTxs].sort((a, b) => a.date.localeCompare(b.date));
     
+    // Proteção: dividends deve ser array
+    const safeDividends = Array.isArray(dividends) ? dividends : [];
+
     // CORREÇÃO: Garante que o ticker do dividendo esteja perfeitamente normalizado
-    const receipts = dividends.map(d => {
+    const receipts = safeDividends.map(d => {
+        if (!d || !d.ticker) return null;
         const normalizedTicker = d.ticker.trim().toUpperCase();
         
         // Quantidade deve considerar ITSA4F vs ITSA4 (bidirecional)
@@ -674,11 +684,11 @@ const App: React.FC = () => {
             quantityOwned: qty, 
             totalReceived: qty * d.rate 
         };
-    }).filter(r => r.totalReceived > 0.0001); 
+    }).filter((r): r is any => !!r && r.totalReceived > 0.0001); 
 
     const divPaidMap: Record<string, number> = {};
     let totalDividendsReceived = 0;
-    receipts.forEach(r => { 
+    receipts.forEach((r: any) => { 
         if (r.paymentDate <= todayStr) { 
             divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived; 
             totalDividendsReceived += r.totalReceived; 
@@ -687,6 +697,7 @@ const App: React.FC = () => {
 
     const positions: Record<string, any> = {};
     sortedTxs.forEach(t => {
+      if (!t.ticker) return;
       const normalizedTicker = t.ticker.trim().toUpperCase();
       if (!positions[normalizedTicker]) positions[normalizedTicker] = { ticker: normalizedTicker, quantity: 0, averagePrice: 0, assetType: t.assetType };
       const p = positions[normalizedTicker];
@@ -739,6 +750,7 @@ const App: React.FC = () => {
     
     let salesGain = 0; const tracker: Record<string, { q: number; c: number }> = {};
     sortedTxs.forEach(t => {
+      if (!t.ticker) return;
       const normalizedTicker = t.ticker.trim().toUpperCase();
       if (!tracker[normalizedTicker]) tracker[normalizedTicker] = { q: 0, c: 0 };
       const a = tracker[normalizedTicker];

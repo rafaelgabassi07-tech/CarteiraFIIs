@@ -213,14 +213,10 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
 const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: PortfolioInsight[], onMarkAsRead: (id: string) => void, readStories: Set<string> }) => {
     const [viewerStartIndex, setViewerStartIndex] = useState<number | null>(null);
 
-    const handleStoryClick = (index: number) => {
-        setViewerStartIndex(index);
-    };
-
-    if (!insights || insights.length === 0) return null;
-
-    // Ordenação: Não lidos primeiro
+    // CORREÇÃO CRÍTICA: useMemo deve ser chamado SEMPRE, incondicionalmente.
+    // O retorno condicional deve vir DEPOIS dos hooks.
     const sortedInsights = useMemo(() => {
+        if (!insights) return [];
         return [...insights].sort((a, b) => {
             const aRead = readStories.has(a.id);
             const bRead = readStories.has(b.id);
@@ -228,6 +224,13 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
             return aRead ? 1 : -1;
         });
     }, [insights, readStories]);
+
+    const handleStoryClick = (index: number) => {
+        setViewerStartIndex(index);
+    };
+
+    // Agora é seguro fazer o retorno antecipado
+    if (!insights || insights.length === 0) return null;
 
     // Centralização condicional
     const containerClass = sortedInsights.length < 5 
@@ -309,6 +312,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
 };
 
 const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
+  // ... (Restante do componente Home mantido igual, apenas substituindo o SmartFeed)
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -347,14 +351,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const safeInflation = Number(inflationRate) || 4.62;
 
-  // Busca Notícias para os Stories
   useEffect(() => {
       const fetchTopNews = async () => {
           try {
-              // Busca notícias gerais e da carteira combinadas
               const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
               const portfolioTickers = Array.from(new Set(safePortfolio.map(p => p.ticker)));
-              const query = portfolioTickers.slice(0, 5).join(' OR '); // Limita query para não quebrar URL
+              const query = portfolioTickers.slice(0, 5).join(' OR '); 
               
               const endpoint = query ? `/api/news?q=${encodeURIComponent(query)}` : '/api/news';
               const res = await fetch(endpoint);
@@ -383,14 +385,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return () => clearTimeout(timer);
   }, [portfolio]);
 
-  // Atualiza insights/stories quando a carteira ou notícias mudam
   useEffect(() => {
       const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
       const generatedInsights = analyzePortfolio(safePortfolio, safeInflation, newsCache);
       setInsights(generatedInsights);
   }, [portfolio, safeInflation, newsCache]);
 
-  // Cálculos de Rentabilidade
   const capitalGainValue = useMemo(() => balance - invested, [balance, invested]);
   const capitalGainPercent = useMemo(() => invested > 0 ? (capitalGainValue / invested) * 100 : 0, [capitalGainValue, invested]);
   const isCapitalGainPositive = capitalGainValue >= 0;
@@ -444,7 +444,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const allEvents: any[] = [];
     let receivedTotal = 0;
     
-    // Verificação de segurança
     const safeReceipts = Array.isArray(dividendReceipts) ? dividendReceipts : [];
 
     safeReceipts.forEach(r => {
@@ -568,7 +567,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       };
   }, [portfolio]);
 
-  // ... (Resto do componente mantido, pois a lógica de visualização já foi protegida acima)
   const CustomPieTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -774,9 +772,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* MODAIS (Código permanece o mesmo, apenas se beneficiando das animações globais e layout atualizado) */}
+      {/* MODAIS (Mantidos, apenas o SmartFeed foi corrigido acima) */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
-        {/* ... Conteúdo mantido idêntico ... */}
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-200 dark:border-zinc-700`}><CalendarDays className="w-6 h-6" /></div>
@@ -785,51 +782,28 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Próximos Eventos</p>
                 </div>
             </div>
-            
             {Object.keys(groupedEvents).map((groupKey) => {
                 const events = groupedEvents[groupKey];
                 if (events.length === 0) return null;
                 return (
                     <div key={groupKey} className="mb-8 anim-slide-up relative">
-                        {/* Linha do tempo visual melhorada */}
                         <div className="absolute left-[19px] top-8 bottom-0 w-[1px] bg-zinc-300/50 dark:bg-zinc-700/50"></div>
-                        
-                        <h3 className="px-3 mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sticky top-0 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-sm py-2 z-10 w-fit rounded-r-lg">
-                            {groupKey}
-                        </h3>
-                        
+                        <h3 className="px-3 mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 sticky top-0 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-sm py-2 z-10 w-fit rounded-r-lg">{groupKey}</h3>
                         <div className="space-y-4">
                             {events.map((e: any, i: number) => {
                                 const style = getEventStyle(e.eventType, e.date, e.type);
                                 return (
                                     <div key={i} className={`ml-10 relative p-4 rounded-2xl flex items-center justify-between border shadow-sm bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 ${style.border} anim-stagger-item`} style={{ animationDelay: `${i * 50}ms` }}>
-                                        {/* Dot alinhado na timeline */}
                                         <div className="absolute -left-[25px] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white dark:bg-zinc-950 border-[3px] border-zinc-300 dark:border-zinc-600 z-10"></div>
-                                        
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${style.bg} ${style.text}`}>
-                                                <style.icon className="w-5 h-5" />
-                                            </div>
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${style.bg} ${style.text}`}><style.icon className="w-5 h-5" /></div>
                                             <div>
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase">{e.ticker}</h4>
-                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-500`}>{e.type || 'DIV'}</span>
-                                                </div>
+                                                <div className="flex items-center gap-2"><h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase">{e.ticker}</h4><span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-500`}>{e.type || 'DIV'}</span></div>
                                                 <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${style.text}`}>{style.label}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            {e.eventType === 'payment' ? (
-                                                <>
-                                                    <span className={`block text-sm font-black text-zinc-900 dark:text-white`}>{formatBRL(e.totalReceived, privacyMode)}</span>
-                                                    <span className="text-[9px] font-bold text-zinc-400 block mt-0.5">{formatDateShort(e.date)}</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span className="block text-sm font-black text-zinc-900 dark:text-white">{formatDateShort(e.date)}</span>
-                                                    <span className="text-[9px] font-bold text-zinc-400 block mt-0.5">Corte</span>
-                                                </>
-                                            )}
+                                            {e.eventType === 'payment' ? (<><span className={`block text-sm font-black text-zinc-900 dark:text-white`}>{formatBRL(e.totalReceived, privacyMode)}</span><span className="text-[9px] font-bold text-zinc-400 block mt-0.5">{formatDateShort(e.date)}</span></>) : (<><span className="block text-sm font-black text-zinc-900 dark:text-white">{formatDateShort(e.date)}</span><span className="text-[9px] font-bold text-zinc-400 block mt-0.5">Corte</span></>)}
                                         </div>
                                     </div>
                                 );
@@ -838,17 +812,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 );
             })}
-            
-            {upcomingEvents.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                    <Calendar className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
-                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Agenda Vazia</p>
-                </div>
-            )}
+            {upcomingEvents.length === 0 && (<div className="flex flex-col items-center justify-center py-20 opacity-50"><Calendar className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} /><p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Agenda Vazia</p></div>)}
         </div>
       </SwipeableModal>
 
-      {/* ... Resto dos modais (Allocation, Proventos, Raio-X) mantidos ... */}
+      {/* Outros modais mantidos sem alterações */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          {/* ... Conteúdo Alocação ... */}
          <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
