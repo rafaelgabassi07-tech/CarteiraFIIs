@@ -117,6 +117,9 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
         return () => window.removeEventListener('keydown', handleKey);
     }, [goNext, goPrev, onClose]);
 
+    // PROTEÇÃO CONTRA CRASH: Se currentInsight for undefined, não renderiza
+    if (!currentInsight) return null;
+
     // Configuração Visual baseada no tipo
     const getTheme = () => {
         switch(currentInsight.type) {
@@ -214,7 +217,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
         setViewerStartIndex(index);
     };
 
-    if (insights.length === 0) return null;
+    if (!insights || insights.length === 0) return null;
 
     // Ordenação: Não lidos primeiro
     const sortedInsights = useMemo(() => {
@@ -349,24 +352,27 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const fetchTopNews = async () => {
           try {
               // Busca notícias gerais e da carteira combinadas
-              const portfolioTickers = Array.from(new Set(portfolio.map(p => p.ticker)));
+              const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
+              const portfolioTickers = Array.from(new Set(safePortfolio.map(p => p.ticker)));
               const query = portfolioTickers.slice(0, 5).join(' OR '); // Limita query para não quebrar URL
               
               const endpoint = query ? `/api/news?q=${encodeURIComponent(query)}` : '/api/news';
               const res = await fetch(endpoint);
               if (res.ok) {
                   const data = await res.json();
-                  const formattedNews: NewsItem[] = data.map((item: any, idx: number) => ({
-                      id: String(idx),
-                      title: item.title,
-                      summary: item.summary,
-                      source: item.sourceName,
-                      url: item.link,
-                      imageUrl: item.imageUrl,
-                      date: item.publicationDate,
-                      category: item.category || 'Geral'
-                  }));
-                  setNewsCache(formattedNews);
+                  if (Array.isArray(data)) {
+                      const formattedNews: NewsItem[] = data.map((item: any, idx: number) => ({
+                          id: String(idx),
+                          title: item.title,
+                          summary: item.summary,
+                          source: item.sourceName,
+                          url: item.link,
+                          imageUrl: item.imageUrl,
+                          date: item.publicationDate,
+                          category: item.category || 'Geral'
+                      }));
+                      setNewsCache(formattedNews);
+                  }
               }
           } catch (e) {
               console.warn("Home news fetch failed", e);
@@ -379,7 +385,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   // Atualiza insights/stories quando a carteira ou notícias mudam
   useEffect(() => {
-      const generatedInsights = analyzePortfolio(portfolio, safeInflation, newsCache);
+      const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
+      const generatedInsights = analyzePortfolio(safePortfolio, safeInflation, newsCache);
       setInsights(generatedInsights);
   }, [portfolio, safeInflation, newsCache]);
 
@@ -402,8 +409,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [totalDividendsReceived, invested]);
 
   const classPerformance = useMemo(() => {
+      const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
       const calcClass = (type: AssetType) => {
-          const assets = portfolio.filter(p => p.assetType === type);
+          const assets = safePortfolio.filter(p => p.assetType === type);
           const investedClass = assets.reduce((acc, p) => acc + (p.averagePrice * p.quantity), 0);
           const currentClass = assets.reduce((acc, p) => acc + ((p.currentPrice || 0) * p.quantity), 0);
           const dividendsClass = assets.reduce((acc, p) => acc + (p.totalDividends || 0), 0);
@@ -436,7 +444,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const allEvents: any[] = [];
     let receivedTotal = 0;
     
-    dividendReceipts.forEach(r => {
+    // Verificação de segurança
+    const safeReceipts = Array.isArray(dividendReceipts) ? dividendReceipts : [];
+
+    safeReceipts.forEach(r => {
+        if (!r) return;
         if (r.paymentDate <= todayStr) receivedTotal += r.totalReceived;
         if (r.paymentDate >= todayStr) allEvents.push({ ...r, eventType: 'payment', date: r.paymentDate });
         if (r.dateCom >= todayStr) allEvents.push({ ...r, eventType: 'datacom', date: r.dateCom });
@@ -474,8 +486,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const oneYearAgo = new Date(); oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
     
-    dividendReceipts.forEach(r => {
-        if (!r.paymentDate || r.paymentDate.length < 7) return;
+    const safeReceipts = Array.isArray(dividendReceipts) ? dividendReceipts : [];
+
+    safeReceipts.forEach(r => {
+        if (!r || !r.paymentDate || r.paymentDate.length < 7) return;
         const key = r.paymentDate.substring(0, 7);
 
         if (r.paymentDate <= todayStr) {
@@ -522,7 +536,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const { typeData, classChartData, assetsChartData } = useMemo(() => {
       let fiisTotal = 0;
       let stocksTotal = 0;
-      const enriched = portfolio.map(p => {
+      const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
+      const enriched = safePortfolio.map(p => {
           const val = (p.currentPrice || p.averagePrice) * p.quantity;
           if (p.assetType === AssetType.FII) fiisTotal += val;
           else stocksTotal += val;
@@ -553,6 +568,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       };
   }, [portfolio]);
 
+  // ... (Resto do componente mantido, pois a lógica de visualização já foi protegida acima)
   const CustomPieTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
