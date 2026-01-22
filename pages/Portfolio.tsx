@@ -70,7 +70,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
     const isPositive = totalGainValue >= 0;
     const isFII = asset.assetType === AssetType.FII;
 
-    // Cálculo de Histórico Mensal
+    // Cálculo de Histórico Mensal - Baseado no RATE (Valor por Cota)
     const monthlyDividends = useMemo(() => {
         if (!asset || !dividends) return [];
         
@@ -81,6 +81,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
         const cutoffDate = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
         
         const filtered = dividends.filter(d => {
+            // Filtra por ticker e data
             if (!d.paymentDate || d.ticker !== asset.ticker) return false;
             const pDate = new Date(d.paymentDate);
             pDate.setUTCHours(12); // Garante meio-dia para evitar problemas de fuso
@@ -100,7 +101,8 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
         filtered.forEach(d => {
             const key = d.paymentDate.slice(0, 7);
             if (grouped[key] !== undefined) {
-                grouped[key] += d.totalReceived;
+                // SOMA O RATE (Valor por Cota) em vez do total recebido
+                grouped[key] += d.rate;
             }
         });
 
@@ -230,14 +232,14 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                     )}
                 </div>
 
-                {/* Bloco 3: Histórico de Proventos Mensal */}
+                {/* Bloco 3: Histórico de Proventos Mensal (POR COTA) */}
                 <div className="anim-slide-up" style={{ animationDelay: '200ms' }}>
                     <div className="flex items-center justify-between mb-3 mt-6 px-1">
                         <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
                                 <BarChartIcon className="w-3.5 h-3.5" />
                             </div>
-                            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Histórico de Proventos</h3>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Histórico de Proventos (Por Cota)</h3>
                         </div>
                         
                         <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg">
@@ -252,11 +254,11 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                             <>
                                 <div className="flex justify-between items-end mb-4">
                                     <div>
-                                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-0.5">Total no Período</p>
+                                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-0.5">Acumulado (1 Cota)</p>
                                         <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(totalInPeriod, privacyMode)}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-0.5">Média Mensal</p>
+                                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-0.5">Média (1 Cota)</p>
                                         <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(averageInPeriod, privacyMode)}</p>
                                     </div>
                                 </div>
@@ -264,7 +266,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={monthlyDividends} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
-                                            <RechartsTooltip content={({ active, payload, label }) => { if (active && payload && payload.length) { return (<div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-2 rounded-lg shadow-xl border border-zinc-100 dark:border-zinc-700 z-50"><p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{label}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value as number, privacyMode)}</p></div>); } return null; }} cursor={{ fill: '#71717a10', radius: 4 }} />
+                                            <RechartsTooltip content={({ active, payload, label }) => { if (active && payload && payload.length) { return (<div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-2 rounded-lg shadow-xl border border-zinc-100 dark:border-zinc-700 z-50"><p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{label}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value as number, privacyMode)} / cota</p></div>); } return null; }} cursor={{ fill: '#71717a10', radius: 4 }} />
                                             <Bar dataKey="value" radius={[4, 4, 4, 4]} maxBarSize={40}>
                                                 {monthlyDividends.map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={entry.value > averageInPeriod ? '#10b981' : '#e4e4e7'} className="transition-all duration-300 hover:opacity-80 dark:fill-zinc-700" />
