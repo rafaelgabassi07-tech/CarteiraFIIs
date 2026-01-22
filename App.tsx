@@ -187,6 +187,11 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
   }, [accentColor]);
 
+  // Persistência de Notificações (NOVO)
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled));
+  }, [pushEnabled]);
+
   // --- LOGICA DE NOTIFICAÇÕES INTELIGENTES ---
   useEffect(() => {
       if (dividends.length === 0 || transactions.length === 0) return;

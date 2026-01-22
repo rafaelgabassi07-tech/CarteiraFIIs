@@ -251,7 +251,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
             transition: isDragging ? 'none' : 'transform 600ms cubic-bezier(0.34, 1.56, 0.64, 1)' // Spring transition
         }}
-        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-3xl h-[92vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_40px_rgba(0,0,0,0.3)] border-t border-white/20 dark:border-white/5 will-change-transform`}
+        className={`relative bg-surface-light dark:bg-zinc-900 rounded-t-3xl h-[85vh] w-full overflow-hidden flex flex-col shadow-[0_-8px_40px_rgba(0,0,0,0.3)] border-t border-white/20 dark:border-white/5 will-change-transform`}
       >
         <div 
             onTouchStart={handleTouchStart}
