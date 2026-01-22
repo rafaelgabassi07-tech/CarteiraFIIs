@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, ArrowRight, Building2 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 
@@ -76,6 +76,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
+  const [raioXTab, setRaioXTab] = useState<'GERAL' | 'CLASSES'>('GERAL');
   
   const safeInflation = Number(inflationRate) || 4.62;
 
@@ -90,6 +91,31 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const inflationFactor = 1 + (safeInflation / 100);
       return ((nominalFactor / inflationFactor) - 1) * 100;
   }, [totalProfitPercent, safeInflation]);
+
+  // Cálculo Yield on Cost
+  const yieldOnCost = useMemo(() => {
+      return invested > 0 ? (totalDividendsReceived / invested) * 100 : 0;
+  }, [totalDividendsReceived, invested]);
+
+  // Cálculo de Performance por Classe (Simples)
+  const classPerformance = useMemo(() => {
+      const calcClass = (type: AssetType) => {
+          const assets = portfolio.filter(p => p.assetType === type);
+          const investedClass = assets.reduce((acc, p) => acc + (p.averagePrice * p.quantity), 0);
+          const currentClass = assets.reduce((acc, p) => acc + ((p.currentPrice || 0) * p.quantity), 0);
+          const dividendsClass = assets.reduce((acc, p) => acc + (p.totalDividends || 0), 0);
+          
+          const profit = (currentClass - investedClass) + dividendsClass;
+          const roi = investedClass > 0 ? (profit / investedClass) * 100 : 0;
+          
+          return { invested: investedClass, current: currentClass, dividends: dividendsClass, profit, roi };
+      };
+
+      return {
+          fii: calcClass(AssetType.FII),
+          stock: calcClass(AssetType.STOCK)
+      };
+  }, [portfolio]);
 
   // --- LOGICA DE EVENTOS DA AGENDA ---
   const { upcomingEvents, received, groupedEvents } = useMemo(() => {
@@ -168,12 +194,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             value: val,
             year: y
         };
-    }).reverse();
+    }).slice(-12); // Ultimos 12 meses no gráfico
 
     const monthlyAvg = dividendsChartData.length > 0 ? (totalDividendsReceived / dividendsChartData.length) : 0;
 
     return { 
-        history: sortedHistory, 
+        history: sortedHistory.reverse(), // Lista do mais recente para o mais antigo 
         dividendsChartData,
         provisionedTotal: provTotal,
         receiptsByMonth: receiptsMap,
@@ -231,6 +257,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const toggleMonthExpand = (monthKey: string) => {
       setExpandedMonth(expandedMonth === monthKey ? null : monthKey);
+  };
+
+  const handleBarClick = (data: any) => {
+      if (data && data.activePayload && data.activePayload[0]) {
+          const date = data.activePayload[0].payload.fullDate;
+          // Se clicar no mesmo, desseleciona. Se clicar em outro, seleciona.
+          setSelectedProventosMonth(prev => prev === date ? null : date);
+          // Auto expandir a lista se selecionado
+          setExpandedMonth(null); 
+      }
   };
 
   // Classes Padronizadas para Reutilização
@@ -600,7 +636,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              {dividendsChartData.length > 0 && (
                  <div className="mb-8 h-48 w-full bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm anim-slide-up">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dividendsChartData} onClick={(data) => { if (data && data.activePayload && data.activePayload[0]) { const date = data.activePayload[0].payload.fullDate; setSelectedProventosMonth(date); toggleMonthExpand(date); } }}>
+                        <BarChart data={dividendsChartData} onClick={handleBarClick}>
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} />
                             <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomPieTooltip />} />
                             <Bar dataKey="value" radius={[4, 4, 4, 4]}>
@@ -608,94 +644,218 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
+                    <p className="text-[9px] text-zinc-400 text-center mt-2 font-medium">Toque nas barras para filtrar detalhes</p>
                  </div>
              )}
              
+             {/* Lista Filtrada ou Completa */}
              <div className="space-y-3">
-                {history.map(([month, val], i) => (
-                    <div key={month} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden anim-stagger-item" style={{ animationDelay: `${i * 30}ms` }}>
-                        <button 
-                            onClick={() => toggleMonthExpand(month)}
-                            className="w-full flex justify-between items-center p-4 bg-white dark:bg-zinc-900 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${expandedMonth === month ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
-                                    {expandedMonth === month ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                </div>
-                                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                    {new Date(month + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                                </span>
-                            </div>
-                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(val, privacyMode)}</span>
-                        </button>
+                {selectedProventosMonth ? (
+                    // VIEW DE MÊS SELECIONADO (FILTRADO)
+                    <div className="anim-scale-in">
+                        <div className="flex justify-between items-center mb-4 px-1">
+                            <h3 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                {new Date(selectedProventosMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
+                            </h3>
+                            <button onClick={() => setSelectedProventosMonth(null)} className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-zinc-600 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-lg">
+                                <Filter className="w-3 h-3" /> Limpar Filtro
+                            </button>
+                        </div>
                         
-                        {/* Detalhes Expansíveis */}
-                        {expandedMonth === month && receiptsByMonth[month] && (
-                            <div className="bg-zinc-50 dark:bg-zinc-950/50 border-t border-zinc-100 dark:border-zinc-800 px-4 py-2 space-y-2">
-                                {receiptsByMonth[month].map((r, idx) => (
-                                    <div key={idx} className="flex justify-between items-center py-2 border-b border-dashed border-zinc-200 dark:border-zinc-800 last:border-0">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+                        {receiptsByMonth[selectedProventosMonth] ? (
+                            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 overflow-hidden shadow-sm">
+                                {receiptsByMonth[selectedProventosMonth].map((r, idx) => (
+                                    <div key={idx} className="flex justify-between items-center p-4 border-b border-zinc-100 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${r.type === 'JCP' ? 'bg-orange-50 text-orange-600 border border-orange-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'} dark:bg-zinc-800 dark:border-zinc-700`}>
+                                                {r.ticker.substring(0,2)}
+                                            </div>
                                             <div>
-                                                <span className="text-xs font-black text-zinc-900 dark:text-white block">{r.ticker}</span>
-                                                <span className="text-[9px] text-zinc-400 font-bold uppercase">{new Date(r.paymentDate).toLocaleDateString('pt-BR')}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-black text-zinc-900 dark:text-white">{r.ticker}</span>
+                                                    <span className="text-[8px] font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 rounded text-zinc-500">{r.type}</span>
+                                                </div>
+                                                <span className="text-[10px] text-zinc-400 font-medium">Pago em {new Date(r.paymentDate).toLocaleDateString('pt-BR')}</span>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">{formatBRL(r.totalReceived, privacyMode)}</span>
-                                            <span className="text-[9px] text-zinc-400 font-medium">
-                                                {r.quantityOwned} un x {r.rate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                            </span>
+                                            <span className="text-sm font-black text-zinc-900 dark:text-white block">{formatBRL(r.totalReceived, privacyMode)}</span>
+                                            <span className="text-[10px] text-zinc-400 font-medium">{r.quantityOwned} un x {r.rate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                         </div>
                                     </div>
                                 ))}
+                                <div className="p-4 bg-zinc-50 dark:bg-zinc-950/50 flex justify-between items-center">
+                                    <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Total do Mês</span>
+                                    <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                                        {formatBRL(dividendsChartData.find(d => d.fullDate === selectedProventosMonth)?.value || 0, privacyMode)}
+                                    </span>
+                                </div>
                             </div>
+                        ) : (
+                            <p className="text-center text-xs text-zinc-400 py-4">Sem dados para este mês.</p>
                         )}
                     </div>
-                ))}
+                ) : (
+                    // VIEW PADRÃO (LISTA COLAPSÁVEL)
+                    history.map(([month, val], i) => (
+                        <div key={month} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden anim-stagger-item shadow-sm" style={{ animationDelay: `${i * 30}ms` }}>
+                            <button 
+                                onClick={() => toggleMonthExpand(month)}
+                                className="w-full flex justify-between items-center p-4 bg-white dark:bg-zinc-900 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${expandedMonth === month ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+                                        {expandedMonth === month ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                    </div>
+                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                                        {new Date(month + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                                    </span>
+                                </div>
+                                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(val, privacyMode)}</span>
+                            </button>
+                            
+                            {/* Detalhes Expansíveis */}
+                            {expandedMonth === month && receiptsByMonth[month] && (
+                                <div className="bg-zinc-50 dark:bg-zinc-950/50 border-t border-zinc-100 dark:border-zinc-800 px-4 py-2 space-y-2">
+                                    {receiptsByMonth[month].map((r, idx) => (
+                                        <div key={idx} className="flex justify-between items-center py-2 border-b border-dashed border-zinc-200 dark:border-zinc-800 last:border-0">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+                                                <div>
+                                                    <span className="text-xs font-black text-zinc-900 dark:text-white block">{r.ticker}</span>
+                                                    <span className="text-[9px] text-zinc-400 font-bold uppercase">{new Date(r.paymentDate).toLocaleDateString('pt-BR')}</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">{formatBRL(r.totalReceived, privacyMode)}</span>
+                                                <span className="text-[9px] text-zinc-400 font-medium">
+                                                    {r.quantityOwned} un x {r.rate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))
+                )}
              </div>
          </div>
       </SwipeableModal>
 
-      {/* 7. MODAL RAIO-X (NOVO) */}
+      {/* 7. MODAL RAIO-X (EXPANDIDO) */}
       <SwipeableModal isOpen={showRaioXModal} onClose={() => setShowRaioXModal(false)}>
           <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
               <div className="flex items-center gap-4 mb-8 px-2">
                   <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-rose-500 border-zinc-200 dark:border-zinc-700`}><Target className="w-6 h-6" /></div>
                   <div>
                       <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Raio-X</h2>
-                      <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Rentabilidade Real</p>
+                      <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Análise de Performance</p>
                   </div>
               </div>
 
-              {/* Card Principal: Ganho Real */}
-              <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm mb-6 text-center relative overflow-hidden anim-slide-up">
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Rentabilidade Real (Aprox.)</p>
-                  <h3 className={`text-4xl font-black tracking-tighter ${realReturnPercent >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {realReturnPercent > 0 ? '+' : ''}{realReturnPercent.toFixed(2)}%
-                  </h3>
-                  <p className="text-[10px] text-zinc-400 font-medium mt-2 max-w-[200px] mx-auto">
-                      Retorno total descontado da inflação (IPCA {safeInflation}%)
-                  </p>
+              {/* Tabs do Raio-X */}
+              <div className="flex bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-xl mb-6">
+                  <button onClick={() => setRaioXTab('GERAL')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${raioXTab === 'GERAL' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Geral</button>
+                  <button onClick={() => setRaioXTab('CLASSES')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${raioXTab === 'CLASSES' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Classes</button>
               </div>
 
-              {/* Decomposição do Lucro */}
-              <div className="space-y-4 anim-slide-up" style={{ animationDelay: '100ms' }}>
-                  <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Composição do Resultado</h3>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                          <div className="mb-2 w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 flex items-center justify-center"><TrendingUp className="w-4 h-4" /></div>
-                          <p className="text-[9px] font-bold text-zinc-400 uppercase">Valorização</p>
-                          <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalAppreciation + salesGain, privacyMode)}</p>
+              {raioXTab === 'GERAL' && (
+                  <div className="space-y-6 anim-slide-up">
+                      {/* Card Principal: Ganho Real */}
+                      <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm text-center relative overflow-hidden">
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Rentabilidade Real</p>
+                          <h3 className={`text-4xl font-black tracking-tighter ${realReturnPercent >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                              {realReturnPercent > 0 ? '+' : ''}{realReturnPercent.toFixed(2)}%
+                          </h3>
+                          <p className="text-[10px] text-zinc-400 font-medium mt-2 max-w-[200px] mx-auto">
+                              Retorno total descontado da inflação (IPCA {safeInflation}%)
+                          </p>
                       </div>
-                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                          <div className="mb-2 w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 flex items-center justify-center"><CircleDollarSign className="w-4 h-4" /></div>
-                          <p className="text-[9px] font-bold text-zinc-400 uppercase">Proventos</p>
-                          <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalDividendsReceived, privacyMode)}</p>
+
+                      {/* Decomposição do Lucro */}
+                      <div className="space-y-3">
+                          <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Composição do Resultado</h3>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                  <div className="mb-2 w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 flex items-center justify-center"><TrendingUp className="w-4 h-4" /></div>
+                                  <p className="text-[9px] font-bold text-zinc-400 uppercase">Valorização</p>
+                                  <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalAppreciation + salesGain, privacyMode)}</p>
+                              </div>
+                              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                  <div className="mb-2 w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 flex items-center justify-center"><CircleDollarSign className="w-4 h-4" /></div>
+                                  <p className="text-[9px] font-bold text-zinc-400 uppercase">Proventos</p>
+                                  <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalDividendsReceived, privacyMode)}</p>
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Yield on Cost Card */}
+                      <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-3xl shadow-lg text-white relative overflow-hidden">
+                          <div className="relative z-10 flex justify-between items-center">
+                              <div>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Yield on Cost (YoC)</p>
+                                  <h3 className="text-3xl font-black">{yieldOnCost.toFixed(2)}%</h3>
+                              </div>
+                              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                                  <Percent className="w-6 h-6" />
+                              </div>
+                          </div>
+                          <p className="text-[9px] mt-4 opacity-70 font-medium relative z-10">Retorno de dividendos sobre o capital investido.</p>
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
                       </div>
                   </div>
-              </div>
+              )}
+
+              {raioXTab === 'CLASSES' && (
+                  <div className="space-y-4 anim-slide-up">
+                      {[
+                          { type: 'FIIs', data: classPerformance.fii, color: 'indigo', icon: Building2 },
+                          { type: 'Ações', data: classPerformance.stock, color: 'sky', icon: BarChart3 }
+                      ].map((item, idx) => (
+                          <div key={idx} className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                              <div className="flex justify-between items-start mb-4">
+                                  <div className="flex items-center gap-3">
+                                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-${item.color}-50 dark:bg-${item.color}-900/20 text-${item.color}-500`}>
+                                          <item.icon className="w-5 h-5" /> 
+                                      </div>
+                                      <div>
+                                          <h3 className="text-sm font-black text-zinc-900 dark:text-white">{item.type}</h3>
+                                          <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Retorno Total</p>
+                                      </div>
+                                  </div>
+                                  <div className={`text-right ${item.data.profit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                      <span className="text-lg font-black block">{item.data.profit >= 0 ? '+' : ''}{item.data.roi.toFixed(2)}%</span>
+                                      <span className="text-[9px] font-bold opacity-80">{formatBRL(item.data.profit, privacyMode)}</span>
+                                  </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                  <div className="flex justify-between text-[10px] font-medium text-zinc-500">
+                                      <span>Dividendos</span>
+                                      <span className="font-bold text-zinc-900 dark:text-white">{formatBRL(item.data.dividends, privacyMode)}</span>
+                                  </div>
+                                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                                      <div className={`h-full bg-${item.color}-500 rounded-full`} style={{ width: `${Math.min(100, (item.data.dividends / (Math.abs(item.data.profit) || 1)) * 100)}%` }}></div>
+                                  </div>
+                                  <div className="flex justify-between text-[10px] font-medium text-zinc-500 pt-1">
+                                      <span>Valorização</span>
+                                      <span className="font-bold text-zinc-900 dark:text-white">{formatBRL(item.data.current - item.data.invested, privacyMode)}</span>
+                                  </div>
+                              </div>
+                          </div>
+                      ))}
+                      
+                      <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex gap-3 items-start">
+                          <Layers className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5" />
+                          <p className="text-[10px] text-zinc-500 leading-relaxed">
+                              O retorno total considera tanto a valorização da cota quanto os proventos recebidos. Classes diferentes possuem dinâmicas de retorno diferentes.
+                          </p>
+                      </div>
+                  </div>
+              )}
           </div>
       </SwipeableModal>
 
