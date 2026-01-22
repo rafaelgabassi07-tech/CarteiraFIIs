@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem } from '../types';
 import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
@@ -67,84 +67,140 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, typeRa
     };
 };
 
-// --- COMPONENTES STORIES ---
+// --- COMPONENTES STORIES (REFORMULADO) ---
 
-const StoryOverlay = ({ insight, onClose }: { insight: PortfolioInsight, onClose: () => void }) => {
-    // Configuração de Estilos baseada no tipo
+const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights: PortfolioInsight[], startIndex: number, onClose: () => void, onMarkAsRead: (id: string) => void }) => {
+    const [currentIndex, setCurrentIndex] = useState(startIndex);
+    const touchStartX = useRef<number | null>(null);
+    const currentInsight = insights[currentIndex];
+
+    // Marca como lido imediatamente ao visualizar
+    useEffect(() => {
+        if (currentInsight) {
+            onMarkAsRead(currentInsight.id);
+        }
+    }, [currentIndex, currentInsight, onMarkAsRead]);
+
+    // Handlers de Navegação
+    const goNext = useCallback(() => {
+        if (currentIndex < insights.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+        } else {
+            onClose(); // Fecha se for o último
+        }
+    }, [currentIndex, insights.length, onClose]);
+
+    const goPrev = useCallback(() => {
+        if (currentIndex > 0) {
+            setCurrentIndex(prev => prev - 1);
+        }
+    }, [currentIndex]);
+
+    // Gestos de Swipe
+    const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (touchStartX.current === null) return;
+        const diff = touchStartX.current - e.changedTouches[0].clientX;
+        if (diff > 50) goNext(); // Swipe Left -> Next
+        else if (diff < -50) goPrev(); // Swipe Right -> Prev
+        touchStartX.current = null;
+    };
+
+    // Atalhos de Teclado
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goNext();
+            if (e.key === 'ArrowLeft') goPrev();
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [goNext, goPrev, onClose]);
+
+    // Configuração Visual baseada no tipo
     const getTheme = () => {
-        switch(insight.type) {
-            case 'volatility_up': return { bg: 'from-emerald-500 to-green-600', icon: TrendingUp, accent: 'text-emerald-500', label: 'Alta' };
-            case 'volatility_down': return { bg: 'from-rose-500 to-red-600', icon: TrendingDown, accent: 'text-rose-500', label: 'Queda' };
-            case 'news': return { bg: 'from-indigo-500 to-violet-600', icon: Newspaper, accent: 'text-indigo-500', label: 'Notícia' };
-            case 'opportunity': return { bg: 'from-sky-500 to-blue-600', icon: Sparkles, accent: 'text-sky-500', label: 'Dica' };
-            case 'warning': return { bg: 'from-amber-500 to-orange-600', icon: AlertTriangle, accent: 'text-amber-500', label: 'Atenção' };
-            case 'success': return { bg: 'from-emerald-500 to-green-600', icon: TrendingUp, accent: 'text-emerald-500', label: 'Sucesso' };
-            default: return { bg: 'from-zinc-500 to-zinc-700', icon: Info, accent: 'text-zinc-500', label: 'Info' };
+        switch(currentInsight.type) {
+            case 'volatility_up': return { bg: 'from-emerald-500 to-green-600', icon: TrendingUp, accent: 'text-emerald-400', label: 'Alta Relevante' };
+            case 'volatility_down': return { bg: 'from-rose-500 to-red-600', icon: TrendingDown, accent: 'text-rose-400', label: 'Queda Brusca' };
+            case 'news': return { bg: 'from-indigo-500 to-violet-600', icon: Newspaper, accent: 'text-indigo-400', label: 'Notícia' };
+            case 'opportunity': return { bg: 'from-sky-500 to-blue-600', icon: Sparkles, accent: 'text-sky-400', label: 'Oportunidade' };
+            case 'warning': return { bg: 'from-amber-500 to-orange-600', icon: AlertTriangle, accent: 'text-amber-400', label: 'Atenção' };
+            default: return { bg: 'from-zinc-500 to-zinc-700', icon: Info, accent: 'text-zinc-400', label: 'Info' };
         }
     };
+    
     const theme = getTheme();
     const Icon = theme.icon;
 
-    // Fecha ao clicar fora ou no botão
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl anim-fade-in" onClick={onClose}>
-            <div 
-                className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2.5rem] overflow-hidden shadow-2xl relative anim-scale-in flex flex-col max-h-[85vh]" 
-                onClick={e => e.stopPropagation()}
-            >
-                {/* Barra de Progresso Decorativa */}
-                <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 flex gap-1 p-1 shrink-0">
-                    <div className={`h-full flex-1 rounded-full bg-gradient-to-r ${theme.bg} animate-[loading_5s_linear_forwards]`}></div>
-                </div>
+        <div 
+            className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col anim-fade-in"
+            onTouchStart={handleTouchStart} 
+            onTouchEnd={handleTouchEnd}
+        >
+            {/* Áreas de Toque Invisíveis (Navegação) */}
+            <div className="absolute inset-y-0 left-0 w-[30%] z-20" onClick={(e) => { e.stopPropagation(); goPrev(); }} />
+            <div className="absolute inset-y-0 right-0 w-[30%] z-20" onClick={(e) => { e.stopPropagation(); goNext(); }} />
 
-                {/* Conteúdo */}
-                <div className="p-8 text-center flex flex-col items-center flex-1 overflow-y-auto">
-                    <div className="relative mb-8">
-                        {/* Imagem de Fundo/Destaque */}
-                        <div className={`w-28 h-28 rounded-full bg-gradient-to-br ${theme.bg} p-1 shadow-2xl shadow-zinc-300 dark:shadow-none`}>
-                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-900 overflow-hidden flex items-center justify-center border-4 border-transparent">
-                                {insight.imageUrl ? (
-                                    <img src={insight.imageUrl} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                    <Icon className={`w-12 h-12 ${theme.accent}`} strokeWidth={1.5} />
-                                )}
-                            </div>
-                        </div>
-                        {/* Ícone de Tipo flutuante */}
-                        <div className={`absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-lg border-2 border-zinc-50 dark:border-zinc-900`}>
-                            <Icon className={`w-5 h-5 ${theme.accent}`} />
+            {/* Barras de Progresso Segmentadas */}
+            <div className="absolute top-0 left-0 right-0 p-2 z-30 flex gap-1.5 pt-[calc(env(safe-area-inset-top)+8px)]">
+                {insights.map((_, idx) => (
+                    <div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
+                        <div 
+                            className={`h-full bg-white transition-all duration-300 ease-linear ${idx < currentIndex ? 'w-full' : idx === currentIndex ? 'w-full' : 'w-0'}`} 
+                        />
+                    </div>
+                ))}
+            </div>
+
+            {/* Botão Fechar */}
+            <button 
+                onClick={(e) => { e.stopPropagation(); onClose(); }} 
+                className="absolute top-6 right-4 z-40 p-2 text-white/50 hover:text-white mt-[calc(env(safe-area-inset-top))] transition-colors"
+            >
+                <X className="w-8 h-8 drop-shadow-md" strokeWidth={2} />
+            </button>
+
+            {/* Conteúdo Central */}
+            <div className="flex-1 flex items-center justify-center p-6 relative z-10 pointer-events-none">
+                <div key={currentInsight.id} className="w-full max-w-sm flex flex-col items-center text-center anim-scale-in">
+                    
+                    {/* Círculo Principal com Imagem/Ícone */}
+                    <div className={`w-36 h-36 rounded-full p-1 bg-gradient-to-br ${theme.bg} shadow-2xl mb-10 shadow-${theme.accent}/30`}>
+                        <div className="w-full h-full rounded-full bg-zinc-900 border-[5px] border-black/40 overflow-hidden flex items-center justify-center relative">
+                             {currentInsight.imageUrl ? (
+                                <img src={currentInsight.imageUrl} className="w-full h-full object-cover" alt="" />
+                             ) : (
+                                <Icon className={`w-16 h-16 text-white`} strokeWidth={1.5} />
+                             )}
                         </div>
                     </div>
-                    
-                    <div className="mb-4">
-                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 ${theme.accent}`}>
+
+                    <div className="mb-5">
+                         <span className={`text-[10px] font-black uppercase tracking-[0.25em] px-4 py-2 rounded-full bg-white/10 border border-white/10 text-white backdrop-blur-md`}>
                             {theme.label}
                         </span>
                     </div>
 
-                    <h3 className="text-2xl font-black text-zinc-900 dark:text-white mb-6 tracking-tight leading-tight">
-                        {insight.title}
-                    </h3>
+                    <h2 className="text-3xl font-black text-white mb-6 leading-tight tracking-tight drop-shadow-lg">
+                        {currentInsight.title}
+                    </h2>
                     
-                    <p className="text-base text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium">
-                        {insight.message}
+                    <p className="text-lg text-zinc-200 leading-relaxed font-medium mb-10 max-w-[90%] drop-shadow-md">
+                        {currentInsight.message}
                     </p>
 
-                    {insight.url && (
-                        <a href={insight.url} target="_blank" rel="noreferrer" className="mt-8 px-6 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-xs font-black text-sky-500 hover:text-sky-600 flex items-center gap-2 transition-colors">
-                            Ler notícia completa <ArrowUpRight className="w-3.5 h-3.5" />
+                    {currentInsight.url && (
+                        <a 
+                            href={currentInsight.url} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            onClick={(e) => e.stopPropagation()} // Permite clique no link sem avançar story
+                            className="pointer-events-auto px-8 py-4 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-[0.15em] hover:scale-105 transition-transform flex items-center gap-3 shadow-xl"
+                        >
+                            Ler Matéria Completa <ArrowUpRight className="w-4 h-4" />
                         </a>
                     )}
-                </div>
-
-                {/* Botão Fechar */}
-                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 shrink-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md">
-                    <button 
-                        onClick={onClose}
-                        className="w-full py-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-xs uppercase tracking-[0.2em] press-effect shadow-lg"
-                    >
-                        Fechar Story
-                    </button>
                 </div>
             </div>
         </div>
@@ -152,33 +208,39 @@ const StoryOverlay = ({ insight, onClose }: { insight: PortfolioInsight, onClose
 };
 
 const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: PortfolioInsight[], onMarkAsRead: (id: string) => void, readStories: Set<string> }) => {
-    const [activeStory, setActiveStory] = useState<PortfolioInsight | null>(null);
+    const [viewerStartIndex, setViewerStartIndex] = useState<number | null>(null);
 
-    const handleStoryClick = (insight: PortfolioInsight) => {
-        onMarkAsRead(insight.id);
-        setActiveStory(insight);
+    const handleStoryClick = (index: number) => {
+        setViewerStartIndex(index);
     };
 
     if (insights.length === 0) return null;
 
-    // Ordena: Não lidos primeiro
-    const sortedInsights = [...insights].sort((a, b) => {
-        const aRead = readStories.has(a.id);
-        const bRead = readStories.has(b.id);
-        if (aRead === bRead) return 0;
-        return aRead ? 1 : -1;
-    });
+    // Ordenação: Não lidos primeiro
+    const sortedInsights = useMemo(() => {
+        return [...insights].sort((a, b) => {
+            const aRead = readStories.has(a.id);
+            const bRead = readStories.has(b.id);
+            if (aRead === bRead) return 0;
+            return aRead ? 1 : -1;
+        });
+    }, [insights, readStories]);
+
+    // Centralização condicional
+    const containerClass = sortedInsights.length < 5 
+        ? "justify-center" 
+        : "justify-start px-4";
 
     return (
         <>
-            <div className="w-full overflow-x-auto no-scrollbar py-3 -mx-4 px-4 flex gap-4 snap-x snap-mandatory">
-                {sortedInsights.map((insight) => {
+            <div className={`w-full overflow-x-auto no-scrollbar py-3 flex gap-4 snap-x snap-mandatory ${containerClass}`}>
+                {sortedInsights.map((insight, originalIndex) => {
                     const isRead = readStories.has(insight.id);
                     let ringColors = '';
                     let Icon = Lightbulb;
                     
                     if (isRead) {
-                        ringColors = 'from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800'; // Cor neutra para lidos
+                        ringColors = 'from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800'; // Neutro para lidos
                     } else {
                         // Cores vibrantes para não lidos
                         if (insight.type === 'volatility_up') {
@@ -205,8 +267,8 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
                     return (
                         <button 
                             key={insight.id} 
-                            onClick={() => handleStoryClick(insight)}
-                            className="flex flex-col items-center gap-2 group snap-start shrink-0 w-[72px]"
+                            onClick={() => handleStoryClick(originalIndex)}
+                            className="flex flex-col items-center gap-2 group snap-center shrink-0 w-[72px]"
                         >
                             {/* Anel de Status (Story Ring) */}
                             <div className={`p-[2.5px] rounded-full bg-gradient-to-tr ${ringColors} press-effect group-active:scale-95 transition-all duration-300 relative`}>
@@ -230,9 +292,14 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
                 })}
             </div>
 
-            {/* Overlay Fullscreen estilo Story */}
-            {activeStory && (
-                <StoryOverlay insight={activeStory} onClose={() => setActiveStory(null)} />
+            {/* Viewer Imersivo */}
+            {viewerStartIndex !== null && (
+                <StoryViewer 
+                    insights={sortedInsights} 
+                    startIndex={viewerStartIndex} 
+                    onClose={() => setViewerStartIndex(null)} 
+                    onMarkAsRead={onMarkAsRead}
+                />
             )}
         </>
     );
@@ -265,14 +332,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
   });
 
-  const markAsRead = (id: string) => {
-      if (!readStories.has(id)) {
-          const newSet = new Set(readStories);
+  const markAsRead = useCallback((id: string) => {
+      setReadStories(prev => {
+          if (prev.has(id)) return prev;
+          const newSet = new Set(prev);
           newSet.add(id);
-          setReadStories(newSet);
           localStorage.setItem('investfiis_read_stories', JSON.stringify(Array.from(newSet)));
-      }
-  };
+          return newSet;
+      });
+  }, []);
 
   const safeInflation = Number(inflationRate) || 4.62;
 
