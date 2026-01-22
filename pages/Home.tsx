@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem } from '../types';
@@ -67,7 +68,7 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, typeRa
     };
 };
 
-// --- COMPONENTES STORIES (REFORMULADO v3) ---
+// --- COMPONENTES STORIES (OTIMIZADO) ---
 
 const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights: PortfolioInsight[], startIndex: number, onClose: () => void, onMarkAsRead: (id: string) => void }) => {
     const [currentIndex, setCurrentIndex] = useState(startIndex);
@@ -76,15 +77,14 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const markReadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentInsight = insights[currentIndex];
 
-    // Marca como lido com DELAY (Para evitar marcar ao pular rápido)
+    // Marca como lido com DELAY ajustado (600ms)
     useEffect(() => {
         if (markReadTimeoutRef.current) clearTimeout(markReadTimeoutRef.current);
         
         if (currentInsight) {
-            // Só marca como lido se o usuário ficar no story por 700ms
             markReadTimeoutRef.current = setTimeout(() => {
                 onMarkAsRead(currentInsight.id);
-            }, 700);
+            }, 600);
         }
 
         return () => {
@@ -279,7 +279,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
 
     return (
         <>
-            <div className={`w-full overflow-x-auto no-scrollbar py-3 flex gap-4 snap-x snap-mandatory ${containerClass}`}>
+            <div className={`w-full overflow-x-auto no-scrollbar py-2 flex gap-3 snap-x snap-mandatory ${containerClass}`}>
                 {sortedInsights.map((insight, originalIndex) => {
                     const isRead = readStories.has(insight.id);
                     let ringColors = '';
@@ -314,11 +314,11 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
                         <button 
                             key={insight.id} 
                             onClick={() => handleStoryClick(originalIndex)}
-                            className="flex flex-col items-center gap-2 group snap-center shrink-0 w-[72px]"
+                            className="flex flex-col items-center gap-1.5 group snap-center shrink-0 w-[64px]"
                         >
                             {/* Anel de Status (Story Ring) */}
-                            <div className={`p-[2.5px] rounded-full bg-gradient-to-tr ${ringColors} press-effect group-active:scale-95 transition-all duration-300 relative`}>
-                                <div className="w-[62px] h-[62px] rounded-full bg-white dark:bg-zinc-900 border-[3px] border-transparent flex items-center justify-center relative overflow-hidden">
+                            <div className={`p-[2px] rounded-full bg-gradient-to-tr ${ringColors} press-effect group-active:scale-95 transition-all duration-300 relative`}>
+                                <div className="w-[56px] h-[56px] rounded-full bg-white dark:bg-zinc-900 border-[3px] border-transparent flex items-center justify-center relative overflow-hidden">
                                     {insight.imageUrl ? (
                                         <img src={insight.imageUrl} alt="" className={`w-full h-full object-cover transition-opacity duration-300 ${isRead ? 'opacity-60 grayscale' : 'opacity-100'}`} />
                                     ) : (
@@ -330,7 +330,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
                             </div>
                             
                             {/* Texto Truncado */}
-                            <span className={`text-[10px] font-bold w-full truncate text-center leading-none transition-colors ${isRead ? 'text-zinc-400 font-medium' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                            <span className={`text-[9px] font-bold w-full truncate text-center leading-none transition-colors tracking-tight ${isRead ? 'text-zinc-400 font-medium' : 'text-zinc-700 dark:text-zinc-300'}`}>
                                 {insight.relatedTicker || (insight.type === 'news' ? 'Notícia' : insight.type === 'warning' ? 'Alerta' : 'Info')}
                             </span>
                         </button>
@@ -654,7 +654,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
   };
 
-  const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm transition-all press-effect relative overflow-hidden group";
+  const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 transition-all press-effect relative overflow-hidden group shadow-2xl shadow-black/5 dark:shadow-black/20";
   const hoverBorderClass = "hover:border-zinc-300 dark:hover:border-zinc-700";
   const modalHeaderIconClass = "w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm";
 
@@ -666,7 +666,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 1. CARTÃO DE PATRIMÔNIO ATUAL */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        <div className="w-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 dark:from-zinc-800 dark:via-zinc-900 dark:to-black rounded-[2rem] border border-white/10 shadow-xl relative overflow-hidden text-white animate-gradient">
+        <div className="w-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 dark:from-zinc-800 dark:via-zinc-900 dark:to-black rounded-[2rem] border border-white/10 shadow-2xl shadow-black/30 relative overflow-hidden text-white animate-gradient">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
             
             <div className="p-6 text-center border-b border-white/5 relative z-10">
@@ -680,14 +680,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             <div className="grid grid-cols-2 divide-x divide-white/5 relative z-10">
                 <div className="p-5 flex flex-col items-center justify-center hover:bg-white/5 transition-colors">
                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Total Aplicado</p>
-                    <span className="text-sm font-black text-zinc-200">
+                    <span className="text-sm font-black text-zinc-200 tracking-tight">
                         {formatBRL(invested, privacyMode)}
                     </span>
                 </div>
                 <div className="p-5 flex flex-col items-center justify-center hover:bg-white/5 transition-colors relative overflow-hidden">
                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Rentabilidade</p>
                     <div className="flex flex-col items-center relative z-10">
-                        <span className={`text-sm font-black flex items-center gap-1 ${isCapitalGainPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <span className={`text-sm font-black flex items-center gap-1 tracking-tight ${isCapitalGainPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {isCapitalGainPositive ? '+' : ''}{formatBRL(capitalGainValue, privacyMode)}
                         </span>
                         <span className={`text-[9px] font-bold ${isCapitalGainPositive ? 'text-emerald-400/70' : 'text-rose-400/70'}`}>
@@ -708,7 +708,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <CalendarDays className="w-5 h-5" strokeWidth={1.5} />
                 </div>
                 <div>
-                    <h3 className="text-sm font-black text-zinc-900 dark:text-white">Agenda</h3>
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h3>
                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wide">
                         {upcomingEvents.length > 0 ? `${upcomingEvents.length} Eventos Próximos` : 'Tudo tranquilo'}
                     </p>
@@ -787,7 +787,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center border border-blue-200 dark:border-blue-900/30"><PieIcon className="w-6 h-6" /></div>
                     <div>
-                        <h3 className="text-lg font-black text-zinc-900 dark:text-white">Alocação</h3>
+                        <h3 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h3>
                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Diversificação da Carteira</p>
                     </div>
                 </div>

@@ -801,7 +801,7 @@ const App: React.FC = () => {
                 onRefresh={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
                 hideBorder={currentTab === 'transactions'}
             />
-            <main className="max-w-xl mx-auto pt-[5.5rem] pb-28 min-h-screen px-4">
+            <main className="max-w-xl mx-auto pt-20 pb-28 min-h-screen px-4">
               {showSettings ? (
                 <div className="anim-page-enter pt-4">
                   <Settings 
