@@ -128,8 +128,8 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
             <div className="sticky top-0 z-20 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 p-4 transition-all">
                 <div className="flex justify-between items-center max-w-xl mx-auto">
                     <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border text-xs font-black shadow-sm ${asset.logoUrl ? 'bg-white p-1' : (isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 border-sky-100 dark:border-sky-900/30')}`}>
-                            {asset.logoUrl ? <img src={asset.logoUrl} className="w-full h-full object-contain rounded-xl" /> : asset.ticker.substring(0,2)}
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border text-xs font-black shadow-sm ${asset.logoUrl && !isFII ? 'bg-white p-1' : (isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 border-sky-100 dark:border-sky-900/30')}`}>
+                            {asset.logoUrl && !isFII ? <img src={asset.logoUrl} className="w-full h-full object-contain rounded-xl" /> : asset.ticker.substring(0,2)}
                         </div>
                         <div>
                             <h1 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">{asset.ticker}</h1>
@@ -351,13 +351,16 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                 const totalValue = currentPrice * asset.quantity;
                 const dailyVar = asset.dailyChange || 0;
                 const isPositiveDaily = dailyVar >= 0;
+                const isFII = asset.assetType === AssetType.FII;
+                // Exibe logo apenas se existir E não for FII (removendo brapi de FIIs)
+                const showLogo = asset.logoUrl && !isFII;
 
                 return (
                     <button key={asset.ticker} onClick={() => setSelectedTicker(asset.ticker)} className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none press-effect group hover:border-zinc-200 dark:hover:border-zinc-700 anim-stagger-item" style={{ animationDelay: `${index * 40}ms` }}>
                         <div className="flex items-center gap-4">
                             <div className="relative">
-                                {asset.logoUrl ? (
-                                    <div className="w-12 h-12 rounded-2xl bg-white p-1.5 border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-center overflow-hidden">
+                                {showLogo ? (
+                                    <div className="w-12 h-12 rounded-2xl bg-white p-1 border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-center overflow-hidden">
                                         <img src={asset.logoUrl} alt={asset.ticker} className="w-full h-full object-contain" />
                                     </div>
                                 ) : (
