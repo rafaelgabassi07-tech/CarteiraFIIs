@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ReferenceLine, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface PortfolioProps {
   portfolio: AssetPosition[];
@@ -262,14 +262,36 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                                         <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(averageInPeriod, privacyMode)}</p>
                                     </div>
                                 </div>
-                                <div className="h-40 w-full">
+                                <div className="h-48 w-full">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={monthlyDividends} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                                        <BarChart data={monthlyDividends} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#10b981" stopOpacity={1}/>
+                                                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.6}/>
+                                                </linearGradient>
+                                            </defs>
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
-                                            <RechartsTooltip content={({ active, payload, label }) => { if (active && payload && payload.length) { return (<div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-2 rounded-lg shadow-xl border border-zinc-100 dark:border-zinc-700 z-50"><p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{label}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(payload[0].value as number, privacyMode)} / cota</p></div>); } return null; }} cursor={{ fill: '#71717a10', radius: 4 }} />
-                                            <Bar dataKey="value" radius={[4, 4, 4, 4]} maxBarSize={40}>
+                                            <YAxis hide domain={[0, 'auto']} />
+                                            <ReferenceLine y={averageInPeriod} stroke="#fbbf24" strokeDasharray="3 3" strokeWidth={1} isFront />
+                                            <RechartsTooltip 
+                                                cursor={{fill: 'transparent'}} 
+                                                content={({ active, payload, label }) => { 
+                                                    if (active && payload && payload.length) { 
+                                                        return (
+                                                            <div className="bg-zinc-900/95 dark:bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/10 dark:border-zinc-200 z-50 min-w-[100px]">
+                                                                <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-1 uppercase tracking-widest text-center">{label}</p>
+                                                                <p className="text-lg font-black text-white dark:text-zinc-900 text-center tracking-tight leading-none">{formatBRL(payload[0].value as number, privacyMode)}</p>
+                                                                <p className="text-[9px] font-medium text-emerald-400 dark:text-emerald-600 text-center mt-1">Por cota</p>
+                                                            </div>
+                                                        ); 
+                                                    } 
+                                                    return null; 
+                                                }} 
+                                            />
+                                            <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={40}>
                                                 {monthlyDividends.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.value > averageInPeriod ? '#10b981' : '#e4e4e7'} className="transition-all duration-300 hover:opacity-80 dark:fill-zinc-700" />
+                                                    <Cell key={`cell-${index}`} fill={entry.value >= averageInPeriod ? 'url(#barGradient)' : '#e4e4e7'} className="transition-all duration-300 hover:opacity-80 dark:fill-zinc-700" />
                                                 ))}
                                             </Bar>
                                         </BarChart>
