@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon } from 'lucide-react';
@@ -127,8 +126,8 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
             <div className="sticky top-0 z-20 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 p-4 transition-all">
                 <div className="flex justify-between items-center max-w-xl mx-auto">
                     <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border text-xs font-black shadow-sm ${isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 border-sky-100 dark:border-sky-900/30'}`}>
-                            {asset.logoUrl ? <img src={asset.logoUrl} className="w-full h-full object-contain p-1" /> : asset.ticker.substring(0,2)}
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border text-xs font-black shadow-sm ${asset.logoUrl ? 'bg-white p-1' : (isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 border-sky-100 dark:border-sky-900/30')}`}>
+                            {asset.logoUrl ? <img src={asset.logoUrl} className="w-full h-full object-contain rounded-xl" /> : asset.ticker.substring(0,2)}
                         </div>
                         <div>
                             <h1 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">{asset.ticker}</h1>
@@ -356,9 +355,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                         <div className="flex items-center gap-4">
                             <div className="relative">
                                 {asset.logoUrl ? (
-                                    <div className="w-12 h-12 rounded-xl bg-white p-1.5 border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-center overflow-hidden"><img src={asset.logoUrl} alt={asset.ticker} className="w-full h-full object-contain" /></div>
+                                    <div className="w-12 h-12 rounded-2xl bg-white p-1.5 border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-center overflow-hidden">
+                                        <img src={asset.logoUrl} alt={asset.ticker} className="w-full h-full object-contain" />
+                                    </div>
                                 ) : (
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center border text-xs font-black shadow-sm ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/10 text-sky-600 border-sky-100 dark:border-sky-900/30'}`}>{asset.ticker.substring(0, 2)}</div>
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border text-xs font-black shadow-sm ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/10 text-sky-600 border-sky-100 dark:border-sky-900/30'}`}>{asset.ticker.substring(0, 2)}</div>
                                 )}
                             </div>
                             <div className="text-left">

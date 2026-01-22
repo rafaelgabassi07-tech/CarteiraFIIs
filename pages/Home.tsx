@@ -304,8 +304,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
   };
 
-  // Classes Padronizadas para Reutilização (Padrão 32px / 2rem)
-  const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm transition-all press-effect relative overflow-hidden group";
+  // Classes Padronizadas para Reutilização (Padrão 3xl / 1.5rem)
+  const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm transition-all press-effect relative overflow-hidden group";
   const hoverBorderClass = "hover:border-zinc-300 dark:hover:border-zinc-700";
   const modalHeaderIconClass = "w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm";
 
@@ -314,7 +314,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       
       {/* 1. CARTÃO DE PATRIMÔNIO ATUAL */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        <div className="w-full bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+        <div className="w-full bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
             <div className="p-6 text-center border-b border-zinc-100 dark:border-zinc-800">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-2 flex items-center justify-center gap-1.5">
                     <Wallet className="w-3 h-3" /> Patrimônio Atual
@@ -361,12 +361,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </p>
                 </div>
             </div>
-            {upcomingEvents.length > 0 && (
-                <div className="flex -space-x-2 relative z-10">
-                     {upcomingEvents.slice(0,3).map((ev: any, i: number) => <div key={i} className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-[8px] font-black text-zinc-600 dark:text-zinc-400 shadow-sm">{ev.ticker.substring(0,2)}</div>)}
-                     {upcomingEvents.length > 3 && <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-[8px] font-black text-zinc-500 shadow-sm">+{upcomingEvents.length - 3}</div>}
-                </div>
-            )}
+            
+            {/* Visual Arrow + Count */}
+            <div className="flex items-center gap-3 relative z-10">
+                {upcomingEvents.length > 0 && (
+                    <div className="flex -space-x-2">
+                         {upcomingEvents.slice(0,3).map((ev: any, i: number) => <div key={i} className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-[8px] font-black text-zinc-600 dark:text-zinc-400 shadow-sm">{ev.ticker.substring(0,2)}</div>)}
+                         {upcomingEvents.length > 3 && <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-[8px] font-black text-zinc-500 shadow-sm">+{upcomingEvents.length - 3}</div>}
+                    </div>
+                )}
+                <ArrowUpRight className="w-5 h-5 text-zinc-300 dark:text-zinc-600" />
+            </div>
         </button>
       </div>
       
@@ -379,6 +384,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 <div>
                     <div className="flex justify-between items-start mb-3">
                         <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-200 dark:border-emerald-900/30"><CircleDollarSign className="w-5 h-5" /></div>
+                        <ArrowUpRight className="w-5 h-5 text-zinc-300 dark:text-zinc-600" />
                     </div>
                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Renda Passiva</span>
                     <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">{formatBRL(received, privacyMode)}</p>
@@ -407,7 +413,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/10 rounded-xl flex items-center justify-center text-rose-500 border border-rose-100 dark:border-rose-900/30">
                             <Activity className="w-5 h-5" />
                         </div>
-                        <ArrowUpRight className="w-4 h-4 text-zinc-300 group-hover:text-rose-500 transition-colors" />
+                        <ArrowUpRight className="w-5 h-5 text-zinc-300 dark:text-zinc-600" />
                     </div>
                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Ganho Real</span>
                     <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{realReturnPercent > 0 ? '+' : ''}{realReturnPercent.toFixed(2)}%</p>
@@ -437,6 +443,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
                 <div className="text-right">
+                    <ArrowUpRight className="w-5 h-5 text-zinc-300 dark:text-zinc-600 ml-auto mb-1" />
                     <span className="text-xs font-black text-zinc-900 dark:text-white block">{typeData.total > 0 ? 'Balanceado' : 'Vazio'}</span>
                 </div>
             </div>
@@ -460,11 +467,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* MODAIS */}
-
-      {/* 4. MODAL AGENDA */}
+      {/* MODAIS (Restante do arquivo permanece igual) */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
-        {/* ... (Conteúdo Agenda inalterado, apenas usa o mesmo card style se aplicável) ... */}
+        {/* ... (Conteúdo Agenda) ... */}
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-200 dark:border-zinc-700`}><CalendarDays className="w-6 h-6" /></div>
@@ -536,7 +541,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 5. MODAL ALOCAÇÃO */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         {/* ... (Conteúdo Alocação inalterado) ... */}
+         {/* ... (Conteúdo Alocação) ... */}
          <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 border-zinc-200 dark:border-zinc-700`}><PieIcon className="w-6 h-6" strokeWidth={1.5} /></div>
@@ -648,6 +653,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 6. MODAL PROVENTOS APRIMORADO */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); setExpandedMonth(null); }}>
+         {/* ... (Conteúdo Proventos) ... */}
          <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-zinc-200 dark:border-zinc-700`}><Wallet className="w-6 h-6" strokeWidth={1.5} /></div>
@@ -688,7 +694,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              
              {/* Lista Filtrada ou Completa */}
              <div className="space-y-3">
-                {/* ... (Lista de meses inalterada) ... */}
                 {selectedProventosMonth ? (
                     // VIEW DE MÊS SELECIONADO (FILTRADO)
                     <div className="anim-scale-in">
@@ -785,7 +790,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 7. MODAL RAIO-X (EXPANDIDO) */}
       <SwipeableModal isOpen={showRaioXModal} onClose={() => setShowRaioXModal(false)}>
-          {/* ... (Conteúdo Raio-X inalterado) ... */}
+          {/* ... (Conteúdo Raio-X) ... */}
           <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
               <div className="flex items-center gap-4 mb-8 px-2">
                   <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-rose-500 border-zinc-200 dark:border-zinc-700`}><Target className="w-6 h-6" /></div>
