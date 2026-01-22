@@ -1,5 +1,4 @@
 
-
 export enum AssetType {
   STOCK = 'ACAO',
   FII = 'FII'
@@ -47,7 +46,7 @@ export interface AssetFundamentals {
   manager_type?: string; // Tipo de Gestão (Ativa/Passiva)
   segment_secondary?: string; // Segmento/Tipo de Fundo
   mandate?: string; // Mandato
-  properties_count?: number; // Quantidade de Imóveis (se disponível)
+  properties_count?: number; // Quantidade de Imóveis ou Número de Cotistas (adaptado)
   management_fee?: string; // Taxa de Administração
   last_dividend?: number; // Último Rendimento
   

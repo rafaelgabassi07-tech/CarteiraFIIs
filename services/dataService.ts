@@ -85,7 +85,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield')), 
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
-        liquidity: getVal('liquidez', 'liquidez_media_diaria') || '',
+        liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', // Mantém string original se possível
         market_cap: getVal('valor_mercado', 'val_mercado', 'market_cap') || undefined, 
         
         // Ações
@@ -101,9 +101,10 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         // FIIs (Chaves críticas revisadas)
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica', 'vacancy')),
         manager_type: getVal('tipo_gestao', 'manager_type') || undefined,
-        assets_value: getVal('patrimonio_liquido', 'assets_value') || undefined,
+        assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, // String original preservada (ex: R$ 2,5 B)
         management_fee: getVal('taxa_adm', 'management_fee') || undefined,
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento', 'last_dividend', 'rendimento')),
+        properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')), // Reusando campo properties_count como num_cotistas temporariamente ou criando novo
         
         updated_at: m.updated_at,
         
