@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem } from '../types';
 import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
@@ -135,9 +136,10 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const theme = getTheme();
     const Icon = theme.icon;
 
-    return (
+    // Usando Portal para garantir que fique por cima de tudo
+    return createPortal(
         <div 
-            className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col anim-fade-in"
+            className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-3xl flex flex-col anim-fade-in"
             onTouchStart={handleTouchStart} 
             onTouchEnd={handleTouchEnd}
         >
@@ -146,7 +148,7 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
             <div className="absolute inset-y-0 right-0 w-[30%] z-20" onClick={(e) => { e.stopPropagation(); goNext(); }} />
 
             {/* Barras de Progresso Segmentadas */}
-            <div className="absolute top-0 left-0 right-0 p-2 z-30 flex gap-1.5 pt-[calc(env(safe-area-inset-top)+8px)]">
+            <div className="absolute top-0 left-0 right-0 p-2 z-30 flex gap-1.5 pt-[calc(env(safe-area-inset-top)+12px)] px-4">
                 {insights.map((_, idx) => (
                     <div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
                         <div 
@@ -159,37 +161,37 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
             {/* Botão Fechar */}
             <button 
                 onClick={(e) => { e.stopPropagation(); onClose(); }} 
-                className="absolute top-6 right-4 z-40 p-2 text-white/50 hover:text-white mt-[calc(env(safe-area-inset-top))] transition-colors"
+                className="absolute top-6 right-4 z-40 p-2 text-white/50 hover:text-white mt-[calc(env(safe-area-inset-top))] transition-colors rounded-full bg-black/20 backdrop-blur-sm"
             >
-                <X className="w-8 h-8 drop-shadow-md" strokeWidth={2} />
+                <X className="w-6 h-6 drop-shadow-md" strokeWidth={2.5} />
             </button>
 
             {/* Conteúdo Central */}
             <div className="flex-1 flex items-center justify-center p-6 relative z-10 pointer-events-none">
-                <div key={currentInsight.id} className="w-full max-w-sm flex flex-col items-center text-center anim-scale-in">
+                <div key={currentInsight.id} className="w-full max-w-sm flex flex-col items-center text-center anim-pop">
                     
                     {/* Círculo Principal com Imagem/Ícone */}
-                    <div className={`w-36 h-36 rounded-full p-1 bg-gradient-to-br ${theme.bg} shadow-2xl mb-10 shadow-${theme.accent}/30`}>
-                        <div className="w-full h-full rounded-full bg-zinc-900 border-[5px] border-black/40 overflow-hidden flex items-center justify-center relative">
+                    <div className={`w-32 h-32 rounded-full p-1 bg-gradient-to-br ${theme.bg} shadow-2xl mb-10 shadow-${theme.accent}/30 ring-4 ring-black/20`}>
+                        <div className="w-full h-full rounded-full bg-zinc-900 border-[4px] border-black/40 overflow-hidden flex items-center justify-center relative">
                              {currentInsight.imageUrl ? (
                                 <img src={currentInsight.imageUrl} className="w-full h-full object-cover" alt="" />
                              ) : (
-                                <Icon className={`w-16 h-16 text-white`} strokeWidth={1.5} />
+                                <Icon className={`w-14 h-14 text-white`} strokeWidth={1.5} />
                              )}
                         </div>
                     </div>
 
-                    <div className="mb-5">
-                         <span className={`text-[10px] font-black uppercase tracking-[0.25em] px-4 py-2 rounded-full bg-white/10 border border-white/10 text-white backdrop-blur-md`}>
+                    <div className="mb-6">
+                         <span className={`text-[10px] font-black uppercase tracking-[0.25em] px-4 py-2 rounded-full bg-white/10 border border-white/10 text-white backdrop-blur-md shadow-lg`}>
                             {theme.label}
                         </span>
                     </div>
 
-                    <h2 className="text-3xl font-black text-white mb-6 leading-tight tracking-tight drop-shadow-lg">
+                    <h2 className="text-2xl font-black text-white mb-6 leading-tight tracking-tight drop-shadow-lg px-2">
                         {currentInsight.title}
                     </h2>
                     
-                    <p className="text-lg text-zinc-200 leading-relaxed font-medium mb-10 max-w-[90%] drop-shadow-md">
+                    <p className="text-base text-zinc-300 leading-relaxed font-medium mb-12 max-w-[90%] drop-shadow-md">
                         {currentInsight.message}
                     </p>
 
@@ -199,22 +201,23 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                             target="_blank" 
                             rel="noreferrer" 
                             onClick={(e) => e.stopPropagation()} // Permite clique no link sem avançar story
-                            className="pointer-events-auto px-8 py-4 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-[0.15em] hover:scale-105 transition-transform flex items-center gap-3 shadow-xl"
+                            className="pointer-events-auto px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform flex items-center gap-3 shadow-xl"
                         >
-                            Ler Matéria Completa <ArrowUpRight className="w-4 h-4" />
+                            Ler Completo <ArrowUpRight className="w-4 h-4" />
                         </a>
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
 const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: PortfolioInsight[], onMarkAsRead: (id: string) => void, readStories: Set<string> }) => {
-    const [viewerStartIndex, setViewerStartIndex] = useState<number | null>(null);
+    // Agora armazenamos a lista completa para o visualizador, para evitar que ela mude enquanto aberta
+    const [viewerData, setViewerData] = useState<{ list: PortfolioInsight[], startIndex: number } | null>(null);
 
-    // CORREÇÃO CRÍTICA: useMemo deve ser chamado SEMPRE, incondicionalmente.
-    // O retorno condicional deve vir DEPOIS dos hooks.
+    // useMemo deve ser chamado SEMPRE
     const sortedInsights = useMemo(() => {
         if (!insights) return [];
         return [...insights].sort((a, b) => {
@@ -226,10 +229,13 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
     }, [insights, readStories]);
 
     const handleStoryClick = (index: number) => {
-        setViewerStartIndex(index);
+        // Congela a lista atual para o viewer, para que mudanças de "Lido" não reordenem enquanto o usuário vê
+        setViewerData({
+            list: sortedInsights,
+            startIndex: index
+        });
     };
 
-    // Agora é seguro fazer o retorno antecipado
     if (!insights || insights.length === 0) return null;
 
     // Centralização condicional
@@ -299,11 +305,11 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
             </div>
 
             {/* Viewer Imersivo */}
-            {viewerStartIndex !== null && (
+            {viewerData && (
                 <StoryViewer 
-                    insights={sortedInsights} 
-                    startIndex={viewerStartIndex} 
-                    onClose={() => setViewerStartIndex(null)} 
+                    insights={viewerData.list} 
+                    startIndex={viewerData.startIndex} 
+                    onClose={() => setViewerData(null)} 
                     onMarkAsRead={onMarkAsRead}
                 />
             )}
@@ -312,7 +318,6 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
 };
 
 const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
-  // ... (Restante do componente Home mantido igual, apenas substituindo o SmartFeed)
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -351,12 +356,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const safeInflation = Number(inflationRate) || 4.62;
 
+  // Busca Notícias para os Stories
   useEffect(() => {
       const fetchTopNews = async () => {
           try {
+              // Busca notícias gerais e da carteira combinadas
               const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
               const portfolioTickers = Array.from(new Set(safePortfolio.map(p => p.ticker)));
-              const query = portfolioTickers.slice(0, 5).join(' OR '); 
+              const query = portfolioTickers.slice(0, 5).join(' OR '); // Limita query para não quebrar URL
               
               const endpoint = query ? `/api/news?q=${encodeURIComponent(query)}` : '/api/news';
               const res = await fetch(endpoint);
@@ -385,12 +392,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return () => clearTimeout(timer);
   }, [portfolio]);
 
+  // Atualiza insights/stories quando a carteira ou notícias mudam
   useEffect(() => {
       const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
       const generatedInsights = analyzePortfolio(safePortfolio, safeInflation, newsCache);
       setInsights(generatedInsights);
   }, [portfolio, safeInflation, newsCache]);
 
+  // Cálculos de Rentabilidade
   const capitalGainValue = useMemo(() => balance - invested, [balance, invested]);
   const capitalGainPercent = useMemo(() => invested > 0 ? (capitalGainValue / invested) * 100 : 0, [capitalGainValue, invested]);
   const isCapitalGainPositive = capitalGainValue >= 0;
@@ -444,6 +453,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const allEvents: any[] = [];
     let receivedTotal = 0;
     
+    // Verificação de segurança
     const safeReceipts = Array.isArray(dividendReceipts) ? dividendReceipts : [];
 
     safeReceipts.forEach(r => {
@@ -774,6 +784,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* MODAIS (Mantidos, apenas o SmartFeed foi corrigido acima) */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
+        {/* ... Conteúdo mantido ... */}
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-200 dark:border-zinc-700`}><CalendarDays className="w-6 h-6" /></div>
