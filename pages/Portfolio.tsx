@@ -80,9 +80,19 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
         // Data de corte (primeiro dia do mês inicial)
         const cutoffDate = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
         
+        // Normalização do Ticker: Se for ITSA4F, busca por ITSA4 na lista de dividendos
+        let targetTicker = asset.ticker.trim().toUpperCase();
+        if (targetTicker.endsWith('F') && !targetTicker.endsWith('11F') && targetTicker.length <= 6) {
+            targetTicker = targetTicker.slice(0, -1);
+        }
+
         const filtered = dividends.filter(d => {
-            // Filtra por ticker e data
-            if (!d.paymentDate || d.ticker !== asset.ticker) return false;
+            // Filtra por ticker (normalizado) e data
+            if (!d.paymentDate || !d.ticker) return false;
+            
+            // Compara tickers normalizados
+            if (d.ticker.trim().toUpperCase() !== targetTicker) return false;
+
             const pDate = new Date(d.paymentDate);
             pDate.setUTCHours(12); // Garante meio-dia para evitar problemas de fuso
             return pDate >= cutoffDate;
@@ -102,7 +112,9 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
             const key = d.paymentDate.slice(0, 7);
             if (grouped[key] !== undefined) {
                 // SOMA O RATE (Valor por Cota) em vez do total recebido
-                grouped[key] += d.rate;
+                // Garante que é numérico
+                const rate = typeof d.rate === 'number' ? d.rate : parseFloat(String(d.rate).replace(',', '.')) || 0;
+                grouped[key] += rate;
             }
         });
 
