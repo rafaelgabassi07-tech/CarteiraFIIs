@@ -247,3 +247,16 @@ export interface NewsItem {
     imageUrl?: string;
     category: 'FIIs' | 'Ações' | 'Macro' | 'Geral';
 }
+
+// --- TIPOS DE INTELIGÊNCIA ---
+export type InsightType = 'opportunity' | 'warning' | 'neutral' | 'success';
+
+export interface PortfolioInsight {
+    id: string;
+    type: InsightType;
+    title: string;
+    message: string;
+    relatedTicker?: string;
+    actionLabel?: string;
+    score: number; // 0 a 100, usado para prioridade
+}

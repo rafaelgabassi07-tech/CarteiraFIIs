@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, ArrowRight, Building2, TrendingDown } from 'lucide-react';
+
+import React, { useMemo, useState, useEffect } from 'react';
+import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, ArrowRight, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
+import { analyzePortfolio } from '../services/analysisService';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -65,6 +67,40 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, typeRa
     };
 };
 
+const SmartFeed = ({ insights }: { insights: PortfolioInsight[] }) => {
+    if (insights.length === 0) return null;
+
+    return (
+        <div className="w-full overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 flex gap-3 snap-x snap-mandatory anim-slide-in-right">
+            {insights.map((insight, idx) => {
+                let colors = '';
+                let Icon = Lightbulb;
+                
+                if (insight.type === 'opportunity') { colors = 'bg-sky-50 dark:bg-sky-900/10 border-sky-100 dark:border-sky-900/30 text-sky-700 dark:text-sky-300'; Icon = Sparkles; }
+                else if (insight.type === 'warning') { colors = 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-300'; Icon = AlertTriangle; }
+                else if (insight.type === 'success') { colors = 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-300'; Icon = TrendingUp; }
+                else { colors = 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'; }
+
+                return (
+                    <div key={insight.id} className={`snap-center shrink-0 w-[260px] p-4 rounded-2xl border ${colors} shadow-sm relative overflow-hidden group`}>
+                        <div className="flex items-start gap-3 relative z-10">
+                            <div className="p-2 rounded-lg bg-white/50 dark:bg-black/20 shrink-0">
+                                <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <h4 className="text-xs font-black uppercase tracking-wide mb-1 opacity-90">{insight.title}</h4>
+                                <p className="text-[10px] font-medium leading-relaxed opacity-80">{insight.message}</p>
+                            </div>
+                        </div>
+                        {/* Efeito de pulso suave */}
+                        {idx === 0 && <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse"></div>}
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
@@ -78,7 +114,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   const [raioXTab, setRaioXTab] = useState<'GERAL' | 'CLASSES'>('GERAL');
   
+  // Intelligence State
+  const [insights, setInsights] = useState<PortfolioInsight[]>([]);
+
   const safeInflation = Number(inflationRate) || 4.62;
+
+  // Atualiza insights quando a carteira muda
+  useEffect(() => {
+      const generatedInsights = analyzePortfolio(portfolio, safeInflation);
+      setInsights(generatedInsights);
+  }, [portfolio, safeInflation]);
 
   // Cálculos de Rentabilidade
   const capitalGainValue = useMemo(() => balance - invested, [balance, invested]);
@@ -300,6 +345,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="space-y-4 pb-8">
       
+      {/* 0. SMART FEED (INTELIGÊNCIA DO APP) */}
+      <SmartFeed insights={insights} />
+
       {/* 1. CARTÃO DE PATRIMÔNIO ATUAL (REFINADO & ANIMADO) */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
         <div className="w-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 dark:from-zinc-800 dark:via-zinc-900 dark:to-black rounded-[2rem] border border-white/10 shadow-xl relative overflow-hidden text-white animate-gradient">
@@ -525,6 +573,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
+      {/* ... Resto dos modais (Allocation, Proventos, Raio-X) mantidos idênticos ao código original ... */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2">
