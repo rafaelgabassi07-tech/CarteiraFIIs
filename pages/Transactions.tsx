@@ -19,7 +19,6 @@ const formatMonthHeader = (monthKey: string) => {
     }
 };
 
-// Componente de Resumo das Transações
 const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Transaction[], privacyMode: boolean }) => {
     const { totalInvested, totalSold, netFlow } = useMemo(() => {
         let invested = 0;
@@ -56,13 +55,15 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   const isSelectionMode = data.isSelectionMode;
   const isSelected = data.selectedIds.has(item.data?.id);
   
-  // Header Mensal
   if (item.type === 'header') {
       const netValue = item.monthlyNet || 0;
       const isPositive = netValue >= 0;
       return (
           <div className={`flex items-end justify-between anim-fade-in relative z-10 pt-6 pb-3 ${index === 0 ? 'mt-0' : 'mt-2'}`}>
-              <div className="bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-lg">
+              {/* Linha vertical conectando ao próximo grupo */}
+              <div className="absolute left-[7px] top-[40px] bottom-0 w-[1px] bg-zinc-200 dark:bg-zinc-800 -z-10"></div>
+              
+              <div className="bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-lg border border-white dark:border-zinc-700 shadow-sm">
                   <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.15em]">{formatMonthHeader(item.monthKey)}</h3>
               </div>
               <div className="flex items-center gap-1.5 px-2">
@@ -81,10 +82,11 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   
   return (
       <div className="relative pl-6 pr-1 anim-stagger-item" style={{ animationDelay: `${(index % 10) * 30}ms` }}>
-          {/* Linha do Tempo Refinada */}
-          <div className={`absolute left-[7px] top-0 w-[2px] bg-zinc-200 dark:bg-zinc-800 ${isLastInGroup ? 'h-1/2' : 'h-full'}`}></div>
-          {/* Ponto na Linha */}
-          <div className={`absolute left-[4px] top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-2 bg-white dark:bg-zinc-950 z-10 ${isBuy ? 'border-emerald-400' : 'border-rose-400'}`}></div>
+          {/* Linha do Tempo Contínua */}
+          <div className={`absolute left-[7px] top-0 w-[1px] bg-zinc-200 dark:bg-zinc-800 ${isLastInGroup ? 'h-1/2' : 'h-full'}`}></div>
+          
+          {/* Ponto indicador */}
+          <div className={`absolute left-[3px] top-1/2 -translate-y-1/2 w-[9px] h-[9px] rounded-full border-2 bg-white dark:bg-zinc-950 z-10 ${isBuy ? 'border-emerald-400' : 'border-rose-400'}`}></div>
           
           <button 
             onClick={() => isSelectionMode ? data.onToggleSelect(t.id) : data.onRowClick(t)}
@@ -158,7 +160,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [price, setPrice] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     
-    // Cálculo de total em tempo real para UX
     const estimatedTotal = useMemo(() => {
         const q = parseFloat(quantity) || 0;
         const p = parseFloat(price) || 0;
@@ -298,7 +299,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
     return (
         <div className="anim-fade-in relative min-h-screen pb-60">
-            {/* Header Sticky removido para Relative - Permite scroll natural */}
             <div className="relative z-20 bg-primary-light dark:bg-primary-dark border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all -mx-4 px-4 py-3">
                 <div className="flex items-center justify-between">
                     <div>
@@ -377,10 +377,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
-            {/* Painel de Resumo (Novidade) */}
             <TransactionsSummary transactions={filteredTransactions} privacyMode={privacyMode} />
 
-            {/* Lista de Transações */}
             <div className="px-1 pt-0">
                 {flatTransactions.length > 0 ? (
                     <div className="space-y-0">
@@ -407,10 +405,9 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
+            {/* Modal de Edição/Criação mantido idêntico mas beneficiando do SwipeableModal atualizado */}
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                {/* ... (Conteúdo do Modal permanece inalterado) ... */}
                 <div className="p-6 pb-12 bg-white dark:bg-zinc-950 min-h-full">
-                    {/* Header do Modal */}
                     <div className="flex items-center justify-between mb-6 anim-slide-up">
                         <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm ${editingId ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30 text-amber-600' : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white'}`}>
@@ -436,7 +433,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     </div>
 
                     <div className="space-y-4">
-                        {/* Seletor de Tipo (Switch estilo Segmented Control) */}
                         <div className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-xl flex relative anim-slide-up" style={{ animationDelay: '50ms' }}>
                             <div 
                                 className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola ${isBuy ? 'left-1 bg-emerald-500' : 'translate-x-[100%] left-1 bg-rose-500'}`}
@@ -455,7 +451,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             </button>
                         </div>
 
-                        {/* Input Ticker */}
                         <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 focus-within:border-zinc-400 dark:focus-within:border-zinc-600 transition-colors anim-slide-up" style={{ animationDelay: '100ms' }}>
                             <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 block flex items-center gap-1">
                                 <Hash className="w-3 h-3" /> Ticker do Ativo
@@ -468,7 +463,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                 className="w-full bg-transparent text-3xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-300 dark:placeholder:text-zinc-700 outline-none uppercase tracking-tight"
                                 autoFocus={!editingId}
                             />
-                            {/* Tipo de Ativo Automático */}
                             <div className="flex gap-2 mt-3">
                                 <button onClick={() => setAssetType(AssetType.FII)} className={`px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider border transition-colors ${assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-200 dark:border-indigo-900/30' : 'bg-transparent text-zinc-400 border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}>
                                     FII
@@ -479,7 +473,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             </div>
                         </div>
 
-                        {/* Grid Quantidade e Preço */}
                         <div className="grid grid-cols-2 gap-3 anim-slide-up" style={{ animationDelay: '150ms' }}>
                             <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 focus-within:border-zinc-400 dark:focus-within:border-zinc-600 transition-colors">
                                 <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1 block">Quantidade</label>
@@ -506,7 +499,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             </div>
                         </div>
 
-                        {/* Total Estimado */}
                         <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-4 rounded-2xl flex justify-between items-center anim-slide-up shadow-sm" style={{ animationDelay: '200ms' }}>
                             <div className="flex items-center gap-2 text-zinc-400">
                                 <Calculator className="w-4 h-4" />
@@ -517,7 +509,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             </span>
                         </div>
 
-                        {/* Data */}
                         <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 flex items-center gap-4 anim-slide-up" style={{ animationDelay: '250ms' }}>
                             <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-zinc-500 shadow-sm">
                                 <Calendar className="w-5 h-5" />
@@ -533,7 +524,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             </div>
                         </div>
 
-                        {/* Botão Salvar */}
                         <button 
                             onClick={handleSave}
                             disabled={!ticker || !quantity || !price || isSaving}
