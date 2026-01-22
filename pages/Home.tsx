@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, ArrowRight, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -67,51 +67,126 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, typeRa
     };
 };
 
-// --- SMART FEED DISCRETO ---
+// --- COMPONENTES STORIES ---
+
+const StoryOverlay = ({ insight, onClose }: { insight: PortfolioInsight, onClose: () => void }) => {
+    // Configuração de Estilos baseada no tipo
+    const getTheme = () => {
+        switch(insight.type) {
+            case 'opportunity': return { bg: 'from-sky-500 to-blue-600', icon: Sparkles, accent: 'text-sky-500' };
+            case 'warning': return { bg: 'from-amber-500 to-orange-600', icon: AlertTriangle, accent: 'text-amber-500' };
+            case 'success': return { bg: 'from-emerald-500 to-green-600', icon: TrendingUp, accent: 'text-emerald-500' };
+            default: return { bg: 'from-zinc-500 to-zinc-700', icon: Info, accent: 'text-zinc-500' };
+        }
+    };
+    const theme = getTheme();
+    const Icon = theme.icon;
+
+    // Fecha ao clicar fora ou no botão
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md anim-fade-in" onClick={onClose}>
+            <div 
+                className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2rem] overflow-hidden shadow-2xl relative anim-scale-in" 
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Barra de Progresso Decorativa */}
+                <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 flex gap-1 p-1">
+                    <div className={`h-full flex-1 rounded-full bg-gradient-to-r ${theme.bg}`}></div>
+                </div>
+
+                {/* Conteúdo */}
+                <div className="p-8 text-center flex flex-col items-center">
+                    <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${theme.bg} flex items-center justify-center text-white mb-6 shadow-lg shadow-zinc-200 dark:shadow-none`}>
+                        <Icon className="w-10 h-10" strokeWidth={1.5} />
+                    </div>
+                    
+                    <h3 className="text-2xl font-black text-zinc-900 dark:text-white mb-3 tracking-tight leading-none">
+                        {insight.title}
+                    </h3>
+                    
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium">
+                        {insight.message}
+                    </p>
+
+                    {insight.relatedTicker && (
+                        <div className="mt-6 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-xs font-black text-zinc-500 uppercase tracking-widest">
+                            {insight.relatedTicker}
+                        </div>
+                    )}
+                </div>
+
+                {/* Botão Fechar */}
+                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800">
+                    <button 
+                        onClick={onClose}
+                        className="w-full py-4 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-xs uppercase tracking-[0.2em] press-effect"
+                    >
+                        Entendido
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const SmartFeed = ({ insights }: { insights: PortfolioInsight[] }) => {
+    const [activeStory, setActiveStory] = useState<PortfolioInsight | null>(null);
+
     if (insights.length === 0) return null;
 
     return (
-        <div className="w-full overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 flex gap-2 snap-x snap-mandatory anim-slide-in-right">
-            {insights.map((insight) => {
-                let colors = '';
-                let iconColor = '';
-                let Icon = Lightbulb;
-                
-                if (insight.type === 'opportunity') { 
-                    colors = 'bg-sky-50/50 dark:bg-sky-900/10 border-sky-100/50 dark:border-sky-800/30'; 
-                    iconColor = 'text-sky-500';
-                    Icon = Sparkles; 
-                }
-                else if (insight.type === 'warning') { 
-                    colors = 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-100/50 dark:border-amber-800/30'; 
-                    iconColor = 'text-amber-500';
-                    Icon = AlertTriangle; 
-                }
-                else if (insight.type === 'success') { 
-                    colors = 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100/50 dark:border-emerald-800/30'; 
-                    iconColor = 'text-emerald-500';
-                    Icon = TrendingUp; 
-                }
-                else { 
-                    colors = 'bg-zinc-50/50 dark:bg-zinc-900 border-zinc-200/50 dark:border-zinc-800'; 
-                    iconColor = 'text-zinc-400';
-                    Icon = Zap;
-                }
+        <>
+            <div className="w-full overflow-x-auto no-scrollbar py-2 -mx-4 px-4 flex gap-4 snap-x snap-mandatory">
+                {insights.map((insight) => {
+                    let ringColors = '';
+                    let Icon = Lightbulb;
+                    
+                    if (insight.type === 'opportunity') { 
+                        ringColors = 'from-sky-400 to-blue-500'; 
+                        Icon = Sparkles; 
+                    }
+                    else if (insight.type === 'warning') { 
+                        ringColors = 'from-amber-400 to-orange-500'; 
+                        Icon = AlertTriangle; 
+                    }
+                    else if (insight.type === 'success') { 
+                        ringColors = 'from-emerald-400 to-green-500'; 
+                        Icon = TrendingUp; 
+                    }
+                    else { 
+                        ringColors = 'from-zinc-400 to-zinc-500'; 
+                        Icon = Zap;
+                    }
 
-                return (
-                    <div key={insight.id} className={`snap-center shrink-0 w-[240px] p-3 rounded-xl border ${colors} flex items-center gap-3 active:scale-95 transition-transform`}>
-                        <div className={`p-1.5 rounded-lg bg-white dark:bg-black/20 shrink-0 ${iconColor}`}>
-                            <Icon className="w-3.5 h-3.5" strokeWidth={2} />
-                        </div>
-                        <div className="min-w-0">
-                            <h4 className="text-[10px] font-black uppercase tracking-wide text-zinc-700 dark:text-zinc-300 truncate leading-none mb-1">{insight.title}</h4>
-                            <p className="text-[9px] font-medium text-zinc-500 dark:text-zinc-400 leading-tight line-clamp-2">{insight.message}</p>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
+                    return (
+                        <button 
+                            key={insight.id} 
+                            onClick={() => setActiveStory(insight)}
+                            className="flex flex-col items-center gap-1.5 group snap-start shrink-0"
+                        >
+                            {/* Anel de Status (Story Ring) */}
+                            <div className={`p-[2px] rounded-full bg-gradient-to-tr ${ringColors} press-effect group-active:scale-95 transition-transform`}>
+                                <div className="w-[58px] h-[58px] rounded-full bg-white dark:bg-zinc-900 border-[3px] border-transparent flex items-center justify-center relative overflow-hidden">
+                                    {/* Icon Background leve */}
+                                    <div className={`absolute inset-0 opacity-10 bg-gradient-to-tr ${ringColors}`}></div>
+                                    <Icon className="w-6 h-6 text-zinc-700 dark:text-zinc-200 relative z-10" strokeWidth={2} />
+                                </div>
+                            </div>
+                            
+                            {/* Texto Truncado */}
+                            <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 w-16 truncate text-center leading-none">
+                                {insight.relatedTicker || (insight.type === 'warning' ? 'Alerta' : insight.type === 'opportunity' ? 'Dica' : 'Info')}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Overlay Fullscreen estilo Story */}
+            {activeStory && (
+                <StoryOverlay insight={activeStory} onClose={() => setActiveStory(null)} />
+            )}
+        </>
     );
 };
 
@@ -359,10 +434,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="space-y-4 pb-8">
       
-      {/* 0. SMART FEED (INTELIGÊNCIA DO APP) */}
+      {/* 0. SMART FEED (STORIES) */}
       <SmartFeed insights={insights} />
 
-      {/* 1. CARTÃO DE PATRIMÔNIO ATUAL (REFINADO & ANIMADO) */}
+      {/* 1. CARTÃO DE PATRIMÔNIO ATUAL */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
         <div className="w-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 dark:from-zinc-800 dark:via-zinc-900 dark:to-black rounded-[2rem] border border-white/10 shadow-xl relative overflow-hidden text-white animate-gradient">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
