@@ -171,13 +171,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
                 {/* Icon Wrapper with Pop Animation */}
                 <div className={`relative transition-all duration-500 ease-out-mola ${isActive ? '-translate-y-1.5 scale-110' : 'translate-y-1 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-400'}`}>
                     
-                    {/* Active Glow Behind Icon */}
+                    {/* Active Glow Behind Icon - Enhanced */}
                     <div className={`absolute inset-0 bg-accent/20 blur-xl rounded-full transition-all duration-500 ${isActive ? 'opacity-100 scale-150' : 'opacity-0 scale-0'}`}></div>
                     
                     <item.icon 
                         className={`w-6 h-6 relative z-10 transition-all duration-500 ${
                             isActive 
-                                ? 'text-accent stroke-[2.5px] drop-shadow-sm' 
+                                ? 'text-accent stroke-[2.5px] drop-shadow-sm anim-pop' 
                                 : 'stroke-[2px]'
                         }`} 
                     />
@@ -200,6 +200,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   );
 };
 
+// ... (Restante do arquivo permanece igual)
 interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: React.ReactNode; }
 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
@@ -296,8 +297,6 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
     </div>, document.body
   );
 };
-
-// ... (Restante dos modais UpdateReportModal, InstallPromptModal, ChangelogModal, NotificationsModal permanecem iguais, apenas se beneficiam do SwipeableModal atualizado)
 
 export const UpdateReportModal: React.FC<{ isOpen: boolean; onClose: () => void; results: UpdateReportData }> = ({ isOpen, onClose, results }) => {
     const [tab, setTab] = useState<'assets' | 'dividends' | 'indicators'>('assets');
