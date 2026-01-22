@@ -187,7 +187,7 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
   }, [accentColor]);
 
-  // Persistência de Notificações (NOVO)
+  // Persistência de Notificações (Fix: Dependência explicita)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled));
   }, [pushEnabled]);
@@ -799,7 +799,7 @@ const App: React.FC = () => {
                       privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} 
                       updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
                       onShowChangelog={() => updateManager.setShowChangelog(true)} pushEnabled={pushEnabled} 
-                      onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={handleSyncAll} 
+                      onRequestPushPermission={() => setPushEnabled(prev => !prev)} onSyncAll={handleSyncAll} 
                       onForceUpdate={() => window.location.reload()} currentVersionDate={updateManager.currentVersionDate}
                       services={services} onCheckConnection={checkServiceHealth} isCheckingConnection={isCheckingServices}
                   />

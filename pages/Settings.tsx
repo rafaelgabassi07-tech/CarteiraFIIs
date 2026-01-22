@@ -72,7 +72,6 @@ export const Settings: React.FC<SettingsProps> = ({
   onSyncAll, currentVersionDate, accentColor, onSetAccentColor,
   services, onCheckConnection, isCheckingConnection, onForceUpdate
 }) => {
-  // Removido 'updates' da lista de seções possíveis
   const [activeSection, setActiveSection] = useState<'menu' | 'appearance' | 'privacy' | 'notifications' | 'services' | 'data' | 'about' | 'reset'>('menu');
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -94,7 +93,7 @@ export const Settings: React.FC<SettingsProps> = ({
   });
 
   useEffect(() => {
-      const unsubscribe = logger.subscribe((l: LogEntry[]) => setLogs([...l])); // Clone array to force re-render
+      const unsubscribe = logger.subscribe((l: LogEntry[]) => setLogs([...l])); 
       return unsubscribe;
   }, []);
   
@@ -245,8 +244,8 @@ export const Settings: React.FC<SettingsProps> = ({
   const ToggleItem = ({ label, description, isOn, onToggle }: any) => (
     <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
         <div><h4 className="text-sm font-bold text-zinc-900 dark:text-white">{label}</h4>{description && <p className="text-[10px] text-zinc-500 font-medium mt-0.5">{description}</p>}</div>
-        <button onClick={onToggle} className={`w-12 h-7 rounded-full p-1 transition-colors duration-300 ${isOn ? 'bg-emerald-500' : 'bg-zinc-200 dark:bg-zinc-700'}`}>
-            <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${isOn ? 'translate-x-5' : 'translate-x-0'}`}></div>
+        <button onClick={onToggle} className={`w-10 h-6 rounded-full p-1 transition-colors duration-300 flex items-center ${isOn ? 'bg-emerald-500' : 'bg-zinc-200 dark:bg-zinc-700'}`}>
+            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${isOn ? 'translate-x-4' : 'translate-x-0'}`}></div>
         </button>
     </div>
   );
@@ -259,13 +258,13 @@ export const Settings: React.FC<SettingsProps> = ({
   );
 
   const ModalHeader = ({ title, subtitle, icon: Icon, color }: any) => (
-      <div className="flex items-center gap-4 mb-8 px-2">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm ${color}`}>
-              <Icon className="w-6 h-6" strokeWidth={1.5} />
+      <div className="flex items-center gap-4 mb-5 px-2">
+          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border shadow-sm shrink-0 ${color}`}>
+              <Icon className="w-5 h-5" strokeWidth={1.5} />
           </div>
           <div>
-              <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{title}</h2>
-              <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">{subtitle}</p>
+              <h2 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-none">{title}</h2>
+              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">{subtitle}</p>
           </div>
       </div>
   );
@@ -325,30 +324,30 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
         )}
 
-        {/* --- MODAIS DE CONFIGURAÇÃO (REDESENHADOS) --- */}
+        {/* --- MODAIS DE CONFIGURAÇÃO (COMPACTADOS) --- */}
 
         {activeSection === 'appearance' && (
-          <div className="space-y-8 bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up">
+          <div className="space-y-6 bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up">
             <ModalHeader title="Aparência" subtitle="Personalização" icon={Palette} color="bg-purple-100 dark:bg-purple-900/20 text-purple-600 border-purple-200 dark:border-purple-900/30" />
             
-            <div className="space-y-4">
+            <div className="space-y-2">
                  <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Tema do App</h3>
-                 <div className="grid grid-cols-3 gap-3">
+                 <div className="grid grid-cols-3 gap-2">
                     {[{ id: 'light', icon: Sun, label: 'Claro' }, { id: 'dark', icon: Moon, label: 'Escuro' }, { id: 'system', icon: Monitor, label: 'Auto' }].map(m => (
-                      <button key={m.id} onClick={() => onSetTheme(m.id as ThemeType)} className={`flex flex-col items-center p-4 rounded-3xl border transition-all duration-300 active:scale-95 ${theme === m.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-xl ring-2 ring-offset-2 ring-zinc-900 dark:ring-white ring-offset-zinc-50 dark:ring-offset-zinc-950' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>
-                        <m.icon className="w-8 h-8 mb-3" strokeWidth={1.5} />
-                        <span className="text-[10px] font-black uppercase tracking-wider">{m.label}</span>
+                      <button key={m.id} onClick={() => onSetTheme(m.id as ThemeType)} className={`flex flex-col items-center p-3 rounded-2xl border transition-all duration-300 active:scale-95 ${theme === m.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-xl ring-2 ring-offset-2 ring-zinc-900 dark:ring-white ring-offset-zinc-50 dark:ring-offset-zinc-950' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>
+                        <m.icon className="w-6 h-6 mb-2" strokeWidth={1.5} />
+                        <span className="text-[9px] font-black uppercase tracking-wider">{m.label}</span>
                       </button>
                     ))}
                   </div>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-2">
                  <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Cor de Destaque</h3>
-                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center shadow-sm">
+                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-center shadow-sm">
                     {ACCENT_COLORS.map((c) => (
-                        <button key={c.hex} onClick={() => onSetAccentColor(c.hex)} className={`w-10 h-10 rounded-full transition-all duration-300 flex items-center justify-center ${accentColor === c.hex ? 'scale-125 shadow-lg ring-2 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900' : 'hover:scale-110 opacity-70'}`} style={{ backgroundColor: c.hex, ['--tw-ring-color' as any]: c.hex }}>
-                            {accentColor === c.hex && <Check className="w-5 h-5 text-white" strokeWidth={3} />}
+                        <button key={c.hex} onClick={() => onSetAccentColor(c.hex)} className={`w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center ${accentColor === c.hex ? 'scale-125 shadow-lg ring-2 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900' : 'hover:scale-110 opacity-70'}`} style={{ backgroundColor: c.hex, ['--tw-ring-color' as any]: c.hex }}>
+                            {accentColor === c.hex && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
                         </button>
                     ))}
                  </div>
@@ -357,20 +356,20 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'notifications' && (
-             <div className="space-y-6 bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up">
+             <div className="space-y-4 bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up">
                  <ModalHeader title="Notificações" subtitle="Alertas & Push" icon={Bell} color="bg-sky-100 dark:bg-sky-900/20 text-sky-600 border-sky-200 dark:border-sky-900/30" />
                  
-                 <div className="bg-sky-50 dark:bg-sky-900/10 p-6 rounded-3xl border border-sky-100 dark:border-sky-900/30 flex items-center gap-5 shadow-sm">
-                     <div className="w-14 h-14 bg-white dark:bg-sky-900/50 rounded-2xl flex items-center justify-center text-sky-500 shadow-md"><Bell className="w-7 h-7" /></div>
-                     <div className="flex-1"><h3 className="font-black text-sky-900 dark:text-sky-100 text-lg tracking-tight">Ativar Push</h3><p className="text-xs font-medium text-sky-700 dark:text-sky-300 mt-1 leading-tight">Receba alertas sobre proventos e movimentações.</p></div>
-                     <button onClick={onRequestPushPermission} className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 ${pushEnabled ? 'bg-sky-500' : 'bg-zinc-200 dark:bg-zinc-700'}`}>
-                        <div className={`w-6 h-6 rounded-full bg-white shadow-sm transition-transform duration-300 ${pushEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                 <div className="bg-sky-50 dark:bg-sky-900/10 p-4 rounded-2xl border border-sky-100 dark:border-sky-900/30 flex items-center gap-4 shadow-sm">
+                     <div className="w-10 h-10 bg-white dark:bg-sky-900/50 rounded-xl flex items-center justify-center text-sky-500 shadow-md shrink-0"><Bell className="w-5 h-5" /></div>
+                     <div className="flex-1"><h3 className="font-black text-sky-900 dark:text-sky-100 text-base tracking-tight">Ativar Push</h3><p className="text-[10px] font-medium text-sky-700 dark:text-sky-300 mt-0.5 leading-tight">Receba alertas sobre proventos.</p></div>
+                     <button onClick={onRequestPushPermission} className={`w-10 h-6 rounded-full p-1 transition-colors duration-300 flex items-center ${pushEnabled ? 'bg-sky-500' : 'bg-zinc-200 dark:bg-zinc-700'}`}>
+                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${pushEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
                     </button>
                  </div>
                  
                  {pushEnabled && (
-                     <div className="space-y-3 anim-slide-up">
-                         <h3 className="px-2 mt-6 text-[10px] font-black uppercase tracking-widest text-zinc-500">Categorias</h3>
+                     <div className="space-y-2 anim-slide-up">
+                         <h3 className="px-2 mt-4 text-[10px] font-black uppercase tracking-widest text-zinc-500">Categorias</h3>
                          <ToggleItem label="Novos Proventos" description="Quando um FII ou Ação anunciar pagamento" isOn={notificationPrefs.dividends} onToggle={() => saveNotifPrefs({...notificationPrefs, dividends: !notificationPrefs.dividends})} />
                          <ToggleItem label="Variações Bruscas" description="Alertas de alta/baixa superior a 5%" isOn={notificationPrefs.prices} onToggle={() => saveNotifPrefs({...notificationPrefs, prices: !notificationPrefs.prices})} />
                      </div>
@@ -379,31 +378,31 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'services' && (
-          <div className="space-y-6 bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up">
+          <div className="space-y-4 bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up">
             <ModalHeader title="Rede" subtitle="Status dos Serviços" icon={Activity} color="bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-900/30" />
             
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 space-y-6 shadow-sm">
-              <div className="flex justify-between items-center mb-2">
-                <div><h3 className="text-sm font-bold text-zinc-900 dark:text-white">Conectividade</h3><p className="text-[10px] text-zinc-500 mt-0.5">Diagnóstico em tempo real</p></div>
-                <button onClick={onCheckConnection} disabled={isCheckingConnection} className={`flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform ${isCheckingConnection ? 'opacity-70' : ''}`}>
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-sm">
+              <div className="flex justify-between items-center mb-1">
+                <div><h3 className="text-xs font-bold text-zinc-900 dark:text-white">Conectividade</h3><p className="text-[10px] text-zinc-500 mt-0.5">Diagnóstico em tempo real</p></div>
+                <button onClick={onCheckConnection} disabled={isCheckingConnection} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-[9px] font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform ${isCheckingConnection ? 'opacity-70' : ''}`}>
                   <RefreshCw className={`w-3 h-3 ${isCheckingConnection ? 'animate-spin' : ''}`} /> {isCheckingConnection ? 'Testando...' : 'Re-testar'}
                 </button>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                   {services.map((s) => (
-                    <button key={s.id} onClick={() => setSelectedServiceId(s.id)} className="w-full flex items-center justify-between p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group active:scale-[0.98]">
-                        <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${s.status === 'operational' ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : s.status === 'degraded' ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600' : s.status === 'error' ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-600' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
-                                {s.icon && <s.icon className="w-5 h-5" />}
-                            </div>
-                            <div className="text-left"><p className="text-sm font-bold text-zinc-900 dark:text-white">{s.label}</p><p className="text-[10px] text-zinc-500 font-mono">{s.url ? new URL(s.url).hostname : 'Localhost'}</p></div>
-                        </div>
+                    <button key={s.id} onClick={() => setSelectedServiceId(s.id)} className="w-full flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group active:scale-[0.98]">
                         <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${s.status === 'operational' ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : s.status === 'degraded' ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600' : s.status === 'error' ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-600' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
+                                {s.icon && <s.icon className="w-4 h-4" />}
+                            </div>
+                            <div className="text-left"><p className="text-xs font-bold text-zinc-900 dark:text-white">{s.label}</p><p className="text-[9px] text-zinc-500 font-mono">{s.url ? new URL(s.url).hostname : 'Localhost'}</p></div>
+                        </div>
+                        <div className="flex items-center gap-2">
                              <div className="text-right">
-                                  {s.latency !== null ? <span className={`block text-[10px] font-black ${s.latency < 200 ? 'text-emerald-500' : s.latency < 800 ? 'text-amber-500' : 'text-rose-500'}`}>{s.latency}ms</span> : <span className="block text-[10px] text-zinc-400">-</span>}
-                                  <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                                  {s.latency !== null ? <span className={`block text-[9px] font-black ${s.latency < 200 ? 'text-emerald-500' : s.latency < 800 ? 'text-amber-500' : 'text-rose-500'}`}>{s.latency}ms</span> : <span className="block text-[9px] text-zinc-400">-</span>}
+                                  <div className="flex items-center justify-end gap-1 mt-0.5">
                                       <div className={`w-1.5 h-1.5 rounded-full ${s.status === 'operational' ? 'bg-emerald-500 animate-pulse' : s.status === 'degraded' ? 'bg-amber-500' : s.status === 'error' ? 'bg-rose-500' : 'bg-zinc-300'}`}></div>
-                                      <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400">{s.status === 'operational' ? 'Online' : s.status === 'checking' ? 'Testando' : s.status}</span>
+                                      <span className="text-[8px] font-black uppercase tracking-wider text-zinc-400">{s.status === 'operational' ? 'Online' : s.status === 'checking' ? 'Testando' : s.status}</span>
                                   </div>
                              </div>
                         </div>
@@ -412,39 +411,39 @@ export const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
             
-            <button onClick={() => setShowLogs(true)} className="w-full p-5 rounded-3xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-xl flex items-center justify-between group press-effect">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 dark:bg-zinc-900/10 flex items-center justify-center text-white dark:text-zinc-900"><Terminal className="w-5 h-5" /></div>
-                    <div className="text-left"><h4 className="text-sm font-black mb-0.5">Logs do Sistema</h4><p className="text-[10px] opacity-70 font-mono">{logs.length} registro(s)</p></div>
+            <button onClick={() => setShowLogs(true)} className="w-full p-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-xl flex items-center justify-between group press-effect">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/20 dark:bg-zinc-900/10 flex items-center justify-center text-white dark:text-zinc-900"><Terminal className="w-4 h-4" /></div>
+                    <div className="text-left"><h4 className="text-xs font-black mb-0.5">Logs do Sistema</h4><p className="text-[9px] opacity-70 font-mono">{logs.length} registro(s)</p></div>
                 </div>
-                <ChevronRight className="w-5 h-5 opacity-50 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
             </button>
           </div>
         )}
 
         {activeSection === 'data' && (
-          <div className="space-y-6 bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up">
+          <div className="space-y-4 bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up">
             <ModalHeader title="Dados" subtitle="Backup & Importação" icon={Database} color="bg-blue-100 dark:bg-blue-900/20 text-blue-600 border-blue-200 dark:border-blue-900/30" />
             
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 text-center shadow-sm">
-              <div className="space-y-4">
-                  <div className="p-5 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-left relative overflow-hidden">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center shadow-sm">
+              <div className="space-y-3">
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200 dark:border-zinc-800 text-left relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none"></div>
-                      <div className="flex items-center gap-4 mb-4 relative z-10">
-                          <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-200 dark:border-emerald-900/30"><FileSpreadsheet className="w-6 h-6" /></div>
-                          <div><h4 className="text-sm font-black text-zinc-900 dark:text-white">Importar da B3</h4><p className="text-[10px] text-zinc-500 mt-0.5">Arquivos Excel (.xlsx)</p></div>
+                      <div className="flex items-center gap-3 mb-3 relative z-10">
+                          <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-200 dark:border-emerald-900/30"><FileSpreadsheet className="w-5 h-5" /></div>
+                          <div><h4 className="text-xs font-black text-zinc-900 dark:text-white">Importar da B3</h4><p className="text-[10px] text-zinc-500 mt-0.5">Arquivos Excel (.xlsx)</p></div>
                       </div>
-                      <button onClick={() => excelInputRef.current?.click()} disabled={isImporting} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 relative z-10">
-                         {isImporting ? <RefreshCw className="w-3 h-3 animate-spin" /> : <FileSpreadsheet className="w-3 h-3" />} {isImporting ? 'Lendo Arquivo...' : 'Selecionar Planilha'}
+                      <button onClick={() => excelInputRef.current?.click()} disabled={isImporting} className="w-full py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 relative z-10">
+                         {isImporting ? <RefreshCw className="w-3 h-3 animate-spin" /> : <FileSpreadsheet className="w-3 h-3" />} {isImporting ? 'Lendo...' : 'Selecionar Planilha'}
                       </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={handleExport} className="py-4 bg-blue-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-2 h-24">
-                        <Database className="w-6 h-6" /> Exportar Backup
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={handleExport} className="py-3 bg-blue-500 text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1.5 h-20">
+                        <Database className="w-5 h-5" /> Exportar Backup
                     </button>
-                    <button onClick={() => fileInputRef.current?.click()} className="py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-all flex flex-col items-center justify-center gap-2 h-24 hover:bg-zinc-200 dark:hover:bg-zinc-700">
-                        <FileJson className="w-6 h-6" /> Importar JSON
+                    <button onClick={() => fileInputRef.current?.click()} className="py-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl font-black text-[9px] uppercase tracking-widest border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-all flex flex-col items-center justify-center gap-1.5 h-20 hover:bg-zinc-200 dark:hover:bg-zinc-700">
+                        <FileJson className="w-5 h-5" /> Importar JSON
                     </button>
                   </div>
               </div>
@@ -455,16 +454,16 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'privacy' && (
-          <div className="bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up space-y-6">
+          <div className="bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up space-y-4">
             <ModalHeader title="Privacidade" subtitle="Segurança Visual" icon={privacyMode ? EyeOff : Eye} color="bg-teal-100 dark:bg-teal-900/20 text-teal-600 border-teal-200 dark:border-teal-900/30" />
             
-            <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 text-center shadow-sm">
-                <div className={`w-24 h-24 mx-auto mb-6 rounded-[2rem] flex items-center justify-center transition-all duration-500 ${privacyMode ? 'bg-teal-500 text-white shadow-xl shadow-teal-500/30 rotate-0' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-300 rotate-12'}`}>
-                  {privacyMode ? <EyeOff className="w-10 h-10" /> : <Eye className="w-10 h-10" />}
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center shadow-sm">
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center transition-all duration-500 ${privacyMode ? 'bg-teal-500 text-white shadow-xl shadow-teal-500/30 rotate-0' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-300 rotate-12'}`}>
+                  {privacyMode ? <EyeOff className="w-8 h-8" /> : <Eye className="w-8 h-8" />}
                 </div>
-                <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2">Modo Discreto {privacyMode ? 'Ativado' : 'Desativado'}</h3>
-                <p className="text-xs text-zinc-500 mb-8 leading-relaxed max-w-xs mx-auto">Oculta todos os valores monetários na tela inicial e listagens. Ideal para uso em locais públicos.</p>
-                <button onClick={() => onSetPrivacyMode(!privacyMode)} className={`w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-teal-500 text-white shadow-teal-500/20'}`}>
+                <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-1">Modo Discreto {privacyMode ? 'Ativado' : 'Desativado'}</h3>
+                <p className="text-[10px] text-zinc-500 mb-6 leading-relaxed max-w-xs mx-auto">Oculta todos os valores monetários na tela inicial e listagens.</p>
+                <button onClick={() => onSetPrivacyMode(!privacyMode)} className={`w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all ${privacyMode ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-teal-500 text-white shadow-teal-500/20'}`}>
                   {privacyMode ? 'Desativar Proteção' : 'Ativar Proteção'}
                 </button>
             </div>
@@ -472,16 +471,16 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'reset' && (
-          <div className="bg-rose-50 dark:bg-rose-950/20 min-h-full p-1 rounded-3xl anim-slide-up space-y-6">
+          <div className="bg-rose-50 dark:bg-rose-950/20 min-h-full p-1 rounded-3xl anim-slide-up space-y-4">
             <ModalHeader title="Zona de Perigo" subtitle="Ações Destrutivas" icon={ShieldAlert} color="bg-rose-100 dark:bg-rose-900/20 text-rose-600 border-rose-200 dark:border-rose-900/30" />
             
-            <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-rose-100 dark:border-rose-900/30 text-center shadow-sm">
-                <div className="w-20 h-20 bg-rose-500 text-white mx-auto mb-6 rounded-3xl flex items-center justify-center shadow-2xl shadow-rose-500/30"><Trash2 className="w-10 h-10" /></div>
-                <h3 className="text-xl font-black text-rose-600 dark:text-rose-400 mb-2">Resetar Aplicação</h3>
-                <p className="text-xs text-rose-600/70 dark:text-rose-400/70 mb-8 leading-relaxed max-w-xs mx-auto">
-                    Isso apagará o cache local, preferências e dados temporários do dispositivo. Sua conta e dados na nuvem <strong>não</strong> serão afetados.
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-rose-100 dark:border-rose-900/30 text-center shadow-sm">
+                <div className="w-14 h-14 bg-rose-500 text-white mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-2xl shadow-rose-500/30"><Trash2 className="w-8 h-8" /></div>
+                <h3 className="text-lg font-black text-rose-600 dark:text-rose-400 mb-1">Resetar Aplicação</h3>
+                <p className="text-[10px] text-rose-600/70 dark:text-rose-400/70 mb-6 leading-relaxed max-w-xs mx-auto">
+                    Apaga cache local e preferências. Seus dados na nuvem <strong>não</strong> serão afetados.
                 </p>
-                <button onClick={onResetApp} className="w-full py-5 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-rose-500/20 active:scale-95 hover:bg-rose-700 transition-colors">
+                <button onClick={onResetApp} className="w-full py-4 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-rose-500/20 active:scale-95 hover:bg-rose-700 transition-colors">
                     Confirmar Limpeza
                 </button>
             </div>
@@ -489,11 +488,11 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
 
         {activeSection === 'about' && (
-          <div className="bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up space-y-6">
-            <div className="bg-white dark:bg-zinc-900 p-10 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 text-center overflow-hidden relative shadow-sm mt-4">
-                <div className="flex items-center justify-center gap-1 mb-6 relative select-none">
-                    <div className="w-[68px] h-[80px] flex items-center justify-center relative z-10">
-                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_12px_24px_rgba(14,165,233,0.3)]">
+          <div className="bg-zinc-50 dark:bg-zinc-950 min-h-full p-1 rounded-3xl anim-slide-up space-y-4">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 text-center overflow-hidden relative shadow-sm mt-4">
+                <div className="flex items-center justify-center gap-1 mb-4 relative select-none">
+                    <div className="w-[50px] h-[60px] flex items-center justify-center relative z-10">
+                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_8px_16px_rgba(14,165,233,0.3)]">
                             <defs>
                                 <linearGradient id="logo_grad_about" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
                                     <stop offset="0%" stopColor="#10b981"/>
@@ -507,29 +506,29 @@ export const Settings: React.FC<SettingsProps> = ({
                             <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_about)"/>
                     </svg>
                     </div>
-                    <span className="font-display text-[52px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-1 -ml-2 drop-shadow-sm">NVEST</span>
+                    <span className="font-display text-[40px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-1 -ml-1 drop-shadow-sm">NVEST</span>
                 </div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full mb-6 border border-zinc-200 dark:border-zinc-700">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">v{appVersion}</span>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-full mb-4 border border-zinc-200 dark:border-zinc-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">v{appVersion}</span>
               </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-8 max-w-xs mx-auto">Gestão inteligente e simplificada para carteiras de dividendos na B3. Focado em performance e design.</p>
-              <div className="flex justify-center gap-4">
-                 <button className="w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors border border-zinc-100 dark:border-zinc-700"><Github className="w-6 h-6" /></button>
-                 <button className="w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors border border-zinc-100 dark:border-zinc-700"><Globe className="w-6 h-6" /></button>
+              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-6 max-w-xs mx-auto">Gestão inteligente e simplificada para carteiras de dividendos na B3. Focado em performance e design.</p>
+              <div className="flex justify-center gap-3">
+                 <button className="w-12 h-12 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors border border-zinc-100 dark:border-zinc-700"><Github className="w-5 h-5" /></button>
+                 <button className="w-12 h-12 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors border border-zinc-100 dark:border-zinc-700"><Globe className="w-5 h-5" /></button>
               </div>
             </div>
             
-            <div className="bg-zinc-900 dark:bg-black p-6 rounded-3xl text-left relative overflow-hidden group border border-zinc-800">
+            <div className="bg-zinc-900 dark:bg-black p-5 rounded-2xl text-left relative overflow-hidden group border border-zinc-800">
                 <div className="relative z-10">
-                    <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><Smartphone className="w-4 h-4 text-zinc-400" /> Info Técnica</h4>
-                    <div className="text-[10px] font-mono text-zinc-500 space-y-1.5 border-l-2 border-zinc-800 pl-3">
+                    <h4 className="text-xs font-bold text-white mb-2 flex items-center gap-2"><Smartphone className="w-3 h-3 text-zinc-400" /> Info Técnica</h4>
+                    <div className="text-[9px] font-mono text-zinc-500 space-y-1 border-l-2 border-zinc-800 pl-2">
                         <p>User ID: {user?.id?.substring(0,8)}...</p>
                         <p>Build: {currentVersionDate || 'Dev Branch'}</p>
                         <p>Theme: {theme} | Accent: {accentColor}</p>
                     </div>
                 </div>
-                <button onClick={handleCopyDebug} className="absolute top-6 right-6 p-2 bg-zinc-800 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors active:scale-95"><Copy className="w-4 h-4" /></button>
+                <button onClick={handleCopyDebug} className="absolute top-4 right-4 p-2 bg-zinc-800 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors active:scale-95"><Copy className="w-3 h-3" /></button>
             </div>
           </div>
         )}
