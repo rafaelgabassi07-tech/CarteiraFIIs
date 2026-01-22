@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, ArrowRight, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, ArrowRight, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -67,33 +67,47 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, typeRa
     };
 };
 
+// --- SMART FEED DISCRETO ---
 const SmartFeed = ({ insights }: { insights: PortfolioInsight[] }) => {
     if (insights.length === 0) return null;
 
     return (
-        <div className="w-full overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 flex gap-3 snap-x snap-mandatory anim-slide-in-right">
-            {insights.map((insight, idx) => {
+        <div className="w-full overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 flex gap-2 snap-x snap-mandatory anim-slide-in-right">
+            {insights.map((insight) => {
                 let colors = '';
+                let iconColor = '';
                 let Icon = Lightbulb;
                 
-                if (insight.type === 'opportunity') { colors = 'bg-sky-50 dark:bg-sky-900/10 border-sky-100 dark:border-sky-900/30 text-sky-700 dark:text-sky-300'; Icon = Sparkles; }
-                else if (insight.type === 'warning') { colors = 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-300'; Icon = AlertTriangle; }
-                else if (insight.type === 'success') { colors = 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-300'; Icon = TrendingUp; }
-                else { colors = 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'; }
+                if (insight.type === 'opportunity') { 
+                    colors = 'bg-sky-50/50 dark:bg-sky-900/10 border-sky-100/50 dark:border-sky-800/30'; 
+                    iconColor = 'text-sky-500';
+                    Icon = Sparkles; 
+                }
+                else if (insight.type === 'warning') { 
+                    colors = 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-100/50 dark:border-amber-800/30'; 
+                    iconColor = 'text-amber-500';
+                    Icon = AlertTriangle; 
+                }
+                else if (insight.type === 'success') { 
+                    colors = 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100/50 dark:border-emerald-800/30'; 
+                    iconColor = 'text-emerald-500';
+                    Icon = TrendingUp; 
+                }
+                else { 
+                    colors = 'bg-zinc-50/50 dark:bg-zinc-900 border-zinc-200/50 dark:border-zinc-800'; 
+                    iconColor = 'text-zinc-400';
+                    Icon = Zap;
+                }
 
                 return (
-                    <div key={insight.id} className={`snap-center shrink-0 w-[260px] p-4 rounded-2xl border ${colors} shadow-sm relative overflow-hidden group`}>
-                        <div className="flex items-start gap-3 relative z-10">
-                            <div className="p-2 rounded-lg bg-white/50 dark:bg-black/20 shrink-0">
-                                <Icon className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <h4 className="text-xs font-black uppercase tracking-wide mb-1 opacity-90">{insight.title}</h4>
-                                <p className="text-[10px] font-medium leading-relaxed opacity-80">{insight.message}</p>
-                            </div>
+                    <div key={insight.id} className={`snap-center shrink-0 w-[240px] p-3 rounded-xl border ${colors} flex items-center gap-3 active:scale-95 transition-transform`}>
+                        <div className={`p-1.5 rounded-lg bg-white dark:bg-black/20 shrink-0 ${iconColor}`}>
+                            <Icon className="w-3.5 h-3.5" strokeWidth={2} />
                         </div>
-                        {/* Efeito de pulso suave */}
-                        {idx === 0 && <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-current opacity-50 animate-pulse"></div>}
+                        <div className="min-w-0">
+                            <h4 className="text-[10px] font-black uppercase tracking-wide text-zinc-700 dark:text-zinc-300 truncate leading-none mb-1">{insight.title}</h4>
+                            <p className="text-[9px] font-medium text-zinc-500 dark:text-zinc-400 leading-tight line-clamp-2">{insight.message}</p>
+                        </div>
                     </div>
                 );
             })}
@@ -502,6 +516,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* MODAIS (Código permanece o mesmo, apenas se beneficiando das animações globais e layout atualizado) */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
+        {/* ... Conteúdo mantido idêntico ... */}
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-200 dark:border-zinc-700`}><CalendarDays className="w-6 h-6" /></div>
@@ -573,8 +588,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
-      {/* ... Resto dos modais (Allocation, Proventos, Raio-X) mantidos idênticos ao código original ... */}
+      {/* ... Resto dos modais (Allocation, Proventos, Raio-X) mantidos ... */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
+         {/* ... Conteúdo Alocação ... */}
          <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 border-zinc-200 dark:border-zinc-700`}><PieIcon className="w-6 h-6" strokeWidth={1.5} /></div>
@@ -680,7 +696,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); setExpandedMonth(null); }}>
-         {/* ... Conteúdo do modal de proventos mantido ... */}
+         {/* ... Conteúdo Proventos ... */}
          <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-zinc-200 dark:border-zinc-700`}><Wallet className="w-6 h-6" strokeWidth={1.5} /></div>

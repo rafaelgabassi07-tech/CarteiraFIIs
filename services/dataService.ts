@@ -10,7 +10,6 @@ export interface UnifiedMarketData {
 }
 
 const fetchInflationData = async (): Promise<number> => {
-    // 1. Tenta recuperar o último valor REAL conhecido do cache local
     let lastKnownReal = 0;
     try {
         const s = localStorage.getItem('investfiis_v4_indicators');
@@ -47,19 +46,14 @@ const fetchInflationData = async (): Promise<number> => {
 const parseNumberSafe = (val: any): number => {
     if (typeof val === 'number') return val;
     if (!val) return 0;
-    // Tenta limpar strings comuns de porcentagem ou moeda
     const str = String(val).trim().replace('R$', '').replace('%', '').trim();
-    // Substitui vírgula por ponto apenas se for o separador decimal (simples)
-    // Ex: 1.050,00 -> 1050.00 | 10,5 -> 10.5
     const cleanStr = str.replace(/\./g, '').replace(',', '.');
     const num = parseFloat(cleanStr);
     return isNaN(num) ? 0 : num;
 };
 
-// Helper para normalizar tickers fracionários (ITSA4F -> ITSA4)
 const normalizeTickerRoot = (t: string) => {
     let clean = t.trim().toUpperCase();
-    // Remove "F" final apenas se não for FII (terminado em 11 ou 11B) e tiver tamanho típico de ação
     if (clean.endsWith('F') && !clean.endsWith('11') && !clean.endsWith('11B') && clean.length <= 6) {
         return clean.slice(0, -1);
     }
@@ -71,7 +65,6 @@ const normalizeTickerRoot = (t: string) => {
  * Centraliza a lógica de mapeamento para garantir consistência.
  */
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
-    // Helper para buscar valor em múltiplas chaves possíveis
     const getVal = (...keys: string[]) => {
         for (const k of keys) {
             if (m[k] !== undefined && m[k] !== null && m[k] !== 'N/A' && m[k] !== '') return m[k];
@@ -85,7 +78,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield')), 
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
-        liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', // Mantém string original se possível
+        liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
         market_cap: getVal('valor_mercado', 'val_mercado', 'market_cap') || undefined, 
         
         // Ações
@@ -96,15 +89,16 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'net_debt_ebitda')),
         ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
         lpa: parseNumberSafe(getVal('lpa')),
-        vpa: parseNumberSafe(getVal('vpa', 'vp_cota', 'vp')), // FIIs usam vp_cota/vpa
+        vpa: parseNumberSafe(getVal('vpa', 'vp_cota', 'vp')),
 
-        // FIIs (Chaves críticas revisadas)
+        // FIIs
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica', 'vacancy')),
         manager_type: getVal('tipo_gestao', 'manager_type') || undefined,
-        assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, // String original preservada (ex: R$ 2,5 B)
+        // Garante leitura de patrimônio líquido (String do Scraper ou do DB)
+        assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
         management_fee: getVal('taxa_adm', 'management_fee') || undefined,
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento', 'last_dividend', 'rendimento')),
-        properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')), // Reusando campo properties_count como num_cotistas temporariamente ou criando novo
+        properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
         
         updated_at: m.updated_at,
         
@@ -115,12 +109,9 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
 
 // Função para acionar o Scraper no Backend (Serverless)
 export const triggerScraperUpdate = async (tickers: string[], onProgress?: (current: number, total: number) => void): Promise<ScrapeResult[]> => {
-    // Normaliza para remover o F de fracionário, pois o scraper busca pelo ticker padrão
     const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
     let processed = 0;
     const results: ScrapeResult[] = [];
-
-    // Processa em lotes pequenos para evitar timeout do navegador ou rate limit
     const BATCH_SIZE = 3;
     
     for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
@@ -128,7 +119,6 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
         
         await Promise.all(batch.map(async (ticker) => {
             try {
-                // Chama o endpoint que faz o scrape real (Investidor10/StatusInvest)
                 const res = await fetch(`/api/update-stock?ticker=${ticker}`);
                 const data = await res.json();
 
@@ -143,9 +133,8 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
                             pvp: parseNumberSafe(meta.pvp),
                             pl: parseNumberSafe(meta.pl)
                         },
-                        // Importante: Passa os dados brutos para o frontend atualizar state imediatamente
                         rawFundamentals: meta,
-                        dividendsFound: data.dividends // Captura os dividendos retornados pela API
+                        dividendsFound: data.dividends 
                     });
                 } else {
                     throw new Error(data.error || 'Falha na resposta da API');
@@ -163,7 +152,6 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
             }
         }));
 
-        // Pequeno delay entre lotes para gentileza com a API de destino
         if (i + BATCH_SIZE < uniqueTickers.length) {
             await new Promise(r => setTimeout(r, 1000));
         }
@@ -175,11 +163,9 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
-  // Normaliza tickers para remover "F" fracionário e garantir match com banco de dados
   const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
 
   try {
-      // 1. Busca Dividendos
       const { data: dividendsData, error: divError } = await supabase
             .from('market_dividends')
             .select('*')
@@ -189,7 +175,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       const dividends: DividendReceipt[] = (dividendsData || []).map((d: any) => ({
             id: d.id,
-            ticker: d.ticker, // Ticker vindo do banco (geralmente sem F)
+            ticker: d.ticker,
             type: d.type,
             dateCom: d.date_com, 
             paymentDate: d.payment_date,
@@ -198,7 +184,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
-      // 2. Busca Metadados
       const { data: metaData, error: metaError } = await supabase
             .from('ativos_metadata')
             .select('*')
@@ -210,16 +195,13 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       
       if (metaData) {
           metaData.forEach((m: any) => {
-              // Determina tipo
               let assetType = AssetType.STOCK;
-              // Check robusto para FIIs: 'FII' explícito ou ticker terminando em 11/11B (padrão)
               if (m.type === 'FII' || m.ticker.endsWith('11') || m.ticker.endsWith('11B')) {
                   assetType = AssetType.FII;
               }
 
               const normalizedTicker = m.ticker.trim().toUpperCase();
 
-              // Usa o helper centralizado para mapear dados
               metadata[normalizedTicker] = {
                   segment: m.segment || 'Geral',
                   type: assetType,
@@ -228,7 +210,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           });
       }
 
-      // 3. Busca Inflação (IPCA 12 Meses Real)
       const ipca = await fetchInflationData();
 
       return { 
@@ -257,7 +238,6 @@ export const fetchMarketOverview = async (): Promise<MarketOverview> => {
              throw new Error('Falha ao obter dados de mercado');
         }
         
-        // Se houver erro estruturado do backend
         if (data.error) {
             throw new Error(data.message || 'Erro desconhecido');
         }

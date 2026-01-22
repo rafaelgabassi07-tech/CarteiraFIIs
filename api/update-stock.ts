@@ -109,10 +109,10 @@ const parseToISODate = (val: any): string | null => {
 const KEY_MAP: Record<string, string> = {
     // Cotação e Valuation
     'cotacao': 'cotacao_atual', 'valoratual': 'cotacao_atual', 'preco': 'cotacao_atual',
-    'pvp': 'pvp', 'vp': 'pvp', 'psobrevp': 'pvp',
-    'pl': 'pl', 'psorel': 'pl', 'precolucro': 'pl',
+    'pvp': 'pvp', 'vp': 'pvp', 'psobrevp': 'pvp', 'p/vp': 'pvp',
+    'pl': 'pl', 'psorel': 'pl', 'precolucro': 'pl', 'p/l': 'pl',
     'dy': 'dy', 'dividendyield': 'dy', 'dy12m': 'dy',
-    'vpa': 'vp_cota', 'vpporcota': 'vp_cota', 'valorpatrimonialporcota': 'vp_cota', 'valpatrimonial': 'vp_cota', 'vp_cota': 'vp_cota',
+    'vpa': 'vp_cota', 'vpporcota': 'vp_cota', 'valorpatrimonialporcota': 'vp_cota', 'valpatrimonial': 'vp_cota', 'vp_cota': 'vp_cota', 'vp': 'vp_cota',
     'lpa': 'lpa', 'lucroporacao': 'lpa',
     'evebitda': 'ev_ebitda',
     'dividaliquidaebitda': 'divida_liquida_ebitda',
@@ -128,7 +128,7 @@ const KEY_MAP: Record<string, string> = {
     
     // FIIs Específico
     'vacanciafisica': 'vacancia', 'vacancia': 'vacancia',
-    'patrimonioliquido': 'patrimonio_liquido', 'patrimonio': 'patrimonio_liquido', 'patrim': 'patrimonio_liquido',
+    'patrimonioliquido': 'patrimonio_liquido', 'patrimonio': 'patrimonio_liquido', 'patrim': 'patrimonio_liquido', 'patrimliq': 'patrimonio_liquido',
     'valordemercado': 'val_mercado', 'valormercado': 'val_mercado',
     'taxadeadministracao': 'taxa_adm', 'taxaadm': 'taxa_adm',
     'segmento': 'segmento',
@@ -136,6 +136,9 @@ const KEY_MAP: Record<string, string> = {
     'liquidezmediadiaria': 'liquidez', 'liquidez': 'liquidez', 'liquidezdiaria': 'liquidez',
     'numerodecotistas': 'num_cotistas', 'cotistas': 'num_cotistas', 'numcotistas': 'num_cotistas'
 };
+
+// Chaves que devem permanecer como STRING para não perder "M" (Milhões) ou "B" (Bilhões)
+const STRING_KEYS = new Set(['liquidez', 'val_mercado', 'patrimonio_liquido', 'tipo_gestao', 'segmento', 'taxa_adm', 'num_cotistas']);
 
 // ---------------------------------------------------------
 // SCRAPER ENGINE
@@ -212,6 +215,7 @@ async function scrapeInvestidor10(ticker: string) {
                  const val = $(item).find('.data, .value').text().trim();
                  const key = normalizeKey(label);
                  if (key.includes('vacancia')) extracted['vacancia'] = val;
+                 // Prioriza busca manual de patrimônio se faltou
                  if (key.includes('patrimonio') && !extracted.patrimonio_liquido) extracted['patrimonio_liquido'] = val;
              });
         }
@@ -316,7 +320,8 @@ async function scrapeInvestidor10(ticker: string) {
                 ev_ebitda: parseValue(extracted.ev_ebitda),
                 cagr_receita_5a: parseValue(extracted.cagr_receita_5a),
                 cagr_lucros_5a: parseValue(extracted.cagr_lucros_5a),
-                // Strings preservadas - Tenta capturar a string original se não for 0
+                
+                // Campos de Texto Preservados (Para não perder "M" ou "B")
                 liquidez: extracted.liquidez || 'N/A',
                 val_mercado: extracted.val_mercado || 'N/A',
                 tipo_gestao: extracted.tipo_gestao || 'N/A',
@@ -379,7 +384,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 updated_at: metadata.updated_at,
                 lpa: metadata.lpa,
                 vpa: metadata.vp_cota, 
-                vp_cota: metadata.vp_cota, // Garante que o campo correto do DB seja preenchido
+                vp_cota: metadata.vp_cota,
                 margem_liquida: metadata.margem_liquida,
                 margem_bruta: metadata.margem_bruta,
                 divida_liquida_ebitda: metadata.divida_liquida_ebitda,
@@ -387,7 +392,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 cagr_receita: metadata.cagr_receita_5a,
                 cagr_lucro: metadata.cagr_lucros_5a,
                 tipo_gestao: metadata.tipo_gestao,
-                patrimonio_liquido: metadata.patrimonio_liquido,
+                patrimonio_liquido: metadata.patrimonio_liquido, // Agora passa a string bruta
                 taxa_adm: metadata.taxa_adm,
                 ultimo_rendimento: metadata.ultimo_rendimento
             };
@@ -406,7 +411,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                  rate: d.rate
              }));
 
-             // Atualiza datas de pagamento futuras se agora tiverem data real
              const datesWithRealPayment = divPayload
                 .filter(d => d.payment_date !== '2099-12-31')
                 .map(d => d.date_com);
