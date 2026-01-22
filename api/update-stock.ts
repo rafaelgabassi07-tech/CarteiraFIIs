@@ -121,8 +121,8 @@ const KEY_MAP: Record<string, string> = {
     'patrimonioliquido': 'patrimonio_liquido',
     'taxadeadministracao': 'taxa_adm',
     'segmento': 'segmento',
-    'tipodegestao': 'tipo_gestao',
-    'liquidezmediadiaria': 'liquidez', 'liquidez': 'liquidez',
+    'tipodegestao': 'tipo_gestao', 'gestao': 'tipo_gestao',
+    'liquidezmediadiaria': 'liquidez', 'liquidez': 'liquidez', 'liquidezdiaria': 'liquidez',
     'valordemercado': 'val_mercado'
 };
 
@@ -160,9 +160,15 @@ async function scrapeInvestidor10(ticker: string) {
             const text = $(el).clone().children().remove().end().text().trim();
             if (!text || text.length > 50) return; 
             const normText = normalizeKey(text);
+            
             if (KEY_MAP[normText] && !extracted[KEY_MAP[normText]]) {
                 let value = $(el).next().text().trim() || $(el).siblings('.value').text().trim() || $(el).parent().find('.value').text().trim();
-                if (value && (/[0-9]/.test(value) || value === '-')) {
+                
+                // CRITICAL FIX: Permitir texto para campos não numéricos (Gestão/Segmento)
+                // Liquidez Diária, Vacância, Patrimônio precisam passar também
+                const isTextField = ['tipo_gestao', 'segmento', 'taxa_adm'].includes(KEY_MAP[normText]);
+                
+                if (value && (isTextField || /[0-9]/.test(value) || value === '-')) {
                     extracted[KEY_MAP[normText]] = value;
                 }
             }
