@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem } from '../types';
@@ -68,31 +67,44 @@ const getEventStyle = (eventType: 'payment' | 'datacom', dateStr: string, typeRa
     };
 };
 
-// --- COMPONENTES STORIES (REFORMULADO) ---
+// --- COMPONENTES STORIES (REFORMULADO v3) ---
 
 const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights: PortfolioInsight[], startIndex: number, onClose: () => void, onMarkAsRead: (id: string) => void }) => {
     const [currentIndex, setCurrentIndex] = useState(startIndex);
+    const [direction, setDirection] = useState<'next' | 'prev' | 'init'>('init');
     const touchStartX = useRef<number | null>(null);
+    const markReadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentInsight = insights[currentIndex];
 
-    // Marca como lido imediatamente ao visualizar
+    // Marca como lido com DELAY (Para evitar marcar ao pular rápido)
     useEffect(() => {
+        if (markReadTimeoutRef.current) clearTimeout(markReadTimeoutRef.current);
+        
         if (currentInsight) {
-            onMarkAsRead(currentInsight.id);
+            // Só marca como lido se o usuário ficar no story por 700ms
+            markReadTimeoutRef.current = setTimeout(() => {
+                onMarkAsRead(currentInsight.id);
+            }, 700);
         }
+
+        return () => {
+            if (markReadTimeoutRef.current) clearTimeout(markReadTimeoutRef.current);
+        };
     }, [currentIndex, currentInsight, onMarkAsRead]);
 
     // Handlers de Navegação
     const goNext = useCallback(() => {
+        setDirection('next');
         if (currentIndex < insights.length - 1) {
             setCurrentIndex(prev => prev + 1);
         } else {
-            onClose(); // Fecha se for o último
+            onClose(); 
         }
     }, [currentIndex, insights.length, onClose]);
 
     const goPrev = useCallback(() => {
         if (currentIndex > 0) {
+            setDirection('prev');
             setCurrentIndex(prev => prev - 1);
         }
     }, [currentIndex]);
@@ -118,7 +130,6 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
         return () => window.removeEventListener('keydown', handleKey);
     }, [goNext, goPrev, onClose]);
 
-    // PROTEÇÃO CONTRA CRASH: Se currentInsight for undefined, não renderiza
     if (!currentInsight) return null;
 
     // Configuração Visual baseada no tipo
@@ -136,13 +147,36 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const theme = getTheme();
     const Icon = theme.icon;
 
-    // Usando Portal para garantir que fique por cima de tudo
+    // Determina a classe de animação baseada na direção
+    const animationClass = direction === 'init' ? 'anim-fade-in' : 
+                           direction === 'next' ? 'animate-[slideInRight_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]' : 
+                           'animate-[slideInLeft_0.4s_cubic-bezier(0.16,1,0.3,1)_forwards]';
+
     return createPortal(
         <div 
-            className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-3xl flex flex-col anim-fade-in"
+            className="fixed inset-0 z-[9999] bg-black flex flex-col"
             onTouchStart={handleTouchStart} 
             onTouchEnd={handleTouchEnd}
         >
+            <style>{`
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0.8; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideInLeft {
+                    from { transform: translateX(-100%); opacity: 0.8; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `}</style>
+
+            {/* Imagem de Fundo (Blur) */}
+            {currentInsight.imageUrl && (
+                <div className="absolute inset-0 z-0">
+                    <img src={currentInsight.imageUrl} alt="" className="w-full h-full object-cover opacity-30 blur-3xl scale-125" />
+                    <div className="absolute inset-0 bg-black/60"></div>
+                </div>
+            )}
+
             {/* Áreas de Toque Invisíveis (Navegação) */}
             <div className="absolute inset-y-0 left-0 w-[30%] z-20" onClick={(e) => { e.stopPropagation(); goPrev(); }} />
             <div className="absolute inset-y-0 right-0 w-[30%] z-20" onClick={(e) => { e.stopPropagation(); goNext(); }} />
@@ -161,17 +195,17 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
             {/* Botão Fechar */}
             <button 
                 onClick={(e) => { e.stopPropagation(); onClose(); }} 
-                className="absolute top-6 right-4 z-40 p-2 text-white/50 hover:text-white mt-[calc(env(safe-area-inset-top))] transition-colors rounded-full bg-black/20 backdrop-blur-sm"
+                className="absolute top-6 right-4 z-40 p-2 text-white/70 hover:text-white mt-[calc(env(safe-area-inset-top))] transition-colors rounded-full bg-black/20 backdrop-blur-md active:scale-95"
             >
                 <X className="w-6 h-6 drop-shadow-md" strokeWidth={2.5} />
             </button>
 
-            {/* Conteúdo Central */}
-            <div className="flex-1 flex items-center justify-center p-6 relative z-10 pointer-events-none">
-                <div key={currentInsight.id} className="w-full max-w-sm flex flex-col items-center text-center anim-pop">
+            {/* Conteúdo Central - Animação no Container */}
+            <div key={currentIndex} className={`flex-1 flex items-center justify-center p-6 relative z-10 pointer-events-none ${animationClass}`}>
+                <div className="w-full max-w-sm flex flex-col items-center text-center">
                     
-                    {/* Círculo Principal com Imagem/Ícone */}
-                    <div className={`w-32 h-32 rounded-full p-1 bg-gradient-to-br ${theme.bg} shadow-2xl mb-10 shadow-${theme.accent}/30 ring-4 ring-black/20`}>
+                    {/* Círculo Principal */}
+                    <div className={`w-32 h-32 rounded-full p-1 bg-gradient-to-br ${theme.bg} shadow-2xl mb-8 shadow-${theme.accent}/40 ring-4 ring-black/30`}>
                         <div className="w-full h-full rounded-full bg-zinc-900 border-[4px] border-black/40 overflow-hidden flex items-center justify-center relative">
                              {currentInsight.imageUrl ? (
                                 <img src={currentInsight.imageUrl} className="w-full h-full object-cover" alt="" />
@@ -191,7 +225,7 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                         {currentInsight.title}
                     </h2>
                     
-                    <p className="text-base text-zinc-300 leading-relaxed font-medium mb-12 max-w-[90%] drop-shadow-md">
+                    <p className="text-base text-zinc-200 leading-relaxed font-medium mb-12 max-w-[90%] drop-shadow-md">
                         {currentInsight.message}
                     </p>
 
@@ -200,8 +234,8 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                             href={currentInsight.url} 
                             target="_blank" 
                             rel="noreferrer" 
-                            onClick={(e) => e.stopPropagation()} // Permite clique no link sem avançar story
-                            className="pointer-events-auto px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform flex items-center gap-3 shadow-xl"
+                            onClick={(e) => e.stopPropagation()} 
+                            className="pointer-events-auto px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform flex items-center gap-3 shadow-xl active:scale-95"
                         >
                             Ler Completo <ArrowUpRight className="w-4 h-4" />
                         </a>
@@ -229,7 +263,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
     }, [insights, readStories]);
 
     const handleStoryClick = (index: number) => {
-        // Congela a lista atual para o viewer, para que mudanças de "Lido" não reordenem enquanto o usuário vê
+        // Congela a lista atual para o viewer
         setViewerData({
             list: sortedInsights,
             startIndex: index
