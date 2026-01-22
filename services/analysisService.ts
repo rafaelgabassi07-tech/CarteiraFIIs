@@ -32,7 +32,8 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news:
                 title: isPositive ? `${asset.ticker} Subindo` : `${asset.ticker} Caindo`,
                 message: `${asset.ticker} está com variação de ${isPositive ? '+' : ''}${change.toFixed(2)}% hoje. ${isPositive ? 'Excelente momento!' : 'Atenção ao mercado.'}`,
                 relatedTicker: asset.ticker,
-                score: 100 + absChange, // Quanto maior a variação, maior o score (aparece primeiro)
+                imageUrl: asset.logoUrl, // Usa a logo do ativo se existir
+                score: 100 + absChange, // Quanto maior a variação, maior o score
                 timestamp: now
             });
         }
@@ -43,21 +44,22 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news:
     const portfolioTickers = new Set(portfolio.map(p => p.ticker));
     
     news.forEach(item => {
-        // Verifica se é recente (parsing da string de data relativa ou uso de timestamp se disponível)
-        // Como o app usa 'há x horas', assumimos que a API News já retorna ordenado.
-        // Vamos considerar as top news como recentes.
-        
         // Tenta associar notícia a um ativo da carteira
         let relatedTicker = undefined;
+        let assetLogo = undefined;
         let score = 50;
 
         // Se o título menciona um ticker da carteira
-        portfolio.forEach(asset => {
-            if (item.title.toUpperCase().includes(asset.ticker) || item.summary.toUpperCase().includes(asset.ticker)) {
-                relatedTicker = asset.ticker;
-                score = 90; // Notícia direta sobre ativo da carteira tem prioridade alta
-            }
-        });
+        const matchedAsset = portfolio.find(asset => 
+            item.title.toUpperCase().includes(asset.ticker) || 
+            item.summary.toUpperCase().includes(asset.ticker)
+        );
+
+        if (matchedAsset) {
+            relatedTicker = matchedAsset.ticker;
+            assetLogo = matchedAsset.logoUrl;
+            score = 90; // Notícia direta sobre ativo da carteira tem prioridade alta
+        }
 
         // Se não tem ticker, mas é Macro importante
         if (!relatedTicker) {
@@ -73,16 +75,16 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news:
             type: 'news',
             title: relatedTicker || item.source,
             message: item.title,
-            relatedTicker: relatedTicker, // Pode ser undefined
+            relatedTicker: relatedTicker, 
             url: item.url,
-            imageUrl: item.imageUrl,
+            // Prioriza imagem da notícia, se não tiver, tenta logo do ativo
+            imageUrl: item.imageUrl || assetLogo, 
             score: score,
             timestamp: now
         });
     });
 
     // --- 3. ANÁLISE FUNDAMENTALISTA (Baixa Prioridade - Educativo) ---
-    // Só gera se não houver muitos eventos urgentes
     
     // Cálculo do Yield Médio Ponderado da Carteira
     let weightedDySum = 0;
@@ -109,6 +111,7 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news:
                 title: `Risco: Vacância`,
                 message: `${asset.ticker} reportou ${asset.vacancy}% de vacância física. Fique atento.`,
                 relatedTicker: asset.ticker,
+                imageUrl: asset.logoUrl,
                 score: 75
             });
         }
@@ -121,6 +124,7 @@ export const analyzePortfolio = (portfolio: AssetPosition[], ipca: number, news:
                 title: 'Oportunidade',
                 message: `${asset.ticker} está descontado (P/VP ${asset.p_vp}) com alto Yield.`,
                 relatedTicker: asset.ticker,
+                imageUrl: asset.logoUrl,
                 score: 70
             });
         }

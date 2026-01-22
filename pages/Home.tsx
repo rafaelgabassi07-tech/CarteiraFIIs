@@ -87,9 +87,9 @@ const StoryOverlay = ({ insight, onClose }: { insight: PortfolioInsight, onClose
 
     // Fecha ao clicar fora ou no botão
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md anim-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl anim-fade-in" onClick={onClose}>
             <div 
-                className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2rem] overflow-hidden shadow-2xl relative anim-scale-in flex flex-col max-h-[80vh]" 
+                className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2.5rem] overflow-hidden shadow-2xl relative anim-scale-in flex flex-col max-h-[85vh]" 
                 onClick={e => e.stopPropagation()}
             >
                 {/* Barra de Progresso Decorativa */}
@@ -99,38 +99,51 @@ const StoryOverlay = ({ insight, onClose }: { insight: PortfolioInsight, onClose
 
                 {/* Conteúdo */}
                 <div className="p-8 text-center flex flex-col items-center flex-1 overflow-y-auto">
-                    <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${theme.bg} flex items-center justify-center text-white mb-6 shadow-lg shadow-zinc-200 dark:shadow-none shrink-0`}>
-                        <Icon className="w-10 h-10" strokeWidth={1.5} />
+                    <div className="relative mb-8">
+                        {/* Imagem de Fundo/Destaque */}
+                        <div className={`w-28 h-28 rounded-full bg-gradient-to-br ${theme.bg} p-1 shadow-2xl shadow-zinc-300 dark:shadow-none`}>
+                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-900 overflow-hidden flex items-center justify-center border-4 border-transparent">
+                                {insight.imageUrl ? (
+                                    <img src={insight.imageUrl} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                    <Icon className={`w-12 h-12 ${theme.accent}`} strokeWidth={1.5} />
+                                )}
+                            </div>
+                        </div>
+                        {/* Ícone de Tipo flutuante */}
+                        <div className={`absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-lg border-2 border-zinc-50 dark:border-zinc-900`}>
+                            <Icon className={`w-5 h-5 ${theme.accent}`} />
+                        </div>
                     </div>
                     
-                    <div className="mb-2">
-                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 ${theme.accent}`}>
+                    <div className="mb-4">
+                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 ${theme.accent}`}>
                             {theme.label}
                         </span>
                     </div>
 
-                    <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-4 tracking-tight leading-tight">
+                    <h3 className="text-2xl font-black text-zinc-900 dark:text-white mb-6 tracking-tight leading-tight">
                         {insight.title}
                     </h3>
                     
-                    <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium">
+                    <p className="text-base text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium">
                         {insight.message}
                     </p>
 
                     {insight.url && (
-                        <a href={insight.url} target="_blank" rel="noreferrer" className="mt-6 text-xs font-bold text-sky-500 hover:underline flex items-center gap-1">
-                            Ler notícia completa <ArrowUpRight className="w-3 h-3" />
+                        <a href={insight.url} target="_blank" rel="noreferrer" className="mt-8 px-6 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-xs font-black text-sky-500 hover:text-sky-600 flex items-center gap-2 transition-colors">
+                            Ler notícia completa <ArrowUpRight className="w-3.5 h-3.5" />
                         </a>
                     )}
                 </div>
 
                 {/* Botão Fechar */}
-                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 shrink-0">
+                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 shrink-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md">
                     <button 
                         onClick={onClose}
-                        className="w-full py-4 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-xs uppercase tracking-[0.2em] press-effect"
+                        className="w-full py-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-xs uppercase tracking-[0.2em] press-effect shadow-lg"
                     >
-                        Fechar
+                        Fechar Story
                     </button>
                 </div>
             </div>
@@ -138,65 +151,78 @@ const StoryOverlay = ({ insight, onClose }: { insight: PortfolioInsight, onClose
     );
 };
 
-const SmartFeed = ({ insights }: { insights: PortfolioInsight[] }) => {
+const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: PortfolioInsight[], onMarkAsRead: (id: string) => void, readStories: Set<string> }) => {
     const [activeStory, setActiveStory] = useState<PortfolioInsight | null>(null);
+
+    const handleStoryClick = (insight: PortfolioInsight) => {
+        onMarkAsRead(insight.id);
+        setActiveStory(insight);
+    };
 
     if (insights.length === 0) return null;
 
+    // Ordena: Não lidos primeiro
+    const sortedInsights = [...insights].sort((a, b) => {
+        const aRead = readStories.has(a.id);
+        const bRead = readStories.has(b.id);
+        if (aRead === bRead) return 0;
+        return aRead ? 1 : -1;
+    });
+
     return (
         <>
-            <div className="w-full overflow-x-auto no-scrollbar py-2 -mx-4 px-4 flex gap-4 snap-x snap-mandatory">
-                {insights.map((insight) => {
+            <div className="w-full overflow-x-auto no-scrollbar py-3 -mx-4 px-4 flex gap-4 snap-x snap-mandatory">
+                {sortedInsights.map((insight) => {
+                    const isRead = readStories.has(insight.id);
                     let ringColors = '';
                     let Icon = Lightbulb;
                     
-                    if (insight.type === 'volatility_up') {
-                        ringColors = 'from-emerald-400 to-green-500';
-                        Icon = TrendingUp;
-                    } else if (insight.type === 'volatility_down') {
-                        ringColors = 'from-rose-400 to-red-500';
-                        Icon = TrendingDown;
-                    } else if (insight.type === 'news') {
-                        ringColors = 'from-indigo-400 to-violet-500';
-                        Icon = Newspaper;
-                    } else if (insight.type === 'opportunity') { 
-                        ringColors = 'from-sky-400 to-blue-500'; 
-                        Icon = Sparkles; 
-                    } else if (insight.type === 'warning') { 
-                        ringColors = 'from-amber-400 to-orange-500'; 
-                        Icon = AlertTriangle; 
-                    } else if (insight.type === 'success') { 
-                        ringColors = 'from-emerald-400 to-green-500'; 
-                        Icon = TrendingUp; 
-                    } else { 
-                        ringColors = 'from-zinc-400 to-zinc-500'; 
-                        Icon = Zap;
+                    if (isRead) {
+                        ringColors = 'from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800'; // Cor neutra para lidos
+                    } else {
+                        // Cores vibrantes para não lidos
+                        if (insight.type === 'volatility_up') {
+                            ringColors = 'from-emerald-400 via-green-500 to-teal-400';
+                            Icon = TrendingUp;
+                        } else if (insight.type === 'volatility_down') {
+                            ringColors = 'from-rose-400 via-red-500 to-orange-400';
+                            Icon = TrendingDown;
+                        } else if (insight.type === 'news') {
+                            ringColors = 'from-indigo-400 via-violet-500 to-purple-400';
+                            Icon = Newspaper;
+                        } else if (insight.type === 'opportunity') { 
+                            ringColors = 'from-sky-400 via-blue-500 to-cyan-400'; 
+                            Icon = Sparkles; 
+                        } else if (insight.type === 'warning') { 
+                            ringColors = 'from-amber-400 via-orange-500 to-yellow-400'; 
+                            Icon = AlertTriangle; 
+                        } else { 
+                            ringColors = 'from-zinc-400 to-zinc-500'; 
+                            Icon = Zap;
+                        }
                     }
 
                     return (
                         <button 
                             key={insight.id} 
-                            onClick={() => setActiveStory(insight)}
-                            className="flex flex-col items-center gap-1.5 group snap-start shrink-0"
+                            onClick={() => handleStoryClick(insight)}
+                            className="flex flex-col items-center gap-2 group snap-start shrink-0 w-[72px]"
                         >
                             {/* Anel de Status (Story Ring) */}
-                            <div className={`p-[2px] rounded-full bg-gradient-to-tr ${ringColors} press-effect group-active:scale-95 transition-transform`}>
-                                <div className="w-[58px] h-[58px] rounded-full bg-white dark:bg-zinc-900 border-[3px] border-transparent flex items-center justify-center relative overflow-hidden">
-                                    {/* Icon Background leve */}
-                                    <div className={`absolute inset-0 opacity-10 bg-gradient-to-tr ${ringColors}`}></div>
-                                    
-                                    {insight.type === 'news' && insight.imageUrl ? (
-                                        <div className="w-full h-full relative z-10 p-2">
-                                            <img src={insight.imageUrl} alt="" className="w-full h-full object-contain opacity-80" />
-                                        </div>
+                            <div className={`p-[2.5px] rounded-full bg-gradient-to-tr ${ringColors} press-effect group-active:scale-95 transition-all duration-300 relative`}>
+                                <div className="w-[62px] h-[62px] rounded-full bg-white dark:bg-zinc-900 border-[3px] border-transparent flex items-center justify-center relative overflow-hidden">
+                                    {insight.imageUrl ? (
+                                        <img src={insight.imageUrl} alt="" className={`w-full h-full object-cover transition-opacity duration-300 ${isRead ? 'opacity-60 grayscale' : 'opacity-100'}`} />
                                     ) : (
-                                        <Icon className="w-6 h-6 text-zinc-700 dark:text-zinc-200 relative z-10" strokeWidth={2} />
+                                        <div className={`w-full h-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-800`}>
+                                            <Icon className={`w-6 h-6 ${isRead ? 'text-zinc-400' : 'text-zinc-700 dark:text-zinc-200'}`} strokeWidth={2} />
+                                        </div>
                                     )}
                                 </div>
                             </div>
                             
                             {/* Texto Truncado */}
-                            <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 w-16 truncate text-center leading-none">
+                            <span className={`text-[10px] font-bold w-full truncate text-center leading-none transition-colors ${isRead ? 'text-zinc-400 font-medium' : 'text-zinc-700 dark:text-zinc-300'}`}>
                                 {insight.relatedTicker || (insight.type === 'news' ? 'Notícia' : insight.type === 'warning' ? 'Alerta' : 'Info')}
                             </span>
                         </button>
@@ -228,6 +254,25 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // Intelligence State
   const [insights, setInsights] = useState<PortfolioInsight[]>([]);
   const [newsCache, setNewsCache] = useState<NewsItem[]>([]);
+  
+  // Persistência de Stories Lidos
+  const [readStories, setReadStories] = useState<Set<string>>(() => {
+      try {
+          const saved = localStorage.getItem('investfiis_read_stories');
+          return saved ? new Set(JSON.parse(saved)) : new Set();
+      } catch {
+          return new Set();
+      }
+  });
+
+  const markAsRead = (id: string) => {
+      if (!readStories.has(id)) {
+          const newSet = new Set(readStories);
+          newSet.add(id);
+          setReadStories(newSet);
+          localStorage.setItem('investfiis_read_stories', JSON.stringify(Array.from(newSet)));
+      }
+  };
 
   const safeInflation = Number(inflationRate) || 4.62;
 
@@ -243,7 +288,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               const res = await fetch(endpoint);
               if (res.ok) {
                   const data = await res.json();
-                  // Mapeia resposta bruta para NewsItem se necessário (a API News já retorna formato parecido, ajustando campos)
                   const formattedNews: NewsItem[] = data.map((item: any, idx: number) => ({
                       id: String(idx),
                       title: item.title,
@@ -261,14 +305,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }
       };
       
-      // Delay pequeno para não travar a renderização inicial crítica
       const timer = setTimeout(fetchTopNews, 1000);
       return () => clearTimeout(timer);
-  }, [portfolio]); // Recarrega se portfólio mudar drasticamente (ex: login)
+  }, [portfolio]);
 
   // Atualiza insights/stories quando a carteira ou notícias mudam
   useEffect(() => {
-      // Passa newsCache para a análise
       const generatedInsights = analyzePortfolio(portfolio, safeInflation, newsCache);
       setInsights(generatedInsights);
   }, [portfolio, safeInflation, newsCache]);
@@ -494,7 +536,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     <div className="space-y-4 pb-8">
       
       {/* 0. SMART FEED (STORIES) */}
-      <SmartFeed insights={insights} />
+      <SmartFeed insights={insights} onMarkAsRead={markAsRead} readStories={readStories} />
 
       {/* 1. CARTÃO DE PATRIMÔNIO ATUAL */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
