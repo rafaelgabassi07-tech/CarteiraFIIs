@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, ArrowRight, Building2 } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, ArrowRight, Building2, TrendingDown } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 
@@ -81,9 +81,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const safeInflation = Number(inflationRate) || 4.62;
 
   // Cálculos de Rentabilidade
+  // Capital Gain Only (Patrimônio - Investido) conforme solicitado para o card principal
+  const capitalGainValue = useMemo(() => balance - invested, [balance, invested]);
+  const capitalGainPercent = useMemo(() => invested > 0 ? (capitalGainValue / invested) * 100 : 0, [capitalGainValue, invested]);
+  const isCapitalGainPositive = capitalGainValue >= 0;
+
+  // Total Return (Inclui Dividendos e Vendas) - Usado para Rentabilidade Real
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const totalProfitPercent = useMemo(() => invested > 0 ? (totalProfitValue / invested) * 100 : 0, [totalProfitValue, invested]);
-  const isProfitPositive = totalProfitValue >= 0;
 
   // Cálculo de Ganho Real (Fisher Equation simplificada)
   const realReturnPercent = useMemo(() => {
@@ -105,10 +110,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           const currentClass = assets.reduce((acc, p) => acc + ((p.currentPrice || 0) * p.quantity), 0);
           const dividendsClass = assets.reduce((acc, p) => acc + (p.totalDividends || 0), 0);
           
-          const profit = (currentClass - investedClass) + dividendsClass;
+          // Rentabilidade de Capital (Cotação - Preço Médio)
+          const capitalGainClass = currentClass - investedClass;
+          const capitalGainPercentClass = investedClass > 0 ? (capitalGainClass / investedClass) * 100 : 0;
+
+          // Retorno Total (Capital + Dividendos)
+          const profit = capitalGainClass + dividendsClass;
           const roi = investedClass > 0 ? (profit / investedClass) * 100 : 0;
           
-          return { invested: investedClass, current: currentClass, dividends: dividendsClass, profit, roi };
+          return { 
+              invested: investedClass, 
+              current: currentClass, 
+              dividends: dividendsClass, 
+              capitalGain: capitalGainClass,
+              capitalGainPercent: capitalGainPercentClass,
+              profit, 
+              roi 
+          };
       };
 
       return {
@@ -277,12 +295,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="space-y-4 pb-8">
       
-      {/* 1. CARTÃO DE PATRIMÔNIO TOTAL */}
+      {/* 1. CARTÃO DE PATRIMÔNIO ATUAL */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
         <div className="w-full bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
             <div className="p-6 text-center border-b border-zinc-100 dark:border-zinc-800">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-2 flex items-center justify-center gap-1.5">
-                    <Wallet className="w-3 h-3" /> Patrimônio Total
+                    <Wallet className="w-3 h-3" /> Patrimônio Atual
                 </p>
                 <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter tabular-nums leading-none">
                     {formatBRL(balance, privacyMode)}
@@ -296,16 +314,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </span>
                 </div>
                 <div className="p-5 flex flex-col items-center justify-center hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors relative overflow-hidden">
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Resultado</p>
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Quanto Rendeu</p>
                     <div className="flex flex-col items-center relative z-10">
-                        <span className={`text-sm font-black flex items-center gap-1 ${isProfitPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {isProfitPositive ? '+' : ''}{formatBRL(totalProfitValue, privacyMode)}
+                        <span className={`text-sm font-black flex items-center gap-1 ${isCapitalGainPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                            {isCapitalGainPositive ? '+' : ''}{formatBRL(capitalGainValue, privacyMode)}
                         </span>
-                        <span className={`text-[9px] font-bold ${isProfitPositive ? 'text-emerald-600/70 dark:text-emerald-400/70' : 'text-rose-600/70 dark:text-rose-400/70'}`}>
-                            {isProfitPositive ? '+' : ''}{formatPercent(totalProfitPercent, privacyMode)}
+                        <span className={`text-[9px] font-bold ${isCapitalGainPositive ? 'text-emerald-600/70 dark:text-emerald-400/70' : 'text-rose-600/70 dark:text-rose-400/70'}`}>
+                            {isCapitalGainPositive ? <TrendingUp className="w-2.5 h-2.5 inline mr-0.5" /> : <TrendingDown className="w-2.5 h-2.5 inline mr-0.5" />}
+                            {formatPercent(capitalGainPercent, privacyMode)}
                         </span>
                     </div>
-                    <div className={`absolute inset-0 opacity-5 dark:opacity-10 ${isProfitPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                    <div className={`absolute inset-0 opacity-5 dark:opacity-10 ${isCapitalGainPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
                 </div>
             </div>
         </div>
@@ -769,8 +788,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           <h3 className={`text-4xl font-black tracking-tighter ${realReturnPercent >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                               {realReturnPercent > 0 ? '+' : ''}{realReturnPercent.toFixed(2)}%
                           </h3>
-                          <p className="text-[10px] text-zinc-400 font-medium mt-2 max-w-[200px] mx-auto">
-                              Retorno total descontado da inflação (IPCA {safeInflation}%)
+                          <p className="text-[10px] text-zinc-400 font-medium mt-2 max-w-[200px] mx-auto flex items-center justify-center gap-1.5">
+                              Retorno descontado da inflação 
+                              <span className="bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded-md text-[9px] font-black">IPCA {safeInflation}%</span>
                           </p>
                       </div>
 
@@ -832,17 +852,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                   </div>
                               </div>
                               
-                              <div className="space-y-2">
-                                  <div className="flex justify-between text-[10px] font-medium text-zinc-500">
-                                      <span>Dividendos</span>
-                                      <span className="font-bold text-zinc-900 dark:text-white">{formatBRL(item.data.dividends, privacyMode)}</span>
+                              <div className="space-y-3 pt-2 border-t border-dashed border-zinc-100 dark:border-zinc-800">
+                                  <div className="flex justify-between items-center text-[10px]">
+                                      <span className="font-medium text-zinc-500">Total Aplicado</span>
+                                      <span className="font-bold text-zinc-900 dark:text-white">{formatBRL(item.data.invested, privacyMode)}</span>
                                   </div>
-                                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                                      <div className={`h-full bg-${item.color}-500 rounded-full`} style={{ width: `${Math.min(100, (item.data.dividends / (Math.abs(item.data.profit) || 1)) * 100)}%` }}></div>
+                                  
+                                  <div className="flex justify-between items-center text-[10px]">
+                                      <span className="font-medium text-zinc-500">Rentabilidade (Cota)</span>
+                                      <span className={`font-bold ${item.data.capitalGain >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                          {item.data.capitalGain >= 0 ? '+' : ''}{formatBRL(item.data.capitalGain, privacyMode)}
+                                      </span>
                                   </div>
-                                  <div className="flex justify-between text-[10px] font-medium text-zinc-500 pt-1">
-                                      <span>Valorização</span>
-                                      <span className="font-bold text-zinc-900 dark:text-white">{formatBRL(item.data.current - item.data.invested, privacyMode)}</span>
+
+                                  <div className="flex justify-between items-center text-[10px]">
+                                      <span className="font-medium text-zinc-500">Dividendos</span>
+                                      <span className="font-bold text-emerald-500">+{formatBRL(item.data.dividends, privacyMode)}</span>
                                   </div>
                               </div>
                           </div>
@@ -851,7 +876,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex gap-3 items-start">
                           <Layers className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5" />
                           <p className="text-[10px] text-zinc-500 leading-relaxed">
-                              O retorno total considera tanto a valorização da cota quanto os proventos recebidos. Classes diferentes possuem dinâmicas de retorno diferentes.
+                              <strong>Rentabilidade (Cota)</strong> refere-se apenas à valorização do patrimônio (Atual - Aplicado). <strong>Retorno Total</strong> soma também os dividendos recebidos.
                           </p>
                       </div>
                   </div>
