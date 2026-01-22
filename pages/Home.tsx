@@ -273,6 +273,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return null;
   };
 
+  const CustomBarTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-zinc-900/95 dark:bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/10 dark:border-zinc-200 z-50 transform -translate-x-1/2 transition-all">
+          <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mb-1 uppercase tracking-widest text-center whitespace-nowrap">
+            {data.fullDate ? new Date(data.fullDate + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : label}
+          </p>
+          <p className="text-lg font-black text-white dark:text-zinc-900 text-center tracking-tight">
+            {formatBRL(payload[0].value, privacyMode)}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   const toggleMonthExpand = (monthKey: string) => {
       setExpandedMonth(expandedMonth === monthKey ? null : monthKey);
   };
@@ -287,8 +304,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
   };
 
-  // Classes Padronizadas para Reutilização
-  const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm transition-all press-effect relative overflow-hidden group";
+  // Classes Padronizadas para Reutilização (Padrão 32px / 2rem)
+  const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm transition-all press-effect relative overflow-hidden group";
   const hoverBorderClass = "hover:border-zinc-300 dark:hover:border-zinc-700";
   const modalHeaderIconClass = "w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm";
 
@@ -297,7 +314,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       
       {/* 1. CARTÃO DE PATRIMÔNIO ATUAL */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        <div className="w-full bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+        <div className="w-full bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
             <div className="p-6 text-center border-b border-zinc-100 dark:border-zinc-800">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-2 flex items-center justify-center gap-1.5">
                     <Wallet className="w-3 h-3" /> Patrimônio Atual
@@ -447,6 +464,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 4. MODAL AGENDA */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
+        {/* ... (Conteúdo Agenda inalterado, apenas usa o mesmo card style se aplicável) ... */}
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-200 dark:border-zinc-700`}><CalendarDays className="w-6 h-6" /></div>
@@ -518,6 +536,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 5. MODAL ALOCAÇÃO */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
+         {/* ... (Conteúdo Alocação inalterado) ... */}
          <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 border-zinc-200 dark:border-zinc-700`}><PieIcon className="w-6 h-6" strokeWidth={1.5} /></div>
@@ -657,7 +676,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={dividendsChartData} onClick={handleBarClick}>
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} />
-                            <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomPieTooltip />} />
+                            <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip />} />
                             <Bar dataKey="value" radius={[4, 4, 4, 4]}>
                                 {dividendsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} className="transition-colors duration-300 hover:opacity-80 dark:fill-zinc-700 dark:hover:fill-emerald-600" />)}
                             </Bar>
@@ -669,6 +688,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              
              {/* Lista Filtrada ou Completa */}
              <div className="space-y-3">
+                {/* ... (Lista de meses inalterada) ... */}
                 {selectedProventosMonth ? (
                     // VIEW DE MÊS SELECIONADO (FILTRADO)
                     <div className="anim-scale-in">
@@ -765,6 +785,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 7. MODAL RAIO-X (EXPANDIDO) */}
       <SwipeableModal isOpen={showRaioXModal} onClose={() => setShowRaioXModal(false)}>
+          {/* ... (Conteúdo Raio-X inalterado) ... */}
           <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
               <div className="flex items-center gap-4 mb-8 px-2">
                   <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-rose-500 border-zinc-200 dark:border-zinc-700`}><Target className="w-6 h-6" /></div>

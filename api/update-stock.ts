@@ -155,7 +155,7 @@ async function scrapeInvestidor10(ticker: string) {
         const $ = cheerio.load(html);
         const extracted: any = {};
 
-        // 1. Extração de Metadados
+        // 1. Extração de Metadados via Cards/Tables
         $('span, div, td, strong, b, h3, h4').each((_, el) => {
             const text = $(el).clone().children().remove().end().text().trim();
             if (!text || text.length > 50) return; 
@@ -168,6 +168,14 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
+        // 1.1 Extração Robusta de Segmento (Breadcrumbs)
+        let segmento = '';
+        $('#breadcrumbs li span a span, .breadcrumb-item').each((_, el) => {
+            const txt = $(el).text().trim();
+            if (txt && !['Início', 'Ações', 'FIIs', 'Home', 'BDRs'].includes(txt) && txt.toUpperCase() !== ticker) segmento = txt;
+        });
+        if (segmento) extracted['segmento'] = segmento;
+
         if (!extracted.cotacao_atual) {
             extracted.cotacao_atual = $('div._card.cotacao div._card-body span').text();
         }
@@ -175,41 +183,33 @@ async function scrapeInvestidor10(ticker: string) {
         // 2. Extração de Dividendos (SCANNER INTELIGENTE V2)
         const dividends: any[] = [];
         
-        // Varre TODAS as tabelas buscando padrões de colunas
         $('table').each((_, table) => {
             const $table = $(table);
             const headers = $table.find('thead th').map((_, th) => $(th).text().trim().toLowerCase()).get();
             const rows = $table.find('tbody tr');
 
-            // Estratégia A: Headers Conhecidos
             let idxType = headers.findIndex(h => h.includes('tipo'));
             let idxCom = headers.findIndex(h => h.includes('data com') || h.includes('data-com') || h.includes('base'));
             let idxPay = headers.findIndex(h => h.includes('pagamento') || h.includes('data pag'));
             let idxVal = headers.findIndex(h => h.includes('valor'));
 
-            // Estratégia B: Scanner Heurístico (Se headers falharem ou não existirem)
-            // Analisa o conteúdo da primeira linha para "adivinhar" as colunas
             if (idxCom === -1 || idxVal === -1) {
                 const firstRowTds = $(rows[0]).find('td');
                 firstRowTds.each((i, td) => {
                     const txt = $(td).text().trim();
-                    // Regex Data: DD/MM/AAAA
                     if (/\d{2}\/\d{2}\/\d{4}/.test(txt)) {
-                        if (idxCom === -1) idxCom = i; // Assume a primeira data como Data Com
-                        else if (idxPay === -1) idxPay = i; // Assume a segunda data como Pagamento
+                        if (idxCom === -1) idxCom = i; 
+                        else if (idxPay === -1) idxPay = i; 
                     }
-                    // Regex Valor: R$ 0,00 ou 0,0000
                     if ((txt.includes(',') || txt.includes('.')) && /[0-9]/.test(txt) && !/\d{2}\/\d{2}\/\d{4}/.test(txt)) {
                         if (idxVal === -1) idxVal = i;
                     }
-                    // Regex Tipo
                     if (/(div|jcp|rend|juros|amor)/i.test(txt)) {
                         idxType = i;
                     }
                 });
             }
 
-            // Se achamos pelo menos Data Com e Valor, processa
             if (idxCom > -1 && idxVal > -1) {
                 rows.each((_, tr) => {
                     const tds = $(tr).find('td');
@@ -300,11 +300,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Deduplicação inteligente
         const uniqueMap = new Map();
         dividends.forEach(d => {
-            // Chave ignora a data de pagamento para agrupar eventos iguais
             const key = `${d.type}|${d.date_com}|${d.rate.toFixed(4)}`; 
             const existing = uniqueMap.get(key);
-            
-            // Prefere o registro que tenha Data de Pagamento preenchida
             if (!existing) {
                 uniqueMap.set(key, d);
             } else if (!existing.payment_date && d.payment_date) {
@@ -353,7 +350,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                  rate: d.rate
              }));
 
-             // Limpeza de provisionados antigos
              const datesWithRealPayment = divPayload
                 .filter(d => d.payment_date !== '2099-12-31')
                 .map(d => d.date_com);
