@@ -28,7 +28,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         },
     });
 
-    // Fontes confiáveis e mapeamento de domínios
+    // Fontes confiáveis
     const knownSources: Record<string, { name: string; domain: string }> = {
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
         'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
@@ -61,21 +61,33 @@ export default async function handler(request: VercelRequest, response: VercelRe
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
-    // Algoritmo simples de similaridade (Jaccard Index de palavras)
-    // Usado para remover notícias duplicadas de fontes diferentes
+    // Stopwords para limpeza de título
+    const STOPWORDS = new Set(['o', 'a', 'os', 'as', 'um', 'uma', 'uns', 'umas', 'de', 'do', 'da', 'dos', 'das', 'em', 'no', 'na', 'nos', 'nas', 'por', 'pelo', 'pela', 'para', 'com', 'sem', 'e', 'ou', 'mas', 'que', 'se', 'ao', 'aos']);
+
+    // Jaccard Index aprimorado para deduplicação semântica
     function isSimilar(title1: string, title2: string): boolean {
-        const tokenize = (str: string) => new Set(str.toLowerCase().replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2));
+        const tokenize = (str: string) => {
+            return new Set(
+                str.toLowerCase()
+                   .replace(/[^\w\s]/gi, '')
+                   .split(/\s+/)
+                   .filter(w => w.length > 2 && !STOPWORDS.has(w)) // Remove palavras curtas e stopwords
+            );
+        };
+        
         const set1 = tokenize(title1);
         const set2 = tokenize(title2);
         
         const intersection = new Set([...set1].filter(x => set2.has(x)));
         const union = new Set([...set1, ...set2]);
         
+        if (union.size === 0) return false;
+        
         const similarity = intersection.size / union.size;
-        return similarity > 0.4; // Threshold de 40% de similaridade
+        // Threshold aumentado para 0.5 (50% de similaridade real = duplicata)
+        return similarity > 0.5; 
     }
 
-    // Função auxiliar para limpar e validar itens
     const processItems = (items: any[], seenTitles: string[]) => {
         return items.map((item) => {
             let rawSourceName = '';
@@ -83,23 +95,16 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
             // Extrai nome da fonte
             if (item.sourceObj) {
-                if (typeof item.sourceObj === 'string') {
-                    rawSourceName = item.sourceObj;
-                } else if (item.sourceObj._) {
-                    rawSourceName = item.sourceObj._;
-                } else if (item.sourceObj.content) {
-                    rawSourceName = item.sourceObj.content;
-                }
+                if (typeof item.sourceObj === 'string') rawSourceName = item.sourceObj;
+                else if (item.sourceObj._) rawSourceName = item.sourceObj._;
+                else if (item.sourceObj.content) rawSourceName = item.sourceObj.content;
             } else {
-                // Tenta extrair do título se não tiver tag source (Padrão Google News: "Título - Fonte")
                 const sourcePattern = /(?: - | \| )([^-|]+)$/;
                 const match = item.title.match(sourcePattern);
-                if (match) {
-                    rawSourceName = match[1];
-                }
+                if (match) rawSourceName = match[1];
             }
 
-            // Remove a fonte do título para não ficar duplicado
+            // Remove a fonte do título
             if (rawSourceName) {
                 cleanTitle = cleanTitle.replace(new RegExp(`(?: - | \\| )\\s*${escapeRegExp(rawSourceName)}$`), '').trim();
             }
@@ -116,11 +121,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
                 if (foundKey) known = knownSources[foundKey];
             }
 
-            // Se não for uma fonte conhecida, usamos o nome cru mas sem domínio para favicon (fallback genérico)
-            // Mas para garantir qualidade, filtramos apenas knownSources por enquanto.
             if (!known) return null; 
 
-            // Verificação de duplicidade SEMÂNTICA
+            // Verificação de duplicidade
             const isDuplicate = seenTitles.some(seen => isSimilar(seen, cleanTitle));
             if (isDuplicate) return null;
             
@@ -138,7 +141,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
         }).filter(item => item !== null);
     };
 
-    // Helper para categorizar notícias de busca avulsa
     const categorizeItem = (title: string, summary: string) => {
         const text = (title + ' ' + summary).toLowerCase();
         if (text.includes('fii') || text.includes('fundo imobili') || text.includes('ifix') || text.match(/[a-z]{4}11/)) return 'FIIs';
@@ -148,12 +150,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
     try {
         const { q } = request.query;
-        // Agora usamos array de strings para iterar e comparar similaridade
         const seenTitles: string[] = [];
 
-        // MODO BUSCA (Se 'q' foi passado na URL)
         if (q && typeof q === 'string') {
-            // Adiciona filtro temporal de 30 dias na busca específica também
             const queryWithTime = `${q} when:30d`;
             const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(queryWithTime)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
             const feed = await parser.parseURL(feedUrl);
@@ -163,32 +162,24 @@ export default async function handler(request: VercelRequest, response: VercelRe
                 category: categorizeItem(item.title, item.summary)
             }));
 
-            // Ordenação explícita por data (mais recente primeiro)
             const sorted = processed.sort((a, b) => new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime());
-
             return response.status(200).json(sorted);
         }
 
-        // MODO PADRÃO (Feeds Separados)
-        // 1. Definição das Queries (Otimizadas para evitar contaminação cruzada)
-        // Alterado de when:7d para when:30d conforme solicitado
         const queryFII = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII" when:30d';
         const queryStocks = '"Ações" OR "Ibovespa" OR "Dividendos Ações" OR "Mercado de Ações" -FII -"Fundos Imobiliários" when:30d';
 
         const feedUrlFII = `https://news.google.com/rss/search?q=${encodeURIComponent(queryFII)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
         const feedUrlStocks = `https://news.google.com/rss/search?q=${encodeURIComponent(queryStocks)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 
-        // 2. Busca paralela
         const [feedFII, feedStocks] = await Promise.all([
             parser.parseURL(feedUrlFII),
             parser.parseURL(feedUrlStocks)
         ]);
 
-        // 3. Processamento separado com categorização
         const articlesFII = processItems(feedFII.items || [], seenTitles).map(item => ({ ...item, category: 'FIIs' }));
         const articlesStocks = processItems(feedStocks.items || [], seenTitles).map(item => ({ ...item, category: 'Ações' }));
 
-        // 4. União e Ordenação Final (Garante que a lista combinada esteja ordenada)
         const allArticles = [...articlesFII, ...articlesStocks]
             .sort((a, b) => new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime());
 
