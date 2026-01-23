@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper, ArrowLeft, ArrowRight } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -44,7 +44,6 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
     const isPayment = event.eventType === 'payment';
     const isToday = new Date(event.date + 'T00:00:00').getTime() === new Date().setHours(0,0,0,0);
     
-    // Cores e Ícones
     let iconBg = 'bg-zinc-100 dark:bg-zinc-800';
     let iconColor = 'text-zinc-400';
     let Icon = Calendar;
@@ -64,18 +63,12 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
 
     return (
         <div className="relative pl-12 py-2">
-            {/* Linha Vertical Conectora */}
             {!isLast && <div className="absolute left-[19px] top-8 bottom-[-8px] w-[2px] bg-zinc-100 dark:bg-zinc-800"></div>}
-            
-            {/* Ícone Bolinha na Timeline */}
             <div className={`absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-950 z-10 ${iconBg} ${iconColor} shadow-sm`}>
                 <Icon className="w-5 h-5" />
             </div>
-
-            {/* Card do Evento */}
             <div className={`bg-white dark:bg-zinc-900 p-4 rounded-2xl border ${borderColor} shadow-sm flex justify-between items-center relative overflow-hidden group`}>
                 {isToday && <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg">HOJE</div>}
-                
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-xs font-black text-zinc-500 border border-zinc-100 dark:border-zinc-700">
                         {event.ticker.substring(0,2)}
@@ -92,7 +85,6 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
                         </p>
                     </div>
                 </div>
-
                 <div className="text-right">
                     {isPayment ? (
                         <>
@@ -108,26 +100,236 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
     );
 };
 
-// ... (Rest of existing Home code: SmartFeed, StoryViewer, imports, helper functions) ...
-// Mantendo as funções utilitárias e imports que não mudaram para brevidade do XML, focando no Modal
+// --- STORY VIEWER & FEED ---
 
-// Função simples de Hash para Strings (usada para gerar ID estável da notícia)
-const generateStableId = (str: string) => {
-    let hash = 0;
-    if (str.length === 0) return '0';
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; 
-    }
-    return `news-${Math.abs(hash)}`;
+const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights: PortfolioInsight[], startIndex: number, onClose: () => void, onMarkAsRead: (id: string) => void }) => {
+    const [currentIndex, setCurrentIndex] = useState(startIndex);
+    const [progress, setProgress] = useState(0);
+    const [isPaused, setIsPaused] = useState(false);
+    const DURATION = 5000; // 5 segundos por story
+
+    const currentStory = insights[currentIndex];
+
+    useEffect(() => {
+        setProgress(0);
+    }, [currentIndex]);
+
+    useEffect(() => {
+        if (!isPaused) {
+            const interval = 50; // Update every 50ms
+            const step = (100 * interval) / DURATION;
+            
+            const timer = setInterval(() => {
+                setProgress(prev => {
+                    if (prev >= 100) {
+                        if (currentIndex < insights.length - 1) {
+                            onMarkAsRead(currentStory.id);
+                            setCurrentIndex(c => c + 1);
+                            return 0;
+                        } else {
+                            onMarkAsRead(currentStory.id);
+                            onClose();
+                            return 100;
+                        }
+                    }
+                    return prev + step;
+                });
+            }, interval);
+            return () => clearInterval(timer);
+        }
+    }, [currentIndex, isPaused, insights.length, onClose, onMarkAsRead, currentStory]);
+
+    const handleNext = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onMarkAsRead(currentStory.id);
+        if (currentIndex < insights.length - 1) {
+            setCurrentIndex(c => c + 1);
+        } else {
+            onClose();
+        }
+    };
+
+    const handlePrev = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (currentIndex > 0) {
+            setCurrentIndex(c => c - 1);
+        }
+    };
+
+    if (!currentStory) return null;
+
+    const getTypeColor = (type: string) => {
+        switch(type) {
+            case 'volatility_up': return 'bg-emerald-500';
+            case 'volatility_down': return 'bg-rose-500';
+            case 'warning': return 'bg-amber-500';
+            case 'news': return 'bg-sky-500';
+            default: return 'bg-indigo-500';
+        }
+    };
+
+    const getTypeIcon = (type: string) => {
+        switch(type) {
+            case 'volatility_up': return TrendingUp;
+            case 'volatility_down': return TrendingDown;
+            case 'warning': return AlertTriangle;
+            case 'news': return Newspaper;
+            default: return Lightbulb;
+        }
+    };
+
+    const Icon = getTypeIcon(currentStory.type);
+    const colorClass = getTypeColor(currentStory.type);
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+            {/* Progress Bars */}
+            <div className="flex gap-1 p-2 pt-safe z-20">
+                {insights.map((_, idx) => (
+                    <div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
+                        <div 
+                            className="h-full bg-white transition-all duration-100 linear"
+                            style={{ 
+                                width: idx < currentIndex ? '100%' : idx === currentIndex ? `${progress}%` : '0%' 
+                            }}
+                        />
+                    </div>
+                ))}
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-2 z-20 text-white">
+                <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${colorClass}`}>
+                        <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="font-bold text-sm">{currentStory.title}</span>
+                </div>
+                <button onClick={onClose}><X className="w-6 h-6" /></button>
+            </div>
+
+            {/* Content Area */}
+            <div 
+                className="flex-1 relative flex flex-col justify-center items-center p-8 text-center"
+                onTouchStart={() => setIsPaused(true)}
+                onTouchEnd={() => setIsPaused(false)}
+                onMouseDown={() => setIsPaused(true)}
+                onMouseUp={() => setIsPaused(false)}
+            >
+                {/* Click Areas */}
+                <div className="absolute inset-y-0 left-0 w-1/3 z-10" onClick={handlePrev}></div>
+                <div className="absolute inset-y-0 right-0 w-1/3 z-10" onClick={handleNext}></div>
+
+                {/* Visual Content */}
+                <div className="w-full max-w-sm relative z-0 anim-scale-in">
+                    {currentStory.imageUrl ? (
+                        <div className="w-full aspect-square rounded-[2rem] overflow-hidden mb-8 border-4 border-white/10 shadow-2xl relative">
+                            <img src={currentStory.imageUrl} alt="" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                            <div className="absolute bottom-4 left-4 right-4">
+                                <span className={`inline-block px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest text-white mb-2 ${colorClass}`}>
+                                    {currentStory.type.replace('_', ' ')}
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className={`w-32 h-32 rounded-[2rem] ${colorClass} bg-opacity-20 flex items-center justify-center mb-8 mx-auto border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]`}>
+                            <Icon className={`w-16 h-16 text-white`} strokeWidth={1.5} />
+                        </div>
+                    )}
+                    
+                    <h2 className="text-2xl font-black text-white mb-4 leading-tight">{currentStory.message}</h2>
+                    
+                    {currentStory.relatedTicker && (
+                        <div className="inline-block px-4 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold text-sm mb-6">
+                            {currentStory.relatedTicker}
+                        </div>
+                    )}
+
+                    {currentStory.url && (
+                        <div className="absolute bottom-[-100px] left-0 right-0 flex justify-center animate-bounce">
+                            <div className="flex flex-col items-center gap-2">
+                                <ChevronUp className="w-6 h-6 text-white/50" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Saiba Mais</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Footer Action */}
+            {currentStory.url && (
+                <div className="p-6 pb-safe z-20">
+                    <a 
+                        href={currentStory.url} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="block w-full py-4 bg-white text-black text-center rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+                    >
+                        Ler Notícia Completa
+                    </a>
+                </div>
+            )}
+        </div>,
+        document.body
+    );
 };
 
-const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e'];
+const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: PortfolioInsight[], onMarkAsRead: (id: string) => void, readStories: Set<string> }) => {
+    const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-// ... (StoryViewer & SmartFeed components retained exactly as previous versions) ...
-const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: any) => { return null; }; // Placeholder for unmodified component
-const SmartFeed = ({ insights, onMarkAsRead, readStories }: any) => { return null; }; // Placeholder for unmodified component
+    if (insights.length === 0) return null;
+
+    return (
+        <div className="mb-6 -mx-4 overflow-x-auto no-scrollbar pl-4 pb-2 flex gap-4 snap-x">
+            {insights.map((item, index) => {
+                const isRead = readStories.has(item.id);
+                const isNews = item.type === 'news';
+                
+                return (
+                    <button 
+                        key={item.id}
+                        onClick={() => setActiveIndex(index)}
+                        className="flex flex-col items-center gap-1.5 snap-start group"
+                    >
+                        <div className={`w-[68px] h-[68px] rounded-full p-[2px] ${isRead ? 'bg-zinc-200 dark:bg-zinc-800' : 'bg-gradient-to-tr from-yellow-400 via-rose-500 to-purple-600'}`}>
+                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[2px] relative overflow-hidden">
+                                {item.imageUrl ? (
+                                    <img src={item.imageUrl} alt="" className="w-full h-full object-cover rounded-full" />
+                                ) : (
+                                    <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center">
+                                        {item.type === 'volatility_up' ? <TrendingUp className="w-6 h-6 text-emerald-500" /> :
+                                         item.type === 'volatility_down' ? <TrendingDown className="w-6 h-6 text-rose-500" /> :
+                                         item.type === 'warning' ? <AlertTriangle className="w-6 h-6 text-amber-500" /> :
+                                         <Newspaper className="w-6 h-6 text-sky-500" />}
+                                    </div>
+                                )}
+                                {isNews && (
+                                    <div className="absolute bottom-0 right-0 left-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                )}
+                            </div>
+                        </div>
+                        <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 w-16 truncate text-center leading-tight">
+                            {item.relatedTicker || (item.type === 'news' ? 'Notícia' : 'Aviso')}
+                        </span>
+                    </button>
+                );
+            })}
+            
+            {activeIndex !== null && (
+                <StoryViewer 
+                    insights={insights} 
+                    startIndex={activeIndex} 
+                    onClose={() => setActiveIndex(null)}
+                    onMarkAsRead={onMarkAsRead}
+                />
+            )}
+        </div>
+    );
+};
+
+// ... Resto das funções utilitárias e constantes mantidas para garantir integridade do arquivo ...
+const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e'];
 
 const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
@@ -153,6 +355,27 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           return new Set();
       }
   });
+
+  // Carregamento de Notícias e Insights
+  useEffect(() => {
+      const loadFeed = async () => {
+          try {
+              let news: NewsItem[] = [];
+              try {
+                  const res = await fetch('/api/news');
+                  if (res.ok) news = await res.json();
+              } catch (e) { console.error('Feed error', e); }
+              setNewsCache(news);
+              
+              const safeInflation = Number(inflationRate) || 4.62;
+              const generatedInsights = analyzePortfolio(portfolio, safeInflation, news);
+              setInsights(generatedInsights);
+          } catch (e) {
+              console.error(e);
+          }
+      };
+      loadFeed();
+  }, [portfolio, inflationRate]);
 
   const markAsRead = useCallback((id: string) => {
       setReadStories(prev => {
@@ -325,7 +548,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return null;
   };
 
-  // Styles e Helpers para renderização (Custom Tooltips, etc.)
   const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 transition-all press-effect relative overflow-hidden group shadow-2xl shadow-black/5 dark:shadow-black/20";
   const hoverBorderClass = "hover:border-zinc-300 dark:hover:border-zinc-700";
   const modalHeaderIconClass = "w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm";
@@ -333,6 +555,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="space-y-4 pb-8">
       
+      {/* 0. SMART FEED (STORIES) */}
+      <SmartFeed insights={insights} onMarkAsRead={markAsRead} readStories={readStories} />
+
       {/* 1. CARTÃO DE PATRIMÔNIO ATUAL */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
         <div className="w-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 dark:from-zinc-800 dark:via-zinc-900 dark:to-black rounded-[2rem] border border-white/10 shadow-2xl shadow-black/30 relative overflow-hidden text-white animate-gradient">
@@ -485,7 +710,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* --- AGENDA MODAL (REVISADO) --- */}
+      {/* --- MODAIS DE DETALHES --- */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex items-center gap-4 mb-8 px-2">
@@ -528,15 +753,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
-      {/* Outros modais mantidos sem alterações internas profundas, apenas título se necessário */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         {/* ... Conteúdo Alocação ... */}
          <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 border-zinc-200 dark:border-zinc-700`}><PieIcon className="w-6 h-6" strokeWidth={1.5} /></div>
                 <div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight bg-gradient-to-br from-zinc-700 via-zinc-900 to-zinc-700 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-400 text-transparent bg-clip-text">Alocação</h2><p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Diversificação</p></div>
              </div>
-             {/* ... resto do conteúdo de alocação mantido ... */}
+             
              <div className="bg-white dark:bg-zinc-900 p-1.5 rounded-xl flex gap-1 mb-6 shadow-sm border border-zinc-200 dark:border-zinc-800 anim-slide-up shrink-0" style={{ animationDelay: '50ms' }}>
                  <button onClick={() => setAllocationTab('CLASS')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === 'CLASS' ? 'bg-zinc-900 dark:bg-zinc-800 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Por Classe</button>
                  <button onClick={() => setAllocationTab('ASSET')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === 'ASSET' ? 'bg-zinc-900 dark:bg-zinc-800 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Por Ativo</button>
@@ -636,7 +859,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); setExpandedMonth(null); }}>
-         {/* ... Conteúdo Proventos ... */}
          <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-zinc-200 dark:border-zinc-700`}><Wallet className="w-6 h-6" strokeWidth={1.5} /></div>
@@ -646,7 +868,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
              </div>
              
-             {/* ... Charts & Lists (Mantidos) ... */}
              <div className="grid grid-cols-3 gap-3 mb-6 anim-slide-up">
                  {[
                      { label: 'Média Mensal', val: divStats.monthlyAvg, color: 'text-zinc-900 dark:text-white' },
@@ -768,9 +989,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showRaioXModal} onClose={() => setShowRaioXModal(false)}>
-          {/* ... Modal Raio-X com animações ... */}
           <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
-              {/* (Conteúdo Raio-X permanece, animações aplicadas nas classes pai) */}
               <div className="flex items-center gap-4 mb-8 px-2">
                   <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-rose-500 border-zinc-200 dark:border-zinc-700`}><Target className="w-6 h-6" /></div>
                   <div>
@@ -778,7 +997,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Performance</p>
                   </div>
               </div>
-              {/* ... resto do conteúdo de Raio-X mantido ... */}
               <div className="flex bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-xl mb-6">
                   <button onClick={() => setRaioXTab('GERAL')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${raioXTab === 'GERAL' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Geral</button>
                   <button onClick={() => setRaioXTab('CLASSES')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${raioXTab === 'CLASSES' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Classes</button>
@@ -796,10 +1014,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               <span className="bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded-md text-[9px] font-black">IPCA {safeInflation}%</span>
                           </p>
                       </div>
-                      {/* ... grid composition ... */}
                       <div className="space-y-3">
                           <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Composição do Resultado</h3>
-                          
                           <div className="grid grid-cols-2 gap-3">
                               <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                                   <div className="mb-2 w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 flex items-center justify-center"><TrendingUp className="w-4 h-4" /></div>
@@ -815,7 +1031,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       </div>
                   </div>
               )}
-              {/* ... tab classes content kept implicitly ... */}
           </div>
       </SwipeableModal>
     </div>

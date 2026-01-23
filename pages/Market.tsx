@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, Building2, TrendingUp, TrendingDown, DollarSign, X, ExternalLink, Target, Search, ArrowRight, Filter, ArrowLeft, Percent, BarChart3, Scale, Coins, Award, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { RefreshCw, Building2, TrendingUp, TrendingDown, DollarSign, X, ExternalLink, Target, Search, ArrowRight, Filter, ArrowLeft, Scale, Coins, Award, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { fetchMarketOverview } from '../services/dataService';
 import { SwipeableModal } from '../components/Layout';
 
@@ -13,7 +13,7 @@ export interface MarketAsset {
     dy_12m?: number;
     p_vp?: number;
     p_l?: number;
-    roe?: number; // Adicionado para compatibilidade futura
+    roe?: number;
 }
 
 interface NewMarketOverview {
@@ -37,101 +37,91 @@ interface NewMarketOverview {
 }
 
 // --- CONFIGURAÇÃO DAS CATEGORIAS DE RANKING ---
-type RankingType = 'VALUATION_GRAHAM' | 'VALUATION_BAZIN' | 'DY' | 'HIGH' | 'LOW' | 'P_VP' | 'P_L';
+type RankingType = 'VALUATION' | 'DY' | 'HIGH' | 'LOW' | 'LIQUIDITY';
 
 interface RankingConfig {
     id: RankingType;
     label: string;
-    subLabel?: string; // Tagzinha estilo "Graham"
+    subLabel?: string;
     icon: any;
-    color: string; // Tailwind color class base (ex: 'emerald')
+    color: string;
     filterFn: (asset: MarketAsset) => boolean;
     sortFn: (a: MarketAsset, b: MarketAsset) => number;
     valueFormatter: (asset: MarketAsset) => React.ReactNode;
     secondaryValue?: (asset: MarketAsset) => string;
 }
 
-const getRankings = (assetType: 'fiis' | 'stocks'): RankingConfig[] => [
-    {
-        id: 'DY',
-        label: 'Dividend Yield',
-        icon: DollarSign,
-        color: 'emerald',
-        filterFn: (a) => (a.dy_12m || 0) > 0,
-        sortFn: (a, b) => (b.dy_12m || 0) - (a.dy_12m || 0),
-        valueFormatter: (a) => `${a.dy_12m?.toFixed(2)}%`,
-        secondaryValue: (a) => 'Retorno 12m'
-    },
-    {
-        id: assetType === 'fiis' ? 'P_VP' : 'VALUATION_GRAHAM',
-        label: assetType === 'fiis' ? 'Mais Baratas (P/VP)' : 'Mais Baratas',
-        subLabel: assetType === 'stocks' ? 'Graham' : undefined,
-        icon: Scale,
-        color: 'indigo',
-        filterFn: (a) => assetType === 'fiis' ? (a.p_vp || 0) > 0 : (a.p_l || 0) > 0 && (a.p_vp || 0) > 0,
-        sortFn: (a, b) => assetType === 'fiis' ? (a.p_vp || 0) - (b.p_vp || 0) : ((a.p_l || 0) * (a.p_vp || 0)) - ((b.p_l || 0) * (b.p_vp || 0)), // Graham simplificado (menor VI)
-        valueFormatter: (a) => assetType === 'fiis' ? `${a.p_vp?.toFixed(2)}x` : `P/L ${a.p_l?.toFixed(1)}`,
-        secondaryValue: (a) => assetType === 'fiis' ? 'Val. Patrimonial' : `P/VP ${a.p_vp?.toFixed(2)}`
-    },
-    {
-        id: assetType === 'fiis' ? 'VALUATION_BAZIN' : 'P_L',
-        label: assetType === 'fiis' ? 'Melhores Oportunidades' : 'Menores PLs',
-        subLabel: assetType === 'fiis' ? 'Bazin' : undefined, // Visual apenas
-        icon: Coins,
-        color: 'amber',
-        filterFn: (a) => assetType === 'fiis' ? (a.dy_12m || 0) > 6 : (a.p_l || 0) > 0,
-        sortFn: (a, b) => assetType === 'fiis' ? (b.dy_12m || 0) - (a.dy_12m || 0) : (a.p_l || 0) - (b.p_l || 0),
-        valueFormatter: (a) => assetType === 'fiis' ? `${a.dy_12m?.toFixed(2)}%` : `${a.p_l?.toFixed(2)}x`,
-        secondaryValue: (a) => assetType === 'fiis' ? 'Yield Seguro' : 'Anos retorno'
-    },
-    {
-        id: 'HIGH',
-        label: 'Maiores Altas',
-        subLabel: 'Últ. 24h',
-        icon: TrendingUp,
-        color: 'sky',
-        filterFn: (a) => (a.variation_percent || 0) > 0,
-        sortFn: (a, b) => (b.variation_percent || 0) - (a.variation_percent || 0),
-        valueFormatter: (a) => (
-            <span className="text-emerald-500 font-bold flex items-center gap-1">
-                <ArrowUpRight className="w-3 h-3" /> {a.variation_percent?.toFixed(2)}%
-            </span>
-        ),
-        secondaryValue: (a) => `R$ ${a.price.toFixed(2)}`
-    },
-    {
-        id: 'LOW',
-        label: 'Maiores Baixas',
-        subLabel: 'Últ. 24h',
-        icon: TrendingDown,
-        color: 'rose',
-        filterFn: (a) => (a.variation_percent || 0) < 0,
-        sortFn: (a, b) => (a.variation_percent || 0) - (b.variation_percent || 0), // Menor (mais negativo) primeiro
-        valueFormatter: (a) => (
-            <span className="text-rose-500 font-bold flex items-center gap-1">
-                <ArrowDownRight className="w-3 h-3" /> {Math.abs(a.variation_percent || 0).toFixed(2)}%
-            </span>
-        ),
-        secondaryValue: (a) => `R$ ${a.price.toFixed(2)}`
-    },
-    {
-        id: 'VALUATION_BAZIN', // Placeholder para "Mais Queridas" ou outro
-        label: 'Mais Populares',
-        icon: Award,
-        color: 'purple',
-        filterFn: (a) => true, // Mock: mostraria liquidez se tivesse
-        sortFn: (a, b) => (a.price || 0) - (b.price || 0), // Mock: ordena por preço
-        valueFormatter: (a) => `R$ ${a.price.toFixed(2)}`,
-        secondaryValue: () => 'Alta Liquidez'
-    }
-];
+const getRankings = (assetType: 'ALL' | 'fiis' | 'stocks'): RankingConfig[] => {
+    // Helper para verificar tipo
+    const isFii = (t: string) => t.endsWith('11') || t.endsWith('11B');
+
+    return [
+        {
+            id: 'DY',
+            label: 'Dividend Yield',
+            subLabel: 'Maiores Pagadores',
+            icon: DollarSign,
+            color: 'emerald',
+            filterFn: (a) => (a.dy_12m || 0) > 0,
+            sortFn: (a, b) => (b.dy_12m || 0) - (a.dy_12m || 0),
+            valueFormatter: (a) => `${a.dy_12m?.toFixed(2)}%`,
+            secondaryValue: (a) => 'Retorno 12m'
+        },
+        {
+            id: 'VALUATION',
+            label: 'Mais Baratas',
+            subLabel: 'P/L e P/VP',
+            icon: Scale,
+            color: 'indigo',
+            // Filtra: P/VP positivo para FIIs, P/L positivo para Ações
+            filterFn: (a) => isFii(a.ticker) ? (a.p_vp || 0) > 0 : (a.p_l || 0) > 0,
+            // Ordena: P/VP para FIIs, P/L para Ações (Simplificado para mix)
+            sortFn: (a, b) => {
+                const valA = isFii(a.ticker) ? (a.p_vp || 0) : (a.p_l || 0);
+                const valB = isFii(b.ticker) ? (b.p_vp || 0) : (b.p_l || 0);
+                return valA - valB;
+            },
+            valueFormatter: (a) => isFii(a.ticker) ? `${a.p_vp?.toFixed(2)}x` : `${a.p_l?.toFixed(1)}x`,
+            secondaryValue: (a) => isFii(a.ticker) ? 'P/VP' : 'P/L'
+        },
+        {
+            id: 'HIGH',
+            label: 'Maiores Altas',
+            subLabel: 'Últimas 24h',
+            icon: TrendingUp,
+            color: 'sky',
+            filterFn: (a) => (a.variation_percent || 0) > 0,
+            sortFn: (a, b) => (b.variation_percent || 0) - (a.variation_percent || 0),
+            valueFormatter: (a) => (
+                <span className="text-emerald-500 font-bold flex items-center gap-1">
+                    <ArrowUpRight className="w-3 h-3" /> {a.variation_percent?.toFixed(2)}%
+                </span>
+            ),
+            secondaryValue: (a) => `R$ ${a.price.toFixed(2)}`
+        },
+        {
+            id: 'LOW',
+            label: 'Maiores Baixas',
+            subLabel: 'Últimas 24h',
+            icon: TrendingDown,
+            color: 'rose',
+            filterFn: (a) => (a.variation_percent || 0) < 0,
+            sortFn: (a, b) => (a.variation_percent || 0) - (b.variation_percent || 0),
+            valueFormatter: (a) => (
+                <span className="text-rose-500 font-bold flex items-center gap-1">
+                    <ArrowDownRight className="w-3 h-3" /> {Math.abs(a.variation_percent || 0).toFixed(2)}%
+                </span>
+            ),
+            secondaryValue: (a) => `R$ ${a.price.toFixed(2)}`
+        }
+    ];
+};
 
 // --- UTILS ---
 const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 // --- COMPONENTS ---
 
-// 1. Grid Card (O botão quadrado da home)
 const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: () => void }) => {
     const Icon = config.icon;
     const colors: Record<string, string> = {
@@ -165,54 +155,59 @@ const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: 
     );
 };
 
-// 2. Lista de Detalhes (A tabela que abre)
 const RankingListView = ({ assets, config, onSelect }: { assets: MarketAsset[], config: RankingConfig, onSelect: (a: MarketAsset) => void }) => {
     return (
         <div className="flex flex-col bg-white dark:bg-zinc-900 min-h-full">
-            {/* Table Header */}
-            <div className="flex items-center px-4 py-3 bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800">
+            <div className="flex items-center px-4 py-3 bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10 backdrop-blur-sm">
                 <div className="w-10 text-[10px] font-black text-zinc-400 uppercase">#</div>
                 <div className="flex-1 text-[10px] font-black text-zinc-400 uppercase">Ativo</div>
                 <div className="w-24 text-right text-[10px] font-black text-zinc-400 uppercase">{config.label.split(' ')[0]}</div>
             </div>
 
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {assets.map((asset, index) => (
-                    <button 
-                        key={asset.ticker}
-                        onClick={() => onSelect(asset)}
-                        className="w-full flex items-center px-4 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-                    >
-                        <div className="w-10 text-xs font-black text-zinc-400">{index + 1}</div>
-                        <div className="flex-1 flex flex-col items-start">
-                            <span className="text-sm font-black text-zinc-900 dark:text-white">{asset.ticker}</span>
-                            <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[120px]">{asset.name.split(' ')[0]}</span>
-                        </div>
-                        <div className="w-28 flex flex-col items-end">
-                            <span className="text-sm font-black text-zinc-900 dark:text-white">
-                                {config.valueFormatter(asset)}
-                            </span>
-                            {config.secondaryValue && (
-                                <span className="text-[9px] font-medium text-zinc-400">
-                                    {config.secondaryValue(asset)}
+                {assets.map((asset, index) => {
+                    const isFii = asset.ticker.endsWith('11') || asset.ticker.endsWith('11B');
+                    return (
+                        <button 
+                            key={asset.ticker}
+                            onClick={() => onSelect(asset)}
+                            className="w-full flex items-center px-4 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group"
+                        >
+                            <div className="w-10 text-xs font-black text-zinc-400">{index + 1}</div>
+                            <div className="flex-1 flex flex-col items-start">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-black text-zinc-900 dark:text-white">{asset.ticker}</span>
+                                    <span className={`text-[8px] font-bold px-1.5 rounded ${isFii ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                        {isFii ? 'FII' : 'AÇÃO'}
+                                    </span>
+                                </div>
+                                <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[140px]">{asset.name}</span>
+                            </div>
+                            <div className="w-28 flex flex-col items-end">
+                                <span className="text-sm font-black text-zinc-900 dark:text-white">
+                                    {config.valueFormatter(asset)}
                                 </span>
-                            )}
-                        </div>
-                    </button>
-                ))}
+                                {config.secondaryValue && (
+                                    <span className="text-[9px] font-medium text-zinc-400">
+                                        {config.secondaryValue(asset)}
+                                    </span>
+                                )}
+                            </div>
+                        </button>
+                    );
+                })}
             </div>
             
             {assets.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 opacity-50">
                     <Filter className="w-12 h-12 mb-3 text-zinc-300" strokeWidth={1} />
-                    <p className="text-xs font-bold text-zinc-500">Nenhum ativo neste ranking</p>
+                    <p className="text-xs font-bold text-zinc-500">Nenhum ativo encontrado</p>
                 </div>
             )}
         </div>
     );
 };
 
-// --- MODAL DETALHADO DO ATIVO ---
 const AssetDetailModal = ({ asset, onClose }: { asset: MarketAsset, onClose: () => void }) => {
     const isFii = asset.ticker.endsWith('11') || asset.ticker.endsWith('11B');
     const url = `https://investidor10.com.br/${isFii ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`;
@@ -268,12 +263,10 @@ const AssetDetailModal = ({ asset, onClose }: { asset: MarketAsset, onClose: () 
     );
 };
 
-// --- PÁGINA PRINCIPAL ---
-
 export const Market: React.FC = () => {
     const [data, setData] = useState<NewMarketOverview | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'fiis' | 'stocks'>('fiis');
+    const [activeTypeFilter, setActiveTypeFilter] = useState<'ALL' | 'fiis' | 'stocks'>('ALL');
     
     // Estado de Navegação Interna
     const [selectedRanking, setSelectedRanking] = useState<RankingConfig | null>(null);
@@ -291,32 +284,49 @@ export const Market: React.FC = () => {
 
     useEffect(() => { loadData(); }, []);
 
-    // Agrega todos os ativos disponíveis para permitir reordenação flexível
-    // (A API retorna listas parciais, então juntamos tudo num pool único por tipo)
+    // Pool de todos os ativos (FIIs + Stocks)
     const assetPool = useMemo(() => {
         if (!data) return [];
-        const raw = data.highlights[activeTab];
-        // Junta todas as listas e remove duplicatas por ticker
-        const all = [...raw.gainers, ...raw.losers, ...raw.high_yield, ...raw.discounted];
+        const f = data.highlights.fiis;
+        const s = data.highlights.stocks;
+        
+        // Combina todas as listas em um único array sem duplicatas
+        const allAssets = [
+            ...f.gainers, ...f.losers, ...f.high_yield, ...f.discounted,
+            ...s.gainers, ...s.losers, ...s.high_yield, ...s.discounted
+        ];
+        
         const unique = new Map();
-        all.forEach(item => unique.set(item.ticker, item));
+        allAssets.forEach(item => unique.set(item.ticker, item));
         return Array.from(unique.values());
-    }, [data, activeTab]);
+    }, [data]);
 
-    // Aplica filtro e ordenação do ranking selecionado
+    // Aplica filtro de ranking e filtro de tipo (Drill-down)
     const currentList = useMemo(() => {
         if (!selectedRanking) return [];
-        let list = assetPool.filter(selectedRanking.filterFn);
         
+        // 1. Filtra por tipo (Todos, FIIs ou Ações)
+        let list = assetPool.filter(a => {
+            const isFii = a.ticker.endsWith('11') || a.ticker.endsWith('11B');
+            if (activeTypeFilter === 'fiis') return isFii;
+            if (activeTypeFilter === 'stocks') return !isFii;
+            return true;
+        });
+
+        // 2. Filtra pela lógica do Ranking (ex: apenas > 0 DY)
+        list = list.filter(selectedRanking.filterFn);
+        
+        // 3. Filtra por busca
         if (searchTerm) {
             const term = searchTerm.toUpperCase();
             list = list.filter(a => a.ticker.includes(term) || a.name.toUpperCase().includes(term));
         }
 
+        // 4. Ordena
         return list.sort(selectedRanking.sortFn);
-    }, [assetPool, selectedRanking, searchTerm]);
+    }, [assetPool, selectedRanking, searchTerm, activeTypeFilter]);
 
-    const rankings = getRankings(activeTab);
+    const rankings = getRankings('ALL');
 
     return (
         <div className="pb-32 min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -324,20 +334,45 @@ export const Market: React.FC = () => {
             <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-3 mb-6">
                 
                 {selectedRanking ? (
-                    // Header de Drill-down (Quando dentro de um ranking)
-                    <div className="flex items-center gap-3 py-1 anim-slide-in-right">
-                        <button onClick={() => { setSelectedRanking(null); setSearchTerm(''); }} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center press-effect">
-                            <ArrowLeft className="w-5 h-5" />
-                        </button>
-                        <div className="flex-1">
-                            <h2 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-none">{selectedRanking.label}</h2>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{activeTab === 'fiis' ? 'FIIs' : 'Ações'} • {currentList.length} Ativos</p>
+                    // HEADER INTERNO (Dentro de uma categoria)
+                    <div className="flex flex-col gap-4 anim-slide-in-right">
+                        <div className="flex items-center gap-3 py-1">
+                            <button onClick={() => { setSelectedRanking(null); setSearchTerm(''); setActiveTypeFilter('ALL'); }} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center press-effect">
+                                <ArrowLeft className="w-5 h-5" />
+                            </button>
+                            <div className="flex-1">
+                                <h2 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-none">{selectedRanking.label}</h2>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">Top Rankings</p>
+                            </div>
+                        </div>
+
+                        {/* Filtros de Segmento + Busca Inline */}
+                        <div className="space-y-3">
+                            <div className="flex bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-xl relative">
+                                <div className={`absolute top-1 bottom-1 w-[calc(33.33%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`} 
+                                     style={{ left: '4px', transform: `translateX(${activeTypeFilter === 'ALL' ? '0%' : activeTypeFilter === 'fiis' ? '100%' : '200%'})` }}>
+                                </div>
+                                <button onClick={() => setActiveTypeFilter('ALL')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${activeTypeFilter === 'ALL' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>Todos</button>
+                                <button onClick={() => setActiveTypeFilter('fiis')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${activeTypeFilter === 'fiis' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>FIIs</button>
+                                <button onClick={() => setActiveTypeFilter('stocks')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${activeTypeFilter === 'stocks' ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>Ações</button>
+                            </div>
+
+                            <div className="relative group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
+                                <input 
+                                    type="text" 
+                                    placeholder={`Buscar em ${selectedRanking.label}...`}
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 focus:border-indigo-500/50 pl-10 pr-4 py-2.5 rounded-xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none shadow-sm transition-all"
+                                />
+                            </div>
                         </div>
                     </div>
                 ) : (
-                    // Header Principal
+                    // HEADER PRINCIPAL (Grid)
                     <div className="anim-fade-in">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex justify-between items-center mb-1">
                             <div>
                                 <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Rankings</h2>
                                 <div className="flex items-center gap-1.5 mt-0.5">
@@ -351,31 +386,6 @@ export const Market: React.FC = () => {
                                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                             </button>
                         </div>
-
-                        {/* Filtro FIIs vs Ações */}
-                        <div className="flex bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-xl relative">
-                            <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`} style={{ left: '4px', transform: `translateX(${activeTab === 'fiis' ? '0%' : '100%'})` }}></div>
-                            <button onClick={() => setActiveTab('fiis')} className={`relative z-10 flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${activeTab === 'fiis' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>
-                                <Building2 className="w-3.5 h-3.5" /> FIIs
-                            </button>
-                            <button onClick={() => setActiveTab('stocks')} className={`relative z-10 flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${activeTab === 'stocks' ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>
-                                <TrendingUp className="w-3.5 h-3.5" /> Ações
-                            </button>
-                        </div>
-                    </div>
-                )}
-                
-                {/* Search Bar (Visível apenas dentro da lista) */}
-                {selectedRanking && (
-                    <div className="relative group mt-3 anim-slide-up">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
-                        <input 
-                            type="text" 
-                            placeholder={`Filtrar lista de ${selectedRanking.label}...`}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 focus:border-indigo-500/50 pl-10 pr-4 py-3 rounded-2xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none shadow-sm transition-all"
-                        />
                     </div>
                 )}
             </div>
@@ -384,7 +394,7 @@ export const Market: React.FC = () => {
             <div className="px-1 min-h-[50vh]">
                 {loading && !data ? (
                     <div className="grid grid-cols-2 gap-3 animate-pulse">
-                        {[1, 2, 3, 4, 5, 6].map(i => (
+                        {[1, 2, 3, 4].map(i => (
                             <div key={i} className="h-36 bg-zinc-200 dark:bg-zinc-800 rounded-2xl"></div>
                         ))}
                     </div>
@@ -397,7 +407,7 @@ export const Market: React.FC = () => {
                         />
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-3 anim-stagger-list">
+                    <div className="grid grid-cols-2 gap-3 anim-stagger-list pb-20">
                         {rankings.map((ranking, index) => (
                             <div key={ranking.id} className="anim-stagger-item" style={{ animationDelay: `${index * 50}ms` }}>
                                 <RankingGridCard 

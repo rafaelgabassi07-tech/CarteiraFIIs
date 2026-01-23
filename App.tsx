@@ -805,7 +805,7 @@ const App: React.FC = () => {
 
         <>
             <Header 
-                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'market' ? 'Mercado' : currentTab === 'transactions' ? 'Ordens' : 'Notícias'} 
+                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'market' ? 'Rankings' : currentTab === 'transactions' ? 'Ordens' : 'Notícias'} 
                 showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
                 isRefreshing={isRefreshing || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
                 onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
