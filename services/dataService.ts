@@ -1,6 +1,6 @@
-
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, MarketOverview, ScrapeResult } from "../types";
 import { supabase } from "./supabase";
+import { getQuotes } from "./brapiService";
 
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
@@ -8,6 +8,30 @@ export interface UnifiedMarketData {
   indicators?: MarketIndicators;
   error?: string;
 }
+
+// --- INTELLIGENT CACHE CONFIG ---
+const getTTL = () => {
+    const now = new Date();
+    const day = now.getDay();
+    const hour = now.getHours();
+    
+    // Se for fim de semana ou fora do horário de pregão (10h as 18h), cache longo (4 horas)
+    // Isso economiza MUITO recurso quando o mercado está parado.
+    const isMarketOpen = day >= 1 && day <= 5 && hour >= 10 && hour < 18;
+    
+    // Mercado Aberto: 20 minutos de cache
+    // Mercado Fechado: 4 horas
+    return isMarketOpen ? 20 * 60 * 1000 : 4 * 60 * 60 * 1000;
+};
+
+const isStale = (dateString?: string) => {
+    if (!dateString) return true;
+    const lastUpdate = new Date(dateString).getTime();
+    const now = Date.now();
+    return (now - lastUpdate) > getTTL();
+};
+
+// --- HELPERS ---
 
 const fetchInflationData = async (): Promise<number> => {
     let lastKnownReal = 0;
@@ -26,7 +50,7 @@ const fetchInflationData = async (): Promise<number> => {
     try {
         const response = await fetch('/api/indicators', { 
             headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(8000) 
+            signal: AbortSignal.timeout(5000) 
         });
         
         if (!response.ok) return lastKnownReal;
@@ -60,12 +84,8 @@ const normalizeTickerRoot = (t: string) => {
     return clean;
 };
 
-/**
- * Converte dados brutos do Scraper/Banco (chaves do DB) para a interface do Frontend (AssetFundamentals)
- * Centraliza a lógica de mapeamento para garantir consistência.
- */
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
-    const getVal = (...keys: string[]) => {
+    const getVal = (...keys: string[]): any => {
         for (const k of keys) {
             if (m[k] !== undefined && m[k] !== null && m[k] !== 'N/A' && m[k] !== '') return m[k];
         }
@@ -73,15 +93,12 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
     };
 
     return {
-        // Comuns
         p_vp: parseNumberSafe(getVal('pvp', 'p_vp', 'vp')),
         dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield')), 
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
         market_cap: getVal('valor_mercado', 'val_mercado', 'market_cap') || undefined, 
-        
-        // Ações
         net_margin: parseNumberSafe(getVal('margem_liquida', 'net_margin')),
         gross_margin: parseNumberSafe(getVal('margem_bruta', 'gross_margin')),
         cagr_revenue: parseNumberSafe(getVal('cagr_receita', 'cagr_receita_5a')),
@@ -90,36 +107,67 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
         lpa: parseNumberSafe(getVal('lpa')),
         vpa: parseNumberSafe(getVal('vpa', 'vp_cota', 'vp')),
-
-        // FIIs
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica', 'vacancy')),
         manager_type: getVal('tipo_gestao', 'manager_type') || undefined,
         assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
         management_fee: getVal('taxa_adm', 'management_fee') || undefined,
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento', 'last_dividend', 'rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas', 'num_cotistas')),
-        
         updated_at: m.updated_at,
-        
         sentiment: 'Neutro',
         sources: []
     };
 };
 
-// Função para acionar o Scraper no Backend (Serverless)
-export const triggerScraperUpdate = async (tickers: string[], onProgress?: (current: number, total: number) => void): Promise<ScrapeResult[]> => {
+/**
+ * Função de Gatilho Inteligente.
+ * Só chama a API Serverless se realmente necessário ou forçado.
+ */
+export const triggerScraperUpdate = async (tickers: string[], force = false): Promise<ScrapeResult[]> => {
     const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
-    let processed = 0;
     const results: ScrapeResult[] = [];
-    const BATCH_SIZE = 3; // Lote pequeno para evitar timeout em Serverless
     
-    for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
-        const batch = uniqueTickers.slice(i, i + BATCH_SIZE);
+    // Filtra quais tickers realmente precisam de update
+    const tickersToUpdate: string[] = [];
+
+    if (force) {
+        tickersToUpdate.push(...uniqueTickers);
+    } else {
+        // Checa metadata local ou no DB antes de decidir
+        const { data: existingData } = await supabase
+            .from('ativos_metadata')
+            .select('ticker, updated_at')
+            .in('ticker', uniqueTickers);
+            
+        const dbMap = new Map<string, string>((existingData || []).map((d: any) => [d.ticker, d.updated_at]));
+
+        uniqueTickers.forEach(t => {
+            const lastUpdate = dbMap.get(t);
+            if (!lastUpdate || isStale(lastUpdate)) {
+                tickersToUpdate.push(t);
+            } else {
+                // Simula sucesso imediato pois já está atualizado
+                results.push({
+                    ticker: t,
+                    status: 'success',
+                    message: 'Cached (Fresh)'
+                });
+            }
+        });
+    }
+
+    if (tickersToUpdate.length === 0) return results;
+
+    // Processa apenas os "stale" ou faltantes
+    const BATCH_SIZE = 3;
+    
+    for (let i = 0; i < tickersToUpdate.length; i += BATCH_SIZE) {
+        const batch = tickersToUpdate.slice(i, i + BATCH_SIZE);
         
         await Promise.all(batch.map(async (ticker) => {
             try {
-                // Tenta chamar a API do scraper
-                const res = await fetch(`/api/update-stock?ticker=${ticker}`);
+                // Passa flag force=true para a API saber que o cliente já validou a necessidade
+                const res = await fetch(`/api/update-stock?ticker=${ticker}&force=${force}`);
                 const data = await res.json();
 
                 if (data.success && data.data) {
@@ -137,7 +185,22 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
                         dividendsFound: data.dividends 
                     });
                 } else {
-                    throw new Error(data.error || 'Falha na resposta da API');
+                    // Se falhar, tentamos recuperar dados parciais do Brapi direto no front como fallback
+                    try {
+                        const { quotes } = await getQuotes([ticker]);
+                        if(quotes.length > 0) {
+                             results.push({
+                                ticker,
+                                status: 'success', // Partial success
+                                details: { price: quotes[0].regularMarketPrice },
+                                message: 'Fallback to Brapi'
+                            });
+                        } else {
+                            throw new Error(data.error);
+                        }
+                    } catch {
+                        throw new Error(data.error || 'Falha na resposta da API');
+                    }
                 }
             } catch (e: any) {
                 console.warn(`Falha ao atualizar ${ticker}`, e);
@@ -146,36 +209,60 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
                     status: 'error',
                     message: e.message || 'Erro de conexão'
                 });
-            } finally {
-                processed++;
-                if (onProgress) onProgress(processed, uniqueTickers.length);
             }
         }));
 
-        // Delay para gentileza com o servidor alvo
-        if (i + BATCH_SIZE < uniqueTickers.length) {
-            await new Promise(r => setTimeout(r, 1500));
+        if (i + BATCH_SIZE < tickersToUpdate.length) {
+            await new Promise(r => setTimeout(r, 1200));
         }
     }
     
     return results;
 };
 
+/**
+ * Busca unificada que prioriza o Banco de Dados.
+ * Se os dados estiverem lá e não forem muito antigos, retorna eles.
+ * Se estiverem velhos, agenda uma atualização em background (Stale-While-Revalidate).
+ */
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
   const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
 
   try {
-      // 1. Fetch Dividendos
-      const { data: dividendsData, error: divError } = await supabase
-            .from('market_dividends')
-            .select('*')
-            .in('ticker', uniqueTickers);
+      // 1. Fetch Rápido do Supabase (Sempre a fonte da verdade)
+      const [divResponse, metaResponse] = await Promise.all([
+          supabase.from('market_dividends').select('*').in('ticker', uniqueTickers),
+          supabase.from('ativos_metadata').select('*').in('ticker', uniqueTickers)
+      ]);
 
-      if (divError && divError.code !== 'PGRST205') console.error("Erro Supabase (Dividendos):", divError);
+      const dividendsData = divResponse.data || [];
+      const metaData = metaResponse.data || [];
 
-      const dividends: DividendReceipt[] = (dividendsData || []).map((d: any) => ({
+      // 2. Identifica ativos desatualizados (Stale)
+      const staleTickers: string[] = [];
+      const metaMap = new Map<string, any>(metaData.map((m: any) => [m.ticker, m]));
+
+      uniqueTickers.forEach(t => {
+          const meta = metaMap.get(t);
+          if (!meta || isStale(meta.updated_at) || forceRefresh) {
+              staleTickers.push(t);
+          }
+      });
+
+      // 3. Dispara atualização em background (Fire & Forget) para não travar a UI
+      // O usuário vê os dados "velhos" instantaneamente, e na próxima recarga vê os novos.
+      if (staleTickers.length > 0) {
+          console.log(`[SmartSync] Atualizando ${staleTickers.length} ativos em background...`);
+          // Não aguarda a promessa (fire & forget)
+          triggerScraperUpdate(staleTickers, forceRefresh).then(() => {
+              console.log('[SmartSync] Atualização em background concluída.');
+          }).catch(console.error);
+      }
+
+      // 4. Monta o objeto de retorno com o que tem no banco (rápido)
+      const dividends: DividendReceipt[] = dividendsData.map((d: any) => ({
             id: d.id,
             ticker: d.ticker,
             type: d.type,
@@ -186,38 +273,22 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
-      // 2. Fetch Metadados (Fundamentos)
-      const { data: metaData, error: metaError } = await supabase
-            .from('ativos_metadata')
-            .select('*')
-            .in('ticker', uniqueTickers);
-
-      if (metaError && metaError.code !== 'PGRST205') console.error("Erro Supabase (Metadata):", metaError);
-
       const metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};
       
-      if (metaData) {
-          metaData.forEach((m: any) => {
-              let assetType = AssetType.STOCK;
-              // Detecção de tipo mais robusta
-              if (m.type === 'FII' || m.ticker.endsWith('11') || m.ticker.endsWith('11B')) {
-                  assetType = AssetType.FII;
-              }
+      metaData.forEach((m: any) => {
+          let assetType = AssetType.STOCK;
+          if (m.type === 'FII' || m.ticker.endsWith('11') || m.ticker.endsWith('11B')) {
+              assetType = AssetType.FII;
+          }
 
-              const normalizedTicker = m.ticker.trim().toUpperCase();
+          const normalizedTicker = m.ticker.trim().toUpperCase();
+          metadata[normalizedTicker] = {
+              segment: m.segment || 'Geral',
+              type: assetType,
+              fundamentals: mapScraperToFundamentals(m)
+          };
+      });
 
-              // Mapeia e sanitiza
-              const fundamentals = mapScraperToFundamentals(m);
-
-              metadata[normalizedTicker] = {
-                  segment: m.segment || 'Geral',
-                  type: assetType,
-                  fundamentals
-              };
-          });
-      }
-
-      // 3. Fetch Indicadores (IPCA)
       const ipca = await fetchInflationData();
 
       return { 
@@ -248,7 +319,6 @@ export const fetchMarketOverview = async (): Promise<MarketOverview> => {
         return data;
     } catch (error: any) {
         console.warn("Market Overview Fetch Error:", error.message);
-        // Fallback gracioso para UI não quebrar
         return { 
             market_status: 'Indisponível', 
             last_update: '', 

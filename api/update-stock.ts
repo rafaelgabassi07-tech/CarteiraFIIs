@@ -11,6 +11,17 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
+// --- INTELLIGENT CACHE (SERVER-SIDE) ---
+// Define a validade do dado baseado no horário do mercado
+const getTTL = () => {
+    const now = new Date();
+    const day = now.getDay();
+    const hour = now.getHours();
+    // Mercado Aberto (Seg-Sex, 10h-18h): 20 min TTL
+    const isMarketOpen = day >= 1 && day <= 5 && hour >= 10 && hour < 18;
+    return isMarketOpen ? 20 * 60 * 1000 : 4 * 60 * 60 * 1000; // 4h se fechado
+};
+
 // --- AGENTE HTTPS & HEADERS (MIMIC REAL BROWSER) ---
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
@@ -27,9 +38,6 @@ const getBrowserHeaders = () => ({
     'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
     'Cache-Control': 'no-cache',
     'Upgrade-Insecure-Requests': '1',
-    'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    'Sec-Ch-Ua-Mobile': '?0',
-    'Sec-Ch-Ua-Platform': '"Windows"',
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
     'Sec-Fetch-Site': 'none',
@@ -150,8 +158,6 @@ async function scrapeInvestidor10(ticker: string) {
         const extracted: any = {};
 
         // === ESTRATÉGIA 1: JSON-LD (Dados Estruturados - A mais confiável) ===
-        // O Investidor10 e outros sites modernos injetam dados SEO em JSON.
-        // Isso é imune a mudanças de CSS/Layout visual.
         try {
             const jsonLdScripts = $('script[type="application/ld+json"]');
             jsonLdScripts.each((_, el) => {
@@ -269,9 +275,7 @@ async function scrapeInvestidor10(ticker: string) {
             if (seg) extracted.segmento = seg;
         }
 
-        // === SANITIZAÇÃO E VALIDAÇÃO FINAL (INTELLIGENCE) ===
-        // O corpo "sabe" o que faz sentido.
-        
+        // === SANITIZAÇÃO E VALIDAÇÃO FINAL ===
         const finalMetadata = {
             ticker: ticker.toUpperCase(),
             type: finalType,
@@ -300,12 +304,6 @@ async function scrapeInvestidor10(ticker: string) {
             cagr_lucros_5a: cleanNumber(extracted.cagr_lucros_5a)
         };
 
-        // Validação de Segurança: Se preço for 0, algo deu errado no parsing.
-        if (finalMetadata.cotacao_atual === 0) {
-            console.warn(`[SCRAPER] ${ticker}: Preço zerado detectado. Marcando como suspeito.`);
-            // Podemos adicionar flag ou apenas logar. O front fará o merge inteligente.
-        }
-
         return { metadata: finalMetadata, dividends };
 
     } catch (e: any) {
@@ -320,9 +318,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const ticker = String(req.query.ticker || '').trim().toUpperCase();
+    const force = req.query.force === 'true'; 
+    
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
+        // === INTELLIGENT CACHE CHECK (SERVER SIDE) ===
+        // Proteção contra "thundering herd": se o dado está fresco, não re-scrapar
+        if (!force) {
+            const { data: existing } = await supabase
+                .from('ativos_metadata')
+                .select('updated_at')
+                .eq('ticker', ticker)
+                .single();
+            
+            if (existing && existing.updated_at) {
+                const lastUpdate = new Date(existing.updated_at).getTime();
+                const now = Date.now();
+                if (now - lastUpdate < getTTL()) {
+                    return res.status(200).json({ success: true, cached: true });
+                }
+            }
+        }
+
         const result = await scrapeInvestidor10(ticker);
         
         if (!result) {
@@ -338,7 +356,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Atualização no Banco
         if (metadata) {
-            // Mapeia para colunas do DB
             const dbPayload: any = {
                 ticker: metadata.ticker,
                 type: metadata.type,
@@ -359,7 +376,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 cagr_receita: metadata.cagr_receita_5a,
                 cagr_lucro: metadata.cagr_lucros_5a,
                 num_cotistas: metadata.num_cotistas,
-                ultimo_rendimento: metadata.ultimo_rendimento, // Se extraído
+                ultimo_rendimento: metadata.ultimo_rendimento, 
                 // Strings
                 liquidez: metadata.liquidez,
                 valor_mercado: metadata.val_mercado,
@@ -377,6 +394,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
 
             await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
+            
+            // Inserção de dividendos se houver
+            if (uniqueDivs.length > 0) {
+                 await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
+            }
         }
 
         return res.status(200).json({ success: true, data: metadata, dividends: uniqueDivs });
