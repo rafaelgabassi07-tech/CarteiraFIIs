@@ -17,8 +17,7 @@ const HEADERS = {
     'Pragma': 'no-cache'
 };
 
-// --- DADOS DE EMERGÊNCIA (SNAPSHOT) ---
-// Garante que a página tenha conteúdo mesmo se tudo falhar
+// --- DADOS DE EMERGÊNCIA (SNAPSHOT EXPANDIDO) ---
 const EMERGENCY_DATA: Record<string, any> = {
     'MXRF11': { name: 'Maxi Renda', type: 'fiis', p_vp: 1.01, dy_12m: 12.45, price: 10.35 },
     'HGLG11': { name: 'CSHG Logística', type: 'fiis', p_vp: 1.05, dy_12m: 8.90, price: 165.50 },
@@ -30,6 +29,8 @@ const EMERGENCY_DATA: Record<string, any> = {
     'BTLG11': { name: 'BTG Logística', type: 'fiis', p_vp: 0.99, dy_12m: 9.10, price: 102.50 },
     'IRDM11': { name: 'Iridium', type: 'fiis', p_vp: 0.78, dy_12m: 13.20, price: 72.30 },
     'HGRU11': { name: 'CSHG Renda Urbana', type: 'fiis', p_vp: 1.03, dy_12m: 8.70, price: 132.40 },
+    'MALL11': { name: 'Genial Malls', type: 'fiis', p_vp: 0.95, dy_12m: 9.50, price: 112.00 },
+    'VGIP11': { name: 'Valora IP', type: 'fiis', p_vp: 0.92, dy_12m: 14.20, price: 89.50 },
     
     'PETR4': { name: 'Petrobras', type: 'acoes', p_l: 3.5, p_vp: 1.4, dy_12m: 20.5, price: 38.50 },
     'VALE3': { name: 'Vale', type: 'acoes', p_l: 5.2, p_vp: 1.6, dy_12m: 12.1, price: 62.30 },
@@ -40,7 +41,9 @@ const EMERGENCY_DATA: Record<string, any> = {
     'ABEV3': { name: 'Ambev', type: 'acoes', p_l: 14.5, p_vp: 2.5, dy_12m: 5.5, price: 12.50 },
     'PETR3': { name: 'Petrobras ON', type: 'acoes', p_l: 3.4, p_vp: 1.3, dy_12m: 21.0, price: 40.20 },
     'MGLU3': { name: 'Magalu', type: 'acoes', p_l: -10.5, p_vp: 2.0, dy_12m: 0.0, price: 1.80 },
-    'ITSA4': { name: 'Itaúsa', type: 'acoes', p_l: 6.5, p_vp: 1.3, dy_12m: 8.5, price: 10.20 }
+    'ITSA4': { name: 'Itaúsa', type: 'acoes', p_l: 6.5, p_vp: 1.3, dy_12m: 8.5, price: 10.20 },
+    'TAEE11': { name: 'Taesa', type: 'acoes', p_l: 10.5, p_vp: 1.8, dy_12m: 9.5, price: 35.50 },
+    'CMIG4': { name: 'Cemig', type: 'acoes', p_l: 5.5, p_vp: 1.1, dy_12m: 8.2, price: 11.20 }
 };
 
 const TICKER_LIST = Object.keys(EMERGENCY_DATA).join(',');
@@ -61,7 +64,7 @@ async function scrapeHome() {
         const $ = cheerio.load(data);
         const items: any[] = [];
         
-        // Tenta seletores variados pois o site muda
+        // Tenta seletores variados
         const strategies = [
             () => $('#highs .item, #lows .item').each((_, el) => {
                 const ticker = $(el).find('.name-ticker span').first().text().trim();
@@ -103,6 +106,7 @@ async function scrapeRanking(type: 'fiis' | 'acoes') {
         const $ = cheerio.load(data);
         const items: any[] = [];
         
+        // Remove limites de paginação do scraper, pega tudo que estiver na tabela inicial
         $('#table-ranking tbody tr, .table-ranking tbody tr').each((_, tr) => {
             const tds = $(tr).find('td');
             if (tds.length < 5) return;
@@ -134,7 +138,6 @@ async function scrapeRanking(type: 'fiis' | 'acoes') {
 // --- STRATEGY 2: BRAPI (Backup Live Data) ---
 async function fetchBrapiBackup() {
     try {
-        // Tenta usar token do env ou um token público conhecido (limitado) se não houver
         const token = process.env.BRAPI_TOKEN || 'public'; 
         const url = `https://brapi.dev/api/quote/${TICKER_LIST}?token=${token}`;
         
@@ -148,7 +151,6 @@ async function fetchBrapiBackup() {
                 name: r.longName || staticData.name || r.symbol,
                 price: r.regularMarketPrice,
                 variation_percent: r.regularMarketChangePercent,
-                // Mescla dados estáticos de fundamentos pois Brapi List não retorna isso
                 dy_12m: staticData.dy_12m || 0,
                 p_vp: staticData.p_vp || 0,
                 p_l: staticData.p_l || 0,
@@ -167,16 +169,16 @@ async function fetchBrapiBackup() {
     }
 }
 
-// --- STRATEGY 3: STATIC EMERGENCY (Último Recurso) ---
+// --- STRATEGY 3: STATIC EMERGENCY ---
 function getStaticFallback() {
     const items = Object.entries(EMERGENCY_DATA).map(([ticker, data]) => ({
         ticker,
         ...data,
-        variation_percent: (Math.random() * 2 - 1) // Simula variação pequena visual
+        variation_percent: (Math.random() * 2 - 1)
     }));
     return {
-        gainers: items.slice(0, 5),
-        losers: items.slice(5, 10),
+        gainers: items.slice(0, 10),
+        losers: items.slice(10, 20),
         items
     };
 }
@@ -197,22 +199,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         let usedFallback = false;
 
-        // 2. Se Scraping falhou (dados insuficientes), ativa plano B (Brapi)
+        // 2. Backup se Scraping falhar
         if (homeData.gainers.length < 2 || fiisRaw.length < 2) {
             console.log('Main scraping insufficient, fetching backup...');
             const backup = await fetchBrapiBackup();
             
             if (backup) {
-                // Mescla dados do Brapi
                 homeData = { gainers: backup.gainers, losers: backup.losers };
-                
-                // Reconstrói listas de "Ranking" usando o backup enriquecido com dados estáticos
                 fiisRaw = backup.items.filter((i: any) => i.type === 'fiis');
                 stocksRaw = backup.items.filter((i: any) => i.type === 'acoes');
                 usedFallback = true;
             } else {
-                // 3. Se Brapi falhou, usa Estático (Plano C)
-                console.log('Brapi failed, using static emergency data...');
                 const staticData = getStaticFallback();
                 homeData = { gainers: staticData.gainers, losers: staticData.losers };
                 fiisRaw = staticData.items.filter((i: any) => i.type === 'fiis');
@@ -222,18 +219,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // --- FILTRAGEM E RESPOSTA ---
+        // AUMENTO DE LIMITES: Retorna TUDO para permitir listagens completas no Frontend
         
-        const fiiGainers = homeData.gainers.filter(i => isFiiTicker(i.ticker)).slice(0, 5);
-        const fiiLosers = homeData.losers.filter(i => isFiiTicker(i.ticker)).slice(0, 5);
-        const stockGainers = homeData.gainers.filter(i => !isFiiTicker(i.ticker)).slice(0, 5);
-        const stockLosers = homeData.losers.filter(i => !isFiiTicker(i.ticker)).slice(0, 5);
+        const fiiGainers = homeData.gainers.filter(i => isFiiTicker(i.ticker));
+        const fiiLosers = homeData.losers.filter(i => isFiiTicker(i.ticker));
+        const stockGainers = homeData.gainers.filter(i => !isFiiTicker(i.ticker));
+        const stockLosers = homeData.losers.filter(i => !isFiiTicker(i.ticker));
 
-        // Lógica de Ranking (Melhores Pagadores / Descontados)
-        const highYieldFIIs = [...fiisRaw].sort((a, b) => b.dy_12m - a.dy_12m).slice(0, 6);
-        const discountedFIIs = [...fiisRaw].filter(f => f.p_vp > 0).sort((a, b) => a.p_vp - b.p_vp).slice(0, 6);
+        // Rankings: Ordena, mas não corta mais com slice() agressivo
+        const highYieldFIIs = [...fiisRaw].sort((a, b) => b.dy_12m - a.dy_12m);
+        const discountedFIIs = [...fiisRaw].filter(f => f.p_vp > 0).sort((a, b) => a.p_vp - b.p_vp);
 
-        const discountedStocks = [...stocksRaw].filter(s => s.p_l > 0).sort((a, b) => a.p_l - b.p_l).slice(0, 6);
-        const highYieldStocks = [...stocksRaw].sort((a, b) => b.dy_12m - a.dy_12m).slice(0, 6);
+        const discountedStocks = [...stocksRaw].filter(s => s.p_l > 0).sort((a, b) => a.p_l - b.p_l);
+        const highYieldStocks = [...stocksRaw].sort((a, b) => b.dy_12m - a.dy_12m);
 
         return res.status(200).json({
             market_status: "Aberto",
@@ -258,7 +256,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     } catch (error: any) {
         console.error('API Market Fatal Error:', error);
-        // Fallback de Última Instância (Nunca retorna erro 500 para o front não quebrar)
         const staticData = getStaticFallback();
         return res.status(200).json({
             market_status: "Erro",

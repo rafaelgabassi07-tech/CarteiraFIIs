@@ -138,7 +138,7 @@ interface BottomNavProps {
 const navItems = [
   { id: 'home', icon: Home, label: 'Geral' },
   { id: 'portfolio', icon: PieChart, label: 'Carteira' },
-  { id: 'market', icon: BarChart2, label: 'Mercado' }, // Novo item
+  { id: 'market', icon: BarChart2, label: 'Rankings' }, // Atualizado de 'Mercado'
   { id: 'transactions', icon: ArrowRightLeft, label: 'Ordens' },
   { id: 'news', icon: Newspaper, label: 'Notícias' },
 ];
@@ -194,7 +194,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   );
 };
 
-// Types and Helper Interfaces
+// ... (Restante do arquivo mantido sem alterações) ...
 export interface InstallPromptModalProps {
   isOpen: boolean;
   onInstall: () => void;

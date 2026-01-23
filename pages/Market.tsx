@@ -37,7 +37,7 @@ interface NewMarketOverview {
 }
 
 // --- CONFIGURAÇÃO DAS CATEGORIAS DE RANKING ---
-type RankingType = 'VALUATION' | 'DY' | 'HIGH' | 'LOW' | 'LIQUIDITY';
+type RankingType = 'VALUATION' | 'DY' | 'HIGH' | 'LOW';
 
 interface RankingConfig {
     id: RankingType;
@@ -51,7 +51,7 @@ interface RankingConfig {
     secondaryValue?: (asset: MarketAsset) => string;
 }
 
-const getRankings = (assetType: 'ALL' | 'fiis' | 'stocks'): RankingConfig[] => {
+const getRankings = (): RankingConfig[] => {
     // Helper para verificar tipo
     const isFii = (t: string) => t.endsWith('11') || t.endsWith('11B');
 
@@ -75,7 +75,7 @@ const getRankings = (assetType: 'ALL' | 'fiis' | 'stocks'): RankingConfig[] => {
             color: 'indigo',
             // Filtra: P/VP positivo para FIIs, P/L positivo para Ações
             filterFn: (a) => isFii(a.ticker) ? (a.p_vp || 0) > 0 : (a.p_l || 0) > 0,
-            // Ordena: P/VP para FIIs, P/L para Ações (Simplificado para mix)
+            // Ordena: P/VP para FIIs, P/L para Ações
             sortFn: (a, b) => {
                 const valA = isFii(a.ticker) ? (a.p_vp || 0) : (a.p_l || 0);
                 const valB = isFii(b.ticker) ? (b.p_vp || 0) : (b.p_l || 0);
@@ -129,8 +129,6 @@ const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: 
         indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
         sky: 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400',
         rose: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400',
-        amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
-        purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
     };
     
     const themeClass = colors[config.color] || colors.emerald;
@@ -158,10 +156,17 @@ const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: 
 const RankingListView = ({ assets, config, onSelect }: { assets: MarketAsset[], config: RankingConfig, onSelect: (a: MarketAsset) => void }) => {
     return (
         <div className="flex flex-col bg-white dark:bg-zinc-900 min-h-full">
-            <div className="flex items-center px-4 py-3 bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10 backdrop-blur-sm">
-                <div className="w-10 text-[10px] font-black text-zinc-400 uppercase">#</div>
-                <div className="flex-1 text-[10px] font-black text-zinc-400 uppercase">Ativo</div>
-                <div className="w-24 text-right text-[10px] font-black text-zinc-400 uppercase">{config.label.split(' ')[0]}</div>
+            <div className="flex items-center px-4 py-3 bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10 backdrop-blur-sm justify-between">
+                <div className="flex gap-4">
+                    <div className="w-8 text-[10px] font-black text-zinc-400 uppercase">#</div>
+                    <div className="text-[10px] font-black text-zinc-400 uppercase">Ativo</div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-500">
+                        {assets.length}
+                    </span>
+                    <div className="w-20 text-right text-[10px] font-black text-zinc-400 uppercase">{config.label.split(' ')[0]}</div>
+                </div>
             </div>
 
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -173,7 +178,7 @@ const RankingListView = ({ assets, config, onSelect }: { assets: MarketAsset[], 
                             onClick={() => onSelect(asset)}
                             className="w-full flex items-center px-4 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group"
                         >
-                            <div className="w-10 text-xs font-black text-zinc-400">{index + 1}</div>
+                            <div className="w-8 text-xs font-black text-zinc-400">{index + 1}</div>
                             <div className="flex-1 flex flex-col items-start">
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm font-black text-zinc-900 dark:text-white">{asset.ticker}</span>
@@ -284,18 +289,21 @@ export const Market: React.FC = () => {
 
     useEffect(() => { loadData(); }, []);
 
-    // Pool de todos os ativos (FIIs + Stocks)
+    // Pool de todos os ativos (FIIs + Stocks) combinados
+    // Garante que a lista contenha TUDO o que veio da API
     const assetPool = useMemo(() => {
         if (!data) return [];
         const f = data.highlights.fiis;
         const s = data.highlights.stocks;
         
-        // Combina todas as listas em um único array sem duplicatas
+        // Combina todas as listas em um único array
+        // A API agora retorna listas maiores, então concatenamos tudo
         const allAssets = [
             ...f.gainers, ...f.losers, ...f.high_yield, ...f.discounted,
             ...s.gainers, ...s.losers, ...s.high_yield, ...s.discounted
         ];
         
+        // Remove duplicatas (mesmo ativo pode estar em "High Yield" e "Discounted")
         const unique = new Map();
         allAssets.forEach(item => unique.set(item.ticker, item));
         return Array.from(unique.values());
@@ -305,15 +313,21 @@ export const Market: React.FC = () => {
     const currentList = useMemo(() => {
         if (!selectedRanking) return [];
         
-        // 1. Filtra por tipo (Todos, FIIs ou Ações)
+        // 1. Filtra estritamente por tipo (Todos, FIIs ou Ações)
         let list = assetPool.filter(a => {
             const isFii = a.ticker.endsWith('11') || a.ticker.endsWith('11B');
+            
+            // SE O FILTRO FOR 'fiis', MOSTRA APENAS FIIs
             if (activeTypeFilter === 'fiis') return isFii;
+            
+            // SE O FILTRO FOR 'stocks', MOSTRA APENAS STOCKS (Não FIIs)
             if (activeTypeFilter === 'stocks') return !isFii;
+            
+            // SE FOR 'ALL', MOSTRA TUDO
             return true;
         });
 
-        // 2. Filtra pela lógica do Ranking (ex: apenas > 0 DY)
+        // 2. Filtra pela lógica do Ranking Selecionado (ex: apenas > 0 DY, ou apenas > 0 P/L)
         list = list.filter(selectedRanking.filterFn);
         
         // 3. Filtra por busca
@@ -326,7 +340,7 @@ export const Market: React.FC = () => {
         return list.sort(selectedRanking.sortFn);
     }, [assetPool, selectedRanking, searchTerm, activeTypeFilter]);
 
-    const rankings = getRankings('ALL');
+    const rankings = getRankings();
 
     return (
         <div className="pb-32 min-h-screen bg-zinc-50 dark:bg-zinc-950">
