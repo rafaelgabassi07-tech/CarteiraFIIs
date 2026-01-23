@@ -271,7 +271,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   );
 };
 
-// ... Restante dos modais mantidos (ConfirmationModal, UpdateReportModal, InstallPromptModal, ChangelogModal, NotificationsModal) ...
+// ... Restante dos modais mantidos (ConfirmationModal, InstallPromptModal, ChangelogModal, NotificationsModal) ...
 // (Omitidos para brevidade, mas devem ser incluídos no arquivo final sem alterações)
 interface ConfirmationModalProps { isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; }
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
@@ -296,9 +296,16 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
 };
 
 export const UpdateReportModal: React.FC<{ isOpen: boolean; onClose: () => void; results: UpdateReportData }> = ({ isOpen, onClose, results }) => {
+    // Separa os resultados em categorias
+    const updatedAssets = results.results.filter(r => r.status === 'success');
+    const failedAssets = results.results.filter(r => r.status === 'error');
+    const newDividends = results.results.flatMap(r => 
+        (r.dividendsFound || []).map(d => ({ ...d, ticker: r.ticker }))
+    );
+
     return (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-6 pb-20">
+        <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex justify-between items-center mb-6 px-1">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30">
@@ -314,18 +321,66 @@ export const UpdateReportModal: React.FC<{ isOpen: boolean; onClose: () => void;
                 </button>
             </div>
             
-            <div className="grid grid-cols-3 gap-3 mb-6">
-                <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl text-center border border-zinc-100 dark:border-zinc-800">
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Ativos</p>
-                    <p className="text-lg font-black text-zinc-900 dark:text-white">{results.results.length}</p>
+            <div className="grid grid-cols-3 gap-3 mb-8">
+                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl text-center border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Atualizados</p>
+                    <p className="text-xl font-black text-zinc-900 dark:text-white">{updatedAssets.length}</p>
                 </div>
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl text-center border border-emerald-100 dark:border-emerald-900/30">
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-2xl text-center border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
                     <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Proventos</p>
-                    <p className="text-lg font-black text-emerald-700 dark:text-emerald-300">{results.totalDividendsFound}</p>
+                    <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">{results.totalDividendsFound}</p>
                 </div>
-                <div className="bg-rose-50 dark:bg-rose-900/20 p-3 rounded-xl text-center border border-rose-100 dark:border-rose-900/30">
-                    <p className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-1">IPCA (12m)</p>
-                    <p className="text-lg font-black text-rose-700 dark:text-rose-300">{results.inflationRate.toFixed(2)}%</p>
+                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl text-center border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Erros</p>
+                    <p className={`text-xl font-black ${failedAssets.length > 0 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}`}>{failedAssets.length}</p>
+                </div>
+            </div>
+
+            <div className="space-y-6">
+                {newDividends.length > 0 && (
+                    <div className="anim-slide-up">
+                        <h3 className="px-2 mb-3 text-[10px] font-black uppercase tracking-widest text-zinc-400">Novos Proventos Encontrados</h3>
+                        <div className="space-y-2">
+                            {newDividends.map((div, i) => (
+                                <div key={i} className="flex justify-between items-center p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
+                                            {div.ticker.substring(0,2)}
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-zinc-900 dark:text-white">{div.ticker}</p>
+                                            <p className="text-[9px] text-zinc-500 font-medium">Pagamento: {div.paymentDate ? new Date(div.paymentDate).toLocaleDateString('pt-BR') : 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">R$ {div.rate.toFixed(4)}</p>
+                                        <p className="text-[9px] text-zinc-400 uppercase font-bold">{div.type}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="anim-slide-up" style={{ animationDelay: '100ms' }}>
+                    <h3 className="px-2 mb-3 text-[10px] font-black uppercase tracking-widest text-zinc-400">Ativos Processados</h3>
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden shadow-sm">
+                        {updatedAssets.map((r, i) => (
+                            <div key={i} className="flex justify-between items-center p-3 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
+                                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{r.ticker}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[9px] font-medium text-zinc-400">R$ {r.details?.price?.toFixed(2)}</span>
+                                    <CheckCircle className="w-3 h-3 text-emerald-500" />
+                                </div>
+                            </div>
+                        ))}
+                        {failedAssets.map((r, i) => (
+                            <div key={`err-${i}`} className="flex justify-between items-center p-3 bg-rose-50/50 dark:bg-rose-900/10 border-b border-rose-100 dark:border-rose-900/20 last:border-0">
+                                <span className="text-xs font-bold text-rose-600 dark:text-rose-400">{r.ticker}</span>
+                                <span className="text-[9px] font-bold text-rose-500 uppercase">Falha</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

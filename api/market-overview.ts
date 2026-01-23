@@ -18,7 +18,6 @@ const HEADERS = {
 
 const parseBrFloat = (str: string) => {
     if (!str) return 0;
-    // Remove tudo que não é número, vírgula, ponto ou traço
     const clean = str.replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
     const float = parseFloat(clean);
     return isNaN(float) ? 0 : float;
@@ -32,6 +31,7 @@ async function scrapeHome() {
         
         const extractTable = (selector: string) => {
             const items: any[] = [];
+            // Tenta encontrar cards primeiro (layout novo)
             $(selector).find('.item').each((_, el) => {
                 const ticker = $(el).find('.name-ticker span').first().text().trim();
                 const name = $(el).find('.name-ticker span').last().text().trim();
@@ -42,22 +42,37 @@ async function scrapeHome() {
                     items.push({ ticker, name, price, variation_percent: variation });
                 }
             });
-            // Fallback para tabelas se o layout de cards falhar (versão desktop vs mobile)
+            
+            // Fallback: Busca em qualquer tabela dentro da tab se não achou cards
             if (items.length === 0) {
                 $(selector).find('tr').slice(1).each((_, tr) => {
-                    const ticker = $(tr).find('td').eq(0).text().trim();
-                    const price = parseBrFloat($(tr).find('td').eq(1).text());
-                    const variation = parseBrFloat($(tr).find('td').eq(2).text());
-                    if (ticker) items.push({ ticker, name: 'Ação', price, variation_percent: variation });
+                    const tds = $(tr).find('td');
+                    if (tds.length >= 3) {
+                        const ticker = $(tds[0]).text().trim();
+                        const price = parseBrFloat($(tds[1]).text());
+                        const variation = parseBrFloat($(tds[2]).text());
+                        if (ticker) items.push({ ticker, name: 'Ação/FII', price, variation_percent: variation });
+                    }
                 });
             }
             return items.slice(0, 8);
         };
 
-        // Investidor10 Home: Tabs "Altas" e "Baixas" (Geralmente Ibovespa e IFIX)
-        // IDs podem variar, tentamos seletores genéricos de "Top Movers"
-        const gainers = extractTable('#highs');
-        const losers = extractTable('#lows');
+        // Tenta seletores de ID (padrão) e classes (fallback)
+        let gainers = extractTable('#highs');
+        let losers = extractTable('#lows');
+
+        // Se falhar, tenta varrer tabs genéricas
+        if (gainers.length === 0) {
+            $('.tabs-content .tab-pane').each((_, pane) => {
+                if ($(pane).attr('id')?.includes('high') || $(pane).text().includes('Altas')) {
+                    gainers = extractTable(`#${$(pane).attr('id')}`);
+                }
+                if ($(pane).attr('id')?.includes('low') || $(pane).text().includes('Baixas')) {
+                    losers = extractTable(`#${$(pane).attr('id')}`);
+                }
+            });
+        }
 
         return { gainers, losers };
     } catch (e) {
@@ -74,13 +89,13 @@ async function scrapeRanking(type: 'fiis' | 'acoes') {
         const $ = cheerio.load(data);
         
         const items: any[] = [];
-        const table = $('#table-ranking');
+        // Busca tabela de ranking pelo ID ou classe
+        const table = $('#table-ranking, .table-ranking').first();
         
         table.find('tbody tr').each((_, tr) => {
             const tds = $(tr).find('td');
-            // Estrutura Ranking FIIs: Ticker, Cotação, P/VP, DY, ...
-            // Estrutura Ranking Ações: Ticker, Cotação, P/L, P/VP, DY, ...
-            
+            if (tds.length < 5) return; // Garante colunas mínimas
+
             const ticker = $(tds[0]).text().trim();
             const price = parseBrFloat($(tds[1]).text());
             
@@ -97,7 +112,6 @@ async function scrapeRanking(type: 'fiis' | 'acoes') {
                 dy = parseBrFloat($(tds[4]).text());
             }
 
-            // Filtros de Qualidade Básicos para limpar "lixo"
             if (price > 0 && ticker.length <= 6) {
                 items.push({
                     ticker,
@@ -120,7 +134,6 @@ async function scrapeRanking(type: 'fiis' | 'acoes') {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-    // Cache de 15 minutos para performance
     res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=600');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -133,26 +146,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ]);
 
         // PROCESSAMENTO FIIs
-        // 1. High Yield: DY > 8% e < 25%, P/VP > 0.8 (Evitar fundos quebrando)
         const highYieldFIIs = fiisRaw
             .filter(f => f.dy_12m > 8 && f.dy_12m < 25 && f.p_vp > 0.8)
             .sort((a, b) => b.dy_12m - a.dy_12m)
             .slice(0, 10);
 
-        // 2. Descontados: P/VP < 0.95 e > 0.5, DY > 6%
         const discountedFIIs = fiisRaw
             .filter(f => f.p_vp < 0.95 && f.p_vp > 0.5 && f.dy_12m > 6)
             .sort((a, b) => a.p_vp - b.p_vp)
             .slice(0, 10);
 
         // PROCESSAMENTO AÇÕES
-        // 1. Descontadas: P/L > 0 e < 10, P/VP < 2
         const discountedStocks = stocksRaw
             .filter(s => s.p_l > 0.5 && s.p_l < 10 && s.p_vp < 2)
             .sort((a, b) => a.p_l - b.p_l)
             .slice(0, 10);
 
-        // 2. Dividendos: DY > 6%
         const highYieldStocks = stocksRaw
             .filter(s => s.dy_12m > 6 && s.dy_12m < 30)
             .sort((a, b) => b.dy_12m - a.dy_12m)

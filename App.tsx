@@ -201,7 +201,10 @@ const App: React.FC = () => {
   useEffect(() => {
       if (!dividends || dividends.length === 0 || !transactions || transactions.length === 0) return;
 
-      const today = new Date().toISOString().split('T')[0];
+      // Usando data local do navegador para evitar o bug de fuso horário
+      // toLocaleDateString('sv-SE') retorna YYYY-MM-DD
+      const today = new Date().toLocaleDateString('sv-SE');
+      
       const newNotifs: AppNotification[] = [];
       const existingIds = new Set(notifications.map(n => n.id));
 
@@ -213,7 +216,7 @@ const App: React.FC = () => {
           if (qty > 0) {
               const total = qty * div.rate;
               
-              // Notificação de Pagamento (Hoje)
+              // Notificação de Pagamento (Hoje Local)
               if (div.paymentDate === today) {
                   const id = `pay-${div.ticker}-${div.paymentDate}`;
                   if (!existingIds.has(id)) {
@@ -229,7 +232,7 @@ const App: React.FC = () => {
                   }
               }
 
-              // Notificação de Data Com (Hoje)
+              // Notificação de Data Com (Hoje Local)
               if (div.dateCom === today) {
                   const id = `datacom-${div.ticker}-${div.dateCom}`;
                   if (!existingIds.has(id)) {
