@@ -33,18 +33,18 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
     }, [transactions]);
 
     return (
-        <div className="grid grid-cols-3 gap-3 mb-6 px-1 anim-fade-in">
-            <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm text-center">
-                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Total Comprado</p>
-                <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">{formatBRL(totalInvested, privacyMode)}</p>
+        <div className="grid grid-cols-3 gap-2 mb-4 px-1 anim-fade-in">
+            <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-800 shadow-sm text-center">
+                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Comprado</p>
+                <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 truncate">{formatBRL(totalInvested, privacyMode)}</p>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm text-center">
-                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Total Vendido</p>
-                <p className="text-xs font-black text-rose-500">{formatBRL(totalSold, privacyMode)}</p>
+            <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-800 shadow-sm text-center">
+                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Vendido</p>
+                <p className="text-[10px] font-black text-rose-500 truncate">{formatBRL(totalSold, privacyMode)}</p>
             </div>
-            <div className="bg-zinc-900 dark:bg-white p-3 rounded-2xl border border-zinc-900 dark:border-zinc-200 shadow-sm text-center">
-                <p className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Fluxo Líquido</p>
-                <p className="text-xs font-black text-white dark:text-zinc-900">{formatBRL(netFlow, privacyMode)}</p>
+            <div className="bg-zinc-100 dark:bg-zinc-800 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-sm text-center">
+                <p className="text-[8px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-0.5">Líquido</p>
+                <p className="text-[10px] font-black text-zinc-900 dark:text-white truncate">{formatBRL(netFlow, privacyMode)}</p>
             </div>
         </div>
     );
@@ -57,21 +57,11 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   const isSelected = data.selectedIds.has(item.data?.id);
   
   if (item.type === 'header') {
-      const netValue = item.monthlyNet || 0;
-      const isPositive = netValue >= 0;
       return (
-          <div className={`flex items-end justify-between anim-fade-in relative z-10 pt-6 pb-3 ${index === 0 ? 'mt-0' : 'mt-2'}`}>
-              {/* Linha vertical conectando ao próximo grupo */}
-              <div className="absolute left-[7px] top-[40px] bottom-0 w-[1px] bg-zinc-200 dark:bg-zinc-800 -z-10"></div>
-              
-              <div className="bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-lg border border-white dark:border-zinc-700 shadow-sm">
-                  <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.15em]">{formatMonthHeader(item.monthKey)}</h3>
-              </div>
-              <div className="flex items-center gap-1.5 px-2">
-                  <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">Saldo Mês</span>
-                  <span className={`text-[10px] font-black ${isPositive ? 'text-indigo-500' : 'text-rose-500'}`}>
-                      {isPositive ? '+' : ''}{formatBRL(netValue, privacyMode)}
-                  </span>
+          <div className={`flex items-end justify-between anim-fade-in relative z-10 pt-4 pb-2 ${index === 0 ? 'mt-0' : 'mt-1'}`}>
+              <div className="absolute left-[7px] top-[24px] bottom-0 w-[1px] bg-zinc-100 dark:bg-zinc-800 -z-10"></div>
+              <div className="bg-zinc-50 dark:bg-zinc-900 px-2 py-1 rounded-md border border-white dark:border-zinc-800">
+                  <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{formatMonthHeader(item.monthKey)}</h3>
               </div>
           </div>
       );
@@ -80,53 +70,53 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   const t = item.data;
   const isBuy = t.type === 'BUY';
   const isLastInGroup = data.items[index + 1]?.type === 'header' || index === data.items.length - 1;
+  const totalValue = t.price * t.quantity;
   
   return (
-      <div className="relative pl-6 pr-1 anim-stagger-item" style={{ animationDelay: `${(index % 10) * 30}ms` }}>
-          {/* Linha do Tempo Contínua */}
-          <div className={`absolute left-[7px] top-0 w-[1px] bg-zinc-200 dark:bg-zinc-800 ${isLastInGroup ? 'h-1/2' : 'h-full'}`}></div>
+      <div className="relative pl-5 pr-1 anim-stagger-item" style={{ animationDelay: `${(index % 10) * 30}ms` }}>
+          {/* Linha do Tempo Minimalista */}
+          <div className={`absolute left-[7px] top-0 w-[1px] bg-zinc-100 dark:bg-zinc-800 ${isLastInGroup ? 'h-1/2' : 'h-full'}`}></div>
           
-          {/* Ponto indicador */}
-          <div className={`absolute left-[3px] top-1/2 -translate-y-1/2 w-[9px] h-[9px] rounded-full border-2 bg-white dark:bg-zinc-950 z-10 ${isBuy ? 'border-emerald-400' : 'border-rose-400'}`}></div>
+          {/* Ponto indicador sutil */}
+          <div className={`absolute left-[4px] top-1/2 -translate-y-1/2 w-[7px] h-[7px] rounded-full z-10 ${isBuy ? 'bg-emerald-400 ring-2 ring-white dark:ring-zinc-950' : 'bg-rose-400 ring-2 ring-white dark:ring-zinc-950'}`}></div>
           
           <button 
             onClick={() => isSelectionMode ? data.onToggleSelect(t.id) : data.onRowClick(t)}
-            className={`relative ml-2 w-full text-left p-3.5 mb-2 rounded-2xl flex items-center justify-between shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-none press-effect transition-all duration-300 border group ${
+            className={`relative ml-2 w-full text-left py-2.5 px-3 mb-1.5 rounded-xl flex items-center justify-between transition-all duration-200 border ${
                 isSelected 
-                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 dark:border-indigo-400 z-10' 
-                : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 z-0'
+                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800' 
+                : 'bg-white dark:bg-zinc-900 border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800 active:scale-[0.99]'
             }`}
           >
               <div className="flex items-center gap-3">
-                  {isSelectionMode ? (
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-600'}`}>
-                          {isSelected ? <CheckCircle2 className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                      </div>
-                  ) : (
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border text-[10px] font-black shadow-sm ${isBuy ? 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30'}`}>
-                          {t.ticker.substring(0,2)}
+                  {isSelectionMode && (
+                      <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-600'}`}>
+                          {isSelected && <Check className="w-3 h-3" strokeWidth={3} />}
                       </div>
                   )}
                   
                   <div>
-                      <h4 className={`font-black text-sm flex items-center gap-2 ${isSelected ? 'text-indigo-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>
-                          {t.ticker}
-                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${isBuy ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
-                              {isBuy ? 'Compra' : 'Venda'}
+                      <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-black ${isBuy ? 'text-emerald-500' : 'text-rose-500'}`}>
+                              {t.ticker.substring(0,2)}
                           </span>
-                      </h4>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.date.split('-').reverse().slice(0,2).join('/')}</span>
-                        <span className="text-[10px] text-zinc-300 dark:text-zinc-600">•</span>
-                        <span className={`text-[9px] font-bold uppercase ${t.assetType === AssetType.FII ? 'text-indigo-400' : 'text-sky-400'}`}>
-                            {t.assetType === AssetType.FII ? 'FII' : 'Ação'}
-                        </span>
+                          <h4 className={`font-bold text-xs ${isSelected ? 'text-indigo-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>
+                              {t.ticker}
+                          </h4>
                       </div>
+                      <p className={`text-[9px] font-medium mt-0.5 ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>
+                          {t.date.split('-').reverse().slice(0,2).join('/')}
+                      </p>
                   </div>
               </div>
+              
               <div className="text-right">
-                  <p className={`text-sm font-black ${isSelected ? 'text-indigo-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>{formatBRL(t.price * t.quantity, privacyMode)}</p>
-                  <p className={`text-[10px] font-medium ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>{t.quantity} un x {t.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  <p className={`text-xs font-bold ${isBuy ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
+                      {isBuy ? '+' : '-'}{formatBRL(totalValue, privacyMode)}
+                  </p>
+                  <p className={`text-[9px] font-medium ${isSelected ? 'text-indigo-400' : 'text-zinc-400'}`}>
+                      {t.quantity} x {t.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
               </div>
           </button>
       </div>

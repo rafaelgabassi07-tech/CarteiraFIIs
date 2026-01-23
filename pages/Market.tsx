@@ -619,6 +619,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
         const baseList = assetPool.filter(a => activeTypeFilter === 'fiis' ? a.type === 'fii' : a.type === 'stock');
         // Filtra pelo ranking primeiro para mostrar apenas segmentos relevantes
         const rankedList = baseList.filter(selectedRanking.filterFn);
+        // Garante que se 'segment' for undefined, ele vire 'Outros' para a UI
         const segments = new Set(rankedList.map(a => a.segment || 'Outros').filter(Boolean));
         return Array.from(segments).sort();
     }, [assetPool, activeTypeFilter, selectedRanking]);
