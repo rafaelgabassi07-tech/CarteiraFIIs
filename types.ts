@@ -166,6 +166,7 @@ export interface MarketAsset {
     ticker: string;
     name: string;
     price: number;
+    type?: 'FII' | 'ACAO' | string; // Adicionado type para auxiliar filtros
     variation_percent?: number;
     dy_12m?: number;
     p_vp?: number;

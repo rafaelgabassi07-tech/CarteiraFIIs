@@ -309,7 +309,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
     if (insights.length === 0) return null;
 
     return (
-        <div className="mb-6 -mx-4 overflow-x-auto no-scrollbar pl-4 pb-2 flex gap-4 snap-x">
+        <div className="mt-2 mb-6 -mx-4 overflow-x-auto no-scrollbar pl-4 pb-2 flex gap-4 snap-x">
             {insights.map((item, index) => {
                 const isRead = readStories.has(item.id);
                 
