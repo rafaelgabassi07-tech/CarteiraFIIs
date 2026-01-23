@@ -82,7 +82,8 @@ const processStaticMarketData = (): MarketOverview => {
         highlights: {
             fiis: processList(fiis) as any,
             stocks: processList(stocks) as any
-        }
+        },
+        error: true // Marca como fallback para a UI saber
     };
 };
 
@@ -310,7 +311,7 @@ export const fetchMarketOverview = async (): Promise<MarketOverview> => {
             try {
                 data = await response.json();
             } catch {
-                // JSON inválido (pode ser erro de HTML do Vercel/Vite)
+                // Ignore parsing errors, will fallback
             }
         }
 
@@ -319,6 +320,7 @@ export const fetchMarketOverview = async (): Promise<MarketOverview> => {
             return data;
         }
         
+        // Se chegou aqui, algo falhou na API
         throw new Error('Falha ou dados inválidos da API');
         
     } catch (error: any) {
