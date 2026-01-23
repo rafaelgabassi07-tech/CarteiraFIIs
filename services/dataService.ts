@@ -1,5 +1,5 @@
 
-import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, MarketOverview, ScrapeResult, MarketAsset } from "../types";
+import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, MarketOverview, ScrapeResult } from "../types";
 import { supabase } from "./supabase";
 
 export interface UnifiedMarketData {
@@ -9,40 +9,60 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// --- DADOS DE FALLBACK (Motor Offline) ---
-const STATIC_MARKET_DATA: Record<string, any> = {
-    // FIIs Populares (Fallback)
-    'MXRF11': { name: 'Maxi Renda', type: 'FII', p_vp: 1.01, dy_12m: 12.45, price: 10.35, liquidity: 12000000, roe: 12.5, net_margin: 95.0 },
-    'HGLG11': { name: 'CSHG Logística', type: 'FII', p_vp: 1.05, dy_12m: 8.90, price: 165.50, liquidity: 8500000, roe: 9.2, net_margin: 78.0 },
-    // ... (restante mantido da lógica anterior, mas simplificado aqui para brevidade do XML)
+const fetchInflationData = async (): Promise<number> => {
+    let lastKnownReal = 0;
+    try {
+        const s = localStorage.getItem('investfiis_v4_indicators');
+        if (s) {
+            const p = JSON.parse(s);
+            if (p.ipca && typeof p.ipca === 'number' && p.ipca > 0) {
+                lastKnownReal = p.ipca;
+            }
+        }
+    } catch {}
+
+    if (lastKnownReal === 0) lastKnownReal = 4.50; 
+
+    try {
+        const response = await fetch('/api/indicators', { 
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(8000) 
+        });
+        
+        if (!response.ok) return lastKnownReal;
+        
+        const data = await response.json();
+        
+        if (data && typeof data.value === 'number' && !data.isError && data.value > 0) {
+            return data.value;
+        }
+        
+        return lastKnownReal;
+    } catch (e) {
+        return lastKnownReal;
+    }
 };
 
-// ... Funções auxiliares mantidas ...
-
 const parseNumberSafe = (val: any): number => {
-    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    if (typeof val === 'number') return val;
     if (!val) return 0;
-    try {
-        const str = String(val).trim().replace('R$', '').replace('%', '').trim();
-        const cleanStr = str.replace(/\./g, '').replace(',', '.');
-        const num = parseFloat(cleanStr);
-        return isNaN(num) ? 0 : num;
-    } catch {
-        return 0;
-    }
+    const str = String(val).trim().replace('R$', '').replace('%', '').trim();
+    const cleanStr = str.replace(/\./g, '').replace(',', '.');
+    const num = parseFloat(cleanStr);
+    return isNaN(num) ? 0 : num;
 };
 
 const normalizeTickerRoot = (t: string) => {
     let clean = t.trim().toUpperCase();
-    if (clean.endsWith('F') && !clean.endsWith('11F') && !clean.endsWith('11B') && clean.length <= 6) {
+    if (clean.endsWith('F') && !clean.endsWith('11') && !clean.endsWith('11B') && clean.length <= 6) {
         return clean.slice(0, -1);
     }
     return clean;
 };
 
 /**
- * Converte dados brutos do Scraper/Banco para AssetFundamentals
- * BLINDAGEM CONTRA VALORES NULOS
+ * Converte dados brutos do Scraper/Banco (chaves do DB) para a interface do Frontend (AssetFundamentals)
+ * Centraliza a lógica de mapeamento para garantir consistência.
  */
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
     const getVal = (...keys: string[]) => {
@@ -74,6 +94,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         // FIIs
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica', 'vacancy')),
         manager_type: getVal('tipo_gestao', 'manager_type') || undefined,
+        // Garante leitura de patrimônio líquido (String do Scraper ou do DB)
         assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
         management_fee: getVal('taxa_adm', 'management_fee') || undefined,
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento', 'last_dividend', 'rendimento')),
@@ -84,12 +105,6 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         sentiment: 'Neutro',
         sources: []
     };
-};
-
-// ... Resto das funções (fetchInflationData, processStaticMarketData) mantidas ...
-const fetchInflationData = async (): Promise<number> => {
-    // ... implementação existente
-    return 4.62;
 };
 
 // Função para acionar o Scraper no Backend (Serverless)
@@ -141,6 +156,7 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
             await new Promise(r => setTimeout(r, 1000));
         }
     }
+    
     return results;
 };
 
@@ -209,11 +225,51 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 };
 
 export const fetchMarketOverview = async (): Promise<MarketOverview> => {
-    // ... implementação existente com fallback
-    return {
-        market_status: 'Mercado Fechado',
-        last_update: new Date().toISOString(),
-        highlights: { fiis: { gainers: [], losers: [], high_yield: [], discounted: [] }, stocks: { gainers: [], losers: [], high_yield: [], discounted: [] } },
-        error: true
-    };
+    try {
+        const response = await fetch('/api/market-overview');
+        let data;
+        try {
+            data = await response.json();
+        } catch {
+            throw new Error(`Erro de conexão (${response.status})`);
+        }
+
+        if (!response.ok && !data) {
+             throw new Error('Falha ao obter dados de mercado');
+        }
+        
+        if (data.error) {
+            throw new Error(data.message || 'Erro desconhecido');
+        }
+        
+        return data;
+    } catch (error: any) {
+        console.warn("Market Overview Fetch Error:", error.message);
+        return { 
+            market_status: 'Indisponível', 
+            // @ts-ignore
+            sentiment_summary: 'Dados Offline',
+            last_update: '', 
+            highlights: {
+                fiis: {
+                    gainers: [],
+                    losers: [],
+                    high_yield: [],
+                    discounted: [],
+                    raw: []
+                },
+                stocks: {
+                    gainers: [],
+                    losers: [],
+                    high_yield: [],
+                    discounted: [],
+                    raw: []
+                }
+            },
+            // @ts-ignore
+            error: true,
+            // @ts-ignore
+            message: "Não foi possível carregar os dados de mercado."
+        };
+    }
 };

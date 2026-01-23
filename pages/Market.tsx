@@ -3,7 +3,43 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, Building2, TrendingUp, TrendingDown, DollarSign, X, ExternalLink, Target, Search, ArrowRight, Filter, ArrowLeft, Scale, Coins, Award, ArrowUpRight, ArrowDownRight, BarChart2, PieChart, Rocket, Users, Activity } from 'lucide-react';
 import { fetchMarketOverview } from '../services/dataService';
 import { SwipeableModal } from '../components/Layout';
-import { MarketAsset, MarketOverview } from '../types';
+
+// --- TYPES ---
+export interface MarketAsset {
+    ticker: string;
+    name: string;
+    price: number;
+    variation_percent?: number;
+    dy_12m?: number;
+    p_vp?: number;
+    p_l?: number;
+    roe?: number;
+    net_margin?: number;
+    cagr_revenue?: number;
+    liquidity?: number;
+}
+
+interface NewMarketOverview {
+    market_status: string;
+    last_update: string;
+    highlights: {
+        fiis: {
+            gainers: MarketAsset[];
+            losers: MarketAsset[];
+            high_yield: MarketAsset[];
+            discounted: MarketAsset[];
+            raw?: MarketAsset[];
+        };
+        stocks: {
+            gainers: MarketAsset[];
+            losers: MarketAsset[];
+            high_yield: MarketAsset[];
+            discounted: MarketAsset[];
+            raw?: MarketAsset[];
+        };
+    };
+    error?: boolean;
+}
 
 // --- CONFIGURAÇÃO DAS CATEGORIAS DE RANKING ---
 type RankingType = 'VALUATION' | 'DY' | 'HIGH' | 'LOW' | 'ROE' | 'MARGIN' | 'GROWTH' | 'LIQUIDITY';
@@ -21,8 +57,8 @@ interface RankingConfig {
 }
 
 const getRankings = (): RankingConfig[] => {
-    // Helper para verificar tipo (usa propriedade type se existir, senão inferência por ticker)
-    const isFii = (a: MarketAsset) => a.type === 'FII' || a.ticker.endsWith('11') || a.ticker.endsWith('11B');
+    // Helper para verificar tipo
+    const isFii = (t: string) => t.endsWith('11') || t.endsWith('11B');
 
     return [
         {
@@ -43,15 +79,15 @@ const getRankings = (): RankingConfig[] => {
             icon: Scale,
             color: 'indigo',
             // Filtra: P/VP positivo para FIIs, P/L positivo para Ações
-            filterFn: (a) => isFii(a) ? (a.p_vp || 0) > 0 : (a.p_l || 0) > 0,
+            filterFn: (a) => isFii(a.ticker) ? (a.p_vp || 0) > 0 : (a.p_l || 0) > 0,
             // Ordena: P/VP para FIIs, P/L para Ações
             sortFn: (a, b) => {
-                const valA = isFii(a) ? (a.p_vp || 0) : (a.p_l || 0);
-                const valB = isFii(b) ? (b.p_vp || 0) : (b.p_l || 0);
+                const valA = isFii(a.ticker) ? (a.p_vp || 0) : (a.p_l || 0);
+                const valB = isFii(b.ticker) ? (b.p_vp || 0) : (b.p_l || 0);
                 return valA - valB;
             },
-            valueFormatter: (a) => isFii(a) ? `${a.p_vp?.toFixed(2)}x` : `${a.p_l?.toFixed(1)}x`,
-            secondaryValue: (a) => isFii(a) ? 'P/VP' : 'P/L'
+            valueFormatter: (a) => isFii(a.ticker) ? `${a.p_vp?.toFixed(2)}x` : `${a.p_l?.toFixed(1)}x`,
+            secondaryValue: (a) => isFii(a.ticker) ? 'P/VP' : 'P/L'
         },
         {
             id: 'ROE',
@@ -171,6 +207,10 @@ const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: 
 };
 
 const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: MarketAsset[], config: RankingConfig, onSelect: (a: MarketAsset) => void, activeFilter: string }) => {
+    // Contagem para feedback visual
+    const fiiCount = assets.filter(a => a.ticker.endsWith('11') || a.ticker.endsWith('11B')).length;
+    const stockCount = assets.length - fiiCount;
+
     return (
         <div className="flex flex-col bg-white dark:bg-zinc-900 min-h-full">
             <div className="flex flex-col px-4 py-3 bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10 backdrop-blur-sm">
@@ -194,48 +234,29 @@ const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: M
 
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {assets.map((asset, index) => {
-                    const isFii = asset.type === 'FII' || asset.ticker.endsWith('11') || asset.ticker.endsWith('11B');
+                    const isFii = asset.ticker.endsWith('11') || asset.ticker.endsWith('11B');
                     return (
                         <button 
                             key={asset.ticker}
                             onClick={() => onSelect(asset)}
                             className="w-full flex items-center px-4 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group"
                         >
-                            <div className="w-8 text-xs font-black text-zinc-400 shrink-0">{index + 1}</div>
-                            <div className="flex-1 flex items-center gap-3 overflow-hidden">
-                                {/* LOGO RENDER - BRAPI SOURCE (URL CORRIGIDA) */}
-                                <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0 overflow-hidden relative">
-                                    <img 
-                                        src={`https://brapi.dev/favicon/${asset.ticker.trim().toUpperCase()}.svg`} 
-                                        alt={asset.ticker} 
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                            e.currentTarget.style.display = 'none';
-                                            e.currentTarget.parentElement?.classList.add('fallback-icon');
-                                        }} 
-                                    />
-                                    {/* Fallback Text (exibido quando a imagem falha ou carrega) */}
-                                    <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black bg-zinc-100 dark:bg-zinc-800 text-zinc-400 -z-10">
-                                        {asset.ticker.substring(0,2)}
-                                    </div>
+                            <div className="w-8 text-xs font-black text-zinc-400">{index + 1}</div>
+                            <div className="flex-1 flex flex-col items-start">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-black text-zinc-900 dark:text-white">{asset.ticker}</span>
+                                    <span className={`text-[8px] font-bold px-1.5 rounded ${isFii ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                        {isFii ? 'FII' : 'AÇÃO'}
+                                    </span>
                                 </div>
-
-                                <div className="flex flex-col items-start min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-black text-zinc-900 dark:text-white">{asset.ticker}</span>
-                                        <span className={`text-[8px] font-bold px-1.5 rounded ${isFii ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
-                                            {isFii ? 'FII' : 'AÇÃO'}
-                                        </span>
-                                    </div>
-                                    <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[140px]">{asset.name}</span>
-                                </div>
+                                <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[140px]">{asset.name}</span>
                             </div>
-                            <div className="w-24 flex flex-col items-end shrink-0 pl-2">
-                                <span className="text-sm font-black text-zinc-900 dark:text-white text-right">
+                            <div className="w-28 flex flex-col items-end">
+                                <span className="text-sm font-black text-zinc-900 dark:text-white">
                                     {config.valueFormatter(asset)}
                                 </span>
                                 {config.secondaryValue && (
-                                    <span className="text-[9px] font-medium text-zinc-400 text-right">
+                                    <span className="text-[9px] font-medium text-zinc-400">
                                         {config.secondaryValue(asset)}
                                     </span>
                                 )}
@@ -256,7 +277,7 @@ const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: M
 };
 
 const AssetDetailModal = ({ asset, onClose }: { asset: MarketAsset, onClose: () => void }) => {
-    const isFii = asset.type === 'FII' || asset.ticker.endsWith('11') || asset.ticker.endsWith('11B');
+    const isFii = asset.ticker.endsWith('11') || asset.ticker.endsWith('11B');
     const url = `https://investidor10.com.br/${isFii ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`;
 
     return (
@@ -362,7 +383,7 @@ interface MarketProps {
 }
 
 export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, onStatusUpdate }) => {
-    const [data, setData] = useState<MarketOverview | null>(null);
+    const [data, setData] = useState<NewMarketOverview | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTypeFilter, setActiveTypeFilter] = useState<'fiis' | 'stocks'>('fiis'); // Default to FIIs
     
@@ -376,6 +397,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
         if (onLoadingChange) onLoadingChange(true);
         try {
             const result = await fetchMarketOverview();
+            // @ts-ignore
             setData(result);
         } catch (e) { console.error(e); } finally { 
             setLoading(false); 
@@ -436,7 +458,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
         if (!selectedRanking) return [];
         
         let list = assetPool.filter(a => {
-            const isFii = a.type === 'FII' || a.ticker.endsWith('11') || a.ticker.endsWith('11B');
+            const isFii = a.ticker.endsWith('11') || a.ticker.endsWith('11B');
             if (activeTypeFilter === 'fiis') return isFii;
             if (activeTypeFilter === 'stocks') return !isFii;
             return true;

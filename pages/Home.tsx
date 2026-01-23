@@ -1,8 +1,8 @@
 
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, MarketOverview } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle } from 'lucide-react';
+import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem, MarketOverview } from '../types';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper, ArrowLeft, ArrowRight } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -40,8 +40,8 @@ const formatDateShort = (dateStr: string) => {
     return `${day}/${month}`;
 };
 
-// --- COMPONENTE DE EVENTO DA TIMELINE ---
-const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = React.memo(({ event, isLast }) => {
+// --- LOGICA DE TIMELINE DO MODAL AGENDA ---
+const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
     const isPayment = event.eventType === 'payment';
     const isToday = new Date(event.date + 'T00:00:00').getTime() === new Date().setHours(0,0,0,0);
     
@@ -99,45 +99,36 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = React.memo(({ e
             </div>
         </div>
     );
-});
+};
 
-// --- STORY VIEWER (Refatorado para Gestos e Persistência) ---
+// --- STORY VIEWER & FEED ---
 
 const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights: PortfolioInsight[], startIndex: number, onClose: () => void, onMarkAsRead: (id: string) => void }) => {
     const [currentIndex, setCurrentIndex] = useState(startIndex);
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
-    
-    // Gesto Swipe
-    const [dragOffset, setDragOffset] = useState(0);
-    const touchStartY = useRef(0);
-    const isDragging = useRef(false);
+    const DURATION = 5000; // 5 segundos por story
 
-    const DURATION = 5000; 
     const currentStory = insights[currentIndex];
 
-    // Marca como lido IMEDIATAMENTE ao montar ou mudar de slide
     useEffect(() => {
-        if (currentStory) {
-            onMarkAsRead(currentStory.id);
-        }
         setProgress(0);
-        setDragOffset(0);
-    }, [currentIndex, currentStory, onMarkAsRead]);
+    }, [currentIndex]);
 
-    // Timer
     useEffect(() => {
-        if (!isPaused && !isDragging.current) {
-            const interval = 50;
+        if (!isPaused) {
+            const interval = 50; // Update every 50ms
             const step = (100 * interval) / DURATION;
             
             const timer = setInterval(() => {
                 setProgress(prev => {
                     if (prev >= 100) {
                         if (currentIndex < insights.length - 1) {
+                            onMarkAsRead(currentStory.id);
                             setCurrentIndex(c => c + 1);
                             return 0;
                         } else {
+                            onMarkAsRead(currentStory.id);
                             onClose();
                             return 100;
                         }
@@ -147,10 +138,11 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
             }, interval);
             return () => clearInterval(timer);
         }
-    }, [currentIndex, isPaused, insights.length, onClose]);
+    }, [currentIndex, isPaused, insights.length, onClose, onMarkAsRead, currentStory]);
 
-    const handleNext = (e?: React.MouseEvent) => {
-        e?.stopPropagation();
+    const handleNext = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onMarkAsRead(currentStory.id);
         if (currentIndex < insights.length - 1) {
             setCurrentIndex(c => c + 1);
         } else {
@@ -158,55 +150,10 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
         }
     };
 
-    const handlePrev = (e?: React.MouseEvent) => {
-        e?.stopPropagation();
+    const handlePrev = (e: React.MouseEvent) => {
+        e.stopPropagation();
         if (currentIndex > 0) {
             setCurrentIndex(c => c - 1);
-        }
-    };
-
-    const openLink = useCallback(() => {
-        if (currentStory.url) {
-            window.open(currentStory.url, '_blank', 'noopener,noreferrer');
-            setIsPaused(true); // Pausa ao sair
-        }
-    }, [currentStory]);
-
-    // Lógica de Toque Aprimorada
-    const handleTouchStart = (e: React.TouchEvent) => {
-        touchStartY.current = e.touches[0].clientY;
-        isDragging.current = true;
-        setIsPaused(true); // Pausa durante o toque
-    };
-
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (!isDragging.current) return;
-        const currentY = e.touches[0].clientY;
-        const delta = touchStartY.current - currentY; // Delta positivo = arrastando para CIMA
-
-        // Só permite arrastar para cima se tiver URL
-        if (currentStory.url && delta > 0) {
-            // Resistência elástica
-            const dampedDelta = delta * 0.5;
-            setDragOffset(dampedDelta);
-        }
-    };
-
-    const handleTouchEnd = () => {
-        isDragging.current = false;
-        
-        // Se arrastou mais de 80px, ativa
-        if (dragOffset > 80 && currentStory.url) {
-            openLink();
-            // Reseta visualmente com delay
-            setTimeout(() => {
-                setDragOffset(0);
-                setIsPaused(false);
-            }, 500);
-        } else {
-            // Volta para posição original (bounce back)
-            setDragOffset(0);
-            setIsPaused(false);
         }
     };
 
@@ -238,10 +185,9 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const colorClass = getTypeColor(currentStory.type);
 
     return createPortal(
-        // Adicionado 'touch-none' para prevenir scroll da página e conflitos de gestos do navegador
-        <div className="fixed inset-0 z-[9999] bg-black flex flex-col touch-none overscroll-none">
-            {/* Barra de Progresso */}
-            <div className="flex gap-1 p-2 pt-safe z-30">
+        <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+            {/* Progress Bars */}
+            <div className="flex gap-1 p-2 pt-safe z-20">
                 {insights.map((_, idx) => (
                     <div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
                         <div 
@@ -255,69 +201,62 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
             </div>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 z-30 text-white">
+            <div className="flex items-center justify-between px-4 py-2 z-20 text-white">
                 <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${colorClass}`}>
                         <Icon className="w-4 h-4 text-white" />
                     </div>
-                    <span className="font-bold text-sm truncate max-w-[200px]">{currentStory.title}</span>
+                    <span className="font-bold text-sm">{currentStory.title}</span>
                 </div>
-                <button onClick={onClose} className="p-2"><X className="w-6 h-6" /></button>
+                <button onClick={onClose}><X className="w-6 h-6" /></button>
             </div>
 
-            {/* Content Container (Move com Swipe) */}
+            {/* Content Area */}
             <div 
-                className="flex-1 relative flex flex-col justify-center items-center p-8 text-center transition-transform duration-300 ease-out"
-                style={{ transform: `translateY(-${dragOffset}px)` }}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
+                className="flex-1 relative flex flex-col justify-center items-center p-8 text-center"
+                onTouchStart={() => setIsPaused(true)}
+                onTouchEnd={() => setIsPaused(false)}
                 onMouseDown={() => setIsPaused(true)}
                 onMouseUp={() => setIsPaused(false)}
             >
-                {/* Zonas de Toque para Navegação (Invisíveis) */}
-                <div className="absolute inset-y-0 left-0 w-1/3 z-20" onClick={handlePrev}></div>
-                <div className="absolute inset-y-0 right-0 w-1/3 z-20" onClick={handleNext}></div>
+                {/* Click Areas */}
+                <div className="absolute inset-y-0 left-0 w-1/3 z-10" onClick={handlePrev}></div>
+                <div className="absolute inset-y-0 right-0 w-1/3 z-10" onClick={handleNext}></div>
 
-                {/* Conteúdo Visual */}
-                <div className="w-full max-w-sm relative z-10 pointer-events-none select-none">
-                    <div className={`w-32 h-32 rounded-[2rem] ${colorClass} bg-opacity-20 flex items-center justify-center mb-8 mx-auto border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)] anim-scale-in`}>
+                {/* Visual Content */}
+                <div className="w-full max-w-sm relative z-0 anim-scale-in">
+                    <div className={`w-32 h-32 rounded-[2rem] ${colorClass} bg-opacity-20 flex items-center justify-center mb-8 mx-auto border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]`}>
                         <div className="text-4xl font-black text-white drop-shadow-md">
                             {currentStory.relatedTicker ? currentStory.relatedTicker.substring(0,2) : <Icon className="w-16 h-16" />}
                         </div>
                     </div>
                     
-                    <h2 className="text-2xl font-black text-white mb-4 leading-tight drop-shadow-md">{currentStory.message}</h2>
+                    <h2 className="text-2xl font-black text-white mb-4 leading-tight">{currentStory.message}</h2>
                     
                     {currentStory.relatedTicker && (
                         <div className="inline-block px-4 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold text-sm mb-6">
                             {currentStory.relatedTicker}
                         </div>
                     )}
+
+                    {currentStory.url && (
+                        <div className="absolute bottom-[-100px] left-0 right-0 flex justify-center animate-bounce">
+                            <div className="flex flex-col items-center gap-2">
+                                <ChevronUp className="w-6 h-6 text-white/50" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Detalhes</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Área Inferior de Swipe */}
+            {/* Footer Action */}
             {currentStory.url && (
-                <div 
-                    className="absolute bottom-0 left-0 right-0 p-6 pb-safe z-30 flex flex-col items-center justify-end bg-gradient-to-t from-black via-black/80 to-transparent pt-24"
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                >
-                    <div 
-                        className={`flex flex-col items-center gap-2 mb-4 transition-all duration-300 ${dragOffset > 0 ? 'opacity-30' : 'opacity-100 animate-bounce'}`}
-                        style={{ transform: `translateY(${dragOffset > 0 ? -dragOffset / 2 : 0}px)` }}
-                    >
-                        <ChevronUp className="w-6 h-6 text-white/80" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">Deslize para detalhes</span>
-                    </div>
-
+                <div className="p-6 pb-safe z-20">
                     <a 
                         href={currentStory.url} 
                         target="_blank" 
                         rel="noreferrer"
-                        onClick={(e) => { e.stopPropagation(); setIsPaused(true); }}
                         className="block w-full py-4 bg-white text-black text-center rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
                     >
                         Ver Detalhes do Ativo
@@ -335,12 +274,11 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
     if (insights.length === 0) return null;
 
     return (
-        // Padding superior e inferior ajustado para centralizar e afastar do header
-        <div className="mb-6 mt-4 -mx-4 overflow-x-auto no-scrollbar pl-4 pb-2 pt-2 flex gap-4 snap-x relative z-10">
+        <div className="mb-6 -mx-4 overflow-x-auto no-scrollbar pl-4 pb-2 flex gap-4 snap-x">
             {insights.map((item, index) => {
                 const isRead = readStories.has(item.id);
                 
-                // Cores do anel
+                // Cores do anel baseadas no tipo de destaque
                 let ringColors = 'from-indigo-500 via-purple-500 to-pink-500';
                 if (item.type === 'volatility_up' || item.type === 'success') ringColors = 'from-emerald-400 via-green-500 to-teal-500';
                 if (item.type === 'volatility_down' || item.type === 'warning') ringColors = 'from-rose-400 via-red-500 to-orange-500';
@@ -351,23 +289,19 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
                     <button 
                         key={item.id}
                         onClick={() => setActiveIndex(index)}
-                        className="flex flex-col items-center gap-2 snap-start group min-w-[70px]"
+                        className="flex flex-col items-center gap-1.5 snap-start group"
                     >
-                        <div className={`w-[70px] h-[70px] rounded-full p-[2px] transition-all duration-300 ${isRead ? 'bg-zinc-200 dark:bg-zinc-800' : `bg-gradient-to-tr ${ringColors} shadow-glow`}`}>
-                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[3px] relative overflow-hidden flex items-center justify-center">
-                                <div className="w-full h-full bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center relative overflow-hidden group-active:scale-95 transition-transform">
-                                    {/* Logo Background */}
-                                    {item.relatedTicker ? (
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                                            <span className="text-[22px] font-black">{item.relatedTicker.substring(0,2)}</span>
-                                        </div>
-                                    ) : null}
-                                    
-                                    <Icon className={`w-7 h-7 relative z-10 transition-colors ${isRead ? 'text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`} />
+                        <div className={`w-[68px] h-[68px] rounded-full p-[2px] ${isRead ? 'bg-zinc-200 dark:bg-zinc-800' : `bg-gradient-to-tr ${ringColors}`}`}>
+                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[2px] relative overflow-hidden flex items-center justify-center">
+                                <div className="w-full h-full bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center relative">
+                                    <Icon className={`w-6 h-6 ${isRead ? 'text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`} />
+                                    {item.relatedTicker && (
+                                        <span className="absolute bottom-2 text-[8px] font-black uppercase text-zinc-400">{item.relatedTicker.substring(0,4)}</span>
+                                    )}
                                 </div>
                             </div>
                         </div>
-                        <span className={`text-[10px] font-medium w-16 truncate text-center leading-tight transition-colors ${isRead ? 'text-zinc-400' : 'text-zinc-600 dark:text-zinc-300 font-bold'}`}>
+                        <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 w-16 truncate text-center leading-tight">
                             {item.title}
                         </span>
                     </button>
@@ -386,10 +320,10 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
     );
 };
 
-// ... Resto das constantes ...
+// ... Resto das funções utilitárias e constantes mantidas para garantir integridade do arquivo ...
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e'];
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, inflationRate, invested, balance, totalAppreciation, privacyMode = false }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -405,7 +339,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [insights, setInsights] = useState<PortfolioInsight[]>([]);
   const [marketOverview, setMarketOverview] = useState<MarketOverview | undefined>(undefined);
   
-  // Persistência robusta de stories lidos
   const [readStories, setReadStories] = useState<Set<string>>(() => {
       try {
           const saved = localStorage.getItem('investfiis_read_stories');
@@ -415,20 +348,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
   });
 
-  // Função memoizada para marcar como lido com salvamento imediato
-  const markAsRead = useCallback((id: string) => {
-      setReadStories(prev => {
-          if (prev.has(id)) return prev;
-          const newSet = new Set(prev);
-          newSet.add(id);
-          try {
-            localStorage.setItem('investfiis_read_stories', JSON.stringify(Array.from(newSet)));
-          } catch (e) { console.error('Erro ao salvar stories lidos', e); }
-          return newSet;
-      });
-  }, []);
-
-  // Carregamento de Destaques
+  // Carregamento de Destaques de Mercado para os Stories
   useEffect(() => {
       const loadData = async () => {
           try {
@@ -445,15 +365,25 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       loadData();
   }, [portfolio, inflationRate]);
 
+  const markAsRead = useCallback((id: string) => {
+      setReadStories(prev => {
+          if (prev.has(id)) return prev;
+          const newSet = new Set(prev);
+          newSet.add(id);
+          localStorage.setItem('investfiis_read_stories', JSON.stringify(Array.from(newSet)));
+          return newSet;
+      });
+  }, []);
+
   const safeInflation = Number(inflationRate) || 4.62;
 
-  // Cálculos de Rentabilidade
+  // Cálculos de Rentabilidade e Dados (Mantidos)
   const capitalGainValue = useMemo(() => balance - invested, [balance, invested]);
   const capitalGainPercent = useMemo(() => invested > 0 ? (capitalGainValue / invested) * 100 : 0, [capitalGainValue, invested]);
   const isCapitalGainPositive = capitalGainValue >= 0;
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const realReturnPercent = useMemo(() => {
-      const nominalFactor = 1 + (totalProfitValue / invested); 
+      const nominalFactor = 1 + (totalProfitValue / invested); // Simplificado para ROI total
       const inflationFactor = 1 + (safeInflation / 100);
       return invested > 0 ? ((nominalFactor / inflationFactor) - 1) * 100 : 0;
   }, [totalProfitValue, invested, safeInflation]);
@@ -495,6 +425,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     
     const safeReceipts = Array.isArray(dividendReceipts) ? dividendReceipts : [];
 
+    // Lógica combinada de eventos e histórico para otimização
     const map: Record<string, number> = {};
     const receiptsMap: Record<string, DividendReceipt[]> = {};
     let total12m = 0;
@@ -521,6 +452,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         }
     });
     
+    // Ordenação e Agrupamento da Agenda
     const sortedEvents = allEvents.sort((a, b) => a.date.localeCompare(b.date));
     const grouped: Record<string, any[]> = { 'Hoje': [], 'Amanhã': [], 'Esta Semana': [], 'Este Mês': [], 'Futuro': [] };
     
@@ -538,6 +470,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         else grouped['Futuro'].push(ev);
     });
 
+    // Gráficos de Proventos
     Object.keys(receiptsMap).forEach(k => { if (map[k] > maxMonthly) maxMonthly = map[k]; });
     const sortedHistory = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
     const dividendsChartData = sortedHistory.map(([date, val]) => {
@@ -557,6 +490,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         receiptsByMonth: receiptsMap, divStats: { total12m, maxMonthly, monthlyAvg }
     };
   }, [dividendReceipts, totalDividendsReceived]);
+
+  // --- Handlers & Components for Charts ---
 
   const toggleMonthExpand = useCallback((month: string) => {
     setExpandedMonth(prev => prev === month ? null : month);

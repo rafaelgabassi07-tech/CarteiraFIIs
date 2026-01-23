@@ -11,8 +11,7 @@ export const analyzePortfolio = (
     marketData?: MarketOverview
 ): PortfolioInsight[] => {
     const insights: PortfolioInsight[] = [];
-    // Mudança Crítica: Usar data string em vez de timestamp milissegundo para persistência funcionar
-    const today = new Date().toISOString().split('T')[0]; 
+    const now = Date.now();
     
     // Se não houver dados de mercado, não gera stories
     if (!marketData || marketData.error) return [];
@@ -30,17 +29,14 @@ export const analyzePortfolio = (
         const isInWallet = portfolio.some(p => p.ticker === asset.ticker);
         const finalScore = scoreBase + (isInWallet ? 20 : 0); // Prioriza se o usuário tem na carteira
         
-        // ID determinístico: Ticker + Tipo + Data. Garante que o story é único por dia.
-        const storyId = `story-${asset.ticker}-${type}-${today}`;
-
         insights.push({
-            id: storyId,
+            id: `story-${asset.ticker}-${type}-${now}`,
             type,
             title,
             message,
             relatedTicker: asset.ticker,
             score: finalScore,
-            timestamp: Date.now(), // Timestamp apenas para ordenação se necessário
+            timestamp: now,
             // URL para análise externa se quiser
             url: `https://investidor10.com.br/${asset.ticker.endsWith('11') ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`
         });
