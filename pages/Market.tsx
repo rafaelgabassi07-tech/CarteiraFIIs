@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, Building2, TrendingUp, TrendingDown, DollarSign, X, ExternalLink, Target, Search, ArrowRight, Filter, ArrowLeft, Scale, Coins, Award, ArrowUpRight, ArrowDownRight, BarChart2 } from 'lucide-react';
+import { RefreshCw, Building2, TrendingUp, TrendingDown, DollarSign, X, ExternalLink, Target, Search, ArrowRight, Filter, ArrowLeft, Scale, Coins, Award, ArrowUpRight, ArrowDownRight, BarChart2, PieChart, Rocket, Users, Activity } from 'lucide-react';
 import { fetchMarketOverview } from '../services/dataService';
 import { SwipeableModal } from '../components/Layout';
 
@@ -14,6 +14,9 @@ export interface MarketAsset {
     p_vp?: number;
     p_l?: number;
     roe?: number;
+    net_margin?: number;
+    cagr_revenue?: number;
+    liquidity?: number;
 }
 
 interface NewMarketOverview {
@@ -25,19 +28,21 @@ interface NewMarketOverview {
             losers: MarketAsset[];
             high_yield: MarketAsset[];
             discounted: MarketAsset[];
+            raw?: MarketAsset[];
         };
         stocks: {
             gainers: MarketAsset[];
             losers: MarketAsset[];
             high_yield: MarketAsset[];
             discounted: MarketAsset[];
+            raw?: MarketAsset[];
         };
     };
     error?: boolean;
 }
 
 // --- CONFIGURAÇÃO DAS CATEGORIAS DE RANKING ---
-type RankingType = 'VALUATION' | 'DY' | 'HIGH' | 'LOW';
+type RankingType = 'VALUATION' | 'DY' | 'HIGH' | 'LOW' | 'ROE' | 'MARGIN' | 'GROWTH' | 'LIQUIDITY';
 
 interface RankingConfig {
     id: RankingType;
@@ -85,6 +90,50 @@ const getRankings = (): RankingConfig[] => {
             secondaryValue: (a) => isFii(a.ticker) ? 'P/VP' : 'P/L'
         },
         {
+            id: 'ROE',
+            label: 'Rentabilidade',
+            subLabel: 'Maiores ROEs',
+            icon: Activity,
+            color: 'violet',
+            filterFn: (a) => (a.roe || 0) > 0,
+            sortFn: (a, b) => (b.roe || 0) - (a.roe || 0),
+            valueFormatter: (a) => `${a.roe?.toFixed(1)}%`,
+            secondaryValue: (a) => 'ROE'
+        },
+        {
+            id: 'MARGIN',
+            label: 'Eficiência',
+            subLabel: 'Margem Líquida',
+            icon: PieChart,
+            color: 'pink',
+            filterFn: (a) => (a.net_margin || 0) > 0,
+            sortFn: (a, b) => (b.net_margin || 0) - (a.net_margin || 0),
+            valueFormatter: (a) => `${a.net_margin?.toFixed(1)}%`,
+            secondaryValue: (a) => 'Mg. Líquida'
+        },
+        {
+            id: 'GROWTH',
+            label: 'Crescimento',
+            subLabel: 'Receita 5 Anos',
+            icon: Rocket,
+            color: 'orange',
+            filterFn: (a) => (a.cagr_revenue || 0) > 0,
+            sortFn: (a, b) => (b.cagr_revenue || 0) - (a.cagr_revenue || 0),
+            valueFormatter: (a) => `${a.cagr_revenue?.toFixed(1)}%`,
+            secondaryValue: (a) => 'CAGR Rec.'
+        },
+        {
+            id: 'LIQUIDITY',
+            label: 'Mais Negociadas',
+            subLabel: 'Alta Liquidez',
+            icon: Users,
+            color: 'cyan',
+            filterFn: (a) => (a.liquidity || 0) > 0,
+            sortFn: (a, b) => (b.liquidity || 0) - (a.liquidity || 0),
+            valueFormatter: (a) => `${((a.liquidity || 0)/1000000).toFixed(1)}M`,
+            secondaryValue: (a) => 'Vol. Diário'
+        },
+        {
             id: 'HIGH',
             label: 'Maiores Altas',
             subLabel: 'Últimas 24h',
@@ -129,6 +178,10 @@ const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: 
         indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
         sky: 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400',
         rose: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400',
+        violet: 'bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400',
+        pink: 'bg-pink-50 text-pink-600 dark:bg-pink-900/20 dark:text-pink-400',
+        orange: 'bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400',
+        cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/20 dark:text-cyan-400',
     };
     
     const themeClass = colors[config.color] || colors.emerald;
@@ -136,16 +189,16 @@ const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: 
     return (
         <button 
             onClick={onClick}
-            className="flex flex-col items-center justify-center p-5 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative group overflow-hidden aspect-[4/3] min-h-[9rem]"
+            className="flex flex-col items-center justify-center p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect h-32 w-full relative group overflow-hidden"
         >
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110 ${themeClass}`}>
-                <Icon className="w-7 h-7" strokeWidth={1.5} />
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-transform group-hover:scale-110 ${themeClass}`}>
+                <Icon className="w-6 h-6" strokeWidth={1.5} />
             </div>
             <span className="text-sm font-bold text-zinc-900 dark:text-white text-center leading-tight max-w-[90%]">
                 {config.label}
             </span>
             {config.subLabel && (
-                <span className="mt-1.5 px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-[9px] font-black uppercase tracking-wider text-zinc-500 rounded-md">
+                <span className="mt-1 px-2 py-0.5 bg-zinc-50 dark:bg-zinc-800 text-[9px] font-black uppercase tracking-wider text-zinc-400 rounded-md">
                     {config.subLabel}
                 </span>
             )}
@@ -266,10 +319,18 @@ const AssetDetailModal = ({ asset, onClose }: { asset: MarketAsset, onClose: () 
                     <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{isFii ? 'P/VP' : 'P/L'}</span>
                     <span className="text-lg font-black text-zinc-900 dark:text-white">{isFii ? asset.p_vp?.toFixed(2) : asset.p_l?.toFixed(2)}x</span>
                 </div>
-                <div className="p-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl flex justify-between items-center shadow-sm">
-                    <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Liquidez</span>
-                    <span className="text-sm font-bold text-zinc-900 dark:text-white">Média Diária</span>
-                </div>
+                {asset.roe !== undefined && (
+                    <div className="p-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl flex justify-between items-center shadow-sm">
+                        <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">ROE</span>
+                        <span className="text-sm font-bold text-zinc-900 dark:text-white">{asset.roe.toFixed(2)}%</span>
+                    </div>
+                )}
+                {asset.liquidity !== undefined && (
+                    <div className="p-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl flex justify-between items-center shadow-sm">
+                        <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Liquidez</span>
+                        <span className="text-sm font-bold text-zinc-900 dark:text-white">{formatCurrency(asset.liquidity)}</span>
+                    </div>
+                )}
             </div>
 
             <a href={url} target="_blank" rel="noreferrer" className="mt-auto w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect flex items-center justify-center gap-2">
@@ -305,10 +366,10 @@ export const Market: React.FC = () => {
         const f = data.highlights.fiis;
         const s = data.highlights.stocks;
         
-        // Combina todas as listas em um único array
+        // Combina todas as listas em um único array, incluindo dados RAW que agora contêm métricas avançadas
         const allAssets = [
-            ...f.gainers, ...f.losers, ...f.high_yield, ...f.discounted,
-            ...s.gainers, ...s.losers, ...s.high_yield, ...s.discounted
+            ...f.gainers, ...f.losers, ...f.high_yield, ...f.discounted, ...(f.raw || []),
+            ...s.gainers, ...s.losers, ...s.high_yield, ...s.discounted, ...(s.raw || [])
         ];
         
         // Remove duplicatas
@@ -381,12 +442,12 @@ export const Market: React.FC = () => {
                         </div>
                     </div>
                 ) : (
-                    // HEADER PRINCIPAL (Grid) - Minimalista (Sem título duplicado)
+                    // HEADER PRINCIPAL (Grid) - Apenas Status
                     <div className="anim-fade-in flex justify-between items-center py-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 px-1">
                             <span className={`w-2 h-2 rounded-full ${data && !data.error ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
                             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                {data ? (data.error ? 'Offline' : 'Mercado Aberto') : 'Sincronizando...'}
+                                {data ? (data.error ? 'Modo Offline' : 'Mercado Aberto') : 'Sincronizando...'}
                             </p>
                         </div>
                         <button onClick={loadData} disabled={loading} className={`w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 flex items-center justify-center transition-all ${loading ? 'opacity-50' : 'active:scale-95'}`}>
@@ -400,8 +461,8 @@ export const Market: React.FC = () => {
             <div className="px-1 min-h-[50vh]">
                 {loading && !data ? (
                     <div className="grid grid-cols-2 gap-3 animate-pulse">
-                        {[1, 2, 3, 4].map(i => (
-                            <div key={i} className="h-36 bg-zinc-200 dark:bg-zinc-800 rounded-2xl"></div>
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                            <div key={i} className="h-32 bg-zinc-200 dark:bg-zinc-800 rounded-3xl"></div>
                         ))}
                     </div>
                 ) : selectedRanking ? (

@@ -17,72 +17,38 @@ const HEADERS = {
     'Pragma': 'no-cache'
 };
 
-// --- DADOS DE EMERGÊNCIA EXTENDIDOS (Top IBOV + IFIX) ---
+// --- DADOS DE EMERGÊNCIA EXTENDIDOS (Top IBOV + IFIX + Indicadores Extras) ---
 const EMERGENCY_DATA: Record<string, any> = {
     // FIIs (IFIX Top)
-    'MXRF11': { name: 'Maxi Renda', type: 'fiis', p_vp: 1.01, dy_12m: 12.45, price: 10.35 },
-    'HGLG11': { name: 'CSHG Logística', type: 'fiis', p_vp: 1.05, dy_12m: 8.90, price: 165.50 },
-    'VISC11': { name: 'Vinci Shopping', type: 'fiis', p_vp: 0.98, dy_12m: 9.20, price: 120.10 },
-    'XPLG11': { name: 'XP Log', type: 'fiis', p_vp: 0.92, dy_12m: 9.50, price: 105.80 },
-    'KNRI11': { name: 'Kinea Renda', type: 'fiis', p_vp: 1.00, dy_12m: 8.80, price: 160.00 },
-    'CPTS11': { name: 'Capitânia', type: 'fiis', p_vp: 0.89, dy_12m: 11.50, price: 8.50 },
-    'XPML11': { name: 'XP Malls', type: 'fiis', p_vp: 1.02, dy_12m: 8.50, price: 115.20 },
-    'BTLG11': { name: 'BTG Logística', type: 'fiis', p_vp: 0.99, dy_12m: 9.10, price: 102.50 },
-    'IRDM11': { name: 'Iridium', type: 'fiis', p_vp: 0.78, dy_12m: 13.20, price: 72.30 },
-    'HGRU11': { name: 'CSHG Renda Urbana', type: 'fiis', p_vp: 1.03, dy_12m: 8.70, price: 132.40 },
-    'MALL11': { name: 'Genial Malls', type: 'fiis', p_vp: 0.95, dy_12m: 9.50, price: 112.00 },
-    'VGIP11': { name: 'Valora IP', type: 'fiis', p_vp: 0.92, dy_12m: 14.20, price: 89.50 },
-    'KNCR11': { name: 'Kinea Rendimentos', type: 'fiis', p_vp: 1.01, dy_12m: 10.50, price: 103.00 },
-    'KNIP11': { name: 'Kinea Índices', type: 'fiis', p_vp: 0.98, dy_12m: 9.80, price: 95.00 },
-    'HCTR11': { name: 'Hectare', type: 'fiis', p_vp: 0.35, dy_12m: 20.00, price: 28.00 },
-    'DEVA11': { name: 'Devant', type: 'fiis', p_vp: 0.45, dy_12m: 18.00, price: 40.00 },
-    'VGHF11': { name: 'Valora Hedge', type: 'fiis', p_vp: 0.99, dy_12m: 11.50, price: 9.20 },
-    'TGAR11': { name: 'TG Ativo Real', type: 'fiis', p_vp: 0.95, dy_12m: 11.00, price: 120.00 },
-    'BRCO11': { name: 'Bresco Logística', type: 'fiis', p_vp: 1.05, dy_12m: 8.50, price: 125.00 },
-    'JSRE11': { name: 'JS Real Estate', type: 'fiis', p_vp: 0.65, dy_12m: 8.00, price: 70.00 },
-    'RECR11': { name: 'Rec Recebíveis', type: 'fiis', p_vp: 0.95, dy_12m: 10.50, price: 88.00 },
-    'HFOF11': { name: 'Hedge Top FOF', type: 'fiis', p_vp: 0.98, dy_12m: 9.00, price: 78.00 },
-    'KNSC11': { name: 'Kinea Securities', type: 'fiis', p_vp: 0.95, dy_12m: 10.00, price: 9.00 },
-    'RBRR11': { name: 'RBR Rendimento', type: 'fiis', p_vp: 0.98, dy_12m: 10.20, price: 92.00 },
-    'TRXF11': { name: 'TRX Real Estate', type: 'fiis', p_vp: 1.02, dy_12m: 9.80, price: 110.00 },
-    'PVBI11': { name: 'VBI Prime', type: 'fiis', p_vp: 1.01, dy_12m: 8.00, price: 102.00 },
-    'LVBI11': { name: 'VBI Logística', type: 'fiis', p_vp: 0.99, dy_12m: 8.50, price: 118.00 },
-    'HSLG11': { name: 'HSI Logística', type: 'fiis', p_vp: 0.88, dy_12m: 9.00, price: 90.00 },
-    'HGBS11': { name: 'Hedge Brasil Shop', type: 'fiis', p_vp: 0.95, dy_12m: 8.50, price: 220.00 },
-    'GGRC11': { name: 'GGR Covepi', type: 'fiis', p_vp: 0.95, dy_12m: 10.50, price: 112.00 },
-
-    // Ações (IBOV Top)
-    'PETR4': { name: 'Petrobras', type: 'acoes', p_l: 3.5, p_vp: 1.4, dy_12m: 20.5, price: 38.50 },
-    'VALE3': { name: 'Vale', type: 'acoes', p_l: 5.2, p_vp: 1.6, dy_12m: 12.1, price: 62.30 },
-    'ITUB4': { name: 'Itaú Unibanco', type: 'acoes', p_l: 8.5, p_vp: 1.8, dy_12m: 7.2, price: 33.40 },
-    'BBAS3': { name: 'Banco do Brasil', type: 'acoes', p_l: 4.2, p_vp: 0.9, dy_12m: 9.8, price: 27.80 },
-    'WEGE3': { name: 'WEG', type: 'acoes', p_l: 28.5, p_vp: 9.5, dy_12m: 1.5, price: 38.90 },
-    'BBDC4': { name: 'Bradesco', type: 'acoes', p_l: 9.2, p_vp: 0.9, dy_12m: 6.5, price: 13.20 },
-    'ABEV3': { name: 'Ambev', type: 'acoes', p_l: 14.5, p_vp: 2.5, dy_12m: 5.5, price: 12.50 },
-    'PETR3': { name: 'Petrobras ON', type: 'acoes', p_l: 3.4, p_vp: 1.3, dy_12m: 21.0, price: 40.20 },
-    'MGLU3': { name: 'Magalu', type: 'acoes', p_l: -10.5, p_vp: 2.0, dy_12m: 0.0, price: 1.80 },
-    'ITSA4': { name: 'Itaúsa', type: 'acoes', p_l: 6.5, p_vp: 1.3, dy_12m: 8.5, price: 10.20 },
-    'TAEE11': { name: 'Taesa', type: 'acoes', p_l: 10.5, p_vp: 1.8, dy_12m: 9.5, price: 35.50 },
-    'CMIG4': { name: 'Cemig', type: 'acoes', p_l: 5.5, p_vp: 1.1, dy_12m: 8.2, price: 11.20 },
-    'JBSS3': { name: 'JBS', type: 'acoes', p_l: 8.5, p_vp: 1.5, dy_12m: 5.5, price: 32.00 },
-    'SUZB3': { name: 'Suzano', type: 'acoes', p_l: 7.5, p_vp: 1.2, dy_12m: 4.5, price: 55.00 },
-    'BPAC11': { name: 'BTG Pactual', type: 'acoes', p_l: 12.5, p_vp: 2.2, dy_12m: 3.5, price: 30.00 },
-    'RENT3': { name: 'Localiza', type: 'acoes', p_l: 18.5, p_vp: 3.5, dy_12m: 2.5, price: 45.00 },
-    'B3SA3': { name: 'B3', type: 'acoes', p_l: 14.5, p_vp: 3.0, dy_12m: 4.5, price: 11.00 },
-    'RADL3': { name: 'Raia Drogasil', type: 'acoes', p_l: 35.5, p_vp: 6.5, dy_12m: 1.2, price: 25.00 },
-    'PRIO3': { name: 'Prio', type: 'acoes', p_l: 8.5, p_vp: 2.5, dy_12m: 0.0, price: 42.00 },
-    'RDOR3': { name: 'Rede DOr', type: 'acoes', p_l: 25.5, p_vp: 3.5, dy_12m: 1.5, price: 28.00 },
-    'CSAN3': { name: 'Cosan', type: 'acoes', p_l: 12.5, p_vp: 1.8, dy_12m: 2.5, price: 15.00 },
-    'GG': { name: 'Gerdau', type: 'acoes', p_l: 6.5, p_vp: 1.1, dy_12m: 7.5, price: 22.00 }, // Fallback para GGBR4 se necessário
-    'RAIL3': { name: 'Rumo', type: 'acoes', p_l: 20.5, p_vp: 2.5, dy_12m: 1.0, price: 21.00 },
-    'VIVT3': { name: 'Vivo', type: 'acoes', p_l: 12.5, p_vp: 1.2, dy_12m: 6.5, price: 48.00 },
-    'ELET3': { name: 'Eletrobras', type: 'acoes', p_l: 10.5, p_vp: 0.8, dy_12m: 2.5, price: 38.00 },
-    'BBSE3': { name: 'BB Seguridade', type: 'acoes', p_l: 9.5, p_vp: 6.5, dy_12m: 8.5, price: 32.00 },
-    'EQTL3': { name: 'Equatorial', type: 'acoes', p_l: 12.5, p_vp: 1.8, dy_12m: 3.5, price: 30.00 },
-    'LREN3': { name: 'Lojas Renner', type: 'acoes', p_l: 18.5, p_vp: 2.5, dy_12m: 3.5, price: 16.00 },
-    'EMBR3': { name: 'Embraer', type: 'acoes', p_l: 25.5, p_vp: 2.5, dy_12m: 0.0, price: 35.00 },
-    'CSNA3': { name: 'CSN', type: 'acoes', p_l: 5.5, p_vp: 0.9, dy_12m: 8.5, price: 14.00 },
-    'HAPV3': { name: 'Hapvida', type: 'acoes', p_l: 45.5, p_vp: 1.5, dy_12m: 0.0, price: 3.50 }
+    'MXRF11': { name: 'Maxi Renda', type: 'fiis', p_vp: 1.01, dy_12m: 12.45, price: 10.35, liquidity: 12000000 },
+    'HGLG11': { name: 'CSHG Logística', type: 'fiis', p_vp: 1.05, dy_12m: 8.90, price: 165.50, liquidity: 8500000 },
+    'VISC11': { name: 'Vinci Shopping', type: 'fiis', p_vp: 0.98, dy_12m: 9.20, price: 120.10, liquidity: 5000000 },
+    'XPLG11': { name: 'XP Log', type: 'fiis', p_vp: 0.92, dy_12m: 9.50, price: 105.80, liquidity: 6000000 },
+    'KNRI11': { name: 'Kinea Renda', type: 'fiis', p_vp: 1.00, dy_12m: 8.80, price: 160.00, liquidity: 4500000 },
+    'CPTS11': { name: 'Capitânia', type: 'fiis', p_vp: 0.89, dy_12m: 11.50, price: 8.50, liquidity: 9000000 },
+    'XPML11': { name: 'XP Malls', type: 'fiis', p_vp: 1.02, dy_12m: 8.50, price: 115.20, liquidity: 7000000 },
+    'BTLG11': { name: 'BTG Logística', type: 'fiis', p_vp: 0.99, dy_12m: 9.10, price: 102.50, liquidity: 6500000 },
+    'IRDM11': { name: 'Iridium', type: 'fiis', p_vp: 0.78, dy_12m: 13.20, price: 72.30, liquidity: 5500000 },
+    'HGRU11': { name: 'CSHG Renda Urbana', type: 'fiis', p_vp: 1.03, dy_12m: 8.70, price: 132.40, liquidity: 4000000 },
+    'MALL11': { name: 'Genial Malls', type: 'fiis', p_vp: 0.95, dy_12m: 9.50, price: 112.00, liquidity: 3000000 },
+    'VGIP11': { name: 'Valora IP', type: 'fiis', p_vp: 0.92, dy_12m: 14.20, price: 89.50, liquidity: 3500000 },
+    
+    // Ações (IBOV Top - Com ROE, Margem e CAGR)
+    'PETR4': { name: 'Petrobras', type: 'acoes', p_l: 3.5, p_vp: 1.4, dy_12m: 20.5, price: 38.50, roe: 35.5, net_margin: 28.0, cagr_revenue: 15.2, liquidity: 1500000000 },
+    'VALE3': { name: 'Vale', type: 'acoes', p_l: 5.2, p_vp: 1.6, dy_12m: 12.1, price: 62.30, roe: 25.0, net_margin: 22.5, cagr_revenue: 8.5, liquidity: 1200000000 },
+    'ITUB4': { name: 'Itaú Unibanco', type: 'acoes', p_l: 8.5, p_vp: 1.8, dy_12m: 7.2, price: 33.40, roe: 21.5, net_margin: 18.0, cagr_revenue: 10.0, liquidity: 800000000 },
+    'BBAS3': { name: 'Banco do Brasil', type: 'acoes', p_l: 4.2, p_vp: 0.9, dy_12m: 9.8, price: 27.80, roe: 22.0, net_margin: 15.5, cagr_revenue: 12.5, liquidity: 600000000 },
+    'WEGE3': { name: 'WEG', type: 'acoes', p_l: 28.5, p_vp: 9.5, dy_12m: 1.5, price: 38.90, roe: 32.0, net_margin: 14.0, cagr_revenue: 25.0, liquidity: 400000000 },
+    'BBDC4': { name: 'Bradesco', type: 'acoes', p_l: 9.2, p_vp: 0.9, dy_12m: 6.5, price: 13.20, roe: 12.0, net_margin: 10.0, cagr_revenue: 5.0, liquidity: 500000000 },
+    'ABEV3': { name: 'Ambev', type: 'acoes', p_l: 14.5, p_vp: 2.5, dy_12m: 5.5, price: 12.50, roe: 18.0, net_margin: 19.0, cagr_revenue: 8.0, liquidity: 300000000 },
+    'PETR3': { name: 'Petrobras ON', type: 'acoes', p_l: 3.4, p_vp: 1.3, dy_12m: 21.0, price: 40.20, roe: 35.5, net_margin: 28.0, cagr_revenue: 15.2, liquidity: 400000000 },
+    'MGLU3': { name: 'Magalu', type: 'acoes', p_l: -10.5, p_vp: 2.0, dy_12m: 0.0, price: 1.80, roe: -5.0, net_margin: -2.0, cagr_revenue: 10.0, liquidity: 200000000 },
+    'ITSA4': { name: 'Itaúsa', type: 'acoes', p_l: 6.5, p_vp: 1.3, dy_12m: 8.5, price: 10.20, roe: 18.0, net_margin: 90.0, cagr_revenue: 12.0, liquidity: 250000000 },
+    'TAEE11': { name: 'Taesa', type: 'acoes', p_l: 10.5, p_vp: 1.8, dy_12m: 9.5, price: 35.50, roe: 25.0, net_margin: 45.0, cagr_revenue: 15.0, liquidity: 100000000 },
+    'CMIG4': { name: 'Cemig', type: 'acoes', p_l: 5.5, p_vp: 1.1, dy_12m: 8.2, price: 11.20, roe: 19.0, net_margin: 15.0, cagr_revenue: 9.0, liquidity: 150000000 },
+    'PRIO3': { name: 'Prio', type: 'acoes', p_l: 8.5, p_vp: 2.5, dy_12m: 0.0, price: 42.00, roe: 30.0, net_margin: 40.0, cagr_revenue: 45.0, liquidity: 350000000 },
+    'RDOR3': { name: 'Rede DOr', type: 'acoes', p_l: 25.5, p_vp: 3.5, dy_12m: 1.5, price: 28.00, roe: 15.0, net_margin: 8.0, cagr_revenue: 20.0, liquidity: 120000000 },
+    'CSAN3': { name: 'Cosan', type: 'acoes', p_l: 12.5, p_vp: 1.8, dy_12m: 2.5, price: 15.00, roe: 12.0, net_margin: 5.0, cagr_revenue: 15.0, liquidity: 200000000 }
 };
 
 const TICKER_LIST = Object.keys(EMERGENCY_DATA).join(',');
@@ -95,6 +61,9 @@ const parseBrFloat = (str: string) => {
 };
 
 const isFiiTicker = (t: string) => t.toUpperCase().endsWith('11') || t.toUpperCase().endsWith('11B');
+
+// Normalizador de Cabeçalho para encontrar índices dinamicamente
+const normalizeHeader = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 // --- STRATEGY 1: SCRAPING (Principal) ---
 async function scrapeHome() {
@@ -131,7 +100,6 @@ async function scrapeHome() {
             losers: uniqueItems.filter(i => i.variation_percent < 0).sort((a,b) => a.variation_percent - b.variation_percent)
         };
     } catch (e) {
-        console.log('Scrape Home Failed');
         return { gainers: [], losers: [] };
     }
 }
@@ -143,29 +111,60 @@ async function scrapeRanking(type: 'fiis' | 'acoes') {
         const $ = cheerio.load(data);
         const items: any[] = [];
         
-        // Remove limites de paginação do scraper, tenta pegar tudo que estiver na tabela inicial
+        // Mapeamento dinâmico de colunas
+        const colMap: Record<string, number> = {};
+        $('#table-ranking thead tr th, .table-ranking thead tr th').each((index, el) => {
+            const headerText = normalizeHeader($(el).text());
+            if (headerText.includes('ticker') || headerText.includes('papel') || headerText.includes('ativo')) colMap['ticker'] = index;
+            else if (headerText.includes('cotacao') || headerText.includes('preco')) colMap['price'] = index;
+            else if (headerText.includes('pl') || headerText === 'pl') colMap['pl'] = index;
+            else if (headerText.includes('pvp') || headerText === 'vp') colMap['pvp'] = index;
+            else if (headerText.includes('dy') || headerText.includes('dividend')) colMap['dy'] = index;
+            else if (headerText.includes('roe')) colMap['roe'] = index;
+            else if (headerText.includes('margemliq')) colMap['net_margin'] = index;
+            else if (headerText.includes('crescrec') || headerText.includes('receita')) colMap['cagr_revenue'] = index;
+            else if (headerText.includes('liquidez')) colMap['liquidity'] = index;
+        });
+
+        // Fallback de índices se mapeamento falhar (Layout Padrão)
+        if (colMap['ticker'] === undefined) colMap['ticker'] = 0;
+        if (colMap['price'] === undefined) colMap['price'] = 1;
+        
         $('#table-ranking tbody tr, .table-ranking tbody tr').each((_, tr) => {
             const tds = $(tr).find('td');
             if (tds.length < 5) return;
 
-            const ticker = $(tds[0]).text().trim();
-            const price = parseBrFloat($(tds[1]).text());
+            const getCol = (key: string) => {
+                const idx = colMap[key];
+                if (idx !== undefined && tds[idx]) return $(tds[idx]).text().trim();
+                return '';
+            };
+
+            const ticker = getCol('ticker');
+            const price = parseBrFloat(getCol('price'));
             
             if (ticker && price > 0) {
-                if (type === 'fiis') {
-                    items.push({
-                        ticker, name: 'Fundo Imobiliário', price,
-                        p_vp: parseBrFloat($(tds[2]).text()),
-                        dy_12m: parseBrFloat($(tds[3]).text())
-                    });
+                const item: any = {
+                    ticker, 
+                    name: type === 'fiis' ? 'Fundo Imobiliário' : 'Ação', 
+                    price,
+                    p_vp: parseBrFloat(getCol('pvp')),
+                    dy_12m: parseBrFloat(getCol('dy')),
+                    // Campos adicionais
+                    liquidity: parseBrFloat(getCol('liquidity')),
+                };
+
+                if (type === 'acoes') {
+                    item.p_l = parseBrFloat(getCol('pl'));
+                    item.roe = parseBrFloat(getCol('roe'));
+                    item.net_margin = parseBrFloat(getCol('net_margin'));
+                    item.cagr_revenue = parseBrFloat(getCol('cagr_revenue'));
                 } else {
-                    items.push({
-                        ticker, name: 'Ação', price,
-                        p_l: parseBrFloat($(tds[2]).text()),
-                        p_vp: parseBrFloat($(tds[3]).text()),
-                        dy_12m: parseBrFloat($(tds[4]).text())
-                    });
+                    // FIIs geralmente não tem ROE/Margem na tabela de ranking principal, 
+                    // mas mantemos a estrutura caso apareça.
                 }
+                
+                items.push(item);
             }
         });
         return items;
@@ -191,6 +190,10 @@ async function fetchBrapiBackup() {
                 dy_12m: staticData.dy_12m || 0,
                 p_vp: staticData.p_vp || 0,
                 p_l: staticData.p_l || 0,
+                roe: staticData.roe || 0,
+                net_margin: staticData.net_margin || 0,
+                cagr_revenue: staticData.cagr_revenue || 0,
+                liquidity: staticData.liquidity || 0,
                 type: staticData.type || (isFiiTicker(r.symbol) ? 'fiis' : 'acoes')
             };
         });
@@ -237,12 +240,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let usedFallback = false;
 
         // 2. Backup se Scraping falhar ou retornar muito poucos dados
-        // Agora exigimos pelo menos 5 FIIs e 5 Ações para considerar o scrape válido
-        if (homeData.gainers.length < 2 || fiisRaw.length < 5 || stocksRaw.length < 5) {
+        if (homeData.gainers.length < 2 || fiisRaw.length < 20 || stocksRaw.length < 20) {
             console.log('Main scraping insufficient, fetching backup...');
             const backup = await fetchBrapiBackup();
             
-            if (backup && backup.items.length > 10) {
+            if (backup && backup.items.length > 20) {
                 homeData = { gainers: backup.gainers, losers: backup.losers };
                 fiisRaw = backup.items.filter((i: any) => i.type === 'fiis');
                 stocksRaw = backup.items.filter((i: any) => i.type === 'acoes');
@@ -263,7 +265,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const stockGainers = homeData.gainers.filter(i => !isFiiTicker(i.ticker));
         const stockLosers = homeData.losers.filter(i => !isFiiTicker(i.ticker));
 
-        // Rankings: Ordena, mas não corta mais com slice() agressivo
+        // Ordenações diversas para o frontend consumir
         const highYieldFIIs = [...fiisRaw].sort((a, b) => b.dy_12m - a.dy_12m);
         const discountedFIIs = [...fiisRaw].filter(f => f.p_vp > 0).sort((a, b) => a.p_vp - b.p_vp);
 
@@ -279,13 +281,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     gainers: fiiGainers,
                     losers: fiiLosers,
                     high_yield: highYieldFIIs,
-                    discounted: discountedFIIs
+                    discounted: discountedFIIs,
+                    raw: fiisRaw // Envia raw para frontend filtrar (Liquidez, etc)
                 },
                 stocks: {
                     gainers: stockGainers,
                     losers: stockLosers,
                     high_yield: highYieldStocks,
-                    discounted: discountedStocks
+                    discounted: discountedStocks,
+                    raw: stocksRaw // Envia raw para frontend filtrar (ROE, Margem, etc)
                 }
             },
             sources: [{ title: usedFallback ? 'Brapi / Backup' : 'Investidor10', uri: 'https://investidor10.com.br' }]
