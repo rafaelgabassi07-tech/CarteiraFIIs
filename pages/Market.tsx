@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, Building2, TrendingUp, TrendingDown, DollarSign, X, ExternalLink, Target, Search, ArrowRight, Filter, ArrowLeft, Scale, Coins, Award, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { RefreshCw, Building2, TrendingUp, TrendingDown, DollarSign, X, ExternalLink, Target, Search, ArrowRight, Filter, ArrowLeft, Scale, Coins, Award, ArrowUpRight, ArrowDownRight, BarChart2 } from 'lucide-react';
 import { fetchMarketOverview } from '../services/dataService';
 import { SwipeableModal } from '../components/Layout';
 
@@ -136,12 +136,12 @@ const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: 
     return (
         <button 
             onClick={onClick}
-            className="flex flex-col items-center justify-center p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect h-36 relative group overflow-hidden"
+            className="flex flex-col items-center justify-center p-5 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative group overflow-hidden aspect-[4/3] min-h-[9rem]"
         >
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110 ${themeClass}`}>
-                <Icon className="w-6 h-6" strokeWidth={1.5} />
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110 ${themeClass}`}>
+                <Icon className="w-7 h-7" strokeWidth={1.5} />
             </div>
-            <span className="text-xs font-bold text-zinc-900 dark:text-white text-center leading-tight max-w-[90%]">
+            <span className="text-sm font-bold text-zinc-900 dark:text-white text-center leading-tight max-w-[90%]">
                 {config.label}
             </span>
             {config.subLabel && (
@@ -153,19 +153,30 @@ const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: 
     );
 };
 
-const RankingListView = ({ assets, config, onSelect }: { assets: MarketAsset[], config: RankingConfig, onSelect: (a: MarketAsset) => void }) => {
+const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: MarketAsset[], config: RankingConfig, onSelect: (a: MarketAsset) => void, activeFilter: string }) => {
+    // Contagem para feedback visual
+    const fiiCount = assets.filter(a => a.ticker.endsWith('11') || a.ticker.endsWith('11B')).length;
+    const stockCount = assets.length - fiiCount;
+
     return (
         <div className="flex flex-col bg-white dark:bg-zinc-900 min-h-full">
-            <div className="flex items-center px-4 py-3 bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10 backdrop-blur-sm justify-between">
-                <div className="flex gap-4">
-                    <div className="w-8 text-[10px] font-black text-zinc-400 uppercase">#</div>
-                    <div className="text-[10px] font-black text-zinc-400 uppercase">Ativo</div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-500">
-                        {assets.length}
-                    </span>
+            <div className="flex flex-col px-4 py-3 bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10 backdrop-blur-sm">
+                <div className="flex justify-between items-end mb-2">
+                    <div className="flex gap-4">
+                        <div className="w-8 text-[10px] font-black text-zinc-400 uppercase">#</div>
+                        <div className="text-[10px] font-black text-zinc-400 uppercase">Ativo</div>
+                    </div>
                     <div className="w-20 text-right text-[10px] font-black text-zinc-400 uppercase">{config.label.split(' ')[0]}</div>
+                </div>
+                
+                {/* Micro-Resumo da Lista */}
+                <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-400 uppercase tracking-wide">
+                    <span>{assets.length} Itens</span>
+                    <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
+                    <span>
+                        {activeFilter === 'ALL' ? `${stockCount} Ações • ${fiiCount} FIIs` : 
+                         activeFilter === 'fiis' ? 'Apenas FIIs' : 'Apenas Ações'}
+                    </span>
                 </div>
             </div>
 
@@ -289,54 +300,40 @@ export const Market: React.FC = () => {
 
     useEffect(() => { loadData(); }, []);
 
-    // Pool de todos os ativos (FIIs + Stocks) combinados
-    // Garante que a lista contenha TUDO o que veio da API
     const assetPool = useMemo(() => {
         if (!data) return [];
         const f = data.highlights.fiis;
         const s = data.highlights.stocks;
         
         // Combina todas as listas em um único array
-        // A API agora retorna listas maiores, então concatenamos tudo
         const allAssets = [
             ...f.gainers, ...f.losers, ...f.high_yield, ...f.discounted,
             ...s.gainers, ...s.losers, ...s.high_yield, ...s.discounted
         ];
         
-        // Remove duplicatas (mesmo ativo pode estar em "High Yield" e "Discounted")
+        // Remove duplicatas
         const unique = new Map();
         allAssets.forEach(item => unique.set(item.ticker, item));
         return Array.from(unique.values());
     }, [data]);
 
-    // Aplica filtro de ranking e filtro de tipo (Drill-down)
     const currentList = useMemo(() => {
         if (!selectedRanking) return [];
         
-        // 1. Filtra estritamente por tipo (Todos, FIIs ou Ações)
         let list = assetPool.filter(a => {
             const isFii = a.ticker.endsWith('11') || a.ticker.endsWith('11B');
-            
-            // SE O FILTRO FOR 'fiis', MOSTRA APENAS FIIs
             if (activeTypeFilter === 'fiis') return isFii;
-            
-            // SE O FILTRO FOR 'stocks', MOSTRA APENAS STOCKS (Não FIIs)
             if (activeTypeFilter === 'stocks') return !isFii;
-            
-            // SE FOR 'ALL', MOSTRA TUDO
             return true;
         });
 
-        // 2. Filtra pela lógica do Ranking Selecionado (ex: apenas > 0 DY, ou apenas > 0 P/L)
         list = list.filter(selectedRanking.filterFn);
         
-        // 3. Filtra por busca
         if (searchTerm) {
             const term = searchTerm.toUpperCase();
             list = list.filter(a => a.ticker.includes(term) || a.name.toUpperCase().includes(term));
         }
 
-        // 4. Ordena
         return list.sort(selectedRanking.sortFn);
     }, [assetPool, selectedRanking, searchTerm, activeTypeFilter]);
 
@@ -344,13 +341,13 @@ export const Market: React.FC = () => {
 
     return (
         <div className="pb-32 min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            {/* Header Sticky */}
-            <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-3 mb-6">
+            {/* Header Sticky SEM TÍTULO DUPLICADO */}
+            <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-2 mb-6">
                 
                 {selectedRanking ? (
                     // HEADER INTERNO (Dentro de uma categoria)
-                    <div className="flex flex-col gap-4 anim-slide-in-right">
-                        <div className="flex items-center gap-3 py-1">
+                    <div className="flex flex-col gap-4 anim-slide-in-right pt-2 pb-1">
+                        <div className="flex items-center gap-3">
                             <button onClick={() => { setSelectedRanking(null); setSearchTerm(''); setActiveTypeFilter('ALL'); }} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center press-effect">
                                 <ArrowLeft className="w-5 h-5" />
                             </button>
@@ -384,22 +381,17 @@ export const Market: React.FC = () => {
                         </div>
                     </div>
                 ) : (
-                    // HEADER PRINCIPAL (Grid)
-                    <div className="anim-fade-in">
-                        <div className="flex justify-between items-center mb-1">
-                            <div>
-                                <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Rankings</h2>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${data && !data.error ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                                        {data ? (data.error ? 'Offline' : 'Mercado Aberto') : 'Sincronizando...'}
-                                    </p>
-                                </div>
-                            </div>
-                            <button onClick={loadData} disabled={loading} className={`w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 flex items-center justify-center transition-all ${loading ? 'opacity-50' : 'active:scale-95'}`}>
-                                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                            </button>
+                    // HEADER PRINCIPAL (Grid) - Minimalista (Sem título duplicado)
+                    <div className="anim-fade-in flex justify-between items-center py-1">
+                        <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${data && !data.error ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                {data ? (data.error ? 'Offline' : 'Mercado Aberto') : 'Sincronizando...'}
+                            </p>
                         </div>
+                        <button onClick={loadData} disabled={loading} className={`w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 flex items-center justify-center transition-all ${loading ? 'opacity-50' : 'active:scale-95'}`}>
+                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
                     </div>
                 )}
             </div>
@@ -418,6 +410,7 @@ export const Market: React.FC = () => {
                             assets={currentList} 
                             config={selectedRanking} 
                             onSelect={setSelectedAsset} 
+                            activeFilter={activeTypeFilter}
                         />
                     </div>
                 ) : (

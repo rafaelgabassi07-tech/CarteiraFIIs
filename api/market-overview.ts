@@ -17,8 +17,9 @@ const HEADERS = {
     'Pragma': 'no-cache'
 };
 
-// --- DADOS DE EMERGÊNCIA (SNAPSHOT EXPANDIDO) ---
+// --- DADOS DE EMERGÊNCIA EXTENDIDOS (Top IBOV + IFIX) ---
 const EMERGENCY_DATA: Record<string, any> = {
+    // FIIs (IFIX Top)
     'MXRF11': { name: 'Maxi Renda', type: 'fiis', p_vp: 1.01, dy_12m: 12.45, price: 10.35 },
     'HGLG11': { name: 'CSHG Logística', type: 'fiis', p_vp: 1.05, dy_12m: 8.90, price: 165.50 },
     'VISC11': { name: 'Vinci Shopping', type: 'fiis', p_vp: 0.98, dy_12m: 9.20, price: 120.10 },
@@ -31,7 +32,26 @@ const EMERGENCY_DATA: Record<string, any> = {
     'HGRU11': { name: 'CSHG Renda Urbana', type: 'fiis', p_vp: 1.03, dy_12m: 8.70, price: 132.40 },
     'MALL11': { name: 'Genial Malls', type: 'fiis', p_vp: 0.95, dy_12m: 9.50, price: 112.00 },
     'VGIP11': { name: 'Valora IP', type: 'fiis', p_vp: 0.92, dy_12m: 14.20, price: 89.50 },
-    
+    'KNCR11': { name: 'Kinea Rendimentos', type: 'fiis', p_vp: 1.01, dy_12m: 10.50, price: 103.00 },
+    'KNIP11': { name: 'Kinea Índices', type: 'fiis', p_vp: 0.98, dy_12m: 9.80, price: 95.00 },
+    'HCTR11': { name: 'Hectare', type: 'fiis', p_vp: 0.35, dy_12m: 20.00, price: 28.00 },
+    'DEVA11': { name: 'Devant', type: 'fiis', p_vp: 0.45, dy_12m: 18.00, price: 40.00 },
+    'VGHF11': { name: 'Valora Hedge', type: 'fiis', p_vp: 0.99, dy_12m: 11.50, price: 9.20 },
+    'TGAR11': { name: 'TG Ativo Real', type: 'fiis', p_vp: 0.95, dy_12m: 11.00, price: 120.00 },
+    'BRCO11': { name: 'Bresco Logística', type: 'fiis', p_vp: 1.05, dy_12m: 8.50, price: 125.00 },
+    'JSRE11': { name: 'JS Real Estate', type: 'fiis', p_vp: 0.65, dy_12m: 8.00, price: 70.00 },
+    'RECR11': { name: 'Rec Recebíveis', type: 'fiis', p_vp: 0.95, dy_12m: 10.50, price: 88.00 },
+    'HFOF11': { name: 'Hedge Top FOF', type: 'fiis', p_vp: 0.98, dy_12m: 9.00, price: 78.00 },
+    'KNSC11': { name: 'Kinea Securities', type: 'fiis', p_vp: 0.95, dy_12m: 10.00, price: 9.00 },
+    'RBRR11': { name: 'RBR Rendimento', type: 'fiis', p_vp: 0.98, dy_12m: 10.20, price: 92.00 },
+    'TRXF11': { name: 'TRX Real Estate', type: 'fiis', p_vp: 1.02, dy_12m: 9.80, price: 110.00 },
+    'PVBI11': { name: 'VBI Prime', type: 'fiis', p_vp: 1.01, dy_12m: 8.00, price: 102.00 },
+    'LVBI11': { name: 'VBI Logística', type: 'fiis', p_vp: 0.99, dy_12m: 8.50, price: 118.00 },
+    'HSLG11': { name: 'HSI Logística', type: 'fiis', p_vp: 0.88, dy_12m: 9.00, price: 90.00 },
+    'HGBS11': { name: 'Hedge Brasil Shop', type: 'fiis', p_vp: 0.95, dy_12m: 8.50, price: 220.00 },
+    'GGRC11': { name: 'GGR Covepi', type: 'fiis', p_vp: 0.95, dy_12m: 10.50, price: 112.00 },
+
+    // Ações (IBOV Top)
     'PETR4': { name: 'Petrobras', type: 'acoes', p_l: 3.5, p_vp: 1.4, dy_12m: 20.5, price: 38.50 },
     'VALE3': { name: 'Vale', type: 'acoes', p_l: 5.2, p_vp: 1.6, dy_12m: 12.1, price: 62.30 },
     'ITUB4': { name: 'Itaú Unibanco', type: 'acoes', p_l: 8.5, p_vp: 1.8, dy_12m: 7.2, price: 33.40 },
@@ -43,7 +63,26 @@ const EMERGENCY_DATA: Record<string, any> = {
     'MGLU3': { name: 'Magalu', type: 'acoes', p_l: -10.5, p_vp: 2.0, dy_12m: 0.0, price: 1.80 },
     'ITSA4': { name: 'Itaúsa', type: 'acoes', p_l: 6.5, p_vp: 1.3, dy_12m: 8.5, price: 10.20 },
     'TAEE11': { name: 'Taesa', type: 'acoes', p_l: 10.5, p_vp: 1.8, dy_12m: 9.5, price: 35.50 },
-    'CMIG4': { name: 'Cemig', type: 'acoes', p_l: 5.5, p_vp: 1.1, dy_12m: 8.2, price: 11.20 }
+    'CMIG4': { name: 'Cemig', type: 'acoes', p_l: 5.5, p_vp: 1.1, dy_12m: 8.2, price: 11.20 },
+    'JBSS3': { name: 'JBS', type: 'acoes', p_l: 8.5, p_vp: 1.5, dy_12m: 5.5, price: 32.00 },
+    'SUZB3': { name: 'Suzano', type: 'acoes', p_l: 7.5, p_vp: 1.2, dy_12m: 4.5, price: 55.00 },
+    'BPAC11': { name: 'BTG Pactual', type: 'acoes', p_l: 12.5, p_vp: 2.2, dy_12m: 3.5, price: 30.00 },
+    'RENT3': { name: 'Localiza', type: 'acoes', p_l: 18.5, p_vp: 3.5, dy_12m: 2.5, price: 45.00 },
+    'B3SA3': { name: 'B3', type: 'acoes', p_l: 14.5, p_vp: 3.0, dy_12m: 4.5, price: 11.00 },
+    'RADL3': { name: 'Raia Drogasil', type: 'acoes', p_l: 35.5, p_vp: 6.5, dy_12m: 1.2, price: 25.00 },
+    'PRIO3': { name: 'Prio', type: 'acoes', p_l: 8.5, p_vp: 2.5, dy_12m: 0.0, price: 42.00 },
+    'RDOR3': { name: 'Rede DOr', type: 'acoes', p_l: 25.5, p_vp: 3.5, dy_12m: 1.5, price: 28.00 },
+    'CSAN3': { name: 'Cosan', type: 'acoes', p_l: 12.5, p_vp: 1.8, dy_12m: 2.5, price: 15.00 },
+    'GG': { name: 'Gerdau', type: 'acoes', p_l: 6.5, p_vp: 1.1, dy_12m: 7.5, price: 22.00 }, // Fallback para GGBR4 se necessário
+    'RAIL3': { name: 'Rumo', type: 'acoes', p_l: 20.5, p_vp: 2.5, dy_12m: 1.0, price: 21.00 },
+    'VIVT3': { name: 'Vivo', type: 'acoes', p_l: 12.5, p_vp: 1.2, dy_12m: 6.5, price: 48.00 },
+    'ELET3': { name: 'Eletrobras', type: 'acoes', p_l: 10.5, p_vp: 0.8, dy_12m: 2.5, price: 38.00 },
+    'BBSE3': { name: 'BB Seguridade', type: 'acoes', p_l: 9.5, p_vp: 6.5, dy_12m: 8.5, price: 32.00 },
+    'EQTL3': { name: 'Equatorial', type: 'acoes', p_l: 12.5, p_vp: 1.8, dy_12m: 3.5, price: 30.00 },
+    'LREN3': { name: 'Lojas Renner', type: 'acoes', p_l: 18.5, p_vp: 2.5, dy_12m: 3.5, price: 16.00 },
+    'EMBR3': { name: 'Embraer', type: 'acoes', p_l: 25.5, p_vp: 2.5, dy_12m: 0.0, price: 35.00 },
+    'CSNA3': { name: 'CSN', type: 'acoes', p_l: 5.5, p_vp: 0.9, dy_12m: 8.5, price: 14.00 },
+    'HAPV3': { name: 'Hapvida', type: 'acoes', p_l: 45.5, p_vp: 1.5, dy_12m: 0.0, price: 3.50 }
 };
 
 const TICKER_LIST = Object.keys(EMERGENCY_DATA).join(',');
@@ -64,7 +103,6 @@ async function scrapeHome() {
         const $ = cheerio.load(data);
         const items: any[] = [];
         
-        // Tenta seletores variados
         const strategies = [
             () => $('#highs .item, #lows .item').each((_, el) => {
                 const ticker = $(el).find('.name-ticker span').first().text().trim();
@@ -86,7 +124,6 @@ async function scrapeHome() {
 
         strategies.forEach(fn => fn());
         
-        // Deduplicate
         const uniqueItems = Array.from(new Map(items.map(item => [item.ticker, item])).values());
         
         return { 
@@ -106,7 +143,7 @@ async function scrapeRanking(type: 'fiis' | 'acoes') {
         const $ = cheerio.load(data);
         const items: any[] = [];
         
-        // Remove limites de paginação do scraper, pega tudo que estiver na tabela inicial
+        // Remove limites de paginação do scraper, tenta pegar tudo que estiver na tabela inicial
         $('#table-ranking tbody tr, .table-ranking tbody tr').each((_, tr) => {
             const tds = $(tr).find('td');
             if (tds.length < 5) return;
@@ -141,7 +178,7 @@ async function fetchBrapiBackup() {
         const token = process.env.BRAPI_TOKEN || 'public'; 
         const url = `https://brapi.dev/api/quote/${TICKER_LIST}?token=${token}`;
         
-        const { data } = await axios.get(url, { timeout: 5000 });
+        const { data } = await axios.get(url, { timeout: 8000 });
         const results = data.results || [];
         
         const backupItems = results.map((r: any) => {
@@ -169,7 +206,7 @@ async function fetchBrapiBackup() {
     }
 }
 
-// --- STRATEGY 3: STATIC EMERGENCY ---
+// --- STRATEGY 3: STATIC EMERGENCY (Last Resort) ---
 function getStaticFallback() {
     const items = Object.entries(EMERGENCY_DATA).map(([ticker, data]) => ({
         ticker,
@@ -177,8 +214,8 @@ function getStaticFallback() {
         variation_percent: (Math.random() * 2 - 1)
     }));
     return {
-        gainers: items.slice(0, 10),
-        losers: items.slice(10, 20),
+        gainers: items.slice(0, 15),
+        losers: items.slice(15, 30),
         items
     };
 }
@@ -199,17 +236,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         let usedFallback = false;
 
-        // 2. Backup se Scraping falhar
-        if (homeData.gainers.length < 2 || fiisRaw.length < 2) {
+        // 2. Backup se Scraping falhar ou retornar muito poucos dados
+        // Agora exigimos pelo menos 5 FIIs e 5 Ações para considerar o scrape válido
+        if (homeData.gainers.length < 2 || fiisRaw.length < 5 || stocksRaw.length < 5) {
             console.log('Main scraping insufficient, fetching backup...');
             const backup = await fetchBrapiBackup();
             
-            if (backup) {
+            if (backup && backup.items.length > 10) {
                 homeData = { gainers: backup.gainers, losers: backup.losers };
                 fiisRaw = backup.items.filter((i: any) => i.type === 'fiis');
                 stocksRaw = backup.items.filter((i: any) => i.type === 'acoes');
                 usedFallback = true;
             } else {
+                // Último recurso: Dados estáticos completos
                 const staticData = getStaticFallback();
                 homeData = { gainers: staticData.gainers, losers: staticData.losers };
                 fiisRaw = staticData.items.filter((i: any) => i.type === 'fiis');
@@ -219,8 +258,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // --- FILTRAGEM E RESPOSTA ---
-        // AUMENTO DE LIMITES: Retorna TUDO para permitir listagens completas no Frontend
-        
         const fiiGainers = homeData.gainers.filter(i => isFiiTicker(i.ticker));
         const fiiLosers = homeData.losers.filter(i => isFiiTicker(i.ticker));
         const stockGainers = homeData.gainers.filter(i => !isFiiTicker(i.ticker));
