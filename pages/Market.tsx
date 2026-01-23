@@ -1,56 +1,70 @@
+
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, AlertTriangle, Sparkles, Building2, BarChart3, TrendingUp, Percent, ArrowUpRight } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Sparkles, Building2, TrendingUp, TrendingDown, DollarSign, Percent, ArrowRight } from 'lucide-react';
 import { fetchMarketOverview } from '../services/dataService';
-import { MarketOverview } from '../types';
 
-const MarketBadge = ({ type }: { type: 'FII' | 'STOCK' }) => (
-    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${type === 'FII' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30'}`}>
-        {type === 'FII' ? 'FII' : 'Ação'}
-    </span>
-);
-
-interface AssetCardProps {
-    item: any;
-    type: 'FII' | 'STOCK';
-    index: number;
+// Interfaces locais para o novo formato de dados
+interface MarketAsset {
+    ticker: string;
+    name: string;
+    price: number;
+    variation_percent?: number;
+    dy_12m?: number;
+    p_vp?: number;
+    p_l?: number;
 }
 
-const AssetCard: React.FC<AssetCardProps> = ({ item, type, index }) => {
-    const isFII = type === 'FII';
+interface MarketCategoryData {
+    gainers: MarketAsset[];
+    losers: MarketAsset[];
+    high_yield: MarketAsset[];
+    discounted: MarketAsset[];
+}
+
+interface NewMarketOverview {
+    market_status: string;
+    last_update: string;
+    highlights: {
+        fiis: MarketCategoryData;
+        stocks: MarketCategoryData;
+    };
+    error?: boolean;
+}
+
+interface AssetCardProps {
+    item: MarketAsset;
+    type: 'up' | 'down' | 'neutral' | 'dividend' | 'discount';
+    metricLabel?: string;
+    metricValue?: string;
+}
+
+const AssetCard: React.FC<AssetCardProps> = ({ item, type, metricLabel, metricValue }) => {
+    let accentColor = 'text-zinc-500';
+    let bgBadge = 'bg-zinc-100 dark:bg-zinc-800';
+    
+    if (type === 'up') { accentColor = 'text-emerald-500'; bgBadge = 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'; }
+    if (type === 'down') { accentColor = 'text-rose-500'; bgBadge = 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'; }
+    if (type === 'dividend') { accentColor = 'text-amber-500'; bgBadge = 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'; }
+    if (type === 'discount') { accentColor = 'text-indigo-500'; bgBadge = 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'; }
+
     return (
-        <a 
-            href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${item.ticker.toLowerCase()}/`} 
-            target="_blank" 
-            rel="noreferrer"
-            className="flex-shrink-0 w-36 p-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all press-effect flex flex-col justify-between anim-stagger-item snap-center"
-            style={{ animationDelay: `${index * 50}ms` }}
-        >
-            <div className="flex justify-between items-start mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[9px] font-black border ${isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-900/30'}`}>
+        <a href={`https://investidor10.com.br/${item.ticker.endsWith('11') || item.ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${item.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group">
+            <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-black border ${bgBadge} dark:border-transparent`}>
                     {item.ticker.substring(0,2)}
                 </div>
-                {item.dy_12m > 0 && (
-                    <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 px-1.5 py-0.5 rounded-md">
-                        {item.dy_12m.toFixed(1)}% DY
-                    </span>
-                )}
-            </div>
-            
-            <div>
-                <h4 className="text-sm font-black text-zinc-900 dark:text-white mb-0.5">{item.ticker}</h4>
-                <p className="text-[9px] font-medium text-zinc-400 truncate w-full">{item.name}</p>
-            </div>
-
-            <div className="mt-3 pt-2 border-t border-zinc-50 dark:border-zinc-800 flex justify-between items-end">
                 <div>
-                    <p className="text-[8px] font-bold text-zinc-400 uppercase">Preço</p>
-                    <p className="text-xs font-black text-zinc-900 dark:text-white">R$ {item.price.toFixed(2)}</p>
+                    <span className="text-xs font-black text-zinc-900 dark:text-white block">{item.ticker}</span>
+                    <span className="text-[10px] text-zinc-400 font-medium block truncate max-w-[100px]">{item.name}</span>
                 </div>
-                <div className="text-right">
-                    <p className="text-[8px] font-bold text-zinc-400 uppercase">{isFII ? 'P/VP' : 'P/L'}</p>
-                    <p className={`text-xs font-black ${item.p_vp <= 1 ? 'text-emerald-500' : 'text-zinc-500'}`}>
-                        {isFII ? item.p_vp?.toFixed(2) : item.p_l?.toFixed(1)}
-                    </p>
+            </div>
+            <div className="text-right">
+                <span className="text-xs font-bold text-zinc-900 dark:text-white block">R$ {item.price.toFixed(2)}</span>
+                <div className="flex items-center justify-end gap-1 mt-0.5">
+                    {metricLabel && <span className="text-[9px] text-zinc-400 uppercase font-bold">{metricLabel}</span>}
+                    <span className={`text-[10px] font-black ${accentColor}`}>
+                        {metricValue || (item.variation_percent ? `${item.variation_percent > 0 ? '+' : ''}${item.variation_percent.toFixed(2)}%` : '-')}
+                    </span>
                 </div>
             </div>
         </a>
@@ -58,9 +72,10 @@ const AssetCard: React.FC<AssetCardProps> = ({ item, type, index }) => {
 };
 
 export const Market: React.FC = () => {
-    const [data, setData] = useState<MarketOverview | null>(null);
+    const [data, setData] = useState<NewMarketOverview | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [activeTab, setActiveTab] = useState<'fiis' | 'stocks'>('fiis');
 
     const loadData = async () => {
         setLoading(true);
@@ -69,6 +84,7 @@ export const Market: React.FC = () => {
             const result = await fetchMarketOverview();
             // @ts-ignore
             if (result.error) throw new Error(result.message);
+            // @ts-ignore
             setData(result);
         } catch (e) {
             console.error(e);
@@ -78,92 +94,118 @@ export const Market: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    useEffect(() => { loadData(); }, []);
+
+    const currentData = data?.highlights?.[activeTab];
 
     return (
         <div className="pb-32 min-h-screen">
-            {/* Header Sticky Sólido */}
-            <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-3 mb-6">
-                <div className="flex justify-between items-center">
+            {/* Header Sticky com Seletor de Abas */}
+            <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-3 mb-4">
+                <div className="flex justify-between items-center mb-4">
                     <div>
-                        <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
-                            Mercado <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" />
+                        <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2 bg-gradient-to-br from-zinc-700 via-zinc-900 to-zinc-700 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-400 text-transparent bg-clip-text">
+                            Mercado
                         </h2>
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Oportunidades & Destaques</p>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Panorama Diário</p>
                     </div>
-                    <button 
-                        onClick={loadData} 
-                        disabled={loading}
-                        className={`w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center justify-center transition-all ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
-                    >
+                    <button onClick={loadData} disabled={loading} className={`w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 flex items-center justify-center transition-all ${loading ? 'opacity-50' : 'active:scale-95'}`}>
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
+
+                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl relative">
+                    <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`} style={{ left: '4px', transform: `translateX(${activeTab === 'fiis' ? '0%' : '100%'})` }}></div>
+                    <button onClick={() => setActiveTab('fiis')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${activeTab === 'fiis' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>
+                        <Building2 className="w-3.5 h-3.5" /> FIIs
+                    </button>
+                    <button onClick={() => setActiveTab('stocks')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${activeTab === 'stocks' ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>
+                        <TrendingUp className="w-3.5 h-3.5" /> Ações
                     </button>
                 </div>
             </div>
 
             {loading && !data ? (
-                <div className="space-y-8 animate-pulse">
-                    {[1, 2].map(i => (
-                        <div key={i} className="space-y-3">
-                            <div className="h-4 w-32 bg-zinc-200 dark:bg-zinc-800 rounded ml-1"></div>
-                            <div className="flex gap-3 overflow-hidden">
-                                {[1, 2, 3].map(j => (
-                                    <div key={j} className="w-36 h-40 bg-zinc-200 dark:bg-zinc-800 rounded-2xl flex-shrink-0"></div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                <div className="space-y-4 animate-pulse px-1">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="h-40 bg-zinc-200 dark:bg-zinc-800 rounded-2xl"></div>
+                        <div className="h-40 bg-zinc-200 dark:bg-zinc-800 rounded-2xl"></div>
+                    </div>
+                    <div className="h-24 bg-zinc-200 dark:bg-zinc-800 rounded-2xl"></div>
                 </div>
             ) : error ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
-                    <AlertTriangle className="w-12 h-12 mb-3 text-zinc-300" strokeWidth={1} />
-                    <p className="text-xs font-bold text-zinc-500 mb-4">Falha ao carregar dados do mercado.</p>
-                    <button onClick={loadData} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 press-effect">
-                        Tentar Novamente
-                    </button>
+                <div className="flex flex-col items-center justify-center py-20 opacity-60">
+                    <AlertTriangle className="w-10 h-10 mb-2 text-zinc-300" />
+                    <p className="text-xs font-bold text-zinc-500">Erro ao carregar dados.</p>
                 </div>
-            ) : data ? (
-                <div className="space-y-8">
+            ) : currentData ? (
+                <div className="space-y-6 anim-fade-in px-1">
                     
-                    {/* Seção 1: FIIs High Yield & Descontados */}
-                    {data.highlights.discounted_fiis.length > 0 && (
-                        <div className="anim-slide-up">
-                            <div className="flex items-center gap-2 px-1 mb-3">
-                                <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
-                                    <Building2 className="w-4 h-4" />
-                                </div>
-                                <h3 className="text-sm font-black text-zinc-900 dark:text-white">FIIs: Renda & Desconto</h3>
-                            </div>
-                            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-1">
-                                {data.highlights.discounted_fiis.map((item, idx) => (
-                                    <AssetCard key={idx} item={item} type="FII" index={idx} />
-                                ))}
-                            </div>
+                    {/* Seção 1: Altas e Baixas */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 flex items-center gap-1.5 mb-1">
+                                <TrendingUp className="w-3 h-3 text-emerald-500" /> Maiores Altas
+                            </h3>
+                            {currentData.gainers.length > 0 ? currentData.gainers.map((item, i) => (
+                                <AssetCard key={i} item={item} type="up" />
+                            )) : <p className="text-[9px] text-zinc-400 px-2 py-4 text-center bg-zinc-50 dark:bg-zinc-900 rounded-xl">Sem dados</p>}
                         </div>
-                    )}
-
-                    {/* Seção 2: Ações Baratas (P/L Baixo) */}
-                    {data.highlights.discounted_stocks.length > 0 && (
-                        <div className="anim-slide-up" style={{ animationDelay: '100ms' }}>
-                            <div className="flex items-center gap-2 px-1 mb-3">
-                                <div className="p-1.5 rounded-lg bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400">
-                                    <TrendingUp className="w-4 h-4" />
-                                </div>
-                                <h3 className="text-sm font-black text-zinc-900 dark:text-white">Ações Descontadas</h3>
-                            </div>
-                            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-1">
-                                {data.highlights.discounted_stocks.map((item, idx) => (
-                                    <AssetCard key={idx} item={item} type="STOCK" index={idx} />
-                                ))}
-                            </div>
+                        <div className="space-y-2">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 flex items-center gap-1.5 mb-1">
+                                <TrendingDown className="w-3 h-3 text-rose-500" /> Maiores Baixas
+                            </h3>
+                            {currentData.losers.length > 0 ? currentData.losers.map((item, i) => (
+                                <AssetCard key={i} item={item} type="down" />
+                            )) : <p className="text-[9px] text-zinc-400 px-2 py-4 text-center bg-zinc-50 dark:bg-zinc-900 rounded-xl">Sem dados</p>}
                         </div>
-                    )}
+                    </div>
 
-                    <div className="px-4 py-6 text-center opacity-60">
-                        <p className="text-[10px] text-zinc-400 mb-1">Dados fornecidos pelo Scraper (Investidor10)</p>
-                        <p className="text-[9px] text-zinc-500">Atualizado em: {new Date(data.last_update).toLocaleString()}</p>
+                    {/* Seção 2: Maiores Dividendos */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between px-1 mb-1">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <DollarSign className="w-3 h-3 text-amber-500" /> Top Dividendos (12m)
+                            </h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {currentData.high_yield.map((item, i) => (
+                                <AssetCard 
+                                    key={i} 
+                                    item={item} 
+                                    type="dividend" 
+                                    metricLabel="DY"
+                                    metricValue={`${item.dy_12m?.toFixed(1)}%`}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Seção 3: Oportunidades / Valor */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between px-1 mb-1">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <Percent className="w-3 h-3 text-indigo-500" /> 
+                                {activeTab === 'fiis' ? 'Descontados (P/VP)' : 'Descontados (P/L)'}
+                            </h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {currentData.discounted.map((item, i) => (
+                                <AssetCard 
+                                    key={i} 
+                                    item={item} 
+                                    type="discount" 
+                                    metricLabel={activeTab === 'fiis' ? 'P/VP' : 'P/L'}
+                                    metricValue={activeTab === 'fiis' ? item.p_vp?.toFixed(2) : item.p_l?.toFixed(1)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="text-center py-6">
+                        <p className="text-[9px] text-zinc-400 font-medium">
+                            Fonte: Investidor10 • Atualizado: {new Date(data.last_update).toLocaleTimeString()}
+                        </p>
                     </div>
                 </div>
             ) : null}

@@ -22,18 +22,6 @@ const formatPercent = (val: number, privacy = false) => {
   return `${signal}${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
-// --- COMPONENTES INTERNOS ---
-
-const InfoRow = ({ label, value, subValue, highlight }: any) => (
-    <div className={`flex justify-between items-center py-4 border-b border-zinc-100 dark:border-zinc-800 ${highlight ? 'bg-zinc-50/50 dark:bg-zinc-900/50 -mx-4 px-4' : ''}`}>
-        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
-        <div className="text-right">
-            <span className={`block text-sm font-bold ${highlight ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300'}`}>{value}</span>
-            {subValue && <span className="block text-[10px] text-zinc-400 font-medium">{subValue}</span>}
-        </div>
-    </div>
-);
-
 const BigStat = ({ label, value, colorClass }: any) => (
     <div className="flex-1 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
         <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{label}</p>
@@ -41,35 +29,61 @@ const BigStat = ({ label, value, colorClass }: any) => (
     </div>
 );
 
-// --- MODAL DE DETALHES ---
+const InfoRow = ({ label, value, highlight }: any) => (
+    <div className={`flex justify-between items-center py-3 border-b border-zinc-100 dark:border-zinc-800 ${highlight ? 'bg-zinc-50/50 dark:bg-zinc-900/50 -mx-4 px-4' : ''}`}>
+        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
+        <span className={`text-sm font-bold ${highlight ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300'}`}>{value}</span>
+    </div>
+);
+
 const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: AssetPosition, dividends: DividendReceipt[], privacyMode: boolean, onClose: () => void }) => {
     const [tab, setTab] = useState<'VISAO' | 'FUNDAMENTOS' | 'PROVENTOS'>('VISAO');
     const isFII = asset.assetType === AssetType.FII;
 
-    // Cálculos de Posição
+    // Cálculos Gerais
     const currentTotal = (asset.currentPrice || 0) * asset.quantity;
     const costTotal = asset.averagePrice * asset.quantity;
     const gainValue = currentTotal - costTotal;
     const gainPercent = costTotal > 0 ? (gainValue / costTotal) * 100 : 0;
     const isPositive = gainValue >= 0;
 
-    // Dados de Gráfico (Proventos)
-    const monthlyDividends = useMemo(() => {
+    // --- CÁLCULOS DE PROVENTOS ---
+    const assetDividends = useMemo(() => {
         if (!dividends) return [];
-        const last12 = dividends
-            .filter(d => d.ticker.includes(asset.ticker.substring(0,4))) // Match flexível
-            .sort((a,b) => a.paymentDate.localeCompare(b.paymentDate))
-            .slice(-12);
-        
-        return last12.map(d => ({
-            date: d.paymentDate.substring(0, 7), // YYYY-MM
-            val: d.rate
-        }));
+        return dividends
+            .filter(d => d.ticker.includes(asset.ticker.substring(0,4)))
+            .sort((a,b) => a.paymentDate.localeCompare(b.paymentDate));
     }, [asset, dividends]);
+
+    const last12MonthsData = useMemo(() => {
+        const today = new Date();
+        const data: { month: string, value: number, year: number }[] = [];
+        let total12m = 0;
+
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const key = d.toISOString().substring(0, 7); // YYYY-MM
+            
+            // Soma dividendos pagos neste mês específico
+            const monthSum = assetDividends
+                .filter(div => div.paymentDate.substring(0, 7) === key)
+                .reduce((acc, curr) => acc + (curr.totalReceived || 0), 0);
+            
+            total12m += monthSum;
+            data.push({
+                month: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+                value: monthSum,
+                year: d.getFullYear()
+            });
+        }
+        return { chartData: data, total12m, monthlyAvg: total12m / 12 };
+    }, [assetDividends]);
+
+    const yieldOnCost = costTotal > 0 ? (asset.totalDividends || 0) / costTotal * 100 : 0;
 
     return (
         <div className="bg-white dark:bg-zinc-950 min-h-full flex flex-col">
-            {/* Header Clean */}
+            {/* Header */}
             <div className="sticky top-0 z-30 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800 pt-safe px-6 pb-4">
                 <div className="flex items-center justify-between mb-6 pt-2">
                     <div className="flex items-center gap-4">
@@ -88,11 +102,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
 
                 <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl">
                     {['VISAO', 'FUNDAMENTOS', 'PROVENTOS'].map(t => (
-                        <button 
-                            key={t}
-                            onClick={() => setTab(t as any)}
-                            className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${tab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                        >
+                        <button key={t} onClick={() => setTab(t as any)} className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${tab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
                             {t === 'VISAO' ? 'Minha Posição' : t === 'PROVENTOS' ? 'Proventos' : 'Indicadores'}
                         </button>
                     ))}
@@ -100,34 +110,21 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 pb-24">
-                
                 {tab === 'VISAO' && (
                     <div className="space-y-8 anim-fade-in">
-                        {/* Cartão Principal */}
                         <div className="text-center py-6">
                             <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Patrimônio Atual</p>
-                            <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">
-                                {formatBRL(currentTotal, privacyMode)}
-                            </h2>
+                            <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">{formatBRL(currentTotal, privacyMode)}</h2>
                             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${isPositive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                                 {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                                 {isPositive ? '+' : ''}{formatBRL(gainValue, privacyMode)} ({formatPercent(gainPercent, privacyMode)})
                             </div>
                         </div>
-
-                        {/* Grid de Dados da Posição */}
                         <div className="grid grid-cols-2 gap-4">
                             <BigStat label="Preço Médio" value={formatBRL(asset.averagePrice, privacyMode)} />
                             <BigStat label="Cotação Atual" value={formatBRL(asset.currentPrice || 0, privacyMode)} colorClass={asset.dailyChange && asset.dailyChange > 0 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'} />
                             <BigStat label="Quantidade" value={asset.quantity} />
                             <BigStat label="Total Retorno" value={formatBRL(gainValue + (asset.totalDividends || 0), privacyMode)} colorClass="text-indigo-500" />
-                        </div>
-
-                        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4">Estrutura</h3>
-                            <InfoRow label="Custo de Aquisição" value={formatBRL(costTotal, privacyMode)} />
-                            <InfoRow label="Proventos Acumulados" value={formatBRL(asset.totalDividends || 0, privacyMode)} />
-                            <InfoRow label="Yield on Cost" value={`${((asset.totalDividends || 0) / (costTotal || 1) * 100).toFixed(2)}%`} highlight />
                         </div>
                     </div>
                 )}
@@ -135,51 +132,16 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                 {tab === 'FUNDAMENTOS' && (
                     <div className="space-y-8 anim-fade-in">
                         <div className="grid grid-cols-2 gap-4">
-                            <BigStat 
-                                label="P/VP" 
-                                value={asset.p_vp?.toFixed(2) || '-'} 
-                                colorClass={asset.p_vp && asset.p_vp < 1 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'} 
-                            />
-                            <BigStat 
-                                label="Dividend Yield" 
-                                value={asset.dy_12m ? `${asset.dy_12m.toFixed(2)}%` : '-'} 
-                                colorClass="text-emerald-500" 
-                            />
+                            <BigStat label="P/VP" value={asset.p_vp?.toFixed(2) || '-'} colorClass={asset.p_vp && asset.p_vp < 1 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'} />
+                            <BigStat label="Dividend Yield" value={asset.dy_12m ? `${asset.dy_12m.toFixed(2)}%` : '-'} colorClass="text-emerald-500" />
                         </div>
-
                         <div>
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Valuation & Preço</h3>
                             <InfoRow label="Valor Patrimonial (VP)" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} />
                             {!isFII && <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2) || '-'} />}
-                            {!isFII && <InfoRow label="LPA (Lucro/Ação)" value={asset.lpa ? `R$ ${asset.lpa.toFixed(2)}` : '-'} />}
                             <InfoRow label="Valor de Mercado" value={asset.market_cap || '-'} />
                         </div>
-
-                        <div>
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">{isFII ? 'Qualidade & Imóveis' : 'Eficiência & Dívida'}</h3>
-                            {isFII ? (
-                                <>
-                                    <InfoRow label="Vacância Física" value={asset.vacancy ? `${asset.vacancy}%` : '0%'} highlight={asset.vacancy && asset.vacancy > 10} />
-                                    <InfoRow label="Liquidez Diária" value={asset.liquidity || '-'} />
-                                    <InfoRow label="Patrimônio Líquido" value={asset.assets_value || '-'} />
-                                    <InfoRow label="Nº Cotistas" value={asset.properties_count || '-'} />
-                                </>
-                            ) : (
-                                <>
-                                    <InfoRow label="ROE" value={asset.roe ? `${asset.roe}%` : '-'} />
-                                    <InfoRow label="Margem Líquida" value={asset.net_margin ? `${asset.net_margin}%` : '-'} />
-                                    <InfoRow label="Dív. Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2) || '-'} />
-                                    <InfoRow label="CAGR Lucros (5a)" value={asset.cagr_profits ? `${asset.cagr_profits}%` : '-'} />
-                                </>
-                            )}
-                        </div>
-
-                        <a 
-                            href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="flex items-center justify-center gap-2 w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest press-effect"
-                        >
+                        <a href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest press-effect">
                             Ver no Investidor10 <ExternalLink className="w-3 h-3" />
                         </a>
                     </div>
@@ -187,34 +149,80 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
 
                 {tab === 'PROVENTOS' && (
                     <div className="space-y-8 anim-fade-in">
-                        <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-100 dark:border-zinc-800 text-center">
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Último Pagamento</p>
-                            <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
-                                {asset.last_dividend ? `R$ ${asset.last_dividend.toFixed(2)}` : '-'}
-                            </h3>
-                            <p className="text-[10px] text-zinc-400 mt-2">Por cota/ação</p>
+                        {/* Cartão de Destaque */}
+                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-800 p-6 rounded-3xl text-white shadow-xl shadow-emerald-500/20">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Total Recebido</p>
+                                    <h3 className="text-3xl font-black tracking-tight">{formatBRL(asset.totalDividends || 0, privacyMode)}</h3>
+                                </div>
+                                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                    <Banknote className="w-6 h-6 text-white" />
+                                </div>
+                            </div>
+                            <div className="flex gap-4 border-t border-white/20 pt-4">
+                                <div>
+                                    <p className="text-[9px] font-bold opacity-70 uppercase tracking-wide">Yield on Cost</p>
+                                    <p className="text-sm font-black">{yieldOnCost.toFixed(2)}%</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-bold opacity-70 uppercase tracking-wide">Média Mensal</p>
+                                    <p className="text-sm font-black">{formatBRL(last12MonthsData.monthlyAvg, privacyMode)}</p>
+                                </div>
+                            </div>
                         </div>
 
-                        <div>
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4">Histórico Recente</h3>
-                            {monthlyDividends.length > 0 ? (
-                                <div className="space-y-2">
-                                    {monthlyDividends.slice().reverse().map((d, i) => (
-                                        <div key={i} className="flex justify-between items-center p-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl">
-                                            <span className="text-xs font-bold text-zinc-500 uppercase">{d.date}</span>
-                                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">R$ {d.val.toFixed(2)}</span>
+                        {/* Gráfico 12 Meses */}
+                        <div className="h-48 w-full">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 px-2">Histórico 12 Meses</h3>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={last12MonthsData.chartData}>
+                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} />
+                                    <RechartsTooltip 
+                                        cursor={{fill: 'transparent'}}
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                return (
+                                                    <div className="bg-zinc-900 text-white text-[10px] font-bold px-2 py-1 rounded-lg">
+                                                        {formatBRL(payload[0].value as number, privacyMode)}
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    <Bar dataKey="value" radius={[4, 4, 4, 4]}>
+                                        {last12MonthsData.chartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.value > 0 ? '#10b981' : '#e4e4e7'} className="dark:fill-emerald-600 dark:bg-zinc-800" />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        {/* Últimos Pagamentos (Lista) */}
+                        <div className="space-y-3">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-2">Últimos Pagamentos</h3>
+                            {assetDividends.slice().reverse().slice(0, 5).map((d, i) => (
+                                <div key={i} className="flex justify-between items-center p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                                            <Calendar className="w-5 h-5" />
                                         </div>
-                                    ))}
+                                        <div>
+                                            <p className="text-xs font-black text-zinc-900 dark:text-white uppercase">{new Date(d.paymentDate).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
+                                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">{d.type}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(d.totalReceived, privacyMode)}</p>
+                                        <p className="text-[9px] text-zinc-400 font-medium">Unitário: {d.rate.toFixed(4)}</p>
+                                    </div>
                                 </div>
-                            ) : (
-                                <div className="text-center py-10 text-zinc-400 text-xs">
-                                    Sem histórico registrado.
-                                </div>
-                            )}
+                            ))}
                         </div>
                     </div>
                 )}
-
             </div>
         </div>
     );
@@ -241,7 +249,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
 
   return (
     <div className="pb-32 min-h-screen">
-      {/* Search Bar Refinada e Sólida */}
       <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-2">
         <div className="flex flex-col gap-3 pb-2">
             <div className="relative flex items-center group">

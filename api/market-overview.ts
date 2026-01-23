@@ -17,18 +17,14 @@ const HEADERS = {
     'Pragma': 'no-cache'
 };
 
-// Lista de ativos "Backup" para garantir que a tela nunca fique vazia se o Ranking falhar
+// Lista de Fallback
 const POPULAR_ASSETS = [
     { ticker: 'MXRF11', type: 'fiis' }, { ticker: 'HGLG11', type: 'fiis' }, 
     { ticker: 'VISC11', type: 'fiis' }, { ticker: 'XPLG11', type: 'fiis' },
     { ticker: 'KNRI11', type: 'fiis' }, { ticker: 'CPTS11', type: 'fiis' },
-    { ticker: 'BTLG11', type: 'fiis' }, { ticker: 'XPML11', type: 'fiis' },
-    { ticker: 'IRDM11', type: 'fiis' }, { ticker: 'HGRU11', type: 'fiis' },
     { ticker: 'PETR4', type: 'acoes' }, { ticker: 'VALE3', type: 'acoes' },
     { ticker: 'ITUB4', type: 'acoes' }, { ticker: 'BBAS3', type: 'acoes' },
-    { ticker: 'WEGE3', type: 'acoes' }, { ticker: 'BBDC4', type: 'acoes' },
-    { ticker: 'ITSA4', type: 'acoes' }, { ticker: 'PETR3', type: 'acoes' },
-    { ticker: 'RENT3', type: 'acoes' }, { ticker: 'ABEV3', type: 'acoes' }
+    { ticker: 'WEGE3', type: 'acoes' }, { ticker: 'BBDC4', type: 'acoes' }
 ];
 
 const parseBrFloat = (str: string) => {
@@ -38,14 +34,15 @@ const parseBrFloat = (str: string) => {
     return isNaN(float) ? 0 : float;
 };
 
-// Scraper Individual (Usado no Fallback)
+// Helper para identificar FIIs (Final 11 ou 11B)
+const isFiiTicker = (t: string) => t.toUpperCase().endsWith('11') || t.toUpperCase().endsWith('11B');
+
 async function scrapeSingleAsset(ticker: string, type: string) {
     try {
         const url = `https://investidor10.com.br/${type}/${ticker.toLowerCase()}/`;
         const { data } = await axios.get(url, { headers: HEADERS, httpsAgent, timeout: 5000 });
         const $ = cheerio.load(data);
 
-        // Extrai dados dos cards principais
         const extractCard = (keyPart: string) => {
             let val = 0;
             $('div._card').each((_, card) => {
@@ -61,20 +58,15 @@ async function scrapeSingleAsset(ticker: string, type: string) {
         const dy = extractCard('dividend yield');
         const p_vp = extractCard('p/vp');
         const p_l = extractCard('p/l');
-        
-        // Nome da empresa/fundo
         const name = $('h1.title-ticker').text().trim() || ticker;
 
         if (price > 0) {
             return { ticker, name, price, dy_12m: dy, p_vp, p_l };
         }
         return null;
-    } catch (e) {
-        return null;
-    }
+    } catch (e) { return null; }
 }
 
-// Scraper da Home (Altas/Baixas)
 async function scrapeHome() {
     try {
         const { data } = await axios.get('https://investidor10.com.br/', { headers: HEADERS, httpsAgent, timeout: 8000 });
@@ -89,7 +81,7 @@ async function scrapeHome() {
                 const variation = parseBrFloat($(el).find('.change').text());
                 if (ticker && price > 0) items.push({ ticker, name, price, variation_percent: variation });
             });
-            // Fallback tabela
+            // Fallback table structure check
             if (items.length === 0) {
                 $(selector).find('tr').slice(1).each((_, tr) => {
                     const tds = $(tr).find('td');
@@ -101,7 +93,7 @@ async function scrapeHome() {
                     }
                 });
             }
-            return items.slice(0, 8);
+            return items; // Retorna tudo para filtrar depois
         };
 
         return { 
@@ -113,7 +105,6 @@ async function scrapeHome() {
     }
 }
 
-// Scraper do Ranking Geral
 async function scrapeRanking(type: 'fiis' | 'acoes') {
     try {
         const url = `https://investidor10.com.br/${type}/ranking/`;
@@ -156,79 +147,81 @@ async function scrapeRanking(type: 'fiis' | 'acoes') {
         });
 
         return items;
-    } catch (e) {
-        return [];
-    }
+    } catch (e) { return []; }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600'); // 5 min cache
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        // 1. Tenta buscar Home + Rankings em Paralelo
         let [homeData, fiisRaw, stocksRaw] = await Promise.all([
             scrapeHome(),
             scrapeRanking('fiis'),
             scrapeRanking('acoes')
         ]);
 
-        // 2. LÓGICA DE FALLBACK (Se rankings vierem vazios)
+        // Fallback Logic
         const hasData = fiisRaw.length > 5 && stocksRaw.length > 5;
-        
         if (!hasData) {
-            console.log('Ranking Scraper failed. Activating Fallback Mode...');
-            
-            // Busca dados individuais dos ativos populares em paralelo
             const fallbackResults = await Promise.all(
                 POPULAR_ASSETS.map(asset => scrapeSingleAsset(asset.ticker, asset.type))
             );
-
             const validFallback = fallbackResults.filter(Boolean) as any[];
-            
-            // Re-popula as listas
             fiisRaw = validFallback.filter(a => POPULAR_ASSETS.find(p => p.ticker === a.ticker)?.type === 'fiis');
             stocksRaw = validFallback.filter(a => POPULAR_ASSETS.find(p => p.ticker === a.ticker)?.type === 'acoes');
         }
 
-        // 3. Processamento e Filtragem (Mesma lógica de antes)
+        // --- SEPARAÇÃO ESTRITA DE ALTAS/BAIXAS ---
+        const fiiGainers = homeData.gainers.filter(i => isFiiTicker(i.ticker)).slice(0, 5);
+        const fiiLosers = homeData.losers.filter(i => isFiiTicker(i.ticker)).slice(0, 5);
         
-        // FIIs
+        const stockGainers = homeData.gainers.filter(i => !isFiiTicker(i.ticker)).slice(0, 5);
+        const stockLosers = homeData.losers.filter(i => !isFiiTicker(i.ticker)).slice(0, 5);
+
+        // --- FILTRAGEM DE RANKINGS ---
+
+        // 1. FIIs
         const highYieldFIIs = [...fiisRaw]
-            .filter(f => f.dy_12m > 8 && f.dy_12m < 28 && f.p_vp >= 0.7) // Filtros de sanidade
+            .filter(f => f.dy_12m > 9 && f.dy_12m < 25 && f.p_vp >= 0.8)
             .sort((a, b) => b.dy_12m - a.dy_12m)
-            .slice(0, 10);
+            .slice(0, 6);
 
         const discountedFIIs = [...fiisRaw]
-            .filter(f => f.p_vp < 0.98 && f.p_vp > 0.4 && f.dy_12m > 6)
+            .filter(f => f.p_vp < 0.98 && f.p_vp > 0.5 && f.dy_12m > 6)
             .sort((a, b) => a.p_vp - b.p_vp)
-            .slice(0, 10);
+            .slice(0, 6);
 
-        // Ações
+        // 2. Ações
         const discountedStocks = [...stocksRaw]
-            .filter(s => s.p_l > 0.5 && s.p_l < 15 && s.p_vp < 2.5) // P/L positivo e razoável
+            .filter(s => s.p_l > 1 && s.p_l < 12 && s.p_vp < 3)
             .sort((a, b) => a.p_l - b.p_l)
-            .slice(0, 10);
+            .slice(0, 6);
 
         const highYieldStocks = [...stocksRaw]
-            .filter(s => s.dy_12m > 5 && s.dy_12m < 35)
+            .filter(s => s.dy_12m > 6 && s.dy_12m < 30)
             .sort((a, b) => b.dy_12m - a.dy_12m)
-            .slice(0, 10);
+            .slice(0, 6);
 
         const response = {
             market_status: "Aberto",
-            data_source: hasData ? "Ranking Oficial" : "Fallback Populares",
             last_update: new Date().toISOString(),
             highlights: {
-                discounted_fiis: discountedFIIs,
-                discounted_stocks: discountedStocks,
-                top_gainers: homeData.gainers,
-                top_losers: homeData.losers,
-                high_dividend_fiis: highYieldFIIs,
-                high_dividend_stocks: highYieldStocks
+                fiis: {
+                    gainers: fiiGainers,
+                    losers: fiiLosers,
+                    high_yield: highYieldFIIs,
+                    discounted: discountedFIIs
+                },
+                stocks: {
+                    gainers: stockGainers,
+                    losers: stockLosers,
+                    high_yield: highYieldStocks,
+                    discounted: discountedStocks
+                }
             },
             sources: [{ title: 'Investidor10', uri: 'https://investidor10.com.br' }]
         };
