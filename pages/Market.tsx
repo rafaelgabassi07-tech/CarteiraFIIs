@@ -206,11 +206,7 @@ const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: 
     );
 };
 
-const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: MarketAsset[], config: RankingConfig, onSelect: (a: MarketAsset) => void, activeFilter: string }) => {
-    // Contagem para feedback visual
-    const fiiCount = assets.filter(a => a.ticker.endsWith('11') || a.ticker.endsWith('11B')).length;
-    const stockCount = assets.length - fiiCount;
-
+const RankingListView = ({ assets, config, onSelect, activeFilter, isSearching }: { assets: MarketAsset[], config: RankingConfig, onSelect: (a: MarketAsset) => void, activeFilter: string, isSearching: boolean }) => {
     return (
         <div className="flex flex-col bg-white dark:bg-zinc-900 min-h-full">
             <div className="flex flex-col px-4 py-3 bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10 backdrop-blur-sm">
@@ -219,7 +215,9 @@ const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: M
                         <div className="w-8 text-[10px] font-black text-zinc-400 uppercase">#</div>
                         <div className="text-[10px] font-black text-zinc-400 uppercase">Ativo</div>
                     </div>
-                    <div className="w-20 text-right text-[10px] font-black text-zinc-400 uppercase">{config.label.split(' ')[0]}</div>
+                    <div className="w-20 text-right text-[10px] font-black text-zinc-400 uppercase">
+                        {isSearching ? 'Valor' : config.label.split(' ')[0]}
+                    </div>
                 </div>
                 
                 {/* Micro-Resumo da Lista */}
@@ -227,7 +225,7 @@ const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: M
                     <span>{assets.length} Itens</span>
                     <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
                     <span>
-                        {activeFilter === 'fiis' ? 'Rank FIIs' : 'Rank Ações'}
+                        {isSearching ? `Busca em ${activeFilter === 'fiis' ? 'FIIs' : 'Ações'}` : (activeFilter === 'fiis' ? 'Rank FIIs' : 'Rank Ações')}
                     </span>
                 </div>
             </div>
@@ -253,9 +251,9 @@ const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: M
                             </div>
                             <div className="w-28 flex flex-col items-end">
                                 <span className="text-sm font-black text-zinc-900 dark:text-white">
-                                    {config.valueFormatter(asset)}
+                                    {isSearching ? formatCurrency(asset.price) : config.valueFormatter(asset)}
                                 </span>
-                                {config.secondaryValue && (
+                                {(!isSearching && config.secondaryValue) && (
                                     <span className="text-[9px] font-medium text-zinc-400">
                                         {config.secondaryValue(asset)}
                                     </span>
@@ -437,12 +435,13 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
         }
     }, [refreshSignal]);
 
+    // Lógica Central de Filtragem - 100% Client-Side (No SQL)
     const assetPool = useMemo(() => {
         if (!data) return [];
         const f = data.highlights.fiis;
         const s = data.highlights.stocks;
         
-        // Combina todas as listas em um único array, incluindo dados RAW que agora contêm métricas avançadas
+        // Combina todas as listas em um único array
         const allAssets = [
             ...f.gainers, ...f.losers, ...f.high_yield, ...f.discounted, ...(f.raw || []),
             ...s.gainers, ...s.losers, ...s.high_yield, ...s.discounted, ...(s.raw || [])
@@ -457,6 +456,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
     const currentList = useMemo(() => {
         if (!selectedRanking) return [];
         
+        // 1. Filtra por TIPO (FII ou Ação)
         let list = assetPool.filter(a => {
             const isFii = a.ticker.endsWith('11') || a.ticker.endsWith('11B');
             if (activeTypeFilter === 'fiis') return isFii;
@@ -464,13 +464,20 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
             return true;
         });
 
-        list = list.filter(selectedRanking.filterFn);
-        
-        if (searchTerm) {
+        // 2. Lógica de Busca Global (Bypass de Filtro de Ranking)
+        // Se o usuário estiver buscando, procuramos em TODO o pool da categoria,
+        // ignorando o critério do ranking atual (ex: se busco KNRI11 na aba "Maiores Baixas", 
+        // eu quero encontrar KNRI11 mesmo que ele não esteja em baixa).
+        if (searchTerm.trim()) {
             const term = searchTerm.toUpperCase();
-            list = list.filter(a => a.ticker.includes(term) || a.name.toUpperCase().includes(term));
+            return list.filter(a => a.ticker.includes(term) || a.name.toUpperCase().includes(term))
+                       .sort((a, b) => a.ticker.localeCompare(b.ticker)); // Ordenação alfabética na busca
         }
 
+        // 3. Aplica Filtro do Ranking (se não estiver buscando)
+        list = list.filter(selectedRanking.filterFn);
+        
+        // 4. Ordenação do Ranking
         return list.sort(selectedRanking.sortFn);
     }, [assetPool, selectedRanking, searchTerm, activeTypeFilter]);
 
@@ -532,6 +539,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
                             config={selectedRanking} 
                             onSelect={setSelectedAsset} 
                             activeFilter={activeTypeFilter}
+                            isSearching={searchTerm.length > 0}
                         />
                     </div>
                 ) : (
