@@ -241,22 +241,40 @@ const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: M
                             onClick={() => onSelect(asset)}
                             className="w-full flex items-center px-4 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group"
                         >
-                            <div className="w-8 text-xs font-black text-zinc-400">{index + 1}</div>
-                            <div className="flex-1 flex flex-col items-start">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-black text-zinc-900 dark:text-white">{asset.ticker}</span>
-                                    <span className={`text-[8px] font-bold px-1.5 rounded ${isFii ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
-                                        {isFii ? 'FII' : 'AÇÃO'}
-                                    </span>
+                            <div className="w-8 text-xs font-black text-zinc-400 shrink-0">{index + 1}</div>
+                            <div className="flex-1 flex items-center gap-3 overflow-hidden">
+                                {/* LOGO RENDER - BRAPI SOURCE */}
+                                <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0 overflow-hidden relative">
+                                    <img 
+                                        src={`https://brapi.dev/favicon/${asset.ticker}.svg`} 
+                                        alt={asset.ticker} 
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.parentElement?.classList.add('fallback-icon');
+                                        }} 
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black bg-zinc-100 dark:bg-zinc-800 text-zinc-400 -z-10">
+                                        {asset.ticker.substring(0,2)}
+                                    </div>
                                 </div>
-                                <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[140px]">{asset.name}</span>
+
+                                <div className="flex flex-col items-start min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-black text-zinc-900 dark:text-white">{asset.ticker}</span>
+                                        <span className={`text-[8px] font-bold px-1.5 rounded ${isFii ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                            {isFii ? 'FII' : 'AÇÃO'}
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[140px]">{asset.name}</span>
+                                </div>
                             </div>
-                            <div className="w-28 flex flex-col items-end">
-                                <span className="text-sm font-black text-zinc-900 dark:text-white">
+                            <div className="w-24 flex flex-col items-end shrink-0 pl-2">
+                                <span className="text-sm font-black text-zinc-900 dark:text-white text-right">
                                     {config.valueFormatter(asset)}
                                 </span>
                                 {config.secondaryValue && (
-                                    <span className="text-[9px] font-medium text-zinc-400">
+                                    <span className="text-[9px] font-medium text-zinc-400 text-right">
                                         {config.secondaryValue(asset)}
                                     </span>
                                 )}

@@ -108,6 +108,10 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
     const DURATION = 5000; // 5 segundos por story
+    
+    // Touch Logic
+    const touchStartY = useRef(0);
+    const touchEndY = useRef(0);
 
     const currentStory = insights[currentIndex];
 
@@ -140,8 +144,8 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
         }
     }, [currentIndex, isPaused, insights.length, onClose, onMarkAsRead, currentStory]);
 
-    const handleNext = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleNext = (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
         onMarkAsRead(currentStory.id);
         if (currentIndex < insights.length - 1) {
             setCurrentIndex(c => c + 1);
@@ -150,11 +154,40 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
         }
     };
 
-    const handlePrev = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handlePrev = (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
         if (currentIndex > 0) {
             setCurrentIndex(c => c - 1);
         }
+    };
+
+    const openLink = () => {
+        if (currentStory.url) {
+            window.open(currentStory.url, '_blank', 'noopener,noreferrer');
+            setIsPaused(true);
+        }
+    };
+
+    // Handlers de Toque para Swipe Up
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setIsPaused(true);
+        touchStartY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        touchEndY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = () => {
+        setIsPaused(false);
+        const distance = touchStartY.current - touchEndY.current;
+        // Se arrastou mais de 50px pra cima e não foi apenas um toque (touchEndY !== 0)
+        if (touchEndY.current !== 0 && distance > 60) {
+            openLink();
+        }
+        // Reseta
+        touchStartY.current = 0;
+        touchEndY.current = 0;
     };
 
     if (!currentStory) return null;
@@ -214,8 +247,9 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
             {/* Content Area */}
             <div 
                 className="flex-1 relative flex flex-col justify-center items-center p-8 text-center"
-                onTouchStart={() => setIsPaused(true)}
-                onTouchEnd={() => setIsPaused(false)}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
                 onMouseDown={() => setIsPaused(true)}
                 onMouseUp={() => setIsPaused(false)}
             >
@@ -224,7 +258,7 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                 <div className="absolute inset-y-0 right-0 w-1/3 z-10" onClick={handleNext}></div>
 
                 {/* Visual Content */}
-                <div className="w-full max-w-sm relative z-0 anim-scale-in">
+                <div className="w-full max-w-sm relative z-0 anim-scale-in pointer-events-none">
                     <div className={`w-32 h-32 rounded-[2rem] ${colorClass} bg-opacity-20 flex items-center justify-center mb-8 mx-auto border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]`}>
                         <div className="text-4xl font-black text-white drop-shadow-md">
                             {currentStory.relatedTicker ? currentStory.relatedTicker.substring(0,2) : <Icon className="w-16 h-16" />}
@@ -240,10 +274,10 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                     )}
 
                     {currentStory.url && (
-                        <div className="absolute bottom-[-100px] left-0 right-0 flex justify-center animate-bounce">
+                        <div className="absolute bottom-[-140px] left-0 right-0 flex justify-center animate-bounce opacity-80">
                             <div className="flex flex-col items-center gap-2">
-                                <ChevronUp className="w-6 h-6 text-white/50" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Detalhes</span>
+                                <ChevronUp className="w-6 h-6 text-white" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-white">Deslize para detalhes</span>
                             </div>
                         </div>
                     )}
@@ -257,6 +291,7 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                         href={currentStory.url} 
                         target="_blank" 
                         rel="noreferrer"
+                        onClick={(e) => { e.stopPropagation(); setIsPaused(true); }}
                         className="block w-full py-4 bg-white text-black text-center rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
                     >
                         Ver Detalhes do Ativo
@@ -293,10 +328,18 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
                     >
                         <div className={`w-[68px] h-[68px] rounded-full p-[2px] ${isRead ? 'bg-zinc-200 dark:bg-zinc-800' : `bg-gradient-to-tr ${ringColors}`}`}>
                             <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[2px] relative overflow-hidden flex items-center justify-center">
-                                <div className="w-full h-full bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center relative">
-                                    <Icon className={`w-6 h-6 ${isRead ? 'text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`} />
+                                <div className="w-full h-full bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center relative overflow-hidden">
+                                    {/* Logo Background ou Ícone */}
+                                    {item.relatedTicker ? (
+                                        <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                                            <span className="text-[20px] font-black">{item.relatedTicker.substring(0,2)}</span>
+                                        </div>
+                                    ) : null}
+                                    
+                                    <Icon className={`w-6 h-6 relative z-10 ${isRead ? 'text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`} />
+                                    
                                     {item.relatedTicker && (
-                                        <span className="absolute bottom-2 text-[8px] font-black uppercase text-zinc-400">{item.relatedTicker.substring(0,4)}</span>
+                                        <span className="absolute bottom-2 text-[8px] font-black uppercase text-zinc-400 relative z-10">{item.relatedTicker.substring(0,4)}</span>
                                     )}
                                 </div>
                             </div>
@@ -582,6 +625,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </div>
 
+      {/* ... (Resto do arquivo permanece o mesmo) ... */}
+      {/* MANTENHA TODO O CÓDIGO RESTANTE AQUI (Botão Agenda, Proventos, etc.) */}
       {/* 2. BOTÃO AGENDA */}
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
         <button onClick={() => setShowAgendaModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>
