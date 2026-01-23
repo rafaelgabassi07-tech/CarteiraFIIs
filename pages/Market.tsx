@@ -227,8 +227,7 @@ const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: M
                     <span>{assets.length} Itens</span>
                     <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
                     <span>
-                        {activeFilter === 'ALL' ? `${stockCount} Ações • ${fiiCount} FIIs` : 
-                         activeFilter === 'fiis' ? 'Apenas FIIs' : 'Apenas Ações'}
+                        {activeFilter === 'fiis' ? 'Rank FIIs' : 'Rank Ações'}
                     </span>
                 </div>
             </div>
@@ -349,7 +348,7 @@ interface MarketProps {
 export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, onStatusUpdate }) => {
     const [data, setData] = useState<NewMarketOverview | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTypeFilter, setActiveTypeFilter] = useState<'ALL' | 'fiis' | 'stocks'>('ALL');
+    const [activeTypeFilter, setActiveTypeFilter] = useState<'fiis' | 'stocks'>('fiis'); // Default to FIIs
     
     // Estado de Navegação Interna
     const [selectedRanking, setSelectedRanking] = useState<RankingConfig | null>(null);
@@ -447,7 +446,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
                 <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-2 mb-6">
                     <div className="flex flex-col gap-4 anim-slide-in-right pt-2 pb-1">
                         <div className="flex items-center gap-3">
-                            <button onClick={() => { setSelectedRanking(null); setSearchTerm(''); setActiveTypeFilter('ALL'); }} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center press-effect">
+                            <button onClick={() => { setSelectedRanking(null); setSearchTerm(''); setActiveTypeFilter('fiis'); }} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center press-effect">
                                 <ArrowLeft className="w-5 h-5" />
                             </button>
                             <div className="flex-1">
@@ -459,10 +458,9 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
                         {/* Filtros de Segmento + Busca Inline */}
                         <div className="space-y-3">
                             <div className="flex bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-xl relative">
-                                <div className={`absolute top-1 bottom-1 w-[calc(33.33%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`} 
-                                     style={{ left: '4px', transform: `translateX(${activeTypeFilter === 'ALL' ? '0%' : activeTypeFilter === 'fiis' ? '100%' : '200%'})` }}>
+                                <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`} 
+                                     style={{ left: '4px', transform: `translateX(${activeTypeFilter === 'fiis' ? '0%' : '100%'})` }}>
                                 </div>
-                                <button onClick={() => setActiveTypeFilter('ALL')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${activeTypeFilter === 'ALL' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>Todos</button>
                                 <button onClick={() => setActiveTypeFilter('fiis')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${activeTypeFilter === 'fiis' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>FIIs</button>
                                 <button onClick={() => setActiveTypeFilter('stocks')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${activeTypeFilter === 'stocks' ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>Ações</button>
                             </div>
