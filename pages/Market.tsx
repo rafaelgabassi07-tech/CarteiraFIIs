@@ -340,7 +340,13 @@ const AssetDetailModal = ({ asset, onClose }: { asset: MarketAsset, onClose: () 
     );
 };
 
-export const Market: React.FC = () => {
+interface MarketProps {
+    refreshSignal?: number;
+    onLoadingChange?: (isLoading: boolean) => void;
+    onStatusUpdate?: (status: React.ReactNode) => void;
+}
+
+export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, onStatusUpdate }) => {
     const [data, setData] = useState<NewMarketOverview | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTypeFilter, setActiveTypeFilter] = useState<'ALL' | 'fiis' | 'stocks'>('ALL');
@@ -352,14 +358,48 @@ export const Market: React.FC = () => {
 
     const loadData = async () => {
         setLoading(true);
+        if (onLoadingChange) onLoadingChange(true);
         try {
             const result = await fetchMarketOverview();
             // @ts-ignore
             setData(result);
-        } catch (e) { console.error(e); } finally { setLoading(false); }
+        } catch (e) { console.error(e); } finally { 
+            setLoading(false); 
+            if (onLoadingChange) onLoadingChange(false);
+        }
     };
 
+    // Efeito para comunicar o status ao componente pai
+    useEffect(() => {
+        if (data && onStatusUpdate) {
+            const isOnline = !data.error;
+            const statusText = data.error ? 'Modo Offline' : data.market_status || 'Mercado';
+            
+            const statusNode = (
+                <div className="flex items-center gap-2 px-1 py-0.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline && statusText.includes('Aberto') ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
+                        {statusText}
+                    </span>
+                    {data.last_update && (
+                        <span className="text-[8px] font-bold text-zinc-300 dark:text-zinc-600 uppercase tracking-widest ml-1 opacity-70">
+                            • {new Date(data.last_update).toLocaleTimeString().slice(0,5)}
+                        </span>
+                    )}
+                </div>
+            );
+            
+            onStatusUpdate(statusNode);
+        }
+    }, [data, onStatusUpdate]);
+
     useEffect(() => { loadData(); }, []);
+
+    useEffect(() => {
+        if (refreshSignal && refreshSignal > 0) {
+            loadData();
+        }
+    }, [refreshSignal]);
 
     const assetPool = useMemo(() => {
         if (!data) return [];
@@ -402,11 +442,9 @@ export const Market: React.FC = () => {
 
     return (
         <div className="pb-32 min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            {/* Header Sticky SEM TÍTULO DUPLICADO */}
-            <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-2 mb-6">
-                
-                {selectedRanking ? (
-                    // HEADER INTERNO (Dentro de uma categoria)
+            {/* Header Sticky - Apenas para Sub-páginas */}
+            {selectedRanking && (
+                <div className="sticky top-20 z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-2 mb-6">
                     <div className="flex flex-col gap-4 anim-slide-in-right pt-2 pb-1">
                         <div className="flex items-center gap-3">
                             <button onClick={() => { setSelectedRanking(null); setSearchTerm(''); setActiveTypeFilter('ALL'); }} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white flex items-center justify-center press-effect">
@@ -441,21 +479,8 @@ export const Market: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                ) : (
-                    // HEADER PRINCIPAL (Grid) - Apenas Status
-                    <div className="anim-fade-in flex justify-between items-center py-1">
-                        <div className="flex items-center gap-2 px-1">
-                            <span className={`w-2 h-2 rounded-full ${data && !data.error ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
-                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                {data ? (data.error ? 'Modo Offline' : 'Mercado Aberto') : 'Sincronizando...'}
-                            </p>
-                        </div>
-                        <button onClick={loadData} disabled={loading} className={`w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 flex items-center justify-center transition-all ${loading ? 'opacity-50' : 'active:scale-95'}`}>
-                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                        </button>
-                    </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Conteúdo */}
             <div className="px-1 min-h-[50vh]">
@@ -475,16 +500,18 @@ export const Market: React.FC = () => {
                         />
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-3 anim-stagger-list pb-20">
-                        {rankings.map((ranking, index) => (
-                            <div key={ranking.id} className="anim-stagger-item" style={{ animationDelay: `${index * 50}ms` }}>
-                                <RankingGridCard 
-                                    config={ranking} 
-                                    onClick={() => setSelectedRanking(ranking)} 
-                                />
-                            </div>
-                        ))}
-                    </div>
+                    <>
+                        <div className="grid grid-cols-2 gap-3 anim-stagger-list pb-6">
+                            {rankings.map((ranking, index) => (
+                                <div key={ranking.id} className="anim-stagger-item" style={{ animationDelay: `${index * 50}ms` }}>
+                                    <RankingGridCard 
+                                        config={ranking} 
+                                        onClick={() => setSelectedRanking(ranking)} 
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 

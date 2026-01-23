@@ -46,7 +46,7 @@ const HeaderCloudStatus: React.FC<{ status: 'disconnected' | 'connected' | 'hidd
             {status === 'disconnected' && (
                 <>
                     <WifiOff className="w-3 h-3 text-rose-500" />
-                    <span className="text-[9px] font-bold text-rose-600 dark:text-rose-500 uppercase tracking-wider hidden sm:inline">Offline</span>
+                    <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider hidden sm:inline">Offline</span>
                 </>
             )}
         </div>
@@ -55,6 +55,7 @@ const HeaderCloudStatus: React.FC<{ status: 'disconnected' | 'connected' | 'hidd
 
 interface HeaderProps {
   title: string;
+  subtitle?: React.ReactNode;
   onSettingsClick?: () => void;
   showBack?: boolean;
   onBack?: () => void;
@@ -70,7 +71,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  title, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, cloudStatus = 'hidden', hideBorder = false, onRefresh
+  title, subtitle, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, cloudStatus = 'hidden', hideBorder = false, onRefresh
 }) => {
   return (
     <header 
@@ -96,6 +97,11 @@ export const Header: React.FC<HeaderProps> = ({
                     {/* Status da Nuvem Injetado Aqui */}
                     <HeaderCloudStatus status={cloudStatus} />
                 </div>
+                {subtitle && (
+                    <div className="anim-slide-in-right mt-0.5 ml-0.5">
+                        {subtitle}
+                    </div>
+                )}
             </div>
           )}
         </div>
@@ -194,7 +200,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   );
 };
 
-// ... (Restante do arquivo mantido sem alterações) ...
+// ... (Restante do arquivo mantido sem alterações: SwipeableModal, ConfirmationModal, etc.) ...
+// INCLUIR AQUI TODO O RESTANTE DO ARQUIVO ORIGINAL DO USUÁRIO
 export interface InstallPromptModalProps {
   isOpen: boolean;
   onInstall: () => void;
@@ -272,8 +279,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   );
 };
 
-// ... Restante dos modais mantidos (ConfirmationModal, InstallPromptModal, ChangelogModal, NotificationsModal) ...
-// (Omitidos para brevidade, mas devem ser incluídos no arquivo final sem alterações)
 interface ConfirmationModalProps { isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; }
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 250);

@@ -129,6 +129,11 @@ const App: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUpdateReport, setShowUpdateReport] = useState(false);
   
+  // Market Refresh State
+  const [marketRefreshSignal, setMarketRefreshSignal] = useState(0);
+  const [isMarketLoading, setIsMarketLoading] = useState(false);
+  const [marketSubtitle, setMarketSubtitle] = useState<React.ReactNode>(null);
+  
   // PWA Install State
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
@@ -540,25 +545,16 @@ const App: React.FC = () => {
       setIsScraping(true);
       showToast('info', 'Iniciando busca combinada...');
       
-      // Explicitly typing tickers as string[] to satisfy TypeScript compiler
       const tickers = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))) as string[];
       
       try {
-          // 1. Aciona o Scraper (Investidor10/StatusInvest)
-          // Agora retorna os dados brutos também (rawFundamentals)
-          const scrapePromise = triggerScraperUpdate(tickers, (current, total) => {
-              // Opcional: Atualizar UI de progresso
-          });
-
-          // 2. Aciona Brapi (Cotações em Tempo Real)
+          const scrapePromise = triggerScraperUpdate(tickers);
           const brapiPromise = getQuotes(tickers);
 
           const [results, brapiData] = await Promise.all([scrapePromise, brapiPromise]);
           
           showToast('info', 'Processando dados...');
 
-          // 3. Atualização Otimista: Injeta os dados do Scraper diretamente na memória do App
-          // Isso resolve o problema de dados não aparecerem até o próximo sync do banco
           const newMetadata = { ...assetsMetadata };
           let updatedCount = 0;
 
@@ -574,7 +570,6 @@ const App: React.FC = () => {
                   priceSource = 'N/A';
               }
 
-              // Se o scraper trouxe dados, atualiza o state global AGORA
               if (r.status === 'success' && r.rawFundamentals) {
                   const mappedFundamentals = mapScraperToFundamentals(r.rawFundamentals);
                   const isFII = r.ticker.endsWith('11') || r.ticker.endsWith('11B');
@@ -597,8 +592,6 @@ const App: React.FC = () => {
                       price: priceSource,
                       fundamentals: r.status === 'success' ? 'Investidor10' : 'N/A'
                   },
-                  // CRITICAL FIX: Mapeamento manual de snake_case para camelCase
-                  // Isso corrige o problema do "Invalid Date" no Modal de Relatório
                   dividendsFound: (r.dividendsFound || []).map((d: any) => ({
                       type: d.type,
                       dateCom: d.date_com,
@@ -608,16 +601,12 @@ const App: React.FC = () => {
               };
           });
           
-          // Aplica a atualização otimista
           if (updatedCount > 0) {
               setAssetsMetadata(newMetadata);
           }
           
-          // 4. Sincroniza em background para persistência (Dividendos, Inflação, etc)
-          // Não bloqueia a UI esperando isso terminar
           handleSyncAll(true);
           
-          // 5. Monta o relatório
           const totalDividends = enrichedResults.reduce((acc, r) => acc + (r.dividendsFound?.length || 0), 0);
           
           setLastUpdateReport({
@@ -635,6 +624,16 @@ const App: React.FC = () => {
           setIsScraping(false);
       }
   };
+
+  // Handler para refresh da página Market
+  const handleManualMarketRefresh = useCallback(() => {
+      setMarketRefreshSignal(prev => prev + 1);
+  }, []);
+
+  // Handler para receber o status do mercado vindo da página Market
+  const handleMarketStatusUpdate = useCallback((statusNode: React.ReactNode) => {
+      setMarketSubtitle(statusNode);
+  }, []);
 
   const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
       if (!session?.user?.id) return;
@@ -669,26 +668,20 @@ const App: React.FC = () => {
 
   const handleClearNotifications = useCallback(() => {
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      // Mantém histórico, mas marca como lido visualmente no modal
   }, []);
 
   // --- CÁLCULOS DE PORTFÓLIO (Memoized) ---
   const memoizedPortfolioData = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    // Proteção: transactions deve ser array
     const safeTxs = Array.isArray(transactions) ? transactions : [];
     const sortedTxs = [...safeTxs].sort((a, b) => a.date.localeCompare(b.date));
     
-    // Proteção: dividends deve ser array
     const safeDividends = Array.isArray(dividends) ? dividends : [];
 
-    // CORREÇÃO: Garante que o ticker do dividendo esteja perfeitamente normalizado
     const receipts = safeDividends.map(d => {
         if (!d || !d.ticker) return null;
         const normalizedTicker = d.ticker.trim().toUpperCase();
         
-        // Quantidade deve considerar ITSA4F vs ITSA4 (bidirecional)
-        // Utiliza a nova função com timestamp para garantir elegibilidade exata
         const qty = getQuantityOnDate(normalizedTicker, d.dateCom, sortedTxs);
         
         return { 
@@ -732,8 +725,6 @@ const App: React.FC = () => {
         .filter(p => p.quantity > 0.001)
         .map(p => {
             const normalizedTicker = p.ticker.trim().toUpperCase();
-            // Tenta buscar metadados para ITSA4F ou ITSA4
-            // Se não achar metadata para ITSA4F, tenta ITSA4
             let meta = assetsMetadata[normalizedTicker];
             if (!meta && normalizedTicker.endsWith('F') && !normalizedTicker.endsWith('11F')) {
                 meta = assetsMetadata[normalizedTicker.slice(0, -1)];
@@ -747,7 +738,6 @@ const App: React.FC = () => {
 
             return { 
                 ...p, 
-                // Se ticker for ITSA4F, tenta buscar dividendos de ITSA4
                 totalDividends: divPaidMap[p.ticker] || (p.ticker.endsWith('F') ? divPaidMap[p.ticker.slice(0, -1)] : 0) || 0, 
                 segment: segment, 
                 currentPrice: quote?.regularMarketPrice || p.averagePrice, 
@@ -806,12 +796,17 @@ const App: React.FC = () => {
         <>
             <Header 
                 title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'market' ? 'Rankings' : currentTab === 'transactions' ? 'Ordens' : 'Notícias'} 
+                subtitle={currentTab === 'market' ? marketSubtitle : undefined}
                 showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
-                isRefreshing={isRefreshing || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
+                isRefreshing={isRefreshing || isScraping || isMarketLoading} updateAvailable={updateManager.isUpdateAvailable} 
                 onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
                 notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} 
                 cloudStatus={cloudStatus} 
-                onRefresh={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
+                onRefresh={
+                    currentTab === 'portfolio' ? handleManualScraperTrigger : 
+                    currentTab === 'market' ? handleManualMarketRefresh : 
+                    undefined
+                }
                 hideBorder={currentTab === 'transactions'}
             />
             <main className="max-w-xl mx-auto pt-20 pb-28 min-h-screen px-4">
@@ -833,7 +828,7 @@ const App: React.FC = () => {
                 <div key={currentTab} className="anim-page-enter">
                   {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
                   {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} dividends={dividends} privacyMode={privacyMode} />}
-                  {currentTab === 'market' && <MemoizedMarket />}
+                  {currentTab === 'market' && <MemoizedMarket refreshSignal={marketRefreshSignal} onLoadingChange={setIsMarketLoading} onStatusUpdate={handleMarketStatusUpdate} />}
                   {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                   {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
                 </div>
