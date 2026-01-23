@@ -94,7 +94,6 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         // FIIs
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica', 'vacancy')),
         manager_type: getVal('tipo_gestao', 'manager_type') || undefined,
-        // Garante leitura de patrimônio líquido (String do Scraper ou do DB)
         assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
         management_fee: getVal('taxa_adm', 'management_fee') || undefined,
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento', 'last_dividend', 'rendimento')),
@@ -112,13 +111,14 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
     const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
     let processed = 0;
     const results: ScrapeResult[] = [];
-    const BATCH_SIZE = 3;
+    const BATCH_SIZE = 3; // Lote pequeno para evitar timeout em Serverless
     
     for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
         const batch = uniqueTickers.slice(i, i + BATCH_SIZE);
         
         await Promise.all(batch.map(async (ticker) => {
             try {
+                // Tenta chamar a API do scraper
                 const res = await fetch(`/api/update-stock?ticker=${ticker}`);
                 const data = await res.json();
 
@@ -152,8 +152,9 @@ export const triggerScraperUpdate = async (tickers: string[], onProgress?: (curr
             }
         }));
 
+        // Delay para gentileza com o servidor alvo
         if (i + BATCH_SIZE < uniqueTickers.length) {
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 1500));
         }
     }
     
@@ -166,6 +167,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
 
   try {
+      // 1. Fetch Dividendos
       const { data: dividendsData, error: divError } = await supabase
             .from('market_dividends')
             .select('*')
@@ -184,6 +186,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
+      // 2. Fetch Metadados (Fundamentos)
       const { data: metaData, error: metaError } = await supabase
             .from('ativos_metadata')
             .select('*')
@@ -196,20 +199,25 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       if (metaData) {
           metaData.forEach((m: any) => {
               let assetType = AssetType.STOCK;
+              // Detecção de tipo mais robusta
               if (m.type === 'FII' || m.ticker.endsWith('11') || m.ticker.endsWith('11B')) {
                   assetType = AssetType.FII;
               }
 
               const normalizedTicker = m.ticker.trim().toUpperCase();
 
+              // Mapeia e sanitiza
+              const fundamentals = mapScraperToFundamentals(m);
+
               metadata[normalizedTicker] = {
                   segment: m.segment || 'Geral',
                   type: assetType,
-                  fundamentals: mapScraperToFundamentals(m)
+                  fundamentals
               };
           });
       }
 
+      // 3. Fetch Indicadores (IPCA)
       const ipca = await fetchInflationData();
 
       return { 
@@ -234,42 +242,24 @@ export const fetchMarketOverview = async (): Promise<MarketOverview> => {
             throw new Error(`Erro de conexão (${response.status})`);
         }
 
-        if (!response.ok && !data) {
-             throw new Error('Falha ao obter dados de mercado');
-        }
-        
-        if (data.error) {
-            throw new Error(data.message || 'Erro desconhecido');
-        }
+        if (!response.ok && !data) throw new Error('Falha ao obter dados de mercado');
+        if (data.error) throw new Error(data.message || 'Erro desconhecido');
         
         return data;
     } catch (error: any) {
         console.warn("Market Overview Fetch Error:", error.message);
+        // Fallback gracioso para UI não quebrar
         return { 
             market_status: 'Indisponível', 
-            // @ts-ignore
-            sentiment_summary: 'Dados Offline',
             last_update: '', 
             highlights: {
-                fiis: {
-                    gainers: [],
-                    losers: [],
-                    high_yield: [],
-                    discounted: [],
-                    raw: []
-                },
-                stocks: {
-                    gainers: [],
-                    losers: [],
-                    high_yield: [],
-                    discounted: [],
-                    raw: []
-                }
+                fiis: { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] },
+                stocks: { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] }
             },
             // @ts-ignore
             error: true,
             // @ts-ignore
-            message: "Não foi possível carregar os dados de mercado."
+            message: "Não foi possível carregar os dados de mercado. Tentando cache..."
         };
     }
 };
