@@ -114,13 +114,13 @@ const getRankings = (): RankingConfig[] => {
         {
             id: 'GROWTH',
             label: 'Crescimento',
-            subLabel: 'Receita 5 Anos',
+            subLabel: 'Cresc. 5 Anos',
             icon: Rocket,
             color: 'orange',
             filterFn: (a) => (a.cagr_revenue || 0) > 0,
             sortFn: (a, b) => (b.cagr_revenue || 0) - (a.cagr_revenue || 0),
             valueFormatter: (a) => `${a.cagr_revenue?.toFixed(1)}%`,
-            secondaryValue: (a) => 'CAGR Rec.'
+            secondaryValue: (a) => 'CAGR'
         },
         {
             id: 'LIQUIDITY',
