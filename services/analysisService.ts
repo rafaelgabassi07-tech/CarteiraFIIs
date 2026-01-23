@@ -11,13 +11,23 @@ export const analyzePortfolio = (
     marketData?: MarketOverview
 ): PortfolioInsight[] => {
     const insights: PortfolioInsight[] = [];
-    const now = Date.now();
-    const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD para ID estável no dia
     
     // Se não houver dados de mercado, não gera stories
     if (!marketData || marketData.error) return [];
 
+    // --- CORREÇÃO DE TIMESTAMP ---
+    // Usa a data da última atualização do mercado como base, não o momento atual (Date.now())
+    // Isso garante que o story tenha a idade real dos dados.
+    let baseTime = Date.now();
+    if (marketData.last_update) {
+        const updateTime = new Date(marketData.last_update).getTime();
+        if (!isNaN(updateTime)) {
+            baseTime = updateTime;
+        }
+    }
+
     const { fiis, stocks } = marketData.highlights;
+    const todayStr = new Date(baseTime).toISOString().split('T')[0];
 
     // Helper para criar Stories
     const createStory = (
@@ -30,9 +40,11 @@ export const analyzePortfolio = (
         const isInWallet = portfolio.some(p => p.ticker === asset.ticker);
         const finalScore = scoreBase + (isInWallet ? 20 : 0); // Prioriza se o usuário tem na carteira
         
-        // ID Determinístico: Ticker + Tipo + Data. 
-        // Garante que se o usuário viu hoje, não vê de novo, mas vê amanhã se persistir.
+        // ID Determinístico: Ticker + Tipo + Data do Mercado.
         const stableId = `story-${asset.ticker}-${type}-${todayStr}`;
+
+        // Adiciona um pequeno jitter (0-5 min) ao timestamp para não ficarem todos com o mesmo minuto exato na UI
+        const jitter = (asset.ticker.length * 1000 * 60) % 300000; 
 
         insights.push({
             id: stableId,
@@ -41,7 +53,7 @@ export const analyzePortfolio = (
             message,
             relatedTicker: asset.ticker,
             score: finalScore,
-            timestamp: now,
+            timestamp: baseTime - jitter, // Time correto
             // URL para análise externa se quiser
             url: `https://investidor10.com.br/${asset.ticker.endsWith('11') || asset.ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`
         });
@@ -80,7 +92,6 @@ export const analyzePortfolio = (
     }
 
     // --- 3. REIS DOS DIVIDENDOS (High Yield) ---
-    // Filtra DYs absurdos (> 30%) que podem ser erro de dados ou amortização
     const validFiiYield = fiis.high_yield.filter(a => (a.dy_12m || 0) < 30 && (a.dy_12m || 0) > 6);
     if (validFiiYield.length > 0) {
         const top = validFiiYield[0];
@@ -96,15 +107,12 @@ export const analyzePortfolio = (
     }
 
     // --- 4. OPORTUNIDADES DE VALUATION (P/VP & P/L) ---
-    // FIIs Baratos (P/VP < 1 mas > 0.5 para evitar "quebrados")
     const cheapFii = fiis.discounted.filter(a => (a.p_vp || 0) > 0.5 && (a.p_vp || 0) < 0.95 && (a.dy_12m || 0) > 8)[0];
     if (cheapFii) {
         createStory(cheapFii, 'opportunity', 'Desconto & Renda', 
             `${cheapFii.ticker} negocia abaixo do valor patrimonial (P/VP ${cheapFii.p_vp?.toFixed(2)}) e paga DY de ${cheapFii.dy_12m?.toFixed(1)}%.`, 85);
     }
 
-    // Ações Baratas (P/L baixo e ROE decente)
-    // Precisamos buscar na lista RAW ou DISCOUNTED
     const cheapStock = stocks.discounted.find(a => (a.p_l || 0) > 0 && (a.p_l || 0) < 6 && (a.roe || 0) > 15);
     if (cheapStock) {
         createStory(cheapStock, 'opportunity', 'Ação Descontada', 
@@ -112,7 +120,6 @@ export const analyzePortfolio = (
     }
 
     // --- 5. CAMPEÕES DE EFICIÊNCIA (ROE) ---
-    // Busca na lista RAW se disponível, ou assume que os dados vieram no MarketOverview
     const rawStocks = stocks.raw || [];
     const bestRoe = [...rawStocks].sort((a, b) => (b.roe || 0) - (a.roe || 0))[0];
     if (bestRoe && (bestRoe.roe || 0) > 20) {

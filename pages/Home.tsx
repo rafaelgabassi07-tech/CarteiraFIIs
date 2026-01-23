@@ -187,7 +187,8 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const colorClass = getTypeColor(currentStory.type);
     
     // Calcula tempo relativo (ex: Há 2 horas)
-    const timeAgo = currentStory.timestamp ? formatDistanceToNow(currentStory.timestamp, { addSuffix: true, locale: ptBR }) : 'Agora';
+    // Usa timestamp do story (gerado pelo backend) ou fallback
+    const timeAgo = currentStory.timestamp ? formatDistanceToNow(currentStory.timestamp, { addSuffix: true, locale: ptBR }) : 'Recentemente';
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
@@ -281,11 +282,21 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
 const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: PortfolioInsight[], onMarkAsRead: (id: string) => void, readStories: Set<string> }) => {
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-    if (insights.length === 0) return null;
+    // Filtra stories expirados (mais de 24h)
+    const validInsights = useMemo(() => {
+        const now = Date.now();
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+        return insights.filter(i => {
+            const age = now - (i.timestamp || now);
+            return age < ONE_DAY_MS;
+        });
+    }, [insights]);
+
+    if (validInsights.length === 0) return null;
 
     return (
         <div className="mb-6 -mx-4 overflow-x-auto no-scrollbar pl-4 pb-2 flex gap-4 snap-x">
-            {insights.map((item, index) => {
+            {validInsights.map((item, index) => {
                 const isRead = readStories.has(item.id);
                 
                 // Cores do anel baseadas no tipo de destaque
@@ -320,7 +331,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
             
             {activeIndex !== null && (
                 <StoryViewer 
-                    insights={insights} 
+                    insights={validInsights} 
                     startIndex={activeIndex} 
                     onClose={() => setActiveIndex(null)}
                     onMarkAsRead={onMarkAsRead}
@@ -367,6 +378,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               const marketData = await fetchMarketOverview();
               setMarketOverview(marketData);
               
+              // Gera insights passando os dados do mercado para pegar o timestamp correto
               const generatedInsights = analyzePortfolio(portfolio, safeInflation, marketData);
               setInsights(generatedInsights);
           } catch (e) {
