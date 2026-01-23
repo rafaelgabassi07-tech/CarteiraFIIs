@@ -43,6 +43,17 @@ const safeDate = (dateStr: string) => {
     return isNaN(d.getTime()) ? null : d.getTime();
 };
 
+// Verifica se duas datas (YYYY-MM-DD) são o mesmo dia localmente
+const isSameDayLocal = (dateString: string) => {
+    if (!dateString) return false;
+    const today = new Date();
+    const [year, month, day] = dateString.split('-').map(Number);
+    // Compara componentes locais
+    return today.getDate() === day && 
+           (today.getMonth() + 1) === month && 
+           today.getFullYear() === year;
+};
+
 // Calcula quantidade acumulada em uma data, considerando fracionário
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
   if (!ticker || !dateCom) return 0; // Guard clause
@@ -201,10 +212,6 @@ const App: React.FC = () => {
   useEffect(() => {
       if (!dividends || dividends.length === 0 || !transactions || transactions.length === 0) return;
 
-      // Usando data local do navegador para evitar o bug de fuso horário
-      // toLocaleDateString('sv-SE') retorna YYYY-MM-DD
-      const today = new Date().toLocaleDateString('sv-SE');
-      
       const newNotifs: AppNotification[] = [];
       const existingIds = new Set(notifications.map(n => n.id));
 
@@ -217,7 +224,7 @@ const App: React.FC = () => {
               const total = qty * div.rate;
               
               // Notificação de Pagamento (Hoje Local)
-              if (div.paymentDate === today) {
+              if (isSameDayLocal(div.paymentDate)) {
                   const id = `pay-${div.ticker}-${div.paymentDate}`;
                   if (!existingIds.has(id)) {
                       newNotifs.push({
@@ -233,7 +240,7 @@ const App: React.FC = () => {
               }
 
               // Notificação de Data Com (Hoje Local)
-              if (div.dateCom === today) {
+              if (isSameDayLocal(div.dateCom)) {
                   const id = `datacom-${div.ticker}-${div.dateCom}`;
                   if (!existingIds.has(id)) {
                       newNotifs.push({

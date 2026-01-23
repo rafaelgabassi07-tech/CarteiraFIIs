@@ -12,9 +12,24 @@ const httpsAgent = new https.Agent({
 const HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Referer': 'https://investidor10.com.br/'
+    'Referer': 'https://investidor10.com.br/',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
 };
+
+// Lista de ativos "Backup" para garantir que a tela nunca fique vazia se o Ranking falhar
+const POPULAR_ASSETS = [
+    { ticker: 'MXRF11', type: 'fiis' }, { ticker: 'HGLG11', type: 'fiis' }, 
+    { ticker: 'VISC11', type: 'fiis' }, { ticker: 'XPLG11', type: 'fiis' },
+    { ticker: 'KNRI11', type: 'fiis' }, { ticker: 'CPTS11', type: 'fiis' },
+    { ticker: 'BTLG11', type: 'fiis' }, { ticker: 'XPML11', type: 'fiis' },
+    { ticker: 'IRDM11', type: 'fiis' }, { ticker: 'HGRU11', type: 'fiis' },
+    { ticker: 'PETR4', type: 'acoes' }, { ticker: 'VALE3', type: 'acoes' },
+    { ticker: 'ITUB4', type: 'acoes' }, { ticker: 'BBAS3', type: 'acoes' },
+    { ticker: 'WEGE3', type: 'acoes' }, { ticker: 'BBDC4', type: 'acoes' },
+    { ticker: 'ITSA4', type: 'acoes' }, { ticker: 'PETR3', type: 'acoes' },
+    { ticker: 'RENT3', type: 'acoes' }, { ticker: 'ABEV3', type: 'acoes' }
+];
 
 const parseBrFloat = (str: string) => {
     if (!str) return 0;
@@ -23,7 +38,43 @@ const parseBrFloat = (str: string) => {
     return isNaN(float) ? 0 : float;
 };
 
-// Função para buscar dados da Home (Altas e Baixas)
+// Scraper Individual (Usado no Fallback)
+async function scrapeSingleAsset(ticker: string, type: string) {
+    try {
+        const url = `https://investidor10.com.br/${type}/${ticker.toLowerCase()}/`;
+        const { data } = await axios.get(url, { headers: HEADERS, httpsAgent, timeout: 5000 });
+        const $ = cheerio.load(data);
+
+        // Extrai dados dos cards principais
+        const extractCard = (keyPart: string) => {
+            let val = 0;
+            $('div._card').each((_, card) => {
+                const header = $(card).find('div._card-header').text().toLowerCase();
+                if (header.includes(keyPart)) {
+                    val = parseBrFloat($(card).find('div._card-body').text());
+                }
+            });
+            return val;
+        };
+
+        const price = parseBrFloat($('div._card.cotacao div._card-body').text()) || parseBrFloat($('.quotation-ticker').text());
+        const dy = extractCard('dividend yield');
+        const p_vp = extractCard('p/vp');
+        const p_l = extractCard('p/l');
+        
+        // Nome da empresa/fundo
+        const name = $('h1.title-ticker').text().trim() || ticker;
+
+        if (price > 0) {
+            return { ticker, name, price, dy_12m: dy, p_vp, p_l };
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Scraper da Home (Altas/Baixas)
 async function scrapeHome() {
     try {
         const { data } = await axios.get('https://investidor10.com.br/', { headers: HEADERS, httpsAgent, timeout: 8000 });
@@ -31,19 +82,14 @@ async function scrapeHome() {
         
         const extractTable = (selector: string) => {
             const items: any[] = [];
-            // Tenta encontrar cards primeiro (layout novo)
             $(selector).find('.item').each((_, el) => {
                 const ticker = $(el).find('.name-ticker span').first().text().trim();
                 const name = $(el).find('.name-ticker span').last().text().trim();
                 const price = parseBrFloat($(el).find('.price').text());
                 const variation = parseBrFloat($(el).find('.change').text());
-                
-                if (ticker && price > 0) {
-                    items.push({ ticker, name, price, variation_percent: variation });
-                }
+                if (ticker && price > 0) items.push({ ticker, name, price, variation_percent: variation });
             });
-            
-            // Fallback: Busca em qualquer tabela dentro da tab se não achou cards
+            // Fallback tabela
             if (items.length === 0) {
                 $(selector).find('tr').slice(1).each((_, tr) => {
                     const tds = $(tr).find('td');
@@ -51,50 +97,35 @@ async function scrapeHome() {
                         const ticker = $(tds[0]).text().trim();
                         const price = parseBrFloat($(tds[1]).text());
                         const variation = parseBrFloat($(tds[2]).text());
-                        if (ticker) items.push({ ticker, name: 'Ação/FII', price, variation_percent: variation });
+                        if (ticker) items.push({ ticker, name: 'Ativo', price, variation_percent: variation });
                     }
                 });
             }
             return items.slice(0, 8);
         };
 
-        // Tenta seletores de ID (padrão) e classes (fallback)
-        let gainers = extractTable('#highs');
-        let losers = extractTable('#lows');
-
-        // Se falhar, tenta varrer tabs genéricas
-        if (gainers.length === 0) {
-            $('.tabs-content .tab-pane').each((_, pane) => {
-                if ($(pane).attr('id')?.includes('high') || $(pane).text().includes('Altas')) {
-                    gainers = extractTable(`#${$(pane).attr('id')}`);
-                }
-                if ($(pane).attr('id')?.includes('low') || $(pane).text().includes('Baixas')) {
-                    losers = extractTable(`#${$(pane).attr('id')}`);
-                }
-            });
-        }
-
-        return { gainers, losers };
+        return { 
+            gainers: extractTable('#highs'), 
+            losers: extractTable('#lows') 
+        };
     } catch (e) {
-        console.warn('Erro scraping Home:', e);
         return { gainers: [], losers: [] };
     }
 }
 
-// Função para buscar Ranking (FIIs e Ações)
+// Scraper do Ranking Geral
 async function scrapeRanking(type: 'fiis' | 'acoes') {
     try {
         const url = `https://investidor10.com.br/${type}/ranking/`;
-        const { data } = await axios.get(url, { headers: HEADERS, httpsAgent, timeout: 15000 });
+        const { data } = await axios.get(url, { headers: HEADERS, httpsAgent, timeout: 8000 });
         const $ = cheerio.load(data);
         
         const items: any[] = [];
-        // Busca tabela de ranking pelo ID ou classe
         const table = $('#table-ranking, .table-ranking').first();
         
         table.find('tbody tr').each((_, tr) => {
             const tds = $(tr).find('td');
-            if (tds.length < 5) return; // Garante colunas mínimas
+            if (tds.length < 5) return;
 
             const ticker = $(tds[0]).text().trim();
             const price = parseBrFloat($(tds[1]).text());
@@ -126,7 +157,6 @@ async function scrapeRanking(type: 'fiis' | 'acoes') {
 
         return items;
     } catch (e) {
-        console.warn(`Erro scraping Ranking ${type}:`, e);
         return [];
     }
 }
@@ -134,41 +164,63 @@ async function scrapeRanking(type: 'fiis' | 'acoes') {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-    res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=600');
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600'); // 5 min cache
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        const [homeData, fiisRaw, stocksRaw] = await Promise.all([
+        // 1. Tenta buscar Home + Rankings em Paralelo
+        let [homeData, fiisRaw, stocksRaw] = await Promise.all([
             scrapeHome(),
             scrapeRanking('fiis'),
             scrapeRanking('acoes')
         ]);
 
-        // PROCESSAMENTO FIIs
-        const highYieldFIIs = fiisRaw
-            .filter(f => f.dy_12m > 8 && f.dy_12m < 25 && f.p_vp > 0.8)
+        // 2. LÓGICA DE FALLBACK (Se rankings vierem vazios)
+        const hasData = fiisRaw.length > 5 && stocksRaw.length > 5;
+        
+        if (!hasData) {
+            console.log('Ranking Scraper failed. Activating Fallback Mode...');
+            
+            // Busca dados individuais dos ativos populares em paralelo
+            const fallbackResults = await Promise.all(
+                POPULAR_ASSETS.map(asset => scrapeSingleAsset(asset.ticker, asset.type))
+            );
+
+            const validFallback = fallbackResults.filter(Boolean) as any[];
+            
+            // Re-popula as listas
+            fiisRaw = validFallback.filter(a => POPULAR_ASSETS.find(p => p.ticker === a.ticker)?.type === 'fiis');
+            stocksRaw = validFallback.filter(a => POPULAR_ASSETS.find(p => p.ticker === a.ticker)?.type === 'acoes');
+        }
+
+        // 3. Processamento e Filtragem (Mesma lógica de antes)
+        
+        // FIIs
+        const highYieldFIIs = [...fiisRaw]
+            .filter(f => f.dy_12m > 8 && f.dy_12m < 28 && f.p_vp >= 0.7) // Filtros de sanidade
             .sort((a, b) => b.dy_12m - a.dy_12m)
             .slice(0, 10);
 
-        const discountedFIIs = fiisRaw
-            .filter(f => f.p_vp < 0.95 && f.p_vp > 0.5 && f.dy_12m > 6)
+        const discountedFIIs = [...fiisRaw]
+            .filter(f => f.p_vp < 0.98 && f.p_vp > 0.4 && f.dy_12m > 6)
             .sort((a, b) => a.p_vp - b.p_vp)
             .slice(0, 10);
 
-        // PROCESSAMENTO AÇÕES
-        const discountedStocks = stocksRaw
-            .filter(s => s.p_l > 0.5 && s.p_l < 10 && s.p_vp < 2)
+        // Ações
+        const discountedStocks = [...stocksRaw]
+            .filter(s => s.p_l > 0.5 && s.p_l < 15 && s.p_vp < 2.5) // P/L positivo e razoável
             .sort((a, b) => a.p_l - b.p_l)
             .slice(0, 10);
 
-        const highYieldStocks = stocksRaw
-            .filter(s => s.dy_12m > 6 && s.dy_12m < 30)
+        const highYieldStocks = [...stocksRaw]
+            .filter(s => s.dy_12m > 5 && s.dy_12m < 35)
             .sort((a, b) => b.dy_12m - a.dy_12m)
             .slice(0, 10);
 
         const response = {
             market_status: "Aberto",
+            data_source: hasData ? "Ranking Oficial" : "Fallback Populares",
             last_update: new Date().toISOString(),
             highlights: {
                 discounted_fiis: discountedFIIs,
@@ -184,7 +236,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json(response);
 
     } catch (error: any) {
-        console.error('API Market Error:', error);
+        console.error('API Market Fatal Error:', error);
         return res.status(500).json({ error: true, message: error.message });
     }
 }
