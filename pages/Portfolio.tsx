@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon, Gem, Calendar } from 'lucide-react';
+import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon, Gem, Calendar, Briefcase, Zap, Layers, AlertTriangle } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { BarChart, Bar, XAxis, YAxis, ReferenceLine, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -22,17 +22,36 @@ const formatPercent = (val: number, privacy = false) => {
   return `${signal}${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 };
 
-const BigStat = ({ label, value, colorClass }: any) => (
-    <div className="flex-1 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
+const formatNumber = (val: number | string | undefined, suffix = '') => {
+    if (val === undefined || val === null || val === '') return '-';
+    if (typeof val === 'string') return val;
+    return val.toLocaleString('pt-BR') + suffix;
+};
+
+const BigStat = ({ label, value, colorClass, icon: Icon }: any) => (
+    <div className="flex-1 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center relative overflow-hidden group">
+        {Icon && <Icon className="absolute top-2 right-2 w-4 h-4 text-zinc-200 dark:text-zinc-800 opacity-50 group-hover:opacity-100 transition-opacity" />}
         <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{label}</p>
         <p className={`text-xl font-black tracking-tight ${colorClass || 'text-zinc-900 dark:text-white'}`}>{value}</p>
     </div>
 );
 
-const InfoRow = ({ label, value, highlight }: any) => (
-    <div className={`flex justify-between items-center py-3 border-b border-zinc-100 dark:border-zinc-800 ${highlight ? 'bg-zinc-50/50 dark:bg-zinc-900/50 -mx-4 px-4' : ''}`}>
-        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
+const InfoRow = ({ label, value, highlight, subtext }: any) => (
+    <div className={`flex justify-between items-center py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0 ${highlight ? 'bg-zinc-50/50 dark:bg-zinc-900/50 -mx-4 px-4' : ''}`}>
+        <div className="flex flex-col">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
+            {subtext && <span className="text-[9px] text-zinc-300 dark:text-zinc-600 font-medium">{subtext}</span>}
+        </div>
         <span className={`text-sm font-bold ${highlight ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300'}`}>{value}</span>
+    </div>
+);
+
+const SectionHeader = ({ title, icon: Icon }: any) => (
+    <div className="flex items-center gap-2 mb-3 mt-6 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+        <div className="p-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-500 dark:text-zinc-400">
+            <Icon className="w-3.5 h-3.5" strokeWidth={2.5} />
+        </div>
+        <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{title}</h3>
     </div>
 );
 
@@ -90,9 +109,9 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black border shadow-sm ${isFII ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/20 dark:border-sky-900/30'}`}>
                             {asset.ticker.substring(0, 2)}
                         </div>
-                        <div>
-                            <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{asset.ticker}</h1>
-                            <p className="text-xs font-medium text-zinc-400">{asset.segment || (isFII ? 'Fundo Imobiliário' : 'Ação')}</p>
+                        <div className="min-w-0">
+                            <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight truncate">{asset.ticker}</h1>
+                            <p className="text-xs font-medium text-zinc-400 truncate max-w-[200px]">{asset.segment || (isFII ? 'Fundo Imobiliário' : 'Ação')}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
@@ -103,7 +122,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                 <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl">
                     {['VISAO', 'FUNDAMENTOS', 'PROVENTOS'].map(t => (
                         <button key={t} onClick={() => setTab(t as any)} className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${tab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
-                            {t === 'VISAO' ? 'Minha Posição' : t === 'PROVENTOS' ? 'Proventos' : 'Indicadores'}
+                            {t === 'VISAO' ? 'Minha Posição' : t === 'PROVENTOS' ? 'Proventos' : 'Fundamentos'}
                         </button>
                     ))}
                 </div>
@@ -130,20 +149,85 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                 )}
 
                 {tab === 'FUNDAMENTOS' && (
-                    <div className="space-y-8 anim-fade-in">
-                        <div className="grid grid-cols-2 gap-4">
-                            <BigStat label="P/VP" value={asset.p_vp?.toFixed(2) || '-'} colorClass={asset.p_vp && asset.p_vp < 1 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'} />
-                            <BigStat label="Dividend Yield" value={asset.dy_12m ? `${asset.dy_12m.toFixed(2)}%` : '-'} colorClass="text-emerald-500" />
+                    <div className="space-y-4 anim-fade-in">
+                        {/* CARD DE DESTAQUES PRINCIPAIS */}
+                        <div className="grid grid-cols-2 gap-4 mb-2">
+                            <BigStat 
+                                label={isFII ? "P/VP" : "P/L"} 
+                                value={isFII ? asset.p_vp?.toFixed(2) || '-' : asset.p_l?.toFixed(2) || '-'} 
+                                colorClass={(isFII && asset.p_vp && asset.p_vp < 1) ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'} 
+                                icon={Scale}
+                            />
+                            <BigStat 
+                                label="Dividend Yield" 
+                                value={asset.dy_12m ? `${asset.dy_12m.toFixed(2)}%` : '-'} 
+                                colorClass="text-emerald-500" 
+                                icon={DollarSign}
+                            />
                         </div>
-                        <div>
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Valuation & Preço</h3>
-                            <InfoRow label="Valor Patrimonial (VP)" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} />
-                            {!isFII && <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2) || '-'} />}
-                            <InfoRow label="Valor de Mercado" value={asset.market_cap || '-'} />
+
+                        {/* --- BLOCOS FIIs --- */}
+                        {isFII && (
+                            <>
+                                <SectionHeader title="Valuation & Cotas" icon={Scale} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                                    <InfoRow label="Preço / VP" value={asset.p_vp?.toFixed(2) || '-'} highlight />
+                                    <InfoRow label="Valor Patrimonial" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} subtext="Por Cota" />
+                                    <InfoRow label="Último Rendimento" value={asset.last_dividend ? `R$ ${asset.last_dividend.toFixed(2)}` : '-'} color="text-emerald-500" />
+                                    <InfoRow label="Patrimônio Líquido" value={asset.assets_value || '-'} />
+                                </div>
+
+                                <SectionHeader title="Qualidade & Gestão" icon={Briefcase} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                                    {asset.vacancy !== undefined && (
+                                        <InfoRow 
+                                            label="Vacância Física" 
+                                            value={`${asset.vacancy}%`} 
+                                            highlight={asset.vacancy > 10} 
+                                            subtext={asset.vacancy > 10 ? 'Atenção: Alta' : 'Controlada'}
+                                        />
+                                    )}
+                                    <InfoRow label="Liquidez Diária" value={asset.liquidity || '-'} />
+                                    <InfoRow label="Número de Cotistas" value={formatNumber(asset.properties_count)} />
+                                    <InfoRow label="Tipo de Gestão" value={asset.manager_type || '-'} />
+                                    {asset.management_fee && <InfoRow label="Taxa de Admin." value={asset.management_fee} />}
+                                </div>
+                            </>
+                        )}
+
+                        {/* --- BLOCOS AÇÕES --- */}
+                        {!isFII && (
+                            <>
+                                <SectionHeader title="Valuation" icon={Scale} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                                    <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2) || '-'} highlight />
+                                    <InfoRow label="P/VP" value={asset.p_vp?.toFixed(2) || '-'} />
+                                    <InfoRow label="EV / EBITDA" value={asset.ev_ebitda?.toFixed(2) || '-'} />
+                                    <InfoRow label="VPA" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} />
+                                    <InfoRow label="LPA" value={asset.lpa ? `R$ ${asset.lpa.toFixed(2)}` : '-'} />
+                                </div>
+
+                                <SectionHeader title="Eficiência & Rentabilidade" icon={Zap} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                                    <InfoRow label="ROE" value={asset.roe ? `${asset.roe.toFixed(1)}%` : '-'} highlight />
+                                    <InfoRow label="Margem Líquida" value={asset.net_margin ? `${asset.net_margin.toFixed(1)}%` : '-'} />
+                                    <InfoRow label="Margem Bruta" value={asset.gross_margin ? `${asset.gross_margin.toFixed(1)}%` : '-'} />
+                                </div>
+
+                                <SectionHeader title="Crescimento & Dívida" icon={TrendingUp} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                                    <InfoRow label="CAGR Receita (5a)" value={asset.cagr_revenue ? `${asset.cagr_revenue.toFixed(1)}%` : '-'} />
+                                    <InfoRow label="CAGR Lucros (5a)" value={asset.cagr_profits ? `${asset.cagr_profits.toFixed(1)}%` : '-'} />
+                                    <InfoRow label="Dív. Líq. / EBITDA" value={asset.net_debt_ebitda ? `${asset.net_debt_ebitda.toFixed(2)}x` : '-'} />
+                                </div>
+                            </>
+                        )}
+
+                        <div className="pt-4">
+                            <a href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest press-effect shadow-xl group">
+                                Análise Completa Investidor10 <ExternalLink className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                            </a>
                         </div>
-                        <a href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest press-effect">
-                            Ver no Investidor10 <ExternalLink className="w-3 h-3" />
-                        </a>
                     </div>
                 )}
 

@@ -160,49 +160,42 @@ export interface LogEntry {
   data?: any[];
 }
 
-// Novos tipos para a página de Mercado (Gemini Grounding)
+// --- TIPOS DE MERCADO ---
 
-export interface MarketHighlightFII {
+export interface MarketAsset {
     ticker: string;
     name: string;
     price: number;
-    p_vp: number;
-    dy_12m: number;
-}
-
-export interface MarketHighlightStock {
-    ticker: string;
-    name: string;
-    price: number;
-    p_l: number;
-    p_vp: number;
-}
-
-export interface MarketVariation {
-    ticker: string;
-    variation_percent: number;
-    price: number;
-}
-
-export interface MarketHighDividend {
-    ticker: string;
-    type: string;
-    dy_12m: number;
-    last_dividend: number;
+    variation_percent?: number;
+    dy_12m?: number;
+    p_vp?: number;
+    p_l?: number;
+    roe?: number;
+    net_margin?: number;
+    cagr_revenue?: number;
+    liquidity?: number;
 }
 
 export interface MarketOverview {
     market_status: string;
-    sentiment_summary: string; // Novo campo
     last_update: string;
     highlights: {
-        discounted_fiis: MarketHighlightFII[];
-        discounted_stocks: MarketHighlightStock[];
-        top_gainers: MarketVariation[]; // Mantido para compatibilidade, mas pode vir vazio
-        top_losers: MarketVariation[]; // Mantido para compatibilidade
-        high_dividend_yield: MarketHighDividend[];
+        fiis: {
+            gainers: MarketAsset[];
+            losers: MarketAsset[];
+            high_yield: MarketAsset[];
+            discounted: MarketAsset[];
+            raw?: MarketAsset[];
+        };
+        stocks: {
+            gainers: MarketAsset[];
+            losers: MarketAsset[];
+            high_yield: MarketAsset[];
+            discounted: MarketAsset[];
+            raw?: MarketAsset[];
+        };
     };
-    sources?: { title: string; uri: string }[];
+    error?: boolean;
 }
 
 // Resultado da atualização do Scraper

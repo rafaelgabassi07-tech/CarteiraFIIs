@@ -247,17 +247,28 @@ export const fetchMarketOverview = async (): Promise<MarketOverview> => {
         console.warn("Market Overview Fetch Error:", error.message);
         return { 
             market_status: 'Indisponível', 
+            // @ts-ignore
             sentiment_summary: 'Dados Offline',
             last_update: '', 
             highlights: {
-                discounted_fiis: [],
-                discounted_stocks: [],
-                top_gainers: [],
-                top_losers: [],
-                high_dividend_yield: []
+                fiis: {
+                    gainers: [],
+                    losers: [],
+                    high_yield: [],
+                    discounted: [],
+                    raw: []
+                },
+                stocks: {
+                    gainers: [],
+                    losers: [],
+                    high_yield: [],
+                    discounted: [],
+                    raw: []
+                }
             },
             // @ts-ignore
             error: true,
+            // @ts-ignore
             message: "Não foi possível carregar os dados de mercado."
         };
     }

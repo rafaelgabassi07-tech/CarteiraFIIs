@@ -1,11 +1,12 @@
 
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem } from '../types';
+import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem, MarketOverview } from '../types';
 import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper, ArrowLeft, ArrowRight } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
+import { fetchMarketOverview } from '../services/dataService';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -163,8 +164,9 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
             case 'volatility_up': return 'bg-emerald-500';
             case 'volatility_down': return 'bg-rose-500';
             case 'warning': return 'bg-amber-500';
-            case 'news': return 'bg-sky-500';
-            default: return 'bg-indigo-500';
+            case 'opportunity': return 'bg-indigo-500';
+            case 'success': return 'bg-emerald-600';
+            default: return 'bg-sky-500';
         }
     };
 
@@ -173,7 +175,8 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
             case 'volatility_up': return TrendingUp;
             case 'volatility_down': return TrendingDown;
             case 'warning': return AlertTriangle;
-            case 'news': return Newspaper;
+            case 'opportunity': return Target;
+            case 'success': return Coins;
             default: return Lightbulb;
         }
     };
@@ -222,21 +225,11 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
 
                 {/* Visual Content */}
                 <div className="w-full max-w-sm relative z-0 anim-scale-in">
-                    {currentStory.imageUrl ? (
-                        <div className="w-full aspect-square rounded-[2rem] overflow-hidden mb-8 border-4 border-white/10 shadow-2xl relative">
-                            <img src={currentStory.imageUrl} alt="" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                            <div className="absolute bottom-4 left-4 right-4">
-                                <span className={`inline-block px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest text-white mb-2 ${colorClass}`}>
-                                    {currentStory.type.replace('_', ' ')}
-                                </span>
-                            </div>
+                    <div className={`w-32 h-32 rounded-[2rem] ${colorClass} bg-opacity-20 flex items-center justify-center mb-8 mx-auto border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]`}>
+                        <div className="text-4xl font-black text-white drop-shadow-md">
+                            {currentStory.relatedTicker ? currentStory.relatedTicker.substring(0,2) : <Icon className="w-16 h-16" />}
                         </div>
-                    ) : (
-                        <div className={`w-32 h-32 rounded-[2rem] ${colorClass} bg-opacity-20 flex items-center justify-center mb-8 mx-auto border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]`}>
-                            <Icon className={`w-16 h-16 text-white`} strokeWidth={1.5} />
-                        </div>
-                    )}
+                    </div>
                     
                     <h2 className="text-2xl font-black text-white mb-4 leading-tight">{currentStory.message}</h2>
                     
@@ -250,7 +243,7 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                         <div className="absolute bottom-[-100px] left-0 right-0 flex justify-center animate-bounce">
                             <div className="flex flex-col items-center gap-2">
                                 <ChevronUp className="w-6 h-6 text-white/50" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Saiba Mais</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Detalhes</span>
                             </div>
                         </div>
                     )}
@@ -266,7 +259,7 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                         rel="noreferrer"
                         className="block w-full py-4 bg-white text-black text-center rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
                     >
-                        Ler Notícia Completa
+                        Ver Detalhes do Ativo
                     </a>
                 </div>
             )}
@@ -284,33 +277,32 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
         <div className="mb-6 -mx-4 overflow-x-auto no-scrollbar pl-4 pb-2 flex gap-4 snap-x">
             {insights.map((item, index) => {
                 const isRead = readStories.has(item.id);
-                const isNews = item.type === 'news';
                 
+                // Cores do anel baseadas no tipo de destaque
+                let ringColors = 'from-indigo-500 via-purple-500 to-pink-500';
+                if (item.type === 'volatility_up' || item.type === 'success') ringColors = 'from-emerald-400 via-green-500 to-teal-500';
+                if (item.type === 'volatility_down' || item.type === 'warning') ringColors = 'from-rose-400 via-red-500 to-orange-500';
+                
+                const Icon = item.type === 'volatility_up' ? TrendingUp : item.type === 'volatility_down' ? TrendingDown : item.type === 'opportunity' ? Target : Coins;
+
                 return (
                     <button 
                         key={item.id}
                         onClick={() => setActiveIndex(index)}
                         className="flex flex-col items-center gap-1.5 snap-start group"
                     >
-                        <div className={`w-[68px] h-[68px] rounded-full p-[2px] ${isRead ? 'bg-zinc-200 dark:bg-zinc-800' : 'bg-gradient-to-tr from-yellow-400 via-rose-500 to-purple-600'}`}>
-                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[2px] relative overflow-hidden">
-                                {item.imageUrl ? (
-                                    <img src={item.imageUrl} alt="" className="w-full h-full object-cover rounded-full" />
-                                ) : (
-                                    <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center">
-                                        {item.type === 'volatility_up' ? <TrendingUp className="w-6 h-6 text-emerald-500" /> :
-                                         item.type === 'volatility_down' ? <TrendingDown className="w-6 h-6 text-rose-500" /> :
-                                         item.type === 'warning' ? <AlertTriangle className="w-6 h-6 text-amber-500" /> :
-                                         <Newspaper className="w-6 h-6 text-sky-500" />}
-                                    </div>
-                                )}
-                                {isNews && (
-                                    <div className="absolute bottom-0 right-0 left-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent"></div>
-                                )}
+                        <div className={`w-[68px] h-[68px] rounded-full p-[2px] ${isRead ? 'bg-zinc-200 dark:bg-zinc-800' : `bg-gradient-to-tr ${ringColors}`}`}>
+                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[2px] relative overflow-hidden flex items-center justify-center">
+                                <div className="w-full h-full bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center relative">
+                                    <Icon className={`w-6 h-6 ${isRead ? 'text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`} />
+                                    {item.relatedTicker && (
+                                        <span className="absolute bottom-2 text-[8px] font-black uppercase text-zinc-400">{item.relatedTicker.substring(0,4)}</span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 w-16 truncate text-center leading-tight">
-                            {item.relatedTicker || (item.type === 'news' ? 'Notícia' : 'Aviso')}
+                            {item.title}
                         </span>
                     </button>
                 );
@@ -345,7 +337,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [raioXTab, setRaioXTab] = useState<'GERAL' | 'CLASSES'>('GERAL');
   
   const [insights, setInsights] = useState<PortfolioInsight[]>([]);
-  const [newsCache, setNewsCache] = useState<NewsItem[]>([]);
+  const [marketOverview, setMarketOverview] = useState<MarketOverview | undefined>(undefined);
   
   const [readStories, setReadStories] = useState<Set<string>>(() => {
       try {
@@ -356,25 +348,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
   });
 
-  // Carregamento de Notícias e Insights
+  // Carregamento de Destaques de Mercado para os Stories
   useEffect(() => {
-      const loadFeed = async () => {
+      const loadData = async () => {
           try {
-              let news: NewsItem[] = [];
-              try {
-                  const res = await fetch('/api/news');
-                  if (res.ok) news = await res.json();
-              } catch (e) { console.error('Feed error', e); }
-              setNewsCache(news);
-              
               const safeInflation = Number(inflationRate) || 4.62;
-              const generatedInsights = analyzePortfolio(portfolio, safeInflation, news);
+              const marketData = await fetchMarketOverview();
+              setMarketOverview(marketData);
+              
+              const generatedInsights = analyzePortfolio(portfolio, safeInflation, marketData);
               setInsights(generatedInsights);
           } catch (e) {
               console.error(e);
           }
       };
-      loadFeed();
+      loadData();
   }, [portfolio, inflationRate]);
 
   const markAsRead = useCallback((id: string) => {
@@ -555,7 +543,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="space-y-4 pb-8">
       
-      {/* 0. SMART FEED (STORIES) */}
+      {/* 0. SMART FEED (STORIES - RANKINGS DE MERCADO) */}
       <SmartFeed insights={insights} onMarkAsRead={markAsRead} readStories={readStories} />
 
       {/* 1. CARTÃO DE PATRIMÔNIO ATUAL */}
