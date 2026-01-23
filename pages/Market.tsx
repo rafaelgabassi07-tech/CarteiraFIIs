@@ -3,7 +3,43 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, Building2, TrendingUp, TrendingDown, DollarSign, X, ExternalLink, Target, Search, ArrowRight, Filter, ArrowLeft, Scale, Coins, Award, ArrowUpRight, ArrowDownRight, BarChart2, PieChart, Rocket, Users, Activity } from 'lucide-react';
 import { fetchMarketOverview } from '../services/dataService';
 import { SwipeableModal } from '../components/Layout';
-import { MarketAsset, MarketOverview } from '../types';
+
+// --- TYPES ---
+export interface MarketAsset {
+    ticker: string;
+    name: string;
+    price: number;
+    variation_percent?: number;
+    dy_12m?: number;
+    p_vp?: number;
+    p_l?: number;
+    roe?: number;
+    net_margin?: number;
+    cagr_revenue?: number;
+    liquidity?: number;
+}
+
+interface NewMarketOverview {
+    market_status: string;
+    last_update: string;
+    highlights: {
+        fiis: {
+            gainers: MarketAsset[];
+            losers: MarketAsset[];
+            high_yield: MarketAsset[];
+            discounted: MarketAsset[];
+            raw?: MarketAsset[];
+        };
+        stocks: {
+            gainers: MarketAsset[];
+            losers: MarketAsset[];
+            high_yield: MarketAsset[];
+            discounted: MarketAsset[];
+            raw?: MarketAsset[];
+        };
+    };
+    error?: boolean;
+}
 
 // --- CONFIGURAÇÃO DAS CATEGORIAS DE RANKING ---
 type RankingType = 'VALUATION' | 'DY' | 'HIGH' | 'LOW' | 'ROE' | 'MARGIN' | 'GROWTH' | 'LIQUIDITY';
@@ -21,8 +57,8 @@ interface RankingConfig {
 }
 
 const getRankings = (): RankingConfig[] => {
-    // Helper para verificar tipo (usa propriedade type se existir, senão inferência por ticker)
-    const isFii = (a: MarketAsset) => a.type === 'FII' || a.ticker.endsWith('11') || a.ticker.endsWith('11B');
+    // Helper para verificar tipo
+    const isFii = (t: string) => t.endsWith('11') || t.endsWith('11B');
 
     return [
         {
@@ -43,15 +79,15 @@ const getRankings = (): RankingConfig[] => {
             icon: Scale,
             color: 'indigo',
             // Filtra: P/VP positivo para FIIs, P/L positivo para Ações
-            filterFn: (a) => isFii(a) ? (a.p_vp || 0) > 0 : (a.p_l || 0) > 0,
+            filterFn: (a) => isFii(a.ticker) ? (a.p_vp || 0) > 0 : (a.p_l || 0) > 0,
             // Ordena: P/VP para FIIs, P/L para Ações
             sortFn: (a, b) => {
-                const valA = isFii(a) ? (a.p_vp || 0) : (a.p_l || 0);
-                const valB = isFii(b) ? (b.p_vp || 0) : (b.p_l || 0);
+                const valA = isFii(a.ticker) ? (a.p_vp || 0) : (a.p_l || 0);
+                const valB = isFii(b.ticker) ? (b.p_vp || 0) : (b.p_l || 0);
                 return valA - valB;
             },
-            valueFormatter: (a) => isFii(a) ? `${a.p_vp?.toFixed(2)}x` : `${a.p_l?.toFixed(1)}x`,
-            secondaryValue: (a) => isFii(a) ? 'P/VP' : 'P/L'
+            valueFormatter: (a) => isFii(a.ticker) ? `${a.p_vp?.toFixed(2)}x` : `${a.p_l?.toFixed(1)}x`,
+            secondaryValue: (a) => isFii(a.ticker) ? 'P/VP' : 'P/L'
         },
         {
             id: 'ROE',
@@ -171,6 +207,10 @@ const RankingGridCard = ({ config, onClick }: { config: RankingConfig, onClick: 
 };
 
 const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: MarketAsset[], config: RankingConfig, onSelect: (a: MarketAsset) => void, activeFilter: string }) => {
+    // Contagem para feedback visual
+    const fiiCount = assets.filter(a => a.ticker.endsWith('11') || a.ticker.endsWith('11B')).length;
+    const stockCount = assets.length - fiiCount;
+
     return (
         <div className="flex flex-col bg-white dark:bg-zinc-900 min-h-full">
             <div className="flex flex-col px-4 py-3 bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10 backdrop-blur-sm">
@@ -194,7 +234,7 @@ const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: M
 
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {assets.map((asset, index) => {
-                    const isFii = asset.type === 'FII' || asset.ticker.endsWith('11') || asset.ticker.endsWith('11B');
+                    const isFii = asset.ticker.endsWith('11') || asset.ticker.endsWith('11B');
                     return (
                         <button 
                             key={asset.ticker}
@@ -255,7 +295,7 @@ const RankingListView = ({ assets, config, onSelect, activeFilter }: { assets: M
 };
 
 const AssetDetailModal = ({ asset, onClose }: { asset: MarketAsset, onClose: () => void }) => {
-    const isFii = asset.type === 'FII' || asset.ticker.endsWith('11') || asset.ticker.endsWith('11B');
+    const isFii = asset.ticker.endsWith('11') || asset.ticker.endsWith('11B');
     const url = `https://investidor10.com.br/${isFii ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`;
 
     return (
@@ -361,7 +401,7 @@ interface MarketProps {
 }
 
 export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, onStatusUpdate }) => {
-    const [data, setData] = useState<MarketOverview | null>(null);
+    const [data, setData] = useState<NewMarketOverview | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTypeFilter, setActiveTypeFilter] = useState<'fiis' | 'stocks'>('fiis'); // Default to FIIs
     
@@ -375,6 +415,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
         if (onLoadingChange) onLoadingChange(true);
         try {
             const result = await fetchMarketOverview();
+            // @ts-ignore
             setData(result);
         } catch (e) { console.error(e); } finally { 
             setLoading(false); 
@@ -435,7 +476,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
         if (!selectedRanking) return [];
         
         let list = assetPool.filter(a => {
-            const isFii = a.type === 'FII' || a.ticker.endsWith('11') || a.ticker.endsWith('11B');
+            const isFii = a.ticker.endsWith('11') || a.ticker.endsWith('11B');
             if (activeTypeFilter === 'fiis') return isFii;
             if (activeTypeFilter === 'stocks') return !isFii;
             return true;
