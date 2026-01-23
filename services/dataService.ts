@@ -98,7 +98,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
         management_fee: getVal('taxa_adm', 'management_fee') || undefined,
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento', 'last_dividend', 'rendimento')),
-        properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
+        properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas', 'num_cotistas')),
         
         updated_at: m.updated_at,
         

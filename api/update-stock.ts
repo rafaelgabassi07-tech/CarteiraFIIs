@@ -20,7 +20,8 @@ const httpsAgent = new https.Agent({
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0'
 ];
 
 const getRandomAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
@@ -35,7 +36,8 @@ async function fetchHTML(url: string, referer: string) {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
                     'Referer': referer,
                     'Upgrade-Insecure-Requests': '1',
-                    'Cache-Control': 'no-cache'
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
                 },
                 timeout: 15000 
             });
@@ -55,9 +57,11 @@ function parseValue(valueStr: any): number {
     if (typeof valueStr === 'number') return valueStr;
     
     let str = String(valueStr).trim();
-    if (!str || str === '-' || str === 'N/A' || str === '--') return 0;
+    if (!str || str === '-' || str === 'N/A' || str === '--' || str === 'null') return 0;
 
     try {
+        // Remove caracteres invisíveis e espaços
+        str = str.replace(/\s/g, '');
         const isNegative = str.startsWith('-');
         // Remove símbolos de moeda e %
         str = str.replace(/[R$%\s]/g, '');
@@ -106,22 +110,23 @@ const parseToISODate = (val: any): string | null => {
     return null;
 }
 
+// Mapa expandido e cirúrgico
 const KEY_MAP: Record<string, string> = {
     // Cotação e Valuation
     'cotacao': 'cotacao_atual', 'valoratual': 'cotacao_atual', 'preco': 'cotacao_atual',
     'pvp': 'pvp', 'vp': 'pvp', 'psobrevp': 'pvp', 'p/vp': 'pvp',
     'pl': 'pl', 'psorel': 'pl', 'precolucro': 'pl', 'p/l': 'pl',
-    'dy': 'dy', 'dividendyield': 'dy', 'dy12m': 'dy',
-    'vpa': 'vp_cota', 'vpporcota': 'vp_cota', 'valorpatrimonialporcota': 'vp_cota', 'valpatrimonial': 'vp_cota', 'vp_cota': 'vp_cota', 'vp': 'vp_cota',
+    'dy': 'dy', 'dividendyield': 'dy', 'dy12m': 'dy', 'dividendyield12m': 'dy',
+    'vpa': 'vp_cota', 'vpporcota': 'vp_cota', 'valorpatrimonialporcota': 'vp_cota', 'valpatrimonial': 'vp_cota', 'vp_cota': 'vp_cota',
     'lpa': 'lpa', 'lucroporacao': 'lpa',
-    'evebitda': 'ev_ebitda',
-    'dividaliquidaebitda': 'divida_liquida_ebitda',
+    'evebitda': 'ev_ebitda', 'ev/ebitda': 'ev_ebitda',
+    'dividaliquidaebitda': 'divida_liquida_ebitda', 'dividaliquida/ebitda': 'divida_liquida_ebitda',
     'divliqebitda': 'divida_liquida_ebitda',
     
     // Rentabilidade e Margens
     'roe': 'roe',
     'margemliquida': 'margem_liquida', 'mliquida': 'margem_liquida',
-    'margembruta': 'margem_bruta',
+    'margembruta': 'margem_bruta', 'mbruta': 'margem_bruta',
     'cagrreceita5anos': 'cagr_receita_5a', 'cagrreceita': 'cagr_receita_5a',
     'cagrlucros5anos': 'cagr_lucros_5a', 'cagrlucro': 'cagr_lucros_5a', 'cagrlucros': 'cagr_lucros_5a',
     'ultimorendimento': 'ultimo_rendimento', 'rendimento': 'ultimo_rendimento',
@@ -166,71 +171,70 @@ async function scrapeInvestidor10(ticker: string) {
         const $ = cheerio.load(html);
         const extracted: any = {};
 
-        // 1. Extração Estruturada (Cards Principais) - MAIS ROBUSTO
-        $('div._card').each((_, card) => {
-            let header = $(card).find('div._card-header span').text().trim() || $(card).find('div._card-header').text().trim();
-            // Fallback para título dentro do body se header vazio
-            if (!header) header = $(card).find('.title').text().trim();
-            
-            let value = $(card).find('div._card-body span').text().trim() || $(card).find('div._card-body').text().trim();
-            
-            if (header && value) {
-                const key = normalizeKey(header);
-                if (KEY_MAP[key]) extracted[KEY_MAP[key]] = value;
+        // Helper para extrair par chave/valor
+        const extractPair = (keyRaw: string, valRaw: string) => {
+            if (!keyRaw || !valRaw) return;
+            const key = normalizeKey(keyRaw);
+            if (KEY_MAP[key]) {
+                extracted[KEY_MAP[key]] = valRaw;
             }
+        };
+
+        // 1. CARDS DO TOPO (P/VP, DY, COTAÇÃO)
+        // Seletor: div._card -> _card-header + _card-body
+        $('div._card').each((_, card) => {
+            const header = $(card).find('div._card-header').text().trim() || $(card).find('.title').text().trim();
+            const value = $(card).find('div._card-body').text().trim() || $(card).find('.value').text().trim();
+            extractPair(header, value);
         });
 
-        // 2. Extração de Tabela de Indicadores (Muitos dados de ações ficam aqui)
+        // 2. TABELA DE INDICADORES (Ações e FIIs)
+        // Seletor: #table-indicators .cell -> .name + .value
         $('#table-indicators .cell').each((_, cell) => {
             const name = $(cell).find('.name').text().trim(); // Ex: "P/L", "P/VP"
             const valueEl = $(cell).find('.value');
-            const value = valueEl.find('span').first().text().trim() || valueEl.text().trim();
-            
-            if (name && value) {
-                const key = normalizeKey(name);
-                if (KEY_MAP[key]) extracted[KEY_MAP[key]] = value;
-            }
+            // Remove span com tooltip se houver
+            valueEl.find('.help').remove(); 
+            const value = valueEl.text().trim();
+            extractPair(name, value);
         });
 
-        // 3. Extração Específica para FIIs (Bloco de Informações Básicas e Características)
-        // Varre tabelas de dados básicos onde Patrimônio, Cotistas e Segmento costumam ficar
-        // Seletores: #table-basic-data ou divs com classe .data-item
-        $('div#table-basic-data .cell').each((_, cell) => {
+        // 3. DADOS BÁSICOS (FIIs: Vacância, Patrimônio, Gestão)
+        // Seletor: #table-basic-data .cell -> .name + .value (ou .desc)
+        $('#table-basic-data .cell').each((_, cell) => {
              const label = $(cell).find('.name').text().trim();
              const val = $(cell).find('.value, .desc').text().trim();
-             if (label && val) {
-                 const key = normalizeKey(label);
-                 if (KEY_MAP[key]) extracted[KEY_MAP[key]] = val;
-             }
+             extractPair(label, val);
         });
 
-        // Fallback genérico para cards soltos (vacância, patrimônio)
-        // O seletor .data-item costuma conter "Vacância Física", "Patrimônio Líquido" em FIIs
-        $('.data-item, .item').each((_, item) => {
-             const label = $(item).find('.label, .title').text().trim();
-             const val = $(item).find('.data, .value').text().trim();
-             if (label && val) {
-                 const key = normalizeKey(label);
-                 if (KEY_MAP[key]) extracted[KEY_MAP[key]] = val;
-             }
+        // 4. ESTRUTURA GENÉRICA DE INFO (Fallback para Mobile Views)
+        // Procura por estruturas <span class="title">Title</span> <span class="value">Value</span>
+        $('.data-item, .item-info').each((_, item) => {
+             const label = $(item).find('.title, .label').text().trim();
+             const val = $(item).find('.value, .data').text().trim();
+             extractPair(label, val);
         });
 
-        // 4. Extração de Segmento Robusta (Breadcrumbs)
-        let segmento = '';
-        $('#breadcrumbs li span a span, .breadcrumb-item').each((_, el) => {
-            const txt = $(el).text().trim();
-            if (txt && !['Início', 'Ações', 'FIIs', 'Home', 'BDRs'].includes(txt) && txt.toUpperCase() !== ticker) segmento = txt;
-        });
-        if (segmento) extracted['segmento'] = segmento;
-
-        // Garante cotação se falhou no card
-        if (!extracted.cotacao_atual) {
-            extracted.cotacao_atual = $('div._card.cotacao div._card-body span').text() || $('.quotation-ticker').text();
+        // 5. Extração de Segmento Robusta (Breadcrumbs)
+        if (!extracted.segmento) {
+            let segmento = '';
+            $('#breadcrumbs li, .breadcrumb-item').each((_, el) => {
+                const txt = $(el).text().trim();
+                // Ignora termos comuns de navegação
+                if (txt && !['Início', 'Ações', 'FIIs', 'Home', 'BDRs', 'Fundos Imobiliários'].includes(txt) && txt.toUpperCase() !== ticker) {
+                    segmento = txt;
+                }
+            });
+            if (segmento) extracted['segmento'] = segmento;
         }
 
-        // 5. Extração de Dividendos (TABELA HISTÓRICA COMPLETA)
+        // Garante cotação se falhou nos cards (Classe específica de cotação grande)
+        if (!extracted.cotacao_atual) {
+            extracted.cotacao_atual = $('.quotation-ticker, .value-ticker').first().text().trim();
+        }
+
+        // --- DIVIDENDOS ---
         const dividends: any[] = [];
-        // Tenta tabela com ID específico primeiro, depois genérica
         const tableSelectors = ['#table-dividends-history', 'table#dividends-history'];
         
         let foundTable = false;
@@ -269,8 +273,8 @@ async function scrapeInvestidor10(ticker: string) {
             }
         }
 
+        // Se não achou tabela de dividendos, tenta a tabela genérica que tem "Tipo", "Data Com", "Pagamento", "Valor"
         if (!foundTable) {
-            // Fallback genérico para tabela
             $('table').each((_, table) => {
                 const headers = $(table).find('thead th').text().toLowerCase();
                 if (headers.includes('tipo') && headers.includes('data com') && headers.includes('valor')) {
@@ -278,7 +282,7 @@ async function scrapeInvestidor10(ticker: string) {
                         const tds = $(tr).find('td');
                         if (tds.length >= 3) {
                              const dateComRaw = $(tds[1]).text().trim();
-                             const datePayRaw = $(tds[2]).text().trim();
+                             const datePayRaw = $(tds[2]).text().trim(); // Às vezes é col 2, às vezes col 3 dependendo do layout
                              const valRaw = $(tds[3] || tds[2]).text().trim(); 
 
                              const dateCom = parseToISODate(dateComRaw);
@@ -394,8 +398,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 tipo_gestao: metadata.tipo_gestao,
                 patrimonio_liquido: metadata.patrimonio_liquido,
                 taxa_adm: metadata.taxa_adm,
-                ultimo_rendimento: metadata.ultimo_rendimento
+                ultimo_rendimento: metadata.ultimo_rendimento,
+                num_cotistas: metadata.num_cotistas
             };
+            // Limpa chaves undefined
             Object.keys(dbPayload).forEach(key => (dbPayload as any)[key] === undefined && delete (dbPayload as any)[key]);
             
             await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
