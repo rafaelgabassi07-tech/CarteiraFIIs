@@ -17,7 +17,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.6.6'; 
+const APP_VERSION = '8.7.0'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -27,7 +27,7 @@ const STORAGE_KEYS = {
   PRIVACY: 'investfiis_privacy_mode',
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
-  NOTIF_HISTORY: 'investfiis_notification_history_v3', // Version bumped
+  NOTIF_HISTORY: 'investfiis_notification_history_v3',
   METADATA: 'investfiis_metadata_v2' 
 };
 
@@ -54,33 +54,30 @@ const isSameDayLocal = (dateString: string) => {
            today.getFullYear() === year;
 };
 
+// Função para normalizar Ticker (Remove 'F' final se não for 11F)
+const normalizeTicker = (ticker: string) => {
+    let t = ticker.trim().toUpperCase();
+    if (t.endsWith('F') && !t.endsWith('11F') && !t.endsWith('11B') && t.length <= 6) {
+        return t.slice(0, -1);
+    }
+    return t;
+}
+
 // Calcula quantidade acumulada em uma data, considerando fracionário
 const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
-  if (!ticker || !dateCom) return 0; // Guard clause
+  if (!ticker || !dateCom) return 0; 
   const targetTime = safeDate(dateCom);
   if (!targetTime) return 0;
   
-  // Normaliza o ticker do PROVENTO para a raiz (ex: ITSA4F -> ITSA4)
-  // Isso garante que se o banco tiver ITSA4F por engano, ele vira ITSA4 para comparar
-  let targetRoot = ticker.trim().toUpperCase();
-  if (targetRoot.endsWith('F') && !targetRoot.endsWith('11') && !targetRoot.endsWith('11B') && targetRoot.length <= 6) {
-      targetRoot = targetRoot.slice(0, -1);
-  }
+  const targetRoot = normalizeTicker(ticker);
 
   return transactions
     .filter(t => {
         if (!t || !t.date || !t.ticker) return false;
         const txTime = safeDate(t.date);
-        if (!txTime) return false; // Ignora transações sem data válida
+        if (!txTime) return false;
 
-        let txRoot = t.ticker.trim().toUpperCase(); // Ticker da Transação
-        
-        // Normaliza o ticker da TRANSAÇÃO para a raiz (ex: ITSA4F -> ITSA4)
-        if (txRoot.endsWith('F') && !txRoot.endsWith('11') && !txRoot.endsWith('11B') && txRoot.length <= 6) {
-            txRoot = txRoot.slice(0, -1);
-        }
-
-        // Compara raízes e datas (via timestamp para precisão)
+        const txRoot = normalizeTicker(t.ticker);
         return txRoot === targetRoot && txTime <= targetTime;
     })
     .reduce((acc, t) => {
@@ -180,7 +177,6 @@ const App: React.FC = () => {
   // Status de Serviços
   const [isCheckingServices, setIsCheckingServices] = useState(false);
   
-  // Ref para serviços para evitar re-renders cíclicos no checkServiceHealth
   const servicesRef = useRef<ServiceMetric[]>([
     { id: 'db', label: 'Supabase Database', url: getSupabaseUrl(), icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'market', label: 'Brapi Market Data', url: 'https://brapi.dev', icon: Activity, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
@@ -208,7 +204,6 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
   }, [accentColor]);
 
-  // Persistência de Notificações (Fix: Dependência explicita)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled));
   }, [pushEnabled]);
@@ -220,15 +215,12 @@ const App: React.FC = () => {
       const newNotifs: AppNotification[] = [];
       const existingIds = new Set(notifications.map(n => n.id));
 
-      // 1. Verifica pagamentos de Hoje
       dividends.forEach(div => {
           if (!div || !div.ticker) return;
-          // Só notifica se o usuário tem o ativo
           const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
           if (qty > 0) {
               const total = qty * div.rate;
               
-              // Notificação de Pagamento (Hoje Local)
               if (isSameDayLocal(div.paymentDate)) {
                   const id = `pay-${div.ticker}-${div.paymentDate}`;
                   if (!existingIds.has(id)) {
@@ -244,7 +236,6 @@ const App: React.FC = () => {
                   }
               }
 
-              // Notificação de Data Com (Hoje Local)
               if (isSameDayLocal(div.dateCom)) {
                   const id = `datacom-${div.ticker}-${div.dateCom}`;
                   if (!existingIds.has(id)) {
@@ -264,11 +255,10 @@ const App: React.FC = () => {
 
       if (newNotifs.length > 0) {
           setNotifications(prev => [...newNotifs, ...prev]);
-          // Opcional: Vibrar dispositivo se suportado
           if (navigator.vibrate) navigator.vibrate(200);
       }
 
-  }, [dividends, transactions]); // Dependências controladas para rodar apenas quando dados mudam
+  }, [dividends, transactions]); 
 
   // --- PWA INSTALL HANDLER ---
   useEffect(() => {
@@ -357,54 +347,45 @@ const App: React.FC = () => {
 
   const syncMarketData = useCallback(async (force = false, txsToUse: Transaction[], initialLoad = false) => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
-    if (tickers.length === 0) return;
+    if (tickers.length === 0) {
+        if (initialLoad) setLoadingProgress(100);
+        return;
+    }
+    
     setIsRefreshing(true);
-    if (initialLoad) setLoadingProgress(50);
+    if (initialLoad) setLoadingProgress(60);
     
     try {
+      // 1. Cotações (Brapi)
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
       }
       
-      if (initialLoad) setLoadingProgress(70); 
+      if (initialLoad) setLoadingProgress(80); 
       
+      // 2. Dados Completos (DB + Fallback)
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
-      
-      // 1. Busca dados iniciais do banco
       let data = await fetchUnifiedMarketData(tickers, startDate, force);
 
       if (data.dividends.length > 0) {
           setDividends(data.dividends);
       }
+      
       if (Object.keys(data.metadata).length > 0) {
-          // --- SMART MERGE LOGIC (Enhanced) ---
-          // Previne que dados "vazios" do banco sobrescrevam dados ricos da memória (Optimistic UI)
           setAssetsMetadata(prev => {
               const next = { ...prev };
               Object.entries(data.metadata).forEach(([ticker, newMeta]) => {
                   const existing = prev[ticker];
-                  
                   if (existing) {
-                      // Cria cópia dos fundamentos
                       const mergedFundamentals = { ...(newMeta.fundamentals || {}) };
-                      
-                      // Campos que costumam desaparecer (FIIs)
-                      // Incluído liquidity, manager_type, assets_value que são strings ou podem ser 'N/A'
                       const criticalFields = ['vacancy', 'last_dividend', 'dy_12m', 'p_vp', 'assets_value', 'liquidity', 'manager_type'] as const;
                       
                       criticalFields.forEach(field => {
                           const newVal = mergedFundamentals?.[field];
                           const oldVal = existing.fundamentals?.[field];
-                          
-                          // Validação estrita: se for 0, N/A, traço ou vazio, considera inválido
-                          const isNewInvalid = newVal === undefined || newVal === null || 
-                                               (field !== 'vacancy' && newVal === 0) || // Vacância 0 é válida
-                                               newVal === 'N/A' || newVal === '-' || newVal === '' || newVal === '0';
-
-                          const isOldValid = oldVal !== undefined && oldVal !== null && 
-                                             oldVal !== 'N/A' && oldVal !== '-' && oldVal !== '' &&
-                                             (field === 'vacancy' || oldVal !== 0);
+                          const isNewInvalid = newVal === undefined || newVal === null || (field !== 'vacancy' && newVal === 0) || newVal === 'N/A' || newVal === '-' || newVal === '' || newVal === '0';
+                          const isOldValid = oldVal !== undefined && oldVal !== null && oldVal !== 'N/A' && oldVal !== '-' && oldVal !== '' && (field === 'vacancy' || oldVal !== 0);
                           
                           if (isNewInvalid && isOldValid) {
                               // @ts-ignore
@@ -412,10 +393,7 @@ const App: React.FC = () => {
                           }
                       });
                       
-                      next[ticker] = {
-                          ...newMeta,
-                          fundamentals: mergedFundamentals
-                      };
+                      next[ticker] = { ...newMeta, fundamentals: mergedFundamentals };
                   } else {
                       next[ticker] = newMeta;
                   }
@@ -431,13 +409,15 @@ const App: React.FC = () => {
          });
       }
       
-      if (initialLoad) setLoadingProgress(100); 
-    } catch (e) { console.error(e); } finally { setIsRefreshing(false); }
-  }, [dividends, pushEnabled, assetsMetadata]);
+    } catch (e) { console.error(e); } finally { 
+        setIsRefreshing(false);
+        if (initialLoad) setLoadingProgress(100);
+    }
+  }, []);
 
   const fetchTransactionsFromCloud = useCallback(async (currentSession: Session | null, force = false, initialLoad = false) => {
     setCloudStatus('syncing');
-    if (initialLoad) setLoadingProgress(25);
+    if (initialLoad) setLoadingProgress(30);
     try {
         if (!currentSession?.user?.id) return;
         const { data, error } = await supabase.from('transactions').select('*').eq('user_id', currentSession.user.id);
@@ -446,49 +426,43 @@ const App: React.FC = () => {
         const cloudTxs = (data || []).map(mapSupabaseToTx);
         setTransactions(cloudTxs);
         setCloudStatus('connected');
-        // Mantém o ícone "Salvo" visível por um momento
         setTimeout(() => setCloudStatus('hidden'), 3000);
         
         if (cloudTxs.length > 0) {
             await syncMarketData(force, cloudTxs, initialLoad);
-        } else {
-             if (initialLoad) setLoadingProgress(100);
+        } else if (initialLoad) {
+             setLoadingProgress(100);
         }
     } catch (err) { 
         console.error(err);
         showToast('error', 'Erro na nuvem.'); 
-        setCloudStatus('disconnected'); 
+        setCloudStatus('disconnected');
+        if (initialLoad) setLoadingProgress(100);
     }
   }, [syncMarketData, showToast]);
 
-  // --- INICIALIZAÇÃO CRÍTICA ---
+  // --- INICIALIZAÇÃO CRÍTICA (Refatorada) ---
   useEffect(() => {
     const initApp = async () => {
-        const startTime = Date.now();
-        const MIN_SPLASH_TIME = 2500;
         setLoadingProgress(10);
         try {
-            const sessionPromise = supabase.auth.getSession();
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Timeout')), 5000));
-            // @ts-ignore
-            const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
+            // Check Session
+            const { data, error } = await supabase.auth.getSession();
             if (error) throw error;
+            
+            setLoadingProgress(20);
             const initialSession = data?.session;
             setSession(initialSession);
-            setLoadingProgress(50);
+            
             if (initialSession) {
-                fetchTransactionsFromCloud(initialSession, false, true);
+                await fetchTransactionsFromCloud(initialSession, false, true);
+            } else {
+                setLoadingProgress(100);
             }
-            const elapsed = Date.now() - startTime;
-            const remainingTime = Math.max(0, MIN_SPLASH_TIME - elapsed);
-            if (remainingTime > 0) {
-                setLoadingProgress(80);
-                await new Promise(resolve => setTimeout(resolve, remainingTime));
-            }
-            setLoadingProgress(100);
         } catch (e) {
-            console.warn("Auth check finished with error or timeout, defaulting to Login screen.", e);
+            console.warn("Init error:", e);
             setSession(null);
+            setLoadingProgress(100);
         } finally {
             setIsReady(true);
         }
@@ -500,7 +474,7 @@ const App: React.FC = () => {
         if (event === 'SIGNED_IN' && newSession) {
             fetchTransactionsFromCloud(newSession, false, true);
         }
-        if (!newSession) {
+        if (event === 'SIGNED_OUT') {
             setTransactions([]);
             setDividends([]);
         }
@@ -625,12 +599,10 @@ const App: React.FC = () => {
       }
   };
 
-  // Handler para refresh da página Market
   const handleManualMarketRefresh = useCallback(() => {
       setMarketRefreshSignal(prev => prev + 1);
   }, []);
 
-  // Handler para receber o status do mercado vindo da página Market
   const handleMarketStatusUpdate = useCallback((statusNode: React.ReactNode) => {
       setMarketSubtitle(statusNode);
   }, []);
@@ -678,10 +650,12 @@ const App: React.FC = () => {
     
     const safeDividends = Array.isArray(dividends) ? dividends : [];
 
+    // Cálculo Robusto de Proventos
     const receipts = safeDividends.map(d => {
         if (!d || !d.ticker) return null;
-        const normalizedTicker = d.ticker.trim().toUpperCase();
+        const normalizedTicker = normalizeTicker(d.ticker);
         
+        // Pega a quantidade exata na data com
         const qty = getQuantityOnDate(normalizedTicker, d.dateCom, sortedTxs);
         
         return { 
@@ -704,7 +678,8 @@ const App: React.FC = () => {
     const positions: Record<string, any> = {};
     sortedTxs.forEach(t => {
       if (!t.ticker) return;
-      const normalizedTicker = t.ticker.trim().toUpperCase();
+      const normalizedTicker = normalizeTicker(t.ticker);
+      
       if (!positions[normalizedTicker]) positions[normalizedTicker] = { ticker: normalizedTicker, quantity: 0, averagePrice: 0, assetType: t.assetType };
       const p = positions[normalizedTicker];
       if (t.type === 'BUY') { 
@@ -724,9 +699,10 @@ const App: React.FC = () => {
     const finalPortfolio = Object.values(positions)
         .filter(p => p.quantity > 0.001)
         .map(p => {
-            const normalizedTicker = p.ticker.trim().toUpperCase();
+            const normalizedTicker = p.ticker;
             let meta = assetsMetadata[normalizedTicker];
-            if (!meta && normalizedTicker.endsWith('F') && !normalizedTicker.endsWith('11F')) {
+            // Fallback para metadata
+            if (!meta && normalizedTicker.endsWith('F')) {
                 meta = assetsMetadata[normalizedTicker.slice(0, -1)];
             }
 
@@ -736,9 +712,14 @@ const App: React.FC = () => {
             segment = segment.replace('Seg: ', '').trim();
             if (segment.length > 20) segment = segment.substring(0, 20) + '...';
 
+            // Soma dividendos do ativo principal e fracionário
+            const tickerRoot = normalizedTicker;
+            const dividendsFromFrac = normalizedTicker.endsWith('F') ? 0 : (divPaidMap[normalizedTicker + 'F'] || 0);
+            const totalDivs = (divPaidMap[tickerRoot] || 0) + dividendsFromFrac;
+
             return { 
                 ...p, 
-                totalDividends: divPaidMap[p.ticker] || (p.ticker.endsWith('F') ? divPaidMap[p.ticker.slice(0, -1)] : 0) || 0, 
+                totalDividends: totalDivs,
                 segment: segment, 
                 currentPrice: quote?.regularMarketPrice || p.averagePrice, 
                 dailyChange: quote?.regularMarketChangePercent || 0, 
@@ -754,7 +735,7 @@ const App: React.FC = () => {
     let salesGain = 0; const tracker: Record<string, { q: number; c: number }> = {};
     sortedTxs.forEach(t => {
       if (!t.ticker) return;
-      const normalizedTicker = t.ticker.trim().toUpperCase();
+      const normalizedTicker = normalizeTicker(t.ticker);
       if (!tracker[normalizedTicker]) tracker[normalizedTicker] = { q: 0, c: 0 };
       const a = tracker[normalizedTicker];
       if (t.type === 'BUY') { a.q += t.quantity; a.c += round(t.quantity * t.price); } 

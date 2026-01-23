@@ -26,7 +26,7 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
 };
 
 // Componente Discreto de Status da Nuvem (Integrado ao Header)
-const HeaderCloudStatus: React.FC<{ status: 'disconnected' | 'connected' | 'hidden' | 'syncing' }> = ({ status }) => {
+const HeaderCloudStatus: React.FC<{ status: 'disconnected' | 'connected' | 'hidden' | 'syncing' }> = React.memo(({ status }) => {
     if (status === 'hidden') return null;
 
     return (
@@ -51,7 +51,7 @@ const HeaderCloudStatus: React.FC<{ status: 'disconnected' | 'connected' | 'hidd
             )}
         </div>
     );
-};
+});
 
 interface HeaderProps {
   title: string;
@@ -70,7 +70,7 @@ interface HeaderProps {
   hideBorder?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ 
+export const Header: React.FC<HeaderProps> = React.memo(({ 
   title, subtitle, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, cloudStatus = 'hidden', hideBorder = false, onRefresh
 }) => {
   return (
@@ -90,11 +90,9 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex flex-col anim-fade-in min-w-0">
                 <div className="flex items-center gap-3">
                     {isRefreshing && <Loader2 className="w-4 h-4 animate-spin text-accent shrink-0" />}
-                    {/* Gradiente Metálico Aplicado */}
                     <h1 className="text-2xl font-black tracking-tighter flex items-center gap-2 truncate bg-gradient-to-br from-zinc-700 via-zinc-900 to-zinc-700 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-400 text-transparent bg-clip-text">
                       {title}
                     </h1>
-                    {/* Status da Nuvem Injetado Aqui */}
                     <HeaderCloudStatus status={cloudStatus} />
                 </div>
                 {subtitle && (
@@ -134,7 +132,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
     </header>
   );
-};
+});
 
 interface BottomNavProps {
   currentTab: string;
@@ -144,7 +142,7 @@ interface BottomNavProps {
 const navItems = [
   { id: 'home', icon: Home, label: 'Geral' },
   { id: 'portfolio', icon: PieChart, label: 'Carteira' },
-  { id: 'market', icon: BarChart2, label: 'Rankings' }, // Atualizado de 'Mercado'
+  { id: 'market', icon: BarChart2, label: 'Rankings' },
   { id: 'transactions', icon: ArrowRightLeft, label: 'Ordens' },
   { id: 'news', icon: Newspaper, label: 'Notícias' },
 ];
@@ -200,8 +198,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   );
 };
 
-// ... (Restante do arquivo mantido sem alterações: SwipeableModal, ConfirmationModal, etc.) ...
-// INCLUIR AQUI TODO O RESTANTE DO ARQUIVO ORIGINAL DO USUÁRIO
 export interface InstallPromptModalProps {
   isOpen: boolean;
   onInstall: () => void;
@@ -232,6 +228,9 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     const touchY = e.touches[0].clientY;
     const diff = touchY - startY.current;
     
+    // Se o modal estiver scrollado, não arrasta
+    if (modalRef.current && modalRef.current.scrollTop > 0) return;
+
     if (diff > 0) {
       const resistance = 1 + (diff / window.innerHeight);
       setDragOffset(diff / resistance);
