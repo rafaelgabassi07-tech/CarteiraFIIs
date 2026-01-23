@@ -370,7 +370,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
   });
 
-  // Carregamento de Destaques de Mercado para os Stories
+  // Carregamento de Destaques de Mercado para os Stories (Com persistência de horário)
   useEffect(() => {
       const loadData = async () => {
           try {
@@ -378,9 +378,35 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               const marketData = await fetchMarketOverview();
               setMarketOverview(marketData);
               
-              // Gera insights passando os dados do mercado para pegar o timestamp correto
+              // Gera insights passando os dados do mercado
+              // Se marketData.last_update vier "agora", os novos insights terão horário de agora
               const generatedInsights = analyzePortfolio(portfolio, safeInflation, marketData);
-              setInsights(generatedInsights);
+              
+              // --- CORREÇÃO DE TIMESTAMP (PERSISTÊNCIA) ---
+              // Recupera cache local para manter o horário original de criação do story no dia.
+              // O ID do story é estável por dia (ticker + tipo + data).
+              // Isso evita que o story pareça "criado agora" toda vez que a página recarrega.
+              const CACHE_KEY = 'investfiis_insights_history_v1';
+              let cachedInsights: PortfolioInsight[] = [];
+              try {
+                  const saved = localStorage.getItem(CACHE_KEY);
+                  if (saved) cachedInsights = JSON.parse(saved);
+              } catch {}
+
+              const mergedInsights = generatedInsights.map(newStory => {
+                  // Tenta encontrar o mesmo story no cache (baseado no ID estável do dia)
+                  const existing = cachedInsights.find(c => c.id === newStory.id);
+                  if (existing && existing.timestamp) {
+                      // Se encontrou, PRESERVA o timestamp original (quando o usuário viu pela 1ª vez ou quando foi criado)
+                      // Mas atualiza o conteúdo (mensagem/preço) caso tenha mudado
+                      return { ...newStory, timestamp: existing.timestamp };
+                  }
+                  return newStory;
+              });
+
+              setInsights(mergedInsights);
+              localStorage.setItem(CACHE_KEY, JSON.stringify(mergedInsights));
+
           } catch (e) {
               console.error(e);
           }
