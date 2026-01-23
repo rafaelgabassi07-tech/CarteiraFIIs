@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header, BottomNav, ChangelogModal, NotificationsModal, CloudStatusBanner, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
+import { Header, BottomNav, ChangelogModal, NotificationsModal, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { News } from './pages/News';
+import { Market } from './pages/Market';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData } from './types';
@@ -97,6 +98,7 @@ const MemoizedHome = React.memo(Home);
 const MemoizedPortfolio = React.memo(Portfolio);
 const MemoizedTransactions = React.memo(Transactions);
 const MemoizedNews = React.memo(News);
+const MemoizedMarket = React.memo(Market);
 
 const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
@@ -429,6 +431,7 @@ const App: React.FC = () => {
         const cloudTxs = (data || []).map(mapSupabaseToTx);
         setTransactions(cloudTxs);
         setCloudStatus('connected');
+        // Mantém o ícone "Salvo" visível por um momento
         setTimeout(() => setCloudStatus('hidden'), 3000);
         
         if (cloudTxs.length > 0) {
@@ -778,7 +781,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-primary-light dark:bg-primary-dark">
       <SplashScreen finishLoading={true} realProgress={100} />
-      <CloudStatusBanner status={cloudStatus} />
       
       {toast && ( 
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-sm px-4">
@@ -793,11 +795,12 @@ const App: React.FC = () => {
 
         <>
             <Header 
-                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Custódia' : currentTab === 'transactions' ? 'Ordens' : 'Notícias'} 
+                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'market' ? 'Mercado' : currentTab === 'transactions' ? 'Ordens' : 'Notícias'} 
                 showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
                 isRefreshing={isRefreshing || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
                 onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
-                notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} bannerVisible={cloudStatus !== 'hidden'} 
+                notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} 
+                cloudStatus={cloudStatus} 
                 onRefresh={currentTab === 'portfolio' ? handleManualScraperTrigger : undefined}
                 hideBorder={currentTab === 'transactions'}
             />
@@ -820,6 +823,7 @@ const App: React.FC = () => {
                 <div key={currentTab} className="anim-page-enter">
                   {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
                   {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} dividends={dividends} privacyMode={privacyMode} />}
+                  {currentTab === 'market' && <MemoizedMarket />}
                   {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                   {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
                 </div>

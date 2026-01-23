@@ -1,237 +1,172 @@
-
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, AlertTriangle, Globe, Sparkles, Building2, BarChart3, Database } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Sparkles, Building2, BarChart3, TrendingUp, Percent, ArrowUpRight } from 'lucide-react';
 import { fetchMarketOverview } from '../services/dataService';
 import { MarketOverview } from '../types';
 
-interface ExtendedMarketOverview extends MarketOverview {
-    error?: boolean;
-    message?: string;
-    cachedAt?: number;
-}
-
-const CACHE_KEY = 'investfiis_market_data_v4';
-const CACHE_DURATION = 1000 * 60 * 30; // 30 Minutos
-
-// --- Componentes UI ---
-
 const MarketBadge = ({ type }: { type: 'FII' | 'STOCK' }) => (
-    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider ${type === 'FII' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800'}`}>
-        {type === 'FII' ? 'Fundo Imobiliário' : 'Ação'}
+    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${type === 'FII' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30'}`}>
+        {type === 'FII' ? 'FII' : 'Ação'}
     </span>
 );
 
-const OpportunityCard: React.FC<{ type: 'FII' | 'STOCK'; data: any; index: number }> = ({ type, data, index }) => {
+interface AssetCardProps {
+    item: any;
+    type: 'FII' | 'STOCK';
+    index: number;
+}
+
+const AssetCard: React.FC<AssetCardProps> = ({ item, type, index }) => {
     const isFII = type === 'FII';
-    
     return (
-        <div 
-            className="flex items-center justify-between p-4 bg-surface-light dark:bg-surface-dark border border-zinc-200/40 dark:border-zinc-800/40 rounded-2xl shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all anim-slide-up relative overflow-hidden group"
+        <a 
+            href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${item.ticker.toLowerCase()}/`} 
+            target="_blank" 
+            rel="noreferrer"
+            className="flex-shrink-0 w-36 p-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all press-effect flex flex-col justify-between anim-stagger-item snap-center"
             style={{ animationDelay: `${index * 50}ms` }}
         >
-            <div className="flex items-center gap-4 relative z-10">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black border shadow-sm ${isFII ? 'bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/10 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-900/30'}`}>
-                    {data.ticker.substring(0,2)}
+            <div className="flex justify-between items-start mb-2">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[9px] font-black border ${isFII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-900/30'}`}>
+                    {item.ticker.substring(0,2)}
                 </div>
-                <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                        <h3 className="text-sm font-black text-zinc-900 dark:text-white">{data.ticker}</h3>
-                        <MarketBadge type={type} />
-                    </div>
-                    <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[140px]">{data.name}</p>
-                </div>
-            </div>
-
-            <div className="text-right relative z-10">
-                <div className="flex flex-col items-end">
-                    {isFII ? (
-                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded">
-                            DY {data.dy_12m}%
-                        </span>
-                    ) : (
-                        <span className="text-xs font-black text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded">
-                            P/L {data.p_l}
-                        </span>
-                    )}
-                    <span className="text-[10px] font-bold text-zinc-400 mt-1">
-                        P/VP {data.p_vp}
+                {item.dy_12m > 0 && (
+                    <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 px-1.5 py-0.5 rounded-md">
+                        {item.dy_12m.toFixed(1)}% DY
                     </span>
-                </div>
+                )}
             </div>
             
-            {/* Click Area */}
-            <a 
-                href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${data.ticker.toLowerCase()}/`} 
-                target="_blank" 
-                rel="noreferrer"
-                className="absolute inset-0 z-20 rounded-2xl ring-2 ring-transparent group-hover:ring-zinc-900/5 dark:group-hover:ring-white/5 transition-all"
-            />
-        </div>
+            <div>
+                <h4 className="text-sm font-black text-zinc-900 dark:text-white mb-0.5">{item.ticker}</h4>
+                <p className="text-[9px] font-medium text-zinc-400 truncate w-full">{item.name}</p>
+            </div>
+
+            <div className="mt-3 pt-2 border-t border-zinc-50 dark:border-zinc-800 flex justify-between items-end">
+                <div>
+                    <p className="text-[8px] font-bold text-zinc-400 uppercase">Preço</p>
+                    <p className="text-xs font-black text-zinc-900 dark:text-white">R$ {item.price.toFixed(2)}</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-[8px] font-bold text-zinc-400 uppercase">{isFII ? 'P/VP' : 'P/L'}</p>
+                    <p className={`text-xs font-black ${item.p_vp <= 1 ? 'text-emerald-500' : 'text-zinc-500'}`}>
+                        {isFII ? item.p_vp?.toFixed(2) : item.p_l?.toFixed(1)}
+                    </p>
+                </div>
+            </div>
+        </a>
     );
 };
 
-const SkeletonList = () => (
-    <div className="space-y-3 animate-pulse">
-        {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-20 bg-zinc-100 dark:bg-zinc-800 rounded-2xl w-full"></div>
-        ))}
-    </div>
-);
-
 export const Market: React.FC = () => {
-    const [data, setData] = useState<ExtendedMarketOverview | null>(null);
+    const [data, setData] = useState<MarketOverview | null>(null);
     const [loading, setLoading] = useState(true);
-    const [isRefetching, setIsRefetching] = useState(false);
-    const [errorMode, setErrorMode] = useState(false);
-    
-    useEffect(() => {
-        const loadCache = () => {
-            const cached = localStorage.getItem(CACHE_KEY);
-            if (cached) {
-                try {
-                    const parsed = JSON.parse(cached);
-                    const age = Date.now() - (parsed.cachedAt || 0);
-                    
-                    if (age < CACHE_DURATION) {
-                        setData(parsed);
-                        setLoading(false);
-                        return true;
-                    } else {
-                        setData(parsed);
-                        return false;
-                    }
-                } catch { return false; }
-            }
-            return false;
-        };
+    const [error, setError] = useState(false);
 
-        const isValid = loadCache();
-        fetchData(!isValid);
-    }, []);
-
-    const fetchData = async (forceLoadingState = false) => {
-        if (forceLoadingState) setLoading(true);
-        else setIsRefetching(true);
-        setErrorMode(false);
-
+    const loadData = async () => {
+        setLoading(true);
+        setError(false);
         try {
             const result = await fetchMarketOverview();
-            
             // @ts-ignore
-            if (result.error) {
-                if (!data) setErrorMode(true);
-            } else {
-                const newData = { ...result, cachedAt: Date.now() };
-                setData(newData);
-                localStorage.setItem(CACHE_KEY, JSON.stringify(newData));
-                setErrorMode(false);
-            }
+            if (result.error) throw new Error(result.message);
+            setData(result);
         } catch (e) {
-            if (!data) setErrorMode(true);
+            console.error(e);
+            setError(true);
         } finally {
             setLoading(false);
-            setIsRefetching(false);
         }
     };
 
-    if (loading && !data) {
-        return (
-            <div className="pb-32 px-4 pt-6">
-                <div className="h-8 w-40 bg-zinc-100 dark:bg-zinc-800 rounded-lg mb-6 animate-pulse"></div>
-                <SkeletonList />
-            </div>
-        );
-    }
-
-    if (errorMode && !data) {
-        return (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center anim-fade-in">
-                <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/10 rounded-3xl flex items-center justify-center text-rose-500 mb-6 border border-rose-100 dark:border-rose-900/30">
-                    <AlertTriangle className="w-10 h-10" strokeWidth={1.5} />
-                </div>
-                <h2 className="text-xl font-black text-zinc-900 dark:text-white mb-2">Dados Indisponíveis</h2>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 max-w-xs leading-relaxed">
-                    Não foi possível conectar ao banco de dados de mercado. Tente novamente.
-                </p>
-                <button 
-                    onClick={() => fetchData(true)}
-                    className="px-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center gap-2"
-                >
-                    <RefreshCw className="w-4 h-4" /> Tentar Novamente
-                </button>
-            </div>
-        );
-    }
+    useEffect(() => {
+        loadData();
+    }, []);
 
     return (
         <div className="pb-32 min-h-screen">
-            {/* Header Simples */}
-            <div className="sticky top-20 z-40 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all">
-                 <div className="px-4 py-3 flex items-center justify-between max-w-xl mx-auto">
+            {/* Header Sticky Sólido */}
+            <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-3 mb-6">
+                <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
-                            Radar de Oportunidades
-                        </h1>
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
-                            {isRefetching ? (
-                                <><RefreshCw className="w-3 h-3 animate-spin" /> Atualizando...</>
-                            ) : (
-                                <><Database className="w-3 h-3 text-emerald-500" /> Dados B3</>
-                            )}
-                        </p>
+                        <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
+                            Mercado <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" />
+                        </h2>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Oportunidades & Destaques</p>
                     </div>
-                    {data?.sentiment_summary && (
-                        <div className="px-3 py-1.5 rounded-xl border flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-                            <span className="text-[9px] font-black uppercase tracking-wider max-w-[100px] truncate text-right">
-                                {data.sentiment_summary}
-                            </span>
-                        </div>
-                    )}
+                    <button 
+                        onClick={loadData} 
+                        disabled={loading}
+                        className={`w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center justify-center transition-all ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
+                    >
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
                 </div>
             </div>
 
-            <div className="px-4 pt-6 space-y-8 max-w-xl mx-auto">
-                
-                {/* 1. Top FIIs */}
-                {data?.highlights.discounted_fiis && data.highlights.discounted_fiis.length > 0 && (
-                    <div className="anim-fade-in">
-                        <div className="flex items-center gap-2 mb-4 px-1">
-                            <Building2 className="w-4 h-4 text-indigo-500" />
-                            <h3 className="text-xs font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">FIIs (Maiores DY, P/VP &lt; 1.1)</h3>
+            {loading && !data ? (
+                <div className="space-y-8 animate-pulse">
+                    {[1, 2].map(i => (
+                        <div key={i} className="space-y-3">
+                            <div className="h-4 w-32 bg-zinc-200 dark:bg-zinc-800 rounded ml-1"></div>
+                            <div className="flex gap-3 overflow-hidden">
+                                {[1, 2, 3].map(j => (
+                                    <div key={j} className="w-36 h-40 bg-zinc-200 dark:bg-zinc-800 rounded-2xl flex-shrink-0"></div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="space-y-3">
-                            {data.highlights.discounted_fiis.map((asset, i) => (
-                                <OpportunityCard key={`fii-${i}`} type="FII" data={asset} index={i} />
-                            ))}
+                    ))}
+                </div>
+            ) : error ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
+                    <AlertTriangle className="w-12 h-12 mb-3 text-zinc-300" strokeWidth={1} />
+                    <p className="text-xs font-bold text-zinc-500 mb-4">Falha ao carregar dados do mercado.</p>
+                    <button onClick={loadData} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 press-effect">
+                        Tentar Novamente
+                    </button>
+                </div>
+            ) : data ? (
+                <div className="space-y-8">
+                    
+                    {/* Seção 1: FIIs High Yield & Descontados */}
+                    {data.highlights.discounted_fiis.length > 0 && (
+                        <div className="anim-slide-up">
+                            <div className="flex items-center gap-2 px-1 mb-3">
+                                <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                                    <Building2 className="w-4 h-4" />
+                                </div>
+                                <h3 className="text-sm font-black text-zinc-900 dark:text-white">FIIs: Renda & Desconto</h3>
+                            </div>
+                            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-1">
+                                {data.highlights.discounted_fiis.map((item, idx) => (
+                                    <AssetCard key={idx} item={item} type="FII" index={idx} />
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* 2. Top Stocks */}
-                {data?.highlights.discounted_stocks && data.highlights.discounted_stocks.length > 0 && (
-                    <div className="anim-fade-in" style={{ animationDelay: '200ms' }}>
-                        <div className="flex items-center gap-2 mb-4 px-1">
-                            <BarChart3 className="w-4 h-4 text-sky-500" />
-                            <h3 className="text-xs font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Ações (Menores P/L, P/VP &lt; 2)</h3>
+                    {/* Seção 2: Ações Baratas (P/L Baixo) */}
+                    {data.highlights.discounted_stocks.length > 0 && (
+                        <div className="anim-slide-up" style={{ animationDelay: '100ms' }}>
+                            <div className="flex items-center gap-2 px-1 mb-3">
+                                <div className="p-1.5 rounded-lg bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400">
+                                    <TrendingUp className="w-4 h-4" />
+                                </div>
+                                <h3 className="text-sm font-black text-zinc-900 dark:text-white">Ações Descontadas</h3>
+                            </div>
+                            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory px-1">
+                                {data.highlights.discounted_stocks.map((item, idx) => (
+                                    <AssetCard key={idx} item={item} type="STOCK" index={idx} />
+                                ))}
+                            </div>
                         </div>
-                        <div className="space-y-3">
-                            {data.highlights.discounted_stocks.map((asset, i) => (
-                                <OpportunityCard key={`stock-${i}`} type="STOCK" data={asset} index={i + 3} />
-                            ))}
-                        </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Footer Sources */}
-                {data?.sources && (
-                    <div className="pt-8 pb-4 text-center opacity-60">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[9px] font-bold text-zinc-500">
-                            <Globe className="w-3 h-3" />
-                            Dados agregados via Scrapers (Investidor10/StatusInvest)
-                        </div>
+                    <div className="px-4 py-6 text-center opacity-60">
+                        <p className="text-[10px] text-zinc-400 mb-1">Dados fornecidos pelo Scraper (Investidor10)</p>
+                        <p className="text-[9px] text-zinc-500">Atualizado em: {new Date(data.last_update).toLocaleString()}</p>
                     </div>
-                )}
-            </div>
+                </div>
+            ) : null}
         </div>
     );
 };

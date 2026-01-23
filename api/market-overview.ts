@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // 1. Buscar Ações descontadas (P/L > 0 e baixo, P/VP razoável)
         const { data: stocks, error: stockError } = await supabase
             .from('ativos_metadata')
-            .select('ticker, segment, pl, pvp, current_price')
+            .select('ticker, segment, pl, pvp, current_price, dy_12m')
             .eq('type', 'ACAO')
             .gt('pl', 0.1) // Filtra P/L negativo ou zero
             .lt('pl', 15)  // P/L atrativo
@@ -45,15 +45,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (fiiError) throw fiiError;
 
         // Formatação
-        const discountedStocks = (stocks || []).slice(0, 6).map(s => ({
+        const discountedStocks = (stocks || []).slice(0, 10).map(s => ({
             ticker: s.ticker,
             name: s.segment || 'Ação',
             price: s.current_price || 0,
             p_l: s.pl,
-            p_vp: s.pvp
+            p_vp: s.pvp,
+            dy_12m: s.dy_12m
         }));
 
-        const discountedFiis = (fiis || []).slice(0, 6).map(f => ({
+        const highYieldFiis = (fiis || []).slice(0, 10).map(f => ({
             ticker: f.ticker,
             name: f.segment || 'FII',
             price: f.current_price || 0,
@@ -66,15 +67,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             sentiment_summary: "Análise Quantitativa",
             last_update: new Date().toISOString(),
             highlights: {
-                discounted_fiis: discountedFiis,
+                discounted_fiis: highYieldFiis, // Reusing high yield logic for FIIs as discount logic is similar (PVP~1)
                 discounted_stocks: discountedStocks,
-                top_gainers: [],
+                top_gainers: [], // Cannot compute without historical data easily
                 top_losers: [],
-                high_dividend_yield: []
+                high_dividend_yield: highYieldFiis
             },
             sources: [
-                { title: 'Investidor10 (Scraper)', uri: 'https://investidor10.com.br' },
-                { title: 'Brapi (Cotações)', uri: 'https://brapi.dev' }
+                { title: 'Investidor10 (Scraper)', uri: 'https://investidor10.com.br' }
             ]
         };
 

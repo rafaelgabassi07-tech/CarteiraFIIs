@@ -1,3 +1,4 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Parser from 'rss-parser';
 
@@ -60,8 +61,22 @@ export default async function handler(request: VercelRequest, response: VercelRe
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
+    // Algoritmo simples de similaridade (Jaccard Index de palavras)
+    // Usado para remover notícias duplicadas de fontes diferentes
+    function isSimilar(title1: string, title2: string): boolean {
+        const tokenize = (str: string) => new Set(str.toLowerCase().replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2));
+        const set1 = tokenize(title1);
+        const set2 = tokenize(title2);
+        
+        const intersection = new Set([...set1].filter(x => set2.has(x)));
+        const union = new Set([...set1, ...set2]);
+        
+        const similarity = intersection.size / union.size;
+        return similarity > 0.4; // Threshold de 40% de similaridade
+    }
+
     // Função auxiliar para limpar e validar itens
-    const processItems = (items: any[], seenTitles: Set<string>) => {
+    const processItems = (items: any[], seenTitles: string[]) => {
         return items.map((item) => {
             let rawSourceName = '';
             let cleanTitle = item.title || 'Sem título';
@@ -105,9 +120,11 @@ export default async function handler(request: VercelRequest, response: VercelRe
             // Mas para garantir qualidade, filtramos apenas knownSources por enquanto.
             if (!known) return null; 
 
-            // Verificação de duplicidade de título exato
-            if (seenTitles.has(cleanTitle)) return null;
-            seenTitles.add(cleanTitle);
+            // Verificação de duplicidade SEMÂNTICA
+            const isDuplicate = seenTitles.some(seen => isSimilar(seen, cleanTitle));
+            if (isDuplicate) return null;
+            
+            seenTitles.push(cleanTitle);
 
             return {
                 title: cleanTitle,
@@ -131,7 +148,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
     try {
         const { q } = request.query;
-        const seenTitles = new Set<string>();
+        // Agora usamos array de strings para iterar e comparar similaridade
+        const seenTitles: string[] = [];
 
         // MODO BUSCA (Se 'q' foi passado na URL)
         if (q && typeof q === 'string') {
