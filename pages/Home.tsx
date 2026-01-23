@@ -309,7 +309,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
     if (insights.length === 0) return null;
 
     return (
-        <div className="mb-6 -mx-4 overflow-x-auto no-scrollbar pl-4 pb-2 flex gap-4 snap-x">
+        <div className="mt-2 mb-6 -mx-4 overflow-x-auto no-scrollbar pl-4 pb-2 flex gap-4 snap-x">
             {insights.map((item, index) => {
                 const isRead = readStories.has(item.id);
                 
@@ -326,7 +326,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
                         onClick={() => setActiveIndex(index)}
                         className="flex flex-col items-center gap-1.5 snap-start group"
                     >
-                        <div className={`w-[68px] h-[68px] rounded-full p-[2px] ${isRead ? 'bg-zinc-200 dark:bg-zinc-800' : `bg-gradient-to-tr ${ringColors}`}`}>
+                        <div className={`w-[60px] h-[60px] rounded-full p-[2px] ${isRead ? 'bg-zinc-200 dark:bg-zinc-800' : `bg-gradient-to-tr ${ringColors}`}`}>
                             <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[2px] relative overflow-hidden flex items-center justify-center">
                                 <div className="w-full h-full bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center relative overflow-hidden">
                                     {/* Logo Background ou Ícone */}
@@ -336,15 +336,15 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
                                         </div>
                                     ) : null}
                                     
-                                    <Icon className={`w-6 h-6 relative z-10 ${isRead ? 'text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`} />
+                                    <Icon className={`w-5 h-5 relative z-10 ${isRead ? 'text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`} />
                                     
                                     {item.relatedTicker && (
-                                        <span className="absolute bottom-2 text-[8px] font-black uppercase text-zinc-400 relative z-10">{item.relatedTicker.substring(0,4)}</span>
+                                        <span className="absolute bottom-1.5 text-[7px] font-black uppercase text-zinc-400 relative z-10">{item.relatedTicker.substring(0,4)}</span>
                                     )}
                                 </div>
                             </div>
                         </div>
-                        <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 w-16 truncate text-center leading-tight">
+                        <span className="text-[9px] font-medium text-zinc-600 dark:text-zinc-400 w-16 truncate text-center leading-tight">
                             {item.title}
                         </span>
                     </button>
@@ -625,8 +625,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </div>
 
-      {/* ... (Resto do arquivo permanece o mesmo) ... */}
-      {/* MANTENHA TODO O CÓDIGO RESTANTE AQUI (Botão Agenda, Proventos, etc.) */}
       {/* 2. BOTÃO AGENDA */}
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
         <button onClick={() => setShowAgendaModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>
