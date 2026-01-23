@@ -41,27 +41,28 @@ interface AssetCardProps {
 const AssetCard: React.FC<AssetCardProps> = ({ item, type, metricLabel, metricValue }) => {
     let accentColor = 'text-zinc-500';
     let bgBadge = 'bg-zinc-100 dark:bg-zinc-800';
+    let borderClass = 'border-zinc-100 dark:border-zinc-800';
     
-    if (type === 'up') { accentColor = 'text-emerald-500'; bgBadge = 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'; }
-    if (type === 'down') { accentColor = 'text-rose-500'; bgBadge = 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'; }
-    if (type === 'dividend') { accentColor = 'text-amber-500'; bgBadge = 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'; }
-    if (type === 'discount') { accentColor = 'text-indigo-500'; bgBadge = 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'; }
+    if (type === 'up') { accentColor = 'text-emerald-500'; bgBadge = 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'; borderClass = 'border-emerald-100 dark:border-emerald-900/30'; }
+    if (type === 'down') { accentColor = 'text-rose-500'; bgBadge = 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'; borderClass = 'border-rose-100 dark:border-rose-900/30'; }
+    if (type === 'dividend') { accentColor = 'text-amber-500'; bgBadge = 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'; borderClass = 'border-amber-100 dark:border-amber-900/30'; }
+    if (type === 'discount') { accentColor = 'text-indigo-500'; bgBadge = 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'; borderClass = 'border-indigo-100 dark:border-indigo-900/30'; }
 
     return (
-        <a href={`https://investidor10.com.br/${item.ticker.endsWith('11') || item.ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${item.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group">
+        <a href={`https://investidor10.com.br/${item.ticker.endsWith('11') || item.ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${item.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className={`flex items-center justify-between p-3 bg-white dark:bg-zinc-900 border ${borderClass} rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all press-effect group shadow-sm`}>
             <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-black border ${bgBadge} dark:border-transparent`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border border-transparent ${bgBadge}`}>
                     {item.ticker.substring(0,2)}
                 </div>
                 <div>
-                    <span className="text-xs font-black text-zinc-900 dark:text-white block">{item.ticker}</span>
-                    <span className="text-[10px] text-zinc-400 font-medium block truncate max-w-[100px]">{item.name}</span>
+                    <span className="text-xs font-black text-zinc-900 dark:text-white block tracking-tight">{item.ticker}</span>
+                    <span className="text-[9px] text-zinc-400 font-medium block truncate max-w-[90px]">{item.name}</span>
                 </div>
             </div>
             <div className="text-right">
                 <span className="text-xs font-bold text-zinc-900 dark:text-white block">R$ {item.price.toFixed(2)}</span>
-                <div className="flex items-center justify-end gap-1 mt-0.5">
-                    {metricLabel && <span className="text-[9px] text-zinc-400 uppercase font-bold">{metricLabel}</span>}
+                <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                    {metricLabel && <span className="text-[8px] text-zinc-400 uppercase font-bold tracking-wider">{metricLabel}</span>}
                     <span className={`text-[10px] font-black ${accentColor}`}>
                         {metricValue || (item.variation_percent ? `${item.variation_percent > 0 ? '+' : ''}${item.variation_percent.toFixed(2)}%` : '-')}
                     </span>
@@ -114,12 +115,12 @@ export const Market: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl relative">
+                <div className="flex bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-xl relative">
                     <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`} style={{ left: '4px', transform: `translateX(${activeTab === 'fiis' ? '0%' : '100%'})` }}></div>
-                    <button onClick={() => setActiveTab('fiis')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${activeTab === 'fiis' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>
+                    <button onClick={() => setActiveTab('fiis')} className={`relative z-10 flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${activeTab === 'fiis' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`}>
                         <Building2 className="w-3.5 h-3.5" /> FIIs
                     </button>
-                    <button onClick={() => setActiveTab('stocks')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${activeTab === 'stocks' ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>
+                    <button onClick={() => setActiveTab('stocks')} className={`relative z-10 flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${activeTab === 'stocks' ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>
                         <TrendingUp className="w-3.5 h-3.5" /> Ações
                     </button>
                 </div>
@@ -139,20 +140,20 @@ export const Market: React.FC = () => {
                     <p className="text-xs font-bold text-zinc-500">Erro ao carregar dados.</p>
                 </div>
             ) : currentData ? (
-                <div className="space-y-6 anim-fade-in px-1">
+                <div className="space-y-8 anim-fade-in px-1">
                     
                     {/* Seção 1: Altas e Baixas */}
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 flex items-center gap-1.5 mb-1">
+                        <div className="space-y-3">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 flex items-center gap-1.5">
                                 <TrendingUp className="w-3 h-3 text-emerald-500" /> Maiores Altas
                             </h3>
                             {currentData.gainers.length > 0 ? currentData.gainers.map((item, i) => (
                                 <AssetCard key={i} item={item} type="up" />
                             )) : <p className="text-[9px] text-zinc-400 px-2 py-4 text-center bg-zinc-50 dark:bg-zinc-900 rounded-xl">Sem dados</p>}
                         </div>
-                        <div className="space-y-2">
-                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 flex items-center gap-1.5 mb-1">
+                        <div className="space-y-3">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 flex items-center gap-1.5">
                                 <TrendingDown className="w-3 h-3 text-rose-500" /> Maiores Baixas
                             </h3>
                             {currentData.losers.length > 0 ? currentData.losers.map((item, i) => (
@@ -161,35 +162,15 @@ export const Market: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Seção 2: Maiores Dividendos */}
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between px-1 mb-1">
-                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <DollarSign className="w-3 h-3 text-amber-500" /> Top Dividendos (12m)
-                            </h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            {currentData.high_yield.map((item, i) => (
-                                <AssetCard 
-                                    key={i} 
-                                    item={item} 
-                                    type="dividend" 
-                                    metricLabel="DY"
-                                    metricValue={`${item.dy_12m?.toFixed(1)}%`}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Seção 3: Oportunidades / Valor */}
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between px-1 mb-1">
+                    {/* Seção 2: Oportunidades / Valor */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between px-1">
                             <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
                                 <Percent className="w-3 h-3 text-indigo-500" /> 
                                 {activeTab === 'fiis' ? 'Descontados (P/VP)' : 'Descontados (P/L)'}
                             </h3>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-3">
                             {currentData.discounted.map((item, i) => (
                                 <AssetCard 
                                     key={i} 
@@ -197,6 +178,26 @@ export const Market: React.FC = () => {
                                     type="discount" 
                                     metricLabel={activeTab === 'fiis' ? 'P/VP' : 'P/L'}
                                     metricValue={activeTab === 'fiis' ? item.p_vp?.toFixed(2) : item.p_l?.toFixed(1)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Seção 3: Maiores Dividendos */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between px-1">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <DollarSign className="w-3 h-3 text-amber-500" /> Top Dividendos (12m)
+                            </h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            {currentData.high_yield.map((item, i) => (
+                                <AssetCard 
+                                    key={i} 
+                                    item={item} 
+                                    type="dividend" 
+                                    metricLabel="DY"
+                                    metricValue={`${item.dy_12m?.toFixed(1)}%`}
                                 />
                             ))}
                         </div>

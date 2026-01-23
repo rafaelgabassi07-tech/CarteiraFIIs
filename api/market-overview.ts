@@ -17,7 +17,7 @@ const HEADERS = {
     'Pragma': 'no-cache'
 };
 
-// Lista de Fallback
+// Lista de Fallback para garantir dados caso o scrape falhe
 const POPULAR_ASSETS = [
     { ticker: 'MXRF11', type: 'fiis' }, { ticker: 'HGLG11', type: 'fiis' }, 
     { ticker: 'VISC11', type: 'fiis' }, { ticker: 'XPLG11', type: 'fiis' },
@@ -34,7 +34,7 @@ const parseBrFloat = (str: string) => {
     return isNaN(float) ? 0 : float;
 };
 
-// Helper para identificar FIIs (Final 11 ou 11B)
+// Helper crítico para separar FIIs de Ações
 const isFiiTicker = (t: string) => t.toUpperCase().endsWith('11') || t.toUpperCase().endsWith('11B');
 
 async function scrapeSingleAsset(ticker: string, type: string) {
@@ -81,7 +81,8 @@ async function scrapeHome() {
                 const variation = parseBrFloat($(el).find('.change').text());
                 if (ticker && price > 0) items.push({ ticker, name, price, variation_percent: variation });
             });
-            // Fallback table structure check
+            
+            // Fallback se o layout mudar
             if (items.length === 0) {
                 $(selector).find('tr').slice(1).each((_, tr) => {
                     const tds = $(tr).find('td');
@@ -93,7 +94,7 @@ async function scrapeHome() {
                     }
                 });
             }
-            return items; // Retorna tudo para filtrar depois
+            return items; 
         };
 
         return { 
@@ -164,7 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             scrapeRanking('acoes')
         ]);
 
-        // Fallback Logic
+        // Fallback Logic se rankings vierem vazios
         const hasData = fiisRaw.length > 5 && stocksRaw.length > 5;
         if (!hasData) {
             const fallbackResults = await Promise.all(
@@ -175,34 +176,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             stocksRaw = validFallback.filter(a => POPULAR_ASSETS.find(p => p.ticker === a.ticker)?.type === 'acoes');
         }
 
-        // --- SEPARAÇÃO ESTRITA DE ALTAS/BAIXAS ---
+        // --- SEPARAÇÃO INTELIGENTE DE ALTAS/BAIXAS ---
+        // Filtra a lista mista da home baseada no padrão do ticker
         const fiiGainers = homeData.gainers.filter(i => isFiiTicker(i.ticker)).slice(0, 5);
         const fiiLosers = homeData.losers.filter(i => isFiiTicker(i.ticker)).slice(0, 5);
         
         const stockGainers = homeData.gainers.filter(i => !isFiiTicker(i.ticker)).slice(0, 5);
         const stockLosers = homeData.losers.filter(i => !isFiiTicker(i.ticker)).slice(0, 5);
 
-        // --- FILTRAGEM DE RANKINGS ---
+        // --- FILTRAGEM DE RANKINGS (Melhores Pagadores / Descontados) ---
 
         // 1. FIIs
         const highYieldFIIs = [...fiisRaw]
-            .filter(f => f.dy_12m > 9 && f.dy_12m < 25 && f.p_vp >= 0.8)
+            .filter(f => f.dy_12m > 8 && f.dy_12m < 20 && f.p_vp >= 0.8) // Filtra DY absurdo ou erro
             .sort((a, b) => b.dy_12m - a.dy_12m)
             .slice(0, 6);
 
         const discountedFIIs = [...fiisRaw]
-            .filter(f => f.p_vp < 0.98 && f.p_vp > 0.5 && f.dy_12m > 6)
+            .filter(f => f.p_vp < 0.95 && f.p_vp > 0.5 && f.dy_12m > 6)
             .sort((a, b) => a.p_vp - b.p_vp)
             .slice(0, 6);
 
         // 2. Ações
         const discountedStocks = [...stocksRaw]
-            .filter(s => s.p_l > 1 && s.p_l < 12 && s.p_vp < 3)
+            .filter(s => s.p_l > 2 && s.p_l < 10 && s.p_vp < 2)
             .sort((a, b) => a.p_l - b.p_l)
             .slice(0, 6);
 
         const highYieldStocks = [...stocksRaw]
-            .filter(s => s.dy_12m > 6 && s.dy_12m < 30)
+            .filter(s => s.dy_12m > 6 && s.dy_12m < 25)
             .sort((a, b) => b.dy_12m - a.dy_12m)
             .slice(0, 6);
 
