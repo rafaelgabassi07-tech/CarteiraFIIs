@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, Building2, TrendingUp, TrendingDown, DollarSign, X, ExternalLink, Target, Search, ArrowRight, Filter, ArrowLeft, Scale, Coins, Award, ArrowUpRight, ArrowDownRight, BarChart2, PieChart, Rocket, Users, Activity, Loader2, Calendar, Briefcase, Zap, Wallet, Banknote } from 'lucide-react';
 import { fetchMarketOverview } from '../services/dataService';
-import { SwipeableModal } from '../components/Layout';
-import { AssetPosition, AssetType, DividendReceipt } from '../types';
+import { SwipeableModal, UpdateReportModal } from '../components/Layout';
+import { AssetPosition, AssetType, DividendReceipt, ScrapeResult, UpdateReportData } from '../types';
 import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // --- TYPES ---
@@ -500,14 +500,53 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
     const [selectedRanking, setSelectedRanking] = useState<RankingConfig | null>(null);
     const [selectedAsset, setSelectedAsset] = useState<MarketAsset | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // --- REPORT STATE ---
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [lastReport, setLastReport] = useState<UpdateReportData | null>(null);
 
-    const loadData = async () => {
+    const loadData = async (isManual = false) => {
         setLoading(true);
         if (onLoadingChange) onLoadingChange(true);
         try {
             const result = await fetchMarketOverview();
             // @ts-ignore
             setData(result);
+            
+            if (isManual && result && !result.error) {
+                 const uniqueMap = new Map<string, MarketAsset>();
+                 
+                 const add = (arr: MarketAsset[]) => arr.forEach(a => uniqueMap.set(a.ticker, a));
+                 
+                 if (result.highlights) {
+                     add(result.highlights.fiis.gainers);
+                     add(result.highlights.fiis.losers);
+                     add(result.highlights.fiis.high_yield);
+                     add(result.highlights.fiis.discounted);
+                     add(result.highlights.stocks.gainers);
+                     add(result.highlights.stocks.losers);
+                     add(result.highlights.stocks.high_yield);
+                     add(result.highlights.stocks.discounted);
+                 }
+                 
+                 const results: ScrapeResult[] = Array.from(uniqueMap.values()).map(asset => ({
+                     ticker: asset.ticker,
+                     status: 'success',
+                     sourceMap: { price: 'Investidor10', fundamentals: 'Investidor10' },
+                     details: {
+                         price: asset.price,
+                         dy: asset.dy_12m,
+                         pvp: asset.p_vp
+                     }
+                 }));
+                 
+                 setLastReport({
+                     results,
+                     inflationRate: 0,
+                     totalDividendsFound: 0
+                 });
+                 setShowUpdateModal(true);
+            }
         } catch (e) { console.error(e); } finally { 
             setLoading(false); 
             if (onLoadingChange) onLoadingChange(false);
@@ -550,7 +589,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
 
     useEffect(() => {
         if (refreshSignal && refreshSignal > 0) {
-            loadData();
+            loadData(true);
         }
     }, [refreshSignal]);
 
@@ -708,6 +747,14 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
             <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
                 {selectedAsset && <AssetDetailModal asset={selectedAsset} onClose={() => setSelectedAsset(null)} />}
             </SwipeableModal>
+
+            {lastReport && (
+                <UpdateReportModal 
+                    isOpen={showUpdateModal} 
+                    onClose={() => setShowUpdateModal(false)} 
+                    results={lastReport} 
+                />
+            )}
         </div>
     );
 };
