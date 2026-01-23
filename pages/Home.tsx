@@ -2,11 +2,13 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem, MarketOverview } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper, ArrowLeft, ArrowRight } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper, ArrowLeft, ArrowRight, Clock } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
 import { fetchMarketOverview } from '../services/dataService';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -183,6 +185,9 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
 
     const Icon = getTypeIcon(currentStory.type);
     const colorClass = getTypeColor(currentStory.type);
+    
+    // Calcula tempo relativo (ex: Há 2 horas)
+    const timeAgo = currentStory.timestamp ? formatDistanceToNow(currentStory.timestamp, { addSuffix: true, locale: ptBR }) : 'Agora';
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
@@ -206,7 +211,12 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${colorClass}`}>
                         <Icon className="w-4 h-4 text-white" />
                     </div>
-                    <span className="font-bold text-sm">{currentStory.title}</span>
+                    <div>
+                        <span className="font-bold text-sm block">{currentStory.title}</span>
+                        <span className="text-[10px] text-white/60 font-medium flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {timeAgo}
+                        </span>
+                    </div>
                 </div>
                 <button onClick={onClose}><X className="w-6 h-6" /></button>
             </div>
@@ -339,6 +349,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [insights, setInsights] = useState<PortfolioInsight[]>([]);
   const [marketOverview, setMarketOverview] = useState<MarketOverview | undefined>(undefined);
   
+  // Leitura inicial do LocalStorage
   const [readStories, setReadStories] = useState<Set<string>>(() => {
       try {
           const saved = localStorage.getItem('investfiis_read_stories');
@@ -365,6 +376,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       loadData();
   }, [portfolio, inflationRate]);
 
+  // Função atualizada para persistir leitura
   const markAsRead = useCallback((id: string) => {
       setReadStories(prev => {
           if (prev.has(id)) return prev;
@@ -699,6 +711,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </div>
 
       {/* --- MODAIS DE DETALHES --- */}
+      {/* ... (Modais Mantidos) ... */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex items-center gap-4 mb-8 px-2">

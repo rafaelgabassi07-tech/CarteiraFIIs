@@ -12,6 +12,7 @@ export const analyzePortfolio = (
 ): PortfolioInsight[] => {
     const insights: PortfolioInsight[] = [];
     const now = Date.now();
+    const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD para ID estável no dia
     
     // Se não houver dados de mercado, não gera stories
     if (!marketData || marketData.error) return [];
@@ -29,8 +30,12 @@ export const analyzePortfolio = (
         const isInWallet = portfolio.some(p => p.ticker === asset.ticker);
         const finalScore = scoreBase + (isInWallet ? 20 : 0); // Prioriza se o usuário tem na carteira
         
+        // ID Determinístico: Ticker + Tipo + Data. 
+        // Garante que se o usuário viu hoje, não vê de novo, mas vê amanhã se persistir.
+        const stableId = `story-${asset.ticker}-${type}-${todayStr}`;
+
         insights.push({
-            id: `story-${asset.ticker}-${type}-${now}`,
+            id: stableId,
             type,
             title,
             message,
@@ -38,7 +43,7 @@ export const analyzePortfolio = (
             score: finalScore,
             timestamp: now,
             // URL para análise externa se quiser
-            url: `https://investidor10.com.br/${asset.ticker.endsWith('11') ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`
+            url: `https://investidor10.com.br/${asset.ticker.endsWith('11') || asset.ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`
         });
     };
 

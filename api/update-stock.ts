@@ -137,9 +137,6 @@ const KEY_MAP: Record<string, string> = {
     'numerodecotistas': 'num_cotistas', 'cotistas': 'num_cotistas', 'numcotistas': 'num_cotistas'
 };
 
-// Chaves que devem permanecer como STRING para não perder "M" (Milhões) ou "B" (Bilhões)
-const STRING_KEYS = new Set(['liquidez', 'val_mercado', 'patrimonio_liquido', 'tipo_gestao', 'segmento', 'taxa_adm', 'num_cotistas']);
-
 // ---------------------------------------------------------
 // SCRAPER ENGINE
 // ---------------------------------------------------------
@@ -169,11 +166,13 @@ async function scrapeInvestidor10(ticker: string) {
         const $ = cheerio.load(html);
         const extracted: any = {};
 
-        // 1. Extração Estruturada (Cards Principais)
-        // Busca cards do topo (Cotação, DY, P/VP, Liquidez, etc)
+        // 1. Extração Estruturada (Cards Principais) - MAIS ROBUSTO
         $('div._card').each((_, card) => {
-            const header = $(card).find('div._card-header span').text().trim() || $(card).find('div._card-header').text().trim();
-            const value = $(card).find('div._card-body span').text().trim() || $(card).find('div._card-body').text().trim();
+            let header = $(card).find('div._card-header span').text().trim() || $(card).find('div._card-header').text().trim();
+            // Fallback para título dentro do body se header vazio
+            if (!header) header = $(card).find('.title').text().trim();
+            
+            let value = $(card).find('div._card-body span').text().trim() || $(card).find('div._card-body').text().trim();
             
             if (header && value) {
                 const key = normalizeKey(header);
@@ -182,9 +181,8 @@ async function scrapeInvestidor10(ticker: string) {
         });
 
         // 2. Extração de Tabela de Indicadores (Muitos dados de ações ficam aqui)
-        // Refinado para buscar o texto do .value mesmo sem span
         $('#table-indicators .cell').each((_, cell) => {
-            const name = $(cell).find('.name').text().trim();
+            const name = $(cell).find('.name').text().trim(); // Ex: "P/L", "P/VP"
             const valueEl = $(cell).find('.value');
             const value = valueEl.find('span').first().text().trim() || valueEl.text().trim();
             
@@ -196,29 +194,26 @@ async function scrapeInvestidor10(ticker: string) {
 
         // 3. Extração Específica para FIIs (Bloco de Informações Básicas e Características)
         // Varre tabelas de dados básicos onde Patrimônio, Cotistas e Segmento costumam ficar
-        $('#table-basic-data tr, .basic-data tr').each((_, tr) => {
-             const tds = $(tr).find('td');
-             if (tds.length >= 2) {
-                 const label = $(tds[0]).text().trim();
-                 const val = $(tds[1]).text().trim();
-                 if (label && val) {
-                     const key = normalizeKey(label);
-                     if (KEY_MAP[key]) extracted[KEY_MAP[key]] = val;
-                 }
+        // Seletores: #table-basic-data ou divs com classe .data-item
+        $('div#table-basic-data .cell').each((_, cell) => {
+             const label = $(cell).find('.name').text().trim();
+             const val = $(cell).find('.value, .desc').text().trim();
+             if (label && val) {
+                 const key = normalizeKey(label);
+                 if (KEY_MAP[key]) extracted[KEY_MAP[key]] = val;
              }
         });
-        
-        // Fallback genérico para cards que não foram pegos acima (divs soltas de dados)
-        if (!extracted.vacancia && finalType === 'FII') {
-             $('div.data-item, div.item').each((_, item) => {
-                 const label = $(item).find('.label, .title').text().trim();
-                 const val = $(item).find('.data, .value').text().trim();
+
+        // Fallback genérico para cards soltos (vacância, patrimônio)
+        // O seletor .data-item costuma conter "Vacância Física", "Patrimônio Líquido" em FIIs
+        $('.data-item, .item').each((_, item) => {
+             const label = $(item).find('.label, .title').text().trim();
+             const val = $(item).find('.data, .value').text().trim();
+             if (label && val) {
                  const key = normalizeKey(label);
-                 if (key.includes('vacancia')) extracted['vacancia'] = val;
-                 // Prioriza busca manual de patrimônio se faltou
-                 if (key.includes('patrimonio') && !extracted.patrimonio_liquido) extracted['patrimonio_liquido'] = val;
-             });
-        }
+                 if (KEY_MAP[key]) extracted[KEY_MAP[key]] = val;
+             }
+        });
 
         // 4. Extração de Segmento Robusta (Breadcrumbs)
         let segmento = '';
@@ -235,51 +230,56 @@ async function scrapeInvestidor10(ticker: string) {
 
         // 5. Extração de Dividendos (TABELA HISTÓRICA COMPLETA)
         const dividends: any[] = [];
-        const tableSelector = '#table-dividends-history'; // ID padrão do I10
+        // Tenta tabela com ID específico primeiro, depois genérica
+        const tableSelectors = ['#table-dividends-history', 'table#dividends-history'];
         
-        // Se a tabela específica existir, usa ela
-        if ($(tableSelector).length > 0) {
-            const rows = $(tableSelector).find('tbody tr');
-            rows.each((_, tr) => {
-                const cols = $(tr).find('td');
-                if (cols.length >= 4) {
-                    const typeRaw = $(cols[0]).text().trim().toLowerCase();
-                    const dateComRaw = $(cols[1]).text().trim();
-                    const datePayRaw = $(cols[2]).text().trim();
-                    const valRaw = $(cols[3]).text().trim();
+        let foundTable = false;
+        for (const sel of tableSelectors) {
+            if ($(sel).length > 0) {
+                $(sel).find('tbody tr').each((_, tr) => {
+                    const cols = $(tr).find('td');
+                    if (cols.length >= 4) {
+                        const typeRaw = $(cols[0]).text().trim().toLowerCase();
+                        const dateComRaw = $(cols[1]).text().trim();
+                        const datePayRaw = $(cols[2]).text().trim();
+                        const valRaw = $(cols[3]).text().trim();
 
-                    const dateCom = parseToISODate(dateComRaw);
-                    const datePay = parseToISODate(datePayRaw);
-                    const val = parseValue(valRaw);
+                        const dateCom = parseToISODate(dateComRaw);
+                        const datePay = parseToISODate(datePayRaw);
+                        const val = parseValue(valRaw);
 
-                    if (dateCom && val > 0) {
-                        let type = 'DIV';
-                        if (typeRaw.includes('juros') || typeRaw.includes('jcp')) type = 'JCP';
-                        else if (typeRaw.includes('rend')) type = 'REND';
-                        else if (typeRaw.includes('amort')) type = 'AMORT';
+                        if (dateCom && val > 0) {
+                            let type = 'DIV';
+                            if (typeRaw.includes('juros') || typeRaw.includes('jcp')) type = 'JCP';
+                            else if (typeRaw.includes('rend')) type = 'REND';
+                            else if (typeRaw.includes('amort')) type = 'AMORT';
 
-                        dividends.push({
-                            ticker: ticker.toUpperCase(),
-                            type,
-                            date_com: dateCom,
-                            payment_date: datePay || null,
-                            rate: val
-                        });
+                            dividends.push({
+                                ticker: ticker.toUpperCase(),
+                                type,
+                                date_com: dateCom,
+                                payment_date: datePay || null,
+                                rate: val
+                            });
+                        }
                     }
-                }
-            });
-        } else {
-            // Fallback: Procura qualquer tabela com headers compatíveis
+                });
+                foundTable = true;
+                break;
+            }
+        }
+
+        if (!foundTable) {
+            // Fallback genérico para tabela
             $('table').each((_, table) => {
                 const headers = $(table).find('thead th').text().toLowerCase();
                 if (headers.includes('tipo') && headers.includes('data com') && headers.includes('valor')) {
                     $(table).find('tbody tr').each((_, tr) => {
                         const tds = $(tr).find('td');
                         if (tds.length >= 3) {
-                             const typeRaw = $(tds[0]).text().trim();
                              const dateComRaw = $(tds[1]).text().trim();
                              const datePayRaw = $(tds[2]).text().trim();
-                             const valRaw = $(tds[3] || tds[2]).text().trim(); // Adjust column index heuristic
+                             const valRaw = $(tds[3] || tds[2]).text().trim(); 
 
                              const dateCom = parseToISODate(dateComRaw);
                              const val = parseValue(valRaw);
@@ -287,7 +287,7 @@ async function scrapeInvestidor10(ticker: string) {
                              if (dateCom && val > 0) {
                                  dividends.push({
                                     ticker: ticker.toUpperCase(),
-                                    type: 'DIV', // Default fallback
+                                    type: 'DIV', 
                                     date_com: dateCom,
                                     payment_date: parseToISODate(datePayRaw),
                                     rate: val
@@ -321,7 +321,7 @@ async function scrapeInvestidor10(ticker: string) {
                 cagr_receita_5a: parseValue(extracted.cagr_receita_5a),
                 cagr_lucros_5a: parseValue(extracted.cagr_lucros_5a),
                 
-                // Campos de Texto Preservados (Para não perder "M" ou "B")
+                // Campos de Texto Preservados
                 liquidez: extracted.liquidez || 'N/A',
                 val_mercado: extracted.val_mercado || 'N/A',
                 tipo_gestao: extracted.tipo_gestao || 'N/A',
@@ -392,41 +392,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 cagr_receita: metadata.cagr_receita_5a,
                 cagr_lucro: metadata.cagr_lucros_5a,
                 tipo_gestao: metadata.tipo_gestao,
-                patrimonio_liquido: metadata.patrimonio_liquido, // Agora passa a string bruta
+                patrimonio_liquido: metadata.patrimonio_liquido,
                 taxa_adm: metadata.taxa_adm,
                 ultimo_rendimento: metadata.ultimo_rendimento
             };
-            // Remove undefined
             Object.keys(dbPayload).forEach(key => (dbPayload as any)[key] === undefined && delete (dbPayload as any)[key]);
             
             await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
-        }
-
-        if (cleanDividends.length > 0) {
-             const divPayload = cleanDividends.map(d => ({
-                 ticker: d.ticker,
-                 type: d.type,
-                 date_com: d.date_com,
-                 payment_date: d.payment_date || '2099-12-31', 
-                 rate: d.rate
-             }));
-
-             const datesWithRealPayment = divPayload
-                .filter(d => d.payment_date !== '2099-12-31')
-                .map(d => d.date_com);
-
-             if (datesWithRealPayment.length > 0) {
-                 await supabase.from('market_dividends')
-                    .delete()
-                    .eq('ticker', ticker) 
-                    .eq('payment_date', '2099-12-31')
-                    .in('date_com', datesWithRealPayment); 
-             }
-
-             await supabase.from('market_dividends').upsert(divPayload, { 
-                onConflict: 'ticker, type, date_com, payment_date, rate', 
-                ignoreDuplicates: true 
-            });
         }
 
         return res.status(200).json({ success: true, data: metadata, dividends: cleanDividends });

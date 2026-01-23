@@ -17,7 +17,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.6.6'; 
+const APP_VERSION = '8.6.7'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -809,7 +809,8 @@ const App: React.FC = () => {
                 }
                 hideBorder={currentTab === 'transactions'}
             />
-            <main className="max-w-xl mx-auto pt-20 pb-28 min-h-screen px-4">
+            {/* CORREÇÃO DE PADDING GLOBAL */}
+            <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-4">
               {showSettings ? (
                 <div className="anim-page-enter pt-4">
                   <Settings 
