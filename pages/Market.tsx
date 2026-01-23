@@ -131,7 +131,7 @@ interface SmartAssetCardProps {
     onClick: (a: MarketAsset) => void;
 }
 
-const SmartAssetCard = ({ item, variant, onClick }: SmartAssetCardProps) => {
+const SmartAssetCard: React.FC<SmartAssetCardProps> = ({ item, variant, onClick }) => {
     // Configuração baseada na variante
     let highlightContent = null;
     let highlightLabel = "";
