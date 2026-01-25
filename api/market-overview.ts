@@ -79,6 +79,7 @@ async function getMarketData() {
             });
             return realData;
         }
+        // Se DB vazio, retorna fallback em vez de null
         return EMERGENCY_DATA;
     } catch (e) {
         console.error("Market fetch error:", e);
@@ -92,7 +93,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         const rawData = await getMarketData();
-        const allAssets = Object.values(rawData);
+        // Fallback extra se getMarketData retornar algo inválido (ex: undefined)
+        const safeData = rawData || EMERGENCY_DATA;
+        const allAssets = Object.values(safeData);
         
         const fiis = allAssets.filter((v: any) => v.type === 'FII' || v.ticker.endsWith('11') || v.ticker.endsWith('11B'));
         const stocks = allAssets.filter((v: any) => !fiis.includes(v));
@@ -105,16 +108,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         };
 
-        const processList = (list: any[]) => ({
-            gainers: safeSort(list, 'variation_percent', 'desc').slice(0, 10),
-            losers: safeSort(list, 'variation_percent', 'asc').slice(0, 10),
-            high_yield: safeSort(list, 'dy_12m', 'desc').slice(0, 20),
-            discounted: list
-                .filter(a => (a.type === 'FII' ? (a.p_vp > 0 && a.p_vp < 1) : (a.p_l > 0 && a.p_l < 10)))
-                .sort((a, b) => (a.type === 'FII' ? a.p_vp - b.p_vp : a.p_l - b.p_l))
-                .slice(0, 20),
-            raw: list
-        });
+        const processList = (list: any[]) => {
+            const safeList = list || []; // Garante array
+            return {
+                gainers: safeSort(safeList, 'variation_percent', 'desc').slice(0, 10),
+                losers: safeSort(safeList, 'variation_percent', 'asc').slice(0, 10),
+                high_yield: safeSort(safeList, 'dy_12m', 'desc').slice(0, 20),
+                discounted: safeList
+                    .filter(a => (a.type === 'FII' ? (a.p_vp > 0 && a.p_vp < 1) : (a.p_l > 0 && a.p_l < 10)))
+                    .sort((a, b) => (a.type === 'FII' ? a.p_vp - b.p_vp : a.p_l - b.p_l))
+                    .slice(0, 20),
+                raw: safeList
+            };
+        };
 
         const responseData = {
             market_status: new Date().getHours() >= 10 && new Date().getHours() < 17 && new Date().getDay() > 0 && new Date().getDay() < 6 ? 'Mercado Aberto' : 'Mercado Fechado',

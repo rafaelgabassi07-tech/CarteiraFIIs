@@ -505,6 +505,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
 
     const assetPool = useMemo(() => {
         if (!data || !data.highlights) return [];
+        // Proteção profunda contra highlights nulo/incompleto
         const f = data.highlights.fiis || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
         const s = data.highlights.stocks || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
         
@@ -523,9 +524,7 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
     const availableSegments = useMemo(() => {
         if (!selectedRanking) return [];
         const baseList = assetPool.filter(a => activeTypeFilter === 'fiis' ? a.type === 'fii' : a.type === 'stock');
-        // Filtra pelo ranking primeiro para mostrar apenas segmentos relevantes
         const rankedList = baseList.filter(selectedRanking.filterFn);
-        // Garante que se 'segment' for undefined, ele vire 'Outros' para a UI
         const segments = new Set(rankedList.map(a => a.segment || 'Outros').filter(Boolean));
         return Array.from(segments).sort();
     }, [assetPool, activeTypeFilter, selectedRanking]);
@@ -580,7 +579,6 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
                                 <button onClick={() => setActiveTypeFilter('stocks')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${activeTypeFilter === 'stocks' ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400'}`}>Ações</button>
                             </div>
 
-                            {/* Barra de Segmentos (Scroll Horizontal) */}
                             {!searchTerm && availableSegments.length > 0 && (
                                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-2 px-2">
                                     <button 

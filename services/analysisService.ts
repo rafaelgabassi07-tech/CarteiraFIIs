@@ -27,8 +27,9 @@ export const analyzePortfolio = (
     }
 
     // BLINDAGEM: Garante que os objetos existam antes de acessar propriedades
-    const fiis = marketData.highlights.fiis || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
-    const stocks = marketData.highlights.stocks || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
+    // Usa Optional Chaining e Fallbacks para evitar crash se a API retornar estrutura parcial
+    const fiis = marketData?.highlights?.fiis || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
+    const stocks = marketData?.highlights?.stocks || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
     const todayStr = new Date(baseTime).toISOString().split('T')[0];
 
     // Helper para criar Stories
@@ -64,15 +65,15 @@ export const analyzePortfolio = (
     };
 
     // --- 1. MAIORES ALTAS (FIIs & Ações) ---
-    // Uso de Optional Chaining (?.) e verificações de length seguras
-    if (fiis.gainers?.length > 0) {
+    // Uso de (array || []).length para garantir que null não quebre
+    if ((fiis.gainers || []).length > 0) {
         const top = fiis.gainers[0];
         if ((top.variation_percent || 0) > 0.5) {
             createStory(top, 'volatility_up', 'Campeão do Dia (FII)', 
                 `O ${top.ticker} lidera as altas dos FIIs com uma valorização de ${top.variation_percent?.toFixed(2)}% hoje.`, 100);
         }
     }
-    if (stocks.gainers?.length > 0) {
+    if ((stocks.gainers || []).length > 0) {
         const top = stocks.gainers[0];
         if ((top.variation_percent || 0) > 1.0) {
             createStory(top, 'volatility_up', 'Destaque de Alta (Ação)', 
@@ -81,14 +82,14 @@ export const analyzePortfolio = (
     }
 
     // --- 2. MAIORES BAIXAS (Oportunidade ou Alerta) ---
-    if (fiis.losers?.length > 0) {
+    if ((fiis.losers || []).length > 0) {
         const bottom = fiis.losers[0];
         if ((bottom.variation_percent || 0) < -0.5) {
             createStory(bottom, 'volatility_down', 'Maior Queda (FII)', 
                 `O ${bottom.ticker} registra a maior desvalorização entre os FIIs monitorados: ${bottom.variation_percent?.toFixed(2)}%.`, 90);
         }
     }
-    if (stocks.losers?.length > 0) {
+    if ((stocks.losers || []).length > 0) {
         const bottom = stocks.losers[0];
         if ((bottom.variation_percent || 0) < -1.0) {
             createStory(bottom, 'volatility_down', 'Queda Expressiva', 
