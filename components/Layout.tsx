@@ -152,44 +152,36 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   const activeIndex = navItems.findIndex(item => item.id === currentTab);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-      <nav className="pointer-events-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 w-full max-w-[20rem] mx-4 relative overflow-hidden transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5">
+    <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+      {/* Container Principal: Ilha Flutuante Glassmorphism */}
+      <nav className="pointer-events-auto bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] w-full max-w-[20rem] mx-6 relative p-1.5 isolate ring-1 ring-black/5 dark:ring-white/5">
         
+        {/* Pílula Deslizante de Alto Contraste (Indicador Ativo) */}
         <div 
-            className="absolute top-1.5 bottom-1.5 w-[calc(25%-0.25rem)] bg-zinc-100 dark:bg-zinc-800 rounded-xl shadow-sm border border-black/5 dark:border-white/5 transition-all duration-500 ease-out-mola will-change-transform z-0"
+            className="absolute top-1.5 bottom-1.5 bg-zinc-900 dark:bg-white rounded-full shadow-lg transition-transform duration-500 ease-out-mola -z-10"
             style={{ 
-                left: '0.125rem',
-                transform: `translateX(calc(${activeIndex} * 100% + ${activeIndex * 0.25}rem))`
+                left: '0.375rem', // Padding do container (p-1.5)
+                width: 'calc((100% - 0.75rem) / 4)', // Largura exata de uma célula (100% - padding total / 4 itens)
+                transform: `translateX(calc(${activeIndex} * 100%))` // Desloca 100% da própria largura por item
             }}
         ></div>
 
-        <div className="relative z-10 grid grid-cols-4 h-14">
+        {/* Grid de Ícones */}
+        <div className="grid grid-cols-4 h-14 relative">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className="flex flex-col items-center justify-center relative outline-none select-none press-effect group"
+                className="flex items-center justify-center relative outline-none select-none press-effect group rounded-full"
+                aria-label={item.label}
               >
-                <div className={`relative transition-all duration-500 ease-out-mola ${isActive ? '-translate-y-1.5 scale-110' : 'translate-y-1 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-400'}`}>
-                    <div className={`absolute inset-0 bg-accent/20 blur-xl rounded-full transition-all duration-500 ${isActive ? 'opacity-100 scale-150' : 'opacity-0 scale-0'}`}></div>
+                <div className={`transition-all duration-500 ease-out-mola flex flex-col items-center justify-center ${isActive ? 'text-white dark:text-zinc-950 scale-110' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
                     <item.icon 
-                        className={`w-5 h-5 relative z-10 transition-all duration-500 ${
-                            isActive 
-                                ? 'text-accent stroke-[2.5px] drop-shadow-sm anim-pop' 
-                                : 'stroke-[2px]'
-                        }`} 
+                        className={`w-6 h-6 ${isActive ? 'fill-current stroke-[2.5px] drop-shadow-sm' : 'stroke-[2px]'}`} 
                     />
                 </div>
-                
-                <span className={`absolute bottom-2 text-[8px] font-black uppercase tracking-wider transition-all duration-500 ease-out-mola ${
-                    isActive 
-                        ? 'opacity-100 translate-y-0 text-zinc-900 dark:text-white delay-75' 
-                        : 'opacity-0 translate-y-3 pointer-events-none'
-                }`}>
-                  {item.label}
-                </span>
               </button>
             );
           })}
@@ -199,8 +191,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
   );
 };
 
-// ... (Restante do arquivo mantido sem alterações: SwipeableModal, ConfirmationModal, etc.) ...
-// INCLUIR AQUI TODO O RESTANTE DO ARQUIVO ORIGINAL DO USUÁRIO
 export interface InstallPromptModalProps {
   isOpen: boolean;
   onInstall: () => void;
