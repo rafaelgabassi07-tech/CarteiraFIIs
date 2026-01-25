@@ -6,7 +6,6 @@ import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, 
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
-import { fetchMarketOverview } from '../services/dataService';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -364,7 +363,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [raioXTab, setRaioXTab] = useState<'GERAL' | 'CLASSES'>('GERAL');
   
   const [insights, setInsights] = useState<PortfolioInsight[]>([]);
-  const [marketOverview, setMarketOverview] = useState<MarketOverview | undefined>(undefined);
   
   const [readStories, setReadStories] = useState<Set<string>>(() => {
       try {
@@ -379,10 +377,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const loadData = async () => {
           try {
               const safeInflation = Number(inflationRate) || 4.62;
-              const marketData = await fetchMarketOverview();
-              setMarketOverview(marketData);
               
-              const generatedInsights = analyzePortfolio(portfolio, safeInflation, marketData);
+              const generatedInsights = analyzePortfolio(portfolio, safeInflation);
               
               const CACHE_KEY = 'investfiis_insights_history_v1';
               let cachedInsights: PortfolioInsight[] = [];
@@ -731,6 +727,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
+      {/* MODAIS (MANTIDOS) */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex items-center gap-4 mb-8 px-2">

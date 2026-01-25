@@ -1,152 +1,107 @@
 
-import { AssetPosition, PortfolioInsight, MarketOverview, MarketAsset } from "../types";
+import { AssetPosition, PortfolioInsight, AssetType } from "../types";
 
 /**
- * Analisa os dados de mercado e gera Stories de destaque.
- * Focado estritamente em Rankings: Maior Alta, Maior Baixa, Maior DY, Melhor P/VP e ROE.
+ * Analisa os dados da carteira e gera insights (Stories) baseados nos ativos do usuário.
+ * Foca em volatilidade diária, dividendos e valuation dos ativos possuídos.
  */
 export const analyzePortfolio = (
-    portfolio: AssetPosition[], // Mantido para contexto (ex: se o usuário tem o ativo)
-    ipca: number,
-    marketData?: MarketOverview
+    portfolio: AssetPosition[], 
+    ipca: number
 ): PortfolioInsight[] => {
     const insights: PortfolioInsight[] = [];
-    
-    // Se não houver dados de mercado válidos, não gera stories
-    if (!marketData || marketData.error || !marketData.highlights) return [];
+    const todayStr = new Date().toISOString().split('T')[0];
 
-    // --- CORREÇÃO DE TIMESTAMP ---
-    // Usa a data da última atualização do mercado como base, não o momento atual (Date.now())
-    // Isso garante que o story tenha a idade real dos dados.
-    let baseTime = Date.now();
-    if (marketData.last_update) {
-        const updateTime = new Date(marketData.last_update).getTime();
-        if (!isNaN(updateTime)) {
-            baseTime = updateTime;
-        }
-    }
+    // Se a carteira estiver vazia, não há insights
+    if (!portfolio || portfolio.length === 0) return [];
 
-    // BLINDAGEM: Garante que os objetos existam antes de acessar propriedades
-    // Usa Optional Chaining e Fallbacks para evitar crash se a API retornar estrutura parcial
-    const fiis = marketData?.highlights?.fiis || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
-    const stocks = marketData?.highlights?.stocks || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
-    const todayStr = new Date(baseTime).toISOString().split('T')[0];
-
-    // Helper para criar Stories
     const createStory = (
-        asset: MarketAsset, 
-        type: 'volatility_up' | 'volatility_down' | 'opportunity' | 'success' | 'warning' | 'neutral', 
-        title: string, 
-        message: string, 
-        scoreBase: number
+        idSuffix: string,
+        type: PortfolioInsight['type'],
+        title: string,
+        message: string,
+        score: number,
+        ticker?: string
     ) => {
-        if (!asset || !asset.ticker) return; // Proteção extra
-
-        const isInWallet = portfolio.some(p => p.ticker === asset.ticker);
-        const finalScore = scoreBase + (isInWallet ? 20 : 0); // Prioriza se o usuário tem na carteira
-        
-        // ID Determinístico: Ticker + Tipo + Data do Mercado.
-        const stableId = `story-${asset.ticker}-${type}-${todayStr}`;
-
-        // Adiciona um pequeno jitter (0-5 min) ao timestamp para não ficarem todos com o mesmo minuto exato na UI
-        const jitter = (asset.ticker.length * 1000 * 60) % 300000; 
-
         insights.push({
-            id: stableId,
+            id: `story-${idSuffix}-${todayStr}`,
             type,
             title,
             message,
-            relatedTicker: asset.ticker,
-            score: finalScore,
-            timestamp: baseTime - jitter, // Time correto
-            // URL para análise externa se quiser
-            url: `https://investidor10.com.br/${asset.ticker.endsWith('11') || asset.ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`
+            relatedTicker: ticker,
+            score,
+            timestamp: Date.now(),
+            // Link para detalhes externos
+            url: ticker ? `https://investidor10.com.br/${ticker.endsWith('11') || ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${ticker.toLowerCase()}/` : undefined
         });
     };
 
-    // --- 1. MAIORES ALTAS (FIIs & Ações) ---
-    // Uso de (array || []).length para garantir que null não quebre
-    if ((fiis.gainers || []).length > 0) {
-        const top = fiis.gainers[0];
-        if ((top.variation_percent || 0) > 0.5) {
-            createStory(top, 'volatility_up', 'Campeão do Dia (FII)', 
-                `O ${top.ticker} lidera as altas dos FIIs com uma valorização de ${top.variation_percent?.toFixed(2)}% hoje.`, 100);
+    // --- 1. Destaques de Volatilidade (Alta/Baixa Hoje) ---
+    // Filtra ativos com variação válida vinda da API de cotação
+    const activeAssets = portfolio.filter(a => typeof a.dailyChange === 'number');
+    const sortedByChange = [...activeAssets].sort((a, b) => (b.dailyChange || 0) - (a.dailyChange || 0));
+    
+    if (sortedByChange.length > 0) {
+        const topGainer = sortedByChange[0];
+        // Considera destaque se subir mais de 0.5%
+        if ((topGainer.dailyChange || 0) > 0.5) {
+            createStory('gainer', 'volatility_up', 'Alta na Carteira', 
+                `Seu ativo ${topGainer.ticker} está subindo ${topGainer.dailyChange?.toFixed(2)}% hoje.`, 90, topGainer.ticker);
         }
-    }
-    if ((stocks.gainers || []).length > 0) {
-        const top = stocks.gainers[0];
-        if ((top.variation_percent || 0) > 1.0) {
-            createStory(top, 'volatility_up', 'Destaque de Alta (Ação)', 
-                `A ação ${top.ticker} está disparando ${top.variation_percent?.toFixed(2)}% no pregão de hoje.`, 99);
-        }
-    }
 
-    // --- 2. MAIORES BAIXAS (Oportunidade ou Alerta) ---
-    if ((fiis.losers || []).length > 0) {
-        const bottom = fiis.losers[0];
-        if ((bottom.variation_percent || 0) < -0.5) {
-            createStory(bottom, 'volatility_down', 'Maior Queda (FII)', 
-                `O ${bottom.ticker} registra a maior desvalorização entre os FIIs monitorados: ${bottom.variation_percent?.toFixed(2)}%.`, 90);
-        }
-    }
-    if ((stocks.losers || []).length > 0) {
-        const bottom = stocks.losers[0];
-        if ((bottom.variation_percent || 0) < -1.0) {
-            createStory(bottom, 'volatility_down', 'Queda Expressiva', 
-                `Atenção para ${bottom.ticker}, caindo ${bottom.variation_percent?.toFixed(2)}% hoje.`, 89);
+        const topLoser = sortedByChange[sortedByChange.length - 1];
+        // Considera destaque se cair mais de 0.5%
+        if ((topLoser.dailyChange || 0) < -0.5) {
+            createStory('loser', 'volatility_down', 'Em Queda', 
+                `${topLoser.ticker} recuou ${Math.abs(topLoser.dailyChange || 0).toFixed(2)}% no pregão.`, 85, topLoser.ticker);
         }
     }
 
-    // --- 3. REIS DOS DIVIDENDOS (High Yield) ---
-    const validFiiYield = (fiis.high_yield || []).filter(a => (a.dy_12m || 0) < 30 && (a.dy_12m || 0) > 6);
-    if (validFiiYield.length > 0) {
-        const top = validFiiYield[0];
-        createStory(top, 'success', 'Pagador de Elite', 
-            `${top.ticker} está entregando um Dividend Yield impressionante de ${top.dy_12m?.toFixed(2)}% nos últimos 12 meses.`, 95);
+    // --- 2. Rei dos Dividendos (Maior DY na Carteira) ---
+    const topYield = [...portfolio].sort((a, b) => (b.dy_12m || 0) - (a.dy_12m || 0))[0];
+    if (topYield && (topYield.dy_12m || 0) > 8) {
+        createStory('high-yield', 'success', 'Gerador de Renda', 
+            `${topYield.ticker} é seu maior pagador com DY de ${topYield.dy_12m?.toFixed(2)}% nos últimos 12 meses.`, 95, topYield.ticker);
     }
 
-    const validStockYield = (stocks.high_yield || []).filter(a => (a.dy_12m || 0) < 30 && (a.dy_12m || 0) > 6);
-    if (validStockYield.length > 0) {
-        const top = validStockYield[0];
-        createStory(top, 'success', 'Dividendos Altos', 
-            `Entre as ações, ${top.ticker} destaca-se com DY anualizado de ${top.dy_12m?.toFixed(2)}%.`, 94);
+    // --- 3. Oportunidades (P/VP Baixo para FIIs na Carteira) ---
+    const opportunities = portfolio.filter(a => 
+        a.assetType === AssetType.FII && 
+        (a.p_vp || 0) > 0.1 && 
+        (a.p_vp || 0) < 0.98
+    );
+    if (opportunities.length > 0) {
+        // Pega o mais descontado
+        const bestOpp = opportunities.sort((a, b) => (a.p_vp || 0) - (b.p_vp || 0))[0];
+        createStory('discount', 'opportunity', 'Desconto', 
+            `${bestOpp.ticker} está barato! Negociado a ${bestOpp.p_vp?.toFixed(2)}x do valor patrimonial.`, 88, bestOpp.ticker);
     }
 
-    // --- 4. OPORTUNIDADES DE VALUATION (P/VP & P/L) ---
-    const cheapFii = (fiis.discounted || []).filter(a => (a.p_vp || 0) > 0.5 && (a.p_vp || 0) < 0.95 && (a.dy_12m || 0) > 8)[0];
-    if (cheapFii) {
-        createStory(cheapFii, 'opportunity', 'Desconto & Renda', 
-            `${cheapFii.ticker} negocia abaixo do valor patrimonial (P/VP ${cheapFii.p_vp?.toFixed(2)}) e paga DY de ${cheapFii.dy_12m?.toFixed(1)}%.`, 85);
+    // --- 4. Alerta de Vacância (FIIs) ---
+    const highVacancy = portfolio.find(a => a.assetType === AssetType.FII && (a.vacancy || 0) > 20);
+    if (highVacancy) {
+        createStory('vacancy', 'warning', 'Vacância Alta', 
+            `Atenção: ${highVacancy.ticker} possui vacância física de ${highVacancy.vacancy}%.`, 70, highVacancy.ticker);
     }
 
-    const cheapStock = (stocks.discounted || []).find(a => (a.p_l || 0) > 0 && (a.p_l || 0) < 6 && (a.roe || 0) > 15);
-    if (cheapStock) {
-        createStory(cheapStock, 'opportunity', 'Ação Descontada', 
-            `${cheapStock.ticker} está com P/L de ${cheapStock.p_l?.toFixed(1)}x e entrega um ROE sólido de ${cheapStock.roe?.toFixed(1)}%.`, 84);
+    // --- 5. Performance Geral (vs IPCA) ---
+    // Calcula rentabilidade simples da carteira
+    const totalCost = portfolio.reduce((acc, p) => acc + (p.averagePrice * p.quantity), 0);
+    const totalValue = portfolio.reduce((acc, p) => acc + ((p.currentPrice || 0) * p.quantity), 0);
+    
+    // Evita divisão por zero
+    if (totalCost > 0) {
+        const rentability = ((totalValue / totalCost) - 1) * 100;
+
+        if (rentability > ipca) {
+            createStory('inflation-win', 'success', 'Acima da Inflação', 
+                `Sua carteira valorizou ${rentability.toFixed(2)}% (valor atual), superando o IPCA acumulado de ${ipca}%.`, 100);
+        } else if (rentability < 0) {
+            createStory('correction', 'neutral', 'Momento de Ajuste', 
+                `Sua carteira está em correção de ${rentability.toFixed(2)}% em relação ao custo médio. Foco no longo prazo!`, 60);
+        }
     }
 
-    // --- 5. CAMPEÕES DE EFICIÊNCIA (ROE) ---
-    const rawStocks = stocks.raw || [];
-    const bestRoe = [...rawStocks].sort((a, b) => (b.roe || 0) - (a.roe || 0))[0];
-    if (bestRoe && (bestRoe.roe || 0) > 20) {
-        createStory(bestRoe, 'success', 'Máquina de Lucro', 
-            `${bestRoe.ticker} apresenta um ROE excepcional de ${bestRoe.roe?.toFixed(1)}%, indicando alta eficiência.`, 80);
-    }
-
-    const rawFiis = fiis.raw || [];
-    const bestFiiRoe = [...rawFiis].sort((a, b) => (b.roe || 0) - (a.roe || 0))[0];
-    if (bestFiiRoe && (bestFiiRoe.roe || 0) > 15) {
-        createStory(bestFiiRoe, 'success', 'Rentabilidade FII', 
-            `${bestFiiRoe.ticker} lidera em rentabilidade sobre patrimônio com ROE de ${bestFiiRoe.roe?.toFixed(1)}%.`, 79);
-    }
-
-    // --- 6. ALERTA DE FLUXO (Volume) ---
-    const topVolume = [...rawStocks].sort((a, b) => (b.liquidity || 0) - (a.liquidity || 0))[0];
-    if (topVolume) {
-        createStory(topVolume, 'neutral', 'Alta Liquidez', 
-            `${topVolume.ticker} é o ativo mais negociado da nossa lista, com volume diário superior a R$ ${( (topVolume.liquidity||0)/1000000 ).toFixed(0)} Milhões.`, 60);
-    }
-
-    // Ordenação Final: Score Decrescente
-    return insights.sort((a, b) => b.score - a.score).slice(0, 15);
+    // Ordena por relevância (score) e limita a 10 stories
+    return insights.sort((a, b) => b.score - a.score).slice(0, 10);
 };

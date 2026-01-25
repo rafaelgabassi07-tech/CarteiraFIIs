@@ -6,7 +6,6 @@ import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { News } from './pages/News';
-import { Market } from './pages/Market';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData } from './types';
@@ -17,7 +16,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.6.7'; 
+const APP_VERSION = '8.7.0'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -27,7 +26,7 @@ const STORAGE_KEYS = {
   PRIVACY: 'investfiis_privacy_mode',
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
-  NOTIF_HISTORY: 'investfiis_notification_history_v3', // Version bumped
+  NOTIF_HISTORY: 'investfiis_notification_history_v3',
   METADATA: 'investfiis_metadata_v2' 
 };
 
@@ -61,7 +60,6 @@ const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transa
   if (!targetTime) return 0;
   
   // Normaliza o ticker do PROVENTO para a raiz (ex: ITSA4F -> ITSA4)
-  // Isso garante que se o banco tiver ITSA4F por engano, ele vira ITSA4 para comparar
   let targetRoot = ticker.trim().toUpperCase();
   if (targetRoot.endsWith('F') && !targetRoot.endsWith('11') && !targetRoot.endsWith('11B') && targetRoot.length <= 6) {
       targetRoot = targetRoot.slice(0, -1);
@@ -109,7 +107,6 @@ const MemoizedHome = React.memo(Home);
 const MemoizedPortfolio = React.memo(Portfolio);
 const MemoizedTransactions = React.memo(Transactions);
 const MemoizedNews = React.memo(News);
-const MemoizedMarket = React.memo(Market);
 
 const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
@@ -128,11 +125,6 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUpdateReport, setShowUpdateReport] = useState(false);
-  
-  // Market Refresh State
-  const [marketRefreshSignal, setMarketRefreshSignal] = useState(0);
-  const [isMarketLoading, setIsMarketLoading] = useState(false);
-  const [marketSubtitle, setMarketSubtitle] = useState<React.ReactNode>(null);
   
   // PWA Install State
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -180,7 +172,6 @@ const App: React.FC = () => {
   // Status de Serviços
   const [isCheckingServices, setIsCheckingServices] = useState(false);
   
-  // Ref para serviços para evitar re-renders cíclicos no checkServiceHealth
   const servicesRef = useRef<ServiceMetric[]>([
     { id: 'db', label: 'Supabase Database', url: getSupabaseUrl(), icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'market', label: 'Brapi Market Data', url: 'https://brapi.dev', icon: Activity, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
@@ -208,7 +199,6 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
   }, [accentColor]);
 
-  // Persistência de Notificações (Fix: Dependência explicita)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled));
   }, [pushEnabled]);
@@ -220,15 +210,12 @@ const App: React.FC = () => {
       const newNotifs: AppNotification[] = [];
       const existingIds = new Set(notifications.map(n => n.id));
 
-      // 1. Verifica pagamentos de Hoje
       dividends.forEach(div => {
           if (!div || !div.ticker) return;
-          // Só notifica se o usuário tem o ativo
           const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
           if (qty > 0) {
               const total = qty * div.rate;
               
-              // Notificação de Pagamento (Hoje Local)
               if (isSameDayLocal(div.paymentDate)) {
                   const id = `pay-${div.ticker}-${div.paymentDate}`;
                   if (!existingIds.has(id)) {
@@ -244,7 +231,6 @@ const App: React.FC = () => {
                   }
               }
 
-              // Notificação de Data Com (Hoje Local)
               if (isSameDayLocal(div.dateCom)) {
                   const id = `datacom-${div.ticker}-${div.dateCom}`;
                   if (!existingIds.has(id)) {
@@ -264,11 +250,10 @@ const App: React.FC = () => {
 
       if (newNotifs.length > 0) {
           setNotifications(prev => [...newNotifs, ...prev]);
-          // Opcional: Vibrar dispositivo se suportado
           if (navigator.vibrate) navigator.vibrate(200);
       }
 
-  }, [dividends, transactions]); // Dependências controladas para rodar apenas quando dados mudam
+  }, [dividends, transactions]);
 
   // --- PWA INSTALL HANDLER ---
   useEffect(() => {
@@ -290,8 +275,6 @@ const App: React.FC = () => {
       }
       setShowInstallModal(false);
   };
-
-  // --- FUNÇÕES AUXILIARES ---
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
@@ -378,28 +361,21 @@ const App: React.FC = () => {
           setDividends(data.dividends);
       }
       if (Object.keys(data.metadata).length > 0) {
-          // --- SMART MERGE LOGIC (Enhanced) ---
-          // Previne que dados "vazios" do banco sobrescrevam dados ricos da memória (Optimistic UI)
           setAssetsMetadata(prev => {
               const next = { ...prev };
               Object.entries(data.metadata).forEach(([ticker, newMeta]) => {
                   const existing = prev[ticker];
                   
                   if (existing) {
-                      // Cria cópia dos fundamentos
                       const mergedFundamentals = { ...(newMeta.fundamentals || {}) };
-                      
-                      // Campos que costumam desaparecer (FIIs)
-                      // Incluído liquidity, manager_type, assets_value que são strings ou podem ser 'N/A'
                       const criticalFields = ['vacancy', 'last_dividend', 'dy_12m', 'p_vp', 'assets_value', 'liquidity', 'manager_type'] as const;
                       
                       criticalFields.forEach(field => {
                           const newVal = mergedFundamentals?.[field];
                           const oldVal = existing.fundamentals?.[field];
                           
-                          // Validação estrita: se for 0, N/A, traço ou vazio, considera inválido
                           const isNewInvalid = newVal === undefined || newVal === null || 
-                                               (field !== 'vacancy' && newVal === 0) || // Vacância 0 é válida
+                                               (field !== 'vacancy' && newVal === 0) || 
                                                newVal === 'N/A' || newVal === '-' || newVal === '' || newVal === '0';
 
                           const isOldValid = oldVal !== undefined && oldVal !== null && 
@@ -446,7 +422,6 @@ const App: React.FC = () => {
         const cloudTxs = (data || []).map(mapSupabaseToTx);
         setTransactions(cloudTxs);
         setCloudStatus('connected');
-        // Mantém o ícone "Salvo" visível por um momento
         setTimeout(() => setCloudStatus('hidden'), 3000);
         
         if (cloudTxs.length > 0) {
@@ -461,7 +436,6 @@ const App: React.FC = () => {
     }
   }, [syncMarketData, showToast]);
 
-  // --- INICIALIZAÇÃO CRÍTICA ---
   useEffect(() => {
     const initApp = async () => {
         const startTime = Date.now();
@@ -507,8 +481,6 @@ const App: React.FC = () => {
     });
     return () => subscription.unsubscribe();
   }, []); 
-
-  // --- HANDLERS DA UI ---
 
   const handleLogout = useCallback(async () => {
     setSession(null);
@@ -625,16 +597,6 @@ const App: React.FC = () => {
       }
   };
 
-  // Handler para refresh da página Market
-  const handleManualMarketRefresh = useCallback(() => {
-      setMarketRefreshSignal(prev => prev + 1);
-  }, []);
-
-  // Handler para receber o status do mercado vindo da página Market
-  const handleMarketStatusUpdate = useCallback((statusNode: React.ReactNode) => {
-      setMarketSubtitle(statusNode);
-  }, []);
-
   const handleAddTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
       if (!session?.user?.id) return;
       const dbPayload = { ticker: t.ticker, type: t.type, quantity: t.quantity, price: t.price, date: t.date, asset_type: t.assetType, user_id: session.user.id };
@@ -681,7 +643,6 @@ const App: React.FC = () => {
     const receipts = safeDividends.map(d => {
         if (!d || !d.ticker) return null;
         const normalizedTicker = d.ticker.trim().toUpperCase();
-        
         const qty = getQuantityOnDate(normalizedTicker, d.dateCom, sortedTxs);
         
         return { 
@@ -731,7 +692,6 @@ const App: React.FC = () => {
             }
 
             const quote = quotes[normalizedTicker];
-            
             let segment = meta?.segment || 'Geral';
             segment = segment.replace('Seg: ', '').trim();
             if (segment.length > 20) segment = segment.substring(0, 20) + '...';
@@ -795,21 +755,19 @@ const App: React.FC = () => {
 
         <>
             <Header 
-                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'market' ? 'Rankings' : currentTab === 'transactions' ? 'Ordens' : 'Notícias'} 
-                subtitle={currentTab === 'market' ? marketSubtitle : undefined}
+                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'transactions' ? 'Ordens' : 'Notícias'} 
                 showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
-                isRefreshing={isRefreshing || isScraping || isMarketLoading} updateAvailable={updateManager.isUpdateAvailable} 
+                isRefreshing={isRefreshing || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
                 onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
                 notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} 
                 cloudStatus={cloudStatus} 
                 onRefresh={
                     currentTab === 'portfolio' ? handleManualScraperTrigger : 
-                    currentTab === 'market' ? handleManualMarketRefresh : 
                     undefined
                 }
                 hideBorder={currentTab === 'transactions'}
             />
-            {/* CORREÇÃO DE PADDING GLOBAL */}
+            
             <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-4">
               {showSettings ? (
                 <div className="anim-page-enter pt-4">
@@ -829,7 +787,6 @@ const App: React.FC = () => {
                 <div key={currentTab} className="anim-page-enter">
                   {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
                   {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} dividends={dividends} privacyMode={privacyMode} />}
-                  {currentTab === 'market' && <MemoizedMarket refreshSignal={marketRefreshSignal} onLoadingChange={setIsMarketLoading} onStatusUpdate={handleMarketStatusUpdate} />}
                   {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                   {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
                 </div>

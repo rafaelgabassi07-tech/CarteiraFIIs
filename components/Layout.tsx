@@ -144,7 +144,6 @@ interface BottomNavProps {
 const navItems = [
   { id: 'home', icon: Home, label: 'Geral' },
   { id: 'portfolio', icon: PieChart, label: 'Carteira' },
-  { id: 'market', icon: BarChart2, label: 'Rankings' }, // Atualizado de 'Mercado'
   { id: 'transactions', icon: ArrowRightLeft, label: 'Ordens' },
   { id: 'news', icon: Newspaper, label: 'Notícias' },
 ];
@@ -154,17 +153,17 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-      <nav className="pointer-events-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 w-full max-w-[24rem] mx-4 relative overflow-hidden transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5">
+      <nav className="pointer-events-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 w-full max-w-[20rem] mx-4 relative overflow-hidden transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5">
         
         <div 
-            className="absolute top-1.5 bottom-1.5 w-[calc(20%-0.25rem)] bg-zinc-100 dark:bg-zinc-800 rounded-xl shadow-sm border border-black/5 dark:border-white/5 transition-all duration-500 ease-out-mola will-change-transform z-0"
+            className="absolute top-1.5 bottom-1.5 w-[calc(25%-0.25rem)] bg-zinc-100 dark:bg-zinc-800 rounded-xl shadow-sm border border-black/5 dark:border-white/5 transition-all duration-500 ease-out-mola will-change-transform z-0"
             style={{ 
                 left: '0.125rem',
                 transform: `translateX(calc(${activeIndex} * 100% + ${activeIndex * 0.25}rem))`
             }}
         ></div>
 
-        <div className="relative z-10 grid grid-cols-5 h-14">
+        <div className="relative z-10 grid grid-cols-4 h-14">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (

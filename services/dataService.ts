@@ -1,4 +1,5 @@
-import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, MarketOverview, ScrapeResult } from "../types";
+
+import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, ScrapeResult } from "../types";
 import { supabase } from "./supabase";
 import { getQuotes } from "./brapiService";
 
@@ -301,35 +302,4 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       console.error("DataService Fatal:", error);
       return { dividends: [], metadata: {}, error: error.message };
   }
-};
-
-export const fetchMarketOverview = async (): Promise<MarketOverview> => {
-    try {
-        const response = await fetch('/api/market-overview');
-        let data;
-        try {
-            data = await response.json();
-        } catch {
-            throw new Error(`Erro de conexão (${response.status})`);
-        }
-
-        if (!response.ok && !data) throw new Error('Falha ao obter dados de mercado');
-        if (data.error) throw new Error(data.message || 'Erro desconhecido');
-        
-        return data;
-    } catch (error: any) {
-        console.warn("Market Overview Fetch Error:", error.message);
-        return { 
-            market_status: 'Indisponível', 
-            last_update: '', 
-            highlights: {
-                fiis: { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] },
-                stocks: { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] }
-            },
-            // @ts-ignore
-            error: true,
-            // @ts-ignore
-            message: "Não foi possível carregar os dados de mercado. Tentando cache..."
-        };
-    }
 };
