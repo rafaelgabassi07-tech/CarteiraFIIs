@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem, MarketOverview } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper, ArrowLeft, ArrowRight, Clock, ShieldCheck } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper, ArrowLeft, ArrowRight, Clock } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -66,16 +66,13 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
     const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
 
     return (
-        <div className="relative pl-14 py-2 group">
-            {!isLast && <div className="absolute left-[23px] top-8 bottom-[-8px] w-[2px] bg-zinc-100 dark:bg-zinc-800 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700 transition-colors"></div>}
-            
-            <div className={`absolute left-1 top-3 w-11 h-11 rounded-2xl flex items-center justify-center border-2 border-white dark:border-zinc-950 z-10 ${iconBg} ${iconColor} shadow-sm transition-transform group-hover:scale-110`}>
+        <div className="relative pl-12 py-2">
+            {!isLast && <div className="absolute left-[19px] top-8 bottom-[-8px] w-[2px] bg-zinc-100 dark:bg-zinc-800"></div>}
+            <div className={`absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-950 z-10 ${iconBg} ${iconColor} shadow-sm`}>
                 <Icon className="w-5 h-5" />
             </div>
-            
-            <div className={`bg-white dark:bg-zinc-900 p-4 rounded-2xl border ${borderColor} shadow-sm flex justify-between items-center relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5`}>
+            <div className={`bg-white dark:bg-zinc-900 p-4 rounded-2xl border ${borderColor} shadow-sm flex justify-between items-center relative overflow-hidden group`}>
                 {isToday && <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg">HOJE</div>}
-                
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-xs font-black text-zinc-500 border border-zinc-100 dark:border-zinc-700">
                         {tickerDisplay}
@@ -92,7 +89,6 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
                         </p>
                     </div>
                 </div>
-                
                 <div className="text-right">
                     {isPayment ? (
                         <>
@@ -114,7 +110,7 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const [currentIndex, setCurrentIndex] = useState(startIndex);
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
-    const DURATION = 5000; // 5 segundos por story
+    const DURATION = 6000; // Aumentado para 6s para leitura mais calma
 
     // Protection against undefined insights
     if (!insights || insights.length === 0 || currentIndex >= insights.length) {
@@ -177,8 +173,8 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
             case 'volatility_down': return 'bg-rose-500';
             case 'warning': return 'bg-amber-500';
             case 'opportunity': return 'bg-indigo-500';
-            case 'success': return 'bg-emerald-600';
-            default: return 'bg-sky-500';
+            case 'success': return 'bg-teal-500';
+            default: return 'bg-blue-500';
         }
     };
 
@@ -196,16 +192,16 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const Icon = getTypeIcon(currentStory.type);
     const colorClass = getTypeColor(currentStory.type);
     
-    const timeAgo = currentStory.timestamp ? formatDistanceToNow(currentStory.timestamp, { addSuffix: true, locale: ptBR }) : 'Recentemente';
+    const timeAgo = currentStory.timestamp ? formatDistanceToNow(currentStory.timestamp, { addSuffix: true, locale: ptBR }) : 'Agora';
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+        <div className="fixed inset-0 z-[9999] bg-black flex flex-col anim-fade-in">
             {/* Progress Bars */}
-            <div className="flex gap-1 p-2 pt-safe z-20">
+            <div className="flex gap-1.5 p-3 pt-safe z-20">
                 {insights.map((_, idx) => (
-                    <div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
+                    <div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
                         <div 
-                            className="h-full bg-white transition-all duration-100 linear"
+                            className="h-full bg-white transition-all duration-100 linear shadow-[0_0_10px_white]"
                             style={{ 
                                 width: idx < currentIndex ? '100%' : idx === currentIndex ? `${progress}%` : '0%' 
                             }}
@@ -217,17 +213,17 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-2 z-20 text-white">
                 <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${colorClass}`}>
-                        <Icon className="w-4 h-4 text-white" />
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${colorClass} shadow-lg ring-2 ring-black/50`}>
+                        <Icon className="w-5 h-5 text-white" />
                     </div>
                     <div>
                         <span className="font-bold text-sm block">{currentStory.title}</span>
-                        <span className="text-[10px] text-white/60 font-medium flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> {timeAgo}
+                        <span className="text-[10px] text-white/70 font-medium flex items-center gap-1">
+                            {timeAgo}
                         </span>
                     </div>
                 </div>
-                <button onClick={onClose}><X className="w-6 h-6" /></button>
+                <button onClick={onClose} className="p-2 bg-white/10 rounded-full backdrop-blur-md active:bg-white/20 transition-colors"><X className="w-6 h-6" /></button>
             </div>
 
             {/* Content Area */}
@@ -244,25 +240,26 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
 
                 {/* Visual Content */}
                 <div className="w-full max-w-sm relative z-0 anim-scale-in">
-                    <div className={`w-32 h-32 rounded-[2rem] ${colorClass} bg-opacity-20 flex items-center justify-center mb-8 mx-auto border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]`}>
-                        <div className="text-4xl font-black text-white drop-shadow-md">
+                    <div className={`w-36 h-36 rounded-full ${colorClass} bg-opacity-20 flex items-center justify-center mb-10 mx-auto border-4 border-white/10 shadow-[0_0_60px_rgba(255,255,255,0.1)] relative`}>
+                        <div className="absolute inset-0 rounded-full border border-white/20 animate-[spin_10s_linear_infinite]"></div>
+                        <div className="text-5xl font-black text-white drop-shadow-2xl">
                             {currentStory.relatedTicker ? currentStory.relatedTicker.substring(0,2) : <Icon className="w-16 h-16" />}
                         </div>
                     </div>
                     
-                    <h2 className="text-2xl font-black text-white mb-4 leading-tight">{currentStory.message}</h2>
+                    <h2 className="text-2xl font-black text-white mb-6 leading-snug drop-shadow-md">{currentStory.message}</h2>
                     
                     {currentStory.relatedTicker && (
-                        <div className="inline-block px-4 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold text-sm mb-6">
+                        <div className="inline-block px-5 py-2.5 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 text-white font-bold text-sm mb-8 shadow-xl">
                             {currentStory.relatedTicker}
                         </div>
                     )}
 
                     {currentStory.url && (
-                        <div className="absolute bottom-[-100px] left-0 right-0 flex justify-center animate-bounce">
+                        <div className="absolute bottom-[-80px] left-0 right-0 flex justify-center animate-bounce opacity-70">
                             <div className="flex flex-col items-center gap-2">
-                                <ChevronUp className="w-6 h-6 text-white/50" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Detalhes</span>
+                                <ChevronUp className="w-6 h-6 text-white" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-white">Deslize ou Toque</span>
                             </div>
                         </div>
                     )}
@@ -276,9 +273,9 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                         href={currentStory.url} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="block w-full py-4 bg-white text-black text-center rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+                        className="block w-full py-4 bg-white text-black text-center rounded-2xl font-black text-xs uppercase tracking-widest shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95 transition-transform"
                     >
-                        Ver Detalhes do Ativo
+                        Ver Análise Completa
                     </a>
                 </div>
             )}
@@ -308,40 +305,32 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
             {validInsights.map((item, index) => {
                 const isRead = readStories.has(item.id);
                 
-                // Cores do anel baseadas no tipo de destaque
-                // Usando conic-gradient para efeito de rotação
-                let ringColors = '#6366f1, #a855f7, #ec4899'; // Default
-                if (item.type === 'volatility_up' || item.type === 'success') ringColors = '#10b981, #3b82f6, #0ea5e9';
-                if (item.type === 'volatility_down' || item.type === 'warning') ringColors = '#f43f5e, #f97316, #facc15';
+                // Cores do anel baseadas no tipo de destaque - Mais Vibrantes
+                let ringColors = 'from-indigo-500 via-purple-500 to-pink-500';
+                if (item.type === 'volatility_up' || item.type === 'success') ringColors = 'from-emerald-400 via-teal-400 to-cyan-400';
+                if (item.type === 'volatility_down' || item.type === 'warning') ringColors = 'from-rose-500 via-orange-500 to-amber-500';
                 
-                const Icon = item.type === 'volatility_up' ? TrendingUp : item.type === 'volatility_down' ? TrendingDown : item.type === 'opportunity' ? Target : Coins;
+                const Icon = item.type === 'volatility_up' ? TrendingUp : item.type === 'volatility_down' ? TrendingDown : item.type === 'opportunity' ? Target : item.type === 'warning' ? AlertTriangle : Coins;
 
                 return (
                     <button 
                         key={item.id}
                         onClick={() => setActiveIndex(index)}
-                        className="flex flex-col items-center gap-1.5 snap-start group"
+                        className="flex flex-col items-center gap-2 snap-start group"
                     >
-                        {/* Anel Externo com Animação se não lido */}
-                        <div className={`w-[68px] h-[68px] rounded-full p-[2px] relative flex items-center justify-center`}>
-                            {!isRead && (
-                                <div 
-                                    className="absolute inset-0 rounded-full spin-slow"
-                                    style={{ background: `conic-gradient(from 0deg, ${ringColors}, ${ringColors.split(',')[0]})` }}
-                                ></div>
-                            )}
-                            {isRead && <div className="absolute inset-0 rounded-full border border-zinc-200 dark:border-zinc-800"></div>}
-
-                            <div className="w-[64px] h-[64px] rounded-full bg-white dark:bg-zinc-950 p-[2px] relative z-10 flex items-center justify-center overflow-hidden">
-                                <div className="w-full h-full bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center relative group-active:scale-95 transition-transform">
-                                    <Icon className={`w-6 h-6 ${isRead ? 'text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`} />
-                                    {item.relatedTicker && (
-                                        <span className="absolute bottom-2 text-[8px] font-black uppercase text-zinc-400">{item.relatedTicker.substring(0,4)}</span>
+                        <div className={`w-[72px] h-[72px] rounded-full p-[3px] transition-all duration-300 ${isRead ? 'bg-zinc-200 dark:bg-zinc-800 scale-95 opacity-70' : `bg-gradient-to-tr ${ringColors} shadow-lg shadow-black/10`}`}>
+                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[3px] relative overflow-hidden flex items-center justify-center">
+                                <div className="w-full h-full bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center relative">
+                                    <Icon className={`w-7 h-7 ${isRead ? 'text-zinc-400' : 'text-zinc-800 dark:text-zinc-200'}`} strokeWidth={1.5} />
+                                    {item.relatedTicker && !isRead && (
+                                        <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/50 to-transparent flex items-end justify-center pb-1.5">
+                                            <span className="text-[7px] font-black text-white uppercase tracking-wider drop-shadow-md">{item.relatedTicker.substring(0,4)}</span>
+                                        </div>
                                     )}
                                 </div>
                             </div>
                         </div>
-                        <span className={`text-[10px] font-medium w-16 truncate text-center leading-tight transition-colors ${isRead ? 'text-zinc-400' : 'text-zinc-700 dark:text-zinc-200'}`}>
+                        <span className={`text-[9px] font-bold w-16 truncate text-center leading-tight ${isRead ? 'text-zinc-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
                             {item.title}
                         </span>
                     </button>
@@ -594,42 +583,33 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <SmartFeed insights={insights} onMarkAsRead={markAsRead} readStories={readStories} />
 
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        {/* Polimento Visual: Novo Gradiente e Estrutura do Card de Patrimônio */}
-        <div className="w-full bg-gradient-to-br from-slate-900 via-zinc-900 to-neutral-950 dark:from-zinc-900 dark:via-zinc-950 dark:to-black rounded-[2.5rem] border border-white/10 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] relative overflow-hidden text-white group">
-            
-            {/* Efeitos de Fundo */}
-            <div className="absolute top-[-50%] right-[-10%] w-[300px] h-[300px] bg-emerald-500/20 rounded-full blur-[80px] pointer-events-none group-hover:bg-emerald-500/30 transition-colors duration-700"></div>
-            <div className="absolute bottom-[-50%] left-[-10%] w-[250px] h-[250px] bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
-            
-            <div className="p-8 text-center border-b border-white/5 relative z-10">
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.25em] mb-3 flex items-center justify-center gap-2">
-                    <Wallet className="w-3.5 h-3.5" strokeWidth={1.5} /> Patrimônio Total
+        {/* Cartão de Patrimônio Minimalista (Clean & High Contrast) */}
+        <div className="w-full bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-6 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 relative overflow-hidden group">
+            <div className="flex flex-col items-center justify-center text-center relative z-10">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-2 flex items-center gap-2">
+                    <Wallet className="w-3 h-3" /> Patrimônio
                 </p>
-                <h2 className="text-5xl font-black tracking-tighter tabular-nums leading-none text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-400 drop-shadow-sm">
+                <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter tabular-nums leading-none">
                     {formatBRL(balance, privacyMode)}
                 </h2>
+                <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${isCapitalGainPositive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
+                    {isCapitalGainPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                    <span>{isCapitalGainPositive ? '+' : ''}{formatBRL(capitalGainValue, privacyMode)}</span>
+                    <span className="opacity-60 text-[10px]">({formatPercent(capitalGainPercent, privacyMode)})</span>
+                </div>
             </div>
             
-            <div className="grid grid-cols-2 divide-x divide-white/5 relative z-10 bg-white/[0.02]">
-                <div className="p-5 flex flex-col items-center justify-center hover:bg-white/5 transition-colors">
-                    <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wide mb-1">Custo Total</p>
-                    <span className="text-sm font-bold text-zinc-300 tracking-tight">
-                        {formatBRL(invested, privacyMode)}
+            <div className="mt-8 grid grid-cols-2 divide-x divide-zinc-100 dark:divide-zinc-800 border-t border-zinc-100 dark:border-zinc-800 pt-6">
+                <div className="flex flex-col items-center">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Custo Total</span>
+                    <span className="text-sm font-black text-zinc-700 dark:text-zinc-300 tracking-tight">{formatBRL(invested, privacyMode)}</span>
+                </div>
+                <div className="flex flex-col items-center">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Retorno Real</span>
+                    <span className={`text-sm font-black tracking-tight ${realReturnPercent >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {realReturnPercent > 0 ? '+' : ''}{realReturnPercent.toFixed(2)}%
                     </span>
                 </div>
-                <div className="p-5 flex flex-col items-center justify-center hover:bg-white/5 transition-colors">
-                    <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wide mb-1">Rentabilidade</p>
-                    <div className="flex flex-col items-center">
-                        <span className={`text-sm font-black flex items-center gap-1 tracking-tight ${isCapitalGainPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {isCapitalGainPositive ? '+' : ''}{formatBRL(capitalGainValue, privacyMode)}
-                        </span>
-                    </div>
-                </div>
-            </div>
-            
-            {/* Barra de Progresso Sutil (Visual apenas) */}
-            <div className="h-1 w-full bg-white/5 relative">
-                 <div className={`absolute left-0 top-0 h-full ${isCapitalGainPositive ? 'bg-emerald-500' : 'bg-rose-500'} shadow-[0_0_10px_currentColor]`} style={{ width: `${Math.min(Math.abs(capitalGainPercent), 100)}%`, opacity: 0.5 }}></div>
             </div>
         </div>
       </div>
@@ -637,25 +617,27 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
         <button onClick={() => setShowAgendaModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>
             <div className="flex items-center gap-4 relative z-10">
-                <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 shadow-inner">
+                <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 shadow-sm">
                     <CalendarDays className="w-6 h-6" strokeWidth={1.5} />
                 </div>
                 <div>
                     <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h3>
-                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wide">
-                        {upcomingEvents.length > 0 ? `${upcomingEvents.length} Eventos Próximos` : 'Tudo tranquilo'}
+                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wide mt-0.5">
+                        {upcomingEvents.length > 0 ? `${upcomingEvents.length} Eventos Próximos` : 'Sem eventos próximos'}
                     </p>
                 </div>
             </div>
             
             <div className="flex items-center gap-3 relative z-10">
                 {upcomingEvents.length > 0 && (
-                    <div className="flex -space-x-2">
-                         {upcomingEvents.slice(0,3).map((ev: any, i: number) => <div key={i} className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-[8px] font-black text-zinc-600 dark:text-zinc-400 shadow-sm">{ev.ticker ? ev.ticker.substring(0,2) : '?'}</div>)}
-                         {upcomingEvents.length > 3 && <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-[8px] font-black text-zinc-500 shadow-sm">+{upcomingEvents.length - 3}</div>}
+                    <div className="flex -space-x-3">
+                         {upcomingEvents.slice(0,3).map((ev: any, i: number) => <div key={i} className="w-9 h-9 rounded-full bg-white dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-900 flex items-center justify-center text-[8px] font-black text-zinc-600 dark:text-zinc-400 shadow-sm">{ev.ticker ? ev.ticker.substring(0,2) : '?'}</div>)}
+                         {upcomingEvents.length > 3 && <div className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-50 dark:border-zinc-900 flex items-center justify-center text-[8px] font-black text-zinc-500 shadow-sm">+{upcomingEvents.length - 3}</div>}
                     </div>
                 )}
-                <ArrowUpRight className="w-5 h-5 text-zinc-300 dark:text-zinc-600" />
+                <div className="bg-zinc-100 dark:bg-zinc-800 p-2 rounded-xl">
+                    <ArrowUpRight className="w-4 h-4 text-zinc-400" />
+                </div>
             </div>
         </button>
       </div>
@@ -667,7 +649,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 <div>
                     <div className="flex justify-between items-start mb-3">
                         <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-200 dark:border-emerald-900/30"><CircleDollarSign className="w-5 h-5" /></div>
-                        <ArrowUpRight className="w-5 h-5 text-zinc-300 dark:text-zinc-600" />
                     </div>
                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Renda Passiva</span>
                     <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">{formatBRL(received, privacyMode)}</p>
@@ -694,7 +675,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/10 rounded-xl flex items-center justify-center text-rose-500 border border-rose-100 dark:border-rose-900/30">
                             <Activity className="w-5 h-5" />
                         </div>
-                        <ArrowUpRight className="w-5 h-5 text-zinc-300 dark:text-zinc-600" />
                     </div>
                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Ganho Real</span>
                     <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{realReturnPercent > 0 ? '+' : ''}{realReturnPercent.toFixed(2)}%</p>
@@ -723,8 +703,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
                 <div className="text-right">
-                    <ArrowUpRight className="w-5 h-5 text-zinc-300 dark:text-zinc-600 ml-auto mb-1" />
-                    <span className="text-xs font-black text-zinc-900 dark:text-white block">{typeData.total > 0 ? 'Balanceado' : 'Vazio'}</span>
+                    <div className="bg-zinc-100 dark:bg-zinc-800 p-2 rounded-xl">
+                        <ArrowUpRight className="w-4 h-4 text-zinc-400" />
+                    </div>
                 </div>
             </div>
             

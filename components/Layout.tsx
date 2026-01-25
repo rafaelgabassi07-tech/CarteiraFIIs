@@ -149,43 +149,29 @@ const navItems = [
 ];
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
-  const activeIndex = navItems.findIndex(item => item.id === currentTab);
-
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none flex justify-center pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-      {/* Container Principal: Ilha Flutuante Glassmorphism */}
-      <nav className="pointer-events-auto bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] w-full max-w-[20rem] mx-6 relative p-1.5 isolate ring-1 ring-black/5 dark:ring-white/5">
-        
-        {/* Pílula Deslizante de Alto Contraste (Indicador Ativo) */}
-        <div 
-            className="absolute top-1.5 bottom-1.5 bg-zinc-900 dark:bg-white rounded-full shadow-lg transition-transform duration-500 ease-out-mola -z-10"
-            style={{ 
-                left: '0.375rem', // Padding do container (p-1.5)
-                width: 'calc((100% - 0.75rem) / 4)', // Largura exata de uma célula (100% - padding total / 4 itens)
-                transform: `translateX(calc(${activeIndex} * 100%))` // Desloca 100% da própria largura por item
-            }}
-        ></div>
-
-        {/* Grid de Ícones */}
-        <div className="grid grid-cols-4 h-14 relative">
+    <div className="fixed bottom-6 left-0 right-0 z-[100] pointer-events-none flex justify-center items-end px-4">
+      <nav className="pointer-events-auto bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-2xl shadow-zinc-200/50 dark:shadow-black/50 px-2 py-2 flex gap-1 items-center max-w-sm w-full justify-between ring-1 ring-white/20 dark:ring-white/10 transition-all hover:scale-[1.02]">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className="flex items-center justify-center relative outline-none select-none press-effect group rounded-full"
-                aria-label={item.label}
+                className={`group relative flex items-center justify-center w-14 h-14 rounded-full transition-all duration-300 ease-out-mola active:scale-90 ${isActive ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-lg' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
               >
-                <div className={`transition-all duration-500 ease-out-mola flex flex-col items-center justify-center ${isActive ? 'text-white dark:text-zinc-950 scale-110' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
-                    <item.icon 
-                        className={`w-6 h-6 ${isActive ? 'fill-current stroke-[2.5px] drop-shadow-sm' : 'stroke-[2px]'}`} 
-                    />
-                </div>
+                <item.icon 
+                    className={`w-6 h-6 transition-all duration-300 ${isActive ? 'scale-110 stroke-[2.5px]' : 'scale-100'}`} 
+                />
+                
+                {isActive && (
+                    <span className="absolute -top-8 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[10px] font-black px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md">
+                        {item.label}
+                    </span>
+                )}
               </button>
             );
           })}
-        </div>
       </nav>
     </div>
   );
