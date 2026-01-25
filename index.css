@@ -74,6 +74,9 @@
   .anim-pop { animation: pop 0.4s var(--ease-out-mola) forwards; }
   .animate-gradient { background-size: 200% 200%; animation: gradientMove 8s ease infinite; }
   
+  /* Story Ring Animation */
+  .spin-slow { animation: spin 4s linear infinite; }
+  
   /* Press Effect refinado para ser mais tátil */
   .press-effect { @apply transition-all duration-200 ease-out active:scale-95 active:opacity-80 cursor-pointer touch-manipulation; }
 }
@@ -98,6 +101,10 @@
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Global Scrollbar Hide */
