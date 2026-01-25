@@ -17,7 +17,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.8.0'; // Bump arquitetural
+const APP_VERSION = '8.8.2'; // Bump de versão para forçar atualização de cache
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -36,6 +36,7 @@ const getSupabaseUrl = () => {
     return url || 'https://supabase.com';
 };
 
+// Memoização dos componentes principais para performance
 const MemoizedHome = React.memo(Home);
 const MemoizedPortfolio = React.memo(Portfolio);
 const MemoizedTransactions = React.memo(Transactions);
@@ -135,6 +136,19 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled));
   }, [pushEnabled]);
+
+  // --- REVEAL APP ---
+  // Este efeito é CRÍTICO para resolver o problema da "tela preta".
+  // Ele remove a opacidade 0 do #root adicionando a classe ao body.
+  useEffect(() => {
+    if (isReady) {
+        // Pequeno delay para garantir que a renderização do React ocorreu
+        const timer = setTimeout(() => {
+            document.body.classList.add('app-revealed');
+        }, 100);
+        return () => clearTimeout(timer);
+    }
+  }, [isReady]);
 
   // --- LOGICA DE NOTIFICAÇÕES INTELIGENTES ---
   useEffect(() => {
@@ -287,7 +301,6 @@ const App: React.FC = () => {
       
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
       
-      // 1. Busca dados iniciais do banco
       let data = await fetchUnifiedMarketData(tickers, startDate, force);
 
       if (data.dividends.length > 0) {
@@ -585,7 +598,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-primary-light dark:bg-primary-dark">
+    <div className="min-h-screen bg-primary-light dark:bg-primary-dark text-zinc-900 dark:text-zinc-100 pb-safe">
       <SplashScreen finishLoading={true} realProgress={100} />
       
       {toast && ( 

@@ -30,6 +30,7 @@
     @apply bg-primary-light dark:bg-primary-dark text-zinc-900 dark:text-zinc-100;
   }
 
+  /* Root Container - Inicialmente Invisível */
   #root {
     transition: opacity var(--duration-slow) var(--ease-out-soft);
     opacity: 0;
@@ -39,7 +40,7 @@
     flex-direction: column;
   }
 
-  /* Garante que o root fique visível quando a classe é adicionada */
+  /* Classe adicionada via JS após carregamento completo */
   body.app-revealed #root {
     opacity: 1;
   }
