@@ -3,8 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, Building2, TrendingUp, TrendingDown, DollarSign, X, ExternalLink, Target, Search, ArrowRight, Filter, ArrowLeft, Scale, Coins, Award, ArrowUpRight, ArrowDownRight, BarChart2, PieChart, Rocket, Users, Activity, Loader2, Calendar, Briefcase, Zap, Wallet, Banknote } from 'lucide-react';
 import { fetchMarketOverview } from '../services/dataService';
 import { SwipeableModal, UpdateReportModal } from '../components/Layout';
-import { AssetPosition, AssetType, DividendReceipt, ScrapeResult, UpdateReportData } from '../types';
-import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
+import { ScrapeResult, UpdateReportData } from '../types';
 
 // --- TYPES ---
 export interface MarketAsset {
@@ -21,7 +20,6 @@ export interface MarketAsset {
     liquidity?: number;
     type?: 'fii' | 'stock';
     segment?: string;
-    // Campos adicionais para compatibilidade com AssetPosition
     vacancy?: number;
     assets_value?: string;
     manager_type?: string;
@@ -67,11 +65,6 @@ interface MarketProps {
 // --- UTILS ---
 const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const formatPercent = (val: number) => `${val > 0 ? '+' : ''}${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%`;
-const formatNumber = (val: number | string | undefined, suffix = '') => {
-    if (val === undefined || val === null || val === '') return '-';
-    if (typeof val === 'string') return val;
-    return val.toLocaleString('pt-BR') + suffix;
-};
 
 // --- COMPONENTS AUXILIARES DO MODAL ---
 const BigStat = ({ label, value, colorClass, icon: Icon, subtext }: any) => (
@@ -111,7 +104,7 @@ const AssetDetailModal = ({ asset, onClose }: { asset: MarketAsset, onClose: () 
             <div className="flex-1 overflow-y-auto p-6 pb-20">
                 {/* Hero Section: Preço e Variação */}
                 <div className="flex flex-col items-center justify-center py-8 anim-fade-in">
-                    <h2 className="text-6xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">{formatCurrency(asset.price)}</h2>
+                    <h2 className="text-6xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">{formatCurrency(asset.price || 0)}</h2>
                     <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${isPositive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                         {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                         {formatPercent(asset.variation_percent || 0)} (24h)
@@ -432,14 +425,14 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
                  const add = (arr: MarketAsset[]) => arr.forEach(a => uniqueMap.set(a.ticker, a));
                  
                  if (result.highlights) {
-                     add(result.highlights.fiis.gainers);
-                     add(result.highlights.fiis.losers);
-                     add(result.highlights.fiis.high_yield);
-                     add(result.highlights.fiis.discounted);
-                     add(result.highlights.stocks.gainers);
-                     add(result.highlights.stocks.losers);
-                     add(result.highlights.stocks.high_yield);
-                     add(result.highlights.stocks.discounted);
+                     add(result.highlights.fiis?.gainers || []);
+                     add(result.highlights.fiis?.losers || []);
+                     add(result.highlights.fiis?.high_yield || []);
+                     add(result.highlights.fiis?.discounted || []);
+                     add(result.highlights.stocks?.gainers || []);
+                     add(result.highlights.stocks?.losers || []);
+                     add(result.highlights.stocks?.high_yield || []);
+                     add(result.highlights.stocks?.discounted || []);
                  }
                  
                  const results: ScrapeResult[] = Array.from(uniqueMap.values()).map(asset => ({
@@ -511,11 +504,11 @@ export const Market: React.FC<MarketProps> = ({ refreshSignal, onLoadingChange, 
     }, [activeTypeFilter]);
 
     const assetPool = useMemo(() => {
-        if (!data) return [];
-        const f = data.highlights.fiis;
-        const s = data.highlights.stocks;
+        if (!data || !data.highlights) return [];
+        const f = data.highlights.fiis || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
+        const s = data.highlights.stocks || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
         
-        const mapType = (list: MarketAsset[], type: 'fii' | 'stock') => list.map(a => ({...a, type}));
+        const mapType = (list: MarketAsset[], type: 'fii' | 'stock') => (list || []).map(a => ({...a, type}));
 
         const allAssets = [
             ...mapType(f.gainers, 'fii'), ...mapType(f.losers, 'fii'), ...mapType(f.high_yield, 'fii'), ...mapType(f.discounted, 'fii'), ...mapType(f.raw || [], 'fii'),

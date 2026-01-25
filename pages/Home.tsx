@@ -37,7 +37,7 @@ const formatPercent = (val: any, privacy = false) => {
 };
 
 const formatDateShort = (dateStr: string) => {
-    if (!dateStr || dateStr.length < 10) return '-';
+    if (!dateStr || typeof dateStr !== 'string' || dateStr.length < 10) return '-';
     const [year, month, day] = dateStr.split('-');
     return `${day}/${month}`;
 };
@@ -64,6 +64,8 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
         borderColor = 'border-amber-200 dark:border-amber-900/30';
     }
 
+    const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
+
     return (
         <div className="relative pl-12 py-2">
             {!isLast && <div className="absolute left-[19px] top-8 bottom-[-8px] w-[2px] bg-zinc-100 dark:bg-zinc-800"></div>}
@@ -74,7 +76,7 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
                 {isToday && <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg">HOJE</div>}
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-xs font-black text-zinc-500 border border-zinc-100 dark:border-zinc-700">
-                        {event.ticker.substring(0,2)}
+                        {tickerDisplay}
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
@@ -111,6 +113,11 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const [isPaused, setIsPaused] = useState(false);
     const DURATION = 5000; // 5 segundos por story
 
+    // Protection against undefined insights
+    if (!insights || insights.length === 0 || currentIndex >= insights.length) {
+        return null;
+    }
+
     const currentStory = insights[currentIndex];
 
     useEffect(() => {
@@ -119,7 +126,7 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
 
     useEffect(() => {
         if (!isPaused) {
-            const interval = 50; // Update every 50ms
+            const interval = 50; 
             const step = (100 * interval) / DURATION;
             
             const timer = setInterval(() => {
@@ -144,7 +151,7 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
 
     const handleNext = (e: React.MouseEvent) => {
         e.stopPropagation();
-        onMarkAsRead(currentStory.id);
+        if (currentStory) onMarkAsRead(currentStory.id);
         if (currentIndex < insights.length - 1) {
             setCurrentIndex(c => c + 1);
         } else {
@@ -186,8 +193,6 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const Icon = getTypeIcon(currentStory.type);
     const colorClass = getTypeColor(currentStory.type);
     
-    // Calcula tempo relativo (ex: Há 2 horas)
-    // Usa timestamp do story (gerado pelo backend) ou fallback
     const timeAgo = currentStory.timestamp ? formatDistanceToNow(currentStory.timestamp, { addSuffix: true, locale: ptBR }) : 'Recentemente';
 
     return createPortal(
@@ -284,6 +289,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
 
     // Filtra stories expirados (mais de 24h)
     const validInsights = useMemo(() => {
+        if (!insights) return [];
         const now = Date.now();
         const ONE_DAY_MS = 24 * 60 * 60 * 1000;
         return insights.filter(i => {
@@ -292,7 +298,7 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
         });
     }, [insights]);
 
-    if (validInsights.length === 0) return null;
+    if (!validInsights || validInsights.length === 0) return null;
 
     return (
         <div className="mb-6 -mx-4 overflow-x-auto no-scrollbar pl-4 pb-2 flex gap-4 snap-x">
@@ -360,7 +366,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [insights, setInsights] = useState<PortfolioInsight[]>([]);
   const [marketOverview, setMarketOverview] = useState<MarketOverview | undefined>(undefined);
   
-  // Leitura inicial do LocalStorage
   const [readStories, setReadStories] = useState<Set<string>>(() => {
       try {
           const saved = localStorage.getItem('investfiis_read_stories');
@@ -370,7 +375,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
   });
 
-  // Carregamento de Destaques de Mercado para os Stories (Com persistência de horário)
   useEffect(() => {
       const loadData = async () => {
           try {
@@ -378,14 +382,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               const marketData = await fetchMarketOverview();
               setMarketOverview(marketData);
               
-              // Gera insights passando os dados do mercado
-              // Se marketData.last_update vier "agora", os novos insights terão horário de agora
               const generatedInsights = analyzePortfolio(portfolio, safeInflation, marketData);
               
-              // --- CORREÇÃO DE TIMESTAMP (PERSISTÊNCIA) ---
-              // Recupera cache local para manter o horário original de criação do story no dia.
-              // O ID do story é estável por dia (ticker + tipo + data).
-              // Isso evita que o story pareça "criado agora" toda vez que a página recarrega.
               const CACHE_KEY = 'investfiis_insights_history_v1';
               let cachedInsights: PortfolioInsight[] = [];
               try {
@@ -394,11 +392,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               } catch {}
 
               const mergedInsights = generatedInsights.map(newStory => {
-                  // Tenta encontrar o mesmo story no cache (baseado no ID estável do dia)
-                  const existing = cachedInsights.find(c => c.id === newStory.id);
+                  const existing = Array.isArray(cachedInsights) ? cachedInsights.find(c => c && c.id === newStory.id) : null;
                   if (existing && existing.timestamp) {
-                      // Se encontrou, PRESERVA o timestamp original (quando o usuário viu pela 1ª vez ou quando foi criado)
-                      // Mas atualiza o conteúdo (mensagem/preço) caso tenha mudado
                       return { ...newStory, timestamp: existing.timestamp };
                   }
                   return newStory;
@@ -414,7 +409,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       loadData();
   }, [portfolio, inflationRate]);
 
-  // Função atualizada para persistir leitura
   const markAsRead = useCallback((id: string) => {
       setReadStories(prev => {
           if (prev.has(id)) return prev;
@@ -427,13 +421,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const safeInflation = Number(inflationRate) || 4.62;
 
-  // Cálculos de Rentabilidade e Dados (Mantidos)
   const capitalGainValue = useMemo(() => balance - invested, [balance, invested]);
   const capitalGainPercent = useMemo(() => invested > 0 ? (capitalGainValue / invested) * 100 : 0, [capitalGainValue, invested]);
   const isCapitalGainPositive = capitalGainValue >= 0;
   const totalProfitValue = useMemo(() => totalAppreciation + salesGain + totalDividendsReceived, [totalAppreciation, salesGain, totalDividendsReceived]);
   const realReturnPercent = useMemo(() => {
-      const nominalFactor = 1 + (totalProfitValue / invested); // Simplificado para ROI total
+      const nominalFactor = 1 + (totalProfitValue / invested);
       const inflationFactor = 1 + (safeInflation / 100);
       return invested > 0 ? ((nominalFactor / inflationFactor) - 1) * 100 : 0;
   }, [totalProfitValue, invested, safeInflation]);
@@ -475,7 +468,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     
     const safeReceipts = Array.isArray(dividendReceipts) ? dividendReceipts : [];
 
-    // Lógica combinada de eventos e histórico para otimização
     const map: Record<string, number> = {};
     const receiptsMap: Record<string, DividendReceipt[]> = {};
     let total12m = 0;
@@ -502,7 +494,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         }
     });
     
-    // Ordenação e Agrupamento da Agenda
     const sortedEvents = allEvents.sort((a, b) => a.date.localeCompare(b.date));
     const grouped: Record<string, any[]> = { 'Hoje': [], 'Amanhã': [], 'Esta Semana': [], 'Este Mês': [], 'Futuro': [] };
     
@@ -520,7 +511,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         else grouped['Futuro'].push(ev);
     });
 
-    // Gráficos de Proventos
     Object.keys(receiptsMap).forEach(k => { if (map[k] > maxMonthly) maxMonthly = map[k]; });
     const sortedHistory = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
     const dividendsChartData = sortedHistory.map(([date, val]) => {
@@ -540,8 +530,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         receiptsByMonth: receiptsMap, divStats: { total12m, maxMonthly, monthlyAvg }
     };
   }, [dividendReceipts, totalDividendsReceived]);
-
-  // --- Handlers & Components for Charts ---
 
   const toggleMonthExpand = useCallback((month: string) => {
     setExpandedMonth(prev => prev === month ? null : month);
@@ -593,10 +581,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="space-y-4 pb-8">
       
-      {/* 0. SMART FEED (STORIES - RANKINGS DE MERCADO) */}
       <SmartFeed insights={insights} onMarkAsRead={markAsRead} readStories={readStories} />
 
-      {/* 1. CARTÃO DE PATRIMÔNIO ATUAL */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
         <div className="w-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 dark:from-zinc-800 dark:via-zinc-900 dark:to-black rounded-[2rem] border border-white/10 shadow-2xl shadow-black/30 relative overflow-hidden text-white animate-gradient">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
@@ -632,7 +618,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </div>
 
-      {/* 2. BOTÃO AGENDA */}
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
         <button onClick={() => setShowAgendaModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>
             <div className="flex items-center gap-4 relative z-10">
@@ -650,7 +635,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             <div className="flex items-center gap-3 relative z-10">
                 {upcomingEvents.length > 0 && (
                     <div className="flex -space-x-2">
-                         {upcomingEvents.slice(0,3).map((ev: any, i: number) => <div key={i} className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-[8px] font-black text-zinc-600 dark:text-zinc-400 shadow-sm">{ev.ticker.substring(0,2)}</div>)}
+                         {upcomingEvents.slice(0,3).map((ev: any, i: number) => <div key={i} className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center text-[8px] font-black text-zinc-600 dark:text-zinc-400 shadow-sm">{ev.ticker ? ev.ticker.substring(0,2) : '?'}</div>)}
                          {upcomingEvents.length > 3 && <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-[8px] font-black text-zinc-500 shadow-sm">+{upcomingEvents.length - 3}</div>}
                     </div>
                 )}
@@ -659,7 +644,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
       
-      {/* 3. GRID PROVENTOS & RAIO-X */}
       <div className="grid grid-cols-2 gap-4 anim-stagger-item" style={{ animationDelay: '200ms' }}>
         
         <button onClick={() => setShowProventosModal(true)} className={`p-5 text-left flex flex-col justify-between h-44 ${cardBaseClass} ${hoverBorderClass}`}>
@@ -712,7 +696,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* 4. CARD ALOCAÇÃO */}
       <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
         <button onClick={() => setShowAllocationModal(true)} className={`w-full text-left p-5 ${cardBaseClass} ${hoverBorderClass}`}>
             <div className="flex justify-between items-end mb-5 relative z-10">
@@ -748,8 +731,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* --- MODAIS DE DETALHES --- */}
-      {/* ... (Modais Mantidos) ... */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex items-center gap-4 mb-8 px-2">
@@ -793,6 +774,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
+         {/* ... Conteúdo do modal mantido idêntico ao original ... */}
          <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2">
                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 border-zinc-200 dark:border-zinc-700`}><PieIcon className="w-6 h-6" strokeWidth={1.5} /></div>

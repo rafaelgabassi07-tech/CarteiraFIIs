@@ -12,8 +12,8 @@ export const analyzePortfolio = (
 ): PortfolioInsight[] => {
     const insights: PortfolioInsight[] = [];
     
-    // Se não houver dados de mercado, não gera stories
-    if (!marketData || marketData.error) return [];
+    // Se não houver dados de mercado válidos, não gera stories
+    if (!marketData || marketData.error || !marketData.highlights) return [];
 
     // --- CORREÇÃO DE TIMESTAMP ---
     // Usa a data da última atualização do mercado como base, não o momento atual (Date.now())
@@ -26,7 +26,9 @@ export const analyzePortfolio = (
         }
     }
 
-    const { fiis, stocks } = marketData.highlights;
+    // BLINDAGEM: Garante que os objetos existam antes de acessar propriedades
+    const fiis = marketData.highlights.fiis || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
+    const stocks = marketData.highlights.stocks || { gainers: [], losers: [], high_yield: [], discounted: [], raw: [] };
     const todayStr = new Date(baseTime).toISOString().split('T')[0];
 
     // Helper para criar Stories
@@ -37,6 +39,8 @@ export const analyzePortfolio = (
         message: string, 
         scoreBase: number
     ) => {
+        if (!asset || !asset.ticker) return; // Proteção extra
+
         const isInWallet = portfolio.some(p => p.ticker === asset.ticker);
         const finalScore = scoreBase + (isInWallet ? 20 : 0); // Prioriza se o usuário tem na carteira
         
@@ -60,14 +64,15 @@ export const analyzePortfolio = (
     };
 
     // --- 1. MAIORES ALTAS (FIIs & Ações) ---
-    if (fiis.gainers.length > 0) {
+    // Uso de Optional Chaining (?.) e verificações de length seguras
+    if (fiis.gainers?.length > 0) {
         const top = fiis.gainers[0];
         if ((top.variation_percent || 0) > 0.5) {
             createStory(top, 'volatility_up', 'Campeão do Dia (FII)', 
                 `O ${top.ticker} lidera as altas dos FIIs com uma valorização de ${top.variation_percent?.toFixed(2)}% hoje.`, 100);
         }
     }
-    if (stocks.gainers.length > 0) {
+    if (stocks.gainers?.length > 0) {
         const top = stocks.gainers[0];
         if ((top.variation_percent || 0) > 1.0) {
             createStory(top, 'volatility_up', 'Destaque de Alta (Ação)', 
@@ -76,14 +81,14 @@ export const analyzePortfolio = (
     }
 
     // --- 2. MAIORES BAIXAS (Oportunidade ou Alerta) ---
-    if (fiis.losers.length > 0) {
+    if (fiis.losers?.length > 0) {
         const bottom = fiis.losers[0];
         if ((bottom.variation_percent || 0) < -0.5) {
             createStory(bottom, 'volatility_down', 'Maior Queda (FII)', 
                 `O ${bottom.ticker} registra a maior desvalorização entre os FIIs monitorados: ${bottom.variation_percent?.toFixed(2)}%.`, 90);
         }
     }
-    if (stocks.losers.length > 0) {
+    if (stocks.losers?.length > 0) {
         const bottom = stocks.losers[0];
         if ((bottom.variation_percent || 0) < -1.0) {
             createStory(bottom, 'volatility_down', 'Queda Expressiva', 
@@ -92,14 +97,14 @@ export const analyzePortfolio = (
     }
 
     // --- 3. REIS DOS DIVIDENDOS (High Yield) ---
-    const validFiiYield = fiis.high_yield.filter(a => (a.dy_12m || 0) < 30 && (a.dy_12m || 0) > 6);
+    const validFiiYield = (fiis.high_yield || []).filter(a => (a.dy_12m || 0) < 30 && (a.dy_12m || 0) > 6);
     if (validFiiYield.length > 0) {
         const top = validFiiYield[0];
         createStory(top, 'success', 'Pagador de Elite', 
             `${top.ticker} está entregando um Dividend Yield impressionante de ${top.dy_12m?.toFixed(2)}% nos últimos 12 meses.`, 95);
     }
 
-    const validStockYield = stocks.high_yield.filter(a => (a.dy_12m || 0) < 30 && (a.dy_12m || 0) > 6);
+    const validStockYield = (stocks.high_yield || []).filter(a => (a.dy_12m || 0) < 30 && (a.dy_12m || 0) > 6);
     if (validStockYield.length > 0) {
         const top = validStockYield[0];
         createStory(top, 'success', 'Dividendos Altos', 
@@ -107,13 +112,13 @@ export const analyzePortfolio = (
     }
 
     // --- 4. OPORTUNIDADES DE VALUATION (P/VP & P/L) ---
-    const cheapFii = fiis.discounted.filter(a => (a.p_vp || 0) > 0.5 && (a.p_vp || 0) < 0.95 && (a.dy_12m || 0) > 8)[0];
+    const cheapFii = (fiis.discounted || []).filter(a => (a.p_vp || 0) > 0.5 && (a.p_vp || 0) < 0.95 && (a.dy_12m || 0) > 8)[0];
     if (cheapFii) {
         createStory(cheapFii, 'opportunity', 'Desconto & Renda', 
             `${cheapFii.ticker} negocia abaixo do valor patrimonial (P/VP ${cheapFii.p_vp?.toFixed(2)}) e paga DY de ${cheapFii.dy_12m?.toFixed(1)}%.`, 85);
     }
 
-    const cheapStock = stocks.discounted.find(a => (a.p_l || 0) > 0 && (a.p_l || 0) < 6 && (a.roe || 0) > 15);
+    const cheapStock = (stocks.discounted || []).find(a => (a.p_l || 0) > 0 && (a.p_l || 0) < 6 && (a.roe || 0) > 15);
     if (cheapStock) {
         createStory(cheapStock, 'opportunity', 'Ação Descontada', 
             `${cheapStock.ticker} está com P/L de ${cheapStock.p_l?.toFixed(1)}x e entrega um ROE sólido de ${cheapStock.roe?.toFixed(1)}%.`, 84);
