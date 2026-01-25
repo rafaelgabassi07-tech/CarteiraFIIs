@@ -11,12 +11,13 @@ import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals } from './services/dataService';
+import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio } from './services/portfolioRules';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.7.0'; 
+const APP_VERSION = '8.8.0'; // Bump arquitetural
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -29,74 +30,6 @@ const STORAGE_KEYS = {
   NOTIF_HISTORY: 'investfiis_notification_history_v3',
   METADATA: 'investfiis_metadata_v2' 
 };
-
-// Arredonda para 2 casas decimais
-const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
-
-// Helper de data seguro para comparações cronológicas precisas
-const safeDate = (dateStr: string) => {
-    if (!dateStr || dateStr.length < 10) return null;
-    const d = new Date(dateStr);
-    // Ajusta para meio-dia UTC para evitar problemas de timezone virando o dia
-    d.setUTCHours(12, 0, 0, 0);
-    return isNaN(d.getTime()) ? null : d.getTime();
-};
-
-// Verifica se duas datas (YYYY-MM-DD) são o mesmo dia localmente
-const isSameDayLocal = (dateString: string) => {
-    if (!dateString) return false;
-    const today = new Date();
-    const [year, month, day] = dateString.split('-').map(Number);
-    // Compara componentes locais
-    return today.getDate() === day && 
-           (today.getMonth() + 1) === month && 
-           today.getFullYear() === year;
-};
-
-// Calcula quantidade acumulada em uma data, considerando fracionário
-const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
-  if (!ticker || !dateCom) return 0; // Guard clause
-  const targetTime = safeDate(dateCom);
-  if (!targetTime) return 0;
-  
-  // Normaliza o ticker do PROVENTO para a raiz (ex: ITSA4F -> ITSA4)
-  let targetRoot = ticker.trim().toUpperCase();
-  if (targetRoot.endsWith('F') && !targetRoot.endsWith('11') && !targetRoot.endsWith('11B') && targetRoot.length <= 6) {
-      targetRoot = targetRoot.slice(0, -1);
-  }
-
-  return transactions
-    .filter(t => {
-        if (!t || !t.date || !t.ticker) return false;
-        const txTime = safeDate(t.date);
-        if (!txTime) return false; // Ignora transações sem data válida
-
-        let txRoot = t.ticker.trim().toUpperCase(); // Ticker da Transação
-        
-        // Normaliza o ticker da TRANSAÇÃO para a raiz (ex: ITSA4F -> ITSA4)
-        if (txRoot.endsWith('F') && !txRoot.endsWith('11') && !txRoot.endsWith('11B') && txRoot.length <= 6) {
-            txRoot = txRoot.slice(0, -1);
-        }
-
-        // Compara raízes e datas (via timestamp para precisão)
-        return txRoot === targetRoot && txTime <= targetTime;
-    })
-    .reduce((acc, t) => {
-        if (t.type === 'BUY') return acc + t.quantity;
-        if (t.type === 'SELL') return acc - t.quantity;
-        return acc;
-    }, 0);
-};
-
-const mapSupabaseToTx = (record: any): Transaction => ({
-  id: record.id,
-  ticker: record.ticker,
-  type: record.type,
-  quantity: record.quantity,
-  price: record.price,
-  date: record.date,
-  assetType: record.asset_type || AssetType.FII, 
-});
 
 const getSupabaseUrl = () => {
     const url = (import.meta as any).env?.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -632,96 +565,9 @@ const App: React.FC = () => {
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   }, []);
 
-  // --- CÁLCULOS DE PORTFÓLIO (Memoized) ---
+  // --- CÁLCULOS DE PORTFÓLIO (Delegado para Serviço) ---
   const memoizedPortfolioData = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const safeTxs = Array.isArray(transactions) ? transactions : [];
-    const sortedTxs = [...safeTxs].sort((a, b) => a.date.localeCompare(b.date));
-    
-    const safeDividends = Array.isArray(dividends) ? dividends : [];
-
-    const receipts = safeDividends.map(d => {
-        if (!d || !d.ticker) return null;
-        const normalizedTicker = d.ticker.trim().toUpperCase();
-        const qty = getQuantityOnDate(normalizedTicker, d.dateCom, sortedTxs);
-        
-        return { 
-            ...d, 
-            ticker: normalizedTicker,
-            quantityOwned: qty, 
-            totalReceived: qty * d.rate 
-        };
-    }).filter((r): r is any => !!r && r.totalReceived > 0.0001); 
-
-    const divPaidMap: Record<string, number> = {};
-    let totalDividendsReceived = 0;
-    receipts.forEach((r: any) => { 
-        if (r.paymentDate <= todayStr) { 
-            divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived; 
-            totalDividendsReceived += r.totalReceived; 
-        } 
-    });
-
-    const positions: Record<string, any> = {};
-    sortedTxs.forEach(t => {
-      if (!t.ticker) return;
-      const normalizedTicker = t.ticker.trim().toUpperCase();
-      if (!positions[normalizedTicker]) positions[normalizedTicker] = { ticker: normalizedTicker, quantity: 0, averagePrice: 0, assetType: t.assetType };
-      const p = positions[normalizedTicker];
-      if (t.type === 'BUY') { 
-          const newQuantity = p.quantity + t.quantity;
-          if (newQuantity > 0.000001) {
-             const currentTotalCost = round(p.quantity * p.averagePrice);
-             const additionalCost = round(t.quantity * t.price);
-             p.averagePrice = (currentTotalCost + additionalCost) / newQuantity; 
-          }
-          p.quantity = newQuantity; 
-      } else { 
-          p.quantity -= t.quantity; 
-          if (p.quantity <= 0.000001) { p.quantity = 0; p.averagePrice = 0; }
-      }
-    });
-
-    const finalPortfolio = Object.values(positions)
-        .filter(p => p.quantity > 0.001)
-        .map(p => {
-            const normalizedTicker = p.ticker.trim().toUpperCase();
-            let meta = assetsMetadata[normalizedTicker];
-            if (!meta && normalizedTicker.endsWith('F') && !normalizedTicker.endsWith('11F')) {
-                meta = assetsMetadata[normalizedTicker.slice(0, -1)];
-            }
-
-            const quote = quotes[normalizedTicker];
-            let segment = meta?.segment || 'Geral';
-            segment = segment.replace('Seg: ', '').trim();
-            if (segment.length > 20) segment = segment.substring(0, 20) + '...';
-
-            return { 
-                ...p, 
-                totalDividends: divPaidMap[p.ticker] || (p.ticker.endsWith('F') ? divPaidMap[p.ticker.slice(0, -1)] : 0) || 0, 
-                segment: segment, 
-                currentPrice: quote?.regularMarketPrice || p.averagePrice, 
-                dailyChange: quote?.regularMarketChangePercent || 0, 
-                logoUrl: quote?.logourl, 
-                assetType: meta?.type || p.assetType, 
-                ...(meta?.fundamentals || {}) 
-            };
-        });
-
-    const invested = round(finalPortfolio.reduce((a, p) => a + (p.averagePrice * p.quantity), 0));
-    const balance = round(finalPortfolio.reduce((a, p) => a + ((p.currentPrice || p.averagePrice) * p.quantity), 0));
-    
-    let salesGain = 0; const tracker: Record<string, { q: number; c: number }> = {};
-    sortedTxs.forEach(t => {
-      if (!t.ticker) return;
-      const normalizedTicker = t.ticker.trim().toUpperCase();
-      if (!tracker[normalizedTicker]) tracker[normalizedTicker] = { q: 0, c: 0 };
-      const a = tracker[normalizedTicker];
-      if (t.type === 'BUY') { a.q += t.quantity; a.c += round(t.quantity * t.price); } 
-      else if (a.q > 0) { const cost = round(t.quantity * (a.c / a.q)); salesGain += round((t.quantity * t.price) - cost); a.c -= cost; a.q -= t.quantity; }
-    });
-
-    return { portfolio: finalPortfolio, dividendReceipts: receipts, totalDividendsReceived, invested, balance, salesGain };
+      return processPortfolio(transactions, dividends, quotes, assetsMetadata);
   }, [transactions, quotes, dividends, assetsMetadata]);
 
   // --- RENDERIZAÇÃO ---

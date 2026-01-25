@@ -2,8 +2,8 @@
 import { AssetPosition, PortfolioInsight, AssetType } from "../types";
 
 /**
- * Analisa os dados da carteira e gera insights (Stories) baseados nos ativos do usuário.
- * Foca em volatilidade diária, dividendos e valuation dos ativos possuídos.
+ * Analisa os dados da carteira e gera insights (Stories) aprimorados.
+ * Inclui: Volatilidade, Yield, Valuation, Concentração e Performance.
  */
 export const analyzePortfolio = (
     portfolio: AssetPosition[], 
@@ -31,74 +31,86 @@ export const analyzePortfolio = (
             relatedTicker: ticker,
             score,
             timestamp: Date.now(),
-            // Link para detalhes externos
             url: ticker ? `https://investidor10.com.br/${ticker.endsWith('11') || ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${ticker.toLowerCase()}/` : undefined
         });
     };
 
-    // --- 1. Destaques de Volatilidade (Alta/Baixa Hoje) ---
-    // Filtra ativos com variação válida vinda da API de cotação
-    const activeAssets = portfolio.filter(a => typeof a.dailyChange === 'number');
+    // Cálculos preliminares
+    let totalPortfolioValue = 0;
+    const activeAssets = portfolio.map(p => {
+        const val = (p.currentPrice || 0) * p.quantity;
+        totalPortfolioValue += val;
+        return { ...p, totalValue: val };
+    });
+
+    // --- 1. Alerta de Concentração (Novo) ---
+    // Verifica se algum ativo representa mais de 25% da carteira
+    if (totalPortfolioValue > 0) {
+        const concentrationLimit = 0.25; // 25%
+        const concentratedAsset = activeAssets.find(a => (a.totalValue / totalPortfolioValue) > concentrationLimit);
+        
+        if (concentratedAsset) {
+            const percent = ((concentratedAsset.totalValue / totalPortfolioValue) * 100).toFixed(0);
+            createStory('concentration', 'warning', 'Risco de Concentração', 
+                `Cuidado! O ativo ${concentratedAsset.ticker} representa ${percent}% da sua carteira. Considere diversificar.`, 98, concentratedAsset.ticker);
+        }
+    }
+
+    // --- 2. Destaques de Volatilidade (Alta/Baixa Hoje) ---
     const sortedByChange = [...activeAssets].sort((a, b) => (b.dailyChange || 0) - (a.dailyChange || 0));
     
     if (sortedByChange.length > 0) {
         const topGainer = sortedByChange[0];
-        // Considera destaque se subir mais de 0.5%
-        if ((topGainer.dailyChange || 0) > 0.5) {
-            createStory('gainer', 'volatility_up', 'Alta na Carteira', 
-                `Seu ativo ${topGainer.ticker} está subindo ${topGainer.dailyChange?.toFixed(2)}% hoje.`, 90, topGainer.ticker);
+        if ((topGainer.dailyChange || 0) > 1.0) { // Aumentei threshold para 1% para ser mais relevante
+            createStory('gainer', 'volatility_up', 'Foguete do Dia 🚀', 
+                `${topGainer.ticker} está disparando ${topGainer.dailyChange?.toFixed(2)}% hoje!`, 85, topGainer.ticker);
         }
 
         const topLoser = sortedByChange[sortedByChange.length - 1];
-        // Considera destaque se cair mais de 0.5%
-        if ((topLoser.dailyChange || 0) < -0.5) {
-            createStory('loser', 'volatility_down', 'Em Queda', 
-                `${topLoser.ticker} recuou ${Math.abs(topLoser.dailyChange || 0).toFixed(2)}% no pregão.`, 85, topLoser.ticker);
+        if ((topLoser.dailyChange || 0) < -1.0) {
+            createStory('loser', 'volatility_down', 'Oportunidade ou Queda?', 
+                `${topLoser.ticker} caiu ${Math.abs(topLoser.dailyChange || 0).toFixed(2)}% no pregão de hoje.`, 80, topLoser.ticker);
         }
     }
 
-    // --- 2. Rei dos Dividendos (Maior DY na Carteira) ---
-    const topYield = [...portfolio].sort((a, b) => (b.dy_12m || 0) - (a.dy_12m || 0))[0];
-    if (topYield && (topYield.dy_12m || 0) > 8) {
-        createStory('high-yield', 'success', 'Gerador de Renda', 
-            `${topYield.ticker} é seu maior pagador com DY de ${topYield.dy_12m?.toFixed(2)}% nos últimos 12 meses.`, 95, topYield.ticker);
+    // --- 3. Rei dos Dividendos (Maior DY na Carteira) ---
+    const topYield = [...activeAssets].sort((a, b) => (b.dy_12m || 0) - (a.dy_12m || 0))[0];
+    if (topYield && (topYield.dy_12m || 0) > 10) { // Só mostra se for realmente alto (>10%)
+        createStory('high-yield', 'success', 'Máquina de Renda 🤑', 
+            `${topYield.ticker} é seu campeão de dividendos com um DY anual de ${topYield.dy_12m?.toFixed(2)}%.`, 90, topYield.ticker);
     }
 
-    // --- 3. Oportunidades (P/VP Baixo para FIIs na Carteira) ---
-    const opportunities = portfolio.filter(a => 
+    // --- 4. Oportunidades (P/VP Baixo para FIIs) ---
+    const opportunities = activeAssets.filter(a => 
         a.assetType === AssetType.FII && 
-        (a.p_vp || 0) > 0.1 && 
-        (a.p_vp || 0) < 0.98
+        (a.p_vp || 0) > 0.4 && // Evita fundos quebrados
+        (a.p_vp || 0) < 0.90   // Desconto real (>10%)
     );
     if (opportunities.length > 0) {
-        // Pega o mais descontado
         const bestOpp = opportunities.sort((a, b) => (a.p_vp || 0) - (b.p_vp || 0))[0];
-        createStory('discount', 'opportunity', 'Desconto', 
-            `${bestOpp.ticker} está barato! Negociado a ${bestOpp.p_vp?.toFixed(2)}x do valor patrimonial.`, 88, bestOpp.ticker);
+        createStory('discount', 'opportunity', 'Está Barato!', 
+            `${bestOpp.ticker} está sendo negociado a apenas ${(bestOpp.p_vp || 0).toFixed(2)}x do seu valor patrimonial.`, 92, bestOpp.ticker);
     }
 
-    // --- 4. Alerta de Vacância (FIIs) ---
-    const highVacancy = portfolio.find(a => a.assetType === AssetType.FII && (a.vacancy || 0) > 20);
+    // --- 5. Alerta de Vacância (FIIs) ---
+    const highVacancy = activeAssets.find(a => a.assetType === AssetType.FII && (a.vacancy || 0) > 25);
     if (highVacancy) {
-        createStory('vacancy', 'warning', 'Vacância Alta', 
-            `Atenção: ${highVacancy.ticker} possui vacância física de ${highVacancy.vacancy}%.`, 70, highVacancy.ticker);
+        createStory('vacancy', 'warning', 'Sinal Amarelo ⚠️', 
+            `Atenção: ${highVacancy.ticker} está com vacância física alta de ${highVacancy.vacancy}%.`, 75, highVacancy.ticker);
     }
 
-    // --- 5. Performance Geral (vs IPCA) ---
-    // Calcula rentabilidade simples da carteira
-    const totalCost = portfolio.reduce((acc, p) => acc + (p.averagePrice * p.quantity), 0);
-    const totalValue = portfolio.reduce((acc, p) => acc + ((p.currentPrice || 0) * p.quantity), 0);
+    // --- 6. Performance Geral (vs IPCA) ---
+    const totalCost = activeAssets.reduce((acc, p) => acc + (p.averagePrice * p.quantity), 0);
     
-    // Evita divisão por zero
     if (totalCost > 0) {
-        const rentability = ((totalValue / totalCost) - 1) * 100;
+        const rentability = ((totalPortfolioValue / totalCost) - 1) * 100;
 
-        if (rentability > ipca) {
-            createStory('inflation-win', 'success', 'Acima da Inflação', 
-                `Sua carteira valorizou ${rentability.toFixed(2)}% (valor atual), superando o IPCA acumulado de ${ipca}%.`, 100);
+        if (rentability > ipca + 2) { // Superou IPCA com margem
+            createStory('inflation-win', 'success', 'Vencendo a Inflação 🏆', 
+                `Sua carteira valorizou ${rentability.toFixed(2)}%, superando o IPCA de ${ipca}%. Parabéns!`, 100);
         } else if (rentability < 0) {
             createStory('correction', 'neutral', 'Momento de Ajuste', 
-                `Sua carteira está em correção de ${rentability.toFixed(2)}% em relação ao custo médio. Foco no longo prazo!`, 60);
+                `Sua carteira está oscilando ${rentability.toFixed(2)}%. Lembre-se: o foco é no longo prazo e nos dividendos.`, 60);
         }
     }
 
