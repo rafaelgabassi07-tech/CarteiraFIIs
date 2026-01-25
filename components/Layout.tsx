@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, BarChart2 } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi } from 'lucide-react';
 import { UpdateReportData } from '../types';
 
 // Utility for smooth visibility transitions
@@ -66,7 +66,7 @@ interface HeaderProps {
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
   appVersion?: string;
-  cloudStatus?: 'disconnected' | 'connected' | 'hidden' | 'syncing'; // Novo prop
+  cloudStatus?: 'disconnected' | 'connected' | 'hidden' | 'syncing';
   hideBorder?: boolean;
 }
 
@@ -90,11 +90,9 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex flex-col anim-fade-in min-w-0">
                 <div className="flex items-center gap-3">
                     {isRefreshing && <Loader2 className="w-4 h-4 animate-spin text-accent shrink-0" />}
-                    {/* Gradiente Metálico Aplicado */}
                     <h1 className="text-2xl font-black tracking-tighter flex items-center gap-2 truncate bg-gradient-to-br from-zinc-700 via-zinc-900 to-zinc-700 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-400 text-transparent bg-clip-text">
                       {title}
                     </h1>
-                    {/* Status da Nuvem Injetado Aqui */}
                     <HeaderCloudStatus status={cloudStatus} />
                 </div>
                 {subtitle && (
@@ -165,7 +163,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
                 />
                 
                 {isActive && (
-                    <span className="absolute -top-8 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[10px] font-black px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md">
+                    <span className="absolute -top-8 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[10px] font-black px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md whitespace-nowrap">
                         {item.label}
                     </span>
                 )}

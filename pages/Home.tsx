@@ -1,8 +1,8 @@
 
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight, NewsItem, MarketOverview } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, BarChart3, Activity, X, Filter, Percent, Layers, Building2, TrendingDown, Lightbulb, AlertTriangle, Sparkles, Zap, Info, Globe, Newspaper, ArrowLeft, ArrowRight, Clock } from 'lucide-react';
+import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -110,9 +110,8 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const [currentIndex, setCurrentIndex] = useState(startIndex);
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
-    const DURATION = 6000; // Aumentado para 6s para leitura mais calma
+    const DURATION = 6000; 
 
-    // Protection against undefined insights
     if (!insights || insights.length === 0 || currentIndex >= insights.length) {
         return null;
     }
@@ -287,7 +286,6 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
 const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: PortfolioInsight[], onMarkAsRead: (id: string) => void, readStories: Set<string> }) => {
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-    // Filtra stories expirados (mais de 24h)
     const validInsights = useMemo(() => {
         if (!insights) return [];
         const now = Date.now();
@@ -305,7 +303,6 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
             {validInsights.map((item, index) => {
                 const isRead = readStories.has(item.id);
                 
-                // Cores do anel baseadas no tipo de destaque - Mais Vibrantes
                 let ringColors = 'from-indigo-500 via-purple-500 to-pink-500';
                 if (item.type === 'volatility_up' || item.type === 'success') ringColors = 'from-emerald-400 via-teal-400 to-cyan-400';
                 if (item.type === 'volatility_down' || item.type === 'warning') ringColors = 'from-rose-500 via-orange-500 to-amber-500';
@@ -687,7 +684,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
             </div>
             <div className="absolute right-0 bottom-0 opacity-10">
-                <BarChart3 className="w-24 h-24 text-rose-500 -mb-4 -mr-4" />
+                {/* Ícone de gráfico decorativo sem usar o BarChart do Lucide para evitar conflitos */}
+                <svg className="w-24 h-24 text-rose-500 -mb-4 -mr-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>
             </div>
         </button>
       </div>
