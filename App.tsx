@@ -138,17 +138,13 @@ const App: React.FC = () => {
   }, [pushEnabled]);
 
   // --- CORREÇÃO DE SCROLL ---
-  // Reseta o scroll para o topo sempre que a aba ou tela de settings mudar
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [currentTab, showSettings]);
 
   // --- REVEAL APP ---
-  // Este efeito é CRÍTICO para resolver o problema da "tela preta".
-  // Ele remove a opacidade 0 do #root adicionando a classe ao body.
   useEffect(() => {
     if (isReady) {
-        // Pequeno delay para garantir que a renderização do React ocorreu
         const timer = setTimeout(() => {
             document.body.classList.add('app-revealed');
         }, 100);
@@ -305,8 +301,8 @@ const App: React.FC = () => {
       
       if (initialLoad) setLoadingProgress(70); 
       
+      // Busca dados unificados (Supabase cache ou Scraper se force=true)
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
-      
       let data = await fetchUnifiedMarketData(tickers, startDate, force);
 
       if (data.dividends.length > 0) {
@@ -316,37 +312,7 @@ const App: React.FC = () => {
           setAssetsMetadata(prev => {
               const next = { ...prev };
               Object.entries(data.metadata).forEach(([ticker, newMeta]) => {
-                  const existing = prev[ticker];
-                  
-                  if (existing) {
-                      const mergedFundamentals = { ...(newMeta.fundamentals || {}) };
-                      const criticalFields = ['vacancy', 'last_dividend', 'dy_12m', 'p_vp', 'assets_value', 'liquidity', 'manager_type'] as const;
-                      
-                      criticalFields.forEach(field => {
-                          const newVal = mergedFundamentals?.[field];
-                          const oldVal = existing.fundamentals?.[field];
-                          
-                          const isNewInvalid = newVal === undefined || newVal === null || 
-                                               (field !== 'vacancy' && newVal === 0) || 
-                                               newVal === 'N/A' || newVal === '-' || newVal === '' || newVal === '0';
-
-                          const isOldValid = oldVal !== undefined && oldVal !== null && 
-                                             oldVal !== 'N/A' && oldVal !== '-' && oldVal !== '' &&
-                                             (field === 'vacancy' || oldVal !== 0);
-                          
-                          if (isNewInvalid && isOldValid) {
-                              // @ts-ignore
-                              mergedFundamentals[field] = oldVal;
-                          }
-                      });
-                      
-                      next[ticker] = {
-                          ...newMeta,
-                          fundamentals: mergedFundamentals
-                      };
-                  } else {
-                      next[ticker] = newMeta;
-                  }
+                  next[ticker] = newMeta;
               });
               return next;
           });
@@ -362,6 +328,40 @@ const App: React.FC = () => {
       if (initialLoad) setLoadingProgress(100); 
     } catch (e) { console.error(e); } finally { setIsRefreshing(false); }
   }, [dividends, pushEnabled, assetsMetadata]);
+
+  // Função dedicada para atualização pontual de ativo (JIT)
+  // Chamada quando o usuário abre o modal de detalhes
+  const refreshSingleAsset = useCallback(async (ticker: string) => {
+      try {
+          // Força scraper (forceRefresh = true)
+          const { dividends: newDivs, metadata: newMeta } = await fetchUnifiedMarketData([ticker], undefined, true);
+          
+          if (newDivs.length > 0) {
+              setDividends(prev => {
+                  const others = prev.filter(d => d.ticker !== ticker);
+                  // Merge inteligente para evitar duplicatas visuais
+                  const combined = [...others, ...newDivs];
+                  return combined;
+              });
+          }
+
+          if (newMeta[ticker]) {
+              setAssetsMetadata(prev => ({
+                  ...prev,
+                  [ticker]: newMeta[ticker]
+              }));
+          }
+          
+          // Atualiza cotação também
+          const { quotes: q } = await getQuotes([ticker]);
+          if(q.length > 0) {
+              setQuotes(prev => ({...prev, [ticker]: q[0]}));
+          }
+
+      } catch (e) {
+          console.error("Single asset refresh failed:", e);
+      }
+  }, []);
 
   const fetchTransactionsFromCloud = useCallback(async (currentSession: Session | null, force = false, initialLoad = false) => {
     setCloudStatus('syncing');
@@ -651,7 +651,7 @@ const App: React.FC = () => {
               ) : (
                 <div key={currentTab} className="anim-page-enter">
                   {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
-                  {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} dividends={dividends} privacyMode={privacyMode} />}
+                  {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} dividends={dividends} privacyMode={privacyMode} onAssetRefresh={refreshSingleAsset} />}
                   {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                   {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
                 </div>

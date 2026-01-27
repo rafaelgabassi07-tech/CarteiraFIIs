@@ -1,7 +1,7 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon, Gem, Calendar, Briefcase, Zap, Layers, AlertTriangle } from 'lucide-react';
+import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon, Gem, Calendar, Briefcase, Zap, Layers, AlertTriangle, Loader2 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { BarChart, Bar, XAxis, YAxis, ReferenceLine, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -9,6 +9,7 @@ interface PortfolioProps {
   portfolio: AssetPosition[];
   dividends?: DividendReceipt[];
   privacyMode?: boolean;
+  onAssetRefresh?: (ticker: string) => Promise<void>;
 }
 
 const formatBRL = (val: number, privacy = false) => {
@@ -55,9 +56,21 @@ const SectionHeader = ({ title, icon: Icon }: any) => (
     </div>
 );
 
-const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: AssetPosition, dividends: DividendReceipt[], privacyMode: boolean, onClose: () => void }) => {
+const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: { asset: AssetPosition, dividends: DividendReceipt[], privacyMode: boolean, onClose: () => void, onRefresh?: (ticker: string) => Promise<void> }) => {
     const [tab, setTab] = useState<'VISAO' | 'FUNDAMENTOS' | 'PROVENTOS'>('VISAO');
+    const [isUpdating, setIsUpdating] = useState(false);
     const isFII = asset.assetType === AssetType.FII;
+
+    // Trigger de Atualização ao Montar
+    useEffect(() => {
+        if (onRefresh) {
+            setIsUpdating(true);
+            onRefresh(asset.ticker).finally(() => {
+                // Pequeno delay para suavizar a UI
+                setTimeout(() => setIsUpdating(false), 500);
+            });
+        }
+    }, []);
 
     // Cálculos Gerais
     const currentTotal = (asset.currentPrice || 0) * asset.quantity;
@@ -70,7 +83,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
     const assetDividends = useMemo(() => {
         if (!dividends) return [];
         // Filtro robusto: Ticker começa com os 4 primeiros caracteres (Raiz)
-        // Isso cobre HGLG11 -> HGLG e ITSA4 -> ITSA
         const root = asset.ticker.substring(0, 4);
         return dividends
             .filter(d => d.ticker.startsWith(root))
@@ -113,7 +125,15 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                             {asset.ticker.substring(0, 2)}
                         </div>
                         <div className="min-w-0">
-                            <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight truncate">{asset.ticker}</h1>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight truncate">{asset.ticker}</h1>
+                                {isUpdating && (
+                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-full border border-zinc-200 dark:border-zinc-700">
+                                        <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />
+                                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wide">Atualizando</span>
+                                    </div>
+                                )}
+                            </div>
                             <p className="text-xs font-medium text-zinc-400 truncate max-w-[200px]">{asset.segment || (isFII ? 'Fundo Imobiliário' : 'Ação')}</p>
                         </div>
                     </div>
@@ -319,7 +339,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
     );
 };
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false }) => {
+const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false, onAssetRefresh }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | AssetType>('ALL');
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
@@ -418,7 +438,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
       </div>
 
       <SwipeableModal isOpen={!!activeAsset} onClose={() => setSelectedTicker(null)}>
-        {activeAsset && <AssetDetailView asset={activeAsset} dividends={dividends} privacyMode={privacyMode} onClose={() => setSelectedTicker(null)} />}
+        {activeAsset && <AssetDetailView asset={activeAsset} dividends={dividends} privacyMode={privacyMode} onClose={() => setSelectedTicker(null)} onRefresh={onAssetRefresh} />}
       </SwipeableModal>
     </div>
   );
