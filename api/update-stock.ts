@@ -158,8 +158,9 @@ async function scrapeInvestidor10(ticker: string) {
 
         const processPair = (keyRaw: string, valueRaw: string) => {
             if (!keyRaw || !valueRaw) return;
-            const k = normalize(keyRaw);
-            const v = valueRaw.trim();
+            // Remove quebras de linha e espaços excessivos
+            const k = normalize(keyRaw.replace(/\n/g, ' ').replace(/\s+/g, ' '));
+            const v = valueRaw.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
             if (v === '-' || v === '') return;
 
             // Mapeamento Direto
@@ -183,114 +184,90 @@ async function scrapeInvestidor10(ticker: string) {
             // Vacância
             if (k.includes('vacancia')) dados.vacancia = parseValue(v);
 
-            // Ações - Indicadores
+            // Ações - Indicadores (Melhorado com includes mais flexíveis)
             if (k === 'roe') dados.roe = parseValue(v);
-            if (k.includes('margem liquida')) dados.margem_liquida = parseValue(v);
-            if (k.includes('margem bruta')) dados.margem_bruta = parseValue(v);
-            if (k.includes('div') && k.includes('liq') && k.includes('ebitda')) dados.divida_liquida_ebitda = parseValue(v);
-            if (k.includes('ev') && k.includes('ebitda')) dados.ev_ebitda = parseValue(v);
+            if (k.includes('margem') && k.includes('liquida')) dados.margem_liquida = parseValue(v);
+            if (k.includes('margem') && k.includes('bruta')) dados.margem_bruta = parseValue(v);
+            
+            if ((k.includes('div') && k.includes('liq') && k.includes('ebitda')) || k.includes('dl/ebitda')) dados.divida_liquida_ebitda = parseValue(v);
+            if ((k.includes('ev') && k.includes('ebitda'))) dados.ev_ebitda = parseValue(v);
             if (k === 'lpa') dados.lpa = parseValue(v);
+            
             if (k.includes('cagr') && k.includes('receita')) dados.cagr_receita_5a = parseValue(v);
             if (k.includes('cagr') && k.includes('lucro')) dados.cagr_lucros_5a = parseValue(v);
         };
 
-        // 1. CARDS DO TOPO (Principal Fonte de DY, PVP, PL, Cotação)
-        $('div._card').each((_, el) => {
-            const header = $(el).find('div._card-header').text().trim();
-            const body = $(el).find('div._card-body').text().trim();
-            processPair(header, body);
+        // 1. VARREDURA GENÉRICA DE CARDS E CÉLULAS
+        // Essa abordagem captura qualquer par Título/Valor estruturado, independente do ID da tabela
+        $('div._card, div.cell, div.indicator-item, div.data-item').each((_, el) => {
+            let title = $(el).find('div._card-header, .cell-header, span.name, .title, .label').first().text().trim();
+            let val = $(el).find('div._card-body, .cell-value, span.value, .value, .data').first().text().trim();
+            
+            if (title && val) {
+                // Remove prefixos de tooltip "?" que as vezes aparecem
+                title = title.replace(/\?$/, '').trim();
+                processPair(title, val);
+            }
         });
 
-        // 2. INDICADORES (Bloco de Grade)
-        $('div.indicator-item, div.data-item, #table-indicators .cell').each((_, el) => {
-            let title = $(el).find('span.title, span.label, .name').text().trim();
-            let val = $(el).find('span.value, span.data, .value').text().trim();
-            if (!title) title = $(el).find('.cell-title, div.name').text().trim();
-            if (!val) val = $(el).find('.cell-value, div.value').text().trim();
-            if (title && val) processPair(title, val);
-        });
-
-        // 3. TABELA DE DADOS GERAIS (FIIs: Taxas, Gestão)
-        $('div#table-general-data, .table-data').each((_, container) => {
-            $(container).find('.cell').each((__, cell) => {
-                const h = $(cell).find('.cell-header, span.name').text().trim();
-                const v = $(cell).find('.cell-value, span.value').text().trim();
-                if (h && v) {
-                    processPair(h, v);
-                    const k = normalize(h);
-                    if (k.includes('segmento')) dados.segmento = v;
-                    if (k.includes('tipo') && k.includes('gestao')) dados.tipo_gestao = v;
-                    if (k.includes('taxa') && k.includes('admin')) dados.taxa_adm = v;
-                    if (k.includes('publico')) dados.publico_alvo = v;
+        // 2. VARREDURA DE TABELAS GENÉRICAS
+        // Procura em todas as tabelas linhas que tenham "Label: Value"
+        $('table').each((_, tbl) => {
+            $(tbl).find('tr').each((__, tr) => {
+                const tds = $(tr).find('td');
+                if (tds.length >= 2) {
+                    const label = $(tds[0]).text().trim();
+                    const val = $(tds[1]).text().trim();
+                    if (label && val) processPair(label, val);
                 }
             });
         });
 
-        // 4. HISTÓRICO DE INDICADORES FUNDAMENTALISTAS (Ações)
-        // Procura a tabela específica, muitas vezes ela não tem ID claro, mas tem um header próximo
-        let historyTable = $('#table-indicators-history');
-        if (historyTable.length === 0) {
-             const historyHeader = $('h2, h3, h4').filter((_, el) => {
-                 const t = normalize($(el).text());
-                 return t.includes('historico') && t.includes('indicadores');
-             }).first();
-             
-             if (historyHeader.length > 0) {
-                 historyTable = historyHeader.nextAll('table').first();
-                 if (historyTable.length === 0) historyTable = historyHeader.nextAll('div').find('table').first();
-                 if (historyTable.length === 0) historyTable = historyHeader.parent().find('table').first();
-                 if (historyTable.length === 0) historyTable = historyHeader.parent().next().find('table').first();
-             }
-        }
-
-        if (historyTable.length > 0) {
-            // Descobre índice da coluna "Atual" ou mais recente (geralmente a primeira coluna de dados)
+        // 3. TABELAS DE HISTÓRICO (Lógica "Coluna Atual")
+        // Reforçada para buscar a coluna "Atual" em qualquer tabela que tenha um header indicando isso
+        $('table').each((_, table) => {
+            const headers = $(table).find('thead th');
             let idxAtual = -1;
-            const headers = historyTable.find('thead th');
             
             headers.each((i, th) => {
                 const t = normalize($(th).text());
-                if (t === 'atual' || t.includes('hoje')) {
-                    idxAtual = i;
-                    return false;
+                if (t === 'atual' || t.includes('hoje') || t === '2024' || t === '2025') { // Tenta anos recentes se "Atual" não existir
+                    // Se já achou "Atual", prefere ele. Se não, pega o ano recente.
+                    if (idxAtual === -1 || t === 'atual') idxAtual = i;
                 }
             });
 
-            // Se não achou "Atual", pega a primeira coluna de DADOS (index 1) se houver cabeçalho de linha (index 0)
-            if (idxAtual === -1 && headers.length > 1) idxAtual = 1;
-
+            // Se achou uma coluna alvo
             if (idxAtual > -1) {
-                historyTable.find('tbody tr').each((_, tr) => {
+                $(table).find('tbody tr').each((_, tr) => {
                     const tds = $(tr).find('td');
                     if (tds.length > idxAtual) {
                         const label = $(tds[0]).text().trim();
-                        // As vezes o valor está dentro de span
                         let val = $(tds[idxAtual]).text().trim();
                         if (!val) val = $(tds[idxAtual]).find('span').text().trim();
-                        
-                        if (label && val) {
-                            processPair(label, val);
-                        }
+                        if (label && val) processPair(label, val);
                     }
                 });
             }
-        }
+        });
 
         // --- EXTRAÇÃO DE DIVIDENDOS ---
         const dividends: any[] = [];
         let tableDivs = $('#table-dividends-history');
         
+        // Busca flexível pela tabela de dividendos
         if (tableDivs.length === 0) {
-             const hDivs = $('h2, h3, h4').filter((_, el) => {
+             $('h2, h3, h4').each((_, el) => {
                  const t = normalize($(el).text());
-                 return t.includes('dividendos') || t.includes('proventos');
-             }).first();
-             
-             if (hDivs.length) {
-                 tableDivs = hDivs.nextAll('table').first();
-                 if (tableDivs.length === 0) tableDivs = hDivs.nextAll('div').find('table').first();
-                 if (tableDivs.length === 0) tableDivs = hDivs.parent().next().find('table').first();
-             }
+                 if (t.includes('dividendos') || t.includes('proventos')) {
+                     const nextTable = $(el).nextAll('table').first();
+                     if (nextTable.length) tableDivs = nextTable;
+                     else {
+                         const parentNextTable = $(el).parent().next().find('table').first();
+                         if (parentNextTable.length) tableDivs = parentNextTable;
+                     }
+                 }
+             });
         }
 
         if (tableDivs.length > 0) {
