@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -17,7 +16,7 @@ import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const APP_VERSION = '8.8.2'; // Bump de versão para forçar atualização de cache
+const APP_VERSION = '8.8.3'; // Bump de versão
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -460,92 +459,38 @@ const App: React.FC = () => {
       window.location.reload();
   }, []);
 
-  const handleManualScraperTrigger = async () => {
-      if (transactions.length === 0) {
-          showToast('info', 'Adicione ativos primeiro.');
-          return;
-      }
-      
-      setIsScraping(true);
-      showToast('info', 'Iniciando busca combinada...');
-      
-      const tickers = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase()))) as string[];
-      
+  // --- NOVA FUNÇÃO DE REFRESH LEVE (APENAS COTAÇÕES) ---
+  const handleRefreshQuotesOnly = async () => {
+      if (transactions.length === 0) return;
+      setIsRefreshing(true);
       try {
-          const scrapePromise = triggerScraperUpdate(tickers);
-          const brapiPromise = getQuotes(tickers);
-
-          const [results, brapiData] = await Promise.all([scrapePromise, brapiPromise]);
-          
-          showToast('info', 'Processando dados...');
-
-          const newMetadata = { ...assetsMetadata };
-          let updatedCount = 0;
-
-          const enrichedResults: ScrapeResult[] = results.map(r => {
-              const brapiQuote = brapiData.quotes.find(q => q.symbol === r.ticker);
-              let finalPrice = r.details?.price;
-              let priceSource: 'Brapi' | 'Investidor10' | 'N/A' = 'Investidor10';
-
-              if (brapiQuote && brapiQuote.regularMarketPrice > 0) {
-                  finalPrice = brapiQuote.regularMarketPrice;
-                  priceSource = 'Brapi';
-              } else if (!finalPrice) {
-                  priceSource = 'N/A';
-              }
-
-              if (r.status === 'success' && r.rawFundamentals) {
-                  const mappedFundamentals = mapScraperToFundamentals(r.rawFundamentals);
-                  const isFII = r.ticker.endsWith('11') || r.ticker.endsWith('11B');
-                  
-                  newMetadata[r.ticker] = {
-                      segment: r.rawFundamentals.segment || newMetadata[r.ticker]?.segment || 'Geral',
-                      type: isFII ? AssetType.FII : AssetType.STOCK,
-                      fundamentals: mappedFundamentals
-                  };
-                  updatedCount++;
-              }
-
-              return {
-                  ...r,
-                  details: {
-                      ...r.details,
-                      price: finalPrice
-                  },
-                  sourceMap: {
-                      price: priceSource,
-                      fundamentals: r.status === 'success' ? 'Investidor10' : 'N/A'
-                  },
-                  dividendsFound: (r.dividendsFound || []).map((d: any) => ({
-                      type: d.type,
-                      dateCom: d.date_com,
-                      paymentDate: d.payment_date,
-                      rate: d.rate
-                  }))
-              };
-          });
-          
-          if (updatedCount > 0) {
-              setAssetsMetadata(newMetadata);
+          const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
+          // 1. Atualiza Cotações (Brapi)
+          const { quotes: newQuotesData } = await getQuotes(tickers);
+          if (newQuotesData.length > 0) {
+              setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
           }
+          // 2. Sincroniza dados unificados mas SEM forçar scrape (usa cache do DB)
+          // Isso garante que se outro usuário atualizou o DB, você pega os dados novos, mas não trava sua UI.
+          const startDate = transactions.reduce((min, t) => t.date < min ? t.date : min, transactions[0].date);
+          const data = await fetchUnifiedMarketData(tickers, startDate, false); // force=false
           
-          handleSyncAll(true);
-          
-          const totalDividends = enrichedResults.reduce((acc, r) => acc + (r.dividendsFound?.length || 0), 0);
-          
-          setLastUpdateReport({
-              results: enrichedResults,
-              inflationRate: marketIndicators.ipca || 0,
-              totalDividendsFound: totalDividends
-          });
-          
-          showToast('success', 'Dados atualizados com sucesso!');
-          setShowUpdateReport(true); 
+          if (data.dividends.length > 0) setDividends(data.dividends);
+          if (Object.keys(data.metadata).length > 0) {
+              setAssetsMetadata(prev => {
+                  const next = { ...prev };
+                  Object.entries(data.metadata).forEach(([ticker, newMeta]) => {
+                      next[ticker] = newMeta;
+                  });
+                  return next;
+              });
+          }
+          showToast('success', 'Cotações atualizadas.');
       } catch (e) {
           console.error(e);
-          showToast('error', 'Falha na atualização.');
+          showToast('error', 'Falha ao atualizar cotações.');
       } finally {
-          setIsScraping(false);
+          setIsRefreshing(false);
       }
   };
 
@@ -627,7 +572,7 @@ const App: React.FC = () => {
                 notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} 
                 cloudStatus={cloudStatus} 
                 onRefresh={
-                    currentTab === 'portfolio' ? handleManualScraperTrigger : 
+                    currentTab === 'portfolio' ? handleRefreshQuotesOnly : 
                     undefined
                 }
                 hideBorder={currentTab === 'transactions'}
