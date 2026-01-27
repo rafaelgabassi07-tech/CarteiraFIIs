@@ -404,7 +404,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                     </div>
                                     <div className="text-right">
                                         <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(d.totalReceived, privacyMode)}</p>
-                                        <p className="text-[9px] text-zinc-400 font-medium">Unitário: {d.rate.toFixed(4)}</p>
+                                        <p className="text-[9px] text-zinc-400 font-medium">Unitário: {d.rate !== undefined && d.rate !== null ? d.rate.toFixed(4) : '-'}</p>
                                     </div>
                                 </div>
                             )) : (
