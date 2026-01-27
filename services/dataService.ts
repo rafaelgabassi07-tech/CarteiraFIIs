@@ -82,6 +82,7 @@ const normalizeTickerRoot = (t: string) => {
 };
 
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
+    // Helper flexível para buscar valores em múltiplas chaves possíveis
     const getVal = (...keys: string[]): any => {
         for (const k of keys) {
             if (m[k] !== undefined && m[k] !== null && m[k] !== 'N/A' && m[k] !== '') return m[k];
@@ -94,8 +95,15 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield')), 
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
+        
+        // Strings que podem conter texto formatado
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
         market_cap: getVal('valor_mercado', 'val_mercado', 'market_cap') || undefined, 
+        assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
+        manager_type: getVal('tipo_gestao', 'manager_type', 'gestao') || undefined,
+        management_fee: getVal('taxa_adm', 'management_fee', 'taxadeadministracao', 'taxaadm') || undefined,
+        
+        // Números
         net_margin: parseNumberSafe(getVal('margem_liquida', 'net_margin')),
         gross_margin: parseNumberSafe(getVal('margem_bruta', 'gross_margin')),
         cagr_revenue: parseNumberSafe(getVal('cagr_receita', 'cagr_receita_5a')),
@@ -105,11 +113,9 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         lpa: parseNumberSafe(getVal('lpa')),
         vpa: parseNumberSafe(getVal('vpa', 'vp_cota', 'vp')),
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica', 'vacancy')),
-        manager_type: getVal('tipo_gestao', 'manager_type') || undefined,
-        assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
-        management_fee: getVal('taxa_adm', 'management_fee', 'taxadeadministracao') || undefined,
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento', 'last_dividend', 'rendimento', 'ultimorendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas', 'num_cotistas')),
+        
         updated_at: m.updated_at,
         sentiment: 'Neutro',
         sources: []
@@ -176,6 +182,7 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
                         dividendsFound: data.dividends 
                     });
                 } else {
+                    // Fallback Brapi para preço pelo menos
                     try {
                         const { quotes } = await getQuotes([ticker]);
                         if(quotes.length > 0) {
@@ -183,7 +190,7 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
                                 ticker,
                                 status: 'success', 
                                 details: { price: quotes[0].regularMarketPrice },
-                                message: 'Fallback to Brapi'
+                                message: 'Fallback to Brapi (Scraper Failed)'
                             });
                         } else {
                             throw new Error(data.error);
@@ -229,7 +236,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       uniqueTickers.forEach(t => {
           const meta = metaMap.get(t);
-          if (!meta || isStale(meta.updated_at) || forceRefresh) {
+          // Atualiza se não tiver metadados OU se estiver obsoleto OU se forçado
+          // Adicionamos verificação de campos críticos vazios para forçar update se faltar dados
+          const isMissingCriticalData = meta && (!meta.segment || (!meta.pvp && !meta.dy_12m));
+          
+          if (!meta || isStale(meta.updated_at) || isMissingCriticalData || forceRefresh) {
               staleTickers.push(t);
           }
       });

@@ -11,14 +11,14 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
-// --- INTELLIGENT CACHE (SERVER-SIDE) ---
+// --- CACHE TTL ---
 const getTTL = () => {
     const now = new Date();
     const day = now.getDay();
     const hour = now.getHours();
-    // Mercado Aberto (Seg-Sex, 10h-18h): 20 min TTL
+    // Mercado Aberto (Seg-Sex, 10h-18h): 20 min
     const isMarketOpen = day >= 1 && day <= 5 && hour >= 10 && hour < 18;
-    return isMarketOpen ? 20 * 60 * 1000 : 4 * 60 * 60 * 1000; // 4h se fechado
+    return isMarketOpen ? 20 * 60 * 1000 : 4 * 60 * 60 * 1000;
 };
 
 // --- AGENTE HTTPS & HEADERS ---
@@ -30,12 +30,14 @@ const httpsAgent = new https.Agent({
 const getBrowserHeaders = () => ({
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
     'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
     'Cache-Control': 'no-cache',
+    'Referer': 'https://investidor10.com.br/',
     'Upgrade-Insecure-Requests': '1',
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-Site': 'same-origin',
     'Sec-Fetch-User': '?1'
 });
 
@@ -67,7 +69,10 @@ function cleanNumber(val: any): number {
     if (['-', 'N/A', '', '--', 'null', '%'].includes(str)) return 0;
 
     try {
+        // Remove sufixos comuns
+        str = str.replace(/%|a\.a\.|R\$|\s/gi, '');
         str = str.replace(/[^\d.,-]/g, '');
+        
         if (str.includes(',') && !str.includes('.')) {
             str = str.replace(',', '.');
         } else if (str.includes('.') && str.includes(',')) {
@@ -122,6 +127,7 @@ function normalizeKey(str: string) {
 async function scrapeInvestidor10(ticker: string) {
     try {
         const isFII = ticker.endsWith('11') || ticker.endsWith('11B');
+        // Tenta URLs na ordem mais provável
         const urls = isFII 
             ? [`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`, `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`]
             : [`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`, `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`, `https://investidor10.com.br/bdrs/${ticker.toLowerCase()}/`];
@@ -136,7 +142,7 @@ async function scrapeInvestidor10(ticker: string) {
                 else if (url.includes('bdrs')) finalType = 'BDR';
                 else finalType = 'ACAO';
                 break;
-            } catch (e) { /* continue */ }
+            } catch (e) { /* tenta próxima URL */ }
         }
 
         if (!html) throw new Error('Ativo não encontrado');
@@ -144,94 +150,136 @@ async function scrapeInvestidor10(ticker: string) {
         const $ = cheerio.load(html);
         const extracted: any = {};
 
-        // JSON-LD
-        try {
-            const jsonLdScripts = $('script[type="application/ld+json"]');
-            jsonLdScripts.each((_, el) => {
-                try {
-                    const json = JSON.parse($(el).html() || '{}');
-                    if (json['@type'] === 'FinancialProduct' || json.name === ticker) {
-                        if (json.offers?.price) extracted['cotacao_atual'] = json.offers.price;
-                        if (json.description) extracted['description'] = json.description;
-                    }
-                } catch {}
-            });
-        } catch (e) { console.warn('JSON-LD parse error', e); }
-
-        // VARREDURA VISUAL
+        // 1. EXTRAÇÃO VIA CARDS (Novo Layout: _card, _card-header, _card-body)
         const addData = (k: string, v: string) => {
             const key = normalizeKey(k);
-            if (KEY_MAP[key] && !extracted[KEY_MAP[key]]) { 
-                extracted[KEY_MAP[key]] = v;
+            if (KEY_MAP[key] && !extracted[KEY_MAP[key]] && v && v !== '-') { 
+                extracted[KEY_MAP[key]] = v.trim();
             }
         };
 
-        $('div[class*="card"], div[class*="cell"]').each((_, el) => {
-            const title = $(el).find('[class*="title"], [class*="name"], [class*="header"]').first().text().trim();
-            const value = $(el).find('[class*="value"], [class*="desc"], [class*="data"]').first().text().trim();
+        // Varre Cards de Topo e Indicadores
+        $('div._card').each((_, el) => {
+            const header = $(el).find('div._card-header, div.header').first();
+            const body = $(el).find('div._card-body, div.body').first();
+            
+            // Tenta pegar o título do header ou de um span interno
+            let title = header.find('span').first().text() || header.text();
+            
+            // Tenta pegar valor do body ou de um span interno
+            let value = body.find('span').first().text() || body.text();
+
             if (title && value) addData(title, value);
         });
 
-        $('#table-indicators .cell, #table-basic-data .cell').each((_, el) => {
-             const title = $(el).find('.name').text().trim();
-             const value = $(el).find('.value, .desc').text().trim();
-             if (title && value) addData(title, value);
+        // Varre Células de Tabelas (Layout antigo/misto)
+        $('.cell').each((_, el) => {
+            const title = $(el).find('.name').text();
+            const value = $(el).find('.value').text();
+            if (title && value) addData(title, value);
         });
 
-        // Fallback para Último Rendimento (frequente em FIIs)
-        if (!extracted.ultimo_rendimento) {
-             const bodyText = $('body').text();
-             const match = bodyText.match(/Último Rendimento\s*R\$\s*([0-9,.]+)/i);
-             if (match && match[1]) extracted.ultimo_rendimento = match[1];
+        // 2. EXTRAÇÃO ESPECÍFICA (FIIs - Características)
+        // Muitas vezes "Taxa de Administração" está numa lista simples ou tabela sem classes padrão
+        if (finalType === 'FII') {
+            // Busca textual profunda em elementos de lista ou tabela
+            $('li, td, div').each((_, el) => {
+                const text = $(el).text().trim();
+                
+                // Taxa de Administração
+                if (text.toLowerCase().includes('taxa de administração')) {
+                    const next = $(el).next().text().trim() || $(el).find('span').last().text().trim();
+                    // Às vezes o valor está no próprio texto após ":", às vezes no próximo elemento
+                    let val = '';
+                    if (text.includes(':')) val = text.split(':')[1].trim();
+                    if (!val && next) val = next;
+                    
+                    if (val && !extracted.taxa_adm) extracted.taxa_adm = val;
+                }
+
+                // Tipo de Gestão
+                if (text.toLowerCase().includes('tipo de gestão')) {
+                    const next = $(el).next().text().trim() || $(el).find('span').last().text().trim();
+                    let val = '';
+                    if (text.includes(':')) val = text.split(':')[1].trim();
+                    if (!val && next) val = next;
+                    
+                    if (val && !extracted.tipo_gestao) extracted.tipo_gestao = val;
+                }
+            });
         }
 
-        // DIVIDENDOS
+        // 3. ULTIMO RENDIMENTO (Widget Específico)
+        if (!extracted.ultimo_rendimento) {
+             $('div._card').each((_, el) => {
+                 const headerText = $(el).find('div._card-header').text().toLowerCase();
+                 if (headerText.includes('último rendimento')) {
+                     const val = $(el).find('div._card-body').text().trim();
+                     if (val) extracted.ultimo_rendimento = val;
+                 }
+             });
+        }
+
+        // 4. DIVIDENDOS (Tabela Histórica #table-dividends-history)
         const dividends: any[] = [];
-        $('table').each((_, table) => {
-            const header = $(table).find('thead').text().toLowerCase();
-            if (header.includes('data com') && header.includes('valor')) {
-                $(table).find('tbody tr').each((_, tr) => {
-                    const tds = $(tr).find('td');
-                    if (tds.length >= 3) {
-                        let type = 'DIV';
-                        let dateComStr, datePayStr, valStr;
+        
+        // Tenta encontrar a tabela específica de histórico
+        let table = $('#table-dividends-history');
+        // Fallback: Procura qualquer tabela com headers compatíveis
+        if (table.length === 0) {
+            $('table').each((_, t) => {
+                const h = $(t).text().toLowerCase();
+                if (h.includes('data com') && h.includes('pagamento') && h.includes('valor')) {
+                    table = $(t);
+                    return false;
+                }
+            });
+        }
 
-                        if (tds.length >= 4) {
-                            const typeTxt = $(tds[0]).text().toLowerCase();
-                            if (typeTxt.includes('juros') || typeTxt.includes('jcp')) type = 'JCP';
-                            else if (typeTxt.includes('rend')) type = 'REND';
-                            else if (typeTxt.includes('amort')) type = 'AMORT';
-                            
-                            dateComStr = $(tds[1]).text();
-                            datePayStr = $(tds[2]).text();
-                            valStr = $(tds[3]).text();
-                        } else {
-                            dateComStr = $(tds[0]).text();
-                            datePayStr = $(tds[1]).text();
-                            valStr = $(tds[2]).text();
-                        }
+        if (table.length > 0) {
+            table.find('tbody tr').each((_, tr) => {
+                const tds = $(tr).find('td');
+                if (tds.length >= 3) {
+                    let type = 'DIV';
+                    let dateComStr, datePayStr, valStr;
 
-                        const dateCom = parseToISODate(dateComStr);
-                        const datePay = parseToISODate(datePayStr);
-                        const val = cleanNumber(valStr);
-
-                        if (dateCom && val > 0) {
-                            dividends.push({
-                                ticker: ticker.toUpperCase(),
-                                type,
-                                date_com: dateCom,
-                                payment_date: datePay || null,
-                                rate: val
-                            });
-                        }
+                    // Detecta colunas baseado no layout comum
+                    if (tds.length >= 4) {
+                        const typeTxt = $(tds[0]).text().toLowerCase();
+                        if (typeTxt.includes('jcp')) type = 'JCP';
+                        else if (typeTxt.includes('rend')) type = 'REND';
+                        else if (typeTxt.includes('amort')) type = 'AMORT';
+                        
+                        dateComStr = $(tds[1]).text();
+                        datePayStr = $(tds[2]).text();
+                        valStr = $(tds[3]).text();
+                    } else {
+                        dateComStr = $(tds[0]).text();
+                        datePayStr = $(tds[1]).text();
+                        valStr = $(tds[2]).text();
                     }
-                });
-            }
-        });
 
+                    const dateCom = parseToISODate(dateComStr);
+                    const datePay = parseToISODate(datePayStr);
+                    const val = cleanNumber(valStr);
+
+                    if (dateCom && val > 0) {
+                        dividends.push({
+                            ticker: ticker.toUpperCase(),
+                            type,
+                            date_com: dateCom,
+                            payment_date: datePay || null,
+                            rate: val
+                        });
+                    }
+                }
+            });
+        }
+
+        // 5. SEGMENTO
         if (!extracted.segmento) {
             let seg = '';
-            $('#breadcrumbs, .breadcrumbs').find('li, span').each((_, el) => {
+            $('#breadcrumbs li, .breadcrumbs span').each((_, el) => {
                 const t = $(el).text().trim();
                 if (t && !['Início', 'Home', 'Ações', 'FIIs', 'Fundos', 'BDRs'].includes(t) && t.toUpperCase() !== ticker) {
                     seg = t;
@@ -243,7 +291,7 @@ async function scrapeInvestidor10(ticker: string) {
         const finalMetadata = {
             ticker: ticker.toUpperCase(),
             type: finalType,
-            segmento: extracted.segmento || 'Outros',
+            segmento: extracted.segmento || 'Geral',
             updated_at: new Date().toISOString(),
             
             cotacao_atual: cleanNumber(extracted.cotacao_atual),
@@ -261,6 +309,7 @@ async function scrapeInvestidor10(ticker: string) {
             patrimonio_liquido: extracted.patrimonio_liquido || 'N/A',
             num_cotistas: cleanNumber(extracted.num_cotistas) || 0,
             
+            // Mantém como string se não for número puro, pois pode ser "Passiva", "Ativa" ou "1,5% a.a."
             taxa_adm: extracted.taxa_adm || null,
             tipo_gestao: extracted.tipo_gestao || null,
 
@@ -319,32 +368,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ])).values());
 
         if (metadata) {
-            const dbPayload: any = {
-                ticker: metadata.ticker,
-                type: metadata.type,
-                segment: metadata.segmento,
-                updated_at: metadata.updated_at,
-                pvp: metadata.pvp,
-                pl: metadata.pl,
-                dy_12m: metadata.dy,
-                roe: metadata.roe,
-                vacancia: metadata.vacancia,
-                lpa: metadata.lpa,
-                vp_cota: metadata.vp_cota,
-                margem_liquida: metadata.margem_liquida,
-                margem_bruta: metadata.margem_bruta,
-                divida_liquida_ebitda: metadata.divida_liquida_ebitda,
-                ev_ebitda: metadata.ev_ebitda,
-                cagr_receita: metadata.cagr_receita_5a,
-                cagr_lucro: metadata.cagr_lucros_5a,
-                num_cotistas: metadata.num_cotistas,
-                ultimo_rendimento: metadata.ultimo_rendimento, 
-                liquidez: metadata.liquidez,
-                valor_mercado: metadata.val_mercado,
-                patrimonio_liquido: metadata.patrimonio_liquido,
-                tipo_gestao: metadata.tipo_gestao,
-                taxa_adm: metadata.taxa_adm
-            };
+            // Prepara payload DB garantindo que undefined não vá
+            const dbPayload: any = { ...metadata };
+            // Mapeia chaves para colunas do DB se necessário (normalização feita no scraper, mas reforçando)
+            dbPayload.dy_12m = metadata.dy;
+            dbPayload.cagr_receita = metadata.cagr_receita_5a;
+            dbPayload.cagr_lucro = metadata.cagr_lucros_5a;
+            dbPayload.valor_mercado = metadata.val_mercado;
+
+            // Remove chaves que não existem no DB ou auxiliares
+            delete dbPayload.dy;
+            delete dbPayload.cagr_receita_5a;
+            delete dbPayload.cagr_lucros_5a;
+            delete dbPayload.val_mercado;
 
             Object.keys(dbPayload).forEach(key => {
                 const val = dbPayload[key];
