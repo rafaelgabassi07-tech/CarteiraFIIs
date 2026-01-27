@@ -62,33 +62,24 @@ const SectionHeader = ({ title, icon: Icon }: any) => (
     </div>
 );
 
-// Loader Animado
+// Loader Animado (Overlay Completo)
 const AssetLoadingOverlay = () => {
     const [step, setStep] = useState(0);
-    const steps = ["Conectando à B3...", "Analisando Fundamentos...", "Calculando Proventos..."];
+    const steps = ["Sincronizando...", "Buscando Indicadores...", "Atualizando Proventos..."];
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setStep(prev => (prev + 1) % steps.length);
-        }, 800);
+        const interval = setInterval(() => setStep(s => (s + 1) % steps.length), 1200);
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-500">
-            <div className="relative w-16 h-16 mb-6">
-                <div className="absolute inset-0 border-4 border-zinc-200 dark:border-zinc-800 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <RefreshCw className="w-6 h-6 text-indigo-500 animate-pulse" />
+        <div className="absolute inset-0 z-50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm flex flex-col items-center justify-center anim-fade-in">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center">
+                <div className="relative w-12 h-12 mb-4">
+                    <div className="absolute inset-0 border-4 border-zinc-100 dark:border-zinc-800 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
                 </div>
-            </div>
-            <div className="h-6 overflow-hidden relative w-full text-center">
-                {steps.map((text, idx) => (
-                    <p key={idx} className={`absolute w-full text-xs font-bold text-zinc-500 uppercase tracking-widest transition-all duration-500 transform ${idx === step ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-                        {text}
-                    </p>
-                ))}
+                <p className="text-xs font-bold text-zinc-900 dark:text-white animate-pulse">{steps[step]}</p>
             </div>
         </div>
     );
@@ -98,17 +89,19 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     const [tab, setTab] = useState<'POSICAO' | 'FUNDAMENTOS' | 'PROVENTOS'>('POSICAO');
     const [isUpdating, setIsUpdating] = useState(false);
     
-    // Estado local para evitar "zeroing" visual durante refresh
+    // Estado local sincronizado
     const [displayAsset, setDisplayAsset] = useState<AssetPosition>(asset);
     
-    const isFII = displayAsset.assetType === AssetType.FII;
-
-    // Sincroniza estado local com prop quando ela muda (e tem dados válidos)
+    // Sincroniza props -> state (Evita override de zero se a prop vier vazia momentaneamente, mas prioriza a prop se ela tiver dados)
     useEffect(() => {
         if (asset) {
             setDisplayAsset(prev => {
-                // Se a prop nova tiver zeros críticos onde a antiga tinha dados, mantém a antiga
-                if (asset.dy_12m === 0 && prev.dy_12m !== 0) return { ...asset, dy_12m: prev.dy_12m, p_vp: prev.p_vp || asset.p_vp };
+                // Se a nova prop (asset) tiver dados fundamentais, usa ela.
+                // Se a nova prop estiver vazia (ex: erro de fetch momentâneo) mas o estado anterior tinha dados, mantém o anterior.
+                const hasNewData = asset.dy_12m || asset.p_vp || asset.p_l;
+                const hadData = prev.dy_12m || prev.p_vp || prev.p_l;
+                
+                if (!hasNewData && hadData) return prev; 
                 return asset;
             });
         }
@@ -118,11 +111,16 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     useEffect(() => {
         if (onRefresh) {
             setIsUpdating(true);
-            onRefresh(displayAsset.ticker).finally(() => {
-                setTimeout(() => setIsUpdating(false), 500); 
-            });
+            onRefresh(asset.ticker)
+                .catch(err => console.error("Refresh failed", err))
+                .finally(() => {
+                    // Pequeno delay artificial para que o usuário veja que algo aconteceu
+                    setTimeout(() => setIsUpdating(false), 800); 
+                });
         }
-    }, [displayAsset.ticker]);
+    }, []); // Executa apenas uma vez na montagem do modal
+
+    const isFII = displayAsset.assetType === AssetType.FII;
 
     // Cálculos Gerais
     const currentTotal = (displayAsset.currentPrice || 0) * displayAsset.quantity;
@@ -163,11 +161,11 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         return { chartData: data, total12m, monthlyAvg: total12m / 12 };
     }, [assetDividends]);
 
-    // Determina se deve mostrar o loader: Apenas se estiver atualizando E não tiver dados prévios essenciais
-    const showLoader = isUpdating && (!displayAsset.dy_12m && !displayAsset.p_vp);
-
     return (
-        <div className="bg-white dark:bg-zinc-950 min-h-full flex flex-col">
+        <div className="bg-white dark:bg-zinc-950 min-h-full flex flex-col relative">
+            {/* OVERLAY DE CARREGAMENTO */}
+            {isUpdating && <AssetLoadingOverlay />}
+
             {/* Header */}
             <div className="sticky top-0 z-30 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-100 dark:border-zinc-800 pt-safe px-6 pb-4">
                 <div className="flex items-center justify-between mb-5 pt-4">
@@ -178,11 +176,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
                                 <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight truncate">{displayAsset.ticker}</h1>
-                                {isUpdating && (
-                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-full border border-zinc-200 dark:border-zinc-700">
-                                        <RefreshCw className="w-3 h-3 animate-spin text-zinc-400" />
-                                    </div>
-                                )}
                             </div>
                             <p className="text-xs font-medium text-zinc-400 truncate max-w-[200px]">{displayAsset.segment || (isFII ? 'Fundo Imobiliário' : 'Ação')}</p>
                         </div>
@@ -278,91 +271,85 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                 {tab === 'FUNDAMENTOS' && (
                     <div className="space-y-4 anim-fade-in">
                         
-                        {showLoader ? (
-                            <AssetLoadingOverlay />
-                        ) : (
+                        {/* CARD DE DESTAQUES PRINCIPAIS */}
+                        <div className="grid grid-cols-2 gap-3 mb-2">
+                            <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{isFII ? "P/VP" : "P/L"}</p>
+                                <p className={`text-2xl font-black tracking-tight ${isFII && displayAsset.p_vp && displayAsset.p_vp < 1 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
+                                    {isFII ? displayAsset.p_vp?.toFixed(2) || '-' : displayAsset.p_l?.toFixed(2) || '-'}
+                                </p>
+                            </div>
+                            <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">Dividend Yield</p>
+                                <p className="text-2xl font-black tracking-tight text-emerald-500">
+                                    {displayAsset.dy_12m !== undefined && displayAsset.dy_12m !== null ? `${displayAsset.dy_12m.toFixed(2)}%` : '-'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* --- BLOCOS FIIs --- */}
+                        {isFII && (
                             <>
-                                {/* CARD DE DESTAQUES PRINCIPAIS */}
-                                <div className="grid grid-cols-2 gap-3 mb-2">
-                                    <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{isFII ? "P/VP" : "P/L"}</p>
-                                        <p className={`text-2xl font-black tracking-tight ${isFII && displayAsset.p_vp && displayAsset.p_vp < 1 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
-                                            {isFII ? displayAsset.p_vp?.toFixed(2) || '-' : displayAsset.p_l?.toFixed(2) || '-'}
-                                        </p>
-                                    </div>
-                                    <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">Dividend Yield</p>
-                                        <p className="text-2xl font-black tracking-tight text-emerald-500">
-                                            {displayAsset.dy_12m !== undefined && displayAsset.dy_12m !== null ? `${displayAsset.dy_12m.toFixed(2)}%` : '-'}
-                                        </p>
-                                    </div>
+                                <SectionHeader title="Valuation & Cotas" icon={Scale} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                                    <InfoRow label="Preço / VP" value={displayAsset.p_vp?.toFixed(2) || '-'} highlight />
+                                    <InfoRow label="Valor Patrimonial" value={displayAsset.vpa !== undefined && displayAsset.vpa !== null ? `R$ ${displayAsset.vpa.toFixed(2)}` : '-'} subtext="Por Cota" />
+                                    <InfoRow label="Último Rendimento" value={displayAsset.last_dividend ? `R$ ${displayAsset.last_dividend.toFixed(2)}` : '-'} color="text-emerald-600 dark:text-emerald-400" />
+                                    <InfoRow label="Patrimônio Líquido" value={formatNumber(displayAsset.assets_value)} />
                                 </div>
 
-                                {/* --- BLOCOS FIIs --- */}
-                                {isFII && (
-                                    <>
-                                        <SectionHeader title="Valuation & Cotas" icon={Scale} />
-                                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                                            <InfoRow label="Preço / VP" value={displayAsset.p_vp?.toFixed(2) || '-'} highlight />
-                                            <InfoRow label="Valor Patrimonial" value={displayAsset.vpa !== undefined && displayAsset.vpa !== null ? `R$ ${displayAsset.vpa.toFixed(2)}` : '-'} subtext="Por Cota" />
-                                            <InfoRow label="Último Rendimento" value={displayAsset.last_dividend ? `R$ ${displayAsset.last_dividend.toFixed(2)}` : '-'} color="text-emerald-600 dark:text-emerald-400" />
-                                            <InfoRow label="Patrimônio Líquido" value={formatNumber(displayAsset.assets_value)} />
-                                        </div>
-
-                                        <SectionHeader title="Qualidade & Gestão" icon={Briefcase} />
-                                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                                            {displayAsset.vacancy !== undefined && (
-                                                <InfoRow 
-                                                    label="Vacância Física" 
-                                                    value={`${displayAsset.vacancy}%`} 
-                                                    highlight={displayAsset.vacancy > 10} 
-                                                    subtext={displayAsset.vacancy > 10 ? 'Atenção: Alta' : 'Controlada'}
-                                                    color={displayAsset.vacancy > 10 ? 'text-rose-500' : undefined}
-                                                />
-                                            )}
-                                            <InfoRow label="Liquidez Diária" value={formatNumber(displayAsset.liquidity)} />
-                                            <InfoRow label="Número de Cotistas" value={formatNumber(displayAsset.properties_count)} />
-                                            <InfoRow label="Tipo de Gestão" value={formatNumber(displayAsset.manager_type)} />
-                                            <InfoRow label="Taxa de Admin." value={formatNumber(displayAsset.management_fee)} />
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* --- BLOCOS AÇÕES --- */}
-                                {!isFII && (
-                                    <>
-                                        <SectionHeader title="Valuation" icon={Scale} />
-                                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                                            <InfoRow label="P/L (Preço/Lucro)" value={displayAsset.p_l?.toFixed(2) || '-'} highlight />
-                                            <InfoRow label="P/VP" value={displayAsset.p_vp?.toFixed(2) || '-'} />
-                                            <InfoRow label="EV / EBITDA" value={displayAsset.ev_ebitda?.toFixed(2) || '-'} />
-                                            <InfoRow label="VPA" value={displayAsset.vpa !== undefined && displayAsset.vpa !== null ? `R$ ${displayAsset.vpa.toFixed(2)}` : '-'} />
-                                            <InfoRow label="LPA" value={displayAsset.lpa !== undefined && displayAsset.lpa !== null ? `R$ ${displayAsset.lpa.toFixed(2)}` : '-'} />
-                                        </div>
-
-                                        <SectionHeader title="Eficiência & Rentabilidade" icon={Zap} />
-                                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                                            <InfoRow label="ROE" value={displayAsset.roe ? `${displayAsset.roe.toFixed(1)}%` : '-'} highlight color={displayAsset.roe && displayAsset.roe > 15 ? 'text-emerald-500' : undefined} />
-                                            <InfoRow label="Margem Líquida" value={displayAsset.net_margin ? `${displayAsset.net_margin.toFixed(1)}%` : '-'} />
-                                            <InfoRow label="Margem Bruta" value={displayAsset.gross_margin ? `${displayAsset.gross_margin.toFixed(1)}%` : '-'} />
-                                        </div>
-
-                                        <SectionHeader title="Crescimento & Dívida" icon={TrendingUp} />
-                                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                                            <InfoRow label="CAGR Receita (5a)" value={displayAsset.cagr_revenue ? `${displayAsset.cagr_revenue.toFixed(1)}%` : '-'} />
-                                            <InfoRow label="CAGR Lucros (5a)" value={displayAsset.cagr_profits ? `${displayAsset.cagr_profits.toFixed(1)}%` : '-'} />
-                                            <InfoRow label="Dív. Líq. / EBITDA" value={displayAsset.net_debt_ebitda ? `${displayAsset.net_debt_ebitda.toFixed(2)}x` : '-'} />
-                                        </div>
-                                    </>
-                                )}
-
-                                <div className="pt-4">
-                                    <a href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${displayAsset.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest press-effect shadow-xl group">
-                                        Análise Completa Investidor10 <ExternalLink className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                                    </a>
+                                <SectionHeader title="Qualidade & Gestão" icon={Briefcase} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                                    {displayAsset.vacancy !== undefined && (
+                                        <InfoRow 
+                                            label="Vacância Física" 
+                                            value={`${displayAsset.vacancy}%`} 
+                                            highlight={displayAsset.vacancy > 10} 
+                                            subtext={displayAsset.vacancy > 10 ? 'Atenção: Alta' : 'Controlada'}
+                                            color={displayAsset.vacancy > 10 ? 'text-rose-500' : undefined}
+                                        />
+                                    )}
+                                    <InfoRow label="Liquidez Diária" value={formatNumber(displayAsset.liquidity)} />
+                                    <InfoRow label="Número de Cotistas" value={formatNumber(displayAsset.properties_count)} />
+                                    <InfoRow label="Tipo de Gestão" value={formatNumber(displayAsset.manager_type)} />
+                                    <InfoRow label="Taxa de Admin." value={formatNumber(displayAsset.management_fee)} />
                                 </div>
                             </>
                         )}
+
+                        {/* --- BLOCOS AÇÕES --- */}
+                        {!isFII && (
+                            <>
+                                <SectionHeader title="Valuation" icon={Scale} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                                    <InfoRow label="P/L (Preço/Lucro)" value={displayAsset.p_l?.toFixed(2) || '-'} highlight />
+                                    <InfoRow label="P/VP" value={displayAsset.p_vp?.toFixed(2) || '-'} />
+                                    <InfoRow label="EV / EBITDA" value={displayAsset.ev_ebitda?.toFixed(2) || '-'} />
+                                    <InfoRow label="VPA" value={displayAsset.vpa !== undefined && displayAsset.vpa !== null ? `R$ ${displayAsset.vpa.toFixed(2)}` : '-'} />
+                                    <InfoRow label="LPA" value={displayAsset.lpa !== undefined && displayAsset.lpa !== null ? `R$ ${displayAsset.lpa.toFixed(2)}` : '-'} />
+                                </div>
+
+                                <SectionHeader title="Eficiência & Rentabilidade" icon={Zap} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                                    <InfoRow label="ROE" value={displayAsset.roe ? `${displayAsset.roe.toFixed(1)}%` : '-'} highlight color={displayAsset.roe && displayAsset.roe > 15 ? 'text-emerald-500' : undefined} />
+                                    <InfoRow label="Margem Líquida" value={displayAsset.net_margin ? `${displayAsset.net_margin.toFixed(1)}%` : '-'} />
+                                    <InfoRow label="Margem Bruta" value={displayAsset.gross_margin ? `${displayAsset.gross_margin.toFixed(1)}%` : '-'} />
+                                </div>
+
+                                <SectionHeader title="Crescimento & Dívida" icon={TrendingUp} />
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                                    <InfoRow label="CAGR Receita (5a)" value={displayAsset.cagr_revenue ? `${displayAsset.cagr_revenue.toFixed(1)}%` : '-'} />
+                                    <InfoRow label="CAGR Lucros (5a)" value={displayAsset.cagr_profits ? `${displayAsset.cagr_profits.toFixed(1)}%` : '-'} />
+                                    <InfoRow label="Dív. Líq. / EBITDA" value={displayAsset.net_debt_ebitda ? `${displayAsset.net_debt_ebitda.toFixed(2)}x` : '-'} />
+                                </div>
+                            </>
+                        )}
+
+                        <div className="pt-4">
+                            <a href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${displayAsset.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest press-effect shadow-xl group">
+                                Análise Completa Investidor10 <ExternalLink className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                            </a>
+                        </div>
                     </div>
                 )}
 
