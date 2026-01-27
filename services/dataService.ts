@@ -58,7 +58,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
     return {
         // Indicadores Gerais
         p_vp: parseNumberSafe(getVal('pvp', 'p_vp', 'vp')),
-        dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield')), 
+        dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield', 'dividendyield')), 
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
         
@@ -80,7 +80,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
         
         lpa: parseNumberSafe(getVal('lpa')),
-        vpa: parseNumberSafe(getVal('vp_cota', 'vpa', 'valor_patrimonial_acao')),
+        vpa: parseNumberSafe(getVal('vp_cota', 'vpa', 'valor_patrimonial_acao', 'valorpatrimonialcota')),
         
         // FIIs
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),

@@ -45,11 +45,33 @@ function parseValue(valueStr: any) {
     if (!valueStr) return 0;
     try {
         if (typeof valueStr === 'number') return valueStr;
-        // Remove tudo que não é número, vírgula ou hífen (preserva negativos)
-        const clean = String(valueStr).replace(REGEX_CLEAN_NUMBER, "").trim();
-        if (!clean || clean === '-') return 0;
-        // Converte formato BR (1.000,00) para JS (1000.00)
-        return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
+        
+        let str = String(valueStr).trim();
+        // Remove R$ e %
+        str = str.replace('R$', '').replace('%', '').trim();
+        
+        // Se for hifen ou vazio, retorna 0
+        if (!str || str === '-') return 0;
+
+        // Remove tudo que não é número, vírgula, ponto ou hífen
+        // Mantém pontos e vírgulas para decisão de formato
+        const clean = str.replace(/[^0-9,.-]+/g, ""); 
+        
+        if (!clean) return 0;
+
+        // Formato Brasileiro: 1.000,00 -> remove ponto, troca vírgula por ponto
+        if (clean.includes(',') && !clean.includes('.')) {
+             return parseFloat(clean.replace(',', '.')) || 0;
+        }
+        if (clean.includes(',') && clean.includes('.')) {
+             // Assume que o último separador é o decimal
+             if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
+                 return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
+             }
+        }
+        
+        // Fallback genérico
+        return parseFloat(clean.replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
 
@@ -120,10 +142,38 @@ async function scrapeInvestidor10(ticker: string) {
             const valor = valorRaw ? valorRaw.trim() : '';
             if (!valor || valor === '-') return;
 
-            // --- GERAIS ---
-            if (dados.dy === null && (titulo.includes('dividend yield') || titulo === 'dy')) dados.dy = parseValue(valor);
-            if (dados.pvp === null && (titulo.includes('p/vp') || titulo === 'vp')) dados.pvp = parseValue(valor);
+            // --- DY (Dividend Yield) ---
+            // Captura: "Dividend Yield", "DY", "DY (12M)"
+            if (dados.dy === null && (titulo.includes('dividend') || titulo.startsWith('dy'))) {
+                dados.dy = parseValue(valor);
+            }
+
+            // --- P/VP e VP ---
+            // P/VP
+            if (dados.pvp === null && (titulo === 'p/vp' || titulo === 'pvp')) {
+                dados.pvp = parseValue(valor);
+            }
+            
+            // VP (Valor Patrimonial por Cota)
+            // Evita confundir com P/VP. Captura "VPA", "VP", "Valor Patrimonial" (se não for o total)
+            // Geralmente VP por cota é um valor pequeno (< 10000), Valor Patrimonial total é gigante.
+            // Mas aqui olhamos o título.
+            if (titulo === 'vpa' || titulo === 'vp' || (titulo.includes('patrimonial') && titulo.includes('cota'))) {
+                dados.vp_cota = parseValue(valor);
+            } else if (titulo === 'valor patrimonial') {
+                // Ambiguidade: pode ser total ou por cota dependendo do layout.
+                // Geralmente em cards de destaque é por cota se estiver ao lado de P/VP.
+                // Vamos tentar parsear.
+                const v = parseValue(valor);
+                // Heurística: Se for FII e valor < 10000, provavelmente é cota. Se > 1.000.000 é total.
+                if (v < 10000) dados.vp_cota = v;
+                else dados.patrimonio_liquido = valor;
+            }
+
+            // --- P/L ---
             if (dados.pl === null && (titulo.includes('p/l') || titulo === 'pl')) dados.pl = parseValue(valor);
+            
+            // --- GERAIS ---
             if (dados.liquidez === null && titulo.includes('liquidez')) dados.liquidez = valor; // String formatada
             if (dados.segmento === null && titulo.includes('segmento')) dados.segmento = valor;
             
@@ -154,7 +204,6 @@ async function scrapeInvestidor10(ticker: string) {
 
             // --- POR AÇÃO ---
             if (titulo === 'lpa' || titulo.includes('lpa')) dados.lpa = parseValue(valor);
-            if (titulo === 'vpa' || (titulo.includes('patrimonial') && titulo.includes('cota'))) dados.vp_cota = parseValue(valor);
         };
 
         // ESTRATÉGIA 1: Cards do Topo (Layout Novo)

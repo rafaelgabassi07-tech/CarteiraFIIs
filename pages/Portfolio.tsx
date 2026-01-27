@@ -246,7 +246,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                 {tab === 'FUNDAMENTOS' && (
                     <div className="space-y-4 anim-fade-in">
                         
-                        {(isUpdating && (!asset.dy_12m && !asset.p_vp && !asset.p_l)) ? (
+                        {(isUpdating && (asset.dy_12m === undefined && asset.p_vp === undefined)) ? (
                             <SkeletonFundamentals />
                         ) : (
                             <>
@@ -261,7 +261,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                     <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">Dividend Yield</p>
                                         <p className="text-2xl font-black tracking-tight text-emerald-500">
-                                            {asset.dy_12m ? `${asset.dy_12m.toFixed(2)}%` : '-'}
+                                            {asset.dy_12m !== undefined ? `${asset.dy_12m.toFixed(2)}%` : '-'}
                                         </p>
                                     </div>
                                 </div>
