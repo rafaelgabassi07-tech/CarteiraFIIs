@@ -12,8 +12,8 @@ export interface UnifiedMarketData {
 }
 
 const getTTL = () => {
-    // Cache mais agressivo para evitar chamadas desnecessárias
-    return 60 * 60 * 1000; // 1 Hora
+    // Cache de 4 horas para dados de mercado, já que mudam pouco durante o dia exceto preço
+    return 4 * 60 * 60 * 1000; 
 };
 
 const isStale = (dateString?: string) => {
@@ -51,7 +51,6 @@ const parseNumberSafe = (val: any): number => {
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
     const getVal = (...keys: string[]): any => {
         for (const k of keys) {
-            // Aceita 0 como valor válido, mas rejeita null/undefined/string vazia
             if (m[k] !== undefined && m[k] !== null && m[k] !== '' && m[k] !== 'N/A') return m[k];
         }
         return undefined;
@@ -59,14 +58,14 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
 
     return {
         // Indicadores Gerais
-        p_vp: parseNumberSafe(getVal('pvp', 'p_vp')),
-        dy_12m: parseNumberSafe(getVal('dy_12m', 'dy')), 
+        p_vp: parseNumberSafe(getVal('pvp', 'p_vp', 'vp')),
+        dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield')), 
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
         
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
         market_cap: getVal('val_mercado', 'valor_mercado') || undefined, 
-        assets_value: getVal('patrimonio_liquido') || undefined, 
+        assets_value: getVal('patrimonio_liquido', 'patrimonio') || undefined, 
         
         manager_type: getVal('tipo_gestao') || undefined,
         management_fee: getVal('taxa_adm') || undefined,
@@ -74,15 +73,15 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         // Ações (Stocks)
         net_margin: parseNumberSafe(getVal('margem_liquida')),
         gross_margin: parseNumberSafe(getVal('margem_bruta')),
-        cagr_revenue: parseNumberSafe(getVal('cagr_receita_5a')),
-        cagr_profits: parseNumberSafe(getVal('cagr_lucros_5a')),
+        cagr_revenue: parseNumberSafe(getVal('cagr_receita_5a', 'cagr_receitas')),
+        cagr_profits: parseNumberSafe(getVal('cagr_lucros_5a', 'cagr_lucros')),
         net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda')),
         ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
         lpa: parseNumberSafe(getVal('lpa')),
         vpa: parseNumberSafe(getVal('vp_cota', 'vpa')),
         
         // FIIs
-        vacancy: parseNumberSafe(getVal('vacancia')),
+        vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas')),
         
@@ -168,18 +167,62 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker)));
 
   try {
-      const [divResponse, metaResponse] = await Promise.all([
+      // 1. Fetch inicial do DB (Cache)
+      let [divResponse, metaResponse] = await Promise.all([
           supabase.from('market_dividends').select('*').in('ticker', uniqueTickers),
           supabase.from('ativos_metadata').select('*').in('ticker', uniqueTickers)
       ]);
 
-      const dividendsData = divResponse.data || [];
-      const metaData = metaResponse.data || [];
+      let dividendsData = divResponse.data || [];
+      let metaData = metaResponse.data || [];
 
-      // Mapeamento dos dividendos
+      // 2. Verifica necessidade de atualização
+      const metadataMap: Record<string, any> = {};
+      metaData.forEach((m: any) => { metadataMap[normalizeTicker(m.ticker)] = m; });
+
+      const missingOrStale = uniqueTickers.filter(t => {
+          const m = metadataMap[t];
+          return !m || (m.updated_at && isStale(m.updated_at));
+      });
+
+      const toUpdate = forceRefresh ? uniqueTickers : missingOrStale;
+
+      // 3. Atualização (Síncrona se force=true, Assíncrona caso contrário)
+      if (toUpdate.length > 0) {
+          if (forceRefresh) {
+              // Se forçado (ex: usuário abriu o modal), esperamos o scraper terminar
+              const results = await triggerScraperUpdate(toUpdate, true);
+              
+              // Mescla os resultados frescos imediatamente
+              results.forEach(r => {
+                  if (r.status === 'success' && r.rawFundamentals) {
+                      metadataMap[normalizeTicker(r.ticker)] = r.rawFundamentals;
+                      // Adiciona novos dividendos encontrados à lista (sem duplicar idealmente, mas o map abaixo trata ids)
+                      if (r.dividendsFound && r.dividendsFound.length > 0) {
+                          // Adiciona com campos compatíveis com o DB
+                          const newDivs = r.dividendsFound.map((d: any) => ({
+                              ticker: r.ticker,
+                              type: d.type,
+                              date_com: d.date_com,
+                              payment_date: d.payment_date,
+                              rate: d.rate
+                          }));
+                          dividendsData = [...dividendsData, ...newDivs];
+                      }
+                  }
+              });
+          } else {
+              // Background update
+              triggerScraperUpdate(toUpdate, true).then(results => {
+                  console.log(`[DataService] Background update finished for ${results.length} assets`);
+              });
+          }
+      }
+
+      // 4. Mapeamento Final
       const dividends: DividendReceipt[] = dividendsData.map((d: any) => ({
             id: d.id || `${d.ticker}-${d.date_com}-${d.rate}`,
-            ticker: d.ticker,
+            ticker: normalizeTicker(d.ticker),
             type: d.type,
             dateCom: d.date_com, 
             paymentDate: d.payment_date,
@@ -188,10 +231,14 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
-      // Mapeamento dos metadados com parsing
+      // Deduplica dividendos (caso o scraper tenha retornado algo que já estava no DB)
+      const uniqueDividends = Array.from(new Map(dividends.map(item => [
+          `${item.ticker}-${item.dateCom}-${item.rate}`, item
+      ])).values());
+
       const metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};
       
-      metaData.forEach((m: any) => {
+      Object.values(metadataMap).forEach((m: any) => {
           let assetType = AssetType.STOCK;
           if (m.type === 'FII' || m.ticker.endsWith('11') || m.ticker.endsWith('11B')) {
               assetType = AssetType.FII;
@@ -205,26 +252,10 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           };
       });
 
-      // Checa se algum ticker solicitado não tem dados ou dados velhos
-      const missingOrStale = uniqueTickers.filter(t => {
-          const m = metadata[t];
-          return !m || (m.fundamentals?.updated_at && isStale(m.fundamentals.updated_at));
-      });
-
-      // Se forceRefresh for true, atualizamos todos. Se não, só os que faltam.
-      const toUpdate = forceRefresh ? uniqueTickers : missingOrStale;
-
-      if (toUpdate.length > 0) {
-          // Dispara update em background (não bloqueia UI)
-          triggerScraperUpdate(toUpdate, true).then(results => {
-              console.log(`[DataService] Background update finished for ${results.length} assets`);
-          });
-      }
-
       const ipca = await fetchInflationData();
 
       return { 
-          dividends, 
+          dividends: uniqueDividends, 
           metadata, 
           indicators: { ipca_cumulative: ipca, start_date_used: startDate || '' }
       };
