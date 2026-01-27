@@ -1,9 +1,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon, Gem, Calendar, Briefcase, Zap, Layers, AlertTriangle, Loader2, Tag, RefreshCw } from 'lucide-react';
+import { Search, Wallet, ExternalLink, TrendingUp, TrendingDown, Scale, Percent, Banknote, Calendar, Briefcase, Zap, Layers, Tag, Gem } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { BarChart, Bar, XAxis, YAxis, ReferenceLine, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface PortfolioProps {
   portfolio: AssetPosition[];
@@ -111,7 +111,8 @@ const AssetDetailSkeleton = () => {
 
 const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: { asset: AssetPosition, dividends: DividendReceipt[], privacyMode: boolean, onClose: () => void, onRefresh?: (ticker: string) => Promise<void> }) => {
     const [tab, setTab] = useState<'POSICAO' | 'FUNDAMENTOS' | 'PROVENTOS'>('POSICAO');
-    const [isUpdating, setIsUpdating] = useState(false);
+    // Estado de carregamento INICIA como true para garantir que o Skeleton apareça
+    const [isUpdating, setIsUpdating] = useState(true);
     
     // Estado local sincronizado
     const [displayAsset, setDisplayAsset] = useState<AssetPosition>(asset);
@@ -120,7 +121,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     useEffect(() => {
         if (asset) {
             setDisplayAsset(prev => {
-                // Atualiza apenas se tiver dados novos relevantes, evitando flash
+                // Atualiza dados se forem novos
                 const hasNewData = asset.dy_12m || asset.p_vp || asset.p_l;
                 const hadData = prev.dy_12m || prev.p_vp || prev.p_l;
                 
@@ -135,12 +136,19 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     // Trigger de Atualização ao Montar
     useEffect(() => {
         if (onRefresh) {
-            setIsUpdating(true);
-            onRefresh(asset.ticker)
+            setIsUpdating(true); // Força loading
+            
+            // Adiciona delay artificial mínimo de 500ms para evitar flash
+            const minLoadTime = new Promise(resolve => setTimeout(resolve, 500));
+            const refreshPromise = onRefresh(asset.ticker);
+
+            Promise.all([refreshPromise, minLoadTime])
                 .catch(err => console.error("Refresh failed", err))
                 .finally(() => {
-                    setTimeout(() => setIsUpdating(false), 800); 
+                    setIsUpdating(false);
                 });
+        } else {
+            setIsUpdating(false);
         }
     }, []); 
 
@@ -185,20 +193,12 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         return { chartData: data, total12m, monthlyAvg: total12m / 12 };
     }, [assetDividends]);
 
-    if (isUpdating && !displayAsset.dy_12m && !displayAsset.p_vp) {
-        // Se estiver atualizando e não tivermos dados cacheados (primeira carga), mostra o Skeleton
+    if (isUpdating) {
         return <AssetDetailSkeleton />;
     }
 
     return (
         <div className="bg-white dark:bg-zinc-950 min-h-full flex flex-col relative">
-            {/* OVERLAY DE CARREGAMENTO (Discreto) */}
-            {isUpdating && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800 overflow-hidden z-50">
-                    <div className="h-full bg-indigo-500 animate-[loading_1.5s_infinite_ease-in-out]"></div>
-                </div>
-            )}
-
             {/* Header */}
             <div className="sticky top-0 z-30 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-100 dark:border-zinc-800 pt-safe px-6 pb-4">
                 <div className="flex items-center justify-between mb-5 pt-4">
@@ -213,7 +213,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                             <p className="text-xs font-medium text-zinc-400 truncate max-w-[200px]">{displayAsset.segment || (isFII ? 'Fundo Imobiliário' : 'Ação')}</p>
                         </div>
                     </div>
-                    {/* Botão X removido conforme solicitado */}
                 </div>
 
                 <div className="flex p-1.5 bg-zinc-100 dark:bg-zinc-900/80 rounded-xl">
