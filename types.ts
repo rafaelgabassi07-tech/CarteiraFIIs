@@ -230,6 +230,9 @@ export interface UpdateReportData {
     totalDividendsFound: number;
 }
 
+export type NewsSentiment = 'positive' | 'negative' | 'neutral';
+export type NewsImpact = 'high' | 'normal' | 'risk';
+
 export interface NewsItem {
     id: string;
     title: string;
@@ -239,6 +242,8 @@ export interface NewsItem {
     date: string;
     imageUrl?: string;
     category: 'FIIs' | 'Ações' | 'Macro' | 'Geral';
+    sentiment?: NewsSentiment;
+    impact?: NewsImpact;
 }
 
 // --- TIPOS DE INTELIGÊNCIA ---

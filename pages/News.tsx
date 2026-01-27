@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, Wallet } from 'lucide-react';
-import { NewsItem, Transaction } from '../types';
+import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, Wallet, TrendingDown, Minus, Zap, ShieldAlert } from 'lucide-react';
+import { NewsItem, Transaction, NewsSentiment, NewsImpact } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -46,6 +46,33 @@ const getCategoryIcon = (category: string) => {
     }
 };
 
+// --- ALGORITMO DE ANÁLISE DE NOTÍCIAS ---
+const analyzeNewsContent = (title: string, summary: string): { sentiment: NewsSentiment, impact: NewsImpact } => {
+    const text = (title + ' ' + summary).toLowerCase();
+    
+    // Palavras-chave de Sentimento
+    const positiveWords = ['lucro', 'dispara', 'sobe', 'alta', 'positivo', 'recorde', 'supera', 'cresce', 'anuncia dividendos', 'bonificação', 'recompra', 'otimista', 'avança', 'pagará', 'jcp', 'proventos'];
+    const negativeWords = ['prejuízo', 'cai', 'queda', 'baixa', 'negativo', 'pessimista', 'recua', 'desaba', 'perda', 'abaixo', 'piora', 'desvaloriza'];
+    
+    // Palavras-chave de Risco/Impacto
+    const riskWords = ['falência', 'recuperação judicial', 'fraude', 'investigação', 'calote', 'dívida', 'crise', 'alerta', 'risco', 'incerteza', 'suspensão', 'irregularidade', 'rombo'];
+    const highImpactWords = ['dispara', 'desaba', 'recorde', 'urgente', 'atenção', 'impacto', 'surpreende', 'fusão', 'aquisição', 'oferta pública'];
+
+    let score = 0;
+    positiveWords.forEach(w => { if (text.includes(w)) score++; });
+    negativeWords.forEach(w => { if (text.includes(w)) score--; });
+
+    let sentiment: NewsSentiment = 'neutral';
+    if (score > 0) sentiment = 'positive';
+    else if (score < 0) sentiment = 'negative';
+
+    let impact: NewsImpact = 'normal';
+    if (riskWords.some(w => text.includes(w))) impact = 'risk';
+    else if (highImpactWords.some(w => text.includes(w)) || Math.abs(score) >= 2) impact = 'high';
+
+    return { sentiment, impact };
+};
+
 export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     const [news, setNews] = useState<NewsItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -75,17 +102,22 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
             const data = await res.json();
             
             if (Array.isArray(data)) {
-                const formatted: NewsItem[] = data.map((item: any, index: number) => ({
-                    id: String(index),
-                    title: item.title,
-                    summary: item.summary,
-                    source: item.sourceName || 'Fonte Desconhecida',
-                    url: item.link,
-                    imageUrl: item.imageUrl,
-                    // Formata data relativa (ex: "há 2 horas")
-                    date: item.publicationDate ? formatDistanceToNow(new Date(item.publicationDate), { addSuffix: true, locale: ptBR }) : 'Recentemente',
-                    category: (item.category as any) || 'Geral'
-                }));
+                const formatted: NewsItem[] = data.map((item: any, index: number) => {
+                    const { sentiment, impact } = analyzeNewsContent(item.title, item.summary);
+                    return {
+                        id: String(index),
+                        title: item.title,
+                        summary: item.summary,
+                        source: item.sourceName || 'Fonte Desconhecida',
+                        url: item.link,
+                        imageUrl: item.imageUrl,
+                        // Formata data relativa (ex: "há 2 horas")
+                        date: item.publicationDate ? formatDistanceToNow(new Date(item.publicationDate), { addSuffix: true, locale: ptBR }) : 'Recentemente',
+                        category: (item.category as any) || 'Geral',
+                        sentiment,
+                        impact
+                    };
+                });
                 setNews(formatted);
             } else {
                 setNews([]);
@@ -146,10 +178,6 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     const filteredNews = useMemo(() => {
         // Se a busca estiver ativa (retornou resultados via API), mostramos tudo
         // Se não, aplicamos o filtro da aba ATUAL (Client-side filtering para abas padrão)
-        
-        // Se a API retornou coisas baseadas em busca específica (Carteira ou Search), 
-        // a categoria pode vir 'Geral' ou misturada. Nesse caso, não filtramos rigidamente por categoria da aba
-        // a menos que seja FIIs/Ações do feed geral.
         
         const isPortfolioMode = activeTab === 'Carteira' && portfolioTickers.length > 0;
         const isSearchMode = searchTerm.length > 0 && !loading; // Se buscou, mostra tudo que veio
@@ -276,15 +304,37 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                                                     {item.source}
                                                 </span>
                                             </div>
-                                            <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[9px] font-black uppercase tracking-wider ${getCategoryStyle(item.category)}`}>
-                                                <CategoryIcon className="w-2.5 h-2.5" />
-                                                {item.category}
+                                            
+                                            <div className="flex items-center gap-2">
+                                                {item.impact === 'risk' && (
+                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
+                                                        <ShieldAlert className="w-3 h-3" />
+                                                        <span className="text-[8px] font-black uppercase">Risco</span>
+                                                    </div>
+                                                )}
+                                                {item.impact === 'high' && (
+                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30">
+                                                        <Zap className="w-3 h-3" />
+                                                        <span className="text-[8px] font-black uppercase">Importante</span>
+                                                    </div>
+                                                )}
+                                                
+                                                <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[9px] font-black uppercase tracking-wider ${getCategoryStyle(item.category)}`}>
+                                                    <CategoryIcon className="w-2.5 h-2.5" />
+                                                    {item.category}
+                                                </div>
                                             </div>
                                         </div>
                                         
-                                        <h3 className="text-sm font-black text-zinc-900 dark:text-white mb-2 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors relative z-10">
-                                            {item.title}
-                                        </h3>
+                                        <div className="flex gap-2 items-start mb-2">
+                                            {item.sentiment === 'positive' && <TrendingUp className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />}
+                                            {item.sentiment === 'negative' && <TrendingDown className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />}
+                                            {item.sentiment === 'neutral' && <Minus className="w-4 h-4 text-zinc-300 mt-0.5 shrink-0" />}
+                                            
+                                            <h3 className={`text-sm font-black leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors relative z-10 ${item.impact === 'risk' ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white'}`}>
+                                                {item.title}
+                                            </h3>
+                                        </div>
                                         
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-4 line-clamp-2 relative z-10">
                                             {item.summary}
