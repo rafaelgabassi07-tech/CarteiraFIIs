@@ -47,6 +47,7 @@ const parseNumberSafe = (val: any): number => {
 };
 
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
+    // Helper para buscar valor em múltiplas chaves possíveis
     const getVal = (...keys: string[]): any => {
         for (const k of keys) {
             if (m[k] !== undefined && m[k] !== null && m[k] !== '' && m[k] !== 'N/A') return m[k];
@@ -68,14 +69,14 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         manager_type: getVal('tipo_gestao') || undefined,
         management_fee: getVal('taxa_adm') || undefined,
         
-        // Ações (Stocks) - Mapeamento Reforçado
+        // Ações (Stocks) - Mapeamento com Aliases
         net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),
         gross_margin: parseNumberSafe(getVal('margem_bruta', 'margembruta')),
         
         cagr_revenue: parseNumberSafe(getVal('cagr_receita_5a', 'cagr_receitas', 'cagr_receita')),
         cagr_profits: parseNumberSafe(getVal('cagr_lucros_5a', 'cagr_lucros', 'cagr_lucro')),
         
-        net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'div_liq_ebitda')),
+        net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'div_liq_ebitda', 'dividaliquida_ebitda')),
         ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
         
         lpa: parseNumberSafe(getVal('lpa')),
@@ -221,6 +222,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
+      // Deduplica dividendos para garantir lista limpa
       const uniqueDividends = Array.from(new Map(dividends.map(item => [
           `${item.ticker}-${item.dateCom}-${item.rate}`, item
       ])).values());

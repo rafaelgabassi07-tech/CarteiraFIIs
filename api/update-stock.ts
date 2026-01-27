@@ -21,16 +21,18 @@ const httpsAgent = new https.Agent({
 const client = axios.create({
     httpsAgent,
     headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
-        'Cache-Control': 'no-cache'
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Upgrade-Insecure-Requests': '1'
     },
     timeout: 15000,
     maxRedirects: 5
 });
 
-// --- HELPERS ---
+// --- HELPERS DE PARSEAMENTO ---
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
@@ -43,9 +45,11 @@ function parseValue(valueStr: any) {
     if (!valueStr) return 0;
     try {
         if (typeof valueStr === 'number') return valueStr;
+        // Remove tudo que não é número, vírgula ou hífen (preserva negativos)
         const clean = String(valueStr).replace(REGEX_CLEAN_NUMBER, "").trim();
-        if (!clean) return 0;
-        return parseFloat(clean.replace(',', '.')) || 0;
+        if (!clean || clean === '-') return 0;
+        // Converte formato BR (1.000,00) para JS (1000.00)
+        return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
 
@@ -66,26 +70,27 @@ async function fetchHtmlWithRetry(ticker: string) {
     const tickerLower = ticker.toLowerCase();
     const isLikelyFii = ticker.endsWith('11') || ticker.endsWith('11B');
     
-    const url1 = `https://investidor10.com.br/${isLikelyFii ? 'fiis' : 'acoes'}/${tickerLower}/`;
-    const url2 = `https://investidor10.com.br/${isLikelyFii ? 'acoes' : 'fiis'}/${tickerLower}/`;
+    // URLs potenciais
+    const urlFii = `https://investidor10.com.br/fiis/${tickerLower}/`;
+    const urlAcao = `https://investidor10.com.br/acoes/${tickerLower}/`;
+    const urlBdr = `https://investidor10.com.br/bdrs/${tickerLower}/`;
 
-    try {
-        const res = await client.get(url1);
-        return { data: res.data, type: isLikelyFii ? 'FII' : 'ACAO' };
-    } catch (e: any) {
-        if (e.response && e.response.status === 404) {
-            try {
-                const res2 = await client.get(url2);
-                return { data: res2.data, type: isLikelyFii ? 'ACAO' : 'FII' };
-            } catch (e2) {
-                try {
-                    const res3 = await client.get(`https://investidor10.com.br/bdrs/${tickerLower}/`);
-                    return { data: res3.data, type: 'BDR' };
-                } catch { throw e; }
-            }
+    // Ordem de tentativa baseada no sufixo
+    const urls = isLikelyFii ? [urlFii, urlAcao, urlBdr] : [urlAcao, urlFii, urlBdr];
+
+    for (const url of urls) {
+        try {
+            const res = await client.get(url);
+            let type = 'ACAO';
+            if (url.includes('/fiis/')) type = 'FII';
+            else if (url.includes('/bdrs/')) type = 'BDR';
+            return { data: res.data, type };
+        } catch (e: any) {
+            if (e.response && e.response.status === 404) continue;
+            throw e;
         }
-        throw e;
     }
+    throw new Error('Asset not found');
 }
 
 async function scrapeInvestidor10(ticker: string) {
@@ -100,42 +105,48 @@ async function scrapeInvestidor10(ticker: string) {
             dy: null, pvp: null, pl: null, 
             liquidez: null, val_mercado: null,
             segmento: null,
-            // Ações Específicos (inicializados como null)
+            // Campos Específicos Ações
             roe: null, margem_liquida: null, margem_bruta: null,
             cagr_receita_5a: null, cagr_lucros_5a: null,
             divida_liquida_ebitda: null, ev_ebitda: null,
-            lpa: null, vp_cota: null
+            lpa: null, vp_cota: null,
+            // Campos Específicos FIIs
+            vacancia: null, ultimo_rendimento: null, num_cotistas: null, patrimonio_liquido: null
         };
 
+        // Função universal de processamento de pares Chave/Valor
         const processPair = (tituloRaw: string, valorRaw: string) => {
             const titulo = normalize(tituloRaw);
-            const valor = valorRaw.trim();
+            const valor = valorRaw ? valorRaw.trim() : '';
             if (!valor || valor === '-') return;
 
             // --- GERAIS ---
             if (dados.dy === null && (titulo.includes('dividend yield') || titulo === 'dy')) dados.dy = parseValue(valor);
             if (dados.pvp === null && (titulo.includes('p/vp') || titulo === 'vp')) dados.pvp = parseValue(valor);
             if (dados.pl === null && (titulo.includes('p/l') || titulo === 'pl')) dados.pl = parseValue(valor);
-            if (dados.liquidez === null && titulo.includes('liquidez')) dados.liquidez = valor;
+            if (dados.liquidez === null && titulo.includes('liquidez')) dados.liquidez = valor; // String formatada
             if (dados.segmento === null && titulo.includes('segmento')) dados.segmento = valor;
-            if (dados.vacancia === null && titulo.includes('vacancia')) dados.vacancia = parseValue(valor);
-            if (dados.ultimo_rendimento === null && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(valor);
             
-            if (titulo.includes('mercado') && titulo.includes('valor')) dados.val_mercado = valor;
+            if (titulo.includes('mercado') && titulo.includes('valor')) dados.val_mercado = valor; // String formatada
             if (titulo.includes('patrimonio') && titulo.includes('liquido')) dados.patrimonio_liquido = valor;
 
-            // --- EFICIÊNCIA ---
+            // --- FIIs ---
+            if (titulo.includes('vacancia')) dados.vacancia = parseValue(valor);
+            if (titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(valor);
+            if (titulo.includes('cotistas') && !titulo.includes('num')) dados.num_cotistas = parseValue(valor);
+
+            // --- AÇÕES (Eficiência & Rentabilidade) ---
             if (titulo === 'roe' || titulo.includes('roe')) dados.roe = parseValue(valor);
             if (titulo.includes('margem liquida')) dados.margem_liquida = parseValue(valor);
             if (titulo.includes('margem bruta')) dados.margem_bruta = parseValue(valor);
 
-            // --- DÍVIDA / VALUATION ---
+            // --- AÇÕES (Dívida & Valuation) ---
             if (titulo.includes('ebitda')) {
                 if (titulo.includes('div') && titulo.includes('liq')) dados.divida_liquida_ebitda = parseValue(valor);
                 else if (titulo.includes('ev')) dados.ev_ebitda = parseValue(valor);
             }
             
-            // --- CRESCIMENTO (CAGR) ---
+            // --- AÇÕES (Crescimento) ---
             if (titulo.includes('cagr')) {
                 if (titulo.includes('receita')) dados.cagr_receita_5a = parseValue(valor);
                 if (titulo.includes('lucro')) dados.cagr_lucros_5a = parseValue(valor);
@@ -144,45 +155,52 @@ async function scrapeInvestidor10(ticker: string) {
             // --- POR AÇÃO ---
             if (titulo === 'lpa' || titulo.includes('lpa')) dados.lpa = parseValue(valor);
             if (titulo === 'vpa' || (titulo.includes('patrimonial') && titulo.includes('cota'))) dados.vp_cota = parseValue(valor);
-            
-            // --- COTISTAS ---
-            if (titulo.includes('cotistas') && !titulo.includes('num')) dados.num_cotistas = parseValue(valor);
         };
 
-        // 1. CARDS (Novo Layout)
+        // ESTRATÉGIA 1: Cards do Topo (Layout Novo)
         $('div._card').each((_, el) => {
             const header = $(el).find('div._card-header').text() || $(el).find('.header').text() || $(el).find('span').first().text();
             const body = $(el).find('div._card-body').text() || $(el).find('.body').text() || $(el).find('span').last().text();
             processPair(header, body);
         });
 
-        // 2. TABELAS DE INDICADORES (Layout Ações comum no Investidor10)
-        // Procura especificamente por tabelas que contenham indicadores
-        $('div.indicator-card, div.indicators-box, table#table-indicators').each((_, el) => {
-             // Se for tabela
-             $(el).find('.cell').each((_, cell) => {
-                 processPair($(cell).find('.name').text(), $(cell).find('.value').text());
-             });
-             
-             // Se for lista
-             $(el).find('div.item').each((_, item) => {
-                 const title = $(item).find('span').first().text() || $(item).find('div.title').text();
-                 const val = $(item).find('span').last().text() || $(item).find('div.desc').text();
-                 processPair(title, val);
-             });
+        // ESTRATÉGIA 2: Células de Indicadores (Ações geralmente usam grid de células)
+        // Procura em qualquer lugar com classe .cell ou .data-item
+        $('.cell, .data-item, .indicator-item').each((_, el) => {
+            const label = $(el).find('.name, .label, .title').text();
+            const val = $(el).find('.value, .data, .number').text();
+            processPair(label, val);
         });
 
-        // 3. COTAÇÃO
+        // ESTRATÉGIA 3: Tabelas Genéricas (Fallback para layouts antigos)
+        $('table tbody tr').each((_, row) => {
+            const cols = $(row).find('td');
+            if (cols.length >= 2) {
+                processPair($(cols[0]).text(), $(cols[1]).text());
+            }
+        });
+
+        // ESTRATÉGIA 4: Listas Específicas (Indicators Box)
+        $('div#indicators, div.indicators').find('div > span, div > div').each((_, el) => {
+             // Tenta pegar texto direto ou filhos
+             const text = $(el).text();
+             // Heurística fraca, mas pode pegar coisas soltas se estruturadas como Label: Valor
+             if (text.includes(':')) {
+                 const [k, v] = text.split(':');
+                 processPair(k, v);
+             }
+        });
+
+        // Cotação Atual (Destaque)
         const cotacaoEl = $('div._card').filter((i, el) => {
             const t = normalize($(el).text());
             return t.includes('cotacao') || t.includes('valor atual');
         }).first();
         if (cotacaoEl.length) {
-            const val = cotacaoEl.find('div._card-body').text();
-            dados.cotacao_atual = parseValue(val);
+            dados.cotacao_atual = parseValue(cotacaoEl.find('div._card-body').text());
         }
 
-        // 4. SEGMENTO
+        // Segmento (Breadcrumbs)
         if (!dados.segmento) {
             $('#breadcrumbs li, .breadcrumbs span, .breadcrumb-item').each((_, el) => {
                 const t = $(el).text().trim();
@@ -192,17 +210,18 @@ async function scrapeInvestidor10(ticker: string) {
             });
         }
 
-        // 5. DIVIDENDOS (Reforçado)
+        // 5. EXTRAÇÃO DE DIVIDENDOS (Reforçado)
         const dividends: any[] = [];
         let tableRows = $('#table-dividends-history tbody tr');
         
-        // Se não achou por ID, procura qualquer tabela que tenha cabeçalho de proventos
+        // Se não achou pelo ID padrão, procura qualquer tabela que pareça ser de dividendos
         if (tableRows.length === 0) {
             $('table').each((_, tbl) => {
                 const h = normalize($(tbl).text());
-                if (h.includes('com') && h.includes('pagamento') && (h.includes('valor') || h.includes('liquido'))) {
+                // Palavras-chave: "Data Com" + "Pagamento" + ("Valor" ou "Liquido")
+                if (h.includes('com') && h.includes('pagamento') && (h.includes('valor') || h.includes('liquido') || h.includes('provento'))) {
                     tableRows = $(tbl).find('tbody tr');
-                    return false;
+                    return false; // Stop loop
                 }
             });
         }
@@ -213,7 +232,10 @@ async function scrapeInvestidor10(ticker: string) {
                 let type = 'DIV';
                 let dateComStr = '', datePayStr = '', valStr = '';
 
-                // Layout 4 colunas (Ações): [Tipo, DataCom, DataPag, Valor]
+                // Lógica Inteligente de Colunas
+                // Ações costumam ter 4 colunas: [Tipo, DataCom, DataPag, Valor]
+                // FIIs costumam ter 3 colunas: [DataCom, DataPag, Valor] (Tipo implícito 'Rendimento')
+                
                 if (cols.length >= 4) {
                     const tText = normalize($(cols[0]).text());
                     if (tText.includes('jcp') || tText.includes('capital')) type = 'JCP';
@@ -223,9 +245,8 @@ async function scrapeInvestidor10(ticker: string) {
                     dateComStr = $(cols[1]).text();
                     datePayStr = $(cols[2]).text();
                     valStr = $(cols[3]).text();
-                } 
-                // Layout 3 colunas (FIIs): [DataCom, DataPag, Valor]
-                else {
+                } else {
+                    // Assume FII padrão ou tabela simples
                     dateComStr = $(cols[0]).text();
                     datePayStr = $(cols[1]).text();
                     valStr = $(cols[2]).text();
@@ -247,13 +268,14 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        // Limpeza
+        // Limpeza de Objeto Final
         const finalMetadata = {
             ...dados,
             dy_12m: dados.dy, 
             current_price: dados.cotacao_atual,
         };
 
+        // Remove chaves nulas
         Object.keys(finalMetadata).forEach(key => {
             if (finalMetadata[key] === null || finalMetadata[key] === undefined) delete finalMetadata[key];
         });
@@ -277,6 +299,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
+        // Cache Check (Supabase)
         if (!force) {
             const { data: existing } = await supabase
                 .from('ativos_metadata')
@@ -286,7 +309,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                if (age < 3600000) { 
+                // Cache de 3 horas para metadados
+                if (age < 10800000) { 
                      const { data: divs } = await supabase
                         .from('market_dividends')
                         .select('*')
@@ -304,6 +328,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const { metadata, dividends } = result;
 
+        // Persistência Metadados
         if (metadata) {
             const dbPayload = { ...metadata };
             delete dbPayload.dy;
@@ -311,6 +336,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
         }
 
+        // Persistência Dividendos
         if (dividends.length > 0) {
              const uniqueDivs = Array.from(new Map(dividends.map(item => [
                 `${item.type}-${item.date_com}-${item.rate}`, item
