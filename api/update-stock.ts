@@ -46,19 +46,11 @@ function parseValue(valueStr: any) {
         if (typeof valueStr === 'number') return valueStr;
         
         let str = String(valueStr).trim();
+        str = str.replace('R$', '').replace('%', '').trim();
         
-        // Remove sufixos comuns de moeda/percentual
-        str = str.replace(/^R\$\s?/, '').replace(/%$/, '').trim();
-        
-        if (!str || str === '-' || str === 'N/A') return 0;
+        if (!str || str === '-') return 0;
 
-        // Suporte a sufixos de magnitude (B = Bilhão, M = Milhão, K = Milhar)
-        let multiplier = 1;
-        if (str.toUpperCase().endsWith('B')) { multiplier = 1000000000; str = str.slice(0, -1); }
-        else if (str.toUpperCase().endsWith('M')) { multiplier = 1000000; str = str.slice(0, -1); }
-        else if (str.toUpperCase().endsWith('K')) { multiplier = 1000; str = str.slice(0, -1); }
-
-        // Limpeza final de caracteres invisíveis
+        // Remove caracteres invisíveis e espaços non-breaking
         str = str.replace(/\s/g, '').replace(/\u00A0/g, '');
 
         const clean = str.replace(/[^0-9,.-]+/g, ""); 
@@ -68,31 +60,27 @@ function parseValue(valueStr: any) {
         const hasComma = clean.includes(',');
         const hasDot = clean.includes('.');
 
-        let result = 0;
-
-        // Lógica de detecção de formato numérico (BR vs US)
+        // 1.000,00 (Formato BR Padrão)
         if (hasComma && !hasDot) {
-             // 1000,00 -> BR
-             result = parseFloat(clean.replace(',', '.')) || 0;
-        } else if (!hasComma && hasDot) {
-             // 1000.00 (US) ou 1.000 (BR milhar) - Assumimos BR se não tiver decimais óbvios, mas aqui removemos ponto
-             // Contexto Investidor10: Pontos costumam ser milhar.
-             result = parseFloat(clean.replace(/\./g, '')) || 0;
-        } else if (hasComma && hasDot) {
-             // Misto: 1.000,00 (BR) vs 1,000.00 (US)
-             if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
-                 // BR: Ponto é milhar, Vírgula é decimal
-                 result = parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
-             } else {
-                 // US: Vírgula é milhar, Ponto é decimal
-                 result = parseFloat(clean.replace(/,/g, '')) || 0;
-             }
-        } else {
-            // Apenas números
-            result = parseFloat(clean) || 0;
+             return parseFloat(clean.replace(',', '.')) || 0;
+        }
+        
+        // 1.000 (Sem decimais) ou 1000
+        if (!hasComma && hasDot) {
+             return parseFloat(clean.replace(/\./g, '')) || 0;
         }
 
-        return result * multiplier;
+        // 1.000,50 (Misto)
+        if (hasComma && hasDot) {
+             if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
+                 return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
+             } else {
+                 return parseFloat(clean.replace(/,/g, '')) || 0;
+             }
+        }
+        
+        // Apenas números
+        return parseFloat(clean.replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
 
@@ -117,7 +105,6 @@ async function fetchHtmlWithRetry(ticker: string) {
     const urlAcao = `https://investidor10.com.br/acoes/${tickerLower}/`;
     const urlBdr = `https://investidor10.com.br/bdrs/${tickerLower}/`;
 
-    // Prioriza URL baseado no padrão do ticker
     const urls = isLikelyFii ? [urlFii, urlAcao, urlBdr] : [urlAcao, urlFii, urlBdr];
 
     for (const url of urls) {
@@ -129,8 +116,7 @@ async function fetchHtmlWithRetry(ticker: string) {
             return { data: res.data, type };
         } catch (e: any) {
             if (e.response && e.response.status === 404) continue;
-            // Se for erro de rede, tenta o próximo
-            continue;
+            throw e;
         }
     }
     throw new Error('Asset not found');
@@ -151,162 +137,223 @@ async function scrapeInvestidor10(ticker: string) {
             roe: null, margem_liquida: null, margem_bruta: null,
             cagr_receita_5a: null, cagr_lucros_5a: null,
             divida_liquida_ebitda: null, ev_ebitda: null,
-            lpa: null, vp_cota: null, vpa: null,
-            vacancia: null, ultimo_rendimento: null, num_cotistas: null, patrimonio_liquido: null,
-            taxa_adm: null, tipo_gestao: null
+            lpa: null, vp_cota: null,
+            vacancia: null, ultimo_rendimento: null, num_cotistas: null, patrimonio_liquido: null
         };
 
-        const processPair = (keyRaw: string, valueRaw: string) => {
-            if (!keyRaw || !valueRaw) return;
-            
-            // --- ESTRATÉGIA DUPLA DE NORMALIZAÇÃO ---
-            
-            // 1. Normalização TEXTUAL (Preserva espaços para frases como "Margem Líquida")
-            const kText = normalize(keyRaw.replace(/\n/g, ' ').replace(/\s+/g, ' '));
-            
-            // 2. Normalização AGRESSIVA (Remove tudo para siglas como "V.P.A", "P/VP")
-            const kClean = keyRaw.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            
-            const v = valueRaw.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-            if (v === '-' || v === '') return;
+        const processPair = (tituloRaw: string, valorRaw: string) => {
+            const titulo = normalize(tituloRaw);
+            const tituloClean = titulo.replace(/[^a-z0-9]/g, ''); 
+            const valor = valorRaw ? valorRaw.trim() : '';
+            if (!valor || valor === '-') return;
 
-            // --- MAPEAMENTO POR SIGLAS (kClean) ---
-            if (kClean === 'pvp') dados.pvp = parseValue(v);
-            if (kClean === 'pl') dados.pl = parseValue(v);
-            if (kClean === 'dy' || kClean === 'dividendyield') dados.dy = parseValue(v);
-            if (kClean === 'cotacao' || kClean === 'valoratual') dados.cotacao_atual = parseValue(v);
-            if (kClean === 'roe') dados.roe = parseValue(v);
-            if (kClean === 'lpa') dados.lpa = parseValue(v);
-            if (kClean === 'evebitda') dados.ev_ebitda = parseValue(v);
+            if (dados.dy === null && (tituloClean === 'dy' || tituloClean === 'dividendyield' || titulo.includes('dividend'))) dados.dy = parseValue(valor);
+            if (dados.pvp === null && (tituloClean === 'pvp' || titulo === 'p/vp')) dados.pvp = parseValue(valor);
+            
+            if (dados.vp_cota === null) {
+                if (tituloClean === 'vpa' || tituloClean === 'vp' || tituloClean === 'valorpatrimonialcota') dados.vp_cota = parseValue(valor);
+                else if (titulo.includes('patrimonial') && titulo.includes('cota')) dados.vp_cota = parseValue(valor);
+            }
+            // Fallback Genérico para "Valor Patrimonial" (pode ser total ou cota)
+            if (titulo === 'valor patrimonial' && dados.vp_cota === null) {
+                 const v = parseValue(valor);
+                 if (v < 10000) dados.vp_cota = v; else dados.patrimonio_liquido = valor;
+            }
 
-            // VPA (Tratamento especial para V.P.A / VPA / Valor Patrimonial p/ Ação)
-            if (kClean === 'vpa' || kClean === 'vp' || kClean === 'valorpatrimonial' || kClean === 'valorpatrimonialporacao' || kClean === 'valorpatrimonialpacao') {
-                const val = parseValue(v);
-                // Heurística: Se < 5000 é unitário (VPA/VP), senão é total (Patrimônio Líquido)
-                if (val < 5000) {
-                    dados.vp_cota = val;
-                    dados.vpa = val; 
-                } else {
-                    dados.patrimonio_liquido = v;
+            if (dados.pl === null && (tituloClean === 'pl' || titulo.includes('p/l'))) dados.pl = parseValue(valor);
+            if (dados.liquidez === null && titulo.includes('liquidez')) dados.liquidez = valor; 
+            if (dados.segmento === null && titulo.includes('segmento')) dados.segmento = valor;
+            if (titulo.includes('mercado') && titulo.includes('valor')) dados.val_mercado = valor;
+            if (!dados.patrimonio_liquido && titulo.includes('patrimonio') && titulo.includes('liquido')) dados.patrimonio_liquido = valor;
+
+            if (titulo.includes('vacancia')) dados.vacancia = parseValue(valor);
+            if (titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(valor);
+            if (tituloClean.includes('cotistas')) dados.num_cotistas = parseValue(valor);
+
+            if (tituloClean === 'roe' || titulo.includes('roe')) dados.roe = parseValue(valor);
+            if (titulo.includes('margem liquida')) dados.margem_liquida = parseValue(valor);
+            if (titulo.includes('margem bruta')) dados.margem_bruta = parseValue(valor);
+
+            if (tituloClean.includes('ebitda')) {
+                if (tituloClean.includes('div') && tituloClean.includes('liq')) dados.divida_liquida_ebitda = parseValue(valor);
+                else if (tituloClean.includes('ev')) dados.ev_ebitda = parseValue(valor);
+            }
+            if (titulo.includes('cagr')) {
+                if (titulo.includes('receita')) dados.cagr_receita_5a = parseValue(valor);
+                if (titulo.includes('lucro')) dados.cagr_lucros_5a = parseValue(valor);
+            }
+            if (tituloClean === 'lpa' || titulo.includes('lpa')) dados.lpa = parseValue(valor);
+        };
+
+        // ESTRATÉGIA 1: Cards do Topo
+        $('div._card').each((_, el) => {
+            const header = $(el).find('div._card-header').text() || $(el).find('.header').text() || $(el).find('span').first().text();
+            const body = $(el).find('div._card-body').text() || $(el).find('.body').text() || $(el).find('span').last().text();
+            processPair(header, body);
+        });
+
+        // ESTRATÉGIA 2: Histórico de Indicadores Fundamentalistas (Específico para Ações)
+        // Procura por tabelas que contenham anos nas colunas e indicadores nas linhas
+        const historicoHeader = $('h2, h3, h4').filter((_, el) => {
+            const t = normalize($(el).text());
+            return t.includes('historico') && t.includes('indicadores');
+        }).first();
+
+        if (historicoHeader.length > 0) {
+            // Tenta encontrar a tabela próxima ao header
+            let tableHistorico = historicoHeader.nextAll().find('table').first();
+            // Se não achar, tenta container pai
+            if (tableHistorico.length === 0) tableHistorico = historicoHeader.parent().find('table').first();
+            // Se ainda não achar, procura a próxima tabela no DOM
+            if (tableHistorico.length === 0) tableHistorico = historicoHeader.nextAll('table').first();
+
+            if (tableHistorico.length > 0) {
+                // Descobre índice da coluna "Atual" ou mais recente
+                let idxAtual = -1;
+                const headers = tableHistorico.find('thead tr').first().find('th, td');
+                
+                headers.each((i, h) => {
+                    const txt = normalize($(h).text());
+                    if (txt.includes('atual') || txt.includes('hoje')) {
+                        idxAtual = i;
+                    }
+                });
+
+                // Se não achou "Atual", pega a última coluna (assumindo ordem crescente ou decrescente, geralmente a extremidade é o atual)
+                // Investidor10 costuma colocar Atual na direita (último)
+                if (idxAtual === -1 && headers.length > 1) {
+                    idxAtual = headers.length - 1;
+                }
+
+                if (idxAtual > 0) {
+                    tableHistorico.find('tbody tr').each((_, tr) => {
+                        const cols = $(tr).find('td');
+                        if (cols.length > idxAtual) {
+                            const label = $(cols[0]).text(); // Nome do indicador (ex: P/L)
+                            const val = $(cols[idxAtual]).text(); // Valor na coluna atual
+                            processPair(label, val);
+                        }
+                    });
                 }
             }
+        }
 
-            // --- MAPEAMENTO POR TEXTO (kText) ---
-            // Usamos 'includes' para ser flexível com variações do site
-            
-            if (kText.includes('patrimonio liquido') || kText.includes('patrim. liq')) dados.patrimonio_liquido = v;
-            if (kText.includes('liquidez')) dados.liquidez = v;
-            if (kText.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(v);
-            if (kClean === 'numcotistas' || kText.includes('num. cotistas') || kText.includes('numero de cotistas')) dados.num_cotistas = parseValue(v);
-            if (kText.includes('vacancia')) dados.vacancia = parseValue(v);
-            
-            // Indicadores de Eficiência (Ações)
-            if (kText.includes('margem liquida')) dados.margem_liquida = parseValue(v);
-            if (kText.includes('margem bruta')) dados.margem_bruta = parseValue(v);
-            if (kText.includes('div. liq') || kText.includes('divida liquida')) {
-                if (kText.includes('ebitda')) dados.divida_liquida_ebitda = parseValue(v);
-            } else if (kClean === 'dividaliquidaebitda' || kClean === 'divliqebitda') {
-                dados.divida_liquida_ebitda = parseValue(v);
-            }
-            
-            // Crescimento (Ações)
-            if (kText.includes('cagr') && kText.includes('receita')) dados.cagr_receita_5a = parseValue(v);
-            if (kText.includes('cagr') && kText.includes('lucro')) dados.cagr_lucros_5a = parseValue(v);
-        };
-
-        // 1. CARDS DO TOPO
-        $('div._card').each((_, el) => {
-            let title = $(el).find('div._card-header').text().trim();
-            let val = $(el).find('div._card-body').text().trim();
-            if (title && val) processPair(title, val);
+        // ESTRATÉGIA 3: Células e Listas Genéricas
+        $('.cell, .data-item, .indicator-item').each((_, el) => {
+            const label = $(el).find('.name, .label, .title').text();
+            const val = $(el).find('.value, .data, .number').text();
+            processPair(label, val);
         });
 
-        // 2. GRID DE INDICADORES (Essencial para Ações no Investidor10)
-        // O seletor #table-indicators .cell é o principal container de indicadores fundamentalistas
-        $('#table-indicators .cell, .indicators-list .cell').each((_, el) => {
-            const title = $(el).find('.cell-header, span.name').text().trim();
-            const val = $(el).find('.cell-value, span.value').text().trim();
-            if (title && val) processPair(title, val);
-        });
-
-        // 3. VARREDURA GENÉRICA (Fallback)
-        $('div.indicator-item, div.data-item').each((_, el) => {
-            let title = $(el).find('.title, .label').first().text().trim();
-            let val = $(el).find('.value, .data').first().text().trim();
-            if (title && val) {
-                title = title.replace(/\?$/, '').trim(); 
-                processPair(title, val);
-            }
-        });
-
-        // 4. TABELAS DE DADOS GERAIS
-        $('.table-data .cell').each((_, el) => {
-             const title = $(el).find('.name').text().trim();
-             const val = $(el).find('.value').text().trim();
-             if (title && val) {
-                 processPair(title, val);
-                 const k = normalize(title);
-                 if (k.includes('segmento')) dados.segmento = val;
-                 if (k.includes('tipo') && k.includes('gestao')) dados.tipo_gestao = val;
-                 if (k.includes('taxa') && k.includes('admin')) dados.taxa_adm = val;
+        $('div#indicators, div.indicators, ul.indicators').find('div, li').each((_, el) => {
+             const text = $(el).text();
+             if (text.includes(':')) {
+                 const [k, v] = text.split(':');
+                 processPair(k, v);
              }
         });
 
-        // --- EXTRAÇÃO DE DIVIDENDOS ---
-        const dividends: any[] = [];
-        let tableDivs = $('#table-dividends-history');
-        
-        if (tableDivs.length === 0) {
-             $('h2, h3, h4').each((_, el) => {
-                 const t = normalize($(el).text());
-                 if (t.includes('dividendos') || t.includes('proventos')) {
-                     const nextTable = $(el).nextAll('table').first();
-                     if (nextTable.length) tableDivs = nextTable;
-                     else {
-                         const parentNextTable = $(el).parent().next().find('table').first();
-                         if (parentNextTable.length) tableDivs = parentNextTable;
-                     }
-                 }
-             });
+        const cotacaoEl = $('div._card').filter((i, el) => {
+            const t = normalize($(el).text());
+            return t.includes('cotacao') || t.includes('valor atual');
+        }).first();
+        if (cotacaoEl.length) {
+            dados.cotacao_atual = parseValue(cotacaoEl.find('div._card-body').text());
         }
 
-        if (tableDivs.length > 0) {
-            const headers: string[] = [];
-            tableDivs.find('thead th').each((_, th) => headers.push(normalize($(th).text())));
-            if (headers.length === 0) tableDivs.find('tbody tr').first().find('td').each((_, td) => headers.push(normalize($(td).text())));
+        if (!dados.segmento) {
+            $('#breadcrumbs li, .breadcrumbs span, .breadcrumb-item').each((_, el) => {
+                const t = $(el).text().trim();
+                if (t && !['Início', 'Home', 'Ações', 'FIIs', 'Fundos', 'BDRs'].includes(t) && t.toUpperCase() !== ticker) {
+                    dados.segmento = t;
+                }
+            });
+        }
 
-            let iType = -1, iCom = -1, iPay = -1, iVal = -1;
-            headers.forEach((h, i) => {
-                if (h.includes('tipo')) iType = i;
-                if (h.includes('com') || h.includes('base')) iCom = i;
-                if (h.includes('pagamento')) iPay = i;
-                if (h.includes('valor') || h.includes('liquido')) iVal = i;
+        // --- EXTRAÇÃO ROBUSTA DE DIVIDENDOS ---
+        const dividends: any[] = [];
+        
+        // Prioriza busca por título "Histórico de Dividendos" ou similar
+        let table = $('#table-dividends-history');
+        if (table.length === 0) {
+             const divHeader = $('h2, h3, h4').filter((_, el) => {
+                const t = normalize($(el).text());
+                return t.includes('historico') && (t.includes('dividendos') || t.includes('proventos'));
+            }).first();
+            
+            if (divHeader.length > 0) {
+                table = divHeader.nextAll().find('table').first();
+                if (table.length === 0) table = divHeader.parent().find('table').first();
+                if (table.length === 0) table = divHeader.nextAll('table').first();
+            }
+        }
+        
+        // Fallback genérico se não achou pelo título
+        if (table.length === 0) {
+            $('table').each((_, tbl) => {
+                const h = normalize($(tbl).text());
+                if (h.includes('com') && h.includes('pagamento') && (h.includes('valor') || h.includes('liquido') || h.includes('provento'))) {
+                    table = $(tbl);
+                    return false; 
+                }
+            });
+        }
+
+        if (table.length > 0) {
+            // Mapeamento Dinâmico de Colunas
+            const headers: string[] = [];
+            
+            // Tenta achar thead
+            let headerRow = table.find('thead tr').first();
+            if (headerRow.length === 0) headerRow = table.find('tbody tr').first();
+
+            headerRow.find('th, td').each((_, cell) => {
+                headers.push(normalize($(cell).text()));
             });
 
-            if (iVal === -1) {
-                if (headers.length >= 4) { iType=0; iCom=1; iPay=2; iVal=3; }
-                else { iCom=0; iPay=1; iVal=2; }
+            let idxType = -1;
+            let idxDateCom = -1;
+            let idxDatePay = -1;
+            let idxValue = -1;
+
+            headers.forEach((h, i) => {
+                if (h.includes('tipo')) idxType = i;
+                if (h.includes('com') || h.includes('base')) idxDateCom = i;
+                if (h.includes('pagamento')) idxDatePay = i;
+                if (h.includes('valor') || h.includes('liquido') || h.includes('rendimento')) idxValue = i;
+            });
+
+            // Heurística de Fallback se mapeamento falhar
+            if (idxValue === -1) {
+                if (headers.length >= 4) { idxValue = 3; idxDatePay = 2; idxDateCom = 1; idxType = 0; }
+                else if (headers.length === 3) { idxValue = 2; idxDatePay = 1; idxDateCom = 0; }
             }
 
-            tableDivs.find('tbody tr').each((i, tr) => {
-                if (i === 0 && tableDivs.find('thead').length === 0) return;
-                const cols = $(tr).find('td');
+            table.find('tbody tr').each((i, el) => {
+                // Pula a primeira linha se for usada como header
+                if (i === 0 && table.find('thead').length === 0) return;
+
+                const cols = $(el).find('td');
                 if (cols.length < 3) return;
 
-                const typeRaw = iType !== -1 ? $(cols[iType]).text() : 'DIV';
-                const dateComStr = iCom !== -1 ? $(cols[iCom]).text() : '';
-                const datePayStr = iPay !== -1 ? $(cols[iPay]).text() : '';
-                const valStr = iVal !== -1 ? $(cols[iVal]).text() : '';
-
                 let type = 'DIV';
-                const tNorm = normalize(typeRaw);
-                if (tNorm.includes('jcp') || tNorm.includes('juros')) type = 'JCP';
-                else if (tNorm.includes('rend')) type = 'REND';
-                else if (tNorm.includes('amort')) type = 'AMORT';
+                let dateComStr = idxDateCom !== -1 && cols[idxDateCom] ? $(cols[idxDateCom]).text() : '';
+                let datePayStr = idxDatePay !== -1 && cols[idxDatePay] ? $(cols[idxDatePay]).text() : '';
+                let valStr = idxValue !== -1 && cols[idxValue] ? $(cols[idxValue]).text() : '';
+                let typeStr = idxType !== -1 && cols[idxType] ? $(cols[idxType]).text() : '';
 
-                const rate = parseValue(valStr);
+                // Fallback posicional se string estiver vazia
+                if (!valStr && cols.length >= 4) valStr = $(cols[3]).text(); 
+                if (!valStr && cols.length === 3) valStr = $(cols[2]).text();
+
+                const tText = normalize(typeStr);
+                if (tText.includes('jcp') || tText.includes('capital')) type = 'JCP';
+                else if (tText.includes('rend')) type = 'REND';
+                else if (tText.includes('amort')) type = 'AMORT';
+
                 const dateCom = parseDate(dateComStr);
                 const paymentDate = parseDate(datePayStr);
+                const rate = parseValue(valStr);
 
                 if (dateCom && rate > 0) {
                     dividends.push({
@@ -320,20 +367,19 @@ async function scrapeInvestidor10(ticker: string) {
             });
         }
 
-        // Consolidação Final
-        if (!dados.dy && dados.ultimo_rendimento && dados.cotacao_atual) {
-            dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100;
+        if (dados.vp_cota !== null && dados.vpa === undefined) {
+            dados.vpa = dados.vp_cota;
         }
-
-        Object.keys(dados).forEach(k => {
-            if (dados[k] === null || dados[k] === undefined || dados[k] === '') delete dados[k];
-        });
 
         const finalMetadata = {
             ...dados,
-            dy_12m: dados.dy,
+            dy_12m: dados.dy, 
             current_price: dados.cotacao_atual,
         };
+
+        Object.keys(finalMetadata).forEach(key => {
+            if (finalMetadata[key] === null || finalMetadata[key] === undefined || finalMetadata[key] === '') delete finalMetadata[key];
+        });
 
         return { metadata: finalMetadata, dividends };
 
@@ -385,6 +431,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const dbPayload = { ...metadata };
             delete dbPayload.dy;
             delete dbPayload.cotacao_atual;
+            if (dbPayload.vpa && !dbPayload.vp_cota) dbPayload.vp_cota = dbPayload.vpa;
             
             await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
         }
