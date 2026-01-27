@@ -137,6 +137,12 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled));
   }, [pushEnabled]);
 
+  // --- CORREÇÃO DE SCROLL ---
+  // Reseta o scroll para o topo sempre que a aba ou tela de settings mudar
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentTab, showSettings]);
+
   // --- REVEAL APP ---
   // Este efeito é CRÍTICO para resolver o problema da "tela preta".
   // Ele remove a opacidade 0 do #root adicionando a classe ao body.

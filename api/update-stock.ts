@@ -12,7 +12,6 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SU
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
 // --- INTELLIGENT CACHE (SERVER-SIDE) ---
-// Define a validade do dado baseado no horário do mercado
 const getTTL = () => {
     const now = new Date();
     const day = now.getDay();
@@ -22,18 +21,14 @@ const getTTL = () => {
     return isMarketOpen ? 20 * 60 * 1000 : 4 * 60 * 60 * 1000; // 4h se fechado
 };
 
-// --- AGENTE HTTPS & HEADERS (MIMIC REAL BROWSER) ---
+// --- AGENTE HTTPS & HEADERS ---
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     rejectUnauthorized: false 
 });
 
 const getBrowserHeaders = () => ({
-    'User-Agent': [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
-    ][Math.floor(Math.random() * 3)],
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
     'Cache-Control': 'no-cache',
@@ -50,13 +45,13 @@ async function fetchHTML(url: string) {
             const response = await axios.get(url, {
                 httpsAgent,
                 headers: getBrowserHeaders(),
-                timeout: 8000 + (i * 2000), // Timeout progressivo
+                timeout: 8000 + (i * 2000), 
                 maxRedirects: 5
             });
             return response.data;
         } catch (e: any) {
             if (e.response?.status === 404) throw e; 
-            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); // Backoff exponencial
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); 
             if (i === 2) throw e;
         }
     }
@@ -72,9 +67,7 @@ function cleanNumber(val: any): number {
     if (['-', 'N/A', '', '--', 'null', '%'].includes(str)) return 0;
 
     try {
-        // Remove símbolos e espaços
         str = str.replace(/[^\d.,-]/g, '');
-        // Padrão BR: inverte ponto e vírgula se necessário
         if (str.includes(',') && !str.includes('.')) {
             str = str.replace(',', '.');
         } else if (str.includes('.') && str.includes(',')) {
@@ -99,7 +92,6 @@ const parseToISODate = (val: any): string | null => {
     return null;
 }
 
-// Mapa de Chaves Normalizado
 const KEY_MAP: Record<string, string> = {
     'cotacao': 'cotacao_atual', 'preco': 'cotacao_atual', 'valoratual': 'cotacao_atual',
     'pvp': 'pvp', 'p/vp': 'pvp', 'vp': 'pvp',
@@ -115,7 +107,8 @@ const KEY_MAP: Record<string, string> = {
     'segmento': 'segmento',
     'numerodecotistas': 'num_cotistas', 'cotistas': 'num_cotistas',
     'taxadeadministracao': 'taxa_adm', 'taxaadm': 'taxa_adm',
-    'tipodegestao': 'tipo_gestao'
+    'tipodegestao': 'tipo_gestao', 'gestao': 'tipo_gestao',
+    'ultimorendimento': 'ultimo_rendimento', 'rendimento': 'ultimo_rendimento'
 };
 
 function normalizeKey(str: string) {
@@ -126,15 +119,9 @@ function normalizeKey(str: string) {
         .trim();
 }
 
-// ---------------------------------------------------------
-// INTELLIGENT SCRAPER ENGINE
-// ---------------------------------------------------------
-
 async function scrapeInvestidor10(ticker: string) {
     try {
         const isFII = ticker.endsWith('11') || ticker.endsWith('11B');
-        
-        // Estratégia de URL: tenta FII, depois Ação, depois BDR
         const urls = isFII 
             ? [`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`, `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`]
             : [`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`, `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`, `https://investidor10.com.br/bdrs/${ticker.toLowerCase()}/`];
@@ -157,13 +144,12 @@ async function scrapeInvestidor10(ticker: string) {
         const $ = cheerio.load(html);
         const extracted: any = {};
 
-        // === ESTRATÉGIA 1: JSON-LD (Dados Estruturados - A mais confiável) ===
+        // JSON-LD
         try {
             const jsonLdScripts = $('script[type="application/ld+json"]');
             jsonLdScripts.each((_, el) => {
                 try {
                     const json = JSON.parse($(el).html() || '{}');
-                    // Procura por dados de ProdutoFinanceiro ou similar
                     if (json['@type'] === 'FinancialProduct' || json.name === ticker) {
                         if (json.offers?.price) extracted['cotacao_atual'] = json.offers.price;
                         if (json.description) extracted['description'] = json.description;
@@ -172,62 +158,44 @@ async function scrapeInvestidor10(ticker: string) {
             });
         } catch (e) { console.warn('JSON-LD parse error', e); }
 
-        // === ESTRATÉGIA 2: VARREDURA VISUAL (Cards e Tabelas) ===
+        // VARREDURA VISUAL
         const addData = (k: string, v: string) => {
             const key = normalizeKey(k);
-            if (KEY_MAP[key] && !extracted[KEY_MAP[key]]) { // Não sobrescreve se já pegou (ex: do JSON-LD)
+            if (KEY_MAP[key] && !extracted[KEY_MAP[key]]) { 
                 extracted[KEY_MAP[key]] = v;
             }
         };
 
-        // Cards Superiores
         $('div[class*="card"], div[class*="cell"]').each((_, el) => {
             const title = $(el).find('[class*="title"], [class*="name"], [class*="header"]').first().text().trim();
             const value = $(el).find('[class*="value"], [class*="desc"], [class*="data"]').first().text().trim();
             if (title && value) addData(title, value);
         });
 
-        // Tabelas de Dados
         $('#table-indicators .cell, #table-basic-data .cell').each((_, el) => {
              const title = $(el).find('.name').text().trim();
              const value = $(el).find('.value, .desc').text().trim();
              if (title && value) addData(title, value);
         });
 
-        // === ESTRATÉGIA 3: BUSCA TEXTUAL BRUTA (Fallback) ===
-        // Se falhou em pegar P/VP ou DY, busca no texto bruto do HTML
-        if (!extracted.pvp || !extracted.dy) {
-            const bodyText = $('body').text().replace(/\s+/g, ' ');
-            const patterns = [
-                { k: 'pvp', r: /P\/VP\s*([0-9,.]+)/i },
-                { k: 'dy', r: /Dividend Yield\s*([0-9,.]+)%/i },
-                { k: 'vacancia', r: /Vacância\s*([0-9,.]+)%/i },
-                { k: 'cotacao_atual', r: /Cotação\s*R\$\s*([0-9,.]+)/i }
-            ];
-            patterns.forEach(p => {
-                const match = bodyText.match(p.r);
-                if (match && match[1]) {
-                    const normK = KEY_MAP[p.k] || p.k;
-                    if (!extracted[normK]) extracted[normK] = match[1];
-                }
-            });
+        // Fallback para Último Rendimento (frequente em FIIs)
+        if (!extracted.ultimo_rendimento) {
+             const bodyText = $('body').text();
+             const match = bodyText.match(/Último Rendimento\s*R\$\s*([0-9,.]+)/i);
+             if (match && match[1]) extracted.ultimo_rendimento = match[1];
         }
 
-        // === EXTRAÇÃO DE DIVIDENDOS ===
+        // DIVIDENDOS
         const dividends: any[] = [];
-        // Varre todas as tabelas em busca de padrões de proventos
         $('table').each((_, table) => {
             const header = $(table).find('thead').text().toLowerCase();
-            // Assinatura de tabela de proventos: "Data Com" E "Valor"
             if (header.includes('data com') && header.includes('valor')) {
                 $(table).find('tbody tr').each((_, tr) => {
                     const tds = $(tr).find('td');
                     if (tds.length >= 3) {
-                        // Tenta inferir colunas
                         let type = 'DIV';
                         let dateComStr, datePayStr, valStr;
 
-                        // Se tem 4 colunas ou mais, geralmente: Tipo | Data Com | Pagamento | Valor
                         if (tds.length >= 4) {
                             const typeTxt = $(tds[0]).text().toLowerCase();
                             if (typeTxt.includes('juros') || typeTxt.includes('jcp')) type = 'JCP';
@@ -238,7 +206,6 @@ async function scrapeInvestidor10(ticker: string) {
                             datePayStr = $(tds[2]).text();
                             valStr = $(tds[3]).text();
                         } else {
-                            // 3 colunas: Data Com | Pagamento | Valor (Tipo assume DIV)
                             dateComStr = $(tds[0]).text();
                             datePayStr = $(tds[1]).text();
                             valStr = $(tds[2]).text();
@@ -262,12 +229,10 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        // === SEGMENTO (BREADCRUMB) ===
         if (!extracted.segmento) {
             let seg = '';
             $('#breadcrumbs, .breadcrumbs').find('li, span').each((_, el) => {
                 const t = $(el).text().trim();
-                // Filtra palavras comuns de navegação
                 if (t && !['Início', 'Home', 'Ações', 'FIIs', 'Fundos', 'BDRs'].includes(t) && t.toUpperCase() !== ticker) {
                     seg = t;
                 }
@@ -275,7 +240,6 @@ async function scrapeInvestidor10(ticker: string) {
             if (seg) extracted.segmento = seg;
         }
 
-        // === SANITIZAÇÃO E VALIDAÇÃO FINAL ===
         const finalMetadata = {
             ticker: ticker.toUpperCase(),
             type: finalType,
@@ -290,13 +254,16 @@ async function scrapeInvestidor10(ticker: string) {
             vp_cota: cleanNumber(extracted.vp_cota),
             lpa: cleanNumber(extracted.lpa),
             vacancia: cleanNumber(extracted.vacancia),
+            ultimo_rendimento: cleanNumber(extracted.ultimo_rendimento),
             
-            // Dados extras importantes
             liquidez: extracted.liquidez || 'N/A',
             val_mercado: extracted.val_mercado || 'N/A',
             patrimonio_liquido: extracted.patrimonio_liquido || 'N/A',
             num_cotistas: cleanNumber(extracted.num_cotistas) || 0,
             
+            taxa_adm: extracted.taxa_adm || null,
+            tipo_gestao: extracted.tipo_gestao || null,
+
             margem_liquida: cleanNumber(extracted.margem_liquida),
             divida_liquida_ebitda: cleanNumber(extracted.divida_liquida_ebitda),
             ev_ebitda: cleanNumber(extracted.ev_ebitda),
@@ -323,8 +290,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
-        // === INTELLIGENT CACHE CHECK (SERVER SIDE) ===
-        // Proteção contra "thundering herd": se o dado está fresco, não re-scrapar
         if (!force) {
             const { data: existing } = await supabase
                 .from('ativos_metadata')
@@ -349,19 +314,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const { metadata, dividends } = result;
 
-        // Deduplicação de Dividendos
         const uniqueDivs = Array.from(new Map(dividends.map(item => [
             `${item.type}-${item.date_com}-${item.rate}`, item
         ])).values());
 
-        // Atualização no Banco
         if (metadata) {
             const dbPayload: any = {
                 ticker: metadata.ticker,
                 type: metadata.type,
                 segment: metadata.segmento,
                 updated_at: metadata.updated_at,
-                // Numéricos
                 pvp: metadata.pvp,
                 pl: metadata.pl,
                 dy_12m: metadata.dy,
@@ -377,7 +339,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 cagr_lucro: metadata.cagr_lucros_5a,
                 num_cotistas: metadata.num_cotistas,
                 ultimo_rendimento: metadata.ultimo_rendimento, 
-                // Strings
                 liquidez: metadata.liquidez,
                 valor_mercado: metadata.val_mercado,
                 patrimonio_liquido: metadata.patrimonio_liquido,
@@ -385,7 +346,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 taxa_adm: metadata.taxa_adm
             };
 
-            // Remove chaves inválidas (undefined ou NaN) para não quebrar o insert
             Object.keys(dbPayload).forEach(key => {
                 const val = dbPayload[key];
                 if (val === undefined || (typeof val === 'number' && isNaN(val))) {
@@ -395,7 +355,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
             
-            // Inserção de dividendos se houver
             if (uniqueDivs.length > 0) {
                  await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
             }

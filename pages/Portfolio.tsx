@@ -23,7 +23,7 @@ const formatPercent = (val: number, privacy = false) => {
 };
 
 const formatNumber = (val: number | string | undefined, suffix = '') => {
-    if (val === undefined || val === null || val === '') return '-';
+    if (val === undefined || val === null || val === '' || val === 0) return '-';
     if (typeof val === 'string') return val;
     return val.toLocaleString('pt-BR') + suffix;
 };
@@ -69,8 +69,11 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
     // --- CÁLCULOS DE PROVENTOS ---
     const assetDividends = useMemo(() => {
         if (!dividends) return [];
+        // Filtro robusto: Ticker começa com os 4 primeiros caracteres (Raiz)
+        // Isso cobre HGLG11 -> HGLG e ITSA4 -> ITSA
+        const root = asset.ticker.substring(0, 4);
         return dividends
-            .filter(d => d.ticker.includes(asset.ticker.substring(0,4)))
+            .filter(d => d.ticker.startsWith(root))
             .sort((a,b) => a.paymentDate.localeCompare(b.paymentDate));
     }, [asset, dividends]);
 
@@ -174,7 +177,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                                     <InfoRow label="Preço / VP" value={asset.p_vp?.toFixed(2) || '-'} highlight />
                                     <InfoRow label="Valor Patrimonial" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} subtext="Por Cota" />
                                     <InfoRow label="Último Rendimento" value={asset.last_dividend ? `R$ ${asset.last_dividend.toFixed(2)}` : '-'} color="text-emerald-500" />
-                                    <InfoRow label="Patrimônio Líquido" value={asset.assets_value || '-'} />
+                                    <InfoRow label="Patrimônio Líquido" value={formatNumber(asset.assets_value)} />
                                 </div>
 
                                 <SectionHeader title="Qualidade & Gestão" icon={Briefcase} />
@@ -187,10 +190,10 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                                             subtext={asset.vacancy > 10 ? 'Atenção: Alta' : 'Controlada'}
                                         />
                                     )}
-                                    <InfoRow label="Liquidez Diária" value={asset.liquidity || '-'} />
+                                    <InfoRow label="Liquidez Diária" value={formatNumber(asset.liquidity)} />
                                     <InfoRow label="Número de Cotistas" value={formatNumber(asset.properties_count)} />
-                                    <InfoRow label="Tipo de Gestão" value={asset.manager_type || '-'} />
-                                    {asset.management_fee && <InfoRow label="Taxa de Admin." value={asset.management_fee} />}
+                                    <InfoRow label="Tipo de Gestão" value={formatNumber(asset.manager_type)} />
+                                    <InfoRow label="Taxa de Admin." value={formatNumber(asset.management_fee)} />
                                 </div>
                             </>
                         )}
@@ -287,7 +290,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                         {/* Últimos Pagamentos (Lista) */}
                         <div className="space-y-3">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-2">Últimos Pagamentos</h3>
-                            {assetDividends.slice().reverse().slice(0, 5).map((d, i) => (
+                            {assetDividends.length > 0 ? assetDividends.slice().reverse().slice(0, 5).map((d, i) => (
                                 <div key={i} className="flex justify-between items-center p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-200 dark:border-zinc-700">
@@ -303,7 +306,11 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose }: { asset: As
                                         <p className="text-[9px] text-zinc-400 font-medium">Unitário: {d.rate.toFixed(4)}</p>
                                     </div>
                                 </div>
-                            ))}
+                            )) : (
+                                <div className="p-6 text-center opacity-50">
+                                    <p className="text-xs text-zinc-500">Sem histórico recente.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
