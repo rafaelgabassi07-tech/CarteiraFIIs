@@ -62,7 +62,7 @@ const SectionHeader = ({ title, icon: Icon }: any) => (
     </div>
 );
 
-// Skeleton Shimmer Profissional
+// Skeleton Shimmer com Estrutura de Fundamentos
 const AssetDetailSkeleton = () => {
     return (
         <div className="flex flex-col h-full bg-white dark:bg-zinc-950 animate-pulse">
@@ -84,18 +84,34 @@ const AssetDetailSkeleton = () => {
                 </div>
             </div>
 
-            {/* Content Skeleton */}
+            {/* Content Skeleton - Simulando aba Fundamentos */}
             <div className="flex-1 p-6 space-y-6">
-                <div className="h-48 w-full bg-zinc-100 dark:bg-zinc-900 rounded-[2rem]"></div>
+                {/* Cards Destaque */}
                 <div className="grid grid-cols-2 gap-3">
-                    <div className="h-24 bg-zinc-50 dark:bg-zinc-900 rounded-2xl"></div>
-                    <div className="h-24 bg-zinc-50 dark:bg-zinc-900 rounded-2xl"></div>
-                    <div className="h-24 bg-zinc-50 dark:bg-zinc-900 rounded-2xl"></div>
-                    <div className="h-24 bg-zinc-50 dark:bg-zinc-900 rounded-2xl"></div>
+                    <div className="h-24 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800"></div>
+                    <div className="h-24 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800"></div>
                 </div>
-                <div className="space-y-4">
-                    <div className="h-4 w-32 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                    <div className="h-32 bg-zinc-50 dark:bg-zinc-900 rounded-2xl"></div>
+
+                {/* Bloco 1 */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-zinc-200 dark:bg-zinc-800"></div>
+                        <div className="h-4 w-24 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                    </div>
+                    <div className="h-48 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 space-y-4">
+                        <div className="flex justify-between"><div className="h-3 w-20 bg-zinc-100 dark:bg-zinc-800 rounded"></div><div className="h-3 w-10 bg-zinc-100 dark:bg-zinc-800 rounded"></div></div>
+                        <div className="flex justify-between"><div className="h-3 w-24 bg-zinc-100 dark:bg-zinc-800 rounded"></div><div className="h-3 w-12 bg-zinc-100 dark:bg-zinc-800 rounded"></div></div>
+                        <div className="flex justify-between"><div className="h-3 w-16 bg-zinc-100 dark:bg-zinc-800 rounded"></div><div className="h-3 w-14 bg-zinc-100 dark:bg-zinc-800 rounded"></div></div>
+                    </div>
+                </div>
+
+                {/* Bloco 2 */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-zinc-200 dark:bg-zinc-800"></div>
+                        <div className="h-4 w-32 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                    </div>
+                    <div className="h-40 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800"></div>
                 </div>
             </div>
         </div>
@@ -175,8 +191,8 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         return { chartData: data, total12m, monthlyAvg: total12m / 12 };
     }, [assetDividends]);
 
+    // Se estiver atualizando e não tivermos dados cacheados (primeira carga), mostra o Skeleton
     if (isUpdating && !displayAsset.dy_12m && !displayAsset.p_vp) {
-        // Se estiver atualizando e não tivermos dados cacheados (primeira carga), mostra o Skeleton
         return <AssetDetailSkeleton />;
     }
 

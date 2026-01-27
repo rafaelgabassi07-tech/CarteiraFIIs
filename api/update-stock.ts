@@ -159,22 +159,22 @@ async function scrapeInvestidor10(ticker: string) {
         const processPair = (keyRaw: string, valueRaw: string) => {
             if (!keyRaw || !valueRaw) return;
             
-            // 1. Normalização Genérica (Frases)
-            const k = normalize(keyRaw.replace(/\n/g, ' ').replace(/\s+/g, ' '));
+            // --- ESTRATÉGIA DUPLA DE NORMALIZAÇÃO ---
             
-            // 2. Normalização Agressiva (Siglas)
-            // Remove tudo que não é letra ou número para garantir match de "V.P.A", "P/VP", "P.L", etc.
+            // 1. Normalização TEXTUAL (Preserva espaços para frases como "Margem Líquida")
+            const kText = normalize(keyRaw.replace(/\n/g, ' ').replace(/\s+/g, ' '));
+            
+            // 2. Normalização AGRESSIVA (Remove tudo para siglas como "V.P.A", "P/VP")
             const kClean = keyRaw.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
             
             const v = valueRaw.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
             if (v === '-' || v === '') return;
 
-            // --- MAPEAMENTO USANDO kClean (Mais robusto para siglas) ---
+            // --- MAPEAMENTO POR SIGLAS (kClean) ---
             if (kClean === 'pvp') dados.pvp = parseValue(v);
             if (kClean === 'pl') dados.pl = parseValue(v);
             if (kClean === 'dy' || kClean === 'dividendyield') dados.dy = parseValue(v);
             if (kClean === 'cotacao' || kClean === 'valoratual') dados.cotacao_atual = parseValue(v);
-            
             if (kClean === 'roe') dados.roe = parseValue(v);
             if (kClean === 'lpa') dados.lpa = parseValue(v);
             if (kClean === 'evebitda') dados.ev_ebitda = parseValue(v);
@@ -185,88 +185,77 @@ async function scrapeInvestidor10(ticker: string) {
                 // Heurística: Se < 5000 é unitário (VPA/VP), senão é total (Patrimônio Líquido)
                 if (val < 5000) {
                     dados.vp_cota = val;
-                    dados.vpa = val; // Redundância para garantir
+                    dados.vpa = val; 
                 } else {
                     dados.patrimonio_liquido = v;
                 }
             }
 
-            // --- MAPEAMENTO USANDO k (Frases completas) ---
-            if (k.includes('patrimonio liquido') || k.includes('patrim. liq')) dados.patrimonio_liquido = v;
-            if (k.includes('liquidez')) dados.liquidez = v;
-            if (k.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(v);
-            if (kClean === 'numcotistas' || k.includes('num. cotistas')) dados.num_cotistas = parseValue(v);
-            if (k.includes('vacancia')) dados.vacancia = parseValue(v);
+            // --- MAPEAMENTO POR TEXTO (kText) ---
+            // Usamos 'includes' para ser flexível com variações do site
             
-            if (k.includes('margem liquida') || kClean === 'margemliquida') dados.margem_liquida = parseValue(v);
-            if (k.includes('margem bruta') || kClean === 'margembruta') dados.margem_bruta = parseValue(v);
-            if ((k.includes('div') && k.includes('liq') && k.includes('ebitda')) || kClean === 'dividaliquidaebitda') dados.divida_liquida_ebitda = parseValue(v);
+            if (kText.includes('patrimonio liquido') || kText.includes('patrim. liq')) dados.patrimonio_liquido = v;
+            if (kText.includes('liquidez')) dados.liquidez = v;
+            if (kText.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(v);
+            if (kClean === 'numcotistas' || kText.includes('num. cotistas') || kText.includes('numero de cotistas')) dados.num_cotistas = parseValue(v);
+            if (kText.includes('vacancia')) dados.vacancia = parseValue(v);
             
-            if (kClean === 'cagrreceita5a' || (k.includes('cagr') && k.includes('receita'))) dados.cagr_receita_5a = parseValue(v);
-            if (kClean === 'cagrlucros5a' || (k.includes('cagr') && k.includes('lucro'))) dados.cagr_lucros_5a = parseValue(v);
+            // Indicadores de Eficiência (Ações)
+            if (kText.includes('margem liquida')) dados.margem_liquida = parseValue(v);
+            if (kText.includes('margem bruta')) dados.margem_bruta = parseValue(v);
+            if (kText.includes('div. liq') || kText.includes('divida liquida')) {
+                if (kText.includes('ebitda')) dados.divida_liquida_ebitda = parseValue(v);
+            } else if (kClean === 'dividaliquidaebitda' || kClean === 'divliqebitda') {
+                dados.divida_liquida_ebitda = parseValue(v);
+            }
+            
+            // Crescimento (Ações)
+            if (kText.includes('cagr') && kText.includes('receita')) dados.cagr_receita_5a = parseValue(v);
+            if (kText.includes('cagr') && kText.includes('lucro')) dados.cagr_lucros_5a = parseValue(v);
         };
 
-        // 1. VARREDURA GENÉRICA DE CARDS E CÉLULAS
-        // Essa abordagem captura qualquer par Título/Valor estruturado, independente do ID da tabela
-        $('div._card, div.cell, div.indicator-item, div.data-item').each((_, el) => {
-            let title = $(el).find('div._card-header, .cell-header, span.name, .title, .label').first().text().trim();
-            let val = $(el).find('div._card-body, .cell-value, span.value, .value, .data').first().text().trim();
-            
+        // 1. CARDS DO TOPO
+        $('div._card').each((_, el) => {
+            let title = $(el).find('div._card-header').text().trim();
+            let val = $(el).find('div._card-body').text().trim();
+            if (title && val) processPair(title, val);
+        });
+
+        // 2. GRID DE INDICADORES (Essencial para Ações no Investidor10)
+        // O seletor #table-indicators .cell é o principal container de indicadores fundamentalistas
+        $('#table-indicators .cell, .indicators-list .cell').each((_, el) => {
+            const title = $(el).find('.cell-header, span.name').text().trim();
+            const val = $(el).find('.cell-value, span.value').text().trim();
+            if (title && val) processPair(title, val);
+        });
+
+        // 3. VARREDURA GENÉRICA (Fallback)
+        $('div.indicator-item, div.data-item').each((_, el) => {
+            let title = $(el).find('.title, .label').first().text().trim();
+            let val = $(el).find('.value, .data').first().text().trim();
             if (title && val) {
-                title = title.replace(/\?$/, '').trim(); // Remove tooltip mark
+                title = title.replace(/\?$/, '').trim(); 
                 processPair(title, val);
             }
         });
 
-        // 2. VARREDURA DE TABELAS GENÉRICAS
-        // Procura em todas as tabelas linhas que tenham "Label: Value"
-        $('table').each((_, tbl) => {
-            $(tbl).find('tr').each((__, tr) => {
-                const tds = $(tr).find('td');
-                if (tds.length >= 2) {
-                    const label = $(tds[0]).text().trim();
-                    const val = $(tds[1]).text().trim();
-                    if (label && val) processPair(label, val);
-                }
-            });
-        });
-
-        // 3. TABELAS DE HISTÓRICO (Lógica "Coluna Atual")
-        // Reforçada para buscar a coluna "Atual" em qualquer tabela que tenha um header indicando isso
-        $('table').each((_, table) => {
-            const headers = $(table).find('thead th');
-            let idxAtual = -1;
-            
-            headers.each((i, th) => {
-                const t = normalize($(th).text());
-                // Procura por "Atual", "Hoje", ou ano corrente/recente
-                if (t === 'atual' || t.includes('hoje') || t.includes('2024') || t.includes('2025')) {
-                    // Prioriza "Atual" se achar, senão pega o ano
-                    if (idxAtual === -1 || t === 'atual') idxAtual = i;
-                }
-            });
-
-            // Se não achou por nome, tenta a última coluna (padrão Investidor10 desktop) ou primeira de dados
-            if (idxAtual === -1 && headers.length > 1) idxAtual = 1;
-
-            if (idxAtual > -1) {
-                $(table).find('tbody tr').each((_, tr) => {
-                    const tds = $(tr).find('td');
-                    if (tds.length > idxAtual) {
-                        const label = $(tds[0]).text().trim();
-                        let val = $(tds[idxAtual]).text().trim();
-                        if (!val) val = $(tds[idxAtual]).find('span').text().trim();
-                        if (label && val) processPair(label, val);
-                    }
-                });
-            }
+        // 4. TABELAS DE DADOS GERAIS
+        $('.table-data .cell').each((_, el) => {
+             const title = $(el).find('.name').text().trim();
+             const val = $(el).find('.value').text().trim();
+             if (title && val) {
+                 processPair(title, val);
+                 const k = normalize(title);
+                 if (k.includes('segmento')) dados.segmento = val;
+                 if (k.includes('tipo') && k.includes('gestao')) dados.tipo_gestao = val;
+                 if (k.includes('taxa') && k.includes('admin')) dados.taxa_adm = val;
+             }
         });
 
         // --- EXTRAÇÃO DE DIVIDENDOS ---
         const dividends: any[] = [];
         let tableDivs = $('#table-dividends-history');
         
-        // Busca flexível pela tabela de dividendos
         if (tableDivs.length === 0) {
              $('h2, h3, h4').each((_, el) => {
                  const t = normalize($(el).text());
