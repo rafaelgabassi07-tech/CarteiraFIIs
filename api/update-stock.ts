@@ -32,7 +32,7 @@ const client = axios.create({
     maxRedirects: 5
 });
 
-// --- HELPERS DE PARSEAMENTO ---
+// --- HELPERS DE PARSEAMENTO ROBUSTOS ---
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
 function normalize(str: string) {
@@ -41,59 +41,55 @@ function normalize(str: string) {
 }
 
 function parseValue(valueStr: any) {
-    if (!valueStr) return 0;
-    try {
-        if (typeof valueStr === 'number') return valueStr;
-        
-        let str = String(valueStr).trim();
-        
-        // Remove sufixos comuns de moeda/percentual
-        str = str.replace(/^R\$\s?/, '').replace(/%$/, '').trim();
-        
-        if (!str || str === '-' || str === 'N/A') return 0;
+    if (valueStr === undefined || valueStr === null) return 0;
+    if (typeof valueStr === 'number') return valueStr;
+    
+    let str = String(valueStr).trim();
+    if (!str || str === '-' || str === 'N/A') return 0;
 
-        // Suporte a sufixos de magnitude (B = Bilhão, M = Milhão, K = Milhar)
-        let multiplier = 1;
-        if (str.toUpperCase().endsWith('B')) { multiplier = 1000000000; str = str.slice(0, -1); }
-        else if (str.toUpperCase().endsWith('M')) { multiplier = 1000000; str = str.slice(0, -1); }
-        else if (str.toUpperCase().endsWith('K')) { multiplier = 1000; str = str.slice(0, -1); }
+    // Remove sufixos e prefixos de moeda/percentual
+    str = str.replace(/^R\$\s?/, '').replace(/%$/, '').trim();
 
-        // Limpeza final de caracteres invisíveis
-        str = str.replace(/\s/g, '').replace(/\u00A0/g, '');
+    // Tratamento de Multiplicadores (B/M/K)
+    let multiplier = 1;
+    const lastChar = str.slice(-1).toUpperCase();
+    if (['B', 'M', 'K'].includes(lastChar)) {
+        if (lastChar === 'B') multiplier = 1e9;
+        else if (lastChar === 'M') multiplier = 1e6;
+        else if (lastChar === 'K') multiplier = 1e3;
+        str = str.slice(0, -1).trim();
+    }
 
-        const clean = str.replace(/[^0-9,.-]+/g, ""); 
-        
-        if (!clean) return 0;
+    // Limpeza de caracteres invisíveis
+    str = str.replace(/\s/g, '').replace(/\u00A0/g, '');
 
-        const hasComma = clean.includes(',');
-        const hasDot = clean.includes('.');
+    // Detecção de Formato Numérico (BR vs US)
+    // Estratégia: Verificar a posição do último ponto e vírgula
+    const lastCommaIndex = str.lastIndexOf(',');
+    const lastDotIndex = str.lastIndexOf('.');
 
-        let result = 0;
+    let clean = "";
+    
+    if (lastCommaIndex > lastDotIndex) {
+        // Formato BR Provável (1.000,00 ou 1000,00)
+        // Remove pontos (milhar) e troca vírgula por ponto (decimal)
+        clean = str.replace(/\./g, '').replace(',', '.');
+    } else if (lastDotIndex > lastCommaIndex) {
+        // Formato US Provável (1,000.00 ou 1000.00)
+        // Remove vírgulas (milhar)
+        clean = str.replace(/,/g, '');
+    } else {
+        // Sem separadores ou ambíguo, apenas números
+        // Se tiver vírgula e nenhum ponto, assume decimal BR
+        if (lastCommaIndex !== -1) clean = str.replace(',', '.');
+        else clean = str;
+    }
 
-        // Lógica de detecção de formato numérico (BR vs US)
-        if (hasComma && !hasDot) {
-             // 1000,00 -> BR
-             result = parseFloat(clean.replace(',', '.')) || 0;
-        } else if (!hasComma && hasDot) {
-             // 1000.00 (US) ou 1.000 (BR milhar) - Assumimos BR se não tiver decimais óbvios, mas aqui removemos ponto
-             // Contexto Investidor10: Pontos costumam ser milhar.
-             result = parseFloat(clean.replace(/\./g, '')) || 0;
-        } else if (hasComma && hasDot) {
-             // Misto: 1.000,00 (BR) vs 1,000.00 (US)
-             if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
-                 // BR: Ponto é milhar, Vírgula é decimal
-                 result = parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
-             } else {
-                 // US: Vírgula é milhar, Ponto é decimal
-                 result = parseFloat(clean.replace(/,/g, '')) || 0;
-             }
-        } else {
-            // Apenas números
-            result = parseFloat(clean) || 0;
-        }
+    // Remove tudo que não for dígito, ponto ou sinal negativo
+    clean = clean.replace(/[^0-9.-]/g, '');
 
-        return result * multiplier;
-    } catch (e) { return 0; }
+    const result = parseFloat(clean);
+    return isNaN(result) ? 0 : result * multiplier;
 }
 
 function parseDate(dateStr: string) {
@@ -117,7 +113,7 @@ async function fetchHtmlWithRetry(ticker: string) {
     const urlAcao = `https://investidor10.com.br/acoes/${tickerLower}/`;
     const urlBdr = `https://investidor10.com.br/bdrs/${tickerLower}/`;
 
-    // Prioriza URL baseado no padrão do ticker
+    // Prioriza URL baseado no padrão do ticker para economizar requisições
     const urls = isLikelyFii ? [urlFii, urlAcao, urlBdr] : [urlAcao, urlFii, urlBdr];
 
     for (const url of urls) {
@@ -129,8 +125,7 @@ async function fetchHtmlWithRetry(ticker: string) {
             return { data: res.data, type };
         } catch (e: any) {
             if (e.response && e.response.status === 404) continue;
-            // Se for erro de rede, tenta o próximo
-            continue;
+            continue; // Tenta o próximo URL em caso de erro
         }
     }
     throw new Error('Asset not found');
@@ -152,4 +147,263 @@ async function scrapeInvestidor10(ticker: string) {
             cagr_receita_5a: null, cagr_lucros_5a: null,
             divida_liquida_ebitda: null, ev_ebitda: null,
             lpa: null, vp_cota: null, vpa: null,
-            vacancia: null, ultimo_rendimento: null, num_cotistas: null, patrimonio
+            vacancia: null, ultimo_rendimento: null, num_cotistas: null, patrimonio_liquido: null,
+            taxa_adm: null, tipo_gestao: null
+        };
+
+        // Função auxiliar para processar pares Chave/Valor
+        const processPair = (keyRaw: string, valueRaw: string) => {
+            if (!keyRaw || !valueRaw) return;
+            
+            const kText = normalize(keyRaw.replace(/\n/g, ' ').replace(/\s+/g, ' '));
+            const kClean = keyRaw.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            const v = valueRaw.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+            
+            if (v === '-' || v === '') return;
+
+            // --- MAPEAMENTOS ---
+            if (kClean === 'pvp') dados.pvp = parseValue(v);
+            if (kClean === 'pl') dados.pl = parseValue(v);
+            if (kClean === 'dy' || kClean === 'dividendyield') dados.dy = parseValue(v);
+            if (kClean === 'cotacao' || kClean === 'valoratual') dados.cotacao_atual = parseValue(v);
+            if (kClean === 'roe') dados.roe = parseValue(v);
+            if (kClean === 'lpa') dados.lpa = parseValue(v);
+            if (kClean === 'evebitda') dados.ev_ebitda = parseValue(v);
+
+            // VPA
+            if (kClean === 'vpa' || kClean === 'vp' || kClean === 'valorpatrimonialporacao' || kClean === 'valorpatrimonialpacao') {
+                const val = parseValue(v);
+                if (val < 10000) { // Valor por cota geralmente é baixo
+                    dados.vp_cota = val;
+                    dados.vpa = val; 
+                }
+            }
+
+            // Liquidez e Patrimônio
+            if (kText.includes('liquidez')) dados.liquidez = v; // Mantém string original para formatação visual
+            if (kText.includes('patrimonio liquido') || kText.includes('patrim. liq')) dados.patrimonio_liquido = v;
+
+            // FII Específicos
+            if (kText.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(v);
+            if (kClean === 'numcotistas' || kText.includes('num. cotistas') || kText.includes('numero de cotistas')) dados.num_cotistas = parseValue(v);
+            if (kText.includes('vacancia')) dados.vacancia = parseValue(v);
+            
+            // FII - Gestão e Taxas (Prioridade Textual)
+            if (kText.includes('segmento')) dados.segmento = v;
+            if (kText.includes('gestao') || kText === 'tipo de gestao') dados.tipo_gestao = v;
+            if ((kText.includes('taxa') && kText.includes('admin')) || kText === 'taxa de administracao') dados.taxa_adm = v;
+
+            // Ações
+            if (kText.includes('margem liquida')) dados.margem_liquida = parseValue(v);
+            if (kText.includes('margem bruta')) dados.margem_bruta = parseValue(v);
+            if (kClean === 'dividaliquidaebitda' || kText.includes('div. liq. / ebitda')) dados.divida_liquida_ebitda = parseValue(v);
+            
+            if (kText.includes('cagr') && kText.includes('receita')) dados.cagr_receita_5a = parseValue(v);
+            if (kText.includes('cagr') && kText.includes('lucro')) dados.cagr_lucros_5a = parseValue(v);
+        };
+
+        // 1. CARDS DO TOPO (Informações principais)
+        $('div._card').each((_, el) => {
+            let title = $(el).find('div._card-header').text().trim();
+            let val = $(el).find('div._card-body').text().trim();
+            if (title && val) processPair(title, val);
+        });
+
+        // 2. GRID DE INDICADORES (Tabela principal de valuation/eficiência)
+        $('#table-indicators .cell, .indicators-list .cell').each((_, el) => {
+            const title = $(el).find('.cell-header, span.name').text().trim();
+            const val = $(el).find('.cell-value, span.value').text().trim();
+            if (title && val) processPair(title, val);
+        });
+
+        // 3. TABELAS DE DADOS GERAIS (Fundamental para FIIs: Gestão, Taxa, Segmento)
+        // Varre todas as células de tabelas genéricas
+        $('.table-data .cell, #table-general-data .cell, .data-entry').each((_, el) => {
+             // Tenta diferentes estruturas de HTML comuns no site
+             let title = $(el).find('.name, .title, span:first-child').text().trim();
+             let val = $(el).find('.value, .data, span:last-child').text().trim();
+             
+             // Fallback para estrutura de lista <li><span>Key</span><span>Value</span></li>
+             if (!title) {
+                 const parent = $(el).parent(); 
+                 if (parent.is('li')) {
+                     title = parent.find('span').first().text().trim();
+                     val = parent.find('span').last().text().trim();
+                 }
+             }
+
+             if (title && val) {
+                 processPair(title, val);
+             }
+        });
+
+        // 4. CAPTURA ESPECÍFICA DE DADOS DE FII (Backup)
+        // Se ainda não achou gestão ou taxa, procura em textos soltos ou divs específicas
+        if (finalType === 'FII') {
+            if (!dados.tipo_gestao) {
+                // Tenta encontrar em divs com classe 'mgmt-type' ou similar (hipotético, ajustado por observação genérica)
+                $('div:contains("Tipo de Gestão")').next().each((_, el) => {
+                    const txt = $(el).text().trim();
+                    if (txt && txt.length < 20) dados.tipo_gestao = txt;
+                });
+            }
+        }
+
+        // --- EXTRAÇÃO DE DIVIDENDOS ---
+        const dividends: any[] = [];
+        let tableDivs = $('#table-dividends-history');
+        
+        // Se não achou por ID, tenta achar pelo título da seção
+        if (tableDivs.length === 0) {
+             $('h2, h3, h4').each((_, el) => {
+                 const t = normalize($(el).text());
+                 if (t.includes('dividendos') || t.includes('proventos')) {
+                     const nextTable = $(el).nextAll('table').first();
+                     if (nextTable.length) tableDivs = nextTable;
+                     else {
+                         const parentNextTable = $(el).parent().next().find('table').first();
+                         if (parentNextTable.length) tableDivs = parentNextTable;
+                     }
+                 }
+             });
+        }
+
+        if (tableDivs.length > 0) {
+            const headers: string[] = [];
+            tableDivs.find('thead th').each((_, th) => headers.push(normalize($(th).text())));
+            if (headers.length === 0) tableDivs.find('tbody tr').first().find('td').each((_, td) => headers.push(normalize($(td).text())));
+
+            let iType = -1, iCom = -1, iPay = -1, iVal = -1;
+            headers.forEach((h, i) => {
+                if (h.includes('tipo')) iType = i;
+                if (h.includes('com') || h.includes('base')) iCom = i;
+                if (h.includes('pagamento')) iPay = i;
+                if (h.includes('valor') || h.includes('liquido')) iVal = i;
+            });
+
+            if (iVal === -1) {
+                // Heurística de fallback se headers falharem
+                if (headers.length >= 4) { iType=0; iCom=1; iPay=2; iVal=3; }
+                else { iCom=0; iPay=1; iVal=2; }
+            }
+
+            tableDivs.find('tbody tr').each((i, tr) => {
+                // Pula primeira linha se for header disfarçado
+                if (i === 0 && tableDivs.find('thead').length === 0 && $(tr).find('td').first().text().match(/[a-z]/i)) return;
+                
+                const cols = $(tr).find('td');
+                if (cols.length < 3) return;
+
+                const typeRaw = iType !== -1 ? $(cols[iType]).text() : 'DIV';
+                const dateComStr = iCom !== -1 ? $(cols[iCom]).text() : '';
+                const datePayStr = iPay !== -1 ? $(cols[iPay]).text() : '';
+                const valStr = iVal !== -1 ? $(cols[iVal]).text() : '';
+
+                let type = 'DIV';
+                const tNorm = normalize(typeRaw);
+                if (tNorm.includes('jcp') || tNorm.includes('juros')) type = 'JCP';
+                else if (tNorm.includes('rend')) type = 'REND';
+                else if (tNorm.includes('amort')) type = 'AMORT';
+
+                const rate = parseValue(valStr);
+                const dateCom = parseDate(dateComStr);
+                const paymentDate = parseDate(datePayStr);
+
+                if (dateCom && rate > 0) {
+                    dividends.push({
+                        ticker: ticker.toUpperCase(),
+                        type,
+                        date_com: dateCom,
+                        payment_date: paymentDate || null,
+                        rate
+                    });
+                }
+            });
+        }
+
+        // Consolidação Final
+        if (!dados.dy && dados.ultimo_rendimento && dados.cotacao_atual) {
+            dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100;
+        }
+
+        // Limpeza de chaves nulas
+        Object.keys(dados).forEach(k => {
+            if (dados[k] === null || dados[k] === undefined || dados[k] === '') delete dados[k];
+        });
+
+        const finalMetadata = {
+            ...dados,
+            dy_12m: dados.dy,
+            current_price: dados.cotacao_atual,
+        };
+
+        return { metadata: finalMetadata, dividends };
+
+    } catch (e: any) {
+        console.error(`Scraper error ${ticker}: ${e.message}`);
+        return null;
+    }
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+    if (req.method === 'OPTIONS') return res.status(200).end();
+
+    const ticker = String(req.query.ticker || '').trim().toUpperCase();
+    const force = req.query.force === 'true'; 
+    
+    if (!ticker) return res.status(400).json({ error: 'Ticker required' });
+
+    try {
+        // Verifica cache se não forçado
+        if (!force) {
+            const { data: existing } = await supabase
+                .from('ativos_metadata')
+                .select('*')
+                .eq('ticker', ticker)
+                .single();
+            
+            if (existing && existing.updated_at) {
+                const age = Date.now() - new Date(existing.updated_at).getTime();
+                // Cache de 3 horas
+                if (age < 10800000) { 
+                     const { data: divs } = await supabase
+                        .from('market_dividends')
+                        .select('*')
+                        .eq('ticker', ticker);
+                    return res.status(200).json({ success: true, data: existing, dividends: divs || [], cached: true });
+                }
+            }
+        }
+
+        const result = await scrapeInvestidor10(ticker);
+        
+        if (!result) {
+            return res.status(404).json({ success: false, error: 'Falha ao obter dados.' });
+        }
+
+        const { metadata, dividends } = result;
+
+        if (metadata) {
+            const dbPayload = { ...metadata };
+            // Remove campos redundantes antes de salvar
+            delete dbPayload.dy;
+            delete dbPayload.cotacao_atual;
+            
+            await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
+        }
+
+        if (dividends.length > 0) {
+             const uniqueDivs = Array.from(new Map(dividends.map(item => [
+                `${item.type}-${item.date_com}-${item.rate}`, item
+            ])).values());
+            await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
+        }
+
+        return res.status(200).json({ success: true, data: metadata, dividends });
+
+    } catch (e: any) {
+        return res.status(500).json({ success: false, error: e.message });
+    }
+}

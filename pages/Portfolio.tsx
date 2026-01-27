@@ -124,6 +124,8 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                 const hasNewData = asset.dy_12m || asset.p_vp || asset.p_l;
                 const hadData = prev.dy_12m || prev.p_vp || prev.p_l;
                 
+                // Se já tinha dados e não veio nada novo (ou veio igual), mantem
+                // Se veio dado novo, atualiza
                 if (!hasNewData && hadData) return prev; 
                 return asset;
             });

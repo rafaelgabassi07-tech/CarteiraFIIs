@@ -61,24 +61,27 @@ export const mapSupabaseToTx = (record: any): Transaction => ({
 // --- CÁLCULOS DE POSIÇÃO ---
 
 // Calcula quantidade acumulada em uma data
-export const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
+// Otimização: Assume que transactions está ordenado por data
+export const getQuantityOnDate = (ticker: string, dateCom: string, sortedTransactions: Transaction[]) => {
   const targetRoot = normalizeTicker(ticker);
   const targetTime = safeDate(dateCom);
   
   if (!targetRoot || !targetTime) return 0;
 
-  return transactions.reduce((acc, t) => {
-        // Verifica Ticker Normalizado
-        if (normalizeTicker(t.ticker) !== targetRoot) return acc;
-        
-        // Verifica Data
+  let acc = 0;
+  for (const t of sortedTransactions) {
+        // Otimização: Se a transação é posterior à data alvo, paramos o loop
+        // (Requer array ordenado, que é garantido no processPortfolio)
         const txTime = safeDate(t.date);
-        if (!txTime || txTime > targetTime) return acc;
+        if (txTime && txTime > targetTime) break;
 
-        if (t.type === 'BUY') return preciseAdd(acc, t.quantity);
-        if (t.type === 'SELL') return preciseSub(acc, t.quantity);
-        return acc;
-    }, 0);
+        // Verifica Ticker Normalizado
+        if (normalizeTicker(t.ticker) !== targetRoot) continue;
+        
+        if (t.type === 'BUY') acc = preciseAdd(acc, t.quantity);
+        if (t.type === 'SELL') acc = preciseSub(acc, t.quantity);
+  }
+  return acc;
 };
 
 // --- PROCESSADOR PRINCIPAL DE PORTFÓLIO ---

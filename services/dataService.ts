@@ -26,9 +26,11 @@ const parseNumberSafe = (val: any): number => {
     if (typeof val === 'number') return val;
     if (!val) return 0;
     
+    // Remove R$, %, espaços
     let str = String(val).replace(/[^\d.,-]/g, '').trim();
     if (!str || str === '-') return 0;
 
+    // Lógica robusta de parsing (copiada do scraper para consistência)
     const hasComma = str.includes(',');
     const hasDot = str.includes('.');
 
@@ -62,12 +64,17 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
         
+        // Metadados
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
         market_cap: getVal('val_mercado', 'valor_mercado') || undefined, 
-        assets_value: getVal('patrimonio_liquido', 'patrimonio') || undefined, 
         
-        manager_type: getVal('tipo_gestao') || undefined,
-        management_fee: getVal('taxa_adm') || undefined,
+        // FII Específicos
+        assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
+        manager_type: getVal('tipo_gestao', 'gestao', 'manager_type') || undefined,
+        management_fee: getVal('taxa_adm', 'taxa_administracao', 'management_fee') || undefined,
+        vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
+        last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
+        properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
         
         // Ações (Stocks) - Mapeamento com Aliases
         net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),
@@ -81,11 +88,6 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         
         lpa: parseNumberSafe(getVal('lpa')),
         vpa: parseNumberSafe(getVal('vp_cota', 'vpa', 'valor_patrimonial_acao', 'valorpatrimonialcota')),
-        
-        // FIIs
-        vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
-        last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
-        properties_count: parseNumberSafe(getVal('num_cotistas')),
         
         updated_at: m.updated_at,
         sentiment: 'Neutro',
@@ -222,7 +224,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
-      // Deduplica dividendos para garantir lista limpa
+      // Deduplica dividendos
       const uniqueDividends = Array.from(new Map(dividends.map(item => [
           `${item.ticker}-${item.dateCom}-${item.rate}`, item
       ])).values());
