@@ -104,7 +104,7 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
     );
 };
 
-// --- STORY VIEWER & FEED (MANTIDOS) ---
+// --- STORY VIEWER REFORMULADO ---
 const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights: PortfolioInsight[], startIndex: number, onClose: () => void, onMarkAsRead: (id: string) => void }) => {
     const [currentIndex, setCurrentIndex] = useState(startIndex);
     const [progress, setProgress] = useState(0);
@@ -165,14 +165,14 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
 
     if (!currentStory) return null;
 
-    const getTypeColor = (type: string) => {
+    const getTheme = (type: string) => {
         switch(type) {
-            case 'volatility_up': return 'bg-emerald-500';
-            case 'volatility_down': return 'bg-rose-500';
-            case 'warning': return 'bg-amber-500';
-            case 'opportunity': return 'bg-indigo-500';
-            case 'success': return 'bg-teal-500';
-            default: return 'bg-blue-500';
+            case 'volatility_up': return { bg: 'from-emerald-900 to-black', accent: 'bg-emerald-500' };
+            case 'volatility_down': return { bg: 'from-rose-900 to-black', accent: 'bg-rose-500' };
+            case 'warning': return { bg: 'from-amber-900 to-black', accent: 'bg-amber-500' };
+            case 'opportunity': return { bg: 'from-indigo-900 to-black', accent: 'bg-indigo-500' };
+            case 'success': return { bg: 'from-teal-900 to-black', accent: 'bg-teal-500' };
+            default: return { bg: 'from-zinc-900 to-black', accent: 'bg-blue-500' };
         }
     };
 
@@ -188,11 +188,14 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     };
 
     const Icon = getTypeIcon(currentStory.type);
-    const colorClass = getTypeColor(currentStory.type);
+    const theme = getTheme(currentStory.type);
     const timeAgo = currentStory.timestamp ? formatDistanceToNow(currentStory.timestamp, { addSuffix: true, locale: ptBR }) : 'Agora';
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] bg-black flex flex-col anim-fade-in">
+        <div className={`fixed inset-0 z-[9999] bg-gradient-to-b ${theme.bg} flex flex-col anim-fade-in backdrop-blur-3xl`}>
+            {/* Overlay Gradient for depth */}
+            <div className="absolute inset-0 bg-black/40 z-0"></div>
+            
             <div className="flex gap-1.5 p-3 pt-safe z-20">
                 {insights.map((_, idx) => (
                     <div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
@@ -200,32 +203,50 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
                     </div>
                 ))}
             </div>
+            
             <div className="flex items-center justify-between px-4 py-2 z-20 text-white">
                 <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${colorClass} shadow-lg ring-2 ring-black/50`}><Icon className="w-5 h-5 text-white" /></div>
-                    <div><span className="font-bold text-sm block">{currentStory.title}</span><span className="text-[10px] text-white/70 font-medium flex items-center gap-1">{timeAgo}</span></div>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${theme.accent} shadow-lg ring-2 ring-white/10`}><Icon className="w-5 h-5 text-white" /></div>
+                    <div><span className="font-bold text-sm block tracking-tight">{currentStory.title}</span><span className="text-[10px] text-white/70 font-medium flex items-center gap-1">{timeAgo}</span></div>
                 </div>
                 <button onClick={onClose} className="p-2 bg-white/10 rounded-full backdrop-blur-md active:bg-white/20 transition-colors"><X className="w-6 h-6" /></button>
             </div>
+            
             <div className="flex-1 relative flex flex-col justify-center items-center p-8 text-center" onTouchStart={() => setIsPaused(true)} onTouchEnd={() => setIsPaused(false)} onMouseDown={() => setIsPaused(true)} onMouseUp={() => setIsPaused(false)}>
                 <div className="absolute inset-y-0 left-0 w-1/3 z-10" onClick={handlePrev}></div>
                 <div className="absolute inset-y-0 right-0 w-1/3 z-10" onClick={handleNext}></div>
+                
                 <div className="w-full max-w-sm relative z-0 anim-scale-in">
-                    <div className={`w-36 h-36 rounded-full ${colorClass} bg-opacity-20 flex items-center justify-center mb-10 mx-auto border-4 border-white/10 shadow-[0_0_60px_rgba(255,255,255,0.1)] relative`}>
-                        <div className="absolute inset-0 rounded-full border border-white/20 animate-[spin_10s_linear_infinite]"></div>
-                        <div className="text-5xl font-black text-white drop-shadow-2xl">{currentStory.relatedTicker ? currentStory.relatedTicker.substring(0,2) : <Icon className="w-16 h-16" />}</div>
+                    <div className={`w-32 h-32 rounded-[2.5rem] ${theme.accent} flex items-center justify-center mb-10 mx-auto shadow-[0_0_80px_rgba(255,255,255,0.15)] relative transform rotate-3`}>
+                        <div className="absolute inset-0 rounded-[2.5rem] bg-white/20 backdrop-blur-md -rotate-6 scale-90 -z-10"></div>
+                        <div className="text-4xl font-black text-white drop-shadow-2xl">{currentStory.relatedTicker ? currentStory.relatedTicker.substring(0,4) : <Icon className="w-16 h-16" />}</div>
                     </div>
-                    <h2 className="text-2xl font-black text-white mb-6 leading-snug drop-shadow-md">{currentStory.message}</h2>
-                    {currentStory.relatedTicker && <div className="inline-block px-5 py-2.5 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 text-white font-bold text-sm mb-8 shadow-xl">{currentStory.relatedTicker}</div>}
-                    {currentStory.url && <div className="absolute bottom-[-80px] left-0 right-0 flex justify-center animate-bounce opacity-70"><div className="flex flex-col items-center gap-2"><ChevronUp className="w-6 h-6 text-white" /><span className="text-[10px] font-bold uppercase tracking-widest text-white">Deslize ou Toque</span></div></div>}
+                    
+                    <h2 className="text-3xl font-black text-white mb-6 leading-tight drop-shadow-md tracking-tight">{currentStory.message}</h2>
+                    
+                    {currentStory.relatedTicker && <div className="inline-block px-5 py-2 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 text-white font-bold text-xs uppercase tracking-widest shadow-xl">{currentStory.relatedTicker}</div>}
                 </div>
             </div>
-            {currentStory.url && <div className="p-6 pb-safe z-20"><a href={currentStory.url} target="_blank" rel="noreferrer" className="block w-full py-4 bg-white text-black text-center rounded-2xl font-black text-xs uppercase tracking-widest shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95 transition-transform">Ver Análise Completa</a></div>}
+            
+            {currentStory.url && (
+                <div className="p-6 pb-safe z-20 anim-slide-up">
+                    <div className="absolute bottom-28 left-0 right-0 flex justify-center animate-bounce opacity-70 pointer-events-none">
+                        <div className="flex flex-col items-center gap-2">
+                            <ChevronUp className="w-6 h-6 text-white" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">Detalhes</span>
+                        </div>
+                    </div>
+                    <a href={currentStory.url} target="_blank" rel="noreferrer" className="block w-full py-4 bg-white text-black text-center rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-95 transition-transform hover:bg-zinc-100">
+                        Ver Análise Completa
+                    </a>
+                </div>
+            )}
         </div>,
         document.body
     );
 };
 
+// --- SMART FEED (Visual Aprimorado) ---
 const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: PortfolioInsight[], onMarkAsRead: (id: string) => void, readStories: Set<string> }) => {
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
     const validInsights = useMemo(() => {
@@ -247,12 +268,16 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
                 const Icon = item.type === 'volatility_up' ? TrendingUp : item.type === 'volatility_down' ? TrendingDown : item.type === 'opportunity' ? Target : item.type === 'warning' ? AlertTriangle : Coins;
 
                 return (
-                    <button key={item.id} onClick={() => setActiveIndex(index)} className="flex flex-col items-center gap-2 snap-start group">
-                        <div className={`w-[72px] h-[72px] rounded-full p-[3px] transition-all duration-300 ${isRead ? 'bg-zinc-200 dark:bg-zinc-800 scale-95 opacity-70' : `bg-gradient-to-tr ${ringColors} shadow-lg shadow-black/10`}`}>
-                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[3px] relative overflow-hidden flex items-center justify-center">
+                    <button key={item.id} onClick={() => setActiveIndex(index)} className="flex flex-col items-center gap-2 snap-start group active:scale-95 transition-transform">
+                        <div className={`w-[74px] h-[74px] rounded-full p-[3px] transition-all duration-300 ${isRead ? 'bg-zinc-200 dark:bg-zinc-800 opacity-60' : `bg-gradient-to-tr ${ringColors} shadow-lg shadow-black/10 animate-[spin_4s_linear_infinite]`}`}>
+                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[3px] relative overflow-hidden flex items-center justify-center animate-none"> {/* Cancela rotação interna */}
                                 <div className="w-full h-full bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center relative">
-                                    <Icon className={`w-7 h-7 ${isRead ? 'text-zinc-400' : 'text-zinc-800 dark:text-zinc-200'}`} strokeWidth={1.5} />
-                                    {item.relatedTicker && !isRead && <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/50 to-transparent flex items-end justify-center pb-1.5"><span className="text-[7px] font-black text-white uppercase tracking-wider drop-shadow-md">{item.relatedTicker.substring(0,4)}</span></div>}
+                                    {item.relatedTicker && !isRead ? (
+                                        <span className="text-[10px] font-black text-zinc-900 dark:text-white uppercase tracking-tighter">{item.relatedTicker.substring(0,4)}</span>
+                                    ) : (
+                                        <Icon className={`w-6 h-6 ${isRead ? 'text-zinc-400' : 'text-zinc-800 dark:text-zinc-200'}`} strokeWidth={1.5} />
+                                    )}
+                                    {!isRead && <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-zinc-950"></div>}
                                 </div>
                             </div>
                         </div>
@@ -539,7 +564,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* --- MODAIS DE DETALHES --- */}
+      {/* --- MODAIS DE DETALHES (Mantidos como estavam) --- */}
       
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
