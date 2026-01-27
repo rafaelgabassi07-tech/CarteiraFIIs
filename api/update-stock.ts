@@ -67,7 +67,6 @@ function parseValue(valueStr: any) {
         
         // 1.000 (Sem decimais) ou 1000
         if (!hasComma && hasDot) {
-             // Remove ponto de milhar BR
              return parseFloat(clean.replace(/\./g, '')) || 0;
         }
 
@@ -76,7 +75,6 @@ function parseValue(valueStr: any) {
              if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
                  return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
              } else {
-                 // Caso raro US (1,000.50)
                  return parseFloat(clean.replace(/,/g, '')) || 0;
              }
         }
@@ -156,6 +154,7 @@ async function scrapeInvestidor10(ticker: string) {
                 if (tituloClean === 'vpa' || tituloClean === 'vp' || tituloClean === 'valorpatrimonialcota') dados.vp_cota = parseValue(valor);
                 else if (titulo.includes('patrimonial') && titulo.includes('cota')) dados.vp_cota = parseValue(valor);
             }
+            // Fallback Genérico para "Valor Patrimonial" (pode ser total ou cota)
             if (titulo === 'valor patrimonial' && dados.vp_cota === null) {
                  const v = parseValue(valor);
                  if (v < 10000) dados.vp_cota = v; else dados.patrimonio_liquido = valor;
@@ -186,23 +185,64 @@ async function scrapeInvestidor10(ticker: string) {
             if (tituloClean === 'lpa' || titulo.includes('lpa')) dados.lpa = parseValue(valor);
         };
 
+        // ESTRATÉGIA 1: Cards do Topo
         $('div._card').each((_, el) => {
             const header = $(el).find('div._card-header').text() || $(el).find('.header').text() || $(el).find('span').first().text();
             const body = $(el).find('div._card-body').text() || $(el).find('.body').text() || $(el).find('span').last().text();
             processPair(header, body);
         });
 
+        // ESTRATÉGIA 2: Histórico de Indicadores Fundamentalistas (Específico para Ações)
+        // Procura por tabelas que contenham anos nas colunas e indicadores nas linhas
+        const historicoHeader = $('h2, h3, h4').filter((_, el) => {
+            const t = normalize($(el).text());
+            return t.includes('historico') && t.includes('indicadores');
+        }).first();
+
+        if (historicoHeader.length > 0) {
+            // Tenta encontrar a tabela próxima ao header
+            let tableHistorico = historicoHeader.nextAll().find('table').first();
+            // Se não achar, tenta container pai
+            if (tableHistorico.length === 0) tableHistorico = historicoHeader.parent().find('table').first();
+            // Se ainda não achar, procura a próxima tabela no DOM
+            if (tableHistorico.length === 0) tableHistorico = historicoHeader.nextAll('table').first();
+
+            if (tableHistorico.length > 0) {
+                // Descobre índice da coluna "Atual" ou mais recente
+                let idxAtual = -1;
+                const headers = tableHistorico.find('thead tr').first().find('th, td');
+                
+                headers.each((i, h) => {
+                    const txt = normalize($(h).text());
+                    if (txt.includes('atual') || txt.includes('hoje')) {
+                        idxAtual = i;
+                    }
+                });
+
+                // Se não achou "Atual", pega a última coluna (assumindo ordem crescente ou decrescente, geralmente a extremidade é o atual)
+                // Investidor10 costuma colocar Atual na direita (último)
+                if (idxAtual === -1 && headers.length > 1) {
+                    idxAtual = headers.length - 1;
+                }
+
+                if (idxAtual > 0) {
+                    tableHistorico.find('tbody tr').each((_, tr) => {
+                        const cols = $(tr).find('td');
+                        if (cols.length > idxAtual) {
+                            const label = $(cols[0]).text(); // Nome do indicador (ex: P/L)
+                            const val = $(cols[idxAtual]).text(); // Valor na coluna atual
+                            processPair(label, val);
+                        }
+                    });
+                }
+            }
+        }
+
+        // ESTRATÉGIA 3: Células e Listas Genéricas
         $('.cell, .data-item, .indicator-item').each((_, el) => {
             const label = $(el).find('.name, .label, .title').text();
             const val = $(el).find('.value, .data, .number').text();
             processPair(label, val);
-        });
-
-        $('table tbody tr').each((_, row) => {
-            const cols = $(row).find('td');
-            if (cols.length >= 2) {
-                processPair($(cols[0]).text(), $(cols[1]).text());
-            }
         });
 
         $('div#indicators, div.indicators, ul.indicators').find('div, li').each((_, el) => {
@@ -210,10 +250,6 @@ async function scrapeInvestidor10(ticker: string) {
              if (text.includes(':')) {
                  const [k, v] = text.split(':');
                  processPair(k, v);
-             } else {
-                 const label = $(el).find('span').first().text();
-                 const val = $(el).find('span').last().text();
-                 if (label && val && label !== val) processPair(label, val);
              }
         });
 
@@ -236,8 +272,23 @@ async function scrapeInvestidor10(ticker: string) {
 
         // --- EXTRAÇÃO ROBUSTA DE DIVIDENDOS ---
         const dividends: any[] = [];
-        let table = $('#table-dividends-history');
         
+        // Prioriza busca por título "Histórico de Dividendos" ou similar
+        let table = $('#table-dividends-history');
+        if (table.length === 0) {
+             const divHeader = $('h2, h3, h4').filter((_, el) => {
+                const t = normalize($(el).text());
+                return t.includes('historico') && (t.includes('dividendos') || t.includes('proventos'));
+            }).first();
+            
+            if (divHeader.length > 0) {
+                table = divHeader.nextAll().find('table').first();
+                if (table.length === 0) table = divHeader.parent().find('table').first();
+                if (table.length === 0) table = divHeader.nextAll('table').first();
+            }
+        }
+        
+        // Fallback genérico se não achou pelo título
         if (table.length === 0) {
             $('table').each((_, tbl) => {
                 const h = normalize($(tbl).text());
@@ -251,23 +302,20 @@ async function scrapeInvestidor10(ticker: string) {
         if (table.length > 0) {
             // Mapeamento Dinâmico de Colunas
             const headers: string[] = [];
-            table.find('thead th').each((_, th) => {
-                headers.push(normalize($(th).text()));
-            });
+            
+            // Tenta achar thead
+            let headerRow = table.find('thead tr').first();
+            if (headerRow.length === 0) headerRow = table.find('tbody tr').first();
 
-            // Fallback se não achou thead (algumas tabelas usam primeira tr como header)
-            if (headers.length === 0) {
-                table.find('tbody tr').first().find('td').each((_, td) => {
-                    headers.push(normalize($(td).text()));
-                });
-            }
+            headerRow.find('th, td').each((_, cell) => {
+                headers.push(normalize($(cell).text()));
+            });
 
             let idxType = -1;
             let idxDateCom = -1;
             let idxDatePay = -1;
             let idxValue = -1;
 
-            // Busca índices baseados em palavras-chave
             headers.forEach((h, i) => {
                 if (h.includes('tipo')) idxType = i;
                 if (h.includes('com') || h.includes('base')) idxDateCom = i;
@@ -277,31 +325,27 @@ async function scrapeInvestidor10(ticker: string) {
 
             // Heurística de Fallback se mapeamento falhar
             if (idxValue === -1) {
-                // Se tabela tem 4 colunas, Valor costuma ser a última (3)
                 if (headers.length >= 4) { idxValue = 3; idxDatePay = 2; idxDateCom = 1; idxType = 0; }
-                // Se tabela tem 3 colunas, Valor é última (2)
                 else if (headers.length === 3) { idxValue = 2; idxDatePay = 1; idxDateCom = 0; }
             }
 
             table.find('tbody tr').each((i, el) => {
-                // Pula a primeira linha se for header fake
-                if (i === 0 && headers.length === 0) return;
+                // Pula a primeira linha se for usada como header
+                if (i === 0 && table.find('thead').length === 0) return;
 
                 const cols = $(el).find('td');
                 if (cols.length < 3) return;
 
                 let type = 'DIV';
-                // Extração segura baseada nos índices mapeados
                 let dateComStr = idxDateCom !== -1 && cols[idxDateCom] ? $(cols[idxDateCom]).text() : '';
                 let datePayStr = idxDatePay !== -1 && cols[idxDatePay] ? $(cols[idxDatePay]).text() : '';
                 let valStr = idxValue !== -1 && cols[idxValue] ? $(cols[idxValue]).text() : '';
                 let typeStr = idxType !== -1 && cols[idxType] ? $(cols[idxType]).text() : '';
 
-                // Fallback posicional agressivo se string estiver vazia
+                // Fallback posicional se string estiver vazia
                 if (!valStr && cols.length >= 4) valStr = $(cols[3]).text(); 
                 if (!valStr && cols.length === 3) valStr = $(cols[2]).text();
 
-                // Normalização de Tipo
                 const tText = normalize(typeStr);
                 if (tText.includes('jcp') || tText.includes('capital')) type = 'JCP';
                 else if (tText.includes('rend')) type = 'REND';
