@@ -168,24 +168,24 @@ async function scrapeInvestidor10(ticker: string) {
             if (k.includes('dividend') && k.includes('yield')) dados.dy = parseValue(v);
             if (k === 'cotacao' || k.includes('valor atual')) dados.cotacao_atual = parseValue(v);
             
-            // FIIs - VPA e Patrimônio
-            if (k === 'valor patrimonial' || k === 'vpa' || k === 'vp') {
-                // Investidor10 confuso: as vezes VP é unitário, as vezes total.
-                // Heurística: Se < 5000 é unitário, senão é total.
+            // FIIs e Ações - VPA/LPA
+            if (k === 'valor patrimonial' || k === 'vpa' || k === 'vp' || k === 'v.p.a' || k === 'valor patrimonial p/acao') {
                 const val = parseValue(v);
+                // Heurística: Se < 5000 é unitário (VPA/VP), senão é total.
+                // Ajuste para evitar falsos positivos se PL for muito baixo, mas para B3 < 5000 é seguro pra cota.
                 if (val < 5000) dados.vp_cota = val;
-                else dados.patrimonio_liquido = v; // Mantém string formatada para PL total
+                else dados.patrimonio_liquido = v; 
             }
-            if (k === 'patrimonio liquido') dados.patrimonio_liquido = v;
+            if (k === 'patrimonio liquido' || k === 'patrim. liq') dados.patrimonio_liquido = v;
 
-            if (k === 'liquidez diaria') dados.liquidez = v;
+            if (k === 'liquidez diaria' || k === 'liq. diaria') dados.liquidez = v;
             if (k === 'ultimo rendimento') dados.ultimo_rendimento = parseValue(v);
             if (k.includes('num') && k.includes('cotistas')) dados.num_cotistas = parseValue(v);
             
             // Vacância
             if (k.includes('vacancia')) dados.vacancia = parseValue(v);
 
-            // Ações
+            // Ações - Indicadores
             if (k === 'roe') dados.roe = parseValue(v);
             if (k.includes('margem liquida')) dados.margem_liquida = parseValue(v);
             if (k.includes('margem bruta')) dados.margem_bruta = parseValue(v);
@@ -203,15 +203,21 @@ async function scrapeInvestidor10(ticker: string) {
             processPair(header, body);
         });
 
-        // 2. INDICADORES (Bloco de Grade)
-        $('div.indicator-item, div.data-item').each((_, el) => {
-            const title = $(el).find('span.title, span.label').text().trim();
-            const val = $(el).find('span.value, span.data').text().trim();
-            processPair(title, val);
+        // 2. INDICADORES (Bloco de Grade - Fundamental para Ações e FIIs)
+        // #table-indicators .cell é o padrão para Ações no Investidor10
+        // .indicator-item é usado em FIIs
+        $('div.indicator-item, div.data-item, #table-indicators .cell').each((_, el) => {
+            let title = $(el).find('span.title, span.label, .name').text().trim();
+            let val = $(el).find('span.value, span.data, .value').text().trim();
+            
+            // Fallback para estrutura que usa classes diretas sem span
+            if (!title) title = $(el).find('.cell-title, div.name').text().trim();
+            if (!val) val = $(el).find('.cell-value, div.value').text().trim();
+
+            if (title && val) processPair(title, val);
         });
 
-        // 3. TABELA DE DADOS GERAIS (Fundamental para FIIs: Taxas, Gestão, Segmento)
-        // Procura por tabelas que contenham "Informações Gerais" ou similar
+        // 3. TABELA DE DADOS GERAIS (FIIs: Taxas, Gestão)
         $('div#table-general-data, .table-data').each((_, container) => {
             $(container).find('.cell').each((__, cell) => {
                 const h = $(cell).find('.cell-header, span.name').text().trim();
@@ -219,7 +225,6 @@ async function scrapeInvestidor10(ticker: string) {
                 
                 if (h && v) {
                     processPair(h, v);
-                    // Captura específica
                     const k = normalize(h);
                     if (k.includes('segmento')) dados.segmento = v;
                     if (k.includes('tipo') && k.includes('gestao')) dados.tipo_gestao = v;
@@ -229,25 +234,27 @@ async function scrapeInvestidor10(ticker: string) {
             });
         });
 
-        // 4. HISTÓRICO DE INDICADORES (Fallback para Ações - VPA, PL, LPA)
-        // As ações no Investidor10 costumam ter VPA e LPA na tabela de histórico, não nos cards
+        // 4. HISTÓRICO DE INDICADORES (Fallback para Ações - VPA, PL, LPA - Se não achou nos cards/grid)
         const historicoHeader = $('h2, h3').filter((_, el) => normalize($(el).text()).includes('historico de indicadores')).first();
         if (historicoHeader.length > 0) {
-            let table = historicoHeader.nextAll().find('table').first();
-            if (table.length === 0) table = historicoHeader.parent().find('table').first(); // Tenta container pai
+            // Tenta encontrar a tabela próxima ao header (irmão ou dentro de wrapper irmão)
+            let table = historicoHeader.nextAll('table').first();
+            if (table.length === 0) table = historicoHeader.nextAll('div').find('table').first();
+            if (table.length === 0) table = historicoHeader.parent().find('table').first();
             
             if (table.length > 0) {
-                // Descobre coluna "Atual" (geralmente a última ou primeira dependendo da ordenação)
                 const headers = table.find('thead th');
                 let idxAtual = -1;
                 
+                // Tenta achar coluna "Atual" ou "Hoje"
                 headers.each((i, th) => {
                     const t = normalize($(th).text());
                     if (t.includes('atual') || t.includes('hoje')) idxAtual = i;
                 });
                 
-                // Se não achou "Atual", pega a última (assumindo cronologia da esquerda pra direita ou vice-versa, a extremidade é o mais recente)
-                // No Investidor10 desktop, o atual costuma ser o mais a direita ou esquerda. Vamos tentar pegar o valor que não seja vazio.
+                // Se não achou, assume a mais recente (geralmente a primeira ou última)
+                // No Investidor10 desktop a ordem é decrescente (Atual -> Antigo), mas varia.
+                // Vamos tentar pegar a última coluna que tenha dados, pois headers vazios podem existir
                 if (idxAtual === -1 && headers.length > 0) idxAtual = headers.length - 1;
 
                 if (idxAtual >= 0) {
@@ -267,16 +274,18 @@ async function scrapeInvestidor10(ticker: string) {
         const dividends: any[] = [];
         let tableDivs = $('#table-dividends-history');
         
-        // Se não achou pelo ID, tenta pelo título da seção
         if (tableDivs.length === 0) {
-             const hDivs = $('h2, h3').filter((_, el) => normalize($(el).text()).includes('dividendos')).first();
-             if (hDivs.length) tableDivs = hDivs.nextAll('table').first();
+             const hDivs = $('h2, h3').filter((_, el) => normalize($(el).text()).includes('dividendos') || normalize($(el).text()).includes('proventos')).first();
+             if (hDivs.length) {
+                 tableDivs = hDivs.nextAll('table').first();
+                 if (tableDivs.length === 0) tableDivs = hDivs.nextAll('div').find('table').first();
+             }
         }
 
         if (tableDivs.length > 0) {
-            // Mapeamento dinâmico de colunas
             const headers: string[] = [];
             tableDivs.find('thead th').each((_, th) => headers.push(normalize($(th).text())));
+            // Fallback se não tiver thead
             if (headers.length === 0) tableDivs.find('tbody tr').first().find('td').each((_, td) => headers.push(normalize($(td).text())));
 
             let iType = -1, iCom = -1, iPay = -1, iVal = -1;
@@ -287,7 +296,6 @@ async function scrapeInvestidor10(ticker: string) {
                 if (h.includes('valor') || h.includes('liquido')) iVal = i;
             });
 
-            // Fallback se mapeamento falhar
             if (iVal === -1) {
                 if (headers.length >= 4) { iType=0; iCom=1; iPay=2; iVal=3; }
                 else { iCom=0; iPay=1; iVal=2; }
@@ -303,7 +311,6 @@ async function scrapeInvestidor10(ticker: string) {
                 const datePayStr = iPay !== -1 ? $(cols[iPay]).text() : '';
                 const valStr = iVal !== -1 ? $(cols[iVal]).text() : '';
 
-                // Normaliza Tipo
                 let type = 'DIV';
                 const tNorm = normalize(typeRaw);
                 if (tNorm.includes('jcp') || tNorm.includes('juros')) type = 'JCP';
@@ -331,12 +338,10 @@ async function scrapeInvestidor10(ticker: string) {
             dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100;
         }
 
-        // Limpeza de campos vazios
         Object.keys(dados).forEach(k => {
             if (dados[k] === null || dados[k] === undefined || dados[k] === '') delete dados[k];
         });
 
-        // Adaptação para o formato do banco
         const finalMetadata = {
             ...dados,
             dy_12m: dados.dy,
@@ -362,7 +367,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
-        // Cache Check (Supabase)
         if (!force) {
             const { data: existing } = await supabase
                 .from('ativos_metadata')
@@ -370,7 +374,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 .eq('ticker', ticker)
                 .single();
             
-            // Cache de 3 horas
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
                 if (age < 10800000) { 
@@ -393,11 +396,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (metadata) {
             const dbPayload = { ...metadata };
-            // Mapeia campos virtuais para colunas reais se necessário, ou remove duplicados
             delete dbPayload.dy;
             delete dbPayload.cotacao_atual;
             
-            // Upsert Metadata
             await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
         }
 
