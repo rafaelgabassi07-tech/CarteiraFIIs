@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon, Gem, Calendar, Briefcase, Zap, Layers, AlertTriangle, Loader2, Tag, RefreshCw, CheckCircle2 } from 'lucide-react';
@@ -108,7 +109,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     // Estado local sincronizado
     const [displayAsset, setDisplayAsset] = useState<AssetPosition>(asset);
     
-    // Sincroniza props -> state (Evita override de zero se a prop vier vazia momentaneamente, mas prioriza a prop se ela tiver dados)
+    // Sincroniza props -> state
     useEffect(() => {
         if (asset) {
             setDisplayAsset(prev => {
@@ -181,7 +182,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
 
     return (
         <div className="bg-white dark:bg-zinc-950 min-h-full flex flex-col relative">
-            {/* OVERLAY DE CARREGAMENTO (Discreto, mantém conteúdo visível se já existir) */}
+            {/* OVERLAY DE CARREGAMENTO (Discreto) */}
             {isUpdating && (
                 <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800 overflow-hidden z-50">
                     <div className="h-full bg-indigo-500 animate-[loading_1.5s_infinite_ease-in-out]"></div>
@@ -202,9 +203,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                             <p className="text-xs font-medium text-zinc-400 truncate max-w-[200px]">{displayAsset.segment || (isFII ? 'Fundo Imobiliário' : 'Ação')}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors press-effect">
-                        <X className="w-5 h-5" />
-                    </button>
+                    {/* Botão X removido */}
                 </div>
 
                 <div className="flex p-1.5 bg-zinc-100 dark:bg-zinc-900/80 rounded-xl">
@@ -309,6 +308,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                             </div>
                         </div>
 
+                        {/* --- BLOCOS FIIs --- */}
                         {isFII && (
                             <>
                                 <SectionHeader title="Valuation & Cotas" icon={Scale} />
@@ -338,6 +338,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                             </>
                         )}
 
+                        {/* --- BLOCOS AÇÕES --- */}
                         {!isFII && (
                             <>
                                 <SectionHeader title="Valuation" icon={Scale} />

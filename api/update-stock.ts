@@ -151,50 +151,59 @@ async function scrapeInvestidor10(ticker: string) {
             roe: null, margem_liquida: null, margem_bruta: null,
             cagr_receita_5a: null, cagr_lucros_5a: null,
             divida_liquida_ebitda: null, ev_ebitda: null,
-            lpa: null, vp_cota: null,
+            lpa: null, vp_cota: null, vpa: null,
             vacancia: null, ultimo_rendimento: null, num_cotistas: null, patrimonio_liquido: null,
             taxa_adm: null, tipo_gestao: null
         };
 
         const processPair = (keyRaw: string, valueRaw: string) => {
             if (!keyRaw || !valueRaw) return;
-            // Remove quebras de linha e espaços excessivos
+            
+            // 1. Normalização Genérica (Frases)
             const k = normalize(keyRaw.replace(/\n/g, ' ').replace(/\s+/g, ' '));
+            
+            // 2. Normalização Agressiva (Siglas)
+            // Remove tudo que não é letra ou número para garantir match de "V.P.A", "P/VP", "P.L", etc.
+            const kClean = keyRaw.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            
             const v = valueRaw.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
             if (v === '-' || v === '') return;
 
-            // Mapeamento Direto
-            if (k === 'p/vp' || k === 'pvp') dados.pvp = parseValue(v);
-            if (k === 'p/l' || k === 'pl') dados.pl = parseValue(v);
-            if (k.includes('dividend') && k.includes('yield')) dados.dy = parseValue(v);
-            if (k === 'cotacao' || k.includes('valor atual')) dados.cotacao_atual = parseValue(v);
+            // --- MAPEAMENTO USANDO kClean (Mais robusto para siglas) ---
+            if (kClean === 'pvp') dados.pvp = parseValue(v);
+            if (kClean === 'pl') dados.pl = parseValue(v);
+            if (kClean === 'dy' || kClean === 'dividendyield') dados.dy = parseValue(v);
+            if (kClean === 'cotacao' || kClean === 'valoratual') dados.cotacao_atual = parseValue(v);
             
-            // FIIs e Ações - VPA/LPA
-            if (k === 'valor patrimonial' || k === 'vpa' || k === 'vp' || k === 'v.p.a' || k === 'valor patrimonial p/acao') {
+            if (kClean === 'roe') dados.roe = parseValue(v);
+            if (kClean === 'lpa') dados.lpa = parseValue(v);
+            if (kClean === 'evebitda') dados.ev_ebitda = parseValue(v);
+
+            // VPA (Tratamento especial para V.P.A / VPA / Valor Patrimonial p/ Ação)
+            if (kClean === 'vpa' || kClean === 'vp' || kClean === 'valorpatrimonial' || kClean === 'valorpatrimonialporacao' || kClean === 'valorpatrimonialpacao') {
                 const val = parseValue(v);
-                if (val < 5000) dados.vp_cota = val;
-                else dados.patrimonio_liquido = v; 
+                // Heurística: Se < 5000 é unitário (VPA/VP), senão é total (Patrimônio Líquido)
+                if (val < 5000) {
+                    dados.vp_cota = val;
+                    dados.vpa = val; // Redundância para garantir
+                } else {
+                    dados.patrimonio_liquido = v;
+                }
             }
-            if (k === 'patrimonio liquido' || k === 'patrim. liq') dados.patrimonio_liquido = v;
 
-            if (k === 'liquidez diaria' || k === 'liq. diaria') dados.liquidez = v;
-            if (k === 'ultimo rendimento') dados.ultimo_rendimento = parseValue(v);
-            if (k.includes('num') && k.includes('cotistas')) dados.num_cotistas = parseValue(v);
-            
-            // Vacância
+            // --- MAPEAMENTO USANDO k (Frases completas) ---
+            if (k.includes('patrimonio liquido') || k.includes('patrim. liq')) dados.patrimonio_liquido = v;
+            if (k.includes('liquidez')) dados.liquidez = v;
+            if (k.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(v);
+            if (kClean === 'numcotistas' || k.includes('num. cotistas')) dados.num_cotistas = parseValue(v);
             if (k.includes('vacancia')) dados.vacancia = parseValue(v);
-
-            // Ações - Indicadores (Melhorado com includes mais flexíveis)
-            if (k === 'roe') dados.roe = parseValue(v);
-            if (k.includes('margem') && k.includes('liquida')) dados.margem_liquida = parseValue(v);
-            if (k.includes('margem') && k.includes('bruta')) dados.margem_bruta = parseValue(v);
             
-            if ((k.includes('div') && k.includes('liq') && k.includes('ebitda')) || k.includes('dl/ebitda')) dados.divida_liquida_ebitda = parseValue(v);
-            if ((k.includes('ev') && k.includes('ebitda'))) dados.ev_ebitda = parseValue(v);
-            if (k === 'lpa') dados.lpa = parseValue(v);
+            if (k.includes('margem liquida') || kClean === 'margemliquida') dados.margem_liquida = parseValue(v);
+            if (k.includes('margem bruta') || kClean === 'margembruta') dados.margem_bruta = parseValue(v);
+            if ((k.includes('div') && k.includes('liq') && k.includes('ebitda')) || kClean === 'dividaliquidaebitda') dados.divida_liquida_ebitda = parseValue(v);
             
-            if (k.includes('cagr') && k.includes('receita')) dados.cagr_receita_5a = parseValue(v);
-            if (k.includes('cagr') && k.includes('lucro')) dados.cagr_lucros_5a = parseValue(v);
+            if (kClean === 'cagrreceita5a' || (k.includes('cagr') && k.includes('receita'))) dados.cagr_receita_5a = parseValue(v);
+            if (kClean === 'cagrlucros5a' || (k.includes('cagr') && k.includes('lucro'))) dados.cagr_lucros_5a = parseValue(v);
         };
 
         // 1. VARREDURA GENÉRICA DE CARDS E CÉLULAS
@@ -204,8 +213,7 @@ async function scrapeInvestidor10(ticker: string) {
             let val = $(el).find('div._card-body, .cell-value, span.value, .value, .data').first().text().trim();
             
             if (title && val) {
-                // Remove prefixos de tooltip "?" que as vezes aparecem
-                title = title.replace(/\?$/, '').trim();
+                title = title.replace(/\?$/, '').trim(); // Remove tooltip mark
                 processPair(title, val);
             }
         });
@@ -231,13 +239,16 @@ async function scrapeInvestidor10(ticker: string) {
             
             headers.each((i, th) => {
                 const t = normalize($(th).text());
-                if (t === 'atual' || t.includes('hoje') || t === '2024' || t === '2025') { // Tenta anos recentes se "Atual" não existir
-                    // Se já achou "Atual", prefere ele. Se não, pega o ano recente.
+                // Procura por "Atual", "Hoje", ou ano corrente/recente
+                if (t === 'atual' || t.includes('hoje') || t.includes('2024') || t.includes('2025')) {
+                    // Prioriza "Atual" se achar, senão pega o ano
                     if (idxAtual === -1 || t === 'atual') idxAtual = i;
                 }
             });
 
-            // Se achou uma coluna alvo
+            // Se não achou por nome, tenta a última coluna (padrão Investidor10 desktop) ou primeira de dados
+            if (idxAtual === -1 && headers.length > 1) idxAtual = 1;
+
             if (idxAtual > -1) {
                 $(table).find('tbody tr').each((_, tr) => {
                     const tds = $(tr).find('td');
