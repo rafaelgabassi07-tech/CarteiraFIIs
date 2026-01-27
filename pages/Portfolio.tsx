@@ -63,23 +63,31 @@ const SectionHeader = ({ title, icon: Icon }: any) => (
 );
 
 // Loader Animado (Overlay Completo)
-const AssetLoadingOverlay = () => {
+const AssetLoadingOverlay = ({ ticker }: { ticker: string }) => {
     const [step, setStep] = useState(0);
-    const steps = ["Sincronizando...", "Buscando Indicadores...", "Atualizando Proventos..."];
+    const steps = ["Conectando...", "Buscando Indicadores...", "Atualizando Proventos..."];
 
     useEffect(() => {
-        const interval = setInterval(() => setStep(s => (s + 1) % steps.length), 1200);
+        const interval = setInterval(() => setStep(s => (s + 1) % steps.length), 1000);
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div className="absolute inset-0 z-50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm flex flex-col items-center justify-center anim-fade-in">
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center">
-                <div className="relative w-12 h-12 mb-4">
-                    <div className="absolute inset-0 border-4 border-zinc-100 dark:border-zinc-800 rounded-full"></div>
-                    <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
-                </div>
-                <p className="text-xs font-bold text-zinc-900 dark:text-white animate-pulse">{steps[step]}</p>
+        <div className="absolute inset-0 z-50 bg-white/60 dark:bg-black/60 backdrop-blur-md flex flex-col items-center justify-center anim-fade-in">
+            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-2xl border border-zinc-100 dark:border-zinc-800 flex flex-col items-center w-64 text-center relative overflow-hidden">
+               <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-purple-500/5 pointer-events-none"></div>
+               
+               {/* Logo/Icon com Animação */}
+               <div className="w-20 h-20 mb-6 relative">
+                  <div className="absolute inset-0 rounded-full border-[3px] border-indigo-100 dark:border-indigo-900/30"></div>
+                  <div className="absolute inset-0 rounded-full border-[3px] border-indigo-500 border-t-transparent animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center justify-center font-black text-xl text-indigo-600 dark:text-indigo-400">
+                    {ticker.substring(0,2)}
+                  </div>
+               </div>
+               
+               <h3 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight mb-2 relative z-10">{ticker}</h3>
+               <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest animate-pulse relative z-10">{steps[step]}</p>
             </div>
         </div>
     );
@@ -96,8 +104,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     useEffect(() => {
         if (asset) {
             setDisplayAsset(prev => {
-                // Se a nova prop (asset) tiver dados fundamentais, usa ela.
-                // Se a nova prop estiver vazia (ex: erro de fetch momentâneo) mas o estado anterior tinha dados, mantém o anterior.
                 const hasNewData = asset.dy_12m || asset.p_vp || asset.p_l;
                 const hadData = prev.dy_12m || prev.p_vp || prev.p_l;
                 
@@ -114,7 +120,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
             onRefresh(asset.ticker)
                 .catch(err => console.error("Refresh failed", err))
                 .finally(() => {
-                    // Pequeno delay artificial para que o usuário veja que algo aconteceu
                     setTimeout(() => setIsUpdating(false), 800); 
                 });
         }
@@ -164,7 +169,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     return (
         <div className="bg-white dark:bg-zinc-950 min-h-full flex flex-col relative">
             {/* OVERLAY DE CARREGAMENTO */}
-            {isUpdating && <AssetLoadingOverlay />}
+            {isUpdating && <AssetLoadingOverlay ticker={displayAsset.ticker} />}
 
             {/* Header */}
             <div className="sticky top-0 z-30 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-100 dark:border-zinc-800 pt-safe px-6 pb-4">
