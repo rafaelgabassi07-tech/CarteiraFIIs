@@ -71,11 +71,15 @@ function cleanNumber(val: any): number {
     try {
         // Remove sufixos comuns
         str = str.replace(/%|a\.a\.|R\$|\s/gi, '');
+        // Mantém dígitos, ponto, vírgula e sinal de menos
         str = str.replace(/[^\d.,-]/g, '');
         
+        // Lógica de detecção de formato BR vs US
         if (str.includes(',') && !str.includes('.')) {
+            // Apenas vírgula: "10,50" -> "10.50"
             str = str.replace(',', '.');
         } else if (str.includes('.') && str.includes(',')) {
+            // Mistura: "1.000,50" (BR) -> "1000.50"
             str = str.replace(/\./g, '').replace(',', '.');
         }
         
@@ -98,12 +102,13 @@ const parseToISODate = (val: any): string | null => {
 }
 
 const KEY_MAP: Record<string, string> = {
+    // GERAL & FIIs
     'cotacao': 'cotacao_atual', 'preco': 'cotacao_atual', 'valoratual': 'cotacao_atual',
     'pvp': 'pvp', 'p/vp': 'pvp', 'vp': 'pvp',
     'pl': 'pl', 'p/l': 'pl',
     'dy': 'dy', 'dividendyield': 'dy', 'dy12m': 'dy',
-    'vpa': 'vp_cota', 'vp_cota': 'vp_cota', 'valorpatrimonial': 'vp_cota',
-    'lpa': 'lpa',
+    'vpa': 'vp_cota', 'vp_cota': 'vp_cota', 'valorpatrimonial': 'vp_cota', 'valorpatrimonialporacao': 'vp_cota', 'vpa': 'vp_cota',
+    'lpa': 'lpa', 'lucroporacao': 'lpa',
     'roe': 'roe',
     'vacancia': 'vacancia', 'vacanciafisica': 'vacancia',
     'patrimonioliquido': 'patrimonio_liquido', 'pliquido': 'patrimonio_liquido',
@@ -113,14 +118,23 @@ const KEY_MAP: Record<string, string> = {
     'numerodecotistas': 'num_cotistas', 'cotistas': 'num_cotistas',
     'taxadeadministracao': 'taxa_adm', 'taxaadm': 'taxa_adm',
     'tipodegestao': 'tipo_gestao', 'gestao': 'tipo_gestao',
-    'ultimorendimento': 'ultimo_rendimento', 'rendimento': 'ultimo_rendimento'
+    'ultimorendimento': 'ultimo_rendimento', 'rendimento': 'ultimo_rendimento',
+    
+    // STOCKS (Ações - Indicadores Específicos)
+    'margemliquida': 'margem_liquida',
+    'margembruta': 'margem_bruta',
+    'dividaliquidaebitda': 'divida_liquida_ebitda', 'dividaliquida/ebitda': 'divida_liquida_ebitda', 'divliqebitda': 'divida_liquida_ebitda',
+    'evebitda': 'ev_ebitda', 'ev/ebitda': 'ev_ebitda',
+    'cagrreceitas5anos': 'cagr_receita_5a', 'cagrreceita5anos': 'cagr_receita_5a',
+    'cagrlucros5anos': 'cagr_lucros_5a', 'cagrlucro5anos': 'cagr_lucros_5a',
+    'payout': 'payout'
 };
 
 function normalizeKey(str: string) {
     if (!str) return '';
     return str.toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-        .replace(/[^a-z0-9]/g, "") 
+        .replace(/[^a-z0-9]/g, "") // Remove tudo que não for letra ou número (remove espaços, /, ., etc)
         .trim();
 }
 
@@ -172,28 +186,32 @@ async function scrapeInvestidor10(ticker: string) {
             if (title && value) addData(title, value);
         });
 
-        // Varre Células de Tabelas (Layout antigo/misto)
+        // Varre Células de Tabelas (Layout antigo/misto e Indicadores)
+        // Muitas vezes "Indicadores Valuation" e "Indicadores de Rentabilidade" estão em tabelas
         $('.cell').each((_, el) => {
             const title = $(el).find('.name').text();
             const value = $(el).find('.value').text();
             if (title && value) addData(title, value);
         });
+        
+        // Varre itens de lista que possam ter dados (comum em mobile view)
+        $('li, .item').each((_, el) => {
+             const title = $(el).find('.title, .name, span:first-child').text();
+             const value = $(el).find('.value, .desc, span:last-child').text();
+             if (title && value) addData(title, value);
+        });
 
         // 2. EXTRAÇÃO ESPECÍFICA (FIIs - Características)
-        // Muitas vezes "Taxa de Administração" está numa lista simples ou tabela sem classes padrão
         if (finalType === 'FII') {
-            // Busca textual profunda em elementos de lista ou tabela
             $('li, td, div').each((_, el) => {
                 const text = $(el).text().trim();
                 
                 // Taxa de Administração
                 if (text.toLowerCase().includes('taxa de administração')) {
                     const next = $(el).next().text().trim() || $(el).find('span').last().text().trim();
-                    // Às vezes o valor está no próprio texto após ":", às vezes no próximo elemento
                     let val = '';
                     if (text.includes(':')) val = text.split(':')[1].trim();
                     if (!val && next) val = next;
-                    
                     if (val && !extracted.taxa_adm) extracted.taxa_adm = val;
                 }
 
@@ -203,7 +221,6 @@ async function scrapeInvestidor10(ticker: string) {
                     let val = '';
                     if (text.includes(':')) val = text.split(':')[1].trim();
                     if (!val && next) val = next;
-                    
                     if (val && !extracted.tipo_gestao) extracted.tipo_gestao = val;
                 }
             });
@@ -223,13 +240,12 @@ async function scrapeInvestidor10(ticker: string) {
         // 4. DIVIDENDOS (Tabela Histórica #table-dividends-history)
         const dividends: any[] = [];
         
-        // Tenta encontrar a tabela específica de histórico
         let table = $('#table-dividends-history');
-        // Fallback: Procura qualquer tabela com headers compatíveis
         if (table.length === 0) {
             $('table').each((_, t) => {
                 const h = $(t).text().toLowerCase();
-                if (h.includes('data com') && h.includes('pagamento') && h.includes('valor')) {
+                // Flexibiliza busca de headers para pegar tabelas de Ações também
+                if ((h.includes('data com') || h.includes('datacom')) && h.includes('valor')) {
                     table = $(t);
                     return false;
                 }
@@ -243,10 +259,9 @@ async function scrapeInvestidor10(ticker: string) {
                     let type = 'DIV';
                     let dateComStr, datePayStr, valStr;
 
-                    // Detecta colunas baseado no layout comum
                     if (tds.length >= 4) {
                         const typeTxt = $(tds[0]).text().toLowerCase();
-                        if (typeTxt.includes('jcp')) type = 'JCP';
+                        if (typeTxt.includes('jcp') || typeTxt.includes('juros')) type = 'JCP';
                         else if (typeTxt.includes('rend')) type = 'REND';
                         else if (typeTxt.includes('amort')) type = 'AMORT';
                         
@@ -309,11 +324,12 @@ async function scrapeInvestidor10(ticker: string) {
             patrimonio_liquido: extracted.patrimonio_liquido || 'N/A',
             num_cotistas: cleanNumber(extracted.num_cotistas) || 0,
             
-            // Mantém como string se não for número puro, pois pode ser "Passiva", "Ativa" ou "1,5% a.a."
             taxa_adm: extracted.taxa_adm || null,
             tipo_gestao: extracted.tipo_gestao || null,
 
+            // Dados de Ações (Stocks)
             margem_liquida: cleanNumber(extracted.margem_liquida),
+            margem_bruta: cleanNumber(extracted.margem_bruta),
             divida_liquida_ebitda: cleanNumber(extracted.divida_liquida_ebitda),
             ev_ebitda: cleanNumber(extracted.ev_ebitda),
             cagr_receita_5a: cleanNumber(extracted.cagr_receita_5a),
@@ -368,15 +384,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ])).values());
 
         if (metadata) {
-            // Prepara payload DB garantindo que undefined não vá
             const dbPayload: any = { ...metadata };
-            // Mapeia chaves para colunas do DB se necessário (normalização feita no scraper, mas reforçando)
+            // Mapeia chaves para colunas do DB
             dbPayload.dy_12m = metadata.dy;
             dbPayload.cagr_receita = metadata.cagr_receita_5a;
             dbPayload.cagr_lucro = metadata.cagr_lucros_5a;
             dbPayload.valor_mercado = metadata.val_mercado;
 
-            // Remove chaves que não existem no DB ou auxiliares
+            // Remove chaves auxiliares
             delete dbPayload.dy;
             delete dbPayload.cagr_receita_5a;
             delete dbPayload.cagr_lucros_5a;

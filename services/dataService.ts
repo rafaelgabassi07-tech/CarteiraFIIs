@@ -2,6 +2,7 @@
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, ScrapeResult } from "../types";
 import { supabase } from "./supabase";
 import { getQuotes } from "./brapiService";
+import { normalizeTicker } from "./portfolioRules";
 
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
@@ -10,13 +11,10 @@ export interface UnifiedMarketData {
   error?: string;
 }
 
-// --- INTELLIGENT CACHE CONFIG ---
 const getTTL = () => {
     const now = new Date();
     const day = now.getDay();
     const hour = now.getHours();
-    
-    // Se for fim de semana ou fora do horário de pregão (10h as 18h), cache longo (4 horas)
     const isMarketOpen = day >= 1 && day <= 5 && hour >= 10 && hour < 18;
     return isMarketOpen ? 20 * 60 * 1000 : 4 * 60 * 60 * 1000;
 };
@@ -28,61 +26,29 @@ const isStale = (dateString?: string) => {
     return (now - lastUpdate) > getTTL();
 };
 
-// --- HELPERS ---
-
-const fetchInflationData = async (): Promise<number> => {
-    let lastKnownReal = 0;
-    try {
-        const s = localStorage.getItem('investfiis_v4_indicators');
-        if (s) {
-            const p = JSON.parse(s);
-            if (p.ipca && typeof p.ipca === 'number' && p.ipca > 0) {
-                lastKnownReal = p.ipca;
-            }
-        }
-    } catch {}
-
-    if (lastKnownReal === 0) lastKnownReal = 4.50; 
-
-    try {
-        const response = await fetch('/api/indicators', { 
-            headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(5000) 
-        });
-        
-        if (!response.ok) return lastKnownReal;
-        
-        const data = await response.json();
-        
-        if (data && typeof data.value === 'number' && !data.isError && data.value > 0) {
-            return data.value;
-        }
-        
-        return lastKnownReal;
-    } catch (e) {
-        return lastKnownReal;
-    }
-};
+// --- HELPERS DE PARSING ---
 
 const parseNumberSafe = (val: any): number => {
     if (typeof val === 'number') return val;
     if (!val) return 0;
-    const str = String(val).trim().replace('R$', '').replace('%', '').trim();
-    const cleanStr = str.replace(/\./g, '').replace(',', '.');
-    const num = parseFloat(cleanStr);
+    
+    let str = String(val).replace(/[^\d.,-]/g, '').trim();
+    if (!str || str === '-') return 0;
+
+    const lastComma = str.lastIndexOf(',');
+    const lastDot = str.lastIndexOf('.');
+
+    if (lastComma > lastDot) {
+        str = str.replace(/\./g, '').replace(',', '.');
+    } else if (lastDot > lastComma) {
+        str = str.replace(/,/g, '');
+    }
+
+    const num = parseFloat(str);
     return isNaN(num) ? 0 : num;
 };
 
-const normalizeTickerRoot = (t: string) => {
-    let clean = t.trim().toUpperCase();
-    if (clean.endsWith('F') && !clean.endsWith('11') && !clean.endsWith('11B') && clean.length <= 6) {
-        return clean.slice(0, -1);
-    }
-    return clean;
-};
-
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
-    // Helper flexível para buscar valores em múltiplas chaves possíveis
     const getVal = (...keys: string[]): any => {
         for (const k of keys) {
             if (m[k] !== undefined && m[k] !== null && m[k] !== 'N/A' && m[k] !== '') return m[k];
@@ -96,22 +62,23 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
         
-        // Strings que podem conter texto formatado
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
         market_cap: getVal('valor_mercado', 'val_mercado', 'market_cap') || undefined, 
         assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
+        
         manager_type: getVal('tipo_gestao', 'manager_type', 'gestao') || undefined,
         management_fee: getVal('taxa_adm', 'management_fee', 'taxadeadministracao', 'taxaadm') || undefined,
         
-        // Números
-        net_margin: parseNumberSafe(getVal('margem_liquida', 'net_margin')),
-        gross_margin: parseNumberSafe(getVal('margem_bruta', 'gross_margin')),
-        cagr_revenue: parseNumberSafe(getVal('cagr_receita', 'cagr_receita_5a')),
-        cagr_profits: parseNumberSafe(getVal('cagr_lucro', 'cagr_lucros_5a')),
-        net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'net_debt_ebitda')),
-        ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
+        // Indicadores Fundamentalistas Ações
+        net_margin: parseNumberSafe(getVal('margem_liquida', 'net_margin', 'margemliquida')),
+        gross_margin: parseNumberSafe(getVal('margem_bruta', 'gross_margin', 'margembruta')),
+        cagr_revenue: parseNumberSafe(getVal('cagr_receita', 'cagr_receita_5a', 'cagrreceitas5anos')),
+        cagr_profits: parseNumberSafe(getVal('cagr_lucro', 'cagr_lucros_5a', 'cagrlucros5anos')),
+        net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'net_debt_ebitda', 'dividaliquidaebitda')),
+        ev_ebitda: parseNumberSafe(getVal('ev_ebitda', 'evebitda')),
         lpa: parseNumberSafe(getVal('lpa')),
         vpa: parseNumberSafe(getVal('vpa', 'vp_cota', 'vp')),
+        
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica', 'vacancy')),
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento', 'last_dividend', 'rendimento', 'ultimorendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas', 'num_cotistas')),
@@ -122,11 +89,33 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
     };
 };
 
-/**
- * Função de Gatilho Inteligente.
- */
+const fetchInflationData = async (): Promise<number> => {
+    let lastKnownReal = 0;
+    try {
+        const s = localStorage.getItem('investfiis_v4_indicators');
+        if (s) {
+            const p = JSON.parse(s);
+            if (p.ipca && typeof p.ipca === 'number' && p.ipca > 0) lastKnownReal = p.ipca;
+        }
+    } catch {}
+    if (lastKnownReal === 0) lastKnownReal = 4.50; 
+
+    try {
+        const response = await fetch('/api/indicators', { 
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(5000) 
+        });
+        if (!response.ok) return lastKnownReal;
+        const data = await response.json();
+        if (data && typeof data.value === 'number' && !data.isError && data.value > 0) return data.value;
+        return lastKnownReal;
+    } catch (e) {
+        return lastKnownReal;
+    }
+};
+
 export const triggerScraperUpdate = async (tickers: string[], force = false): Promise<ScrapeResult[]> => {
-    const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
+    const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker)));
     const results: ScrapeResult[] = [];
     
     const tickersToUpdate: string[] = [];
@@ -146,11 +135,7 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
             if (!lastUpdate || isStale(lastUpdate)) {
                 tickersToUpdate.push(t);
             } else {
-                results.push({
-                    ticker: t,
-                    status: 'success',
-                    message: 'Cached (Fresh)'
-                });
+                results.push({ ticker: t, status: 'success', message: 'Cached (Fresh)' });
             }
         });
     }
@@ -158,7 +143,6 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
     if (tickersToUpdate.length === 0) return results;
 
     const BATCH_SIZE = 3;
-    
     for (let i = 0; i < tickersToUpdate.length; i += BATCH_SIZE) {
         const batch = tickersToUpdate.slice(i, i + BATCH_SIZE);
         
@@ -182,7 +166,6 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
                         dividendsFound: data.dividends 
                     });
                 } else {
-                    // Fallback Brapi para preço pelo menos
                     try {
                         const { quotes } = await getQuotes([ticker]);
                         if(quotes.length > 0) {
@@ -201,11 +184,7 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
                 }
             } catch (e: any) {
                 console.warn(`Falha ao atualizar ${ticker}`, e);
-                results.push({
-                    ticker,
-                    status: 'error',
-                    message: e.message || 'Erro de conexão'
-                });
+                results.push({ ticker, status: 'error', message: e.message || 'Erro de conexão' });
             }
         }));
 
@@ -220,7 +199,7 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
-  const uniqueTickers = Array.from(new Set(tickers.map(normalizeTickerRoot)));
+  const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker)));
 
   try {
       const [divResponse, metaResponse] = await Promise.all([
@@ -236,11 +215,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       uniqueTickers.forEach(t => {
           const meta = metaMap.get(t);
-          // Atualiza se não tiver metadados OU se estiver obsoleto OU se forçado
-          // Adicionamos verificação de campos críticos vazios para forçar update se faltar dados
-          const isMissingCriticalData = meta && (!meta.segment || (!meta.pvp && !meta.dy_12m));
+          // Força update se dados críticos de ações estiverem faltando
+          const isMissingStockData = meta && meta.type !== 'FII' && (!meta.ev_ebitda && !meta.roe);
+          const isStaleData = !meta || isStale(meta.updated_at);
           
-          if (!meta || isStale(meta.updated_at) || isMissingCriticalData || forceRefresh) {
+          if (isStaleData || isMissingStockData || forceRefresh) {
               staleTickers.push(t);
           }
       });
@@ -268,7 +247,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
               assetType = AssetType.FII;
           }
 
-          const normalizedTicker = m.ticker.trim().toUpperCase();
+          const normalizedTicker = normalizeTicker(m.ticker);
           metadata[normalizedTicker] = {
               segment: m.segment || 'Geral',
               type: assetType,

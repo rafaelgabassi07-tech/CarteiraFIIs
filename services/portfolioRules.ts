@@ -1,15 +1,36 @@
 
 import { Transaction, AssetType, DividendReceipt, AssetFundamentals, BrapiQuote } from '../types';
 
-// --- HELPERS BÁSICOS ---
+// --- HELPERS MATEMÁTICOS ---
 
-// Arredonda para 2 casas decimais de forma precisa
+// Resolve o problema de ponto flutuante do JS (ex: 0.1 + 0.2 = 0.30000000000000004)
+export const preciseAdd = (a: number, b: number) => Math.round((a + b) * 10000) / 10000;
+export const preciseSub = (a: number, b: number) => Math.round((a - b) * 10000) / 10000;
+export const preciseMul = (a: number, b: number) => Math.round((a * b) * 10000) / 10000;
+export const preciseDiv = (a: number, b: number) => b === 0 ? 0 : Math.round((a / b) * 10000) / 10000;
+
+// Arredonda para 2 casas decimais para exibição monetária final
 export const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+
+// Normaliza Tickers (Remove 'F' final se for ação fracionária, mantém 11, 11B, 34, etc)
+export const normalizeTicker = (rawTicker: string): string => {
+    if (!rawTicker) return '';
+    const clean = rawTicker.trim().toUpperCase();
+    
+    // Se terminar com F e tiver tamanho <= 6 (ex: PETR4F -> PETR4), remove o F.
+    // Exceções: 11F (se existir), ou tickers maiores.
+    if (clean.endsWith('F') && clean.length <= 6 && !clean.endsWith('11F')) {
+        return clean.slice(0, -1);
+    }
+    return clean;
+};
 
 // Helper de data seguro para comparações cronológicas precisas
 export const safeDate = (dateStr: string) => {
     if (!dateStr || dateStr.length < 10) return null;
-    const d = new Date(dateStr);
+    // Garante formato YYYY-MM-DD
+    const isoDate = dateStr.split('T')[0];
+    const d = new Date(isoDate);
     // Ajusta para meio-dia UTC para evitar problemas de timezone virando o dia
     d.setUTCHours(12, 0, 0, 0);
     return isNaN(d.getTime()) ? null : d.getTime();
@@ -29,43 +50,33 @@ export const isSameDayLocal = (dateString: string) => {
 
 export const mapSupabaseToTx = (record: any): Transaction => ({
   id: record.id,
-  ticker: record.ticker,
+  ticker: normalizeTicker(record.ticker), // Normaliza já na entrada
   type: record.type,
-  quantity: record.quantity,
-  price: record.price,
+  quantity: Number(record.quantity),
+  price: Number(record.price),
   date: record.date,
   assetType: record.asset_type || AssetType.FII, 
 });
 
 // --- CÁLCULOS DE POSIÇÃO ---
 
-// Calcula quantidade acumulada em uma data, considerando fracionário
+// Calcula quantidade acumulada em uma data
 export const getQuantityOnDate = (ticker: string, dateCom: string, transactions: Transaction[]) => {
-  if (!ticker || !dateCom) return 0;
+  const targetRoot = normalizeTicker(ticker);
   const targetTime = safeDate(dateCom);
-  if (!targetTime) return 0;
   
-  let targetRoot = ticker.trim().toUpperCase();
-  if (targetRoot.endsWith('F') && !targetRoot.endsWith('11') && !targetRoot.endsWith('11B') && targetRoot.length <= 6) {
-      targetRoot = targetRoot.slice(0, -1);
-  }
+  if (!targetRoot || !targetTime) return 0;
 
-  return transactions
-    .filter(t => {
-        if (!t || !t.date || !t.ticker) return false;
+  return transactions.reduce((acc, t) => {
+        // Verifica Ticker Normalizado
+        if (normalizeTicker(t.ticker) !== targetRoot) return acc;
+        
+        // Verifica Data
         const txTime = safeDate(t.date);
-        if (!txTime) return false;
+        if (!txTime || txTime > targetTime) return acc;
 
-        let txRoot = t.ticker.trim().toUpperCase();
-        if (txRoot.endsWith('F') && !txRoot.endsWith('11') && !txRoot.endsWith('11B') && txRoot.length <= 6) {
-            txRoot = txRoot.slice(0, -1);
-        }
-
-        return txRoot === targetRoot && txTime <= targetTime;
-    })
-    .reduce((acc, t) => {
-        if (t.type === 'BUY') return acc + t.quantity;
-        if (t.type === 'SELL') return acc - t.quantity;
+        if (t.type === 'BUY') return preciseAdd(acc, t.quantity);
+        if (t.type === 'SELL') return preciseSub(acc, t.quantity);
         return acc;
     }, 0);
 };
@@ -88,140 +99,140 @@ export const processPortfolio = (
     assetsMetadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>
 ): PortfolioCalcResult => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const safeTxs = Array.isArray(transactions) ? transactions : [];
     
-    // Ordena transações cronologicamente para cálculo correto de PM
-    const sortedTxs = [...safeTxs].sort((a, b) => a.date.localeCompare(b.date));
-    const safeDividends = Array.isArray(dividends) ? dividends : [];
+    // Normaliza todas as transações para garantir consistência
+    const safeTxs = (transactions || []).map(t => ({
+        ...t,
+        ticker: normalizeTicker(t.ticker)
+    })).sort((a, b) => a.date.localeCompare(b.date)); // Ordenação Cronológica é VITAL para PM
+
+    const safeDividends = dividends || [];
 
     // 1. Processamento de Proventos
+    // Mapa auxiliar para somar dividendos por ativo para exibição no card
+    const divPaidMap: Record<string, number> = {};
+    let totalDividendsReceived = 0;
+
     const receipts = safeDividends.map(d => {
         if (!d || !d.ticker) return null;
-        const normalizedTicker = d.ticker.trim().toUpperCase();
-        // Usa a lógica de data com para saber quantas cotas o usuário tinha no dia de corte
-        const qty = getQuantityOnDate(normalizedTicker, d.dateCom, sortedTxs);
+        const normalizedTicker = normalizeTicker(d.ticker);
         
+        // Calcula quantidade EXATA na data COM
+        const qty = getQuantityOnDate(normalizedTicker, d.dateCom, safeTxs);
+        
+        if (qty <= 0) return null;
+
+        const totalVal = preciseMul(qty, d.rate);
+
+        // Soma ao total global se já passou da data de pagamento
+        if (d.paymentDate <= todayStr) {
+            divPaidMap[normalizedTicker] = preciseAdd(divPaidMap[normalizedTicker] || 0, totalVal);
+            totalDividendsReceived = preciseAdd(totalDividendsReceived, totalVal);
+        }
+
         return { 
             ...d, 
             ticker: normalizedTicker,
             quantityOwned: qty, 
-            totalReceived: qty * d.rate 
+            totalReceived: totalVal 
         };
-    }).filter((r): r is any => !!r && r.totalReceived > 0.0001); 
+    }).filter((r): r is any => !!r); 
 
-    // Mapa auxiliar para somar dividendos por ativo
-    const divPaidMap: Record<string, number> = {};
-    let totalDividendsReceived = 0;
-    
-    receipts.forEach((r: any) => { 
-        // Só soma no total o que já foi pago ou é hoje
-        if (r.paymentDate <= todayStr) { 
-            divPaidMap[r.ticker] = (divPaidMap[r.ticker] || 0) + r.totalReceived; 
-            totalDividendsReceived += r.totalReceived; 
-        } 
-    });
-
-    // 2. Cálculo de Posições (Preço Médio)
+    // 2. Cálculo de Posições (Preço Médio & Lucro de Venda)
     const positions: Record<string, any> = {};
-    
-    sortedTxs.forEach(t => {
-      if (!t.ticker) return;
-      const normalizedTicker = t.ticker.trim().toUpperCase();
+    let salesGain = 0;
+
+    safeTxs.forEach(t => {
+      const ticker = t.ticker; // Já normalizado
       
-      if (!positions[normalizedTicker]) {
-          positions[normalizedTicker] = { 
-              ticker: normalizedTicker, 
+      if (!positions[ticker]) {
+          positions[ticker] = { 
+              ticker: ticker, 
               quantity: 0, 
               averagePrice: 0, 
+              totalCost: 0,
               assetType: t.assetType 
           };
       }
       
-      const p = positions[normalizedTicker];
+      const p = positions[ticker];
       
       if (t.type === 'BUY') { 
-          const newQuantity = p.quantity + t.quantity;
-          if (newQuantity > 0.000001) {
-             const currentTotalCost = round(p.quantity * p.averagePrice);
-             const additionalCost = round(t.quantity * t.price);
-             p.averagePrice = (currentTotalCost + additionalCost) / newQuantity; 
+          // Novo Custo Total = Custo Anterior + (Qtd Nova * Preço Novo)
+          const transactionCost = preciseMul(t.quantity, t.price);
+          p.totalCost = preciseAdd(p.totalCost, transactionCost);
+          p.quantity = preciseAdd(p.quantity, t.quantity);
+          
+          // PM = Custo Total / Quantidade Total
+          if (p.quantity > 0) {
+              p.averagePrice = preciseDiv(p.totalCost, p.quantity);
           }
-          p.quantity = newQuantity; 
-      } else { 
-          p.quantity -= t.quantity; 
-          // Se vender tudo, zera PM
+      } 
+      else if (t.type === 'SELL') { 
+          // Lucro = (Preço Venda - Preço Médio) * Quantidade Vendida
+          const profitPerShare = preciseSub(t.price, p.averagePrice);
+          const tradeProfit = preciseMul(profitPerShare, t.quantity);
+          salesGain = preciseAdd(salesGain, tradeProfit);
+
+          // Atualiza Quantidade e Custo Total Proporcional
+          // O PM não muda na venda, mas o Custo Total diminui proporcionalmente
+          p.quantity = preciseSub(p.quantity, t.quantity);
+          p.totalCost = preciseMul(p.quantity, p.averagePrice);
+
+          // Zera PM se liquidou posição (evita resquícios de ponto flutuante)
           if (p.quantity <= 0.000001) { 
               p.quantity = 0; 
               p.averagePrice = 0; 
+              p.totalCost = 0;
           }
       }
     });
 
-    // 3. Enriquecimento com Metadados e Cotações
-    const finalPortfolio = Object.values(positions)
-        .filter(p => p.quantity > 0.001) // Remove posições zeradas
-        .map(p => {
-            const normalizedTicker = p.ticker.trim().toUpperCase();
-            
-            // Tenta achar metadados (setor, tipo)
-            let meta = assetsMetadata[normalizedTicker];
-            // Fallback para raiz do ticker se for fracionário
-            if (!meta && normalizedTicker.endsWith('F') && !normalizedTicker.endsWith('11F')) {
-                meta = assetsMetadata[normalizedTicker.slice(0, -1)];
-            }
+    // 3. Enriquecimento com Metadados e Cotações e Totais
+    let totalInvested = 0;
+    let totalBalance = 0;
 
-            const quote = quotes[normalizedTicker];
+    const finalPortfolio = Object.values(positions)
+        .filter(p => p.quantity > 0.0001) // Remove posições zeradas
+        .map(p => {
+            // Metadados
+            const meta = assetsMetadata[p.ticker];
+            
+            // Cotação
+            const quote = quotes[p.ticker];
+            const currentPrice = quote?.regularMarketPrice || p.averagePrice; // Fallback pro PM se sem cotação
+            
+            // Formatação de Segmento
             let segment = meta?.segment || 'Geral';
             segment = segment.replace('Seg: ', '').trim();
-            if (segment.length > 20) segment = segment.substring(0, 20) + '...';
+            if (segment.length > 25) segment = segment.substring(0, 25) + '...';
 
-            // Soma dividendos (considerando ticker fracionário apontando pro normal)
-            const dividendsReceived = divPaidMap[p.ticker] || (p.ticker.endsWith('F') ? divPaidMap[p.ticker.slice(0, -1)] : 0) || 0;
+            // Cálculos Finais do Ativo
+            const equity = preciseMul(p.quantity, currentPrice);
+            const cost = p.totalCost; // Use o totalCost acumulado que é mais preciso que qty * PM arredondado
+
+            totalInvested = preciseAdd(totalInvested, cost);
+            totalBalance = preciseAdd(totalBalance, equity);
 
             return { 
                 ...p, 
-                totalDividends: dividendsReceived, 
+                totalDividends: divPaidMap[p.ticker] || 0, 
                 segment: segment, 
-                currentPrice: quote?.regularMarketPrice || p.averagePrice, 
+                currentPrice: currentPrice, 
                 dailyChange: quote?.regularMarketChangePercent || 0, 
                 logoUrl: quote?.logourl, 
                 assetType: meta?.type || p.assetType, 
+                // Fundamentos vindos do JSON/Scraper
                 ...(meta?.fundamentals || {}) 
             };
         });
 
-    // 4. Totais da Carteira
-    const invested = round(finalPortfolio.reduce((a, p) => a + (p.averagePrice * p.quantity), 0));
-    const balance = round(finalPortfolio.reduce((a, p) => a + ((p.currentPrice || p.averagePrice) * p.quantity), 0));
-    
-    // 5. Cálculo de Lucro com Vendas (Trade)
-    let salesGain = 0; 
-    const tracker: Record<string, { q: number; c: number }> = {};
-    
-    sortedTxs.forEach(t => {
-      if (!t.ticker) return;
-      const normalizedTicker = t.ticker.trim().toUpperCase();
-      if (!tracker[normalizedTicker]) tracker[normalizedTicker] = { q: 0, c: 0 };
-      const a = tracker[normalizedTicker];
-      
-      if (t.type === 'BUY') { 
-          a.q += t.quantity; 
-          a.c += round(t.quantity * t.price); 
-      } else if (a.q > 0) { 
-          // Preço médio no momento da venda
-          const cost = round(t.quantity * (a.c / a.q)); 
-          salesGain += round((t.quantity * t.price) - cost); 
-          a.c -= cost; 
-          a.q -= t.quantity; 
-      }
-    });
-
     return { 
         portfolio: finalPortfolio, 
         dividendReceipts: receipts, 
-        totalDividendsReceived, 
-        invested, 
-        balance, 
-        salesGain 
+        totalDividendsReceived: round(totalDividendsReceived), 
+        invested: round(totalInvested), 
+        balance: round(totalBalance), 
+        salesGain: round(salesGain) 
     };
 };
