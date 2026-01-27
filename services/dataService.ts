@@ -64,10 +64,11 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
         market_cap: getVal('val_mercado', 'valor_mercado') || undefined, 
-        assets_value: getVal('patrimonio_liquido', 'patrimonio') || undefined, 
         
-        manager_type: getVal('tipo_gestao') || undefined,
-        management_fee: getVal('taxa_adm') || undefined,
+        // Mapeamento explícito para FIIs
+        assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
+        manager_type: getVal('tipo_gestao', 'manager_type') || undefined,
+        management_fee: getVal('taxa_adm', 'taxa_administracao', 'management_fee') || undefined,
         
         // Ações (Stocks) - Mapeamento com Aliases
         net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),
@@ -222,7 +223,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
-      // Deduplica dividendos para garantir lista limpa
       const uniqueDividends = Array.from(new Map(dividends.map(item => [
           `${item.ticker}-${item.dateCom}-${item.rate}`, item
       ])).values());

@@ -50,6 +50,12 @@ function parseValue(valueStr: any) {
         
         if (!str || str === '-') return 0;
 
+        // Suporte a sufixos de magnitude (B = Bilhão, M = Milhão)
+        let multiplier = 1;
+        if (str.toUpperCase().endsWith('B')) { multiplier = 1000000000; str = str.slice(0, -1); }
+        else if (str.toUpperCase().endsWith('M')) { multiplier = 1000000; str = str.slice(0, -1); }
+        else if (str.toUpperCase().endsWith('K')) { multiplier = 1000; str = str.slice(0, -1); }
+
         // Remove caracteres invisíveis e espaços non-breaking
         str = str.replace(/\s/g, '').replace(/\u00A0/g, '');
 
@@ -60,27 +66,30 @@ function parseValue(valueStr: any) {
         const hasComma = clean.includes(',');
         const hasDot = clean.includes('.');
 
+        let result = 0;
+
         // 1.000,00 (Formato BR Padrão)
         if (hasComma && !hasDot) {
-             return parseFloat(clean.replace(',', '.')) || 0;
+             result = parseFloat(clean.replace(',', '.')) || 0;
         }
-        
         // 1.000 (Sem decimais) ou 1000
-        if (!hasComma && hasDot) {
-             return parseFloat(clean.replace(/\./g, '')) || 0;
+        else if (!hasComma && hasDot) {
+             result = parseFloat(clean.replace(/\./g, '')) || 0;
         }
-
         // 1.000,50 (Misto)
-        if (hasComma && hasDot) {
+        else if (hasComma && hasDot) {
              if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
-                 return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
+                 result = parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
              } else {
-                 return parseFloat(clean.replace(/,/g, '')) || 0;
+                 result = parseFloat(clean.replace(/,/g, '')) || 0;
              }
         }
-        
         // Apenas números
-        return parseFloat(clean.replace(',', '.')) || 0;
+        else {
+            result = parseFloat(clean.replace(',', '.')) || 0;
+        }
+
+        return result * multiplier;
     } catch (e) { return 0; }
 }
 
@@ -138,7 +147,8 @@ async function scrapeInvestidor10(ticker: string) {
             cagr_receita_5a: null, cagr_lucros_5a: null,
             divida_liquida_ebitda: null, ev_ebitda: null,
             lpa: null, vp_cota: null,
-            vacancia: null, ultimo_rendimento: null, num_cotistas: null, patrimonio_liquido: null
+            vacancia: null, ultimo_rendimento: null, num_cotistas: null, patrimonio_liquido: null,
+            taxa_adm: null, tipo_gestao: null
         };
 
         const processPair = (tituloRaw: string, valorRaw: string) => {
@@ -147,29 +157,47 @@ async function scrapeInvestidor10(ticker: string) {
             const valor = valorRaw ? valorRaw.trim() : '';
             if (!valor || valor === '-') return;
 
+            // --- DY ---
             if (dados.dy === null && (tituloClean === 'dy' || tituloClean === 'dividendyield' || titulo.includes('dividend'))) dados.dy = parseValue(valor);
+            
+            // --- P/VP ---
             if (dados.pvp === null && (tituloClean === 'pvp' || titulo === 'p/vp')) dados.pvp = parseValue(valor);
             
+            // --- VPA / VP ---
+            // Prioridade para VPA de ações ou VP de cota
             if (dados.vp_cota === null) {
-                if (tituloClean === 'vpa' || tituloClean === 'vp' || tituloClean === 'valorpatrimonialcota') dados.vp_cota = parseValue(valor);
-                else if (titulo.includes('patrimonial') && titulo.includes('cota')) dados.vp_cota = parseValue(valor);
+                if (tituloClean === 'vpa' || tituloClean === 'vp' || tituloClean === 'valorpatrimonialcota' || tituloClean === 'valorpatrimonialporacao') {
+                    dados.vp_cota = parseValue(valor);
+                } else if (titulo.includes('patrimonial') && (titulo.includes('cota') || titulo.includes('acao'))) {
+                    dados.vp_cota = parseValue(valor);
+                }
             }
-            // Fallback Genérico para "Valor Patrimonial" (pode ser total ou cota)
+            // Fallback Genérico para "Valor Patrimonial"
             if (titulo === 'valor patrimonial' && dados.vp_cota === null) {
                  const v = parseValue(valor);
-                 if (v < 10000) dados.vp_cota = v; else dados.patrimonio_liquido = valor;
+                 if (v < 10000) dados.vp_cota = v; else dados.patrimonio_liquido = valor; // Salva string original se for PL
+            }
+
+            // --- PL (Patrimonio Liquido - String) ---
+            if (!dados.patrimonio_liquido && (tituloClean === 'patrimonioliquido' || (titulo.includes('patrimonio') && titulo.includes('liquido')))) {
+                // Se o valor for muito grande, é PL do fundo/empresa
+                dados.patrimonio_liquido = valor;
             }
 
             if (dados.pl === null && (tituloClean === 'pl' || titulo.includes('p/l'))) dados.pl = parseValue(valor);
             if (dados.liquidez === null && titulo.includes('liquidez')) dados.liquidez = valor; 
             if (dados.segmento === null && titulo.includes('segmento')) dados.segmento = valor;
             if (titulo.includes('mercado') && titulo.includes('valor')) dados.val_mercado = valor;
-            if (!dados.patrimonio_liquido && titulo.includes('patrimonio') && titulo.includes('liquido')) dados.patrimonio_liquido = valor;
 
             if (titulo.includes('vacancia')) dados.vacancia = parseValue(valor);
             if (titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(valor);
             if (tituloClean.includes('cotistas')) dados.num_cotistas = parseValue(valor);
 
+            // --- FIIs Específicos ---
+            if (titulo.includes('taxa') && titulo.includes('administra')) dados.taxa_adm = valor;
+            if (titulo.includes('gestao')) dados.tipo_gestao = valor;
+
+            // --- AÇÕES ---
             if (tituloClean === 'roe' || titulo.includes('roe')) dados.roe = parseValue(valor);
             if (titulo.includes('margem liquida')) dados.margem_liquida = parseValue(valor);
             if (titulo.includes('margem bruta')) dados.margem_bruta = parseValue(valor);
@@ -192,23 +220,27 @@ async function scrapeInvestidor10(ticker: string) {
             processPair(header, body);
         });
 
-        // ESTRATÉGIA 2: Histórico de Indicadores Fundamentalistas (Específico para Ações)
-        // Procura por tabelas que contenham anos nas colunas e indicadores nas linhas
+        // ESTRATÉGIA 2: Tabelas de Características (Comum em FIIs para Taxa Adm/Gestão)
+        $('div#table-general-data, .table-general-data, table').each((_, table) => {
+            $(table).find('tr, .cell').each((__, row) => {
+                const title = $(row).find('h6, span.title, th, .cell-title').first().text();
+                const value = $(row).find('span.value, td, .cell-value').first().text();
+                if (title && value) processPair(title, value);
+            });
+        });
+
+        // ESTRATÉGIA 3: Histórico de Indicadores (Ações VPA/PL)
         const historicoHeader = $('h2, h3, h4').filter((_, el) => {
             const t = normalize($(el).text());
             return t.includes('historico') && t.includes('indicadores');
         }).first();
 
         if (historicoHeader.length > 0) {
-            // Tenta encontrar a tabela próxima ao header
             let tableHistorico = historicoHeader.nextAll().find('table').first();
-            // Se não achar, tenta container pai
             if (tableHistorico.length === 0) tableHistorico = historicoHeader.parent().find('table').first();
-            // Se ainda não achar, procura a próxima tabela no DOM
             if (tableHistorico.length === 0) tableHistorico = historicoHeader.nextAll('table').first();
 
             if (tableHistorico.length > 0) {
-                // Descobre índice da coluna "Atual" ou mais recente
                 let idxAtual = -1;
                 const headers = tableHistorico.find('thead tr').first().find('th, td');
                 
@@ -219,18 +251,14 @@ async function scrapeInvestidor10(ticker: string) {
                     }
                 });
 
-                // Se não achou "Atual", pega a última coluna (assumindo ordem crescente ou decrescente, geralmente a extremidade é o atual)
-                // Investidor10 costuma colocar Atual na direita (último)
-                if (idxAtual === -1 && headers.length > 1) {
-                    idxAtual = headers.length - 1;
-                }
+                if (idxAtual === -1 && headers.length > 1) idxAtual = headers.length - 1;
 
                 if (idxAtual > 0) {
                     tableHistorico.find('tbody tr').each((_, tr) => {
                         const cols = $(tr).find('td');
                         if (cols.length > idxAtual) {
-                            const label = $(cols[0]).text(); // Nome do indicador (ex: P/L)
-                            const val = $(cols[idxAtual]).text(); // Valor na coluna atual
+                            const label = $(cols[0]).text(); 
+                            const val = $(cols[idxAtual]).text(); 
                             processPair(label, val);
                         }
                     });
@@ -238,19 +266,11 @@ async function scrapeInvestidor10(ticker: string) {
             }
         }
 
-        // ESTRATÉGIA 3: Células e Listas Genéricas
+        // ESTRATÉGIA 4: Células e Listas Genéricas
         $('.cell, .data-item, .indicator-item').each((_, el) => {
             const label = $(el).find('.name, .label, .title').text();
             const val = $(el).find('.value, .data, .number').text();
             processPair(label, val);
-        });
-
-        $('div#indicators, div.indicators, ul.indicators').find('div, li').each((_, el) => {
-             const text = $(el).text();
-             if (text.includes(':')) {
-                 const [k, v] = text.split(':');
-                 processPair(k, v);
-             }
         });
 
         const cotacaoEl = $('div._card').filter((i, el) => {
@@ -272,8 +292,6 @@ async function scrapeInvestidor10(ticker: string) {
 
         // --- EXTRAÇÃO ROBUSTA DE DIVIDENDOS ---
         const dividends: any[] = [];
-        
-        // Prioriza busca por título "Histórico de Dividendos" ou similar
         let table = $('#table-dividends-history');
         if (table.length === 0) {
              const divHeader = $('h2, h3, h4').filter((_, el) => {
@@ -288,7 +306,6 @@ async function scrapeInvestidor10(ticker: string) {
             }
         }
         
-        // Fallback genérico se não achou pelo título
         if (table.length === 0) {
             $('table').each((_, tbl) => {
                 const h = normalize($(tbl).text());
@@ -300,10 +317,7 @@ async function scrapeInvestidor10(ticker: string) {
         }
 
         if (table.length > 0) {
-            // Mapeamento Dinâmico de Colunas
             const headers: string[] = [];
-            
-            // Tenta achar thead
             let headerRow = table.find('thead tr').first();
             if (headerRow.length === 0) headerRow = table.find('tbody tr').first();
 
@@ -323,14 +337,12 @@ async function scrapeInvestidor10(ticker: string) {
                 if (h.includes('valor') || h.includes('liquido') || h.includes('rendimento')) idxValue = i;
             });
 
-            // Heurística de Fallback se mapeamento falhar
             if (idxValue === -1) {
                 if (headers.length >= 4) { idxValue = 3; idxDatePay = 2; idxDateCom = 1; idxType = 0; }
                 else if (headers.length === 3) { idxValue = 2; idxDatePay = 1; idxDateCom = 0; }
             }
 
             table.find('tbody tr').each((i, el) => {
-                // Pula a primeira linha se for usada como header
                 if (i === 0 && table.find('thead').length === 0) return;
 
                 const cols = $(el).find('td');
@@ -342,7 +354,6 @@ async function scrapeInvestidor10(ticker: string) {
                 let valStr = idxValue !== -1 && cols[idxValue] ? $(cols[idxValue]).text() : '';
                 let typeStr = idxType !== -1 && cols[idxType] ? $(cols[idxType]).text() : '';
 
-                // Fallback posicional se string estiver vazia
                 if (!valStr && cols.length >= 4) valStr = $(cols[3]).text(); 
                 if (!valStr && cols.length === 3) valStr = $(cols[2]).text();
 

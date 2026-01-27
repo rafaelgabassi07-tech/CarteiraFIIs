@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon, Gem, Calendar, Briefcase, Zap, Layers, AlertTriangle, Loader2, Tag, RefreshCw } from 'lucide-react';
+import { Search, Wallet, ExternalLink, X, TrendingUp, TrendingDown, Building2, BarChart3, Activity, Scale, Percent, AlertCircle, Banknote, Landmark, LineChart, DollarSign, PieChart, Users, ArrowUpRight, BarChart as BarChartIcon, Gem, Calendar, Briefcase, Zap, Layers, AlertTriangle, Loader2, Tag, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { BarChart, Bar, XAxis, YAxis, ReferenceLine, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -49,7 +49,7 @@ const InfoRow = ({ label, value, highlight, subtext, color }: any) => (
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
             {subtext && <span className="text-[9px] text-zinc-300 dark:text-zinc-600 font-medium">{subtext}</span>}
         </div>
-        <span className={`text-sm font-bold ${color || (highlight ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300')}`}>{value}</span>
+        <span className={`text-sm font-bold max-w-[50%] text-right truncate ${color || (highlight ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300')}`}>{value}</span>
     </div>
 );
 
@@ -62,54 +62,84 @@ const SectionHeader = ({ title, icon: Icon }: any) => (
     </div>
 );
 
-const SkeletonFundamentals = () => (
-    <div className="space-y-6 animate-pulse mt-4">
-        <div className="grid grid-cols-2 gap-4">
-            <div className="h-24 bg-zinc-100 dark:bg-zinc-800 rounded-2xl"></div>
-            <div className="h-24 bg-zinc-100 dark:bg-zinc-800 rounded-2xl"></div>
+// Loader Animado
+const AssetLoadingOverlay = () => {
+    const [step, setStep] = useState(0);
+    const steps = ["Conectando à B3...", "Analisando Fundamentos...", "Calculando Proventos..."];
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setStep(prev => (prev + 1) % steps.length);
+        }, 800);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-500">
+            <div className="relative w-16 h-16 mb-6">
+                <div className="absolute inset-0 border-4 border-zinc-200 dark:border-zinc-800 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <RefreshCw className="w-6 h-6 text-indigo-500 animate-pulse" />
+                </div>
+            </div>
+            <div className="h-6 overflow-hidden relative w-full text-center">
+                {steps.map((text, idx) => (
+                    <p key={idx} className={`absolute w-full text-xs font-bold text-zinc-500 uppercase tracking-widest transition-all duration-500 transform ${idx === step ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                        {text}
+                    </p>
+                ))}
+            </div>
         </div>
-        <div className="space-y-3">
-            <div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 rounded"></div>
-            <div className="h-40 bg-zinc-100 dark:bg-zinc-800 rounded-2xl"></div>
-        </div>
-        <div className="space-y-3">
-            <div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 rounded"></div>
-            <div className="h-40 bg-zinc-100 dark:bg-zinc-800 rounded-2xl"></div>
-        </div>
-    </div>
-);
+    );
+};
 
 const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: { asset: AssetPosition, dividends: DividendReceipt[], privacyMode: boolean, onClose: () => void, onRefresh?: (ticker: string) => Promise<void> }) => {
     const [tab, setTab] = useState<'POSICAO' | 'FUNDAMENTOS' | 'PROVENTOS'>('POSICAO');
     const [isUpdating, setIsUpdating] = useState(false);
-    const isFII = asset.assetType === AssetType.FII;
+    
+    // Estado local para evitar "zeroing" visual durante refresh
+    const [displayAsset, setDisplayAsset] = useState<AssetPosition>(asset);
+    
+    const isFII = displayAsset.assetType === AssetType.FII;
+
+    // Sincroniza estado local com prop quando ela muda (e tem dados válidos)
+    useEffect(() => {
+        if (asset) {
+            setDisplayAsset(prev => {
+                // Se a prop nova tiver zeros críticos onde a antiga tinha dados, mantém a antiga
+                if (asset.dy_12m === 0 && prev.dy_12m !== 0) return { ...asset, dy_12m: prev.dy_12m, p_vp: prev.p_vp || asset.p_vp };
+                return asset;
+            });
+        }
+    }, [asset]);
 
     // Trigger de Atualização ao Montar
     useEffect(() => {
         if (onRefresh) {
             setIsUpdating(true);
-            onRefresh(asset.ticker).finally(() => {
-                setTimeout(() => setIsUpdating(false), 800); // Delay mínimo para UX
+            onRefresh(displayAsset.ticker).finally(() => {
+                setTimeout(() => setIsUpdating(false), 500); 
             });
         }
-    }, [asset.ticker]);
+    }, [displayAsset.ticker]);
 
     // Cálculos Gerais
-    const currentTotal = (asset.currentPrice || 0) * asset.quantity;
-    const costTotal = asset.averagePrice * asset.quantity;
+    const currentTotal = (displayAsset.currentPrice || 0) * displayAsset.quantity;
+    const costTotal = displayAsset.averagePrice * displayAsset.quantity;
     const gainValue = currentTotal - costTotal;
     const gainPercent = costTotal > 0 ? (gainValue / costTotal) * 100 : 0;
     const isPositive = gainValue >= 0;
-    const yieldOnCost = costTotal > 0 ? (asset.totalDividends || 0) / costTotal * 100 : 0;
+    const yieldOnCost = costTotal > 0 ? (displayAsset.totalDividends || 0) / costTotal * 100 : 0;
 
     // --- CÁLCULOS DE PROVENTOS ---
     const assetDividends = useMemo(() => {
         if (!dividends) return [];
-        const root = asset.ticker.substring(0, 4);
+        const root = displayAsset.ticker.substring(0, 4);
         return dividends
             .filter(d => d.ticker.startsWith(root))
             .sort((a,b) => a.paymentDate.localeCompare(b.paymentDate));
-    }, [asset, dividends]);
+    }, [displayAsset, dividends]);
 
     const last12MonthsData = useMemo(() => {
         const today = new Date();
@@ -133,6 +163,9 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         return { chartData: data, total12m, monthlyAvg: total12m / 12 };
     }, [assetDividends]);
 
+    // Determina se deve mostrar o loader: Apenas se estiver atualizando E não tiver dados prévios essenciais
+    const showLoader = isUpdating && (!displayAsset.dy_12m && !displayAsset.p_vp);
+
     return (
         <div className="bg-white dark:bg-zinc-950 min-h-full flex flex-col">
             {/* Header */}
@@ -140,19 +173,18 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                 <div className="flex items-center justify-between mb-5 pt-4">
                     <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black border shadow-sm transition-all ${isFII ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/20 dark:border-sky-900/30'}`}>
-                            {asset.ticker.substring(0, 2)}
+                            {displayAsset.ticker.substring(0, 2)}
                         </div>
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                                <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight truncate">{asset.ticker}</h1>
+                                <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight truncate">{displayAsset.ticker}</h1>
                                 {isUpdating && (
-                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-full border border-zinc-200 dark:border-zinc-700 animate-pulse">
-                                        <RefreshCw className="w-3 h-3 animate-spin text-indigo-500" />
-                                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wide">Sincronizando</span>
+                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-full border border-zinc-200 dark:border-zinc-700">
+                                        <RefreshCw className="w-3 h-3 animate-spin text-zinc-400" />
                                     </div>
                                 )}
                             </div>
-                            <p className="text-xs font-medium text-zinc-400 truncate max-w-[200px]">{asset.segment || (isFII ? 'Fundo Imobiliário' : 'Ação')}</p>
+                            <p className="text-xs font-medium text-zinc-400 truncate max-w-[200px]">{displayAsset.segment || (isFII ? 'Fundo Imobiliário' : 'Ação')}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors press-effect">
@@ -216,19 +248,19 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                         <div className="grid grid-cols-2 gap-3">
                             <StatCard 
                                 label="Preço Médio" 
-                                value={formatBRL(asset.averagePrice, privacyMode)} 
+                                value={formatBRL(displayAsset.averagePrice, privacyMode)} 
                                 icon={Tag}
                             />
                             <StatCard 
                                 label="Cotação Atual" 
-                                value={formatBRL(asset.currentPrice || 0, privacyMode)} 
-                                subtext={`${asset.dailyChange && asset.dailyChange > 0 ? '+' : ''}${asset.dailyChange?.toFixed(2)}% (24h)`}
+                                value={formatBRL(displayAsset.currentPrice || 0, privacyMode)} 
+                                subtext={`${displayAsset.dailyChange && displayAsset.dailyChange > 0 ? '+' : ''}${displayAsset.dailyChange?.toFixed(2)}% (24h)`}
                                 icon={TrendingUp}
-                                colorClass={asset.dailyChange && asset.dailyChange > 0 ? 'text-emerald-600 dark:text-emerald-400' : asset.dailyChange && asset.dailyChange < 0 ? 'text-rose-600 dark:text-rose-400' : undefined}
+                                colorClass={displayAsset.dailyChange && displayAsset.dailyChange > 0 ? 'text-emerald-600 dark:text-emerald-400' : displayAsset.dailyChange && displayAsset.dailyChange < 0 ? 'text-rose-600 dark:text-rose-400' : undefined}
                             />
                             <StatCard 
                                 label="Quantidade" 
-                                value={asset.quantity} 
+                                value={displayAsset.quantity} 
                                 icon={Layers}
                             />
                             <StatCard 
@@ -246,22 +278,22 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                 {tab === 'FUNDAMENTOS' && (
                     <div className="space-y-4 anim-fade-in">
                         
-                        {(isUpdating && (asset.dy_12m === undefined && asset.p_vp === undefined)) ? (
-                            <SkeletonFundamentals />
+                        {showLoader ? (
+                            <AssetLoadingOverlay />
                         ) : (
                             <>
                                 {/* CARD DE DESTAQUES PRINCIPAIS */}
                                 <div className="grid grid-cols-2 gap-3 mb-2">
                                     <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{isFII ? "P/VP" : "P/L"}</p>
-                                        <p className={`text-2xl font-black tracking-tight ${isFII && asset.p_vp && asset.p_vp < 1 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
-                                            {isFII ? asset.p_vp?.toFixed(2) || '-' : asset.p_l?.toFixed(2) || '-'}
+                                        <p className={`text-2xl font-black tracking-tight ${isFII && displayAsset.p_vp && displayAsset.p_vp < 1 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
+                                            {isFII ? displayAsset.p_vp?.toFixed(2) || '-' : displayAsset.p_l?.toFixed(2) || '-'}
                                         </p>
                                     </div>
                                     <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">Dividend Yield</p>
                                         <p className="text-2xl font-black tracking-tight text-emerald-500">
-                                            {asset.dy_12m !== undefined && asset.dy_12m !== null ? `${asset.dy_12m.toFixed(2)}%` : '-'}
+                                            {displayAsset.dy_12m !== undefined && displayAsset.dy_12m !== null ? `${displayAsset.dy_12m.toFixed(2)}%` : '-'}
                                         </p>
                                     </div>
                                 </div>
@@ -271,27 +303,27 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                     <>
                                         <SectionHeader title="Valuation & Cotas" icon={Scale} />
                                         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                                            <InfoRow label="Preço / VP" value={asset.p_vp?.toFixed(2) || '-'} highlight />
-                                            <InfoRow label="Valor Patrimonial" value={asset.vpa !== undefined && asset.vpa !== null ? `R$ ${asset.vpa.toFixed(2)}` : '-'} subtext="Por Cota" />
-                                            <InfoRow label="Último Rendimento" value={asset.last_dividend ? `R$ ${asset.last_dividend.toFixed(2)}` : '-'} color="text-emerald-600 dark:text-emerald-400" />
-                                            <InfoRow label="Patrimônio Líquido" value={formatNumber(asset.assets_value)} />
+                                            <InfoRow label="Preço / VP" value={displayAsset.p_vp?.toFixed(2) || '-'} highlight />
+                                            <InfoRow label="Valor Patrimonial" value={displayAsset.vpa !== undefined && displayAsset.vpa !== null ? `R$ ${displayAsset.vpa.toFixed(2)}` : '-'} subtext="Por Cota" />
+                                            <InfoRow label="Último Rendimento" value={displayAsset.last_dividend ? `R$ ${displayAsset.last_dividend.toFixed(2)}` : '-'} color="text-emerald-600 dark:text-emerald-400" />
+                                            <InfoRow label="Patrimônio Líquido" value={formatNumber(displayAsset.assets_value)} />
                                         </div>
 
                                         <SectionHeader title="Qualidade & Gestão" icon={Briefcase} />
                                         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                                            {asset.vacancy !== undefined && (
+                                            {displayAsset.vacancy !== undefined && (
                                                 <InfoRow 
                                                     label="Vacância Física" 
-                                                    value={`${asset.vacancy}%`} 
-                                                    highlight={asset.vacancy > 10} 
-                                                    subtext={asset.vacancy > 10 ? 'Atenção: Alta' : 'Controlada'}
-                                                    color={asset.vacancy > 10 ? 'text-rose-500' : undefined}
+                                                    value={`${displayAsset.vacancy}%`} 
+                                                    highlight={displayAsset.vacancy > 10} 
+                                                    subtext={displayAsset.vacancy > 10 ? 'Atenção: Alta' : 'Controlada'}
+                                                    color={displayAsset.vacancy > 10 ? 'text-rose-500' : undefined}
                                                 />
                                             )}
-                                            <InfoRow label="Liquidez Diária" value={formatNumber(asset.liquidity)} />
-                                            <InfoRow label="Número de Cotistas" value={formatNumber(asset.properties_count)} />
-                                            <InfoRow label="Tipo de Gestão" value={formatNumber(asset.manager_type)} />
-                                            <InfoRow label="Taxa de Admin." value={formatNumber(asset.management_fee)} />
+                                            <InfoRow label="Liquidez Diária" value={formatNumber(displayAsset.liquidity)} />
+                                            <InfoRow label="Número de Cotistas" value={formatNumber(displayAsset.properties_count)} />
+                                            <InfoRow label="Tipo de Gestão" value={formatNumber(displayAsset.manager_type)} />
+                                            <InfoRow label="Taxa de Admin." value={formatNumber(displayAsset.management_fee)} />
                                         </div>
                                     </>
                                 )}
@@ -301,31 +333,31 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                     <>
                                         <SectionHeader title="Valuation" icon={Scale} />
                                         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                                            <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2) || '-'} highlight />
-                                            <InfoRow label="P/VP" value={asset.p_vp?.toFixed(2) || '-'} />
-                                            <InfoRow label="EV / EBITDA" value={asset.ev_ebitda?.toFixed(2) || '-'} />
-                                            <InfoRow label="VPA" value={asset.vpa !== undefined && asset.vpa !== null ? `R$ ${asset.vpa.toFixed(2)}` : '-'} />
-                                            <InfoRow label="LPA" value={asset.lpa !== undefined && asset.lpa !== null ? `R$ ${asset.lpa.toFixed(2)}` : '-'} />
+                                            <InfoRow label="P/L (Preço/Lucro)" value={displayAsset.p_l?.toFixed(2) || '-'} highlight />
+                                            <InfoRow label="P/VP" value={displayAsset.p_vp?.toFixed(2) || '-'} />
+                                            <InfoRow label="EV / EBITDA" value={displayAsset.ev_ebitda?.toFixed(2) || '-'} />
+                                            <InfoRow label="VPA" value={displayAsset.vpa !== undefined && displayAsset.vpa !== null ? `R$ ${displayAsset.vpa.toFixed(2)}` : '-'} />
+                                            <InfoRow label="LPA" value={displayAsset.lpa !== undefined && displayAsset.lpa !== null ? `R$ ${displayAsset.lpa.toFixed(2)}` : '-'} />
                                         </div>
 
                                         <SectionHeader title="Eficiência & Rentabilidade" icon={Zap} />
                                         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                                            <InfoRow label="ROE" value={asset.roe ? `${asset.roe.toFixed(1)}%` : '-'} highlight color={asset.roe && asset.roe > 15 ? 'text-emerald-500' : undefined} />
-                                            <InfoRow label="Margem Líquida" value={asset.net_margin ? `${asset.net_margin.toFixed(1)}%` : '-'} />
-                                            <InfoRow label="Margem Bruta" value={asset.gross_margin ? `${asset.gross_margin.toFixed(1)}%` : '-'} />
+                                            <InfoRow label="ROE" value={displayAsset.roe ? `${displayAsset.roe.toFixed(1)}%` : '-'} highlight color={displayAsset.roe && displayAsset.roe > 15 ? 'text-emerald-500' : undefined} />
+                                            <InfoRow label="Margem Líquida" value={displayAsset.net_margin ? `${displayAsset.net_margin.toFixed(1)}%` : '-'} />
+                                            <InfoRow label="Margem Bruta" value={displayAsset.gross_margin ? `${displayAsset.gross_margin.toFixed(1)}%` : '-'} />
                                         </div>
 
                                         <SectionHeader title="Crescimento & Dívida" icon={TrendingUp} />
                                         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                                            <InfoRow label="CAGR Receita (5a)" value={asset.cagr_revenue ? `${asset.cagr_revenue.toFixed(1)}%` : '-'} />
-                                            <InfoRow label="CAGR Lucros (5a)" value={asset.cagr_profits ? `${asset.cagr_profits.toFixed(1)}%` : '-'} />
-                                            <InfoRow label="Dív. Líq. / EBITDA" value={asset.net_debt_ebitda ? `${asset.net_debt_ebitda.toFixed(2)}x` : '-'} />
+                                            <InfoRow label="CAGR Receita (5a)" value={displayAsset.cagr_revenue ? `${displayAsset.cagr_revenue.toFixed(1)}%` : '-'} />
+                                            <InfoRow label="CAGR Lucros (5a)" value={displayAsset.cagr_profits ? `${displayAsset.cagr_profits.toFixed(1)}%` : '-'} />
+                                            <InfoRow label="Dív. Líq. / EBITDA" value={displayAsset.net_debt_ebitda ? `${displayAsset.net_debt_ebitda.toFixed(2)}x` : '-'} />
                                         </div>
                                     </>
                                 )}
 
                                 <div className="pt-4">
-                                    <a href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${asset.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest press-effect shadow-xl group">
+                                    <a href={`https://investidor10.com.br/${isFII ? 'fiis' : 'acoes'}/${displayAsset.ticker.toLowerCase()}/`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest press-effect shadow-xl group">
                                         Análise Completa Investidor10 <ExternalLink className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                                     </a>
                                 </div>
@@ -342,7 +374,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                             <div className="flex justify-between items-start mb-4 relative z-10">
                                 <div>
                                     <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Total Recebido</p>
-                                    <h3 className="text-3xl font-black tracking-tight">{formatBRL(asset.totalDividends || 0, privacyMode)}</h3>
+                                    <h3 className="text-3xl font-black tracking-tight">{formatBRL(displayAsset.totalDividends || 0, privacyMode)}</h3>
                                 </div>
                                 <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-md shadow-sm">
                                     <Banknote className="w-6 h-6 text-white" />
