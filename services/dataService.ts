@@ -12,11 +12,8 @@ export interface UnifiedMarketData {
 }
 
 const getTTL = () => {
-    const now = new Date();
-    const day = now.getDay();
-    const hour = now.getHours();
-    const isMarketOpen = day >= 1 && day <= 5 && hour >= 10 && hour < 18;
-    return isMarketOpen ? 20 * 60 * 1000 : 4 * 60 * 60 * 1000;
+    // Cache mais agressivo para evitar chamadas desnecessárias
+    return 60 * 60 * 1000; // 1 Hora
 };
 
 const isStale = (dateString?: string) => {
@@ -26,8 +23,6 @@ const isStale = (dateString?: string) => {
     return (now - lastUpdate) > getTTL();
 };
 
-// --- HELPERS DE PARSING ---
-
 const parseNumberSafe = (val: any): number => {
     if (typeof val === 'number') return val;
     if (!val) return 0;
@@ -35,13 +30,18 @@ const parseNumberSafe = (val: any): number => {
     let str = String(val).replace(/[^\d.,-]/g, '').trim();
     if (!str || str === '-') return 0;
 
-    const lastComma = str.lastIndexOf(',');
-    const lastDot = str.lastIndexOf('.');
+    // Detecta formato BR (ex: 1.000,50) vs US (1000.50)
+    const hasComma = str.includes(',');
+    const hasDot = str.includes('.');
 
-    if (lastComma > lastDot) {
-        str = str.replace(/\./g, '').replace(',', '.');
-    } else if (lastDot > lastComma) {
-        str = str.replace(/,/g, '');
+    if (hasComma && hasDot) {
+        if (str.lastIndexOf(',') > str.lastIndexOf('.')) { // 1.000,50
+             str = str.replace(/\./g, '').replace(',', '.');
+        } else { // 1,000.50
+             str = str.replace(/,/g, '');
+        }
+    } else if (hasComma) {
+        str = str.replace(',', '.');
     }
 
     const num = parseFloat(str);
@@ -51,37 +51,40 @@ const parseNumberSafe = (val: any): number => {
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
     const getVal = (...keys: string[]): any => {
         for (const k of keys) {
-            if (m[k] !== undefined && m[k] !== null && m[k] !== 'N/A' && m[k] !== '') return m[k];
+            // Aceita 0 como valor válido, mas rejeita null/undefined/string vazia
+            if (m[k] !== undefined && m[k] !== null && m[k] !== '' && m[k] !== 'N/A') return m[k];
         }
         return undefined;
     };
 
     return {
-        p_vp: parseNumberSafe(getVal('pvp', 'p_vp', 'vp')),
-        dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield')), 
+        // Indicadores Gerais
+        p_vp: parseNumberSafe(getVal('pvp', 'p_vp')),
+        dy_12m: parseNumberSafe(getVal('dy_12m', 'dy')), 
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
         
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
-        market_cap: getVal('valor_mercado', 'val_mercado', 'market_cap') || undefined, 
-        assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
+        market_cap: getVal('val_mercado', 'valor_mercado') || undefined, 
+        assets_value: getVal('patrimonio_liquido') || undefined, 
         
-        manager_type: getVal('tipo_gestao', 'manager_type', 'gestao') || undefined,
-        management_fee: getVal('taxa_adm', 'management_fee', 'taxadeadministracao', 'taxaadm') || undefined,
+        manager_type: getVal('tipo_gestao') || undefined,
+        management_fee: getVal('taxa_adm') || undefined,
         
-        // Indicadores Fundamentalistas Ações
-        net_margin: parseNumberSafe(getVal('margem_liquida', 'net_margin', 'margemliquida')),
-        gross_margin: parseNumberSafe(getVal('margem_bruta', 'gross_margin', 'margembruta')),
-        cagr_revenue: parseNumberSafe(getVal('cagr_receita', 'cagr_receita_5a', 'cagrreceitas5anos')),
-        cagr_profits: parseNumberSafe(getVal('cagr_lucro', 'cagr_lucros_5a', 'cagrlucros5anos')),
-        net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'net_debt_ebitda', 'dividaliquidaebitda')),
-        ev_ebitda: parseNumberSafe(getVal('ev_ebitda', 'evebitda')),
+        // Ações (Stocks)
+        net_margin: parseNumberSafe(getVal('margem_liquida')),
+        gross_margin: parseNumberSafe(getVal('margem_bruta')),
+        cagr_revenue: parseNumberSafe(getVal('cagr_receita_5a')),
+        cagr_profits: parseNumberSafe(getVal('cagr_lucros_5a')),
+        net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda')),
+        ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
         lpa: parseNumberSafe(getVal('lpa')),
-        vpa: parseNumberSafe(getVal('vpa', 'vp_cota', 'vp')),
+        vpa: parseNumberSafe(getVal('vp_cota', 'vpa')),
         
-        vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica', 'vacancy')),
-        last_dividend: parseNumberSafe(getVal('ultimo_rendimento', 'last_dividend', 'rendimento', 'ultimorendimento')),
-        properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas', 'num_cotistas')),
+        // FIIs
+        vacancy: parseNumberSafe(getVal('vacancia')),
+        last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
+        properties_count: parseNumberSafe(getVal('num_cotistas')),
         
         updated_at: m.updated_at,
         sentiment: 'Neutro',
@@ -118,78 +121,41 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
     const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker)));
     const results: ScrapeResult[] = [];
     
-    const tickersToUpdate: string[] = [];
-
-    if (force) {
-        tickersToUpdate.push(...uniqueTickers);
-    } else {
-        const { data: existingData } = await supabase
-            .from('ativos_metadata')
-            .select('ticker, updated_at')
-            .in('ticker', uniqueTickers);
-            
-        const dbMap = new Map<string, string>((existingData || []).map((d: any) => [d.ticker, d.updated_at]));
-
-        uniqueTickers.forEach(t => {
-            const lastUpdate = dbMap.get(t);
-            if (!lastUpdate || isStale(lastUpdate)) {
-                tickersToUpdate.push(t);
-            } else {
-                results.push({ ticker: t, status: 'success', message: 'Cached (Fresh)' });
-            }
-        });
-    }
-
-    if (tickersToUpdate.length === 0) return results;
-
+    // Batch processing to prevent timeouts
     const BATCH_SIZE = 3;
-    for (let i = 0; i < tickersToUpdate.length; i += BATCH_SIZE) {
-        const batch = tickersToUpdate.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
+        const batch = uniqueTickers.slice(i, i + BATCH_SIZE);
         
         await Promise.all(batch.map(async (ticker) => {
             try {
+                // Chama API local com force=true
                 const res = await fetch(`/api/update-stock?ticker=${ticker}&force=${force}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                
                 const data = await res.json();
 
                 if (data.success && data.data) {
-                    const meta = data.data;
                     results.push({
                         ticker,
                         status: 'success',
                         details: {
-                            price: parseNumberSafe(meta.cotacao_atual || meta.current_price),
-                            dy: parseNumberSafe(meta.dy || meta.dy_12m),
-                            pvp: parseNumberSafe(meta.pvp),
-                            pl: parseNumberSafe(meta.pl)
+                            price: parseNumberSafe(data.data.current_price || data.data.cotacao_atual),
+                            dy: parseNumberSafe(data.data.dy_12m || data.data.dy)
                         },
-                        rawFundamentals: meta,
+                        rawFundamentals: data.data,
                         dividendsFound: data.dividends 
                     });
                 } else {
-                    try {
-                        const { quotes } = await getQuotes([ticker]);
-                        if(quotes.length > 0) {
-                             results.push({
-                                ticker,
-                                status: 'success', 
-                                details: { price: quotes[0].regularMarketPrice },
-                                message: 'Fallback to Brapi (Scraper Failed)'
-                            });
-                        } else {
-                            throw new Error(data.error);
-                        }
-                    } catch {
-                        throw new Error(data.error || 'Falha na resposta da API');
-                    }
+                    throw new Error(data.error || 'Erro desconhecido');
                 }
             } catch (e: any) {
-                console.warn(`Falha ao atualizar ${ticker}`, e);
-                results.push({ ticker, status: 'error', message: e.message || 'Erro de conexão' });
+                console.warn(`Update failed for ${ticker}`, e);
+                results.push({ ticker, status: 'error', message: e.message });
             }
         }));
 
-        if (i + BATCH_SIZE < tickersToUpdate.length) {
-            await new Promise(r => setTimeout(r, 1200));
+        if (i + BATCH_SIZE < uniqueTickers.length) {
+            await new Promise(r => setTimeout(r, 1000));
         }
     }
     
@@ -210,26 +176,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       const dividendsData = divResponse.data || [];
       const metaData = metaResponse.data || [];
 
-      const staleTickers: string[] = [];
-      const metaMap = new Map<string, any>(metaData.map((m: any) => [m.ticker, m]));
-
-      uniqueTickers.forEach(t => {
-          const meta = metaMap.get(t);
-          // Força update se dados críticos de ações estiverem faltando
-          const isMissingStockData = meta && meta.type !== 'FII' && (!meta.ev_ebitda && !meta.roe);
-          const isStaleData = !meta || isStale(meta.updated_at);
-          
-          if (isStaleData || isMissingStockData || forceRefresh) {
-              staleTickers.push(t);
-          }
-      });
-
-      if (staleTickers.length > 0) {
-          triggerScraperUpdate(staleTickers, forceRefresh).catch(console.error);
-      }
-
+      // Mapeamento dos dividendos
       const dividends: DividendReceipt[] = dividendsData.map((d: any) => ({
-            id: d.id,
+            id: d.id || `${d.ticker}-${d.date_com}-${d.rate}`,
             ticker: d.ticker,
             type: d.type,
             dateCom: d.date_com, 
@@ -239,6 +188,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
+      // Mapeamento dos metadados com parsing
       const metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};
       
       metaData.forEach((m: any) => {
@@ -254,6 +204,22 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
               fundamentals: mapScraperToFundamentals(m)
           };
       });
+
+      // Checa se algum ticker solicitado não tem dados ou dados velhos
+      const missingOrStale = uniqueTickers.filter(t => {
+          const m = metadata[t];
+          return !m || (m.fundamentals?.updated_at && isStale(m.fundamentals.updated_at));
+      });
+
+      // Se forceRefresh for true, atualizamos todos. Se não, só os que faltam.
+      const toUpdate = forceRefresh ? uniqueTickers : missingOrStale;
+
+      if (toUpdate.length > 0) {
+          // Dispara update em background (não bloqueia UI)
+          triggerScraperUpdate(toUpdate, true).then(results => {
+              console.log(`[DataService] Background update finished for ${results.length} assets`);
+          });
+      }
 
       const ipca = await fetchInflationData();
 

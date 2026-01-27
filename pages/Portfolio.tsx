@@ -66,11 +66,10 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         if (onRefresh) {
             setIsUpdating(true);
             onRefresh(asset.ticker).finally(() => {
-                // Pequeno delay para suavizar a UI
                 setTimeout(() => setIsUpdating(false), 500);
             });
         }
-    }, []);
+    }, [asset.ticker]); // Dependência adicionada para garantir execução se o ticker mudar
 
     // Cálculos Gerais
     const currentTotal = (asset.currentPrice || 0) * asset.quantity;
