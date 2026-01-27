@@ -33,7 +33,6 @@ const client = axios.create({
 });
 
 // --- HELPERS DE PARSEAMENTO ---
-const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
 function normalize(str: string) {
@@ -58,7 +57,6 @@ function parseValue(valueStr: any) {
         
         if (!clean) return 0;
 
-        // Lógica de Detecção de Formato (BR vs US)
         const hasComma = clean.includes(',');
         const hasDot = clean.includes('.');
 
@@ -67,29 +65,26 @@ function parseValue(valueStr: any) {
              return parseFloat(clean.replace(',', '.')) || 0;
         }
         
-        // 1.000.00 (Raro, ou US sem vírgula)
+        // 1.000 (Sem decimais ou US?)
         if (!hasComma && hasDot) {
-             // Se tiver múltiplos pontos (1.000.000), remove todos menos o último? Não, JS parseFloat para no segundo ponto.
-             // Assumimos que ponto é decimal se não houver vírgula, a menos que seja separador de milhar isolado.
-             // Mas no Brasil, ponto é milhar. Então 1.000 -> 1000.
-             // Se for 10.5 -> 10.5 (índices costumam usar ponto em APIs, mas sites BR usam vírgula).
-             // Vamos priorizar vírgula como decimal. Se só tem ponto, removemos (1.000 = 1000).
+             // Heurística: Se tem ponto e o valor resultante é pequeno (ex: < 100), provavelmente é decimal US (ex: 10.5)
+             // Se é grande, é milhar BR (ex: 1.000)
+             // Mas como estamos no BR, assume milhar por padrão, exceto se parecer muito um índice pequeno.
+             // Vamos remover o ponto para segurança (1.000 -> 1000).
              return parseFloat(clean.replace(/\./g, '')) || 0;
         }
 
         // 1.000,50 (Misto)
         if (hasComma && hasDot) {
              if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
-                 // 1.000,50 -> remove ponto, troca vírgula
                  return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
              } else {
-                 // 1,000.50 (US) -> remove vírgula
                  return parseFloat(clean.replace(/,/g, '')) || 0;
              }
         }
         
-        // Apenas números
-        return parseFloat(clean) || 0;
+        // Apenas números (e.g. "15" ou "10,5" se passou direto)
+        return parseFloat(clean.replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
 
@@ -157,7 +152,6 @@ async function scrapeInvestidor10(ticker: string) {
         // Função universal de processamento de pares Chave/Valor
         const processPair = (tituloRaw: string, valorRaw: string) => {
             const titulo = normalize(tituloRaw);
-            // Cria versão "limpa" (apenas letras e números) para lidar com "V.P.A.", "P/VP", "D.Y.", etc.
             const tituloClean = titulo.replace(/[^a-z0-9]/g, ''); 
             
             const valor = valorRaw ? valorRaw.trim() : '';
@@ -174,7 +168,6 @@ async function scrapeInvestidor10(ticker: string) {
             }
             
             // --- VPA / VP (Valor Patrimonial por Ação/Cota) ---
-            // Ações usam muito "V.P.A."
             if (dados.vp_cota === null) {
                 if (tituloClean === 'vpa' || tituloClean === 'vp' || tituloClean === 'valorpatrimonialcota') {
                     dados.vp_cota = parseValue(valor);
@@ -182,9 +175,10 @@ async function scrapeInvestidor10(ticker: string) {
                     dados.vp_cota = parseValue(valor);
                 }
             }
-            // Fallback: Se achou "Valor Patrimonial" genérico e é um valor baixo (< 10000), assume que é unitário
+            // Fallback Genérico para "Valor Patrimonial" (pode ser total ou cota)
             if (titulo === 'valor patrimonial' && dados.vp_cota === null) {
                  const v = parseValue(valor);
+                 // Heurística: Se < 10000, assume que é por cota. Se maior, é patrimônio total.
                  if (v < 10000) dados.vp_cota = v;
                  else dados.patrimonio_liquido = valor;
             }
@@ -199,7 +193,8 @@ async function scrapeInvestidor10(ticker: string) {
             if (dados.segmento === null && titulo.includes('segmento')) dados.segmento = valor;
             
             if (titulo.includes('mercado') && titulo.includes('valor')) dados.val_mercado = valor;
-            if (titulo.includes('patrimonio') && titulo.includes('liquido')) dados.patrimonio_liquido = valor;
+            // Se já não pegou patrimônio total acima
+            if (!dados.patrimonio_liquido && titulo.includes('patrimonio') && titulo.includes('liquido')) dados.patrimonio_liquido = valor;
 
             // --- FIIs ---
             if (titulo.includes('vacancia')) dados.vacancia = parseValue(valor);
@@ -224,14 +219,14 @@ async function scrapeInvestidor10(ticker: string) {
             if (tituloClean === 'lpa' || titulo.includes('lpa')) dados.lpa = parseValue(valor);
         };
 
-        // ESTRATÉGIA 1: Cards do Topo
+        // ESTRATÉGIA 1: Cards do Topo (Layout Novo)
         $('div._card').each((_, el) => {
             const header = $(el).find('div._card-header').text() || $(el).find('.header').text() || $(el).find('span').first().text();
             const body = $(el).find('div._card-body').text() || $(el).find('.body').text() || $(el).find('span').last().text();
             processPair(header, body);
         });
 
-        // ESTRATÉGIA 2: Células de Indicadores
+        // ESTRATÉGIA 2: Células de Indicadores (Layout Grid)
         $('.cell, .data-item, .indicator-item').each((_, el) => {
             const label = $(el).find('.name, .label, .title').text();
             const val = $(el).find('.value, .data, .number').text();
@@ -246,7 +241,22 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        // Cotação Atual
+        // ESTRATÉGIA 4: Listas e Indicadores Isolados (Layout Antigo/Mobile)
+        // Isso recupera itens que estão em listas <ul> ou divs genéricas com ID indicators
+        $('div#indicators, div.indicators, ul.indicators').find('div, li').each((_, el) => {
+             const text = $(el).text();
+             if (text.includes(':')) {
+                 const [k, v] = text.split(':');
+                 processPair(k, v);
+             } else {
+                 // Tenta pegar label/value por classes filhas se existirem
+                 const label = $(el).find('span').first().text();
+                 const val = $(el).find('span').last().text();
+                 if (label && val && label !== val) processPair(label, val);
+             }
+        });
+
+        // Cotação Atual (Destaque)
         const cotacaoEl = $('div._card').filter((i, el) => {
             const t = normalize($(el).text());
             return t.includes('cotacao') || t.includes('valor atual');
@@ -255,7 +265,7 @@ async function scrapeInvestidor10(ticker: string) {
             dados.cotacao_atual = parseValue(cotacaoEl.find('div._card-body').text());
         }
 
-        // Segmento
+        // Segmento (Breadcrumbs)
         if (!dados.segmento) {
             $('#breadcrumbs li, .breadcrumbs span, .breadcrumb-item').each((_, el) => {
                 const t = $(el).text().trim();
@@ -316,7 +326,7 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        // Garante que vpa seja preenchido também na chave principal se estiver em vp_cota
+        // Garante VPA
         if (dados.vp_cota !== null && dados.vpa === undefined) {
             dados.vpa = dados.vp_cota;
         }
@@ -327,8 +337,9 @@ async function scrapeInvestidor10(ticker: string) {
             current_price: dados.cotacao_atual,
         };
 
+        // Remove nulos/undefined, mas MANTÉM zeros (0)
         Object.keys(finalMetadata).forEach(key => {
-            if (finalMetadata[key] === null || finalMetadata[key] === undefined) delete finalMetadata[key];
+            if (finalMetadata[key] === null || finalMetadata[key] === undefined || finalMetadata[key] === '') delete finalMetadata[key];
         });
 
         return { metadata: finalMetadata, dividends };
@@ -381,7 +392,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const dbPayload = { ...metadata };
             delete dbPayload.dy;
             delete dbPayload.cotacao_atual;
-            // Salva vpa como vp_cota se o banco esperar essa coluna
+            // Garante que salve vp_cota se o banco esperar essa coluna
             if (dbPayload.vpa && !dbPayload.vp_cota) dbPayload.vp_cota = dbPayload.vpa;
             
             await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
