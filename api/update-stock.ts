@@ -54,24 +54,42 @@ function parseValue(valueStr: any) {
         if (!str || str === '-') return 0;
 
         // Remove tudo que não é número, vírgula, ponto ou hífen
-        // Mantém pontos e vírgulas para decisão de formato
         const clean = str.replace(/[^0-9,.-]+/g, ""); 
         
         if (!clean) return 0;
 
-        // Formato Brasileiro: 1.000,00 -> remove ponto, troca vírgula por ponto
-        if (clean.includes(',') && !clean.includes('.')) {
+        // Lógica de Detecção de Formato (BR vs US)
+        const hasComma = clean.includes(',');
+        const hasDot = clean.includes('.');
+
+        // 1.000,00 (Formato BR Padrão)
+        if (hasComma && !hasDot) {
              return parseFloat(clean.replace(',', '.')) || 0;
         }
-        if (clean.includes(',') && clean.includes('.')) {
-             // Assume que o último separador é o decimal
+        
+        // 1.000.00 (Raro, ou US sem vírgula)
+        if (!hasComma && hasDot) {
+             // Se tiver múltiplos pontos (1.000.000), remove todos menos o último? Não, JS parseFloat para no segundo ponto.
+             // Assumimos que ponto é decimal se não houver vírgula, a menos que seja separador de milhar isolado.
+             // Mas no Brasil, ponto é milhar. Então 1.000 -> 1000.
+             // Se for 10.5 -> 10.5 (índices costumam usar ponto em APIs, mas sites BR usam vírgula).
+             // Vamos priorizar vírgula como decimal. Se só tem ponto, removemos (1.000 = 1000).
+             return parseFloat(clean.replace(/\./g, '')) || 0;
+        }
+
+        // 1.000,50 (Misto)
+        if (hasComma && hasDot) {
              if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
+                 // 1.000,50 -> remove ponto, troca vírgula
                  return parseFloat(clean.replace(/\./g, '').replace(',', '.')) || 0;
+             } else {
+                 // 1,000.50 (US) -> remove vírgula
+                 return parseFloat(clean.replace(/,/g, '')) || 0;
              }
         }
         
-        // Fallback genérico
-        return parseFloat(clean.replace(',', '.')) || 0;
+        // Apenas números
+        return parseFloat(clean) || 0;
     } catch (e) { return 0; }
 }
 
@@ -139,89 +157,88 @@ async function scrapeInvestidor10(ticker: string) {
         // Função universal de processamento de pares Chave/Valor
         const processPair = (tituloRaw: string, valorRaw: string) => {
             const titulo = normalize(tituloRaw);
+            // Cria versão "limpa" (apenas letras e números) para lidar com "V.P.A.", "P/VP", "D.Y.", etc.
+            const tituloClean = titulo.replace(/[^a-z0-9]/g, ''); 
+            
             const valor = valorRaw ? valorRaw.trim() : '';
             if (!valor || valor === '-') return;
 
             // --- DY (Dividend Yield) ---
-            // Captura: "Dividend Yield", "DY", "DY (12M)"
-            if (dados.dy === null && (titulo.includes('dividend') || titulo.startsWith('dy'))) {
+            if (dados.dy === null && (tituloClean === 'dy' || tituloClean === 'dividendyield' || titulo.includes('dividend'))) {
                 dados.dy = parseValue(valor);
             }
 
-            // --- P/VP e VP ---
-            // P/VP
-            if (dados.pvp === null && (titulo === 'p/vp' || titulo === 'pvp')) {
+            // --- P/VP ---
+            if (dados.pvp === null && (tituloClean === 'pvp' || titulo === 'p/vp')) {
                 dados.pvp = parseValue(valor);
             }
             
-            // VP (Valor Patrimonial por Cota)
-            // Evita confundir com P/VP. Captura "VPA", "VP", "Valor Patrimonial" (se não for o total)
-            // Geralmente VP por cota é um valor pequeno (< 10000), Valor Patrimonial total é gigante.
-            // Mas aqui olhamos o título.
-            if (titulo === 'vpa' || titulo === 'vp' || (titulo.includes('patrimonial') && titulo.includes('cota'))) {
-                dados.vp_cota = parseValue(valor);
-            } else if (titulo === 'valor patrimonial') {
-                // Ambiguidade: pode ser total ou por cota dependendo do layout.
-                // Geralmente em cards de destaque é por cota se estiver ao lado de P/VP.
-                // Vamos tentar parsear.
-                const v = parseValue(valor);
-                // Heurística: Se for FII e valor < 10000, provavelmente é cota. Se > 1.000.000 é total.
-                if (v < 10000) dados.vp_cota = v;
-                else dados.patrimonio_liquido = valor;
+            // --- VPA / VP (Valor Patrimonial por Ação/Cota) ---
+            // Ações usam muito "V.P.A."
+            if (dados.vp_cota === null) {
+                if (tituloClean === 'vpa' || tituloClean === 'vp' || tituloClean === 'valorpatrimonialcota') {
+                    dados.vp_cota = parseValue(valor);
+                } else if (titulo.includes('patrimonial') && titulo.includes('cota')) {
+                    dados.vp_cota = parseValue(valor);
+                }
+            }
+            // Fallback: Se achou "Valor Patrimonial" genérico e é um valor baixo (< 10000), assume que é unitário
+            if (titulo === 'valor patrimonial' && dados.vp_cota === null) {
+                 const v = parseValue(valor);
+                 if (v < 10000) dados.vp_cota = v;
+                 else dados.patrimonio_liquido = valor;
             }
 
             // --- P/L ---
-            if (dados.pl === null && (titulo.includes('p/l') || titulo === 'pl')) dados.pl = parseValue(valor);
+            if (dados.pl === null && (tituloClean === 'pl' || titulo.includes('p/l'))) {
+                dados.pl = parseValue(valor);
+            }
             
             // --- GERAIS ---
-            if (dados.liquidez === null && titulo.includes('liquidez')) dados.liquidez = valor; // String formatada
+            if (dados.liquidez === null && titulo.includes('liquidez')) dados.liquidez = valor; 
             if (dados.segmento === null && titulo.includes('segmento')) dados.segmento = valor;
             
-            if (titulo.includes('mercado') && titulo.includes('valor')) dados.val_mercado = valor; // String formatada
+            if (titulo.includes('mercado') && titulo.includes('valor')) dados.val_mercado = valor;
             if (titulo.includes('patrimonio') && titulo.includes('liquido')) dados.patrimonio_liquido = valor;
 
             // --- FIIs ---
             if (titulo.includes('vacancia')) dados.vacancia = parseValue(valor);
             if (titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(valor);
-            if (titulo.includes('cotistas') && !titulo.includes('num')) dados.num_cotistas = parseValue(valor);
+            if (tituloClean.includes('cotistas')) dados.num_cotistas = parseValue(valor);
 
-            // --- AÇÕES (Eficiência & Rentabilidade) ---
-            if (titulo === 'roe' || titulo.includes('roe')) dados.roe = parseValue(valor);
+            // --- AÇÕES ---
+            if (tituloClean === 'roe' || titulo.includes('roe')) dados.roe = parseValue(valor);
             if (titulo.includes('margem liquida')) dados.margem_liquida = parseValue(valor);
             if (titulo.includes('margem bruta')) dados.margem_bruta = parseValue(valor);
 
-            // --- AÇÕES (Dívida & Valuation) ---
-            if (titulo.includes('ebitda')) {
-                if (titulo.includes('div') && titulo.includes('liq')) dados.divida_liquida_ebitda = parseValue(valor);
-                else if (titulo.includes('ev')) dados.ev_ebitda = parseValue(valor);
+            if (tituloClean.includes('ebitda')) {
+                if (tituloClean.includes('div') && tituloClean.includes('liq')) dados.divida_liquida_ebitda = parseValue(valor);
+                else if (tituloClean.includes('ev')) dados.ev_ebitda = parseValue(valor);
             }
             
-            // --- AÇÕES (Crescimento) ---
             if (titulo.includes('cagr')) {
                 if (titulo.includes('receita')) dados.cagr_receita_5a = parseValue(valor);
                 if (titulo.includes('lucro')) dados.cagr_lucros_5a = parseValue(valor);
             }
 
-            // --- POR AÇÃO ---
-            if (titulo === 'lpa' || titulo.includes('lpa')) dados.lpa = parseValue(valor);
+            if (tituloClean === 'lpa' || titulo.includes('lpa')) dados.lpa = parseValue(valor);
         };
 
-        // ESTRATÉGIA 1: Cards do Topo (Layout Novo)
+        // ESTRATÉGIA 1: Cards do Topo
         $('div._card').each((_, el) => {
             const header = $(el).find('div._card-header').text() || $(el).find('.header').text() || $(el).find('span').first().text();
             const body = $(el).find('div._card-body').text() || $(el).find('.body').text() || $(el).find('span').last().text();
             processPair(header, body);
         });
 
-        // ESTRATÉGIA 2: Células de Indicadores (Ações geralmente usam grid de células)
-        // Procura em qualquer lugar com classe .cell ou .data-item
+        // ESTRATÉGIA 2: Células de Indicadores
         $('.cell, .data-item, .indicator-item').each((_, el) => {
             const label = $(el).find('.name, .label, .title').text();
             const val = $(el).find('.value, .data, .number').text();
             processPair(label, val);
         });
 
-        // ESTRATÉGIA 3: Tabelas Genéricas (Fallback para layouts antigos)
+        // ESTRATÉGIA 3: Tabelas Genéricas
         $('table tbody tr').each((_, row) => {
             const cols = $(row).find('td');
             if (cols.length >= 2) {
@@ -229,18 +246,7 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        // ESTRATÉGIA 4: Listas Específicas (Indicators Box)
-        $('div#indicators, div.indicators').find('div > span, div > div').each((_, el) => {
-             // Tenta pegar texto direto ou filhos
-             const text = $(el).text();
-             // Heurística fraca, mas pode pegar coisas soltas se estruturadas como Label: Valor
-             if (text.includes(':')) {
-                 const [k, v] = text.split(':');
-                 processPair(k, v);
-             }
-        });
-
-        // Cotação Atual (Destaque)
+        // Cotação Atual
         const cotacaoEl = $('div._card').filter((i, el) => {
             const t = normalize($(el).text());
             return t.includes('cotacao') || t.includes('valor atual');
@@ -249,7 +255,7 @@ async function scrapeInvestidor10(ticker: string) {
             dados.cotacao_atual = parseValue(cotacaoEl.find('div._card-body').text());
         }
 
-        // Segmento (Breadcrumbs)
+        // Segmento
         if (!dados.segmento) {
             $('#breadcrumbs li, .breadcrumbs span, .breadcrumb-item').each((_, el) => {
                 const t = $(el).text().trim();
@@ -259,18 +265,16 @@ async function scrapeInvestidor10(ticker: string) {
             });
         }
 
-        // 5. EXTRAÇÃO DE DIVIDENDOS (Reforçado)
+        // Extração de Dividendos
         const dividends: any[] = [];
         let tableRows = $('#table-dividends-history tbody tr');
         
-        // Se não achou pelo ID padrão, procura qualquer tabela que pareça ser de dividendos
         if (tableRows.length === 0) {
             $('table').each((_, tbl) => {
                 const h = normalize($(tbl).text());
-                // Palavras-chave: "Data Com" + "Pagamento" + ("Valor" ou "Liquido")
                 if (h.includes('com') && h.includes('pagamento') && (h.includes('valor') || h.includes('liquido') || h.includes('provento'))) {
                     tableRows = $(tbl).find('tbody tr');
-                    return false; // Stop loop
+                    return false; 
                 }
             });
         }
@@ -281,13 +285,9 @@ async function scrapeInvestidor10(ticker: string) {
                 let type = 'DIV';
                 let dateComStr = '', datePayStr = '', valStr = '';
 
-                // Lógica Inteligente de Colunas
-                // Ações costumam ter 4 colunas: [Tipo, DataCom, DataPag, Valor]
-                // FIIs costumam ter 3 colunas: [DataCom, DataPag, Valor] (Tipo implícito 'Rendimento')
-                
                 if (cols.length >= 4) {
                     const tText = normalize($(cols[0]).text());
-                    if (tText.includes('jcp') || tText.includes('capital')) type = 'JCP';
+                    if (tText.includes('jcp')) type = 'JCP';
                     else if (tText.includes('rend')) type = 'REND';
                     else if (tText.includes('amort')) type = 'AMORT';
                     
@@ -295,7 +295,6 @@ async function scrapeInvestidor10(ticker: string) {
                     datePayStr = $(cols[2]).text();
                     valStr = $(cols[3]).text();
                 } else {
-                    // Assume FII padrão ou tabela simples
                     dateComStr = $(cols[0]).text();
                     datePayStr = $(cols[1]).text();
                     valStr = $(cols[2]).text();
@@ -317,14 +316,17 @@ async function scrapeInvestidor10(ticker: string) {
             }
         });
 
-        // Limpeza de Objeto Final
+        // Garante que vpa seja preenchido também na chave principal se estiver em vp_cota
+        if (dados.vp_cota !== null && dados.vpa === undefined) {
+            dados.vpa = dados.vp_cota;
+        }
+
         const finalMetadata = {
             ...dados,
             dy_12m: dados.dy, 
             current_price: dados.cotacao_atual,
         };
 
-        // Remove chaves nulas
         Object.keys(finalMetadata).forEach(key => {
             if (finalMetadata[key] === null || finalMetadata[key] === undefined) delete finalMetadata[key];
         });
@@ -348,7 +350,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
-        // Cache Check (Supabase)
         if (!force) {
             const { data: existing } = await supabase
                 .from('ativos_metadata')
@@ -358,7 +359,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                // Cache de 3 horas para metadados
                 if (age < 10800000) { 
                      const { data: divs } = await supabase
                         .from('market_dividends')
@@ -377,15 +377,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const { metadata, dividends } = result;
 
-        // Persistência Metadados
         if (metadata) {
             const dbPayload = { ...metadata };
             delete dbPayload.dy;
             delete dbPayload.cotacao_atual;
+            // Salva vpa como vp_cota se o banco esperar essa coluna
+            if (dbPayload.vpa && !dbPayload.vp_cota) dbPayload.vp_cota = dbPayload.vpa;
+            
             await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
         }
 
-        // Persistência Dividendos
         if (dividends.length > 0) {
              const uniqueDivs = Array.from(new Map(dividends.map(item => [
                 `${item.type}-${item.date_com}-${item.rate}`, item

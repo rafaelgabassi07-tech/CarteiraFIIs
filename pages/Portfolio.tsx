@@ -261,7 +261,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                     <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">Dividend Yield</p>
                                         <p className="text-2xl font-black tracking-tight text-emerald-500">
-                                            {asset.dy_12m !== undefined ? `${asset.dy_12m.toFixed(2)}%` : '-'}
+                                            {asset.dy_12m !== undefined && asset.dy_12m !== null ? `${asset.dy_12m.toFixed(2)}%` : '-'}
                                         </p>
                                     </div>
                                 </div>
@@ -272,7 +272,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                         <SectionHeader title="Valuation & Cotas" icon={Scale} />
                                         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
                                             <InfoRow label="Preço / VP" value={asset.p_vp?.toFixed(2) || '-'} highlight />
-                                            <InfoRow label="Valor Patrimonial" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} subtext="Por Cota" />
+                                            <InfoRow label="Valor Patrimonial" value={asset.vpa !== undefined && asset.vpa !== null ? `R$ ${asset.vpa.toFixed(2)}` : '-'} subtext="Por Cota" />
                                             <InfoRow label="Último Rendimento" value={asset.last_dividend ? `R$ ${asset.last_dividend.toFixed(2)}` : '-'} color="text-emerald-600 dark:text-emerald-400" />
                                             <InfoRow label="Patrimônio Líquido" value={formatNumber(asset.assets_value)} />
                                         </div>
@@ -304,8 +304,8 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                             <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2) || '-'} highlight />
                                             <InfoRow label="P/VP" value={asset.p_vp?.toFixed(2) || '-'} />
                                             <InfoRow label="EV / EBITDA" value={asset.ev_ebitda?.toFixed(2) || '-'} />
-                                            <InfoRow label="VPA" value={asset.vpa ? `R$ ${asset.vpa.toFixed(2)}` : '-'} />
-                                            <InfoRow label="LPA" value={asset.lpa ? `R$ ${asset.lpa.toFixed(2)}` : '-'} />
+                                            <InfoRow label="VPA" value={asset.vpa !== undefined && asset.vpa !== null ? `R$ ${asset.vpa.toFixed(2)}` : '-'} />
+                                            <InfoRow label="LPA" value={asset.lpa !== undefined && asset.lpa !== null ? `R$ ${asset.lpa.toFixed(2)}` : '-'} />
                                         </div>
 
                                         <SectionHeader title="Eficiência & Rentabilidade" icon={Zap} />
