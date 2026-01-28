@@ -131,7 +131,6 @@ async function scrapeInvestidor10(ticker: string) {
             ticker: ticker.toUpperCase(),
             type: finalType,
             updated_at: new Date().toISOString(),
-            // Garante inicialização para mapeamento seguro
             dy: null, pvp: null, pl: null, 
             liquidez: null, val_mercado: null,
             segmento: null,
@@ -140,7 +139,7 @@ async function scrapeInvestidor10(ticker: string) {
             divida_liquida_ebitda: null, ev_ebitda: null,
             lpa: null, vp_cota: null, vpa: null,
             vacancia: null, ultimo_rendimento: null, num_cotistas: null, 
-            patrimonio_liquido: null, // Key crucial para FIIs
+            patrimonio_liquido: null,
             taxa_adm: null, tipo_gestao: null
         };
 
@@ -155,12 +154,12 @@ async function scrapeInvestidor10(ticker: string) {
 
             // --- VALUATION & INDICADORES ---
             if (kClean === 'pvp' || kClean === 'vp') dados.pvp = parseValue(v);
-            if (kClean === 'pl') dados.pl = parseValue(v);
+            if (kClean === 'pl' || kText === 'p/l') dados.pl = parseValue(v);
             if (kClean === 'dy' || kClean === 'dividendyield' || kText === 'dividend yield') dados.dy = parseValue(v);
             if (kClean === 'cotacao' || kClean === 'valoratual') dados.cotacao_atual = parseValue(v);
             if (kClean === 'roe') dados.roe = parseValue(v);
             if (kClean === 'lpa') dados.lpa = parseValue(v);
-            if (kClean === 'evebitda') dados.ev_ebitda = parseValue(v);
+            if (kClean === 'evebitda' || kText === 'ev/ebitda') dados.ev_ebitda = parseValue(v);
 
             // VPA
             if (kClean === 'vpa' || kClean === 'vp' || kClean.includes('valorpatrimonialpor') || kClean === 'valorpatrimonialcota') {
@@ -174,7 +173,7 @@ async function scrapeInvestidor10(ticker: string) {
             // --- DADOS GERAIS FIIs & AÇÕES ---
             if (kText.includes('liquidez')) dados.liquidez = v;
             
-            // Patrimônio Líquido - Mapeamento Explícito
+            // Patrimônio Líquido
             if (kText.includes('patrimonio liquido') || kText === 'patrimonio') dados.patrimonio_liquido = v;
             
             // Segmento
@@ -185,7 +184,7 @@ async function scrapeInvestidor10(ticker: string) {
             if (kClean === 'numcotistas' || kText.includes('num. cotistas') || kText.includes('numero de cotistas') || kText.includes('qtd cotistas')) dados.num_cotistas = parseValue(v);
             if (kText.includes('vacancia')) dados.vacancia = parseValue(v);
             
-            // Gestão e Taxas (Busca Fuzzy)
+            // Gestão e Taxas
             if (kText.includes('gestao') || kText === 'tipo de gestao') dados.tipo_gestao = v;
             if (kText.includes('taxa') && (kText.includes('admin') || kText.includes('adm'))) dados.taxa_adm = v;
 
@@ -210,32 +209,39 @@ async function scrapeInvestidor10(ticker: string) {
         });
 
         // --- ESTRATÉGIA 2: BUSCA TEXTUAL (BRUTE FORCE) ---
-        // Garante que, se estiver no texto, pegamos.
+        // Lista expandida para cobrir TODOS os campos do modal do frontend
         const forcedKeys = [
             'Taxa de Administração', 'Tipo de Gestão', 'Vacância Física', 
-            'Número de Cotistas', 'Patrimônio Líquido', 'Segmento'
+            'Número de Cotistas', 'Patrimônio Líquido', 'Segmento',
+            'P/VP', 'P/L', 'Dividend Yield', 'Liquidez', 'Liquidez Média Diária',
+            'ROE', 'LPA', 'VPA', 'Valor Patrimonial', 'EV/EBITDA', 'Dívida Líquida / EBITDA',
+            'Margem Bruta', 'Margem Líquida', 'CAGR Receitas', 'CAGR Lucros',
+            'Último Rendimento'
         ];
 
         forcedKeys.forEach(term => {
-            // Se já temos o dado, pula
             const kNorm = normalize(term);
+            
+            // Otimização: Se já temos o dado principal, não buscamos de novo
             if (kNorm.includes('taxa') && dados.taxa_adm) return;
             if (kNorm.includes('gestao') && dados.tipo_gestao) return;
             if (kNorm.includes('patrimonio') && dados.patrimonio_liquido) return;
+            if (kNorm === 'p/vp' && dados.pvp) return;
+            if (kNorm === 'p/l' && dados.pl) return;
 
             // Procura elementos que contenham o texto exato
             $(`*:contains('${term}')`).each((_, el) => {
-                // Evita pegar o body ou html inteiro
-                if ($(el).children().length > 5) return; 
+                if ($(el).children().length > 5) return; // Evita body/container
                 
                 const text = $(el).text().trim();
                 // Verifica se é um rótulo curto e corresponde ao termo
-                if (text.length < 50 && normalize(text).includes(kNorm)) {
-                    // Tenta achar o valor próximo (irmão, filho ou estrutura de grid)
+                if (text.length < 60 && normalize(text).includes(kNorm)) {
+                    // Tenta achar o valor próximo (várias direções)
                     let val = $(el).next().text().trim(); // Irmão
                     if (!val) val = $(el).find('span').last().text().trim(); // Filho
                     if (!val) val = $(el).parent().next().text().trim(); // Tio (Grid layout)
-                    if (!val) val = $(el).parent().find('.value').text().trim(); // Primo
+                    if (!val) val = $(el).parent().find('.value, .data').text().trim(); // Primo
+                    if (!val) val = $(el).closest('.cell').find('.value').text().trim(); // Container pai
                     
                     if (val && val.length < 100) {
                         processPair(text, val);
@@ -375,7 +381,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (metadata) {
             const dbPayload = { ...metadata };
-            // Removemos campos calculados dinamicamente para não poluir o DB se não existirem colunas
             delete dbPayload.dy;
             delete dbPayload.cotacao_atual;
             

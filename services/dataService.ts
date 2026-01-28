@@ -66,7 +66,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         
         // Metadados
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
-        market_cap: getVal('val_mercado', 'valor_mercado') || undefined, 
+        market_cap: getVal('val_mercado', 'valor_mercado', 'market_cap') || undefined, 
         
         // FII Específicos
         assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
