@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, ExternalLink, TrendingUp, TrendingDown, Scale, Percent, Banknote, Calendar, Briefcase, Zap, Layers, Tag, Gem, Building2, RefreshCw } from 'lucide-react';
+import { Search, Wallet, ExternalLink, TrendingUp, TrendingDown, Scale, Percent, Banknote, Calendar, Briefcase, Zap, Layers, Tag, Gem, Building2, RefreshCw, PieChart } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -143,8 +143,9 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     const currentTotal = (displayAsset.currentPrice || 0) * displayAsset.quantity;
     const costTotal = displayAsset.averagePrice * displayAsset.quantity;
     const gainValue = currentTotal - costTotal;
-    const gainPercent = costTotal > 0 ? (gainValue / costTotal) * 100 : 0;
-    const isPositive = gainValue >= 0;
+    const totalDividends = displayAsset.totalDividends || 0;
+    const finalReturn = gainValue + totalDividends;
+    const finalReturnPercent = costTotal > 0 ? (finalReturn / costTotal) * 100 : 0;
     
     // Yield on Cost (YoC) - Cálculo Robusto
     // Tenta usar a projeção baseada no DY atual e PM, se disponível. 
@@ -201,6 +202,12 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         return <AssetDetailSkeleton />;
     }
 
+    // Cálculos para Barra Stacked (Apenas para visualização proporcional)
+    const barTotal = Math.max(costTotal, costTotal + gainValue + totalDividends, currentTotal + totalDividends);
+    const barCostPct = barTotal > 0 ? (costTotal / barTotal) * 100 : 0;
+    const barGainPct = barTotal > 0 && gainValue > 0 ? (gainValue / barTotal) * 100 : 0;
+    const barDivsPct = barTotal > 0 ? (totalDividends / barTotal) * 100 : 0;
+
     return (
         <div className="bg-white dark:bg-zinc-950 min-h-full flex flex-col relative">
             {/* Header */}
@@ -232,68 +239,110 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                 {tab === 'POSICAO' && (
                     <div className="space-y-6 anim-fade-in">
                         
-                        {/* Card Patrimônio Premium */}
-                        <div className="relative overflow-hidden rounded-[2rem] p-6 shadow-xl border border-zinc-100 dark:border-zinc-800 group">
-                            <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 dark:from-zinc-800 dark:via-zinc-900 dark:to-black"></div>
-                            <div className="absolute top-0 right-0 p-6 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-700">
-                                <Wallet className="w-32 h-32 text-white" />
-                            </div>
-                            
-                            <div className="relative z-10 text-center">
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-3">Patrimônio Total</p>
-                                <h2 className="text-4xl font-black text-white tracking-tighter mb-4 tabular-nums">{formatBRL(currentTotal, privacyMode)}</h2>
-                                
-                                <div className="inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-lg">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isPositive ? 'bg-emerald-500 text-emerald-950' : 'bg-rose-500 text-rose-950'}`}>
-                                        {isPositive ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.5} /> : <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.5} />}
-                                    </div>
-                                    <div className="text-left leading-none">
-                                        <span className={`text-[10px] font-black block ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                            {formatBRL(gainValue, privacyMode)}
-                                        </span>
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">
-                                            {formatPercent(gainPercent, privacyMode)}
-                                        </span>
-                                    </div>
+                        {/* 1. Card Patrimônio Premium */}
+                        <div className="relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 text-center group">
+                             <div className="absolute inset-0 bg-gradient-to-br from-white via-zinc-50 to-white dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 opacity-50"></div>
+                             <div className="relative z-10">
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-3">Patrimônio Atual</p>
+                                <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter tabular-nums mb-4 leading-none">
+                                    {formatBRL(currentTotal, privacyMode)}
+                                </h2>
+                                {/* Daily Variation Badge */}
+                                <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${displayAsset.dailyChange && displayAsset.dailyChange >= 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30' : 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/30'}`}>
+                                    {displayAsset.dailyChange && displayAsset.dailyChange >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                                    <span>{displayAsset.dailyChange ? Math.abs(displayAsset.dailyChange).toFixed(2) : '0.00'}% (24h)</span>
                                 </div>
+                             </div>
+                        </div>
+
+                        {/* 2. Breakdown Financeiro Completo */}
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-[2rem] p-6 border border-zinc-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 mb-6 flex items-center gap-2">
+                                <PieChart className="w-4 h-4" /> Composição do Retorno
+                            </h3>
+
+                            {/* Stacked Bar Visual */}
+                            <div className="flex h-4 w-full rounded-full overflow-hidden mb-6 shadow-inner bg-zinc-200 dark:bg-zinc-800">
+                                {/* Cost Segment */}
+                                <div 
+                                    className="h-full bg-zinc-400 dark:bg-zinc-600 transition-all duration-1000 border-r border-white/20" 
+                                    style={{ width: `${barCostPct}%` }} 
+                                />
+                                {/* Capital Gain Segment (Only if positive for stacking logic) */}
+                                {barGainPct > 0 && (
+                                    <div 
+                                        className="h-full bg-emerald-500 transition-all duration-1000 border-r border-white/20" 
+                                        style={{ width: `${barGainPct}%` }} 
+                                    />
+                                )}
+                                {/* Dividends Segment */}
+                                {barDivsPct > 0 && (
+                                    <div 
+                                        className="h-full bg-indigo-500 transition-all duration-1000" 
+                                        style={{ width: `${barDivsPct}%` }} 
+                                    />
+                                )}
                             </div>
 
-                            {/* Barra de Progresso Financeiro */}
-                            <div className="relative z-10 mt-8">
-                                <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
-                                    <span>Custo ({formatBRL(costTotal, privacyMode)})</span>
-                                    <span className={isPositive ? 'text-emerald-500' : 'text-rose-500'}>Resultado</span>
+                            {/* Tabela de Detalhes */}
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-600"></span>
+                                        <span className="text-zinc-500 font-medium">Custo de Aquisição</span>
+                                    </div>
+                                    <span className="font-bold text-zinc-900 dark:text-white">{formatBRL(costTotal, privacyMode)}</span>
                                 </div>
-                                <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden flex">
-                                    <div className="h-full bg-zinc-500" style={{ width: `${currentTotal > 0 ? Math.min((costTotal / currentTotal) * 100, 100) : 0}%` }}></div>
-                                    {isPositive && <div className="h-full bg-emerald-500 flex-1"></div>}
+                                
+                                <div className="flex justify-between items-center text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`w-2 h-2 rounded-full ${gainValue >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                        <span className="text-zinc-500 font-medium">Ganho de Capital</span>
+                                    </div>
+                                    <span className={`font-bold ${gainValue >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                                        {gainValue > 0 ? '+' : ''}{formatBRL(gainValue, privacyMode)}
+                                    </span>
+                                </div>
+                                
+                                <div className="flex justify-between items-center text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                        <span className="text-zinc-500 font-medium">Proventos Totais</span>
+                                    </div>
+                                    <span className="font-bold text-indigo-600 dark:text-indigo-400">+{formatBRL(totalDividends, privacyMode)}</span>
+                                </div>
+                                
+                                <div className="my-4 border-t border-dashed border-zinc-300 dark:border-zinc-700"></div>
+                                
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-black uppercase tracking-wider text-zinc-400">Retorno Final</span>
+                                    <div className="text-right">
+                                        <span className={`block text-lg font-black ${finalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                                            {finalReturn > 0 ? '+' : ''}{formatBRL(finalReturn, privacyMode)}
+                                        </span>
+                                        <span className={`text-[10px] font-bold ${finalReturn >= 0 ? 'text-emerald-600/70 dark:text-emerald-400/70' : 'text-rose-500/70'}`}>
+                                            ROI Total: {finalReturnPercent > 0 ? '+' : ''}{finalReturnPercent.toFixed(2)}%
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Grid de Estatísticas */}
-                        <div className="grid grid-cols-2 gap-3">
+                        {/* 3. Grid de Estatísticas Refinado */}
+                        <div className="grid grid-cols-3 gap-3">
                             <StatCard 
                                 label="Preço Médio" 
                                 value={formatBRL(displayAsset.averagePrice, privacyMode)} 
                                 icon={Tag}
                             />
                             <StatCard 
-                                label="Cotação Atual" 
+                                label="Cotação" 
                                 value={formatBRL(displayAsset.currentPrice || 0, privacyMode)} 
-                                subtext={`${(displayAsset.dailyChange || 0) > 0 ? '+' : ''}${(displayAsset.dailyChange || 0).toFixed(2)}% (24h)`}
                                 icon={TrendingUp}
-                                colorClass={(displayAsset.dailyChange || 0) > 0 ? 'text-emerald-600 dark:text-emerald-400' : (displayAsset.dailyChange || 0) < 0 ? 'text-rose-600 dark:text-rose-400' : undefined}
-                            />
-                            <StatCard 
-                                label="Quantidade" 
-                                value={displayAsset.quantity} 
-                                icon={Layers}
                             />
                             <StatCard 
                                 label="Yield on Cost" 
                                 value={`${yieldOnCost.toFixed(2)}%`} 
-                                subtext="Baseado no PM"
                                 icon={Percent}
                                 bgClass="bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30"
                                 colorClass="text-indigo-600 dark:text-indigo-400"
