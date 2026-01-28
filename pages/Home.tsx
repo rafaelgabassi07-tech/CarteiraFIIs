@@ -269,8 +269,8 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
 
                 return (
                     <button key={item.id} onClick={() => setActiveIndex(index)} className="flex flex-col items-center gap-2 snap-start group active:scale-95 transition-transform">
-                        <div className={`w-[74px] h-[74px] rounded-full p-[3px] transition-all duration-300 ${isRead ? 'bg-zinc-200 dark:bg-zinc-800 opacity-60' : `bg-gradient-to-tr ${ringColors} shadow-lg shadow-black/10 animate-[spin_4s_linear_infinite]`}`}>
-                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[3px] relative overflow-hidden flex items-center justify-center animate-none"> {/* Cancela rotação interna */}
+                        <div className={`w-[74px] h-[74px] rounded-full p-[3px] transition-all duration-300 ${isRead ? 'bg-zinc-200 dark:bg-zinc-800 opacity-60' : `bg-gradient-to-tr ${ringColors} shadow-lg shadow-black/10`}`}>
+                            <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 p-[3px] relative overflow-hidden flex items-center justify-center">
                                 <div className="w-full h-full bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center relative">
                                     {item.relatedTicker && !isRead ? (
                                         <span className="text-[10px] font-black text-zinc-900 dark:text-white uppercase tracking-tighter">{item.relatedTicker.substring(0,4)}</span>
