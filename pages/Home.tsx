@@ -304,7 +304,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
-  const [raioXTab, setRaioXTab] = useState<'GERAL' | 'CLASSES' | 'DESTAQUES'>('GERAL');
+  const [raioXTab, setRaioXTab] = useState<'GERAL' | 'DESTAQUES'>('GERAL');
   
   const [insights, setInsights] = useState<PortfolioInsight[]>([]);
   const [readStories, setReadStories] = useState<Set<string>>(() => {
@@ -397,12 +397,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const top3 = rankedAssets.slice(0, 3);
       const bottom3 = rankedAssets.slice().reverse().slice(0, 3);
 
+      // 3. Maiores Pagadores (Top 3 Total Dividends)
+      const topPayers = [...safePortfolio]
+        .sort((a, b) => (b.totalDividends || 0) - (a.totalDividends || 0))
+        .slice(0, 3)
+        .filter(p => p.totalDividends && p.totalDividends > 0);
+
       return {
           classes: [
               { name: 'FIIs', ret: fiiReturn, val: fiiVal, color: '#6366f1' },
               { name: 'Ações', ret: stockReturn, val: stockVal, color: '#0ea5e9' }
           ],
-          highlights: { top3, bottom3 }
+          highlights: { top3, bottom3, topPayers }
       };
   }, [portfolio]);
 
@@ -747,7 +753,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               </div>
               
               <div className="flex bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-xl mb-6">
-                  {['GERAL', 'CLASSES', 'DESTAQUES'].map((tab) => (
+                  {['GERAL', 'DESTAQUES'].map((tab) => (
                       <button key={tab} onClick={() => setRaioXTab(tab as any)} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${raioXTab === tab ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>
                           {tab}
                       </button>
@@ -780,6 +786,31 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       </div>
                       
                       <div className="space-y-3">
+                          <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Por Classe de Ativo</h3>
+                          {raioXData.classes.map((cls, i) => (
+                              <div key={i} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                  <div className="flex justify-between items-center mb-3">
+                                      <div className="flex items-center gap-3">
+                                          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-[10px] shadow-sm" style={{ backgroundColor: cls.color }}>
+                                              {cls.name.substring(0,1)}
+                                          </div>
+                                          <div>
+                                              <h3 className="text-xs font-black text-zinc-900 dark:text-white">{cls.name}</h3>
+                                              <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">{formatBRL(cls.val, privacyMode)}</p>
+                                          </div>
+                                      </div>
+                                      <div className={`px-2 py-1 rounded-lg text-[10px] font-black ${cls.ret >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
+                                          {cls.ret > 0 ? '+' : ''}{cls.ret.toFixed(2)}%
+                                      </div>
+                                  </div>
+                                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(Math.abs(cls.ret) * 3, 100)}%`, backgroundColor: cls.ret >= 0 ? '#10b981' : '#f43f5e' }}></div>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+
+                      <div className="space-y-3">
                           <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Composição do Resultado</h3>
                           <div className="grid grid-cols-2 gap-3">
                               <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
@@ -797,47 +828,39 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   </div>
               )}
 
-              {raioXTab === 'CLASSES' && (
-                  <div className="space-y-6 anim-slide-up">
-                      {raioXData.classes.map((cls, i) => (
-                          <div key={i} className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                              <div className="flex justify-between items-center mb-4">
-                                  <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-sm" style={{ backgroundColor: cls.color }}>
-                                          {cls.name.substring(0,1)}
-                                      </div>
-                                      <div>
-                                          <h3 className="font-black text-zinc-900 dark:text-white">{cls.name}</h3>
-                                          <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{formatBRL(cls.val, privacyMode)}</p>
-                                      </div>
-                                  </div>
-                                  <div className={`px-3 py-1 rounded-lg text-xs font-black ${cls.ret >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
-                                      {cls.ret > 0 ? '+' : ''}{cls.ret.toFixed(2)}%
-                                  </div>
-                              </div>
-                              <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
-                                  <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(Math.abs(cls.ret) * 3, 100)}%`, backgroundColor: cls.ret >= 0 ? '#10b981' : '#f43f5e' }}></div>
-                              </div>
-                              <p className="text-[9px] text-zinc-400 text-right mt-1.5 font-medium">Rentabilidade Total</p>
-                          </div>
-                      ))}
-                  </div>
-              )}
-
               {raioXTab === 'DESTAQUES' && (
                   <div className="space-y-6 anim-slide-up">
+                      {raioXData.highlights.topPayers.length > 0 && (
+                          <div>
+                              <h3 className="px-2 mb-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 flex items-center gap-2">
+                                  <Banknote className="w-3 h-3" /> Maiores Pagadores
+                              </h3>
+                              <div className="space-y-2">
+                                  {raioXData.highlights.topPayers.map((asset, i) => (
+                                      <div key={`payer-${asset.ticker}`} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                          <div className="flex items-center gap-3">
+                                              <div className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center text-[10px] font-black">{i+1}</div>
+                                              <span className="font-bold text-sm text-zinc-900 dark:text-white">{asset.ticker}</span>
+                                          </div>
+                                          <span className="font-black text-sm text-emerald-500">{formatBRL(asset.totalDividends, privacyMode)}</span>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+                      )}
+
                       <div>
-                          <h3 className="px-2 mb-2 text-[10px] font-black uppercase tracking-widest text-emerald-500 flex items-center gap-2">
+                          <h3 className="px-2 mb-2 text-[10px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-2">
                               <TrendingUp className="w-3 h-3" /> Maiores Altas
                           </h3>
                           <div className="space-y-2">
                               {raioXData.highlights.top3.map((asset, i) => (
-                                  <div key={asset.ticker} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                  <div key={`high-${asset.ticker}`} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
                                       <div className="flex items-center gap-3">
-                                          <div className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center text-[10px] font-black">{i+1}</div>
+                                          <div className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 flex items-center justify-center text-[10px] font-black">{i+1}</div>
                                           <span className="font-bold text-sm text-zinc-900 dark:text-white">{asset.ticker}</span>
                                       </div>
-                                      <span className="font-black text-sm text-emerald-500">+{asset.totalReturn.toFixed(2)}%</span>
+                                      <span className="font-black text-sm text-indigo-500">+{asset.totalReturn.toFixed(2)}%</span>
                                   </div>
                               ))}
                           </div>
@@ -849,7 +872,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           </h3>
                           <div className="space-y-2">
                               {raioXData.highlights.bottom3.map((asset, i) => (
-                                  <div key={asset.ticker} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                  <div key={`low-${asset.ticker}`} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
                                       <div className="flex items-center gap-3">
                                           <div className="w-6 h-6 rounded-md bg-rose-100 dark:bg-rose-900/20 text-rose-600 flex items-center justify-center text-[10px] font-black">{i+1}</div>
                                           <span className="font-bold text-sm text-zinc-900 dark:text-white">{asset.ticker}</span>
