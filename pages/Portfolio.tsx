@@ -111,25 +111,14 @@ const AssetDetailSkeleton = () => {
 
 const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: { asset: AssetPosition, dividends: DividendReceipt[], privacyMode: boolean, onClose: () => void, onRefresh?: (ticker: string) => Promise<void> }) => {
     const [tab, setTab] = useState<'POSICAO' | 'FUNDAMENTOS' | 'PROVENTOS'>('POSICAO');
-    // Estado de carregamento INICIA como true para garantir que o Skeleton apareça
     const [isUpdating, setIsUpdating] = useState(true);
     
-    // Estado local sincronizado
     const [displayAsset, setDisplayAsset] = useState<AssetPosition>(asset);
     
-    // Sincroniza props -> state
+    // Simplificado para garantir atualização sempre que a prop mudar
     useEffect(() => {
         if (asset) {
-            setDisplayAsset(prev => {
-                // Atualiza dados se forem novos
-                const hasNewData = asset.dy_12m || asset.p_vp || asset.p_l;
-                const hadData = prev.dy_12m || prev.p_vp || prev.p_l;
-                
-                // Se já tinha dados e não veio nada novo (ou veio igual), mantem
-                // Se veio dado novo, atualiza
-                if (!hasNewData && hadData) return prev; 
-                return asset;
-            });
+            setDisplayAsset(asset);
         }
     }, [asset]);
 
@@ -138,7 +127,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         if (onRefresh) {
             setIsUpdating(true); // Força loading
             
-            // Adiciona delay artificial mínimo de 500ms para evitar flash
+            // Adiciona delay artificial mínimo de 500ms para evitar flash e dar sensação de processamento
             const minLoadTime = new Promise(resolve => setTimeout(resolve, 500));
             const refreshPromise = onRefresh(asset.ticker);
 
@@ -469,111 +458,108 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     );
 };
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false, onAssetRefresh }) => {
-    const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
+const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends, privacyMode, onAssetRefresh }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterType, setFilterType] = useState<'ALL' | AssetType>('ALL');
+    const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
+    const [filterType, setFilterType] = useState<'ALL' | 'FII' | 'STOCK'>('ALL');
 
-    const filteredAssets = useMemo(() => {
-        return portfolio
-          .filter(p => {
-            const matchesSearch = p.ticker.includes(searchTerm.toUpperCase()) || (p.segment || '').toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesType = filterType === 'ALL' || p.assetType === filterType;
+    const filteredPortfolio = useMemo(() => {
+        return portfolio.filter(asset => {
+            const matchesSearch = asset.ticker.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                  (asset.segment && asset.segment.toLowerCase().includes(searchTerm.toLowerCase()));
+            const matchesType = filterType === 'ALL' 
+                ? true 
+                : filterType === 'FII' 
+                    ? asset.assetType === AssetType.FII 
+                    : asset.assetType === AssetType.STOCK;
             return matchesSearch && matchesType;
-          })
-          .sort((a, b) => (b.currentPrice || 0) * b.quantity - (a.currentPrice || 0) * a.quantity); 
+        }).sort((a, b) => ((b.currentPrice || 0) * b.quantity) - ((a.currentPrice || 0) * a.quantity));
     }, [portfolio, searchTerm, filterType]);
 
     return (
-        <div className="pb-32 min-h-screen">
-            <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-2">
-                <div className="flex flex-col gap-3 pb-2">
-                    <div className="relative flex items-center group">
-                        <Search className="w-4 h-4 absolute left-4 text-zinc-400 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-200 transition-colors" />
+        <div className="pb-24 min-h-screen">
+             <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-3 mb-4">
+                 <div className="flex flex-col gap-3">
+                    <div className="relative group">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                            <Search className="w-4 h-4" />
+                        </div>
                         <input 
                             type="text" 
-                            placeholder="Filtrar por nome ou ticker..." 
+                            placeholder="Buscar ativo..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-zinc-100 dark:bg-zinc-800/80 border border-transparent focus:bg-white dark:focus:bg-zinc-900 border-zinc-200 dark:border-zinc-700 pl-11 pr-4 py-3 rounded-2xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm"
+                            className="w-full bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:bg-white dark:focus:bg-zinc-900 border-zinc-200 dark:border-zinc-700 pl-10 pr-4 py-2.5 rounded-xl text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                         />
                     </div>
-                    <div className="flex items-center justify-between px-1">
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl relative">
-                            <div 
-                                className={`absolute top-1 bottom-1 w-[calc(33.33%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`}
-                                style={{ 
-                                    left: '4px',
-                                    transform: `translateX(${filterType === 'ALL' ? '0%' : filterType === AssetType.FII ? '100%' : '200%'})`
-                                }}
-                            ></div>
-                            <button onClick={() => setFilterType('ALL')} className={`relative z-10 px-4 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors ${filterType === 'ALL' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Tudo</button>
-                            <button onClick={() => setFilterType(AssetType.FII)} className={`relative z-10 px-4 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors ${filterType === AssetType.FII ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>FIIs</button>
-                            <button onClick={() => setFilterType(AssetType.STOCK)} className={`relative z-10 px-4 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors ${filterType === AssetType.STOCK ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Ações</button>
-                        </div>
-                        <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{filteredAssets.length} Ativos</div>
+
+                    <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl relative">
+                        <div 
+                            className={`absolute top-1 bottom-1 w-[calc(33.33%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`}
+                            style={{ 
+                                left: '4px',
+                                transform: `translateX(${filterType === 'ALL' ? '0%' : filterType === 'FII' ? '100%' : '200%'})`
+                            }}
+                        ></div>
+                        
+                        <button onClick={() => setFilterType('ALL')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${filterType === 'ALL' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>Tudo</button>
+                        <button onClick={() => setFilterType('FII')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${filterType === 'FII' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>FIIs</button>
+                        <button onClick={() => setFilterType('STOCK')} className={`relative z-10 flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-center transition-colors ${filterType === 'STOCK' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>Ações</button>
                     </div>
-                </div>
-            </div>
+                 </div>
+             </div>
 
-            <div className="space-y-3 px-1 pt-6">
-                {filteredAssets.length > 0 ? (
-                    filteredAssets.map((asset, index) => {
-                        const currentPrice = asset.currentPrice || 0;
-                        const totalValue = currentPrice * asset.quantity;
-                        const dailyVar = asset.dailyChange || 0;
-                        const isPositiveDaily = dailyVar >= 0;
-                        const isFII = asset.assetType === AssetType.FII;
-                        const showLogo = asset.logoUrl && !isFII;
+             <div className="space-y-3">
+                 {filteredPortfolio.length > 0 ? (
+                     filteredPortfolio.map((asset) => {
+                         const total = asset.quantity * (asset.currentPrice || 0);
+                         const isPositive = (asset.dailyChange || 0) >= 0;
 
-                        return (
-                            <button key={asset.ticker} onClick={() => setSelectedAsset(asset)} className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between shadow-sm press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 anim-stagger-item transition-all" style={{ animationDelay: `${index * 40}ms` }}>
+                         return (
+                            <button 
+                                key={asset.ticker}
+                                onClick={() => setSelectedAsset(asset)}
+                                className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all press-effect flex items-center justify-between group"
+                            >
                                 <div className="flex items-center gap-4">
-                                    <div className="relative">
-                                        {showLogo ? (
-                                            <div className="w-12 h-12 rounded-2xl bg-white border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-center overflow-hidden p-1">
-                                                <img src={asset.logoUrl} alt={asset.ticker} className="w-full h-full object-contain" />
-                                            </div>
-                                        ) : (
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border text-xs font-black shadow-sm ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/10 text-sky-600 border-sky-100 dark:border-sky-900/30'}`}>{asset.ticker.substring(0, 2)}</div>
-                                        )}
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xs font-black border shadow-sm ${asset.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/20 dark:border-sky-900/30'}`}>
+                                        {asset.ticker.substring(0,2)}
                                     </div>
                                     <div className="text-left">
-                                        <h3 className="font-black text-sm text-zinc-900 dark:text-white flex items-center gap-2">{asset.ticker}</h3>
-                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest truncate max-w-[120px]">{asset.segment || 'Geral'}</p>
+                                        <h3 className="text-sm font-black text-zinc-900 dark:text-white">{asset.ticker}</h3>
+                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">{asset.quantity} cotas</p>
                                     </div>
                                 </div>
+                                
                                 <div className="text-right">
-                                    <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalValue, privacyMode)}</p>
-                                    <div className="flex flex-col items-end mt-0.5">
-                                        <span className="text-[10px] font-medium text-zinc-400">{formatBRL(currentPrice, privacyMode)}</span>
-                                        <span className={`text-[9px] font-bold ${isPositiveDaily ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                            {isPositiveDaily ? '+' : ''}{dailyVar.toFixed(2)}% (24h)
-                                        </span>
+                                    <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(total, !!privacyMode)}</p>
+                                    <div className={`text-[10px] font-bold flex items-center justify-end gap-1 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                        {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                        {Math.abs(asset.dailyChange || 0).toFixed(2)}%
                                     </div>
                                 </div>
                             </button>
-                        );
-                    })
-                ) : (
-                    <div className="text-center py-20 opacity-40 anim-fade-in flex flex-col items-center">
-                        <Gem className="w-12 h-12 mb-4 text-zinc-300 anim-float" strokeWidth={1.5} />
-                        <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Nenhum ativo encontrado</p>
+                         );
+                     })
+                 ) : (
+                    <div className="flex flex-col items-center justify-center py-20 opacity-50 text-center">
+                        <Gem className="w-12 h-12 text-zinc-300 mb-4" strokeWidth={1} />
+                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nenhum ativo encontrado</p>
                     </div>
-                )}
-            </div>
+                 )}
+             </div>
 
-            <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
-                {selectedAsset && (
-                    <AssetDetailView 
+             <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
+                 {selectedAsset && (
+                     <AssetDetailView 
                         asset={selectedAsset} 
-                        dividends={dividends} 
+                        dividends={dividends || []} 
                         privacyMode={!!privacyMode} 
                         onClose={() => setSelectedAsset(null)}
                         onRefresh={onAssetRefresh}
-                    />
-                )}
-            </SwipeableModal>
+                     />
+                 )}
+             </SwipeableModal>
         </div>
     );
 };

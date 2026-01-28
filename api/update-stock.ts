@@ -195,43 +195,51 @@ async function scrapeInvestidor10(ticker: string) {
             if (kText.includes('cagr') && kText.includes('lucro')) dados.cagr_lucros_5a = parseValue(v);
         };
 
-        // --- ESTRATÉGIA DE SELEÇÃO ABRANGENTE ---
-
-        // 1. CARDS PADRÃO (Topo do site)
-        $('div._card').each((_, el) => {
-            let title = $(el).find('div._card-header').text().trim();
-            let val = $(el).find('div._card-body').text().trim();
-            if (!title) title = $(el).find('.title').text().trim();
-            if (!val) val = $(el).find('.value').text().trim();
+        // --- ESTRATÉGIA 1: SELETORES ESTRUTURAIS ---
+        $('div._card, #table-indicators .cell, #table-general-data .cell, .data-entry, .indicator-box').each((_, el) => {
+            const title = $(el).find('.name, .title, div._card-header, span:first-child').text().trim();
+            const val = $(el).find('.value, .data, div._card-body, span:last-child').text().trim();
             processPair(title, val);
         });
 
-        // 2. TABELA DE INDICADORES (Grid principal)
-        $('#table-indicators .cell, .indicators-list .cell, .indicator-box').each((_, el) => {
-            const title = $(el).find('.cell-header, span.name, .title').first().text().trim();
-            const val = $(el).find('.cell-value, span.value, .value').first().text().trim();
-            processPair(title, val);
-        });
-
-        // 3. TABELA DE DADOS GERAIS (Essencial para FIIs: Gestão, Cotistas, Patrimônio)
-        $('#table-general-data .cell, section#basic-data .cell, .data-entry').each((_, el) => {
-             let title = $(el).find('.name, .title, span:first-child').text().trim();
-             let val = $(el).find('.value, .data, span:last-child').text().trim();
-             
-             // Fallback para estrutura: <div><span>Title</span><span>Value</span></div>
-             if (!title && $(el).children().length >= 2) {
-                 title = $(el).children().eq(0).text().trim();
-                 val = $(el).children().eq(1).text().trim();
-             }
-             processPair(title, val);
-        });
-
-        // 4. LISTAS GENÉRICAS (Backup para layouts móveis ou alterados)
         $('ul li').each((_, el) => {
             const spans = $(el).find('span');
-            if (spans.length === 2) {
-                processPair($(spans[0]).text(), $(spans[1]).text());
-            }
+            if (spans.length >= 2) processPair($(spans[0]).text(), $(spans[1]).text());
+        });
+
+        // --- ESTRATÉGIA 2: BUSCA TEXTUAL (BRUTE FORCE) ---
+        // Essencial para quando classes mudam ou estrutura é aninhada
+        const forcedKeys = [
+            'Taxa de Administração', 'Tipo de Gestão', 'Vacância Física', 
+            'Número de Cotistas', 'Patrimônio Líquido', 'Segmento'
+        ];
+
+        forcedKeys.forEach(term => {
+            // Se já temos o dado, pula
+            const kNorm = normalize(term);
+            if (kNorm.includes('taxa') && dados.taxa_adm) return;
+            if (kNorm.includes('gestao') && dados.tipo_gestao) return;
+            if (kNorm.includes('patrimonio') && dados.patrimonio_liquido) return;
+
+            // Procura elementos que contenham o texto exato
+            $(`*:contains('${term}')`).each((_, el) => {
+                // Evita pegar o body ou html inteiro
+                if ($(el).children().length > 5) return; 
+                
+                const text = $(el).text().trim();
+                // Verifica se é um rótulo curto
+                if (text.length < 50 && normalize(text).includes(normalize(term))) {
+                    // Tenta achar o valor próximo
+                    let val = $(el).next().text().trim(); // Irmão
+                    if (!val) val = $(el).find('span').last().text().trim(); // Filho
+                    if (!val) val = $(el).parent().next().text().trim(); // Tio (Grid layout)
+                    if (!val) val = $(el).parent().find('.value').text().trim(); // Primo
+                    
+                    if (val && val.length < 100) {
+                        processPair(text, val);
+                    }
+                }
+            });
         });
 
         // --- EXTRAÇÃO DE DIVIDENDOS ---
@@ -239,7 +247,6 @@ async function scrapeInvestidor10(ticker: string) {
         let tableDivs = $('#table-dividends-history');
         
         if (tableDivs.length === 0) {
-             // Tenta encontrar a tabela pelo título da seção anterior
              $('h2, h3, h4').each((_, el) => {
                  const t = normalize($(el).text());
                  if (t.includes('dividendos') || t.includes('proventos')) {
@@ -346,7 +353,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                if (age < 10800000) { // 3 horas
+                if (age < 10800000) { 
                      const { data: divs } = await supabase
                         .from('market_dividends')
                         .select('*')
