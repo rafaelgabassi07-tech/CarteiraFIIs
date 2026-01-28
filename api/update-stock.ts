@@ -40,12 +40,12 @@ function normalize(str: string) {
     return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
-function parseValue(valueStr: any) {
-    if (valueStr === undefined || valueStr === null) return 0;
+function parseValue(valueStr: any): number | null {
+    if (valueStr === undefined || valueStr === null) return null;
     if (typeof valueStr === 'number') return valueStr;
     
     let str = String(valueStr).trim();
-    if (!str || str === '-' || str === 'N/A') return 0;
+    if (!str || str === '-' || str === '--' || str === 'N/A' || str === '%') return null;
 
     // Limpeza técnica de sufixos/prefixos
     str = str.replace(/^R\$\s?/, '').replace(/%$/, '').trim();
@@ -80,8 +80,10 @@ function parseValue(valueStr: any) {
     }
 
     clean = clean.replace(/[^0-9.-]/g, '');
+    if (!clean) return null;
+    
     const result = parseFloat(clean);
-    return isNaN(result) ? 0 : result * multiplier;
+    return isNaN(result) ? null : result * multiplier;
 }
 
 function parseDate(dateStr: string) {
@@ -126,22 +128,23 @@ async function fetchHtmlWithRetry(ticker: string) {
 function mapLabelToKey(label: string): string | null {
     const norm = normalize(label);
     if (!norm) return null;
+    const cleanNorm = norm.replace(/\s+/g, ''); // Versão sem espaços para comparação robusta
     
     // Valuation & Preço
-    if (norm === 'p/vp' || norm === 'vp') return 'pvp'; 
-    if (norm === 'p/l' || norm === 'pl') return 'pl';
+    if (cleanNorm === 'p/vp' || cleanNorm === 'vp' || cleanNorm === 'p/vpa') return 'pvp'; 
+    if (cleanNorm === 'p/l' || cleanNorm === 'pl') return 'pl';
     
-    // DY - Abrangente para pegar "DY (12M)" ou "Dividend Yield"
+    // DY
     if (norm.includes('dy') || norm.includes('dividend yield')) return 'dy';
     
     if (norm === 'cotacao' || norm.includes('valor atual')) return 'cotacao_atual';
     
-    // VPA (Valor Patrimonial) - Abrangente para FIIs e Ações
-    // Adicionado variações extras para garantir captura
-    if (norm === 'vpa' || norm === 'vp/cota' || norm === 'vp cota' || norm.includes('vp por cota') || (norm.includes('valor patrimonial') && norm.includes('cota'))) return 'vpa';
+    // VPA (Valor Patrimonial por Cota)
+    // Matches: "VPA", "VP/Cota", "Valor Patrimonial" (Exato), "VP por Cota"
+    if (cleanNorm === 'vpa' || cleanNorm === 'vp/cota' || cleanNorm === 'vpcota' || (norm.includes('valor patrimonial') && !norm.includes('liquido'))) return 'vpa';
     
     if (norm === 'lpa') return 'lpa';
-    if (norm === 'ev/ebitda') return 'ev_ebitda';
+    if (cleanNorm === 'ev/ebitda') return 'ev_ebitda';
     
     // Efficiency
     if (norm === 'roe') return 'roe';
@@ -151,7 +154,7 @@ function mapLabelToKey(label: string): string | null {
     // Growth & Debt
     if (norm.includes('cagr receitas')) return 'cagr_receita_5a';
     if (norm.includes('cagr lucros')) return 'cagr_lucros_5a';
-    if (norm.includes('liquida/ebitda') || norm.includes('liq/ebitda') || norm.includes('liq./ebitda') || norm.includes('liquida / ebitda')) return 'divida_liquida_ebitda';
+    if (norm.includes('liquida/ebitda') || norm.includes('liq/ebitda')) return 'divida_liquida_ebitda';
     
     // Liquidity & Market
     if (norm.includes('liquidez')) return 'liquidez';
@@ -160,13 +163,14 @@ function mapLabelToKey(label: string): string | null {
     // FII Specifics
     if (norm.includes('ultimo rendimento')) return 'ultimo_rendimento';
     
-    // Patrimônio Líquido - Abrangente
-    if (norm.includes('patrimonio') && (norm.includes('liquido') || norm === 'patrimonio')) return 'patrimonio_liquido'; 
+    // Patrimônio Líquido (Total)
+    // Matches: "Patrimônio Líquido", "Patrim. Líquido", "Patrimonio" (if not Valor Patrimonial)
+    if ((norm.includes('patrim') && norm.includes('liquido')) || norm === 'patrimonio') return 'patrimonio_liquido'; 
     
     if (norm.includes('cotistas') || norm.includes('numero de cotistas')) return 'num_cotistas';
     
-    // Vacância - Abrangente
-    if (norm.includes('vacancia')) return 'vacancia'; 
+    // Vacância (Prioriza Física)
+    if (norm.includes('vacancia') && !norm.includes('financeira')) return 'vacancia'; 
     
     if (norm.includes('tipo de gestao') || norm === 'gestao') return 'tipo_gestao';
     if (norm.includes('taxa de administracao') || norm.includes('taxa de admin')) return 'taxa_adm';
@@ -197,23 +201,20 @@ async function scrapeInvestidor10(ticker: string) {
         };
 
         // --- ESTRATÉGIA TÉCNICA 1: Iteração por Cards/Tabelas Padrão ---
-        
         const selectors = [
             'div._card', 
             '#table-indicators .cell', 
             '#table-general-data .cell', 
             '.indicator-box', 
             '.data-entry',
-            '.cell' // Seletor genérico para tabelas modernas do I10
+            '.cell' 
         ];
         
         selectors.forEach(selector => {
             $(selector).each((_, el) => {
-                // Tenta encontrar título e valor dentro da célula/box usando várias estratégias
                 let label = $(el).find('div._card-header, .name, .title, span:first-child').first().text().trim();
                 let value = $(el).find('div._card-body, .value, .data, span:last-child').last().text().trim();
 
-                // Fallback para estruturas onde spans são irmãos diretos
                 if (!label && !value) {
                     const spans = $(el).find('span');
                     if (spans.length >= 2) {
@@ -225,11 +226,13 @@ async function scrapeInvestidor10(ticker: string) {
                 if (label && value) {
                     const key = mapLabelToKey(label);
                     if (key) {
-                        if (dados[key] === null || dados[key] === undefined || dados[key] === 0) {
+                        // Só sobrescreve se ainda estiver null (first match wins usually best)
+                        if (dados[key] === null) {
                             if (['segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
                                 dados[key] = value;
                             } else {
-                                dados[key] = parseValue(value);
+                                const parsed = parseValue(value);
+                                if (parsed !== null) dados[key] = parsed;
                             }
                         }
                     }
@@ -238,30 +241,23 @@ async function scrapeInvestidor10(ticker: string) {
         });
 
         // --- ESTRATÉGIA TÉCNICA 2: Fallback de Busca Textual Direta ---
-        // Se campos críticos ainda estiverem vazios, varre o texto visível da página
+        // Se campos críticos ainda estiverem vazios, varre o texto visível
         const missingKeys = Object.keys(dados).filter(k => dados[k] === null);
         
         if (missingKeys.length > 0) {
              $('span, div, p, strong, b').each((_, el) => {
-                 // Otimização: Pula elementos muito longos (provavelmente texto descritivo)
                  const label = $(el).text().trim();
                  if (label.length > 50) return;
 
                  const key = mapLabelToKey(label);
                  
-                 // Se encontrou uma chave que ainda está faltando
                  if (key && dados[key] === null) {
-                     // Heurística de proximidade:
-                     // 1. Irmão direto (span + span)
-                     // 2. Pai -> Próximo irmão -> Filho (Card Header -> Card Body)
-                     // 3. Pai -> .value (Célula de tabela)
-                     
                      let value = $(el).next().text().trim();
                      
                      if (!value) {
                          const parent = $(el).parent();
                          value = parent.find('.value, .data').text().trim();
-                         if (value === label) value = ''; // Evita pegar o próprio label
+                         if (value === label) value = ''; 
                      }
                      
                      if (!value) {
@@ -273,7 +269,7 @@ async function scrapeInvestidor10(ticker: string) {
                             dados[key] = value;
                         } else {
                             const parsed = parseValue(value);
-                            if (parsed !== 0 || value === '0' || value === '0%') {
+                            if (parsed !== null) {
                                 dados[key] = parsed;
                             }
                         }
@@ -283,8 +279,8 @@ async function scrapeInvestidor10(ticker: string) {
         }
 
         // 3. Extração de VP/Cota se ainda não encontrado (Cálculo reverso)
-        if ((!dados.vpa || dados.vpa === 0) && dados.pvp && dados.cotacao_atual) {
-             if (dados.pvp > 0) dados.vpa = dados.cotacao_atual / dados.pvp;
+        if (dados.vpa === null && dados.pvp > 0 && dados.cotacao_atual > 0) {
+             dados.vpa = dados.cotacao_atual / dados.pvp;
         }
 
         // --- EXTRAÇÃO DE DIVIDENDOS (Tabela Histórica) ---
@@ -347,7 +343,7 @@ async function scrapeInvestidor10(ticker: string) {
                 const dateCom = parseDate(dateComStr);
                 const paymentDate = parseDate(datePayStr);
 
-                if (dateCom && rate > 0) {
+                if (dateCom && rate !== null && rate > 0) {
                     dividends.push({
                         ticker: ticker.toUpperCase(),
                         type,
@@ -359,11 +355,9 @@ async function scrapeInvestidor10(ticker: string) {
             });
         }
 
-        // DY fallback: Só calcula se o DY scrapeado for nulo ou zero, e se tivermos dados para calcular.
-        if ((!dados.dy || dados.dy === 0) && dados.ultimo_rendimento && dados.cotacao_atual) {
-            dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100; // Yield MENSAL aproximado se só tiver último rend
-            // Nota: Investidor10 geralmente tem DY anual no card. Se falhar, melhor não inventar DY mensal como anual.
-            // Mas mantemos a lógica como fallback de último recurso.
+        // DY fallback
+        if ((dados.dy === null || dados.dy === 0) && dados.ultimo_rendimento && dados.cotacao_atual) {
+            dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100; // Yield mensal (fallback)
         }
 
         Object.keys(dados).forEach(k => {
