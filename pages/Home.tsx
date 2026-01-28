@@ -410,7 +410,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         const d = new Date(parseInt(y), parseInt(m) - 1, 1);
         return { fullDate: date, name: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''), value: val, year: y };
     }).slice(-12);
-    const monthlyAvg = dividendsChartData.length > 0 ? (totalDividendsReceived / dividendsChartData.length) : 0;
+    
+    // FIX: Média mensal deve ser baseada apenas na soma dos meses exibidos (últimos 12),
+    // e não no total histórico dividido por 12. Isso previne valores distorcidos.
+    const sumLast12m = dividendsChartData.reduce((acc, curr) => acc + curr.value, 0);
+    const monthlyAvg = dividendsChartData.length > 0 ? (sumLast12m / dividendsChartData.length) : 0;
 
     return { upcomingEvents: sortedEvents, received: receivedTotal, groupedEvents: grouped, provisionedTotal: provTotal, history: sortedHistory.reverse(), dividendsChartData, receiptsByMonth: receiptsMap, divStats: { total12m, maxMonthly, monthlyAvg } };
   }, [dividendReceipts, totalDividendsReceived]);
@@ -418,6 +422,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // CÁLCULOS EXCLUSIVOS DO RAIO-X: RENDA vs INFLAÇÃO
   const inflationAnalysis = useMemo(() => {
       // 1. Taxa Mensal Equivalente do IPCA
+      // Cálculo de juros compostos: (1 + taxa_anual)^(1/12) - 1
       const monthlyInflationRate = Math.pow(1 + (safeInflation / 100), 1/12) - 1;
       
       // 2. Estimativa de "Custo de Inflação" sobre o Patrimônio (Erosão Mensal)
@@ -435,7 +440,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const coverageRatio = monthlyInflationCost > 0 ? (divStats.monthlyAvg / monthlyInflationCost) * 100 : 0;
 
       // 6. Dados para o Gráfico Comparativo (Últimos 12 meses)
-      // Reverte para cronológico
       const chartData = [...dividendsChartData].reverse().map(d => ({
           ...d,
           inflationCost: monthlyInflationCost, // Linha de corte da inflação
@@ -446,6 +450,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           realYieldSpread,
           nominalYield,
           monthlyInflationCost,
+          monthlyInflationRatePercent: monthlyInflationRate * 100, // Para exibição explícita
           coverageRatio,
           chartData
       };
@@ -772,11 +777,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           {inflationAnalysis.realYieldSpread > 0 ? '+' : ''}{inflationAnalysis.realYieldSpread.toFixed(2)}%
                       </h3>
                       <div className="mt-4 flex justify-center gap-4 text-[10px] font-bold uppercase tracking-widest">
-                          <div className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500">
-                              Yield Nominal: {inflationAnalysis.nominalYield.toFixed(2)}%
-                          </div>
-                          <div className="px-3 py-1 bg-rose-50 dark:bg-rose-900/20 rounded-full text-rose-600 dark:text-rose-400">
-                              IPCA 12m: {safeInflation.toFixed(2)}%
+                          <div className="flex gap-2 justify-center">
+                              <div className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500">
+                                  Yield Anual: {inflationAnalysis.nominalYield.toFixed(2)}%
+                              </div>
+                              <div className="px-3 py-1 bg-rose-50 dark:bg-rose-900/20 rounded-full text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                                  <span>IPCA 12m: {safeInflation.toFixed(2)}%</span>
+                                  <span className="opacity-60 text-[8px]">({inflationAnalysis.monthlyInflationRatePercent.toFixed(2)}% a.m.)</span>
+                              </div>
                           </div>
                       </div>
                   </div>
@@ -802,7 +810,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <div className="h-60 w-full bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 px-2 flex justify-between">
                           <span>Evolução Real (12 Meses)</span>
-                          <span className="text-[9px] normal-case opacity-60">Barra: Renda | Linha: Custo IPCA</span>
+                          <span className="text-[9px] normal-case opacity-60">Barra: Renda | Linha: Erosão IPCA</span>
                       </h3>
                       <ResponsiveContainer width="100%" height="85%">
                           <ComposedChart data={inflationAnalysis.chartData}>
@@ -836,6 +844,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                           <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Custo Inflação/Mês</p>
                           <p className="text-sm font-black text-rose-500">{formatBRL(inflationAnalysis.monthlyInflationCost, privacyMode)}</p>
+                          <p className="text-[8px] text-zinc-400 font-medium mt-0.5">Baseado em {inflationAnalysis.monthlyInflationRatePercent.toFixed(2)}% a.m.</p>
                       </div>
                   </div>
               </div>
