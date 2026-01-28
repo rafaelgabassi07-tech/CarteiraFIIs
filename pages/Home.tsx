@@ -2,9 +2,9 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, BarChart3, Trophy, ArrowRight } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, BarChart3, Trophy, ArrowRight, Flame, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, YAxis } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, YAxis, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -304,7 +304,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
-  const [raioXTab, setRaioXTab] = useState<'GERAL' | 'DESTAQUES'>('GERAL');
   
   const [insights, setInsights] = useState<PortfolioInsight[]>([]);
   const [readStories, setReadStories] = useState<Set<string>>(() => {
@@ -365,53 +364,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { typeData: { fiis: { percent: (fiisTotal / total) * 100 }, stocks: { percent: (stocksTotal / total) * 100 }, total }, classChartData, assetsChartData };
   }, [portfolio]);
 
-  // CÁLCULOS DO RAIO-X
-  const raioXData = useMemo(() => {
-      const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
-      
-      // 1. Performance por Classe
-      let fiiCost = 0, fiiVal = 0, fiiDivs = 0;
-      let stockCost = 0, stockVal = 0, stockDivs = 0;
-
-      safePortfolio.forEach(p => {
-          const cost = p.averagePrice * p.quantity;
-          const curr = (p.currentPrice || p.averagePrice) * p.quantity;
-          const divs = p.totalDividends || 0;
-
-          if (p.assetType === AssetType.FII) { fiiCost += cost; fiiVal += curr; fiiDivs += divs; }
-          else { stockCost += cost; stockVal += curr; stockDivs += divs; }
-      });
-
-      const fiiReturn = fiiCost > 0 ? ((fiiVal + fiiDivs - fiiCost) / fiiCost) * 100 : 0;
-      const stockReturn = stockCost > 0 ? ((stockVal + stockDivs - stockCost) / stockCost) * 100 : 0;
-
-      // 2. Destaques (Top Gainers/Losers considerando Yield)
-      const rankedAssets = safePortfolio.map(p => {
-          const cost = p.averagePrice * p.quantity;
-          if (cost === 0) return { ...p, totalReturn: 0 };
-          const curr = (p.currentPrice || p.averagePrice) * p.quantity;
-          const divs = p.totalDividends || 0;
-          return { ...p, totalReturn: ((curr + divs - cost) / cost) * 100 };
-      }).sort((a, b) => b.totalReturn - a.totalReturn);
-
-      const top3 = rankedAssets.slice(0, 3);
-      const bottom3 = rankedAssets.slice().reverse().slice(0, 3);
-
-      // 3. Maiores Pagadores (Top 3 Total Dividends)
-      const topPayers = [...safePortfolio]
-        .sort((a, b) => (b.totalDividends || 0) - (a.totalDividends || 0))
-        .slice(0, 3)
-        .filter(p => p.totalDividends && p.totalDividends > 0);
-
-      return {
-          classes: [
-              { name: 'FIIs', ret: fiiReturn, val: fiiVal, color: '#6366f1' },
-              { name: 'Ações', ret: stockReturn, val: stockVal, color: '#0ea5e9' }
-          ],
-          highlights: { top3, bottom3, topPayers }
-      };
-  }, [portfolio]);
-
   const { upcomingEvents, received, groupedEvents, provisionedTotal, history, receiptsByMonth, divStats, dividendsChartData } = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const allEvents: any[] = [];
@@ -463,11 +415,68 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     return { upcomingEvents: sortedEvents, received: receivedTotal, groupedEvents: grouped, provisionedTotal: provTotal, history: sortedHistory.reverse(), dividendsChartData, receiptsByMonth: receiptsMap, divStats: { total12m, maxMonthly, monthlyAvg } };
   }, [dividendReceipts, totalDividendsReceived]);
 
+  // CÁLCULOS EXCLUSIVOS DO RAIO-X: RENDA vs INFLAÇÃO
+  const inflationAnalysis = useMemo(() => {
+      // 1. Taxa Mensal Equivalente do IPCA
+      const monthlyInflationRate = Math.pow(1 + (safeInflation / 100), 1/12) - 1;
+      
+      // 2. Estimativa de "Custo de Inflação" sobre o Patrimônio (Erosão Mensal)
+      const monthlyInflationCost = invested * monthlyInflationRate;
+
+      // 3. Yield on Cost Anualizado (Renda 12m / Investido)
+      const totalDivs12m = divStats.total12m;
+      const nominalYield = invested > 0 ? (totalDivs12m / invested) * 100 : 0;
+      
+      // 4. Spread Real (Yield - IPCA)
+      const realYieldSpread = nominalYield - safeInflation;
+      
+      // 5. Cobertura da Inflação (Proventos / Custo Inflacionário)
+      // Média mensal dos últimos 12 meses vs custo médio mensal de inflação
+      const coverageRatio = monthlyInflationCost > 0 ? (divStats.monthlyAvg / monthlyInflationCost) * 100 : 0;
+
+      // 6. Dados para o Gráfico Comparativo (Últimos 12 meses)
+      // Reverte para cronológico
+      const chartData = [...dividendsChartData].reverse().map(d => ({
+          ...d,
+          inflationCost: monthlyInflationCost, // Linha de corte da inflação
+          netIncome: d.value - monthlyInflationCost // Renda Líquida Real
+      }));
+
+      return {
+          realYieldSpread,
+          nominalYield,
+          monthlyInflationCost,
+          coverageRatio,
+          chartData
+      };
+  }, [invested, safeInflation, divStats, dividendsChartData]);
+
   const toggleMonthExpand = useCallback((month: string) => setExpandedMonth(prev => prev === month ? null : month), []);
   const handleBarClick = useCallback((data: any) => { if (data && data.activePayload && data.activePayload.length > 0) { const item = data.activePayload[0].payload; if (item && item.fullDate) setSelectedProventosMonth(item.fullDate); } }, []);
   
   const CustomPieTooltip = ({ active, payload }: any) => { if (active && payload && payload.length) { const data = payload[0]; return (<div className="bg-white dark:bg-zinc-800 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700"><p className="text-xs font-bold text-zinc-900 dark:text-white mb-1">{data.name}</p><p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{formatBRL(data.value, privacyMode)} ({data.payload.percent.toFixed(1)}%)</p></div>); } return null; };
   const CustomBarTooltip = ({ active, payload, label }: any) => { if (active && payload && payload.length) { const data = payload[0]; return (<div className="bg-white dark:bg-zinc-800 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 text-center"><p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{label} {data.payload.year}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(data.value, privacyMode)}</p></div>); } return null; };
+
+  const CustomComposedTooltip = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+          const income = payload.find((p: any) => p.dataKey === 'value')?.value || 0;
+          const inflation = payload.find((p: any) => p.dataKey === 'inflationCost')?.value || 0;
+          const real = income - inflation;
+          
+          return (
+              <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-800 text-left">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">{label}</p>
+                  <div className="space-y-1">
+                      <div className="flex justify-between gap-4"><span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Renda</span><span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-300">{formatBRL(income, privacyMode)}</span></div>
+                      <div className="flex justify-between gap-4"><span className="text-[10px] text-rose-500 font-bold">Inflação</span><span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-300">{formatBRL(inflation, privacyMode)}</span></div>
+                      <div className="border-t border-zinc-100 dark:border-zinc-800 my-1"></div>
+                      <div className="flex justify-between gap-4"><span className="text-[10px] text-zinc-900 dark:text-white font-black">Resultado</span><span className={`text-[10px] font-mono font-black ${real >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{real > 0 ? '+' : ''}{formatBRL(real, privacyMode)}</span></div>
+                  </div>
+              </div>
+          );
+      }
+      return null;
+  };
 
   const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 transition-all press-effect relative overflow-hidden group shadow-2xl shadow-black/5 dark:shadow-black/20";
   const hoverBorderClass = "hover:border-zinc-300 dark:hover:border-zinc-700";
@@ -539,10 +548,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             <div className="relative z-10 h-full flex flex-col justify-between">
                 <div>
                     <div className="flex justify-between items-start mb-3"><div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/10 rounded-xl flex items-center justify-center text-rose-500 border border-rose-100 dark:border-rose-900/30"><Activity className="w-5 h-5" /></div></div>
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Ganho Real</span>
-                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{realReturnPercent > 0 ? '+' : ''}{realReturnPercent.toFixed(2)}%</p>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Inflação (12m)</span>
+                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{safeInflation.toFixed(2)}%</p>
                 </div>
-                <div className="py-1.5 px-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700 w-fit"><p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">IPCA (12m) {safeInflation}%</p></div>
+                <div className="py-1.5 px-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700 w-fit"><p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Poder de Compra</p></div>
             </div>
             <div className="absolute right-0 bottom-0 opacity-10"><svg className="w-24 h-24 text-rose-500 -mb-4 -mr-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg></div>
         </button>
@@ -570,7 +579,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* --- MODAIS DE DETALHES (Mantidos como estavam) --- */}
+      {/* --- MODAIS DE DETALHES --- */}
       
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
@@ -748,142 +757,88 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-rose-500 border-zinc-200 dark:border-zinc-700`}><Target className="w-6 h-6" /></div>
                   <div>
                       <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Raio-X</h2>
-                      <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Performance Detalhada</p>
+                      <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Renda vs Inflação</p>
                   </div>
               </div>
               
-              <div className="flex bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-xl mb-6">
-                  {['GERAL', 'DESTAQUES'].map((tab) => (
-                      <button key={tab} onClick={() => setRaioXTab(tab as any)} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${raioXTab === tab ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>
-                          {tab}
-                      </button>
-                  ))}
-              </div>
-
-              {raioXTab === 'GERAL' && (
-                  <div className="space-y-6 anim-slide-up">
-                      <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm text-center relative overflow-hidden">
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Rentabilidade Real</p>
-                          <h3 className={`text-4xl font-black tracking-tighter ${realReturnPercent >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                              {realReturnPercent > 0 ? '+' : ''}{realReturnPercent.toFixed(2)}%
-                          </h3>
-                          <div className="mt-4 flex flex-col gap-2">
-                              <div className="flex items-center gap-2">
-                                  <span className="text-[9px] font-bold text-zinc-400 w-12 text-right">Cart.</span>
-                                  <div className="flex-1 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                      <div className={`h-full rounded-full ${realReturnPercent >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(Math.abs(realReturnPercent) * 5, 100)}%` }}></div>
-                                  </div>
-                                  <span className="text-[9px] font-bold text-zinc-600 dark:text-zinc-300 w-10">{totalProfitValue > 0 ? '+' : ''}{((totalProfitValue / invested) * 100).toFixed(1)}%</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                  <span className="text-[9px] font-bold text-zinc-400 w-12 text-right">IPCA</span>
-                                  <div className="flex-1 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                      <div className="h-full rounded-full bg-amber-500" style={{ width: `${Math.min(safeInflation * 5, 100)}%` }}></div>
-                                  </div>
-                                  <span className="text-[9px] font-bold text-zinc-600 dark:text-zinc-300 w-10">{safeInflation}%</span>
-                              </div>
+              <div className="space-y-6 anim-slide-up">
+                  {/* Hero Card: Spread Real */}
+                  <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm text-center relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-10">
+                          <Flame className="w-16 h-16 text-zinc-500" />
+                      </div>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Yield Real (Renda Acima da Inflação)</p>
+                      <h3 className={`text-4xl font-black tracking-tighter ${inflationAnalysis.realYieldSpread >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {inflationAnalysis.realYieldSpread > 0 ? '+' : ''}{inflationAnalysis.realYieldSpread.toFixed(2)}%
+                      </h3>
+                      <div className="mt-4 flex justify-center gap-4 text-[10px] font-bold uppercase tracking-widest">
+                          <div className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500">
+                              Yield Nominal: {inflationAnalysis.nominalYield.toFixed(2)}%
                           </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                          <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Por Classe de Ativo</h3>
-                          {raioXData.classes.map((cls, i) => (
-                              <div key={i} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                  <div className="flex justify-between items-center mb-3">
-                                      <div className="flex items-center gap-3">
-                                          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-[10px] shadow-sm" style={{ backgroundColor: cls.color }}>
-                                              {cls.name.substring(0,1)}
-                                          </div>
-                                          <div>
-                                              <h3 className="text-xs font-black text-zinc-900 dark:text-white">{cls.name}</h3>
-                                              <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">{formatBRL(cls.val, privacyMode)}</p>
-                                          </div>
-                                      </div>
-                                      <div className={`px-2 py-1 rounded-lg text-[10px] font-black ${cls.ret >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
-                                          {cls.ret > 0 ? '+' : ''}{cls.ret.toFixed(2)}%
-                                      </div>
-                                  </div>
-                                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(Math.abs(cls.ret) * 3, 100)}%`, backgroundColor: cls.ret >= 0 ? '#10b981' : '#f43f5e' }}></div>
-                                  </div>
-                              </div>
-                          ))}
-                      </div>
-
-                      <div className="space-y-3">
-                          <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Composição do Resultado</h3>
-                          <div className="grid grid-cols-2 gap-3">
-                              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                  <div className="mb-2 w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 flex items-center justify-center"><TrendingUp className="w-4 h-4" /></div>
-                                  <p className="text-[9px] font-bold text-zinc-400 uppercase">Valorização</p>
-                                  <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalAppreciation + salesGain, privacyMode)}</p>
-                              </div>
-                              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                  <div className="mb-2 w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 flex items-center justify-center"><CircleDollarSign className="w-4 h-4" /></div>
-                                  <p className="text-[9px] font-bold text-zinc-400 uppercase">Proventos</p>
-                                  <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalDividendsReceived, privacyMode)}</p>
-                              </div>
+                          <div className="px-3 py-1 bg-rose-50 dark:bg-rose-900/20 rounded-full text-rose-600 dark:text-rose-400">
+                              IPCA 12m: {safeInflation.toFixed(2)}%
                           </div>
                       </div>
                   </div>
-              )}
 
-              {raioXTab === 'DESTAQUES' && (
-                  <div className="space-y-6 anim-slide-up">
-                      {raioXData.highlights.topPayers.length > 0 && (
-                          <div>
-                              <h3 className="px-2 mb-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 flex items-center gap-2">
-                                  <Banknote className="w-3 h-3" /> Maiores Pagadores
-                              </h3>
-                              <div className="space-y-2">
-                                  {raioXData.highlights.topPayers.map((asset, i) => (
-                                      <div key={`payer-${asset.ticker}`} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                          <div className="flex items-center gap-3">
-                                              <div className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center text-[10px] font-black">{i+1}</div>
-                                              <span className="font-bold text-sm text-zinc-900 dark:text-white">{asset.ticker}</span>
-                                          </div>
-                                          <span className="font-black text-sm text-emerald-500">{formatBRL(asset.totalDividends, privacyMode)}</span>
-                                      </div>
+                  {/* Insight: Cobertura */}
+                  <div className={`p-4 rounded-2xl border flex items-center gap-4 shadow-sm ${inflationAnalysis.coverageRatio >= 100 ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30' : 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${inflationAnalysis.coverageRatio >= 100 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                          {inflationAnalysis.coverageRatio >= 100 ? <ShieldCheck className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
+                      </div>
+                      <div>
+                          <h4 className={`text-sm font-black ${inflationAnalysis.coverageRatio >= 100 ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                              Cobertura: {inflationAnalysis.coverageRatio.toFixed(0)}%
+                          </h4>
+                          <p className="text-[10px] font-medium opacity-80 leading-tight">
+                              {inflationAnalysis.coverageRatio >= 100 
+                                  ? 'Seus dividendos cobrem totalmente a perda do patrimônio para a inflação.' 
+                                  : 'A inflação está corroendo o principal mais rápido do que a renda repõe.'}
+                          </p>
+                      </div>
+                  </div>
+
+                  {/* Gráfico: Batalha Mensal */}
+                  <div className="h-60 w-full bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 px-2 flex justify-between">
+                          <span>Evolução Real (12 Meses)</span>
+                          <span className="text-[9px] normal-case opacity-60">Barra: Renda | Linha: Custo IPCA</span>
+                      </h3>
+                      <ResponsiveContainer width="100%" height="85%">
+                          <ComposedChart data={inflationAnalysis.chartData}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" opacity={0.2} />
+                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} />
+                              <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomComposedTooltip />} />
+                              
+                              {/* Custo Inflação (Area/Line) */}
+                              <Area type="monotone" dataKey="inflationCost" fill="url(#colorInflation)" stroke="#f43f5e" strokeWidth={2} strokeDasharray="4 4" fillOpacity={0.05} />
+                              <Line type="monotone" dataKey="inflationCost" stroke="#f43f5e" strokeWidth={2} dot={false} strokeDasharray="4 4" />
+                              
+                              {/* Renda (Bar) */}
+                              <Bar dataKey="value" radius={[4, 4, 4, 4]} barSize={16}>
+                                  {inflationAnalysis.chartData.map((entry, index) => (
+                                      <Cell 
+                                          key={`cell-${index}`} 
+                                          fill={entry.value >= entry.inflationCost ? '#10b981' : '#fbbf24'} // Verde se bateu a meta, Amarelo se não
+                                      />
                                   ))}
-                              </div>
-                          </div>
-                      )}
+                              </Bar>
+                          </ComposedChart>
+                      </ResponsiveContainer>
+                  </div>
 
-                      <div>
-                          <h3 className="px-2 mb-2 text-[10px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-2">
-                              <TrendingUp className="w-3 h-3" /> Maiores Altas
-                          </h3>
-                          <div className="space-y-2">
-                              {raioXData.highlights.top3.map((asset, i) => (
-                                  <div key={`high-${asset.ticker}`} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                      <div className="flex items-center gap-3">
-                                          <div className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 flex items-center justify-center text-[10px] font-black">{i+1}</div>
-                                          <span className="font-bold text-sm text-zinc-900 dark:text-white">{asset.ticker}</span>
-                                      </div>
-                                      <span className="font-black text-sm text-indigo-500">+{asset.totalReturn.toFixed(2)}%</span>
-                                  </div>
-                              ))}
-                          </div>
+                  {/* Breakdown Financeiro */}
+                  <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Renda Média Mensal</p>
+                          <p className="text-sm font-black text-emerald-500">{formatBRL(divStats.monthlyAvg, privacyMode)}</p>
                       </div>
-
-                      <div>
-                          <h3 className="px-2 mb-2 text-[10px] font-black uppercase tracking-widest text-rose-500 flex items-center gap-2">
-                              <TrendingDown className="w-3 h-3" /> Maiores Baixas
-                          </h3>
-                          <div className="space-y-2">
-                              {raioXData.highlights.bottom3.map((asset, i) => (
-                                  <div key={`low-${asset.ticker}`} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                      <div className="flex items-center gap-3">
-                                          <div className="w-6 h-6 rounded-md bg-rose-100 dark:bg-rose-900/20 text-rose-600 flex items-center justify-center text-[10px] font-black">{i+1}</div>
-                                          <span className="font-bold text-sm text-zinc-900 dark:text-white">{asset.ticker}</span>
-                                      </div>
-                                      <span className="font-black text-sm text-rose-500">{asset.totalReturn.toFixed(2)}%</span>
-                                  </div>
-                              ))}
-                          </div>
+                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Custo Inflação/Mês</p>
+                          <p className="text-sm font-black text-rose-500">{formatBRL(inflationAnalysis.monthlyInflationCost, privacyMode)}</p>
                       </div>
                   </div>
-              )}
+              </div>
           </div>
       </SwipeableModal>
     </div>
