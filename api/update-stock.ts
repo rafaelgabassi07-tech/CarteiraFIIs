@@ -125,18 +125,20 @@ async function fetchHtmlWithRetry(ticker: string) {
 // Mapeamento Técnico de Labels para Chaves Internas
 function mapLabelToKey(label: string): string | null {
     const norm = normalize(label);
+    if (!norm) return null;
     
     // Valuation & Preço
     if (norm === 'p/vp' || norm === 'vp') return 'pvp'; 
     if (norm === 'p/l' || norm === 'pl') return 'pl';
     
     // DY - Abrangente para pegar "DY (12M)" ou "Dividend Yield"
-    if (norm.includes('dy') || norm === 'dividend yield') return 'dy';
+    if (norm.includes('dy') || norm.includes('dividend yield')) return 'dy';
     
     if (norm === 'cotacao' || norm.includes('valor atual')) return 'cotacao_atual';
     
     // VPA (Valor Patrimonial) - Abrangente para FIIs e Ações
-    if (norm === 'vpa' || norm.includes('vp/cota') || norm.includes('vp cota') || (norm.includes('valor patrimonial') && norm.includes('cota'))) return 'vpa';
+    // Adicionado variações extras para garantir captura
+    if (norm === 'vpa' || norm === 'vp/cota' || norm === 'vp cota' || norm.includes('vp por cota') || (norm.includes('valor patrimonial') && norm.includes('cota'))) return 'vpa';
     
     if (norm === 'lpa') return 'lpa';
     if (norm === 'ev/ebitda') return 'ev_ebitda';
@@ -157,9 +159,15 @@ function mapLabelToKey(label: string): string | null {
     
     // FII Specifics
     if (norm.includes('ultimo rendimento')) return 'ultimo_rendimento';
-    if (norm.includes('patrimonio') && (norm.includes('liquido') || norm.length < 20)) return 'patrimonio_liquido'; // Matches 'Patrimônio Líquido' or just 'Patrimônio'
+    
+    // Patrimônio Líquido - Abrangente
+    if (norm.includes('patrimonio') && (norm.includes('liquido') || norm === 'patrimonio')) return 'patrimonio_liquido'; 
+    
     if (norm.includes('cotistas') || norm.includes('numero de cotistas')) return 'num_cotistas';
-    if (norm.includes('vacancia')) return 'vacancia'; // Matches 'vacancia fisica' and 'vacancia'
+    
+    // Vacância - Abrangente
+    if (norm.includes('vacancia')) return 'vacancia'; 
+    
     if (norm.includes('tipo de gestao') || norm === 'gestao') return 'tipo_gestao';
     if (norm.includes('taxa de administracao') || norm.includes('taxa de admin')) return 'taxa_adm';
     if (norm.includes('segmento')) return 'segmento';
@@ -188,35 +196,22 @@ async function scrapeInvestidor10(ticker: string) {
             taxa_adm: null, tipo_gestao: null
         };
 
-        // --- ESTRATÉGIA TÉCNICA: Iteração por Seletores Específicos ---
+        // --- ESTRATÉGIA TÉCNICA 1: Iteração por Cards/Tabelas Padrão ---
         
-        // 1. Cards de Indicadores Principais (Topo da página)
-        $('div._card').each((_, el) => {
-            const label = $(el).find('div._card-header').text().trim() || $(el).find('.name').text().trim();
-            const value = $(el).find('div._card-body').text().trim() || $(el).find('.value').text().trim();
-            
-            if (label && value) {
-                const key = mapLabelToKey(label);
-                if (key) {
-                    // Strings puras (sem conversão numérica)
-                    if (['segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
-                        dados[key] = value;
-                    } else {
-                        // Numéricos
-                        dados[key] = parseValue(value);
-                    }
-                }
-            }
-        });
-
-        // 2. Tabelas de Dados Gerais e Indicadores (Meio da página)
-        const tableSelectors = ['#table-indicators .cell', '#table-general-data .cell', '.indicator-box', '.data-entry'];
+        const selectors = [
+            'div._card', 
+            '#table-indicators .cell', 
+            '#table-general-data .cell', 
+            '.indicator-box', 
+            '.data-entry',
+            '.cell' // Seletor genérico para tabelas modernas do I10
+        ];
         
-        tableSelectors.forEach(selector => {
+        selectors.forEach(selector => {
             $(selector).each((_, el) => {
-                // Tenta encontrar título e valor dentro da célula/box
-                let label = $(el).find('.name, .title, span:first-child').first().text().trim();
-                let value = $(el).find('.value, .data, span:last-child').last().text().trim();
+                // Tenta encontrar título e valor dentro da célula/box usando várias estratégias
+                let label = $(el).find('div._card-header, .name, .title, span:first-child').first().text().trim();
+                let value = $(el).find('div._card-body, .value, .data, span:last-child').last().text().trim();
 
                 // Fallback para estruturas onde spans são irmãos diretos
                 if (!label && !value) {
@@ -230,7 +225,7 @@ async function scrapeInvestidor10(ticker: string) {
                 if (label && value) {
                     const key = mapLabelToKey(label);
                     if (key) {
-                        if (dados[key] === null || dados[key] === undefined) {
+                        if (dados[key] === null || dados[key] === undefined || dados[key] === 0) {
                             if (['segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
                                 dados[key] = value;
                             } else {
@@ -242,8 +237,53 @@ async function scrapeInvestidor10(ticker: string) {
             });
         });
 
+        // --- ESTRATÉGIA TÉCNICA 2: Fallback de Busca Textual Direta ---
+        // Se campos críticos ainda estiverem vazios, varre o texto visível da página
+        const missingKeys = Object.keys(dados).filter(k => dados[k] === null);
+        
+        if (missingKeys.length > 0) {
+             $('span, div, p, strong, b').each((_, el) => {
+                 // Otimização: Pula elementos muito longos (provavelmente texto descritivo)
+                 const label = $(el).text().trim();
+                 if (label.length > 50) return;
+
+                 const key = mapLabelToKey(label);
+                 
+                 // Se encontrou uma chave que ainda está faltando
+                 if (key && dados[key] === null) {
+                     // Heurística de proximidade:
+                     // 1. Irmão direto (span + span)
+                     // 2. Pai -> Próximo irmão -> Filho (Card Header -> Card Body)
+                     // 3. Pai -> .value (Célula de tabela)
+                     
+                     let value = $(el).next().text().trim();
+                     
+                     if (!value) {
+                         const parent = $(el).parent();
+                         value = parent.find('.value, .data').text().trim();
+                         if (value === label) value = ''; // Evita pegar o próprio label
+                     }
+                     
+                     if (!value) {
+                         value = $(el).parent().next().text().trim();
+                     }
+
+                     if (value) {
+                         if (['segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
+                            dados[key] = value;
+                        } else {
+                            const parsed = parseValue(value);
+                            if (parsed !== 0 || value === '0' || value === '0%') {
+                                dados[key] = parsed;
+                            }
+                        }
+                     }
+                 }
+             });
+        }
+
         // 3. Extração de VP/Cota se ainda não encontrado (Cálculo reverso)
-        if (!dados.vpa && dados.pvp && dados.cotacao_atual) {
+        if ((!dados.vpa || dados.vpa === 0) && dados.pvp && dados.cotacao_atual) {
              if (dados.pvp > 0) dados.vpa = dados.cotacao_atual / dados.pvp;
         }
 
