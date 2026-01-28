@@ -607,7 +607,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     <PieChart>
                                         <Pie 
                                             data={classChartData} innerRadius={65} outerRadius={90} paddingAngle={5} cornerRadius={8} dataKey="value" stroke="none" 
-                                            isAnimationActive={true} animationDuration={1000} activeIndex={activeIndexClass} 
+                                            isAnimationActive={true} animationDuration={1000} 
+                                            {...{ activeIndex: activeIndexClass } as any}
                                             activeShape={(props: any) => {
                                                 const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
                                                 return (<g><Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} className="drop-shadow-lg filter" cornerRadius={6} /><Sector cx={cx} cy={cy} startAngle={startAngle} endAngle={endAngle} innerRadius={innerRadius - 6} outerRadius={innerRadius - 2} fill={fill} /></g>);

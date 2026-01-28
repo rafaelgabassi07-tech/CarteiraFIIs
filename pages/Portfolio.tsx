@@ -345,8 +345,10 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                     )}
                                     <InfoRow label="Liquidez Diária" value={formatNumber(displayAsset.liquidity)} />
                                     <InfoRow label="Número de Cotistas" value={formatNumber(displayAsset.properties_count)} />
-                                    <InfoRow label="Tipo de Gestão" value={formatNumber(displayAsset.manager_type)} />
-                                    <InfoRow label="Taxa de Admin." value={formatNumber(displayAsset.management_fee)} />
+                                    
+                                    {/* Exibição direta para campos de texto (sem formatNumber) */}
+                                    <InfoRow label="Tipo de Gestão" value={displayAsset.manager_type || '-'} />
+                                    <InfoRow label="Taxa de Admin." value={displayAsset.management_fee || '-'} />
                                 </div>
                             </>
                         )}

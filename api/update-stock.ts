@@ -127,14 +127,16 @@ function mapLabelToKey(label: string): string | null {
     const norm = normalize(label);
     
     // Valuation & Preço
-    if (norm === 'p/vp' || norm === 'vp') return 'pvp'; // Price to Book
+    if (norm === 'p/vp' || norm === 'vp') return 'pvp'; 
     if (norm === 'p/l' || norm === 'pl') return 'pl';
-    if (norm === 'dividend yield' || norm === 'dy') return 'dy';
+    
+    // DY - Abrangente para pegar "DY (12M)" ou "Dividend Yield"
+    if (norm.includes('dy') || norm === 'dividend yield') return 'dy';
+    
     if (norm === 'cotacao' || norm.includes('valor atual')) return 'cotacao_atual';
     
-    // VPA (Valor Patrimonial por Ação/Cota)
-    // Expansão: 'vpcota', 'vp/cota', 'vp por cota', 'valor patrimonial por'
-    if (norm === 'vpa' || norm === 'vpcota' || norm === 'vp/cota' || norm.includes('valor patrimonial por') || norm.includes('vp por')) return 'vpa';
+    // VPA (Valor Patrimonial) - Abrangente para FIIs e Ações
+    if (norm === 'vpa' || norm.includes('vp/cota') || norm.includes('vp cota') || (norm.includes('valor patrimonial') && norm.includes('cota'))) return 'vpa';
     
     if (norm === 'lpa') return 'lpa';
     if (norm === 'ev/ebitda') return 'ev_ebitda';
@@ -155,11 +157,11 @@ function mapLabelToKey(label: string): string | null {
     
     // FII Specifics
     if (norm.includes('ultimo rendimento')) return 'ultimo_rendimento';
-    if (norm.includes('patrimonio liquido') || norm === 'patrimonio') return 'patrimonio_liquido';
+    if (norm.includes('patrimonio') && (norm.includes('liquido') || norm.length < 20)) return 'patrimonio_liquido'; // Matches 'Patrimônio Líquido' or just 'Patrimônio'
     if (norm.includes('cotistas') || norm.includes('numero de cotistas')) return 'num_cotistas';
     if (norm.includes('vacancia')) return 'vacancia'; // Matches 'vacancia fisica' and 'vacancia'
-    if (norm.includes('tipo de gestao')) return 'tipo_gestao';
-    if (norm.includes('taxa de administracao')) return 'taxa_adm';
+    if (norm.includes('tipo de gestao') || norm === 'gestao') return 'tipo_gestao';
+    if (norm.includes('taxa de administracao') || norm.includes('taxa de admin')) return 'taxa_adm';
     if (norm.includes('segmento')) return 'segmento';
 
     return null;
@@ -200,7 +202,7 @@ async function scrapeInvestidor10(ticker: string) {
                     if (['segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
                         dados[key] = value;
                     } else {
-                        // Numéricos (incluindo Liquidez e Val Mercado que agora convertemos para Number)
+                        // Numéricos
                         dados[key] = parseValue(value);
                     }
                 }
@@ -240,7 +242,7 @@ async function scrapeInvestidor10(ticker: string) {
             });
         });
 
-        // 3. Extração de VP/Cota para Ações/FIIs se ainda não encontrado
+        // 3. Extração de VP/Cota se ainda não encontrado (Cálculo reverso)
         if (!dados.vpa && dados.pvp && dados.cotacao_atual) {
              if (dados.pvp > 0) dados.vpa = dados.cotacao_atual / dados.pvp;
         }
@@ -317,8 +319,11 @@ async function scrapeInvestidor10(ticker: string) {
             });
         }
 
-        if (!dados.dy && dados.ultimo_rendimento && dados.cotacao_atual) {
-            dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100;
+        // DY fallback: Só calcula se o DY scrapeado for nulo ou zero, e se tivermos dados para calcular.
+        if ((!dados.dy || dados.dy === 0) && dados.ultimo_rendimento && dados.cotacao_atual) {
+            dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100; // Yield MENSAL aproximado se só tiver último rend
+            // Nota: Investidor10 geralmente tem DY anual no card. Se falhar, melhor não inventar DY mensal como anual.
+            // Mas mantemos a lógica como fallback de último recurso.
         }
 
         Object.keys(dados).forEach(k => {
