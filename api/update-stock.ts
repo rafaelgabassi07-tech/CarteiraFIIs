@@ -140,8 +140,15 @@ function mapLabelToKey(label: string): string | null {
     if (norm === 'cotacao' || norm.includes('valor atual')) return 'cotacao_atual';
     
     // VPA (Valor Patrimonial por Cota)
-    // Matches: "VPA", "VP/Cota", "Valor Patrimonial" (Exato), "VP por Cota"
-    if (cleanNorm === 'vpa' || cleanNorm === 'vp/cota' || cleanNorm === 'vpcota' || (norm.includes('valor patrimonial') && !norm.includes('liquido'))) return 'vpa';
+    // Matches: "VPA", "VP/Cota", "Valor Patrimonial" (Exato), "VP por Cota", "Val. Patrimonial"
+    if (
+        cleanNorm === 'vpa' || 
+        cleanNorm === 'vp/cota' || 
+        cleanNorm === 'vpcota' || 
+        cleanNorm === 'val.patrimonial' ||
+        cleanNorm === 'valorpatrimonial' ||
+        (norm.includes('valor') && norm.includes('patrimonial') && !norm.includes('liquido'))
+    ) return 'vpa';
     
     if (norm === 'lpa') return 'lpa';
     if (cleanNorm === 'ev/ebitda') return 'ev_ebitda';
@@ -164,8 +171,12 @@ function mapLabelToKey(label: string): string | null {
     if (norm.includes('ultimo rendimento')) return 'ultimo_rendimento';
     
     // Patrimônio Líquido (Total)
-    // Matches: "Patrimônio Líquido", "Patrim. Líquido", "Patrimonio" (if not Valor Patrimonial)
-    if ((norm.includes('patrim') && norm.includes('liquido')) || norm === 'patrimonio') return 'patrimonio_liquido'; 
+    // Matches: "Patrimônio Líquido", "Patrim. Líquido", "Patrimonio", "Patrim. Líq."
+    if (
+        (norm.includes('patrim') && (norm.includes('liquido') || norm.includes('liq'))) || 
+        norm === 'patrimonio' ||
+        norm === 'patrim.'
+    ) return 'patrimonio_liquido'; 
     
     if (norm.includes('cotistas') || norm.includes('numero de cotistas')) return 'num_cotistas';
     
