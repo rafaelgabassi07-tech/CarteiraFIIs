@@ -112,7 +112,7 @@ const AssetDetailSkeleton = () => {
 
 const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: { asset: AssetPosition, dividends: DividendReceipt[], privacyMode: boolean, onClose: () => void, onRefresh?: (ticker: string) => Promise<void> }) => {
     const [tab, setTab] = useState<'POSICAO' | 'FUNDAMENTOS' | 'PROVENTOS'>('POSICAO');
-    const [isUpdating, setIsUpdating] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false); // Inicia como falso para mostrar dados em cache imediatamente
     const [displayAsset, setDisplayAsset] = useState<AssetPosition>(asset);
     
     // Sincroniza props
@@ -120,22 +120,25 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         if (asset) setDisplayAsset(asset);
     }, [asset]);
 
-    // Auto-update ao montar, se a função estiver disponível
+    // Auto-update ao montar (SILENCIOSO/BACKGROUND)
     useEffect(() => {
         let mounted = true;
         if (onRefresh && asset?.ticker) {
-            setIsUpdating(true);
-            const minLoad = new Promise(r => setTimeout(r, 600)); 
-            const task = onRefresh(asset.ticker).catch(e => console.error("Asset refresh failed:", e));
-            
-            Promise.all([task, minLoad]).finally(() => {
-                if (mounted) setIsUpdating(false);
-            });
-        } else {
-            setIsUpdating(false);
+            setIsUpdating(true); // Apenas ativa o indicador visual, não bloqueia a UI
+            // Delay artificial removido para UX instantânea
+            onRefresh(asset.ticker)
+                .catch(e => console.error("Asset refresh failed:", e))
+                .finally(() => {
+                    if (mounted) setIsUpdating(false);
+                });
         }
         return () => { mounted = false; };
     }, []); // Executa apenas na montagem
+
+    // Só exibe Skeleton se NÃO houver nenhum dado para mostrar (ex: erro de carregamento inicial raro)
+    if (!displayAsset) {
+        return <AssetDetailSkeleton />;
+    }
 
     const isFII = displayAsset.assetType === AssetType.FII;
 
@@ -148,22 +151,14 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     const finalReturnPercent = costTotal > 0 ? (finalReturn / costTotal) * 100 : 0;
     
     // Yield on Cost (YoC) - Cálculo Robusto
-    // Tenta usar a projeção baseada no DY atual e PM, se disponível. 
-    // Caso contrário, usa o histórico acumulado.
     const yieldOnCost = useMemo(() => {
         if (displayAsset.averagePrice <= 0) return 0;
-        
-        // 1. Prioridade: Projeção baseada nos fundamentos (Mais preciso para ações novas na carteira)
-        // Fórmula: (Preço Atual / Preço Médio) * DY(12m)
         if (displayAsset.dy_12m !== undefined && displayAsset.dy_12m !== null && displayAsset.currentPrice) {
             return (displayAsset.currentPrice / displayAsset.averagePrice) * displayAsset.dy_12m;
         }
-
-        // 2. Fallback: Histórico Acumulado (Se houver dados consolidados)
         if (displayAsset.totalDividends && costTotal > 0) {
              return (displayAsset.totalDividends / costTotal) * 100;
         }
-        
         return 0;
     }, [displayAsset, costTotal]);
 
@@ -198,10 +193,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         return { chartData: data, total12m, monthlyAvg: total12m / 12 };
     }, [assetDividends]);
 
-    if (isUpdating) {
-        return <AssetDetailSkeleton />;
-    }
-
     // Cálculos para Barra Stacked (Apenas para visualização proporcional)
     const barTotal = Math.max(costTotal, costTotal + gainValue + totalDividends, currentTotal + totalDividends);
     const barCostPct = barTotal > 0 ? (costTotal / barTotal) * 100 : 0;
@@ -217,9 +208,15 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black border shadow-sm transition-all ${isFII ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/20 dark:border-sky-900/30'}`}>
                             {displayAsset.ticker.substring(0, 2)}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                                 <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight truncate">{displayAsset.ticker}</h1>
+                                {isUpdating && (
+                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                        <RefreshCw className="w-3 h-3 animate-spin text-zinc-400" />
+                                        <span className="text-[9px] font-bold text-zinc-400">Atualizando...</span>
+                                    </div>
+                                )}
                             </div>
                             <p className="text-xs font-medium text-zinc-400 truncate max-w-[200px]">{displayAsset.segment || (isFII ? 'Fundo Imobiliário' : 'Ação')}</p>
                         </div>
