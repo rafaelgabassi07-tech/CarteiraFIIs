@@ -143,7 +143,8 @@ function mapLabelToKey(label: string): string | null {
     // Growth & Debt
     if (norm.includes('cagr receitas')) return 'cagr_receita_5a';
     if (norm.includes('cagr lucros')) return 'cagr_lucros_5a';
-    if (norm.includes('div. liquida / ebitda') || norm.includes('divida liquida/ebitda')) return 'divida_liquida_ebitda';
+    // Correção: Regex mais flexível para Dívida Líquida / EBITDA
+    if (norm.includes('liquida/ebitda') || norm.includes('liq/ebitda') || norm.includes('liq./ebitda') || norm.includes('liquida / ebitda')) return 'divida_liquida_ebitda';
     
     // Liquidity & Market
     if (norm.includes('liquidez')) return 'liquidez';

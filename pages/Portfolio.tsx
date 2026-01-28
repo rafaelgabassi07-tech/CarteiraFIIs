@@ -355,7 +355,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                 <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
                                     <InfoRow label="CAGR Receita (5a)" value={displayAsset.cagr_revenue ? `${displayAsset.cagr_revenue.toFixed(1)}%` : '-'} />
                                     <InfoRow label="CAGR Lucros (5a)" value={displayAsset.cagr_profits ? `${displayAsset.cagr_profits.toFixed(1)}%` : '-'} />
-                                    <InfoRow label="Dív. Líq. / EBITDA" value={displayAsset.net_debt_ebitda ? `${displayAsset.net_debt_ebitda.toFixed(2)}x` : '-'} />
+                                    <InfoRow label="Dív. Líq. / EBITDA" value={displayAsset.net_debt_ebitda !== undefined && displayAsset.net_debt_ebitda !== null ? `${displayAsset.net_debt_ebitda.toFixed(2)}x` : '-'} />
                                 </div>
                             </>
                         )}
