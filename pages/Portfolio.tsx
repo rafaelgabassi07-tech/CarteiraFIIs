@@ -145,7 +145,26 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     const gainValue = currentTotal - costTotal;
     const gainPercent = costTotal > 0 ? (gainValue / costTotal) * 100 : 0;
     const isPositive = gainValue >= 0;
-    const yieldOnCost = costTotal > 0 ? (displayAsset.totalDividends || 0) / costTotal * 100 : 0;
+    
+    // Yield on Cost (YoC) - Cálculo Robusto
+    // Tenta usar a projeção baseada no DY atual e PM, se disponível. 
+    // Caso contrário, usa o histórico acumulado.
+    const yieldOnCost = useMemo(() => {
+        if (displayAsset.averagePrice <= 0) return 0;
+        
+        // 1. Prioridade: Projeção baseada nos fundamentos (Mais preciso para ações novas na carteira)
+        // Fórmula: (Preço Atual / Preço Médio) * DY(12m)
+        if (displayAsset.dy_12m !== undefined && displayAsset.dy_12m !== null && displayAsset.currentPrice) {
+            return (displayAsset.currentPrice / displayAsset.averagePrice) * displayAsset.dy_12m;
+        }
+
+        // 2. Fallback: Histórico Acumulado (Se houver dados consolidados)
+        if (displayAsset.totalDividends && costTotal > 0) {
+             return (displayAsset.totalDividends / costTotal) * 100;
+        }
+        
+        return 0;
+    }, [displayAsset, costTotal]);
 
     // --- CÁLCULOS DE PROVENTOS SEGUROS ---
     const assetDividends = useMemo(() => {
