@@ -11,14 +11,14 @@ import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals } from './services/dataService';
-import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio } from './services/portfolioRules';
+import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio, normalizeTicker } from './services/portfolioRules';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '8.8.4'; 
+const APP_VERSION = '8.8.5'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -42,6 +42,27 @@ const MemoizedHome = React.memo(Home);
 const MemoizedPortfolio = React.memo(Portfolio);
 const MemoizedTransactions = React.memo(Transactions);
 const MemoizedNews = React.memo(News);
+
+// Helper para merge inteligente de dividendos sem duplicatas
+const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[]) => {
+    const map = new Map<string, DividendReceipt>();
+    
+    // Indexa os atuais pela chave de negócio (não pelo ID)
+    current.forEach(d => {
+        const key = `${normalizeTicker(d.ticker)}-${d.type}-${d.dateCom}-${d.rate}`;
+        map.set(key, d);
+    });
+
+    // Adiciona/Atualiza com os novos
+    incoming.forEach(d => {
+        const key = `${normalizeTicker(d.ticker)}-${d.type}-${d.dateCom}-${d.rate}`;
+        // Se já existe, atualiza (o novo pode ter dados mais recentes como paymentDate)
+        // Se não existe, adiciona.
+        map.set(key, d);
+    });
+
+    return Array.from(map.values());
+};
 
 const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
@@ -308,7 +329,8 @@ const App: React.FC = () => {
       let data = await fetchUnifiedMarketData(tickers, startDate, force);
 
       if (data.dividends.length > 0) {
-          setDividends(data.dividends);
+          // Merge seguro em vez de substituição para evitar perda de dados de ativos não listados nesta chamada
+          setDividends(prev => mergeDividends(prev, data.dividends));
       }
       if (Object.keys(data.metadata).length > 0) {
           setAssetsMetadata(prev => {
@@ -332,19 +354,12 @@ const App: React.FC = () => {
   }, [dividends, pushEnabled, assetsMetadata]);
 
   // Função dedicada para atualização pontual de ativo (JIT)
-  // Chamada quando o usuário abre o modal de detalhes
   const refreshSingleAsset = useCallback(async (ticker: string) => {
       try {
-          // Força scraper (forceRefresh = true)
           const { dividends: newDivs, metadata: newMeta } = await fetchUnifiedMarketData([ticker], undefined, true);
           
           if (newDivs.length > 0) {
-              setDividends(prev => {
-                  const others = prev.filter(d => d.ticker !== ticker);
-                  // Merge inteligente para evitar duplicatas visuais
-                  const combined = [...others, ...newDivs];
-                  return combined;
-              });
+              setDividends(prev => mergeDividends(prev, newDivs));
           }
 
           if (newMeta[ticker]) {
@@ -354,7 +369,6 @@ const App: React.FC = () => {
               }));
           }
           
-          // Atualiza cotação também
           const { quotes: q } = await getQuotes([ticker]);
           if(q.length > 0) {
               setQuotes(prev => ({...prev, [ticker]: q[0]}));
@@ -487,14 +501,7 @@ const App: React.FC = () => {
           const data = await fetchUnifiedMarketData(tickers, startDate, true); 
           
           if (data.dividends.length > 0) {
-              setDividends(prev => {
-                  // Merge inteligente
-                  const newSet = [...prev];
-                  data.dividends.forEach(d => {
-                      if (!newSet.some(ex => ex.id === d.id)) newSet.push(d);
-                  });
-                  return newSet;
-              });
+              setDividends(prev => mergeDividends(prev, data.dividends));
           }
           
           if (Object.keys(data.metadata).length > 0) {
