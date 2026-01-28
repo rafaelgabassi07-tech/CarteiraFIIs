@@ -373,7 +373,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                 <SectionHeader title="Valuation & Cotas" icon={Scale} />
                                 <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
                                     <InfoRow label="Preço / VP" value={displayAsset.p_vp?.toFixed(2) || '-'} highlight />
-                                    <InfoRow label="Valor Patrimonial" value={displayAsset.vpa !== undefined && displayAsset.vpa !== null ? `R$ ${displayAsset.vpa.toFixed(2)}` : '-'} subtext="Por Cota" />
+                                    <InfoRow label="Valor Patrimonial por Cota" value={displayAsset.vpa !== undefined && displayAsset.vpa !== null ? `R$ ${displayAsset.vpa.toFixed(2)}` : '-'} />
                                     <InfoRow label="Último Rendimento" value={displayAsset.last_dividend ? `R$ ${displayAsset.last_dividend.toFixed(2)}` : '-'} color="text-emerald-600 dark:text-emerald-400" />
                                     <InfoRow label="Patrimônio Líquido" value={formatNumber(displayAsset.assets_value)} />
                                 </div>

@@ -141,13 +141,16 @@ function mapLabelToKey(label: string): string | null {
     
     // VPA (Valor Patrimonial por Cota)
     // Matches: "VPA", "VP/Cota", "Valor Patrimonial" (Exato), "VP por Cota", "Val. Patrimonial"
+    if (norm.includes('cota') && (norm.includes('patrim') || norm.includes('vp'))) return 'vpa';
+
     if (
         cleanNorm === 'vpa' || 
         cleanNorm === 'vp/cota' || 
         cleanNorm === 'vpcota' || 
         cleanNorm === 'val.patrimonial' ||
         cleanNorm === 'valorpatrimonial' ||
-        (norm.includes('valor') && norm.includes('patrimonial') && !norm.includes('liquido'))
+        // Check for "Valor Patrimonial" without "Liquido"
+        ((norm.includes('valor') || norm.includes('val.')) && norm.includes('patrim') && !norm.includes('liquido') && !norm.includes('liq'))
     ) return 'vpa';
     
     if (norm === 'lpa') return 'lpa';
