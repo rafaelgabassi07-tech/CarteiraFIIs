@@ -131,6 +131,7 @@ async function scrapeInvestidor10(ticker: string) {
             ticker: ticker.toUpperCase(),
             type: finalType,
             updated_at: new Date().toISOString(),
+            // Garante inicialização para mapeamento seguro
             dy: null, pvp: null, pl: null, 
             liquidez: null, val_mercado: null,
             segmento: null,
@@ -138,7 +139,8 @@ async function scrapeInvestidor10(ticker: string) {
             cagr_receita_5a: null, cagr_lucros_5a: null,
             divida_liquida_ebitda: null, ev_ebitda: null,
             lpa: null, vp_cota: null, vpa: null,
-            vacancia: null, ultimo_rendimento: null, num_cotistas: null, patrimonio_liquido: null,
+            vacancia: null, ultimo_rendimento: null, num_cotistas: null, 
+            patrimonio_liquido: null, // Key crucial para FIIs
             taxa_adm: null, tipo_gestao: null
         };
 
@@ -172,7 +174,7 @@ async function scrapeInvestidor10(ticker: string) {
             // --- DADOS GERAIS FIIs & AÇÕES ---
             if (kText.includes('liquidez')) dados.liquidez = v;
             
-            // Patrimônio Líquido (Critical for FIIs)
+            // Patrimônio Líquido - Mapeamento Explícito
             if (kText.includes('patrimonio liquido') || kText === 'patrimonio') dados.patrimonio_liquido = v;
             
             // Segmento
@@ -208,7 +210,7 @@ async function scrapeInvestidor10(ticker: string) {
         });
 
         // --- ESTRATÉGIA 2: BUSCA TEXTUAL (BRUTE FORCE) ---
-        // Essencial para quando classes mudam ou estrutura é aninhada
+        // Garante que, se estiver no texto, pegamos.
         const forcedKeys = [
             'Taxa de Administração', 'Tipo de Gestão', 'Vacância Física', 
             'Número de Cotistas', 'Patrimônio Líquido', 'Segmento'
@@ -227,9 +229,9 @@ async function scrapeInvestidor10(ticker: string) {
                 if ($(el).children().length > 5) return; 
                 
                 const text = $(el).text().trim();
-                // Verifica se é um rótulo curto
-                if (text.length < 50 && normalize(text).includes(normalize(term))) {
-                    // Tenta achar o valor próximo
+                // Verifica se é um rótulo curto e corresponde ao termo
+                if (text.length < 50 && normalize(text).includes(kNorm)) {
+                    // Tenta achar o valor próximo (irmão, filho ou estrutura de grid)
                     let val = $(el).next().text().trim(); // Irmão
                     if (!val) val = $(el).find('span').last().text().trim(); // Filho
                     if (!val) val = $(el).parent().next().text().trim(); // Tio (Grid layout)
@@ -373,6 +375,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (metadata) {
             const dbPayload = { ...metadata };
+            // Removemos campos calculados dinamicamente para não poluir o DB se não existirem colunas
             delete dbPayload.dy;
             delete dbPayload.cotacao_atual;
             

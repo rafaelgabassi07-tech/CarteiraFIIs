@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -15,8 +16,9 @@ import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from '
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
+import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '8.8.3'; // Bump de versão
+const APP_VERSION = '8.8.4'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -44,6 +46,7 @@ const MemoizedNews = React.memo(News);
 const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
   const updateManager = useUpdateManager(APP_VERSION);
+  const { scrollDirection, isTop } = useScrollDirection();
   
   // Controle de Inicialização
   const [isReady, setIsReady] = useState(false); 
@@ -534,6 +537,9 @@ const App: React.FC = () => {
       return processPortfolio(transactions, dividends, quotes, assetsMetadata);
   }, [transactions, quotes, dividends, assetsMetadata]);
 
+  // Determine header visibility logic
+  const isHeaderVisible = scrollDirection === 'up' || isTop;
+
   // --- RENDERIZAÇÃO ---
 
   if (!isReady) return <SplashScreen finishLoading={false} realProgress={loadingProgress} />;
@@ -576,6 +582,7 @@ const App: React.FC = () => {
                     undefined
                 }
                 hideBorder={currentTab === 'transactions'}
+                isVisible={isHeaderVisible}
             />
             
             <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-4">
@@ -596,13 +603,13 @@ const App: React.FC = () => {
               ) : (
                 <div key={currentTab} className="anim-page-enter">
                   {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
-                  {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} dividends={dividends} privacyMode={privacyMode} onAssetRefresh={refreshSingleAsset} />}
+                  {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} dividends={dividends} privacyMode={privacyMode} onAssetRefresh={refreshSingleAsset} headerVisible={isHeaderVisible} />}
                   {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                   {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
                 </div>
               )}
             </main>
-            {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
+            {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} isVisible={isHeaderVisible} />}
             <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
             <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={handleClearNotifications} />
             <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />

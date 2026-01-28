@@ -68,14 +68,16 @@ interface HeaderProps {
   appVersion?: string;
   cloudStatus?: 'disconnected' | 'connected' | 'hidden' | 'syncing';
   hideBorder?: boolean;
+  isVisible?: boolean; // Novo prop para controle de animação
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  title, subtitle, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, cloudStatus = 'hidden', hideBorder = false, onRefresh
+  title, subtitle, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, cloudStatus = 'hidden', hideBorder = false, onRefresh, isVisible = true
 }) => {
   return (
     <header 
-      className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-4 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all duration-300 h-20 pt-safe top-0 ${hideBorder ? '!border-b-0 shadow-none' : ''}`}
+      className={`fixed left-0 right-0 z-40 flex flex-col justify-end px-4 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all duration-500 ease-in-out-expo h-20 pt-safe top-0 ${hideBorder ? '!border-b-0 shadow-none' : ''}`}
+      style={{ transform: isVisible ? 'translateY(0)' : 'translateY(-100%)' }}
     >
       <div className="flex items-center justify-between h-14 mb-1">
         <div className="flex items-center gap-3 min-w-0">
@@ -137,6 +139,7 @@ export const Header: React.FC<HeaderProps> = ({
 interface BottomNavProps {
   currentTab: string;
   onTabChange: (tab: string) => void;
+  isVisible?: boolean; // Novo prop
 }
 
 const navItems = [
@@ -146,9 +149,12 @@ const navItems = [
   { id: 'news', icon: Newspaper, label: 'Notícias' },
 ];
 
-export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
+export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange, isVisible = true }) => {
   return (
-    <div className="fixed bottom-6 left-0 right-0 z-[100] pointer-events-none flex justify-center items-end px-4">
+    <div 
+        className="fixed bottom-6 left-0 right-0 z-[100] pointer-events-none flex justify-center items-end px-4 transition-transform duration-500 ease-in-out-expo"
+        style={{ transform: isVisible ? 'translateY(0)' : 'translateY(150%)' }}
+    >
       <nav className="pointer-events-auto bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-2xl shadow-zinc-200/50 dark:shadow-black/50 px-2 py-2 flex gap-1 items-center max-w-sm w-full justify-between ring-1 ring-white/20 dark:ring-white/10 transition-all hover:scale-[1.02]">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
@@ -252,6 +258,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   );
 };
 
+// ... Resto dos componentes do Layout (ConfirmationModal, UpdateReportModal, etc.) mantidos iguais ...
 interface ConfirmationModalProps { isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; }
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 250);
