@@ -462,23 +462,41 @@ const App: React.FC = () => {
       window.location.reload();
   }, []);
 
-  // --- NOVA FUNÇÃO DE REFRESH LEVE (APENAS COTAÇÕES) ---
-  const handleRefreshQuotesOnly = async () => {
-      if (transactions.length === 0) return;
+  // --- REFRESH MANUAL COMPLETO (ACÃO DO USUÁRIO) ---
+  const handleManualRefresh = async () => {
+      if (transactions.length === 0) {
+          showToast('info', 'Adicione ativos primeiro.');
+          return;
+      }
+      
       setIsRefreshing(true);
+      showToast('info', 'Buscando atualizações de mercado...');
+      
       try {
           const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
-          // 1. Atualiza Cotações (Brapi)
+          
+          // 1. Atualiza Cotações (Brapi) - Rápido
           const { quotes: newQuotesData } = await getQuotes(tickers);
           if (newQuotesData.length > 0) {
               setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
           }
-          // 2. Sincroniza dados unificados mas SEM forçar scrape (usa cache do DB)
-          // Isso garante que se outro usuário atualizou o DB, você pega os dados novos, mas não trava sua UI.
-          const startDate = transactions.reduce((min, t) => t.date < min ? t.date : min, transactions[0].date);
-          const data = await fetchUnifiedMarketData(tickers, startDate, false); // force=false
           
-          if (data.dividends.length > 0) setDividends(data.dividends);
+          // 2. Sincroniza dados unificados FORÇANDO O SCRAPER (forceRefresh = true)
+          // Isso garante que novas informações sejam baixadas do Investidor10
+          const startDate = transactions.reduce((min, t) => t.date < min ? t.date : min, transactions[0].date);
+          const data = await fetchUnifiedMarketData(tickers, startDate, true); 
+          
+          if (data.dividends.length > 0) {
+              setDividends(prev => {
+                  // Merge inteligente
+                  const newSet = [...prev];
+                  data.dividends.forEach(d => {
+                      if (!newSet.some(ex => ex.id === d.id)) newSet.push(d);
+                  });
+                  return newSet;
+              });
+          }
+          
           if (Object.keys(data.metadata).length > 0) {
               setAssetsMetadata(prev => {
                   const next = { ...prev };
@@ -488,10 +506,10 @@ const App: React.FC = () => {
                   return next;
               });
           }
-          showToast('success', 'Cotações atualizadas.');
+          showToast('success', 'Carteira atualizada com sucesso!');
       } catch (e) {
           console.error(e);
-          showToast('error', 'Falha ao atualizar cotações.');
+          showToast('error', 'Falha ao atualizar dados. Tente novamente.');
       } finally {
           setIsRefreshing(false);
       }
@@ -578,7 +596,7 @@ const App: React.FC = () => {
                 notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} 
                 cloudStatus={cloudStatus} 
                 onRefresh={
-                    currentTab === 'portfolio' ? handleRefreshQuotesOnly : 
+                    currentTab === 'portfolio' ? handleManualRefresh : 
                     undefined
                 }
                 hideBorder={currentTab === 'transactions'}
