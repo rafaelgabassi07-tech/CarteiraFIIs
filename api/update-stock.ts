@@ -292,6 +292,41 @@ async function scrapeInvestidor10(ticker: string) {
              });
         }
 
+        // --- ESTRATÉGIA TÉCNICA 3: Fallback Específico para FIIs (Dados Críticos) ---
+        // Se ainda assim faltarem dados importantes de FIIs, faz uma busca bruta no texto.
+        if (finalType === 'FII') {
+            if (dados.patrimonio_liquido === null) {
+                 $('div, span, p').each((_, el) => {
+                     if ($(el).text().trim().includes('Patrimônio Líquido')) {
+                         const val = $(el).next().text() || $(el).find('.value').text() || $(el).parent().find('.value').text() || $(el).text();
+                         if (val) {
+                             const parsed = parseValue(val);
+                             if (parsed !== null && parsed > 0) {
+                                 dados.patrimonio_liquido = parsed;
+                                 return false;
+                             }
+                         }
+                     }
+                 });
+            }
+            if (dados.vacancia === null) {
+                 $('div, span, p').each((_, el) => {
+                     const txt = $(el).text().trim();
+                     if (txt.includes('Vacância Física')) {
+                         const val = $(el).next().text() || $(el).find('.value').text() || $(el).parent().find('.value').text() || txt;
+                         if (val) {
+                             // Vacância pode ser 0, então check diferente
+                             const parsed = parseValue(val);
+                             if (parsed !== null) {
+                                 dados.vacancia = parsed;
+                                 return false;
+                             }
+                         }
+                     }
+                 });
+            }
+        }
+
         // 3. Extração de VP/Cota se ainda não encontrado (Cálculo reverso)
         if (dados.vpa === null && dados.pvp > 0 && dados.cotacao_atual > 0) {
              dados.vpa = dados.cotacao_atual / dados.pvp;
