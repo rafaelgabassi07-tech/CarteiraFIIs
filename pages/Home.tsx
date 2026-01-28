@@ -2,14 +2,13 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// ... (Imports e Interfaces mantidos iguais) ...
 interface HomeProps {
   portfolio: AssetPosition[];
   dividendReceipts: DividendReceipt[];
@@ -42,8 +41,6 @@ const formatDateShort = (dateStr: string) => {
     return `${day}/${month}`;
 };
 
-// ... (TimelineEvent, StoryViewer, SmartFeed, CHART_COLORS mantidos iguais - código omitido para brevidade, assumir existente) ...
-// REINSERINDO COMPONENTES VISUAIS ESSENCIAIS
 const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
     const isPayment = event.eventType === 'payment';
     const isToday = new Date(event.date + 'T00:00:00').getTime() === new Date().setHours(0,0,0,0);
@@ -242,12 +239,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     });
 
     Object.keys(receiptsMap).forEach(k => { if (map[k] > maxMonthly) maxMonthly = map[k]; });
-    const sortedHistory = Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
-    const dividendsChartData = sortedHistory.map(([date, val]) => {
+    
+    // Sort keys ascending (Old -> New)
+    const sortedKeys = Object.keys(map).sort((a, b) => a.localeCompare(b));
+    const sortedHistory = sortedKeys.map(k => [k, map[k]] as [string, number]);
+    
+    // Last 12 months ascending
+    const dividendsChartData = sortedKeys.slice(-12).map(date => {
         const [y, m] = date.split('-');
         const d = new Date(parseInt(y), parseInt(m) - 1, 1);
-        return { fullDate: date, name: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''), value: val, year: y };
-    }).slice(-12);
+        return { 
+            fullDate: date, 
+            name: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''), 
+            value: map[date], 
+            year: y 
+        };
+    });
     
     const sumLast12m = dividendsChartData.reduce((acc, curr) => acc + curr.value, 0);
     const monthlyAvg = dividendsChartData.length > 0 ? (sumLast12m / dividendsChartData.length) : 0;
@@ -265,8 +272,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const monthlyInflationRateDecimal = Math.pow(1 + (annualInflationRate / 100), 1/12) - 1;
       const monthlyInflationRatePercent = monthlyInflationRateDecimal * 100;
       
-      // 3. Custo de Erosão Mensal (Quanto o patrimônio desvaloriza por mês)
-      const monthlyInflationCost = invested * monthlyInflationRateDecimal;
+      // 3. Custo de Erosão Mensal Atual (Para o card)
+      const currentMonthlyInflationCost = invested * monthlyInflationRateDecimal;
 
       // 4. Yield on Cost Anualizado
       const nominalYield = invested > 0 ? (divStats.total12m / invested) * 100 : 0;
@@ -275,25 +282,63 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const realYieldSpread = nominalYield - annualInflationRate;
       
       // 6. Cobertura (Renda Média / Custo Mensal da Inflação)
-      const coverageRatio = monthlyInflationCost > 0 ? (divStats.monthlyAvg / monthlyInflationCost) * 100 : 0;
+      const coverageRatio = currentMonthlyInflationCost > 0 ? (divStats.monthlyAvg / currentMonthlyInflationCost) * 100 : 0;
 
-      // 7. Dados Gráficos (Comparativo Mês a Mês)
-      const chartData = [...dividendsChartData].reverse().map(d => ({
-          ...d,
-          inflationCost: monthlyInflationCost,
-          netIncome: d.value - monthlyInflationCost
-      }));
+      // Helper para reconstruir patrimônio histórico
+      const getHistoricalInvested = (dateLimit: string) => {
+          if (!transactions || transactions.length === 0) return 0;
+          const pos: Record<string, {q:number, c:number}> = {};
+          
+          // Assume que transactions não está ordenado (sort por segurança)
+          const sortedTxs = [...transactions].sort((a,b) => a.date.localeCompare(b.date));
+
+          for (const t of sortedTxs) {
+              if (t.date > dateLimit) break;
+              
+              if (!pos[t.ticker]) pos[t.ticker] = {q:0, c:0};
+              
+              if (t.type === 'BUY') {
+                  pos[t.ticker].q += t.quantity;
+                  pos[t.ticker].c += t.quantity * t.price;
+              } else {
+                  if (pos[t.ticker].q > 0) {
+                      const avg = pos[t.ticker].c / pos[t.ticker].q;
+                      pos[t.ticker].q -= t.quantity;
+                      pos[t.ticker].c -= t.quantity * avg;
+                      if (pos[t.ticker].q < 0.0001) { pos[t.ticker].q = 0; pos[t.ticker].c = 0; }
+                  }
+              }
+          }
+          return Object.values(pos).reduce((acc, p) => acc + p.c, 0);
+      };
+
+      // 7. Dados Gráficos com Custo Histórico Dinâmico
+      // dividendsChartData já está em ordem ascendente (Jan -> Dez)
+      const chartData = dividendsChartData.map(d => {
+          const [y, m] = d.fullDate.split('-').map(Number);
+          const lastDayOfMonth = new Date(y, m, 0).toISOString().split('T')[0];
+          
+          const historicInvested = getHistoricalInvested(lastDayOfMonth);
+          const historicCost = historicInvested * monthlyInflationRateDecimal;
+
+          return {
+              ...d,
+              inflationCost: historicCost,
+              investedAtTime: historicInvested,
+              netIncome: d.value - historicCost
+          };
+      });
 
       return {
           realYieldSpread,
           nominalYield,
           annualInflationRate,
-          monthlyInflationRatePercent, // Taxa mensal correta (~0.37% para 4.62% anual)
-          monthlyInflationCost,
+          monthlyInflationRatePercent, 
+          monthlyInflationCost: currentMonthlyInflationCost,
           coverageRatio,
           chartData
       };
-  }, [invested, safeInflation, divStats, dividendsChartData]);
+  }, [invested, safeInflation, divStats, dividendsChartData, transactions]);
 
   const toggleMonthExpand = useCallback((month: string) => setExpandedMonth(prev => prev === month ? null : month), []);
   const handleBarClick = useCallback((data: any) => { if (data && data.activePayload && data.activePayload.length > 0) { const item = data.activePayload[0].payload; if (item && item.fullDate) setSelectedProventosMonth(item.fullDate); } }, []);
@@ -304,6 +349,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       if (active && payload && payload.length) {
           const income = payload.find((p: any) => p.dataKey === 'value')?.value || 0;
           const inflation = payload.find((p: any) => p.dataKey === 'inflationCost')?.value || 0;
+          const investedHist = payload[0]?.payload?.investedAtTime || 0;
           const real = income - inflation;
           return (
               <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-800 text-left">
@@ -311,7 +357,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <div className="space-y-1">
                       <div className="flex justify-between gap-4"><span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Renda</span><span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-300">{formatBRL(income, privacyMode)}</span></div>
                       <div className="flex justify-between gap-4"><span className="text-[10px] text-rose-500 font-bold">Custo IPCA</span><span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-300">{formatBRL(inflation, privacyMode)}</span></div>
-                      <div className="border-t border-zinc-100 dark:border-zinc-800 my-1"></div>
+                      <div className="flex justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800 pb-1 mb-1"><span className="text-[8px] text-zinc-400">Sobre Patrimônio</span><span className="text-[8px] font-mono text-zinc-400">{formatBRL(investedHist, privacyMode)}</span></div>
                       <div className="flex justify-between gap-4"><span className="text-[10px] text-zinc-900 dark:text-white font-black">Ganho Real</span><span className={`text-[10px] font-mono font-black ${real >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{real > 0 ? '+' : ''}{formatBRL(real, privacyMode)}</span></div>
                   </div>
               </div>
@@ -474,7 +520,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <div className="h-64 w-full bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 px-2 flex justify-between">
                           <span>Renda vs Custo Inflação</span>
-                          <span className="text-[9px] normal-case opacity-60">Linha Vermelha = Custo Mensal</span>
+                          <span className="text-[9px] normal-case opacity-60">Linha Vermelha = Custo sobre Patrimônio Histórico</span>
                       </h3>
                       <ResponsiveContainer width="100%" height="85%">
                           <ComposedChart data={inflationAnalysis.chartData}>
@@ -509,7 +555,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                           <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Erosão Estimada</p>
                           <p className="text-sm font-black text-rose-500">{formatBRL(inflationAnalysis.monthlyInflationCost, privacyMode)}</p>
-                          <p className="text-[8px] text-zinc-400 mt-0.5">Custo mensal s/ patrimônio</p>
+                          <p className="text-[8px] text-zinc-400 mt-0.5">Custo mensal s/ patrimônio atual</p>
                       </div>
                   </div>
               </div>
