@@ -140,18 +140,9 @@ function mapLabelToKey(label: string): string | null {
     if (norm === 'cotacao' || norm.includes('valor atual')) return 'cotacao_atual';
     
     // VPA (Valor Patrimonial por Cota)
-    // Matches: "VPA", "VP/Cota", "Valor Patrimonial" (Exato), "VP por Cota", "Val. Patrimonial"
+    // Matches: "VPA", "VP/Cota", "VP por Cota", "Val. Patrimonial p/Cota"
     if (norm.includes('cota') && (norm.includes('patrim') || norm.includes('vp'))) return 'vpa';
-
-    if (
-        cleanNorm === 'vpa' || 
-        cleanNorm === 'vp/cota' || 
-        cleanNorm === 'vpcota' || 
-        cleanNorm === 'val.patrimonial' ||
-        cleanNorm === 'valorpatrimonial' ||
-        // Check for "Valor Patrimonial" without "Liquido"
-        ((norm.includes('valor') || norm.includes('val.')) && norm.includes('patrim') && !norm.includes('liquido') && !norm.includes('liq'))
-    ) return 'vpa';
+    if (cleanNorm === 'vpa' || cleanNorm === 'vp/cota' || cleanNorm === 'vpcota') return 'vpa';
     
     if (norm === 'lpa') return 'lpa';
     if (cleanNorm === 'ev/ebitda') return 'ev_ebitda';
@@ -174,16 +165,19 @@ function mapLabelToKey(label: string): string | null {
     if (norm.includes('ultimo rendimento')) return 'ultimo_rendimento';
     
     // Patrimônio Líquido (Total)
-    // Matches: "Patrimônio Líquido", "Patrim. Líquido", "Patrimonio", "Patrim. Líq."
+    // Matches: "Patrimônio Líquido", "Patrim. Líquido", "Patrimonio", "Patrim. Líq.", "Valor Patrimonial"
     if (
         (norm.includes('patrim') && (norm.includes('liquido') || norm.includes('liq'))) || 
         norm === 'patrimonio' ||
-        norm === 'patrim.'
+        norm === 'patrim.' ||
+        norm === 'valor patrimonial' || 
+        cleanNorm === 'valorpatrimonial' ||
+        cleanNorm === 'val.patrimonial'
     ) return 'patrimonio_liquido'; 
     
     if (norm.includes('cotistas') || norm.includes('numero de cotistas')) return 'num_cotistas';
     
-    // Vacância (Prioriza Física)
+    // Vacância (Prioriza Física, ou genérica se não houver conflito com financeira)
     if (norm.includes('vacancia') && !norm.includes('financeira')) return 'vacancia'; 
     
     if (norm.includes('tipo de gestao') || norm === 'gestao') return 'tipo_gestao';
@@ -296,9 +290,14 @@ async function scrapeInvestidor10(ticker: string) {
         // Se ainda assim faltarem dados importantes de FIIs, faz uma busca bruta no texto.
         if (finalType === 'FII') {
             if (dados.patrimonio_liquido === null) {
-                 $('div, span, p').each((_, el) => {
-                     if ($(el).text().trim().includes('Patrimônio Líquido')) {
-                         const val = $(el).next().text() || $(el).find('.value').text() || $(el).parent().find('.value').text() || $(el).text();
+                 $('div, span, p, h2, h3').each((_, el) => {
+                     const txt = $(el).text().trim();
+                     if (txt.includes('Patrimônio Líquido') || (txt.includes('Valor Patrimonial') && !txt.includes('Cota') && !txt.includes('cota'))) {
+                         let val = $(el).next().text().trim();
+                         if (!val) val = $(el).find('.value').text().trim();
+                         if (!val) val = $(el).parent().find('.value').text().trim();
+                         if (!val && txt.length > 15 && /[0-9]/.test(txt)) val = txt; // Fallback extremo se valor estiver no texto
+
                          if (val) {
                              const parsed = parseValue(val);
                              if (parsed !== null && parsed > 0) {
@@ -312,10 +311,12 @@ async function scrapeInvestidor10(ticker: string) {
             if (dados.vacancia === null) {
                  $('div, span, p').each((_, el) => {
                      const txt = $(el).text().trim();
-                     if (txt.includes('Vacância Física')) {
-                         const val = $(el).next().text() || $(el).find('.value').text() || $(el).parent().find('.value').text() || txt;
+                     if (txt.includes('Vacância') && !txt.includes('Financeira')) {
+                         let val = $(el).next().text().trim();
+                         if (!val) val = $(el).find('.value').text().trim();
+                         if (!val) val = $(el).parent().find('.value').text().trim();
+                         
                          if (val) {
-                             // Vacância pode ser 0, então check diferente
                              const parsed = parseValue(val);
                              if (parsed !== null) {
                                  dados.vacancia = parsed;
