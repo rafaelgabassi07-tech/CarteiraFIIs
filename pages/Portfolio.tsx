@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, ExternalLink, TrendingUp, TrendingDown, Scale, Percent, Banknote, Calendar, Briefcase, Zap, Layers, Tag, Gem, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Search, Wallet, ExternalLink, TrendingUp, TrendingDown, Scale, Percent, Banknote, Calendar, Briefcase, Zap, Layers, Tag, Gem, Building2 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -112,23 +112,28 @@ const AssetDetailSkeleton = () => {
 
 const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: { asset: AssetPosition, dividends: DividendReceipt[], privacyMode: boolean, onClose: () => void, onRefresh?: (ticker: string) => Promise<void> }) => {
     const [tab, setTab] = useState<'POSICAO' | 'FUNDAMENTOS' | 'PROVENTOS'>('POSICAO');
-    const [isUpdating, setIsUpdating] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(true);
     const [displayAsset, setDisplayAsset] = useState<AssetPosition>(asset);
     
+    // Sincroniza props
     useEffect(() => {
         if (asset) setDisplayAsset(asset);
     }, [asset]);
 
-    // Função de atualização manual
-    const handleForceRefresh = async () => {
-        if (!onRefresh) return;
-        setIsUpdating(true);
-        try {
-            await onRefresh(displayAsset.ticker);
-        } finally {
+    // Auto-update ao montar, se a função estiver disponível
+    useEffect(() => {
+        if (onRefresh) {
+            setIsUpdating(true);
+            const minLoad = new Promise(r => setTimeout(r, 600)); // Pequeno delay para UX
+            const task = onRefresh(asset.ticker).catch(e => console.error(e));
+            
+            Promise.all([task, minLoad]).finally(() => {
+                setIsUpdating(false);
+            });
+        } else {
             setIsUpdating(false);
         }
-    };
+    }, []);
 
     const isFII = displayAsset.assetType === AssetType.FII;
 
@@ -279,13 +284,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                 {tab === 'FUNDAMENTOS' && (
                     <div className="space-y-4 anim-fade-in">
                         
-                        {/* Botão de Atualização Forçada se dados faltantes */}
-                        {(!displayAsset.dy_12m && !displayAsset.p_vp) && (
-                            <button onClick={handleForceRefresh} className="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors mb-2 press-effect">
-                                <RefreshCw className="w-3.5 h-3.5" /> Tentar Carregar Dados
-                            </button>
-                        )}
-
                         {/* CARD DE DESTAQUES PRINCIPAIS */}
                         <div className="grid grid-cols-2 gap-3 mb-2">
                             <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
@@ -454,115 +452,129 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     );
 };
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false, onAssetRefresh, headerVisible = true }) => {
-    const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterType, setFilterType] = useState<'ALL' | AssetType>('ALL');
+const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends, privacyMode = false, onAssetRefresh, headerVisible = true }) => {
+  const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
-    const filteredAssets = useMemo(() => {
-        return portfolio
-          .filter(p => {
-            const matchesSearch = p.ticker.includes(searchTerm.toUpperCase()) || (p.segment || '').toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesType = filterType === 'ALL' || p.assetType === filterType;
-            return matchesSearch && matchesType;
-          })
-          .sort((a, b) => (b.currentPrice || 0) * b.quantity - (a.currentPrice || 0) * a.quantity); 
-    }, [portfolio, searchTerm, filterType]);
+  const filteredPortfolio = useMemo(() => {
+    if (!searchTerm) return portfolio;
+    const lower = searchTerm.toLowerCase();
+    return portfolio.filter(p => p.ticker.toLowerCase().includes(lower) || p.segment?.toLowerCase().includes(lower));
+  }, [portfolio, searchTerm]);
 
+  const grouped = useMemo(() => {
+    const fiis = filteredPortfolio.filter(p => p.assetType === AssetType.FII);
+    const stocks = filteredPortfolio.filter(p => p.assetType === AssetType.STOCK);
+    return { fiis, stocks };
+  }, [filteredPortfolio]);
+
+  return (
+    <div className="pb-32 min-h-screen">
+      <div className={`sticky top-20 z-20 bg-primary-light dark:bg-primary-dark transition-all duration-300 -mx-4 px-4 py-2 mb-2 ${headerVisible ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0 pointer-events-none'}`}>
+        <div className="relative group">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none">
+            <Search className="w-4 h-4" />
+          </div>
+          <input 
+            type="text" 
+            placeholder="Buscar na carteira..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:bg-white dark:focus:bg-zinc-900 border-zinc-200 dark:border-zinc-700 pl-11 pr-4 py-3 rounded-2xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {grouped.fiis.length > 0 && (
+          <div>
+             <div className="flex items-center gap-2 mb-3 px-2">
+                <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                    <Building2 className="w-4 h-4" />
+                </div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Fundos Imobiliários</h3>
+                <span className="ml-auto text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-400">{grouped.fiis.length}</span>
+             </div>
+             <div className="grid grid-cols-1 gap-2">
+                {grouped.fiis.map((asset) => (
+                   <AssetCard key={asset.ticker} asset={asset} privacyMode={privacyMode} onClick={() => setSelectedAsset(asset)} />
+                ))}
+             </div>
+          </div>
+        )}
+
+        {grouped.stocks.length > 0 && (
+          <div>
+             <div className="flex items-center gap-2 mb-3 px-2 mt-2">
+                <div className="p-1.5 rounded-lg bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400">
+                    <Briefcase className="w-4 h-4" />
+                </div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">Ações</h3>
+                <span className="ml-auto text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-400">{grouped.stocks.length}</span>
+             </div>
+             <div className="grid grid-cols-1 gap-2">
+                {grouped.stocks.map((asset) => (
+                   <AssetCard key={asset.ticker} asset={asset} privacyMode={privacyMode} onClick={() => setSelectedAsset(asset)} />
+                ))}
+             </div>
+          </div>
+        )}
+
+        {filteredPortfolio.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                <Gem className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
+                <p className="text-sm font-bold text-zinc-500">Nenhum ativo encontrado.</p>
+            </div>
+        )}
+      </div>
+
+      <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
+          {selectedAsset && (
+              <AssetDetailView 
+                  asset={selectedAsset} 
+                  dividends={dividends || []} 
+                  privacyMode={privacyMode || false} 
+                  onClose={() => setSelectedAsset(null)}
+                  onRefresh={onAssetRefresh}
+              />
+          )}
+      </SwipeableModal>
+    </div>
+  );
+};
+
+const AssetCard = ({ asset, privacyMode, onClick }: { asset: AssetPosition, privacyMode?: boolean, onClick: () => void }) => {
+    const isPositive = (asset.dailyChange || 0) >= 0;
+    const totalValue = (asset.currentPrice || 0) * asset.quantity;
+    
     return (
-        <div className="pb-32 min-h-screen">
-            {/* Barra de Filtros Sincronizada com Header */}
-            <div 
-                className={`sticky z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all duration-500 ease-in-out-expo -mx-4 px-4 py-2 ${headerVisible ? 'top-20' : 'top-0 pt-safe'}`}
-            >
-                <div className="flex flex-col gap-3 pb-2">
-                    <div className="relative flex items-center group">
-                        <Search className="w-4 h-4 absolute left-4 text-zinc-400 group-focus-within:text-zinc-600 dark:group-focus-within:text-zinc-200 transition-colors" />
-                        <input 
-                            type="text" 
-                            placeholder="Filtrar por nome ou ticker..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-zinc-100 dark:bg-zinc-800/80 border border-transparent focus:bg-white dark:focus:bg-zinc-900 border-zinc-200 dark:border-zinc-700 pl-11 pr-4 py-3 rounded-2xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm"
-                        />
-                    </div>
-                    <div className="flex items-center justify-between px-1">
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl relative">
-                            <div 
-                                className={`absolute top-1 bottom-1 w-[calc(33.33%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`}
-                                style={{ 
-                                    left: '4px',
-                                    transform: `translateX(${filterType === 'ALL' ? '0%' : filterType === AssetType.FII ? '100%' : '200%'})`
-                                }}
-                            ></div>
-                            <button onClick={() => setFilterType('ALL')} className={`relative z-10 px-4 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors ${filterType === 'ALL' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Tudo</button>
-                            <button onClick={() => setFilterType(AssetType.FII)} className={`relative z-10 px-4 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors ${filterType === AssetType.FII ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>FIIs</button>
-                            <button onClick={() => setFilterType(AssetType.STOCK)} className={`relative z-10 px-4 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors ${filterType === AssetType.STOCK ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Ações</button>
-                        </div>
-                        <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{filteredAssets.length} Ativos</div>
-                    </div>
+        <button onClick={onClick} className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between group active:scale-[0.98] transition-all duration-200 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm anim-fade-in-up">
+            <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xs font-black border shadow-sm transition-colors ${asset.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/20 dark:border-sky-900/30'}`}>
+                    {asset.ticker.substring(0, 2)}
+                </div>
+                <div className="text-left">
+                    <h4 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                        {asset.ticker}
+                        {asset.dailyChange !== undefined && (
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isPositive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
+                                {isPositive ? '+' : ''}{asset.dailyChange.toFixed(2)}%
+                            </span>
+                        )}
+                    </h4>
+                    <p className="text-[10px] font-medium text-zinc-400 mt-0.5 truncate max-w-[140px]">{asset.segment}</p>
+                    <p className="text-[10px] font-bold text-zinc-500 mt-1">{asset.quantity} cotas</p>
                 </div>
             </div>
-
-            <div className="space-y-3 px-1 pt-6">
-                {filteredAssets.length > 0 ? (
-                    filteredAssets.map((asset, index) => {
-                        const currentPrice = asset.currentPrice || 0;
-                        const totalValue = currentPrice * asset.quantity;
-                        const dailyVar = asset.dailyChange || 0;
-                        const isPositiveDaily = dailyVar >= 0;
-                        const isFII = asset.assetType === AssetType.FII;
-                        const showLogo = asset.logoUrl && !isFII;
-
-                        return (
-                            <button key={asset.ticker} onClick={() => setSelectedAsset(asset)} className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between shadow-sm press-effect group hover:border-zinc-300 dark:hover:border-zinc-700 anim-stagger-item transition-all" style={{ animationDelay: `${index * 40}ms` }}>
-                                <div className="flex items-center gap-4">
-                                    <div className="relative">
-                                        {showLogo ? (
-                                            <div className="w-12 h-12 rounded-2xl bg-white border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-center overflow-hidden p-1">
-                                                <img src={asset.logoUrl} alt={asset.ticker} className="w-full h-full object-contain" />
-                                            </div>
-                                        ) : (
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border text-xs font-black shadow-sm ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 dark:bg-sky-900/10 text-sky-600 border-sky-100 dark:border-sky-900/30'}`}>{asset.ticker.substring(0, 2)}</div>
-                                        )}
-                                    </div>
-                                    <div className="text-left">
-                                        <h3 className="font-black text-sm text-zinc-900 dark:text-white flex items-center gap-2">{asset.ticker}</h3>
-                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest truncate max-w-[120px]">{asset.segment || 'Geral'}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalValue, privacyMode)}</p>
-                                    <div className="flex flex-col items-end mt-0.5">
-                                        <span className="text-[10px] font-medium text-zinc-400">{formatBRL(currentPrice, privacyMode)}</span>
-                                        <span className={`text-[9px] font-bold ${isPositiveDaily ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                            {isPositiveDaily ? '+' : ''}{dailyVar.toFixed(2)}% (24h)
-                                        </span>
-                                    </div>
-                                </div>
-                            </button>
-                        );
-                    })
-                ) : (
-                    <div className="text-center py-20 opacity-40 anim-fade-in flex flex-col items-center">
-                        <Gem className="w-12 h-12 mb-4 text-zinc-300 anim-float" strokeWidth={1.5} />
-                        <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Nenhum ativo encontrado</p>
-                    </div>
+            
+            <div className="text-right">
+                <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalValue, privacyMode)}</p>
+                <p className="text-[10px] font-medium text-zinc-400 mt-0.5">{formatBRL(asset.currentPrice || 0, privacyMode)}</p>
+                {asset.dy_12m !== undefined && (
+                    <p className="text-[9px] font-bold text-emerald-500 mt-1">DY {asset.dy_12m.toFixed(1)}%</p>
                 )}
             </div>
-
-            <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
-                {selectedAsset && (
-                    <AssetDetailView 
-                        asset={selectedAsset} 
-                        dividends={dividends} 
-                        privacyMode={!!privacyMode} 
-                        onClose={() => setSelectedAsset(null)}
-                        onRefresh={onAssetRefresh}
-                    />
-                )}
-            </SwipeableModal>
-        </div>
+        </button>
     );
 };
 

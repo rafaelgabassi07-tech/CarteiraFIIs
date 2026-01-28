@@ -32,7 +32,7 @@ const client = axios.create({
     maxRedirects: 5
 });
 
-// --- HELPERS DE PARSEAMENTO ROBUSTOS ---
+// --- HELPERS TÉCNICOS ---
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
 function normalize(str: string) {
@@ -47,10 +47,10 @@ function parseValue(valueStr: any) {
     let str = String(valueStr).trim();
     if (!str || str === '-' || str === 'N/A') return 0;
 
-    // Remove sufixos e prefixos
+    // Limpeza técnica de sufixos/prefixos
     str = str.replace(/^R\$\s?/, '').replace(/%$/, '').trim();
 
-    // Tratamento de Multiplicadores
+    // Tratamento de Multiplicadores (K, M, B)
     let multiplier = 1;
     const lastChar = str.slice(-1).toUpperCase();
     if (['B', 'M', 'K'].includes(lastChar)) {
@@ -62,16 +62,16 @@ function parseValue(valueStr: any) {
 
     str = str.replace(/\s/g, '').replace(/\u00A0/g, '');
 
-    // Detecção Inteligente de Formato (BR vs US)
+    // Detecção de Formato Numérico (BR vs US)
     const lastCommaIndex = str.lastIndexOf(',');
     const lastDotIndex = str.lastIndexOf('.');
     
     let clean = "";
     if (lastCommaIndex > lastDotIndex) {
-        // BR (1.000,00)
+        // Formato BR (1.000,00)
         clean = str.replace(/\./g, '').replace(',', '.');
     } else if (lastDotIndex > lastCommaIndex) {
-        // US (1,000.00)
+        // Formato US (1,000.00)
         clean = str.replace(/,/g, '');
     } else {
         // Ambíguo ou sem separador de milhar
@@ -122,6 +122,45 @@ async function fetchHtmlWithRetry(ticker: string) {
     throw new Error('Asset not found');
 }
 
+// Mapeamento Técnico de Labels para Chaves Internas
+function mapLabelToKey(label: string): string | null {
+    const norm = normalize(label);
+    
+    // Valuation
+    if (norm === 'p/vp' || norm === 'vp') return 'pvp';
+    if (norm === 'p/l' || norm === 'pl') return 'pl';
+    if (norm === 'dividend yield' || norm === 'dy') return 'dy';
+    if (norm === 'cotacao' || norm.includes('valor atual')) return 'cotacao_atual';
+    if (norm === 'vpa' || norm.includes('valor patrimonial por')) return 'vpa';
+    if (norm === 'lpa') return 'lpa';
+    if (norm === 'ev/ebitda') return 'ev_ebitda';
+    
+    // Efficiency
+    if (norm === 'roe') return 'roe';
+    if (norm === 'margem liquida') return 'margem_liquida';
+    if (norm === 'margem bruta') return 'margem_bruta';
+    
+    // Growth & Debt
+    if (norm.includes('cagr receitas')) return 'cagr_receita_5a';
+    if (norm.includes('cagr lucros')) return 'cagr_lucros_5a';
+    if (norm.includes('div. liquida / ebitda') || norm.includes('divida liquida/ebitda')) return 'divida_liquida_ebitda';
+    
+    // Liquidity & Market
+    if (norm.includes('liquidez')) return 'liquidez';
+    if (norm.includes('valor de mercado')) return 'val_mercado';
+    
+    // FII Specifics
+    if (norm.includes('ultimo rendimento')) return 'ultimo_rendimento';
+    if (norm.includes('patrimonio liquido') || norm === 'patrimonio') return 'patrimonio_liquido';
+    if (norm.includes('cotistas') || norm.includes('numero de cotistas')) return 'num_cotistas';
+    if (norm.includes('vacancia fisica')) return 'vacancia';
+    if (norm.includes('tipo de gestao')) return 'tipo_gestao';
+    if (norm.includes('taxa de administracao')) return 'taxa_adm';
+    if (norm.includes('segmento')) return 'segmento';
+
+    return null;
+}
+
 async function scrapeInvestidor10(ticker: string) {
     try {
         const { data: html, type: finalType } = await fetchHtmlWithRetry(ticker);
@@ -137,123 +176,77 @@ async function scrapeInvestidor10(ticker: string) {
             roe: null, margem_liquida: null, margem_bruta: null,
             cagr_receita_5a: null, cagr_lucros_5a: null,
             divida_liquida_ebitda: null, ev_ebitda: null,
-            lpa: null, vp_cota: null, vpa: null,
+            lpa: null, vpa: null,
             vacancia: null, ultimo_rendimento: null, num_cotistas: null, 
             patrimonio_liquido: null,
             taxa_adm: null, tipo_gestao: null
         };
 
-        const processPair = (keyRaw: string, valueRaw: string) => {
-            if (!keyRaw || !valueRaw) return;
+        // --- ESTRATÉGIA TÉCNICA: Iteração por Seletores Específicos ---
+        
+        // 1. Cards de Indicadores Principais (Topo da página)
+        $('div._card').each((_, el) => {
+            const label = $(el).find('div._card-header').text().trim() || $(el).find('.name').text().trim();
+            const value = $(el).find('div._card-body').text().trim() || $(el).find('.value').text().trim();
             
-            const kText = normalize(keyRaw.replace(/\n/g, ' ').replace(/\s+/g, ' '));
-            const kClean = keyRaw.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            const v = valueRaw.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-            
-            if (v === '-' || v === '') return;
-
-            // --- VALUATION & INDICADORES ---
-            if (kClean === 'pvp' || kClean === 'vp') dados.pvp = parseValue(v);
-            if (kClean === 'pl' || kText === 'p/l') dados.pl = parseValue(v);
-            if (kClean === 'dy' || kClean === 'dividendyield' || kText === 'dividend yield') dados.dy = parseValue(v);
-            if (kClean === 'cotacao' || kClean === 'valoratual') dados.cotacao_atual = parseValue(v);
-            if (kClean === 'roe') dados.roe = parseValue(v);
-            if (kClean === 'lpa') dados.lpa = parseValue(v);
-            if (kClean === 'evebitda' || kText === 'ev/ebitda') dados.ev_ebitda = parseValue(v);
-
-            // VPA
-            if (kClean === 'vpa' || kClean === 'vp' || kClean.includes('valorpatrimonialpor') || kClean === 'valorpatrimonialcota') {
-                const val = parseValue(v);
-                if (val < 10000) { 
-                    dados.vp_cota = val;
-                    dados.vpa = val; 
+            if (label && value) {
+                const key = mapLabelToKey(label);
+                if (key) {
+                    if (['liquidez', 'val_mercado', 'segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
+                        dados[key] = value;
+                    } else {
+                        dados[key] = parseValue(value);
+                    }
                 }
             }
-
-            // --- DADOS GERAIS FIIs & AÇÕES ---
-            if (kText.includes('liquidez')) dados.liquidez = v;
-            
-            // Patrimônio Líquido
-            if (kText.includes('patrimonio liquido') || kText === 'patrimonio') dados.patrimonio_liquido = v;
-            
-            // Segmento
-            if (kText === 'segmento' || kText === 'segmento de atuacao') dados.segmento = v;
-
-            // FII Specifics
-            if (kText.includes('ultimo rendimento')) dados.ultimo_rendimento = parseValue(v);
-            if (kClean === 'numcotistas' || kText.includes('num. cotistas') || kText.includes('numero de cotistas') || kText.includes('qtd cotistas')) dados.num_cotistas = parseValue(v);
-            if (kText.includes('vacancia')) dados.vacancia = parseValue(v);
-            
-            // Gestão e Taxas
-            if (kText.includes('gestao') || kText === 'tipo de gestao') dados.tipo_gestao = v;
-            if (kText.includes('taxa') && (kText.includes('admin') || kText.includes('adm'))) dados.taxa_adm = v;
-
-            // Ações Specifics
-            if (kText.includes('margem liquida')) dados.margem_liquida = parseValue(v);
-            if (kText.includes('margem bruta')) dados.margem_bruta = parseValue(v);
-            if (kClean.includes('dividaliquidaebitda') || kText.includes('div. liq. / ebitda')) dados.divida_liquida_ebitda = parseValue(v);
-            if (kText.includes('cagr') && kText.includes('receita')) dados.cagr_receita_5a = parseValue(v);
-            if (kText.includes('cagr') && kText.includes('lucro')) dados.cagr_lucros_5a = parseValue(v);
-        };
-
-        // --- ESTRATÉGIA 1: SELETORES ESTRUTURAIS ---
-        $('div._card, #table-indicators .cell, #table-general-data .cell, .data-entry, .indicator-box').each((_, el) => {
-            const title = $(el).find('.name, .title, div._card-header, span:first-child').text().trim();
-            const val = $(el).find('.value, .data, div._card-body, span:last-child').text().trim();
-            processPair(title, val);
         });
 
-        $('ul li').each((_, el) => {
-            const spans = $(el).find('span');
-            if (spans.length >= 2) processPair($(spans[0]).text(), $(spans[1]).text());
-        });
+        // 2. Tabelas de Dados Gerais e Indicadores (Meio da página)
+        // Seletores comuns: #table-indicators, #table-general-data, .data-entry
+        const tableSelectors = ['#table-indicators .cell', '#table-general-data .cell', '.indicator-box', '.data-entry'];
+        
+        tableSelectors.forEach(selector => {
+            $(selector).each((_, el) => {
+                // Tenta encontrar título e valor dentro da célula/box
+                let label = $(el).find('.name, .title, span:first-child').first().text().trim();
+                let value = $(el).find('.value, .data, span:last-child').last().text().trim();
 
-        // --- ESTRATÉGIA 2: BUSCA TEXTUAL (BRUTE FORCE) ---
-        // Lista expandida para cobrir TODOS os campos do modal do frontend
-        const forcedKeys = [
-            'Taxa de Administração', 'Tipo de Gestão', 'Vacância Física', 
-            'Número de Cotistas', 'Patrimônio Líquido', 'Segmento',
-            'P/VP', 'P/L', 'Dividend Yield', 'Liquidez', 'Liquidez Média Diária',
-            'ROE', 'LPA', 'VPA', 'Valor Patrimonial', 'EV/EBITDA', 'Dívida Líquida / EBITDA',
-            'Margem Bruta', 'Margem Líquida', 'CAGR Receitas', 'CAGR Lucros',
-            'Último Rendimento'
-        ];
+                // Fallback para estruturas onde spans são irmãos diretos
+                if (!label && !value) {
+                    const spans = $(el).find('span');
+                    if (spans.length >= 2) {
+                        label = $(spans[0]).text().trim();
+                        value = $(spans[1]).text().trim();
+                    }
+                }
 
-        forcedKeys.forEach(term => {
-            const kNorm = normalize(term);
-            
-            // Otimização: Se já temos o dado principal, não buscamos de novo
-            if (kNorm.includes('taxa') && dados.taxa_adm) return;
-            if (kNorm.includes('gestao') && dados.tipo_gestao) return;
-            if (kNorm.includes('patrimonio') && dados.patrimonio_liquido) return;
-            if (kNorm === 'p/vp' && dados.pvp) return;
-            if (kNorm === 'p/l' && dados.pl) return;
-
-            // Procura elementos que contenham o texto exato
-            $(`*:contains('${term}')`).each((_, el) => {
-                if ($(el).children().length > 5) return; // Evita body/container
-                
-                const text = $(el).text().trim();
-                // Verifica se é um rótulo curto e corresponde ao termo
-                if (text.length < 60 && normalize(text).includes(kNorm)) {
-                    // Tenta achar o valor próximo (várias direções)
-                    let val = $(el).next().text().trim(); // Irmão
-                    if (!val) val = $(el).find('span').last().text().trim(); // Filho
-                    if (!val) val = $(el).parent().next().text().trim(); // Tio (Grid layout)
-                    if (!val) val = $(el).parent().find('.value, .data').text().trim(); // Primo
-                    if (!val) val = $(el).closest('.cell').find('.value').text().trim(); // Container pai
-                    
-                    if (val && val.length < 100) {
-                        processPair(text, val);
+                if (label && value) {
+                    const key = mapLabelToKey(label);
+                    if (key) {
+                        // Se já foi preenchido pelos cards (prioritários), não sobrescreve a menos que esteja vazio
+                        if (dados[key] === null || dados[key] === undefined) {
+                            if (['liquidez', 'val_mercado', 'segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
+                                dados[key] = value;
+                            } else {
+                                dados[key] = parseValue(value);
+                            }
+                        }
                     }
                 }
             });
         });
 
-        // --- EXTRAÇÃO DE DIVIDENDOS ---
+        // 3. Extração de VP/Cota para Ações (as vezes vem como VPA, as vezes VP)
+        if (!dados.vpa && dados.pvp && dados.cotacao_atual) {
+             // Reverse engineer se faltar o dado explícito
+             if (dados.pvp > 0) dados.vpa = dados.cotacao_atual / dados.pvp;
+        }
+
+        // --- EXTRAÇÃO DE DIVIDENDOS (Tabela Histórica) ---
         const dividends: any[] = [];
         let tableDivs = $('#table-dividends-history');
         
+        // Fallback: Procura tabela próxima a cabeçalhos de dividendos
         if (tableDivs.length === 0) {
              $('h2, h3, h4').each((_, el) => {
                  const t = normalize($(el).text());
@@ -261,6 +254,7 @@ async function scrapeInvestidor10(ticker: string) {
                      const nextTable = $(el).nextAll('table').first();
                      if (nextTable.length) tableDivs = nextTable;
                      else {
+                         // Tenta buscar no container pai se estiver dentro de uma div
                          const parentNextTable = $(el).parent().next().find('table').first();
                          if (parentNextTable.length) tableDivs = parentNextTable;
                      }
@@ -270,8 +264,13 @@ async function scrapeInvestidor10(ticker: string) {
 
         if (tableDivs.length > 0) {
             const headers: string[] = [];
+            // Detecta cabeçalhos para mapear colunas dinamicamente
             tableDivs.find('thead th').each((_, th) => headers.push(normalize($(th).text())));
-            if (headers.length === 0) tableDivs.find('tbody tr').first().find('td').each((_, td) => headers.push(normalize($(td).text())));
+            
+            // Se não tiver thead, tenta pegar da primeira tr
+            if (headers.length === 0) {
+                tableDivs.find('tbody tr').first().find('td').each((_, td) => headers.push(normalize($(td).text())));
+            }
 
             let iType = -1, iCom = -1, iPay = -1, iVal = -1;
             headers.forEach((h, i) => {
@@ -281,12 +280,14 @@ async function scrapeInvestidor10(ticker: string) {
                 if (h.includes('valor') || h.includes('liquido')) iVal = i;
             });
 
+            // Fallback de índices se cabeçalhos não encontrados
             if (iVal === -1) {
                 if (headers.length >= 4) { iType=0; iCom=1; iPay=2; iVal=3; }
                 else { iCom=0; iPay=1; iVal=2; }
             }
 
             tableDivs.find('tbody tr').each((i, tr) => {
+                // Pula primeira linha se for cabeçalho disfarçado de tr
                 if (i === 0 && tableDivs.find('thead').length === 0 && $(tr).find('td').first().text().match(/[a-z]/i)) return;
                 
                 const cols = $(tr).find('td');
@@ -319,10 +320,12 @@ async function scrapeInvestidor10(ticker: string) {
             });
         }
 
+        // DY fallback calculation
         if (!dados.dy && dados.ultimo_rendimento && dados.cotacao_atual) {
             dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100;
         }
 
+        // Limpeza de campos vazios
         Object.keys(dados).forEach(k => {
             if (dados[k] === null || dados[k] === undefined || dados[k] === '') delete dados[k];
         });
@@ -352,6 +355,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
+        // Cache Check
         if (!force) {
             const { data: existing } = await supabase
                 .from('ativos_metadata')
@@ -361,7 +365,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                if (age < 10800000) { 
+                if (age < 10800000) { // 3 horas de cache
                      const { data: divs } = await supabase
                         .from('market_dividends')
                         .select('*')
@@ -371,6 +375,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         }
 
+        // Execute Scraper
         const result = await scrapeInvestidor10(ticker);
         
         if (!result) {
@@ -379,6 +384,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const { metadata, dividends } = result;
 
+        // Save Metadata
         if (metadata) {
             const dbPayload = { ...metadata };
             delete dbPayload.dy;
@@ -387,6 +393,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
         }
 
+        // Save Dividends
         if (dividends.length > 0) {
              const uniqueDivs = Array.from(new Map(dividends.map(item => [
                 `${item.type}-${item.date_com}-${item.rate}`, item
