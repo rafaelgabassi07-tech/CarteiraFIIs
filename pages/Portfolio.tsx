@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, ExternalLink, TrendingUp, TrendingDown, Scale, Percent, Banknote, Calendar, Briefcase, Zap, Layers, Tag, Gem, Building2, RefreshCw } from 'lucide-react';
@@ -454,8 +455,13 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
 };
 
 const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false, onAssetRefresh, headerVisible = true }) => {
-    const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
+    const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+
+    const selectedAsset = useMemo(() => {
+        if (!selectedTicker) return null;
+        return portfolio.find(p => p.ticker === selectedTicker) || null;
+    }, [portfolio, selectedTicker]);
 
     const filteredPortfolio = useMemo(() => {
         if (!searchTerm) return portfolio;
@@ -498,7 +504,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                         </div>
                         <div className="grid grid-cols-1 gap-2">
                             {grouped.fiis.map((asset) => (
-                                <AssetCard key={asset.ticker} asset={asset} privacyMode={privacyMode} onClick={() => setSelectedAsset(asset)} />
+                                <AssetCard key={asset.ticker} asset={asset} privacyMode={privacyMode} onClick={() => setSelectedTicker(asset.ticker)} />
                             ))}
                         </div>
                     </div>
@@ -515,7 +521,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                         </div>
                         <div className="grid grid-cols-1 gap-2">
                             {grouped.stocks.map((asset) => (
-                                <AssetCard key={asset.ticker} asset={asset} privacyMode={privacyMode} onClick={() => setSelectedAsset(asset)} />
+                                <AssetCard key={asset.ticker} asset={asset} privacyMode={privacyMode} onClick={() => setSelectedTicker(asset.ticker)} />
                             ))}
                         </div>
                     </div>
@@ -529,13 +535,13 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                 )}
             </div>
 
-            <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
+            <SwipeableModal isOpen={!!selectedTicker} onClose={() => setSelectedTicker(null)}>
                 {selectedAsset && (
                     <AssetDetailView 
                         asset={selectedAsset} 
                         dividends={dividends || []} 
                         privacyMode={privacyMode || false} 
-                        onClose={() => setSelectedAsset(null)}
+                        onClose={() => setSelectedTicker(null)}
                         onRefresh={onAssetRefresh}
                     />
                 )}
