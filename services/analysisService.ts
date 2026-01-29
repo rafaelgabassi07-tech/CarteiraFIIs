@@ -46,6 +46,7 @@ export const analyzePortfolio = (
     // 3. Yield vs Inflação (Crescimento Real)
     const realGainers = activeAssets.filter(a => (a.dy_12m || 0) > ipca + 3); // 3% spread real
     if (realGainers.length > 0) {
+        // Pega o melhor Yield
         const best = realGainers.sort((a,b) => (b.dy_12m || 0) - (a.dy_12m || 0))[0];
         createStory('real-yield', 'opportunity', 'Ganho Real 📈', `${best.ticker} entrega Yield de ${(best.dy_12m || 0).toFixed(1)}%, batendo a inflação (${ipca}%) com folga.`, 92, best.ticker);
     }
@@ -66,5 +67,35 @@ export const analyzePortfolio = (
         createStory('discount', 'opportunity', 'Desconto & Renda', `${opp.ticker} une o útil ao agradável: DY de ${(opp.dy_12m || 0).toFixed(1)}% e desconto patrimonial.`, 90, opp.ticker);
     }
 
-    return insights.sort((a, b) => b.score - a.score).slice(0, 8);
+    // 6. Destaque de Movimentação (Garante atividade no Feed)
+    // Encontra o ativo com maior variação absoluta (para cima ou para baixo)
+    if (activeAssets.length > 0) {
+        const topMover = activeAssets.reduce((prev, current) => {
+            return (Math.abs(current.dailyChange || 0) > Math.abs(prev.dailyChange || 0)) ? current : prev;
+        }, activeAssets[0]);
+
+        // Se a movimentação for relevante (> 0.5% ou < -0.5%) e ainda não tivermos stories suficientes
+        if (topMover && Math.abs(topMover.dailyChange || 0) > 0.5) {
+            const isPositive = (topMover.dailyChange || 0) > 0;
+            // Evita duplicar se já foi mencionado em "Porto Seguro"
+            const alreadyMentioned = insights.some(i => i.relatedTicker === topMover.ticker);
+            
+            if (!alreadyMentioned) {
+                const type = isPositive ? 'volatility_up' : 'volatility_down';
+                const title = isPositive ? 'Em Alta 🚀' : 'Em Baixa 🔻';
+                const msg = isPositive
+                    ? `${topMover.ticker} lidera os ganhos hoje com alta de +${(topMover.dailyChange || 0).toFixed(2)}%.`
+                    : `${topMover.ticker} recua ${(topMover.dailyChange || 0).toFixed(2)}% no pregão de hoje.`;
+                
+                createStory('mover', type, title, msg, 80, topMover.ticker);
+            }
+        }
+    }
+
+    // 7. Fallback: Se nenhuma história foi gerada (Mercado de lado ou dados incompletos)
+    if (insights.length === 0 && activeAssets.length > 0) {
+        createStory('calm', 'neutral', 'Mercado Estável', 'Sua carteira opera sem grandes oscilações ou alertas críticos hoje. Bom momento para estudar novos ativos.', 50);
+    }
+
+    return insights.sort((a, b) => b.score - a.score).slice(0, 10);
 };
