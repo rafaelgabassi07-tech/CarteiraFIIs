@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -43,121 +43,152 @@ const formatDateShort = (dateStr: string) => {
     return `${day}/${month}`;
 };
 
-// --- WALKING BOT COMPONENT ---
+// --- WALKING BOT CHARACTER ---
 const WalkingBot = ({ predictions, isThinking }: { predictions: FutureDividendPrediction[], isThinking: boolean }) => {
     const [pos, setPos] = useState({ x: 50, y: 20 }); // % position
     const [direction, setDirection] = useState<'left' | 'right'>('right');
+    const [isWalking, setIsWalking] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [interactionIndex, setInteractionIndex] = useState(0);
-    const containerRef = useRef<HTMLDivElement>(null);
     const moveTimerRef = useRef<any>(null);
 
-    // Gera mensagens baseadas nos dados
+    // Estilos de animação injetados localmente para o personagem
+    const robotStyles = `
+        @keyframes robotWalk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        @keyframes limbSwing { 0% { transform: rotate(15deg); } 100% { transform: rotate(-15deg); } }
+        .robot-body-anim { animation: robotWalk 0.4s ease-in-out infinite; }
+        .limb-l-anim { transform-origin: top center; animation: limbSwing 0.4s ease-in-out infinite alternate; }
+        .limb-r-anim { transform-origin: top center; animation: limbSwing 0.4s ease-in-out infinite alternate-reverse; }
+    `;
+
     const getMessage = (idx: number) => {
-        if (isThinking) return "Processando dados do mercado...";
+        if (isThinking) return "Analisando mercado...";
         if (predictions.length === 0) {
             const msgs = [
-                "Tudo limpo! Nenhum evento futuro encontrado.",
-                "Estou de olho em novos anúncios 24h por dia.",
-                "Dica: Reinvestir dividendos acelera os juros compostos!",
-                "Minha bateria é movida a proventos ⚡"
+                "Nada no radar por enquanto, chefe!",
+                "Estou patrulhando em busca de dividendos.",
+                "Dica: FIIs de papel costumam anunciar no 5º dia útil.",
+                "Minha antena não captou nada novo hoje."
             ];
             return msgs[idx % msgs.length];
         }
-
-        const intro = `Encontrei ${predictions.length} eventos previstos!`;
+        const intro = `Radar Ativo! Encontrei ${predictions.length} eventos.`;
         const items = predictions.map(p => 
-            `${p.ticker}: ${p.paymentDate ? 'Paga dia ' + formatDateShort(p.paymentDate) : 'Data Com dia ' + formatDateShort(p.dateCom)}. Valor: ${p.rate.toFixed(2)}`
+            `${p.ticker}: ${p.paymentDate ? 'Pagamento' : 'Data Com'} em ${formatDateShort(p.paymentDate || p.dateCom)}`
         );
-        
-        const allMsgs = [intro, ...items, "Toque em mim para ver mais!"];
+        const allMsgs = [intro, ...items, "Toque em mim para fechar."];
         return allMsgs[idx % allMsgs.length];
     };
 
     const moveRandomly = () => {
-        if (message) return; // Não move se estiver falando
+        if (message) return;
 
-        const newX = 10 + Math.random() * 80; // 10% a 90%
-        const newY = 5 + Math.random() * 40;  // 5% a 45% (Fica na metade superior)
+        // Define novo destino
+        const newX = 10 + Math.random() * 80; 
+        const newY = 5 + Math.random() * 30;  
 
         setDirection(newX > pos.x ? 'right' : 'left');
+        setIsWalking(true); // Começa a andar
         setPos({ x: newX, y: newY });
+
+        // Para de andar quando "chegar" (simulado pelo tempo de transição)
+        setTimeout(() => {
+            if (!message) setIsWalking(false);
+        }, 2000); 
     };
 
     useEffect(() => {
-        // Movimento inicial e loop
         moveRandomly();
-        const interval = setInterval(moveRandomly, 4000 + Math.random() * 2000);
+        const interval = setInterval(moveRandomly, 5000 + Math.random() * 3000);
         moveTimerRef.current = interval;
         return () => clearInterval(interval);
-    }, [message]); // Reinicia loop quando para de falar
+    }, [message]);
 
     const handleInteract = (e: React.MouseEvent) => {
         e.stopPropagation();
-        
-        // Se já está falando, avança para próxima mensagem
         const nextIdx = message ? interactionIndex + 1 : 0;
-        setInteractionIndex(nextIdx);
-        setMessage(getMessage(nextIdx));
-
-        // Auto-fecha o balão após 5s
-        if (moveTimerRef.current) clearInterval(moveTimerRef.current);
-        const timeout = setTimeout(() => {
+        
+        // Se ciclou todas, fecha
+        const totalMsgs = predictions.length > 0 ? predictions.length + 2 : 4;
+        
+        if (message && nextIdx >= totalMsgs) {
             setMessage(null);
+            setIsWalking(true);
             moveRandomly();
-        }, 5000);
-        moveTimerRef.current = setInterval(moveRandomly, 5000); // Restart movement loop logic
+        } else {
+            setInteractionIndex(nextIdx);
+            setMessage(getMessage(nextIdx));
+            setIsWalking(false); // Para para falar
+            if (moveTimerRef.current) clearInterval(moveTimerRef.current);
+        }
     };
 
     return (
-        <div 
-            className="absolute z-30 transition-all duration-[2000ms] ease-in-out-expo pointer-events-none"
-            style={{ 
-                top: `${pos.y}%`, 
-                left: `${pos.x}%`,
-                transform: 'translate(-50%, -50%)'
-            }}
-        >
-            <div className="relative pointer-events-auto group">
-                {/* Speech Bubble */}
-                {message && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-white dark:bg-zinc-800 p-3 rounded-2xl rounded-bl-none shadow-xl border border-indigo-100 dark:border-indigo-900/50 anim-scale-in origin-bottom-left z-40">
-                        <p className="text-xs font-medium text-zinc-700 dark:text-zinc-200 leading-relaxed text-center">
-                            {message}
-                        </p>
-                    </div>
-                )}
-
-                {/* The Bot Character */}
-                <button 
-                    onClick={handleInteract}
-                    className={`
-                        relative w-14 h-14 rounded-full flex items-center justify-center 
-                        bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 
-                        transition-transform duration-500 press-effect
-                        ${isThinking ? 'animate-pulse' : 'animate-[float_3s_ease-in-out_infinite]'}
-                    `}
-                >
-                    {/* Bot Face */}
-                    <div className={`transition-transform duration-500 ${direction === 'left' ? '-scale-x-100' : 'scale-x-100'}`}>
-                        <Bot className="w-8 h-8 text-white drop-shadow-md" strokeWidth={1.5} />
-                    </div>
-                    
-                    {/* Status Indicator */}
-                    {predictions.length > 0 && !isThinking && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white dark:border-zinc-900 animate-bounce flex items-center justify-center">
-                            <span className="text-[8px] font-bold text-emerald-900">{predictions.length}</span>
+        <>
+            <style>{robotStyles}</style>
+            <div 
+                className="absolute z-30 transition-all duration-[2000ms] ease-in-out pointer-events-none"
+                style={{ 
+                    top: `${pos.y}%`, 
+                    left: `${pos.x}%`,
+                    transform: 'translate(-50%, -50%)'
+                }}
+            >
+                <div className="relative pointer-events-auto group cursor-pointer" onClick={handleInteract}>
+                    {/* Balão de Fala */}
+                    {message && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 bg-white dark:bg-zinc-800 p-3 rounded-2xl rounded-bl-none shadow-xl border border-indigo-100 dark:border-indigo-900/50 anim-scale-in origin-bottom-left z-40">
+                            <p className="text-xs font-bold text-zinc-700 dark:text-zinc-200 leading-tight text-center">
+                                {message}
+                            </p>
                         </div>
                     )}
 
-                    {/* Propulsion Particles (CSS Only) */}
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-3 bg-indigo-400/50 blur-md rounded-full animate-pulse"></div>
-                </button>
-                
-                {/* Shadow on "floor" */}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 w-8 h-2 bg-black/20 dark:bg-black/50 blur-md rounded-[100%] transition-all duration-[2000ms] opacity-50"></div>
+                    {/* O ROBÔ (Character) */}
+                    <div className={`relative transition-transform duration-300 ${direction === 'left' ? '-scale-x-100' : 'scale-x-100'} ${isWalking ? 'robot-body-anim' : ''}`}>
+                        
+                        {/* Antena */}
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-zinc-400 dark:bg-zinc-500"></div>
+                        <div className={`absolute -top-4 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full ${predictions.length > 0 ? 'bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse' : 'bg-red-500 shadow-[0_0_5px_#ef4444]'}`}></div>
+
+                        {/* Cabeça */}
+                        <div className="w-10 h-9 bg-zinc-100 dark:bg-zinc-800 rounded-xl border-2 border-zinc-300 dark:border-zinc-600 relative z-20 flex items-center justify-center overflow-hidden">
+                            <div className="flex gap-1.5 mt-1">
+                                <div className={`w-1.5 h-1.5 bg-zinc-800 dark:bg-zinc-200 rounded-full ${isThinking ? 'animate-bounce' : ''}`}></div>
+                                <div className={`w-1.5 h-1.5 bg-zinc-800 dark:bg-zinc-200 rounded-full ${isThinking ? 'animate-bounce delay-75' : ''}`}></div>
+                            </div>
+                            {/* Rosto / Visor */}
+                            <div className="absolute top-0 left-0 right-0 h-3 bg-indigo-500/10 dark:bg-indigo-400/20"></div>
+                        </div>
+
+                        {/* Corpo */}
+                        <div className="w-8 h-10 bg-indigo-600 dark:bg-indigo-700 rounded-lg mx-auto -mt-1 relative z-10 flex flex-col items-center pt-2 border border-indigo-700 dark:border-indigo-800 shadow-sm">
+                            {/* Emblema no peito */}
+                            <div className="w-4 h-4 bg-white/20 rounded-full flex items-center justify-center">
+                                <Zap className="w-2.5 h-2.5 text-yellow-300 fill-yellow-300" />
+                            </div>
+                        </div>
+
+                        {/* Braços (Atrás do corpo para layer correto) */}
+                        <div className="absolute top-9 -left-2 w-2.5 h-8 bg-zinc-400 dark:bg-zinc-500 rounded-full border border-zinc-500 dark:border-zinc-600 z-0 origin-top flex flex-col justify-end items-center pb-1 shadow-sm" style={{ animationName: isWalking ? 'limbSwing' : 'none' }}>
+                            <div className="w-3 h-3 bg-zinc-300 dark:bg-zinc-400 rounded-full"></div> {/* Mão E */}
+                        </div>
+                        <div className="absolute top-9 -right-2 w-2.5 h-8 bg-zinc-400 dark:bg-zinc-500 rounded-full border border-zinc-500 dark:border-zinc-600 z-0 origin-top flex flex-col justify-end items-center pb-1 shadow-sm" style={{ animationName: isWalking ? 'limbSwing' : 'none', animationDirection: 'alternate-reverse' }}>
+                            <div className="w-3 h-3 bg-zinc-300 dark:bg-zinc-400 rounded-full"></div> {/* Mão D */}
+                        </div>
+
+                        {/* Pernas */}
+                        <div className="flex justify-center gap-1 -mt-1 relative z-0">
+                            <div className="w-2.5 h-7 bg-zinc-800 dark:bg-zinc-900 rounded-b-md border border-zinc-700 origin-top" style={{ animation: isWalking ? 'limbSwing 0.4s ease-in-out infinite alternate-reverse' : 'none' }}></div>
+                            <div className="w-2.5 h-7 bg-zinc-800 dark:bg-zinc-900 rounded-b-md border border-zinc-700 origin-top" style={{ animation: isWalking ? 'limbSwing 0.4s ease-in-out infinite alternate' : 'none' }}></div>
+                        </div>
+
+                        {/* Sombra */}
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-1.5 bg-black/20 rounded-full blur-[2px]"></div>
+                    </div>
+                </div>
             </div>
-        </div>
+        </>
     );
 };
 
