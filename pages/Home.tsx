@@ -94,7 +94,7 @@ const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScannin
                         <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-1">
                             <Target className="w-3 h-3" />
                         </div>
-                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider">Projetado</span>
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider">Confirmado</span>
                         <span className="text-xs font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(totalProjected, privacyMode)}</span>
                     </>
                 )}
@@ -112,7 +112,8 @@ const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScannin
 };
 
 const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
-    const isPrediction = event.isPrediction === true;
+    // Se tem Data de Pagamento futura e Rate > 0, é Confirmado, não Previsão estatística
+    const isPrediction = event.isPrediction === true && (!event.rate || event.rate <= 0);
     const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
 
     let cardClass = "";
@@ -127,7 +128,7 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
         cardClass = "bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-white dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50";
         amountClass = "text-indigo-600 dark:text-indigo-300";
         labelClass = "text-indigo-400 dark:text-indigo-500";
-        labelText = "Valor Estimado";
+        labelText = "Estimativa";
         tickerBgClass = "bg-white dark:bg-zinc-900 border-indigo-100 dark:border-indigo-900/50 text-indigo-900 dark:text-indigo-200";
         
         iconContent = (
@@ -144,7 +145,7 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
         cardClass = "bg-gradient-to-br from-emerald-50/80 via-teal-50/50 to-white dark:from-emerald-900/20 dark:via-teal-900/10 dark:to-zinc-900 border-emerald-200/50 dark:border-emerald-800/50";
         amountClass = "text-emerald-700 dark:text-emerald-400";
         labelClass = "text-emerald-600/70 dark:text-emerald-500/70";
-        labelText = "Valor Líquido";
+        labelText = "Confirmado";
         tickerBgClass = "bg-white dark:bg-zinc-900 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200";
 
         iconContent = (
@@ -176,7 +177,7 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
                         <div className="flex items-center gap-2">
                             <h4 className={`text-sm font-black tracking-tight ${isPrediction ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{event.ticker}</h4>
                             <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isPrediction ? 'bg-white/50 text-indigo-600 dark:bg-black/20 dark:text-indigo-300' : 'bg-white/50 text-emerald-600 dark:bg-black/20 dark:text-emerald-400'}`}>
-                                {isPrediction ? 'Previsão' : 'Pagamento'}
+                                {event.eventType === 'datacom' ? 'Data Com' : 'Pagamento'}
                             </span>
                         </div>
                         <p className={`text-[10px] font-medium mt-0.5 flex items-center gap-1 ${labelClass}`}>
@@ -217,6 +218,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [agendaItems, setAgendaItems] = useState<Record<string, any[]>>({}); 
   const [agendaCount, setAgendaCount] = useState(0);
   const [agendaTotalProjected, setAgendaTotalProjected] = useState(0);
+  
+  // Estado compartilhado para sincronizar o card de Previsão do Modal de Proventos
+  const [unifiedProvisionedTotal, setUnifiedProvisionedTotal] = useState(0);
 
   // Efeito de "Cálculo Leve" apenas para o Card da Dashboard
   useEffect(() => {
@@ -226,9 +230,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       setAgendaCount(count);
   }, [dividendReceipts]);
 
-  // EFEITO MESTRE DO ROBÔ (SCAN INSTANTÂNEO)
+  // EFEITO MESTRE DO ROBÔ (SCAN INSTANTÂNEO & SYNC)
   useEffect(() => {
-      if (showAgendaModal && robotState === 'idle') {
+      if ((showAgendaModal || showProventosModal) && robotState === 'idle') {
           const runScan = async () => {
               setRobotState('scanning');
               setAgendaItems({});
@@ -240,57 +244,64 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   const allEvents: any[] = [];
                   let projectedSum = 0;
 
-                  // 1. Processa CONFIRMADOS (Do Banco de Dados)
+                  // 1. Processa CONFIRMADOS (Do Banco de Dados/Prop)
                   dividendReceipts.forEach(r => {
                       if (!r) return;
-                      if (r.paymentDate >= todayStr) { 
-                          allEvents.push({ 
-                              ...r, 
-                              eventType: 'payment', 
-                              date: r.paymentDate,
-                              isPrediction: false
-                          }); 
-                          projectedSum += r.totalReceived;
-                      }
-                      if (r.dateCom >= todayStr) {
-                          allEvents.push({ 
-                              ...r, 
-                              eventType: 'datacom', 
-                              date: r.dateCom,
-                              isPrediction: false 
-                          });
+                      // Evita duplicatas com o que veio do fetchFutureAnnouncements
+                      const existsInPred = predictions.some(p => 
+                          p.ticker === r.ticker && 
+                          (p.paymentDate === r.paymentDate || p.dateCom === r.dateCom) &&
+                          Math.abs(p.rate - r.rate) < 0.001
+                      );
+
+                      if (!existsInPred) {
+                          if (r.paymentDate >= todayStr) { 
+                              allEvents.push({ 
+                                  ...r, 
+                                  eventType: 'payment', 
+                                  date: r.paymentDate,
+                                  isPrediction: false
+                              }); 
+                              projectedSum += r.totalReceived;
+                          }
+                          if (r.dateCom >= todayStr) {
+                              allEvents.push({ 
+                                  ...r, 
+                                  eventType: 'datacom', 
+                                  date: r.dateCom,
+                                  isPrediction: false 
+                              });
+                          }
                       }
                   });
 
-                  // 2. Processa PREVISÕES (Do Scraper/IA)
+                  // 2. Processa PREVISÕES/ANÚNCIOS NOVOS (Do Scraper/IA)
                   predictions.forEach(pred => {
-                        const isDuplicate = allEvents.some(e => 
-                            e.ticker === pred.ticker && 
-                            (e.date === pred.paymentDate || e.date === pred.dateCom) &&
-                            Math.abs((e.rate || 0) - pred.rate) < 0.01
-                        );
-
-                        if (!isDuplicate) {
-                            if (pred.paymentDate && pred.paymentDate >= todayStr) {
-                                allEvents.push({ 
-                                    ticker: pred.ticker, date: pred.paymentDate, eventType: 'payment',
-                                    type: pred.type, totalReceived: pred.projectedTotal, rate: pred.rate,
-                                    isPrediction: true
-                                });
-                                projectedSum += pred.projectedTotal;
-                            }
-                            if (pred.dateCom && pred.dateCom >= todayStr) {
-                                allEvents.push({
-                                    ticker: pred.ticker, date: pred.dateCom, eventType: 'datacom',
-                                    type: pred.type, isPrediction: true
-                                });
-                            }
+                        // Se tem data e valor > 0, é CONFIRMADO (fato), não "prediction"
+                        // IsPrediction aqui é usado apenas para styling visual (azul vs verde)
+                        // Vamos considerar azul se for Estimado (sem valor fixo) e verde se tiver valor.
+                        // Mas o Robot retorna projectedTotal > 0 se tiver rate.
+                        
+                        if (pred.paymentDate && pred.paymentDate >= todayStr) {
+                            allEvents.push({ 
+                                ticker: pred.ticker, date: pred.paymentDate, eventType: 'payment',
+                                type: pred.type, totalReceived: pred.projectedTotal, rate: pred.rate,
+                                isPrediction: pred.projectedTotal <= 0 // Só marca como prediction se não tiver valor
+                            });
+                            projectedSum += pred.projectedTotal;
+                        }
+                        if (pred.dateCom && pred.dateCom >= todayStr) {
+                            allEvents.push({
+                                ticker: pred.ticker, date: pred.dateCom, eventType: 'datacom',
+                                type: pred.type, isPrediction: true // Data Com geralmente é info, não $$
+                            });
                         }
                   });
 
                   await new Promise(r => setTimeout(r, 600));
 
                   setAgendaTotalProjected(projectedSum);
+                  setUnifiedProvisionedTotal(projectedSum); // Atualiza o total unificado para o Modal Proventos
 
                   const sorted = allEvents.sort((a, b) => a.date.localeCompare(b.date));
                   const grouped: Record<string, any[]> = { 'Hoje': [], 'Amanhã': [], 'Esta Semana': [], 'Este Mês': [], 'Futuro': [] };
@@ -323,7 +334,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           };
           runScan();
       }
-  }, [showAgendaModal, robotState, portfolio, dividendReceipts]);
+  }, [showAgendaModal, showProventosModal, robotState, portfolio, dividendReceipts]);
 
   const handleRobotInteract = useCallback(() => {
       if (robotState === 'done') {
@@ -348,9 +359,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { typeData: { fiis: { percent: (fiisTotal/total)*100 }, stocks: { percent: (stocksTotal/total)*100 }, total }, classChartData, assetsChartData, sectorChartData, topConcentration };
   }, [portfolio]);
 
-  const { received, provisionedTotal, fullHistoryData, availableYears, displayedChartData, displayedReceipts, stats } = useMemo(() => {
+  const { received, fullHistoryData, availableYears, displayedChartData, displayedReceipts, stats } = useMemo(() => {
       let receivedTotal = 0;
-      let provisionedSum = 0;
       const receiptsMap: Record<string, DividendReceipt[]> = {};
       const monthlySum: Record<string, number> = {};
       
@@ -364,8 +374,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               monthlySum[key] = (monthlySum[key] || 0) + r.totalReceived;
               if (!receiptsMap[key]) receiptsMap[key] = [];
               receiptsMap[key].push(r);
-          } else if (r.paymentDate && r.paymentDate > todayStr) {
-              provisionedSum += r.totalReceived;
           }
       });
 
@@ -439,7 +447,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       return { 
           received: receivedTotal, 
-          provisionedTotal: provisionedSum,
           fullHistoryData: fullHistory, // Usado para inflação
           availableYears: years,
           displayedChartData: chartData,
@@ -804,7 +811,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-center">
                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><CalendarClock className="w-3 h-3 text-indigo-500" /> Previsão</p>
-                     <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(provisionedTotal, privacyMode)}</p>
+                     {/* CORREÇÃO: Usa o total calculado pelo Robô/Radar para garantir consistência */}
+                     <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(unifiedProvisionedTotal, privacyMode)}</p>
                  </div>
              </div>
 

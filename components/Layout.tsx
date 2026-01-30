@@ -255,11 +255,11 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   if (!isMounted) return null;
 
   return createPortal(
-    <div className={`fixed inset-0 z-[200] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+    <div className={`fixed inset-0 z-[200] flex flex-col justify-end items-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
       <div 
           onClick={onClose} 
           className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500"
-          style={{ opacity: isVisible ? Math.max(0, 1 - (dragOffset / (window.innerHeight * 0.7))) : 0 }} 
+          style={{ opacity: isVisible ? 1 : 0 }} 
       ></div>
       
       <div
@@ -268,9 +268,15 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
             transition: isDragging ? 'none' : 'transform 400ms cubic-bezier(0.32, 0.72, 0, 1)',
             touchAction: 'none',
-            height: '92vh' // Altura fixa forçada para garantir que abra até o topo
+            height: '96dvh', // Usa DVH para evitar bugs em mobile
+            maxHeight: '96dvh',
+            width: '100%',
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0
         }}
-        className={`relative bg-surface-light dark:bg-zinc-950 rounded-t-[2.5rem] w-full overflow-hidden flex flex-col shadow-2xl ring-1 ring-white/10`}
+        className={`bg-surface-light dark:bg-zinc-950 rounded-t-[2.5rem] overflow-hidden flex flex-col shadow-2xl ring-1 ring-white/10`}
       >
         {/* Drag Handle - Área Segura de Toque */}
         <div 
