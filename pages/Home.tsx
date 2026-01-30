@@ -196,8 +196,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [portfolio, inflationRate]);
 
   // Efeito do Robô - Só dispara quando modal abre e está 'idle'
+  // MODIFICADO: Agora dispara no showAgendaModal
   useEffect(() => {
-      if (showProventosModal && robotState === 'idle') {
+      if (showAgendaModal && robotState === 'idle') {
           const runRobot = async () => {
               setRobotState('thinking');
               // Delay simulado para "sensação" de inteligência
@@ -213,7 +214,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           };
           runRobot();
       }
-  }, [showProventosModal, robotState, portfolio]);
+  }, [showAgendaModal, robotState, portfolio]);
 
   const markAsRead = useCallback((id: string) => {
       setReadStories(prev => {
@@ -532,6 +533,68 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex items-center gap-4 mb-8 px-2 anim-slide-up"><div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-200 dark:border-zinc-700`}><CalendarDays className="w-6 h-6" /></div><div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2><p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Cronograma de Eventos</p></div></div>
+            
+            {/* ROBÔ DE INTELIGÊNCIA - MOVIDO PARA AGENDA */}
+            <div className="mb-8 anim-slide-up">
+                 <div className="bg-gradient-to-br from-indigo-900 to-purple-900 p-5 rounded-3xl border border-indigo-500/30 shadow-xl relative overflow-hidden group">
+                     {/* Efeitos de Fundo */}
+                     <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                     <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+                     
+                     {robotState === 'thinking' ? (
+                         <div className="flex flex-col items-center justify-center py-6 text-center">
+                             <Bot className="w-10 h-10 text-indigo-300 animate-bounce mb-3" />
+                             <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest animate-pulse">Analisando Banco de Dados...</p>
+                         </div>
+                     ) : (
+                         <div>
+                             <div className="flex justify-between items-start mb-4 relative z-10">
+                                 <div className="flex items-center gap-3">
+                                     <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-inner">
+                                         <Sparkles className="w-5 h-5 text-yellow-300" strokeWidth={2} />
+                                     </div>
+                                     <div>
+                                         <h3 className="text-sm font-black text-white tracking-wide">Radar de Proventos</h3>
+                                         <p className="text-[10px] text-indigo-200 font-medium">Previsões baseadas em anúncios recentes</p>
+                                     </div>
+                                 </div>
+                             </div>
+
+                             {futureSimulations.length > 0 ? (
+                                 <div className="space-y-3 relative z-10">
+                                     {futureSimulations.slice(0, 3).map((sim, idx) => (
+                                         <div key={`${sim.ticker}-${idx}`} className="bg-black/20 p-3 rounded-xl border border-white/10 flex justify-between items-center backdrop-blur-md anim-stagger-item" style={{ animationDelay: `${idx * 100}ms` }}>
+                                             <div>
+                                                 <div className="flex items-center gap-2 mb-1">
+                                                     <span className="font-black text-white text-xs">{sim.ticker}</span>
+                                                     {sim.daysToDateCom > 0 && sim.daysToDateCom <= 5 && (
+                                                         <span className="text-[8px] font-bold bg-rose-500 text-white px-1.5 py-0.5 rounded uppercase animate-pulse">Com em {sim.daysToDateCom}d</span>
+                                                     )}
+                                                 </div>
+                                                 <p className="text-[9px] text-indigo-200 font-medium">
+                                                     {sim.paymentDate ? `Pagamento: ${formatDateShort(sim.paymentDate)}` : `Data Com: ${formatDateShort(sim.dateCom)}`}
+                                                 </p>
+                                             </div>
+                                             <div className="text-right">
+                                                 <span className="block font-black text-emerald-400 text-sm">{formatBRL(sim.projectedTotal, privacyMode)}</span>
+                                                 <span className="text-[9px] text-white/50">{sim.quantity} cotas x {sim.rate.toFixed(2)}</span>
+                                             </div>
+                                         </div>
+                                     ))}
+                                     {futureSimulations.length > 3 && (
+                                         <p className="text-[9px] text-center text-indigo-300 font-bold mt-2">e mais {futureSimulations.length - 3} eventos encontrados...</p>
+                                     )}
+                                 </div>
+                             ) : (
+                                 <div className="bg-black/20 p-4 rounded-xl border border-white/10 text-center">
+                                     <p className="text-xs text-indigo-200 font-medium">Nenhum anúncio futuro encontrado para sua carteira no momento.</p>
+                                 </div>
+                             )}
+                         </div>
+                     )}
+                 </div>
+            </div>
+
             {Object.keys(groupedEvents).map((groupKey) => { const events = groupedEvents[groupKey]; if (events.length === 0) return null; return (<div key={groupKey} className="mb-10 anim-slide-up"><div className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-950 py-2 mb-2"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 pb-2">{groupKey}</h3></div><div className="relative">{events.map((e: any, i: number) => <TimelineEvent key={i} event={e} isLast={i === events.length - 1} />)}</div></div>); })}
             {upcomingEvents.length === 0 && <div className="flex flex-col items-center justify-center py-20 opacity-50"><Calendar className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} /><p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Agenda Vazia</p></div>}
         </div>
@@ -671,67 +734,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2 anim-slide-up"><div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-zinc-200 dark:border-zinc-700`}><Wallet className="w-6 h-6" strokeWidth={1.5} /></div><div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Proventos</h2><p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Histórico</p></div></div>
              
-             {/* ROBÔ DE PROVENTOS INTELIGENTE */}
-             <div className="mb-8 anim-slide-up">
-                 <div className="bg-gradient-to-br from-indigo-900 to-purple-900 p-5 rounded-3xl border border-indigo-500/30 shadow-xl relative overflow-hidden group">
-                     {/* Efeitos de Fundo */}
-                     <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                     <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-                     
-                     {robotState === 'thinking' ? (
-                         <div className="flex flex-col items-center justify-center py-6 text-center">
-                             <Bot className="w-10 h-10 text-indigo-300 animate-bounce mb-3" />
-                             <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest animate-pulse">Analisando Banco de Dados...</p>
-                         </div>
-                     ) : (
-                         <div>
-                             <div className="flex justify-between items-start mb-4 relative z-10">
-                                 <div className="flex items-center gap-3">
-                                     <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-inner">
-                                         <Sparkles className="w-5 h-5 text-yellow-300" strokeWidth={2} />
-                                     </div>
-                                     <div>
-                                         <h3 className="text-sm font-black text-white tracking-wide">Radar de Proventos</h3>
-                                         <p className="text-[10px] text-indigo-200 font-medium">Previsões baseadas em anúncios recentes</p>
-                                     </div>
-                                 </div>
-                             </div>
-
-                             {futureSimulations.length > 0 ? (
-                                 <div className="space-y-3 relative z-10">
-                                     {futureSimulations.slice(0, 3).map((sim, idx) => (
-                                         <div key={`${sim.ticker}-${idx}`} className="bg-black/20 p-3 rounded-xl border border-white/10 flex justify-between items-center backdrop-blur-md anim-stagger-item" style={{ animationDelay: `${idx * 100}ms` }}>
-                                             <div>
-                                                 <div className="flex items-center gap-2 mb-1">
-                                                     <span className="font-black text-white text-xs">{sim.ticker}</span>
-                                                     {sim.daysToDateCom > 0 && sim.daysToDateCom <= 5 && (
-                                                         <span className="text-[8px] font-bold bg-rose-500 text-white px-1.5 py-0.5 rounded uppercase animate-pulse">Com em {sim.daysToDateCom}d</span>
-                                                     )}
-                                                 </div>
-                                                 <p className="text-[9px] text-indigo-200 font-medium">
-                                                     {sim.paymentDate ? `Pagamento: ${formatDateShort(sim.paymentDate)}` : `Data Com: ${formatDateShort(sim.dateCom)}`}
-                                                 </p>
-                                             </div>
-                                             <div className="text-right">
-                                                 <span className="block font-black text-emerald-400 text-sm">{formatBRL(sim.projectedTotal, privacyMode)}</span>
-                                                 <span className="text-[9px] text-white/50">{sim.quantity} cotas x {sim.rate.toFixed(2)}</span>
-                                             </div>
-                                         </div>
-                                     ))}
-                                     {futureSimulations.length > 3 && (
-                                         <p className="text-[9px] text-center text-indigo-300 font-bold mt-2">e mais {futureSimulations.length - 3} eventos encontrados...</p>
-                                     )}
-                                 </div>
-                             ) : (
-                                 <div className="bg-black/20 p-4 rounded-xl border border-white/10 text-center">
-                                     <p className="text-xs text-indigo-200 font-medium">Nenhum anúncio futuro encontrado para sua carteira no momento.</p>
-                                 </div>
-                             )}
-                         </div>
-                     )}
-                 </div>
-             </div>
-
              <div className="grid grid-cols-3 gap-3 mb-6 anim-slide-up">{[{ label: 'Média Mensal', val: divStats.monthlyAvg, color: 'text-zinc-900 dark:text-white' }, { label: 'Recorde', val: divStats.maxMonthly, color: 'text-emerald-600 dark:text-emerald-400' }, { label: 'Total 12m', val: divStats.total12m, color: 'text-zinc-900 dark:text-white' }].map((s, i) => (<div key={i} className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center shadow-sm"><p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{s.label}</p><p className={`text-xs font-black ${s.color}`}>{formatBRL(s.val, privacyMode)}</p></div>))}</div>
              {dividendsChartData.length > 0 && (<div className="mb-8 h-48 w-full bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm anim-slide-up"><ResponsiveContainer width="100%" height="100%"><BarChart data={dividendsChartData} onClick={handleBarClick}><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} /><RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip />} /><Bar dataKey="value" radius={[4, 4, 4, 4]}>{dividendsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} className="transition-colors duration-300 hover:opacity-80 dark:fill-zinc-700 dark:hover:fill-emerald-600" />)}</Bar></BarChart></ResponsiveContainer><p className="text-[9px] text-zinc-400 text-center mt-2 font-medium">Toque nas barras para filtrar detalhes</p></div>)}
              <div className="space-y-3">{selectedProventosMonth ? (<div className="anim-scale-in"><div className="flex justify-between items-center mb-4 px-1"><h3 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>{new Date(selectedProventosMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}</h3><button onClick={() => setSelectedProventosMonth(null)} className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-zinc-600 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-lg"><Filter className="w-3 h-3" /> Limpar Filtro</button></div>{receiptsByMonth[selectedProventosMonth] ? (<div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 overflow-hidden shadow-sm">{receiptsByMonth[selectedProventosMonth].map((r, idx) => (<div key={idx} className="flex justify-between items-center p-4 border-b border-zinc-100 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors anim-stagger-item" style={{ animationDelay: `${idx * 50}ms` }}><div className="flex items-center gap-4"><div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${r.type === 'JCP' ? 'bg-orange-50 text-orange-600 border border-orange-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'} dark:bg-zinc-800 dark:border-zinc-700`}>{r.ticker.substring(0,2)}</div><div><div className="flex items-center gap-2"><span className="text-sm font-black text-zinc-900 dark:text-white">{r.ticker}</span><span className="text-[8px] font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 rounded text-zinc-500">{r.type}</span></div><span className="text-[10px] text-zinc-400 font-medium">Pago em {new Date(r.paymentDate).toLocaleDateString('pt-BR')}</span></div></div><div className="text-right"><span className="text-sm font-black text-zinc-900 dark:text-white block">{formatBRL(r.totalReceived, privacyMode)}</span><span className="text-[10px] text-zinc-400 font-medium">{r.quantityOwned} un x {r.rate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></div>))}<div className="p-4 bg-zinc-50 dark:bg-zinc-950/50 flex justify-between items-center"><span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Total do Mês</span><span className="text-lg font-black text-emerald-600 dark:text-emerald-400">{formatBRL(dividendsChartData.find(d => d.fullDate === selectedProventosMonth)?.value || 0, privacyMode)}</span></div></div>) : (<p className="text-center text-xs text-zinc-400 py-4">Sem dados para este mês.</p>)}</div>) : (history.map(([month, val], i) => (<div key={month} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden anim-stagger-item shadow-sm" style={{ animationDelay: `${i * 30}ms` }}><button onClick={() => toggleMonthExpand(month)} className="w-full flex justify-between items-center p-4 bg-white dark:bg-zinc-900 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors"><div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${expandedMonth === month ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>{expandedMonth === month ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</div><span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{new Date(month + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span></div><span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(val, privacyMode)}</span></button>{expandedMonth === month && receiptsByMonth[month] && (<div className="bg-zinc-50 dark:bg-zinc-950/50 border-t border-zinc-100 dark:border-zinc-800 px-4 py-2 space-y-2">{receiptsByMonth[month].map((r, idx) => (<div key={idx} className="flex justify-between items-center py-2 border-b border-dashed border-zinc-200 dark:border-zinc-800 last:border-0 anim-slide-up" style={{ animationDelay: `${idx * 30}ms` }}><div className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div><div><span className="text-xs font-black text-zinc-900 dark:text-white block">{r.ticker}</span><span className="text-[9px] text-zinc-400 font-bold uppercase">{new Date(r.paymentDate).toLocaleDateString('pt-BR')}</span></div></div><div className="text-right"><span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">{formatBRL(r.totalReceived, privacyMode)}</span><span className="text-[9px] text-zinc-400 font-medium">{r.quantityOwned} un x {r.rate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div></div>))}</div>)}</div>)))}</div>
