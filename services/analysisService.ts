@@ -32,13 +32,16 @@ export const analyzePortfolio = (
         if (ticker && usedTickers.has(ticker) && score < 90) return;
         if (ticker) usedTickers.add(ticker);
 
+        // Adiciona um fator aleatório pequeno ao score para variar a ordem quando os scores forem iguais
+        const randomFactor = Math.random() * 2;
+
         insights.push({
             id: `story-${idSuffix}-${ticker || 'general'}-${todayStr}`,
             type, 
             title, 
             message, 
             relatedTicker: ticker, 
-            score, 
+            score: score + randomFactor, 
             timestamp: Date.now(),
             url: ticker ? `https://investidor10.com.br/${ticker.endsWith('11') || ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${ticker.toLowerCase()}/` : undefined
         });
@@ -47,23 +50,25 @@ export const analyzePortfolio = (
     // Prepara dados calculados
     let totalPortfolioValue = 0;
     let weightedDailyChange = 0;
+    const sectors = new Set<string>();
 
     const activeAssets = portfolio.map(p => {
         const val = (p.currentPrice || 0) * p.quantity;
         const change = p.dailyChange || 0;
         
         totalPortfolioValue += val;
+        
+        if (p.segment) sectors.add(p.segment);
+
         // Acumula para variação ponderada
         if (p.currentPrice && p.currentPrice > 0) {
-            // (Variação * Valor Total) / Total Portfolio (feito no final)
-            // Simplificação: Soma dos ganhos/perdas nominais
             const previousPrice = p.currentPrice / (1 + (change/100));
             const gainLoss = (p.currentPrice - previousPrice) * p.quantity;
             weightedDailyChange += gainLoss;
         }
 
         return { ...p, totalValue: val };
-    }).sort((a, b) => b.totalValue - a.totalValue); // Ordena por relevância na carteira
+    }).sort((a, b) => b.totalValue - a.totalValue); 
 
     const portfolioPercentChange = totalPortfolioValue > 0 ? (weightedDailyChange / totalPortfolioValue) * 100 : 0;
 
@@ -75,7 +80,7 @@ export const analyzePortfolio = (
             isPositive ? 'success' : 'warning',
             isPositive ? 'Carteira em Alta 🟢' : 'Carteira em Baixa 🔴',
             `Sua carteira ${isPositive ? 'valoriza' : 'recua'} aproximadamente ${Math.abs(portfolioPercentChange).toFixed(2)}% hoje. ${isPositive ? 'O mercado está favorável.' : 'Movimento natural de correção.'}`,
-            100 // Score máximo para aparecer primeiro
+            100 
         );
     } else {
         createStory(
@@ -88,7 +93,6 @@ export const analyzePortfolio = (
     }
 
     // --- 2. DESTAQUES DE MOVIMENTAÇÃO (Até 2 ativos) ---
-    // Filtra ativos com variação relevante (> 0.5% ou < -0.5%)
     const movers = activeAssets.filter(a => Math.abs(a.dailyChange || 0) > 0.5);
     
     // Top Gainer
@@ -117,77 +121,115 @@ export const analyzePortfolio = (
         );
     }
 
-    // --- 3. ANÁLISE DE PROVENTOS (Yield on Cost ou DY Atual) ---
-    const dividendKing = activeAssets.find(a => (a.dy_12m || 0) > 10 && a.totalValue > 500);
-    if (dividendKing) {
+    // --- 3. RENDA & DIVIDENDOS ---
+    
+    // Escudo contra Inflação (Ativo cujo DY > IPCA)
+    const inflationShield = activeAssets.find(a => (a.dy_12m || 0) > (ipca + 2));
+    if (inflationShield) {
         createStory(
-            'high-yield',
+            'inflation-shield',
             'success',
-            'Gerador de Renda 💰',
-            `${dividendKing.ticker} se destaca com um Dividend Yield de ${(dividendKing.dy_12m || 0).toFixed(1)}% nos últimos 12 meses.`,
-            88,
-            dividendKing.ticker
+            'Vencendo a Inflação 🛡️',
+            `${inflationShield.ticker} possui um DY de ${(inflationShield.dy_12m || 0).toFixed(1)}%, superando o IPCA (${ipca}%) com folga.`,
+            89,
+            inflationShield.ticker
         );
     }
 
-    // --- 4. OPORTUNIDADES & ALERTAS (Valuation) ---
+    // Vaca Leiteira (Maior pagador em volume financeiro total)
+    const cashCow = activeAssets.sort((a,b) => (b.totalDividends || 0) - (a.totalDividends || 0))[0];
+    if (cashCow && (cashCow.totalDividends || 0) > 100) {
+        createStory(
+            'cash-cow',
+            'success',
+            'Máquina de Renda 🐮',
+            `${cashCow.ticker} é seu maior pagador histórico, totalizando R$ ${(cashCow.totalDividends || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})} em proventos.`,
+            87,
+            cashCow.ticker
+        );
+    }
+
+    // --- 4. VALUATION & OPORTUNIDADES ---
     
-    // FII Barato (P/VP < 0.90)
+    // FII Barato
     const cheapFii = activeAssets.find(a => 
-        a.assetType === AssetType.FII && (a.p_vp || 0) > 0.1 && (a.p_vp || 0) < 0.92
+        a.assetType === AssetType.FII && (a.p_vp || 0) > 0.4 && (a.p_vp || 0) < 0.90
     );
     if (cheapFii) {
         createStory(
             'opportunity-pvp',
             'opportunity',
             'Desconto Patrimonial 🏷️',
-            `${cheapFii.ticker} está sendo negociado a ${(cheapFii.p_vp || 0).toFixed(2)}x do seu valor patrimonial.`,
+            `${cheapFii.ticker} está descontado, negociado a ${(cheapFii.p_vp || 0).toFixed(2)}x do seu valor patrimonial.`,
             85,
             cheapFii.ticker
         );
     }
 
-    // Ação Barata (P/L < 6)
-    const cheapStock = activeAssets.find(a => 
-        a.assetType === AssetType.STOCK && (a.p_l || 0) > 0.1 && (a.p_l || 0) < 6
+    // FII Caro (Alerta)
+    const expensiveFii = activeAssets.find(a => 
+        a.assetType === AssetType.FII && (a.p_vp || 0) > 1.15
     );
-    if (cheapStock) {
+    if (expensiveFii) {
         createStory(
-            'opportunity-pl',
+            'expensive-pvp',
+            'warning',
+            'Ágio Elevado ⚠️',
+            `${expensiveFii.ticker} está caro, custando ${(expensiveFii.p_vp || 0).toFixed(2)}x o seu valor patrimonial. Cuidado com novas compras.`,
+            83,
+            expensiveFii.ticker
+        );
+    }
+
+    // Ação Eficiente (Margem Alta)
+    const qualityStock = activeAssets.find(a => 
+        a.assetType === AssetType.STOCK && (a.net_margin || 0) > 20
+    );
+    if (qualityStock) {
+        createStory(
+            'quality-stock',
             'opportunity',
-            'Múltiplo Atrativo 📉',
-            `${cheapStock.ticker} negocia com P/L de ${(cheapStock.p_l || 0).toFixed(1)}x, historicamente baixo.`,
-            84,
-            cheapStock.ticker
+            'Alta Eficiência 💎',
+            `${qualityStock.ticker} opera com uma excelente Margem Líquida de ${(qualityStock.net_margin || 0).toFixed(1)}%.`,
+            82,
+            qualityStock.ticker
+        );
+    }
+
+    // --- 5. ESTRUTURA DA CARTEIRA ---
+
+    // Diversificação
+    if (sectors.size >= 4 && activeAssets.length >= 5) {
+        createStory(
+            'diversification-good',
+            'success',
+            'Bem Diversificado 🌐',
+            `Você possui ativos em ${sectors.size} setores diferentes. Isso ajuda a reduzir riscos específicos.`,
+            75
         );
     }
 
     // Alerta de Concentração
-    const concentrated = activeAssets.find(a => (a.totalValue / totalPortfolioValue) > 0.25);
+    const concentrated = activeAssets.find(a => (a.totalValue / totalPortfolioValue) > 0.30);
     if (concentrated) {
         const pct = ((concentrated.totalValue / totalPortfolioValue) * 100).toFixed(0);
         createStory(
             'risk-concentration',
             'warning',
-            'Atenção: Concentração ⚠️',
-            `${concentrated.ticker} representa ${pct}% do seu patrimônio. Monitore este risco.`,
+            'Risco de Concentração ⚖️',
+            `${concentrated.ticker} representa ${pct}% do seu patrimônio total. Monitore este risco.`,
             80,
             concentrated.ticker
         );
     }
 
-    // --- 5. SPOTLIGHT (Preenchimento Inteligente) ---
-    // Se tivermos menos de 4 stories, pegamos um ativo aleatório relevante e mostramos um dado dele
-    // para garantir que o feed tenha "vida" e novidades.
-    if (insights.length < 4 && activeAssets.length > 0) {
-        // Tenta achar um ativo que ainda não foi usado hoje
+    // --- 6. SPOTLIGHT (Preenchimento Inteligente) ---
+    if (insights.length < 5 && activeAssets.length > 0) {
         const availableAssets = activeAssets.filter(a => !usedTickers.has(a.ticker));
         
         if (availableAssets.length > 0) {
-            // Pega um aleatório
             const randomAsset = availableAssets[Math.floor(Math.random() * availableAssets.length)];
             
-            // Decide qual métrica mostrar
             if (randomAsset.assetType === AssetType.FII) {
                 createStory(
                     'spotlight-fii',
@@ -202,7 +244,7 @@ export const analyzePortfolio = (
                     'spotlight-stock',
                     'news',
                     'Raio-X: Ação 📊',
-                    `${randomAsset.ticker}: ROE de ${(randomAsset.roe || 0).toFixed(1)}% e Margem Líquida de ${(randomAsset.net_margin || 0).toFixed(1)}%.`,
+                    `${randomAsset.ticker}: ROE de ${(randomAsset.roe || 0).toFixed(1)}% e P/L ${(randomAsset.p_l || 0).toFixed(1)}x.`,
                     60,
                     randomAsset.ticker
                 );
@@ -210,6 +252,5 @@ export const analyzePortfolio = (
         }
     }
 
-    // Retorna os top 6 insights ordenados por relevância (Score)
     return insights.sort((a, b) => b.score - a.score).slice(0, 6);
 };

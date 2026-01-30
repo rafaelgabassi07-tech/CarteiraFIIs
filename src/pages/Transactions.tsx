@@ -224,11 +224,12 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     }, [transactions, searchTerm, typeFilter, assetFilter, yearFilter]);
 
     const flatTransactions = useMemo(() => {
-        // Explicitly typed arguments to avoid implicit unknown error
-        const sorted = [...filteredTransactions].sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
-        const groups: any = {};
+        // Ensure date is treated as string for sorting to avoid implicit unknown type errors
+        const sorted = [...filteredTransactions].sort((a: Transaction, b: Transaction) => String(b.date || '').localeCompare(String(a.date || '')));
+        const groups: Record<string, { items: Transaction[], totalNet: number }> = {};
         
-        sorted.forEach((t: any) => {
+        sorted.forEach((t) => {
+            if (!t.date) return;
             const k = t.date.substring(0, 7);
             if (!groups[k]) groups[k] = { items: [], totalNet: 0 };
             groups[k].items.push(t);
@@ -238,10 +239,10 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         });
 
         const list: any[] = [];
-        // Explicitly typed arguments for Object.keys sorting
+        // Ensure keys are treated as strings for sorting
         Object.keys(groups).sort((a, b) => String(b).localeCompare(String(a))).forEach(k => {
             list.push({ type: 'header', monthKey: k, monthlyNet: groups[k].totalNet });
-            groups[k].items.forEach((t: any) => list.push({ type: 'item', data: t }));
+            groups[k].items.forEach((t) => list.push({ type: 'item', data: t }));
         });
         return list; 
     }, [filteredTransactions]);

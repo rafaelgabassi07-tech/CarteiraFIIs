@@ -44,7 +44,12 @@ const formatDateShort = (dateStr: string) => {
 
 const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
     const isPayment = event.eventType === 'payment';
-    const isToday = new Date(event.date + 'T00:00:00').getTime() === new Date().setHours(0,0,0,0);
+    // Correção de Data Local para verificação de "Hoje"
+    const eventDate = new Date(event.date + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const isToday = eventDate.getTime() === today.getTime();
+
     let iconBg = 'bg-zinc-100 dark:bg-zinc-800'; let iconColor = 'text-zinc-400'; let Icon = Calendar; let borderColor = 'border-zinc-200 dark:border-zinc-800';
     if (isPayment) { iconBg = 'bg-emerald-100 dark:bg-emerald-900/20'; iconColor = 'text-emerald-600 dark:text-emerald-400'; Icon = Banknote; borderColor = 'border-emerald-200 dark:border-emerald-900/30'; } 
     else { iconBg = 'bg-amber-100 dark:bg-amber-900/20'; iconColor = 'text-amber-600 dark:text-amber-400'; Icon = CalendarClock; borderColor = 'border-amber-200 dark:border-amber-900/30'; }
@@ -221,7 +226,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [portfolio]);
 
   const { upcomingEvents, received, groupedEvents, provisionedTotal, history, receiptsByMonth, divStats, dividendsChartData } = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    // CRITICAL FIX: Use local date to prevent timezone issues hiding today's events
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
     const allEvents: any[] = [];
     let receivedTotal = 0; let provTotal = 0;
     const safeReceipts = Array.isArray(dividendReceipts) ? dividendReceipts : [];
@@ -231,6 +239,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
     safeReceipts.forEach(r => {
         if (!r) return;
+        // Check using >= local date
         if (r.paymentDate >= todayStr) { allEvents.push({ ...r, eventType: 'payment', date: r.paymentDate }); provTotal += r.totalReceived; }
         if (r.dateCom >= todayStr) allEvents.push({ ...r, eventType: 'datacom', date: r.dateCom });
         if (r.paymentDate <= todayStr) {

@@ -14,7 +14,7 @@ const httpsAgent = new https.Agent({
     keepAlive: true,
     maxSockets: 100,
     maxFreeSockets: 10,
-    timeout: 15000,
+    timeout: 10000, // Reduzido para 10s
     rejectUnauthorized: false
 });
 
@@ -28,7 +28,7 @@ const client = axios.create({
         'Pragma': 'no-cache',
         'Upgrade-Insecure-Requests': '1'
     },
-    timeout: 15000,
+    timeout: 8000, // Reduzido para 8s para garantir tempo de fallback dentro dos 10-30s da Vercel
     maxRedirects: 5
 });
 
@@ -352,7 +352,7 @@ async function scrapeInvestidor10(ticker: string) {
             }
 
         } catch (e) {
-            // Se 404, continua para próxima URL. Se outro erro, loga e continua.
+            // Se 404 ou Timeout, continua para próxima URL.
             continue;
         }
     }
@@ -382,8 +382,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                // Reduzido cache para 1h se DY for 0 para tentar corrigir dados ruins
-                const cacheTime = existing.dy_12m === 0 ? 3600000 : 10800000;
+                // Cache otimizado para evitar requests desnecessários
+                const cacheTime = existing.dy_12m === 0 ? 3600000 : 10800000; // 1h ou 3h
                 
                 if (age < cacheTime) {
                      const { data: divs } = await supabase
@@ -405,16 +405,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (metadata) {
             const dbPayload = { ...metadata };
+            // Remove campos que não persistem ou são calculados
             delete dbPayload.dy;
             delete dbPayload.cotacao_atual;
-            await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
+            
+            // Upsert seguro
+            const { error } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
+            if (error) console.error('Error saving metadata:', error);
         }
 
         if (dividends.length > 0) {
              const uniqueDivs = Array.from(new Map(dividends.map(item => [
                 `${item.type}-${item.date_com}-${item.rate}`, item
             ])).values());
-            await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
+            
+            const { error } = await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
+            if (error) console.error('Error saving dividends:', error);
         }
 
         return res.status(200).json({ success: true, data: metadata, dividends });

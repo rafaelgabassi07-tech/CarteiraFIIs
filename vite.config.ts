@@ -6,10 +6,6 @@ export default defineConfig(({ mode }) => {
   // Carrega variáveis de .env, .env.local, etc.
   const env = loadEnv(mode, '.', '');
   
-  const getEnvVar = (key: string, viteKey: string) => {
-    return JSON.stringify(env[key] || process.env[key] || env[viteKey] || process.env[viteKey] || '');
-  };
-
   return {
     base: './', // Garante caminhos relativos corretos
     plugins: [react()],
@@ -44,13 +40,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      // Polyfill crítico para navegadores desktop que não têm o objeto 'process'
-      // Isso previne o erro "ReferenceError: process is not defined"
-      'process.env': {}, 
-      'process.env.API_KEY': getEnvVar('API_KEY', 'VITE_API_KEY'),
-      'process.env.BRAPI_TOKEN': getEnvVar('BRAPI_TOKEN', 'VITE_BRAPI_TOKEN'),
-      'process.env.SUPABASE_URL': getEnvVar('SUPABASE_URL', 'VITE_SUPABASE_URL'),
-      'process.env.SUPABASE_KEY': getEnvVar('SUPABASE_KEY', 'VITE_SUPABASE_KEY')
+      // Injeção segura de variáveis de ambiente
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || process.env.API_KEY || ''),
+      'process.env.BRAPI_TOKEN': JSON.stringify(env.BRAPI_TOKEN || env.VITE_BRAPI_TOKEN || process.env.BRAPI_TOKEN || ''),
+      'process.env.SUPABASE_URL': JSON.stringify(env.SUPABASE_URL || env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || ''),
+      'process.env.SUPABASE_KEY': JSON.stringify(env.SUPABASE_KEY || env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || '')
     }
   };
 });

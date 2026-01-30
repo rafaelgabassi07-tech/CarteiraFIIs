@@ -3,17 +3,17 @@ import { BrapiQuote } from '../types';
 
 // Função segura para obter o Token
 const getBrapiToken = () => {
-    // 1. Tenta via Vite
-    const vite = (import.meta as any).env?.VITE_BRAPI_TOKEN;
-    if (vite) return vite;
-    
-    // 2. Tenta via Process (Vite define substitui isso por string estática)
-    // O try/catch previne "ReferenceError: process is not defined" se a substituição falhar
     try {
-        return process.env.BRAPI_TOKEN;
+        if (typeof process !== 'undefined' && process.env && process.env.BRAPI_TOKEN) {
+            return process.env.BRAPI_TOKEN;
+        }
+        if ((import.meta as any).env?.VITE_BRAPI_TOKEN) {
+            return (import.meta as any).env.VITE_BRAPI_TOKEN;
+        }
     } catch {
         return undefined;
     }
+    return undefined;
 };
 
 const BRAPI_TOKEN = getBrapiToken();
@@ -28,8 +28,9 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
   }
   
   if (!BRAPI_TOKEN) {
-    console.warn("Brapi token missing");
-    return { quotes: [], error: "Brapi token missing" };
+    console.warn("Brapi token missing. Verifique suas variáveis de ambiente (VITE_BRAPI_TOKEN).");
+    // Não retorna erro fatal imediatamente para permitir que a UI carregue com dados cacheados ou parciais
+    return { quotes: [], error: "Token de cotação não configurado" };
   }
 
   // Remove duplicatas e limpa espaços
@@ -44,7 +45,10 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
             });
             
             if (!response.ok) {
-                console.warn(`Brapi error for ${ticker}: ${response.status}`);
+                // Log discreto para evitar poluição do console em 404s esperados
+                if (response.status !== 404) {
+                    console.warn(`Brapi error for ${ticker}: ${response.status}`);
+                }
                 return null;
             }
 
