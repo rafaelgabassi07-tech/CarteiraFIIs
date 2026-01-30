@@ -21,6 +21,7 @@ const BRAPI_TOKEN = getBrapiToken();
 /**
  * Busca cotações de ativos na API da Brapi.
  * Lógica: Requisições individuais em paralelo (Promise.all) para evitar que erro em um ticker trave o lote todo.
+ * Mantém cache: 'no-store' para garantir dados frescos.
  */
 export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote[], error?: string }> => {
   if (!tickers || tickers.length === 0) {
@@ -29,7 +30,6 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
   
   if (!BRAPI_TOKEN) {
     console.warn("Brapi token missing. Verifique suas variáveis de ambiente (VITE_BRAPI_TOKEN).");
-    // Não retorna erro fatal imediatamente para permitir que a UI carregue com dados cacheados ou parciais
     return { quotes: [], error: "Token de cotação não configurado" };
   }
 
@@ -39,13 +39,11 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
   try {
     const quotePromises = uniqueTickers.map(async (ticker) => {
         try {
-            // Adiciona cache: 'no-store' para garantir que o fetch respeite o polling e não pegue do disk cache
             const response = await fetch(`https://brapi.dev/api/quote/${ticker}?token=${BRAPI_TOKEN}`, {
                 cache: 'no-store'
             });
             
             if (!response.ok) {
-                // Log discreto para evitar poluição do console em 404s esperados
                 if (response.status !== 404) {
                     console.warn(`Brapi error for ${ticker}: ${response.status}`);
                 }
@@ -54,7 +52,6 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
 
             const data = await response.json();
             
-            // Brapi retorna { results: [...] }
             if (data.results && Array.isArray(data.results) && data.results.length > 0) {
                 return data.results[0] as BrapiQuote;
             }

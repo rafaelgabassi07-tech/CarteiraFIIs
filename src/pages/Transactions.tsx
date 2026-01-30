@@ -209,7 +209,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     // Gera lista de anos disponíveis baseada no histórico
     const availableYears = useMemo(() => {
         const years = new Set(transactions.map(t => t.date.substring(0, 4)));
-        return Array.from(years).sort((a,b) => b.localeCompare(a));
+        return Array.from(years).sort((a, b) => String(b).localeCompare(String(a)));
     }, [transactions]);
 
     const filteredTransactions = useMemo(() => {
@@ -224,7 +224,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     }, [transactions, searchTerm, typeFilter, assetFilter, yearFilter]);
 
     const flatTransactions = useMemo(() => {
-        // Ensure date is treated as string for sorting to avoid implicit unknown type errors
+        // Correção: Tipagem explícita para evitar erro 'unknown' no sort
         const sorted = [...filteredTransactions].sort((a: Transaction, b: Transaction) => String(b.date || '').localeCompare(String(a.date || '')));
         const groups: Record<string, { items: Transaction[], totalNet: number }> = {};
         
@@ -239,7 +239,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         });
 
         const list: any[] = [];
-        // Ensure keys are treated as strings for sorting
+        // Correção: Tipagem explícita no sort das chaves
         Object.keys(groups).sort((a, b) => String(b).localeCompare(String(a))).forEach(k => {
             list.push({ type: 'header', monthKey: k, monthlyNet: groups[k].totalNet });
             groups[k].items.forEach((t) => list.push({ type: 'item', data: t }));

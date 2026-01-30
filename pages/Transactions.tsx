@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
@@ -209,7 +210,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     // Gera lista de anos disponíveis baseada no histórico
     const availableYears = useMemo(() => {
         const years = new Set(transactions.map(t => t.date.substring(0, 4)));
-        return Array.from(years).sort((a,b) => b.localeCompare(a));
+        return Array.from(years).sort((a, b) => String(b).localeCompare(String(a)));
     }, [transactions]);
 
     const filteredTransactions = useMemo(() => {
@@ -224,11 +225,12 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     }, [transactions, searchTerm, typeFilter, assetFilter, yearFilter]);
 
     const flatTransactions = useMemo(() => {
-        // Explicitly typed arguments to avoid implicit unknown error
-        const sorted = [...filteredTransactions].sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
-        const groups: any = {};
+        // Correção: Tipagem explícita para evitar erro 'unknown' no sort
+        const sorted = [...filteredTransactions].sort((a: Transaction, b: Transaction) => String(b.date || '').localeCompare(String(a.date || '')));
+        const groups: Record<string, { items: Transaction[], totalNet: number }> = {};
         
-        sorted.forEach((t: any) => {
+        sorted.forEach((t) => {
+            if (!t.date) return;
             const k = t.date.substring(0, 7);
             if (!groups[k]) groups[k] = { items: [], totalNet: 0 };
             groups[k].items.push(t);
@@ -238,10 +240,10 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         });
 
         const list: any[] = [];
-        // Explicitly typed arguments for Object.keys sorting
+        // Correção: Tipagem explícita no sort das chaves
         Object.keys(groups).sort((a, b) => String(b).localeCompare(String(a))).forEach(k => {
             list.push({ type: 'header', monthKey: k, monthlyNet: groups[k].totalNet });
-            groups[k].items.forEach((t: any) => list.push({ type: 'item', data: t }));
+            groups[k].items.forEach((t) => list.push({ type: 'item', data: t }));
         });
         return list; 
     }, [filteredTransactions]);
