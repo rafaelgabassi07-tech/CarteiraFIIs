@@ -22,13 +22,13 @@ const isStale = (dateString?: string) => {
     return (now - lastUpdate) > getTTL();
 };
 
-const parseNumberSafe = (val: any): number => {
+const parseNumberSafe = (val: any): number | undefined => {
     if (typeof val === 'number') return val;
-    if (!val) return 0;
+    if (val === undefined || val === null || val === '') return undefined;
     
     // Remove R$, %, espaços
     let str = String(val).replace(/[^\d.,-]/g, '').trim();
-    if (!str || str === '-') return 0;
+    if (!str || str === '-') return undefined;
 
     // Lógica robusta de parsing (copiada do scraper para consistência)
     const hasComma = str.includes(',');
@@ -45,7 +45,7 @@ const parseNumberSafe = (val: any): number => {
     }
 
     const num = parseFloat(str);
-    return isNaN(num) ? 0 : num;
+    return isNaN(num) ? undefined : num;
 };
 
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {

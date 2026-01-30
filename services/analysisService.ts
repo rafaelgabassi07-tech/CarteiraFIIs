@@ -10,7 +10,11 @@ export const analyzePortfolio = (
     ipca: number
 ): PortfolioInsight[] => {
     const insights: PortfolioInsight[] = [];
-    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // CORREÇÃO: Usa data local (YYYY-MM-DD) para evitar que o ID mude à meia-noite UTC (21h BRT)
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
     const usedTickers = new Set<string>();
 
     if (!portfolio || portfolio.length === 0) return [];

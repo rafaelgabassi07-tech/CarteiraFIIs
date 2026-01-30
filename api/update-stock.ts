@@ -104,16 +104,19 @@ async function fetchHtmlWithRetry(ticker: string) {
     const isLikelyFii = ticker.endsWith('11') || ticker.endsWith('11B');
     
     const urlFii = `https://investidor10.com.br/fiis/${tickerLower}/`;
+    const urlFiagro = `https://investidor10.com.br/fiagros/${tickerLower}/`;
     const urlAcao = `https://investidor10.com.br/acoes/${tickerLower}/`;
     const urlBdr = `https://investidor10.com.br/bdrs/${tickerLower}/`;
 
-    const urls = isLikelyFii ? [urlFii, urlAcao, urlBdr] : [urlAcao, urlFii, urlBdr];
+    // Inclui Fiagros na prioridade se for ticker 11
+    const urls = isLikelyFii ? [urlFii, urlFiagro, urlAcao, urlBdr] : [urlAcao, urlFii, urlFiagro, urlBdr];
 
     for (const url of urls) {
         try {
             const res = await client.get(url);
             let type = 'ACAO';
             if (url.includes('/fiis/')) type = 'FII';
+            else if (url.includes('/fiagros/')) type = 'FII'; // Trata Fiagro como FII para o app
             else if (url.includes('/bdrs/')) type = 'BDR';
             return { data: res.data, type };
         } catch (e: any) {
