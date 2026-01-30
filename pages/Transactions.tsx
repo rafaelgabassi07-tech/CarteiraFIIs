@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
@@ -81,54 +82,66 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
     );
 };
 
-// Componente Customizado para Filtro de Ano (Chip Style)
+// Componente Customizado para Filtro de Ano (Chip Style) - Usando Portal para evitar clipping overflow
 const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], selectedYear: string, onChange: (y: string) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const [coords, setCoords] = useState({ top: 0, left: 0 });
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    const handleToggle = () => {
+        if (!isOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            // Calcula posição para o portal
+            setCoords({ 
+                top: rect.bottom + 6, 
+                left: rect.left 
+            });
+        }
+        setIsOpen(!isOpen);
+    };
 
     return (
-        <div className="relative shrink-0" ref={dropdownRef}>
+        <>
             <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${selectedYear !== 'ALL' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+                ref={buttonRef}
+                onClick={handleToggle}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all shrink-0 ${selectedYear !== 'ALL' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
             >
                 <Calendar className="w-3 h-3" />
                 <span>{selectedYear === 'ALL' ? 'Ano' : selectedYear}</span>
                 <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {isOpen && (
-                <div className="absolute top-full left-0 mt-2 w-32 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xl z-50 overflow-hidden anim-scale-in origin-top-left p-1">
-                    <div className="max-h-48 overflow-y-auto no-scrollbar space-y-1">
-                        <button 
-                            onClick={() => { onChange('ALL'); setIsOpen(false); }}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-colors ${selectedYear === 'ALL' ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
-                        >
-                            Todos
-                        </button>
-                        {years.map(year => (
+            {isOpen && createPortal(
+                <>
+                    {/* Backdrop transparente para fechar ao clicar fora */}
+                    <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)}></div>
+                    <div 
+                        className="fixed w-32 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xl z-[9999] overflow-hidden anim-scale-in p-1"
+                        style={{ top: coords.top, left: coords.left }}
+                    >
+                        <div className="max-h-64 overflow-y-auto no-scrollbar space-y-1">
                             <button 
-                                key={year}
-                                onClick={() => { onChange(year); setIsOpen(false); }}
-                                className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold transition-colors ${selectedYear === year ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
+                                onClick={() => { onChange('ALL'); setIsOpen(false); }}
+                                className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-colors ${selectedYear === 'ALL' ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
                             >
-                                {year}
+                                Todos
                             </button>
-                        ))}
+                            {years.map(year => (
+                                <button 
+                                    key={year}
+                                    onClick={() => { onChange(year); setIsOpen(false); }}
+                                    className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold transition-colors ${selectedYear === year ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
+                                >
+                                    {year}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                </>,
+                document.body
             )}
-        </div>
+        </>
     );
 };
 
