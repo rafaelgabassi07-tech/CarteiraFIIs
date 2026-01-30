@@ -1,4 +1,3 @@
 
-// Página de Mercado removida conforme solicitação.
-import React from 'react';
+// Página depreciada. Removida para otimização.
 export const Market = () => null;

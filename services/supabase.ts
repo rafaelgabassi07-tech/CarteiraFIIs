@@ -31,7 +31,7 @@ const getSupabaseKey = () => {
     }
 };
 
-const SUPABASE_URL = getSupabaseUrl();
+export const SUPABASE_URL = getSupabaseUrl();
 const SUPABASE_KEY = getSupabaseKey();
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {

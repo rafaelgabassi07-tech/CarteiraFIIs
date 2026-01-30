@@ -14,7 +14,7 @@ import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals 
 import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio, normalizeTicker } from './services/portfolioRules';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
-import { supabase } from './services/supabase';
+import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
@@ -30,11 +30,6 @@ const STORAGE_KEYS = {
   PUSH_ENABLED: 'investfiis_push_enabled',
   NOTIF_HISTORY: 'investfiis_notification_history_v3',
   METADATA: 'investfiis_metadata_v2' 
-};
-
-const getSupabaseUrl = () => {
-    const url = (import.meta as any).env?.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    return url || 'https://supabase.com';
 };
 
 // Memoização dos componentes principais para performance
@@ -133,7 +128,7 @@ const App: React.FC = () => {
   const [isCheckingServices, setIsCheckingServices] = useState(false);
   
   const servicesRef = useRef<ServiceMetric[]>([
-    { id: 'db', label: 'Supabase Database', url: getSupabaseUrl(), icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
+    { id: 'db', label: 'Supabase Database', url: SUPABASE_URL, icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'market', label: 'Brapi Market Data', url: 'https://brapi.dev', icon: Activity, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'cdn', label: 'App CDN (Vercel)', url: window.location.origin, icon: Globe, status: 'operational', latency: null, message: 'Aplicação carregada localmente.' }
   ]);
