@@ -21,6 +21,7 @@ interface HomeProps {
   totalAppreciation: number;
   transactions?: Transaction[];
   privacyMode?: boolean;
+  onViewAsset?: (ticker: string) => void;
 }
 
 const formatBRL = (val: any, privacy = false) => {
@@ -64,7 +65,7 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
     );
 };
 
-const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights: PortfolioInsight[], startIndex: number, onClose: () => void, onMarkAsRead: (id: string) => void }) => {
+const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead, onViewAsset }: { insights: PortfolioInsight[], startIndex: number, onClose: () => void, onMarkAsRead: (id: string) => void, onViewAsset?: (ticker: string) => void }) => {
     const [currentIndex, setCurrentIndex] = useState(startIndex);
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
@@ -92,18 +93,38 @@ const StoryViewer = ({ insights, startIndex, onClose, onMarkAsRead }: { insights
     const getTypeIcon = (type: string) => { if(type === 'volatility_up') return TrendingUp; if(type === 'volatility_down') return TrendingDown; if(type === 'warning') return AlertTriangle; if(type === 'opportunity') return Target; if(type === 'success') return Coins; return Lightbulb; };
     const getTheme = (type: string) => { if(type === 'volatility_up' || type === 'success') return { bg: 'from-emerald-900 to-black', accent: 'bg-emerald-500' }; if(type === 'volatility_down') return { bg: 'from-rose-900 to-black', accent: 'bg-rose-500' }; if(type === 'warning') return { bg: 'from-amber-900 to-black', accent: 'bg-amber-500' }; return { bg: 'from-indigo-900 to-black', accent: 'bg-indigo-500' }; };
     const Icon = getTypeIcon(currentStory.type); const theme = getTheme(currentStory.type); const timeAgo = currentStory.timestamp ? formatDistanceToNow(currentStory.timestamp, { addSuffix: true, locale: ptBR }) : 'Agora';
+    
     return createPortal(
         <div className={`fixed inset-0 z-[9999] bg-gradient-to-b ${theme.bg} flex flex-col anim-fade-in backdrop-blur-3xl`}>
             <div className="absolute inset-0 bg-black/40 z-0"></div>
             <div className="flex gap-1.5 p-3 pt-safe z-20">{insights.map((_, idx) => (<div key={idx} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm"><div className="h-full bg-white transition-all duration-100 linear" style={{ width: idx < currentIndex ? '100%' : idx === currentIndex ? `${progress}%` : '0%' }} /></div>))}</div>
             <div className="flex items-center justify-between px-4 py-2 z-20 text-white"><div className="flex items-center gap-3"><div className={`w-9 h-9 rounded-full flex items-center justify-center ${theme.accent} shadow-lg`}><Icon className="w-5 h-5 text-white" /></div><div><span className="font-bold text-sm block">{currentStory.title}</span><span className="text-[10px] text-white/70 font-medium">{timeAgo}</span></div></div><button onClick={onClose} className="p-2 bg-white/10 rounded-full"><X className="w-6 h-6" /></button></div>
             <div className="flex-1 relative flex flex-col justify-center items-center p-8 text-center" onTouchStart={() => setIsPaused(true)} onTouchEnd={() => setIsPaused(false)} onMouseDown={() => setIsPaused(true)} onMouseUp={() => setIsPaused(false)}><div className="absolute inset-y-0 left-0 w-1/3 z-10" onClick={handlePrev}></div><div className="absolute inset-y-0 right-0 w-1/3 z-10" onClick={handleNext}></div><div className="w-full max-w-sm relative z-0 anim-scale-in"><div className={`w-32 h-32 rounded-[2.5rem] ${theme.accent} flex items-center justify-center mb-10 mx-auto shadow-2xl relative transform rotate-3`}><div className="absolute inset-0 rounded-[2.5rem] bg-white/20 -rotate-6 scale-90 -z-10"></div><div className="text-4xl font-black text-white drop-shadow-2xl">{currentStory.relatedTicker ? currentStory.relatedTicker.substring(0,4) : <Icon className="w-16 h-16" />}</div></div><h2 className="text-3xl font-black text-white mb-6 leading-tight drop-shadow-md">{currentStory.message}</h2>{currentStory.relatedTicker && <div className="inline-block px-5 py-2 rounded-xl bg-white/10 border border-white/10 text-white font-bold text-xs uppercase tracking-widest">{currentStory.relatedTicker}</div>}</div></div>
-            {currentStory.url && (<div className="p-6 pb-safe z-20 anim-slide-up"><a href={currentStory.url} target="_blank" rel="noreferrer" className="block w-full py-4 bg-white text-black text-center rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-transform hover:bg-zinc-100">Ver Detalhes</a></div>)}
+            
+            {/* Lógica de Botão Inteligente: Prioriza Navegação Interna */}
+            {(currentStory.relatedTicker || currentStory.url) && (
+                <div className="p-6 pb-safe z-20 anim-slide-up">
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation(); // Evita navegar para próximo slide
+                            if (currentStory.relatedTicker && onViewAsset) {
+                                onClose(); // Fecha o story
+                                onViewAsset(currentStory.relatedTicker); // Navega para o ativo
+                            } else if (currentStory.url) {
+                                window.open(currentStory.url, '_blank'); // Fallback externo
+                            }
+                        }} 
+                        className="block w-full py-4 bg-white text-black text-center rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-transform hover:bg-zinc-100"
+                    >
+                        Ver Detalhes
+                    </button>
+                </div>
+            )}
         </div>, document.body
     );
 };
 
-const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: PortfolioInsight[], onMarkAsRead: (id: string) => void, readStories: Set<string> }) => {
+const SmartFeed = ({ insights, onMarkAsRead, readStories, onViewAsset }: { insights: PortfolioInsight[], onMarkAsRead: (id: string) => void, readStories: Set<string>, onViewAsset?: (ticker: string) => void }) => {
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
     const validInsights = useMemo(() => { if (!insights) return []; const now = Date.now(); const ONE_DAY_MS = 24 * 60 * 60 * 1000; return insights.filter(i => (now - (i.timestamp || now)) < ONE_DAY_MS); }, [insights]);
     if (!validInsights || validInsights.length === 0) return null;
@@ -121,14 +142,14 @@ const SmartFeed = ({ insights, onMarkAsRead, readStories }: { insights: Portfoli
                     </button>
                 );
             })}
-            {activeIndex !== null && <StoryViewer insights={validInsights} startIndex={activeIndex} onClose={() => setActiveIndex(null)} onMarkAsRead={onMarkAsRead} />}
+            {activeIndex !== null && <StoryViewer insights={validInsights} startIndex={activeIndex} onClose={() => setActiveIndex(null)} onMarkAsRead={onMarkAsRead} onViewAsset={onViewAsset} />}
         </div>
     );
 };
 
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e'];
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false, onViewAsset }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -372,7 +393,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-4 pb-8">
-      <SmartFeed insights={insights} onMarkAsRead={markAsRead} readStories={readStories} />
+      <SmartFeed insights={insights} onMarkAsRead={markAsRead} readStories={readStories} onViewAsset={onViewAsset} />
 
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
         <div className="w-full bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-6 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 relative overflow-hidden group">

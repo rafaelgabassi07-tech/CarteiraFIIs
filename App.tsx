@@ -83,6 +83,9 @@ const App: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUpdateReport, setShowUpdateReport] = useState(false);
   
+  // Navigation State (Deep Linking interno)
+  const [targetAssetTicker, setTargetAssetTicker] = useState<string | null>(null);
+  
   // PWA Install State
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
@@ -557,6 +560,12 @@ const App: React.FC = () => {
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   }, []);
 
+  // Handler para Navegação via Stories
+  const handleViewAsset = useCallback((ticker: string) => {
+      setTargetAssetTicker(ticker);
+      setCurrentTab('portfolio');
+  }, []);
+
   // --- CÁLCULOS DE PORTFÓLIO (Delegado para Serviço) ---
   const memoizedPortfolioData = useMemo(() => {
       return processPortfolio(transactions, dividends, quotes, assetsMetadata);
@@ -627,8 +636,27 @@ const App: React.FC = () => {
                 </div>
               ) : (
                 <div key={currentTab} className="anim-page-enter">
-                  {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} />}
-                  {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} dividends={dividends} privacyMode={privacyMode} onAssetRefresh={refreshSingleAsset} headerVisible={isHeaderVisible} />}
+                  {currentTab === 'home' && (
+                      <MemoizedHome 
+                          {...memoizedPortfolioData} 
+                          transactions={transactions} 
+                          totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
+                          inflationRate={marketIndicators.ipca} 
+                          privacyMode={privacyMode} 
+                          onViewAsset={handleViewAsset} // Passa handler de navegação
+                      />
+                  )}
+                  {currentTab === 'portfolio' && (
+                      <MemoizedPortfolio 
+                          portfolio={memoizedPortfolioData.portfolio} 
+                          dividends={dividends} 
+                          privacyMode={privacyMode} 
+                          onAssetRefresh={refreshSingleAsset} 
+                          headerVisible={isHeaderVisible} 
+                          targetAsset={targetAssetTicker} // Passa o ticker alvo
+                          onClearTarget={() => setTargetAssetTicker(null)} // Limpa após uso
+                      />
+                  )}
                   {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                   {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
                 </div>

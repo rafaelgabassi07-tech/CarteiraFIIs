@@ -11,6 +11,8 @@ interface PortfolioProps {
   privacyMode?: boolean;
   onAssetRefresh?: (ticker: string) => Promise<void>;
   headerVisible?: boolean;
+  targetAsset?: string | null; // Prop para deep linking
+  onClearTarget?: () => void;
 }
 
 const formatBRL = (val: any, privacy = false) => {
@@ -521,9 +523,21 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     );
 };
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false, onAssetRefresh, headerVisible = true }) => {
+const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false, onAssetRefresh, headerVisible = true, targetAsset, onClearTarget }) => {
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Efeito para abrir modal automaticamente via Deep Link interno (Stories)
+    useEffect(() => {
+        if (targetAsset) {
+            // Verifica se o ativo existe no portfolio antes de abrir
+            const exists = portfolio.some(p => p.ticker === targetAsset);
+            if (exists) {
+                setSelectedTicker(targetAsset);
+                if (onClearTarget) onClearTarget();
+            }
+        }
+    }, [targetAsset, portfolio, onClearTarget]);
 
     const selectedAsset = useMemo(() => {
         if (!selectedTicker) return null;
