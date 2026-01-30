@@ -200,9 +200,11 @@ interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 500);
   const modalRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef<number>(0);
+  const currentY = useRef<number>(0);
 
   useEffect(() => { 
       document.body.style.overflow = isOpen ? 'hidden' : ''; 
@@ -210,40 +212,44 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   }, [isOpen]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    // Evita conflito com scroll interno
-    const target = e.target as HTMLElement;
-    const isHeader = target.closest('.modal-drag-handle');
-    
-    // Só inicia o drag se tocar na área do topo ou se estiver no topo do scroll
-    if (isHeader || modalRef.current?.scrollTop === 0) {
-        startY.current = e.touches[0].clientY;
-        setIsDragging(true);
+    // Só inicia drag se o scroll interno estiver no topo (scrollTop === 0)
+    // OU se o toque for no "drag handle" superior
+    if (contentRef.current && contentRef.current.scrollTop > 0) {
+        return;
     }
+    
+    startY.current = e.touches[0].clientY;
+    currentY.current = startY.current;
+    setIsDragging(true);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
-    const touchY = e.touches[0].clientY;
-    const diff = touchY - startY.current;
     
-    // Só permite arrastar para baixo
+    // Atualiza posição atual
+    currentY.current = e.touches[0].clientY;
+    const diff = currentY.current - startY.current;
+    
+    // Se arrastar para cima (negativo), ignora se não tiver offset positivo
+    if (diff < 0 && dragOffset <= 0) return;
+
+    // Se arrastar para baixo (positivo)
     if (diff > 0) {
-      // Resistência logarítmica para sensação de peso
-      const resistance = 1 + (diff / window.innerHeight) * 0.5;
-      setDragOffset(diff / resistance);
-      
-      // Impede scroll da página enquanto arrasta
-      if (e.cancelable) e.preventDefault(); 
+        if (e.cancelable) e.preventDefault(); // Impede refresh/scroll da página
+        // Resistência física
+        const resistance = 1 + (diff / window.innerHeight);
+        setDragOffset(diff / resistance);
     }
   };
 
   const handleTouchEnd = () => {
     setIsDragging(false);
-    // Threshold de fechamento (120px)
-    if (dragOffset > 120) { 
-        onClose(); 
+    
+    if (dragOffset > 150) { // Threshold de fechamento
+        onClose();
+    } else {
+        setDragOffset(0); // Reseta se não fechou
     }
-    setDragOffset(0);
   };
 
   if (!isMounted) return null;
@@ -252,28 +258,36 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     <div className={`fixed inset-0 z-[200] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
       <div 
           onClick={onClose} 
-          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500"
+          style={{ opacity: isVisible ? 1 - (dragOffset / window.innerHeight) : 0 }} // Fade out background on drag
       ></div>
       
       <div
         ref={modalRef}
         style={{
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
-            transition: isDragging ? 'none' : 'transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1)' 
+            transition: isDragging ? 'none' : 'transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+            touchAction: 'none' // Importante para o navegador não interferir no drag
         }}
-        className={`relative bg-surface-light dark:bg-zinc-950 rounded-t-[2.5rem] h-[92vh] w-full overflow-hidden flex flex-col shadow-2xl ring-1 ring-white/10 will-change-transform`}
+        className={`relative bg-surface-light dark:bg-zinc-950 rounded-t-[2.5rem] h-[92vh] w-full overflow-hidden flex flex-col shadow-2xl ring-1 ring-white/10`}
       >
-        {/* Drag Handle - Área de Toque Otimizada */}
+        {/* Drag Handle - Área Segura de Toque */}
         <div 
-            className="modal-drag-handle flex-none p-6 flex justify-center bg-transparent cursor-grab active:cursor-grabbing touch-none z-50 w-full absolute top-0 left-0"
+            className="flex-none pt-4 pb-2 flex justify-center w-full cursor-grab active:cursor-grabbing bg-surface-light dark:bg-zinc-950 z-20"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
         >
-            <div className="w-16 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full transition-colors hover:bg-zinc-400 dark:hover:bg-zinc-600"></div>
+            <div className="w-14 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full transition-colors"></div>
         </div>
         
-        <div className={`flex-1 overflow-y-auto overscroll-contain pb-safe pt-12 transition-opacity duration-300 delay-100 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Conteúdo com Scroll Próprio */}
+        <div 
+            ref={contentRef}
+            className="flex-1 overflow-y-auto overscroll-contain pb-safe pt-2 px-1"
+            // Se estiver arrastando, desabilita scroll interno temporariamente
+            style={{ overflowY: isDragging ? 'hidden' : 'auto' }}
+        >
           {children}
         </div>
       </div>

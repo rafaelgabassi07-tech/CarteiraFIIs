@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2 } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -162,7 +162,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [selectedProventosMonth, setSelectedProventosMonth] = useState<string | null>(null);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   
-  const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET'>('CLASS');
+  const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   
   const [insights, setInsights] = useState<PortfolioInsight[]>([]);
@@ -210,7 +210,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return invested > 0 ? ((nominalFactor / inflationFactor) - 1) * 100 : 0;
   }, [totalProfitValue, invested, safeInflation]);
 
-  const { typeData, classChartData, assetsChartData } = useMemo(() => {
+  const { typeData, classChartData, assetsChartData, sectorChartData, topConcentration } = useMemo(() => {
       let fiisTotal = 0; let stocksTotal = 0;
       const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
       const enriched = safePortfolio.map(p => {
@@ -219,13 +219,35 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           return { ...p, totalValue: val };
       });
       const total = fiisTotal + stocksTotal || 1;
-      // Sort assets by value descending
+      
+      // Dados por Ativo
       const assetsChartData = enriched
           .sort((a,b) => b.totalValue - a.totalValue)
           .map((a, idx) => ({ name: a.ticker, value: a.totalValue, percent: (a.totalValue / total) * 100, color: CHART_COLORS[idx % CHART_COLORS.length] }));
       
+      // Dados por Classe
       const classChartData = [{ name: 'FIIs', value: fiisTotal, color: '#6366f1', percent: (fiisTotal / total) * 100 }, { name: 'Ações', value: stocksTotal, color: '#0ea5e9', percent: (stocksTotal / total) * 100 }].filter(d => d.value > 0);
-      return { typeData: { fiis: { percent: (fiisTotal / total) * 100 }, stocks: { percent: (stocksTotal / total) * 100 }, total }, classChartData, assetsChartData };
+      
+      // Dados por Setor
+      const sectorMap: Record<string, number> = {};
+      enriched.forEach(p => {
+          const s = p.segment || 'Outros';
+          sectorMap[s] = (sectorMap[s] || 0) + p.totalValue;
+      });
+      const sectorChartData = Object.entries(sectorMap)
+          .map(([name, value], i) => ({ name, value, percent: (value / total) * 100, color: CHART_COLORS[i % CHART_COLORS.length] }))
+          .sort((a,b) => b.value - a.value);
+
+      // Top 3 Concentração
+      const topConcentration = assetsChartData.slice(0, 3).reduce((acc, curr) => acc + curr.percent, 0);
+
+      return { 
+          typeData: { fiis: { percent: (fiisTotal / total) * 100 }, stocks: { percent: (stocksTotal / total) * 100 }, total }, 
+          classChartData, 
+          assetsChartData,
+          sectorChartData,
+          topConcentration
+      };
   }, [portfolio]);
 
   const { upcomingEvents, received, groupedEvents, provisionedTotal, history, receiptsByMonth, divStats, dividendsChartData } = useMemo(() => {
@@ -473,17 +495,104 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
+      {/* MODAL DE ALOCAÇÃO APERFEIÇOADO */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
-             <div className="flex items-center gap-4 mb-8 px-2 anim-slide-up"><div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 border-zinc-200 dark:border-zinc-700`}><PieIcon className="w-6 h-6" strokeWidth={1.5} /></div><div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2><p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Diversificação</p></div></div>
-             <div className="bg-white dark:bg-zinc-900 p-1.5 rounded-xl flex gap-1 mb-6 shadow-sm border border-zinc-200 dark:border-zinc-800 anim-slide-up shrink-0" style={{ animationDelay: '50ms' }}><button onClick={() => setAllocationTab('CLASS')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === 'CLASS' ? 'bg-zinc-900 dark:bg-zinc-800 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Por Classe</button><button onClick={() => setAllocationTab('ASSET')} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === 'ASSET' ? 'bg-zinc-900 dark:bg-zinc-800 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>Por Ativo</button></div>
+             <div className="flex items-center gap-4 mb-8 px-2 anim-slide-up">
+                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 border-zinc-200 dark:border-zinc-700`}>
+                     <PieIcon className="w-6 h-6" strokeWidth={1.5} />
+                 </div>
+                 <div>
+                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2>
+                     <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Raio-X de Diversificação</p>
+                 </div>
+             </div>
+
+             {/* KPIs de Diversificação */}
+             <div className="grid grid-cols-2 gap-3 mb-6 anim-slide-up">
+                 <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Layers className="w-3 h-3" /> Setores</p>
+                     <p className="text-lg font-black text-zinc-900 dark:text-white">{sectorChartData.length}</p>
+                 </div>
+                 <div className={`bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm ${topConcentration > 50 ? 'border-amber-200 dark:border-amber-900/50' : ''}`}>
+                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Target className="w-3 h-3" /> Top 3 Conc.</p>
+                     <p className={`text-lg font-black ${topConcentration > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{topConcentration.toFixed(1)}%</p>
+                 </div>
+             </div>
+
+             <div className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-xl flex gap-1 mb-6 shadow-inner anim-slide-up shrink-0" style={{ animationDelay: '50ms' }}>
+                 {['CLASS', 'SECTOR', 'ASSET'].map(t => (
+                     <button 
+                        key={t} 
+                        onClick={() => setAllocationTab(t as any)} 
+                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm scale-[1.02]' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                     >
+                        {t === 'CLASS' ? 'Classe' : t === 'SECTOR' ? 'Setor' : 'Ativo'}
+                     </button>
+                 ))}
+             </div>
+
              <div className="anim-slide-up px-1 pb-10" style={{ animationDelay: '100ms' }}>
-                 {allocationTab === 'CLASS' ? (
+                 {(allocationTab === 'CLASS' || allocationTab === 'SECTOR') ? (
                      <div className="space-y-6">
                          <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm relative overflow-visible border border-zinc-200 dark:border-zinc-800">
-                            <div className="h-64 w-full relative z-10"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={classChartData} innerRadius={65} outerRadius={90} paddingAngle={5} cornerRadius={8} dataKey="value" stroke="none" isAnimationActive={true} animationDuration={1000} {...{ activeIndex: activeIndexClass } as any} activeShape={(props: any) => { const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props; return (<g><Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} className="drop-shadow-lg filter" cornerRadius={6} /><Sector cx={cx} cy={cy} startAngle={startAngle} endAngle={endAngle} innerRadius={innerRadius - 6} outerRadius={innerRadius - 2} fill={fill} /></g>); }} onMouseEnter={(_, index) => setActiveIndexClass(index)} onTouchStart={(_, index) => setActiveIndexClass(index)} onMouseLeave={() => setActiveIndexClass(undefined)}>{classChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}</Pie><RechartsTooltip content={<CustomPieTooltip />} /></PieChart></ResponsiveContainer><div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none anim-fade-in select-none"><span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{activeIndexClass !== undefined ? classChartData[activeIndexClass].name : 'Total'}</span><span className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{activeIndexClass !== undefined ? formatPercent(classChartData[activeIndexClass].percent, privacyMode) : formatBRL(typeData.total, privacyMode)}</span></div></div>
+                            <div className="h-64 w-full relative z-10">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie 
+                                            data={allocationTab === 'CLASS' ? classChartData : sectorChartData} 
+                                            innerRadius={65} 
+                                            outerRadius={90} 
+                                            paddingAngle={5} 
+                                            cornerRadius={8} 
+                                            dataKey="value" 
+                                            stroke="none" 
+                                            isAnimationActive={true} 
+                                            animationDuration={1000} 
+                                            {...{ activeIndex: activeIndexClass } as any} 
+                                            activeShape={(props: any) => { const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props; return (<g><Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} className="drop-shadow-lg filter" cornerRadius={6} /><Sector cx={cx} cy={cy} startAngle={startAngle} endAngle={endAngle} innerRadius={innerRadius - 6} outerRadius={innerRadius - 2} fill={fill} /></g>); }} 
+                                            onMouseEnter={(_, index) => setActiveIndexClass(index)} 
+                                            onTouchStart={(_, index) => setActiveIndexClass(index)} 
+                                            onMouseLeave={() => setActiveIndexClass(undefined)}
+                                        >
+                                            {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                        </Pie>
+                                        <RechartsTooltip content={<CustomPieTooltip />} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none anim-fade-in select-none">
+                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
+                                        {activeIndexClass !== undefined 
+                                            ? (allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].name 
+                                            : 'Total'}
+                                    </span>
+                                    <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">
+                                        {activeIndexClass !== undefined 
+                                            ? formatPercent((allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].percent, privacyMode) 
+                                            : formatBRL(typeData.total, privacyMode)}
+                                    </span>
+                                </div>
+                            </div>
                          </div>
-                         <div className="space-y-3">{classChartData.map((item, index) => (<button key={index} onClick={() => setActiveIndexClass(index === activeIndexClass ? undefined : index)} className={`w-full p-4 rounded-2xl border flex items-center gap-4 group transition-all duration-300 ${index === activeIndexClass ? 'bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 shadow-md transform scale-[1.02]' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}><div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm" style={{ backgroundColor: item.color }}>{Math.round(item.percent)}%</div><div className="flex-1 text-left"><div className="flex justify-between items-center mb-2"><span className="text-sm font-bold text-zinc-900 dark:text-white">{item.name}</span><span className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</span></div><div className="w-full bg-zinc-100 dark:bg-zinc-950 rounded-full h-2 overflow-hidden"><div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div></div></div></button>))}</div>
+                         
+                         <div className="space-y-3">
+                             {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((item, index) => (
+                                 <button key={index} onClick={() => setActiveIndexClass(index === activeIndexClass ? undefined : index)} className={`w-full p-4 rounded-2xl border flex items-center gap-4 group transition-all duration-300 ${index === activeIndexClass ? 'bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 shadow-md transform scale-[1.02]' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}>
+                                     <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm" style={{ backgroundColor: item.color }}>
+                                         {Math.round(item.percent)}%
+                                     </div>
+                                     <div className="flex-1 text-left">
+                                         <div className="flex justify-between items-center mb-2">
+                                             <span className="text-sm font-bold text-zinc-900 dark:text-white truncate max-w-[150px]">{item.name}</span>
+                                             <span className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</span>
+                                         </div>
+                                         <div className="w-full bg-zinc-100 dark:bg-zinc-950 rounded-full h-2 overflow-hidden">
+                                             <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div>
+                                         </div>
+                                     </div>
+                                 </button>
+                             ))}
+                         </div>
                      </div>
                  ) : (
                     <div className="space-y-4">
@@ -513,6 +622,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); setExpandedMonth(null); }}>
+         {/* ... (Mantém modal de Proventos) ... */}
          <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-8 px-2 anim-slide-up"><div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-zinc-200 dark:border-zinc-700`}><Wallet className="w-6 h-6" strokeWidth={1.5} /></div><div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Proventos</h2><p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Histórico</p></div></div>
              <div className="grid grid-cols-3 gap-3 mb-6 anim-slide-up">{[{ label: 'Média Mensal', val: divStats.monthlyAvg, color: 'text-zinc-900 dark:text-white' }, { label: 'Recorde', val: divStats.maxMonthly, color: 'text-emerald-600 dark:text-emerald-400' }, { label: 'Total 12m', val: divStats.total12m, color: 'text-zinc-900 dark:text-white' }].map((s, i) => (<div key={i} className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center shadow-sm"><p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{s.label}</p><p className={`text-xs font-black ${s.color}`}>{formatBRL(s.val, privacyMode)}</p></div>))}</div>
@@ -522,6 +632,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showRaioXModal} onClose={() => setShowRaioXModal(false)}>
+          {/* ... (Mantém modal IPCA+) ... */}
           <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
               <div className="flex items-center gap-4 mb-8 px-2 anim-slide-up">
                   <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-rose-500 border-zinc-200 dark:border-zinc-700`}><Target className="w-6 h-6" /></div>

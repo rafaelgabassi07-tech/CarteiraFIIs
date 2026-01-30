@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '8.8.6'; 
+const APP_VERSION = '8.8.7'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -568,7 +568,8 @@ const App: React.FC = () => {
   }, [transactions, quotes, dividends, assetsMetadata]);
 
   // Determine header visibility logic
-  const isHeaderVisible = scrollDirection === 'up' || isTop;
+  // CRITICAL FIX: Force header visible in Settings to prevent flicker
+  const isHeaderVisible = showSettings || scrollDirection === 'up' || isTop;
 
   // --- LOGO DA MARCA ---
   // Importante: Passado para o Header apenas nas abas principais
@@ -622,7 +623,7 @@ const App: React.FC = () => {
             
             <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-4">
               {showSettings ? (
-                <div className="anim-page-enter pt-4">
+                <div className="pt-4">
                   <MemoizedSettings 
                       onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} 
                       dividends={dividends} onImportDividends={setDividends} onResetApp={handleSoftReset} 
