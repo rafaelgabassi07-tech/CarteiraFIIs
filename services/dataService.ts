@@ -1,14 +1,25 @@
 
-import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, ScrapeResult } from "../types";
+import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, ScrapeResult, AssetPosition } from "../types";
 import { supabase } from "./supabase";
 import { getQuotes } from "./brapiService";
-import { normalizeTicker } from "./portfolioRules";
+import { normalizeTicker, preciseMul } from "./portfolioRules";
 
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
   metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>;
   indicators?: MarketIndicators;
   error?: string;
+}
+
+export interface FutureDividendPrediction {
+    ticker: string;
+    dateCom: string;
+    paymentDate: string;
+    rate: number;
+    projectedTotal: number;
+    quantity: number;
+    type: string;
+    daysToDateCom: number;
 }
 
 const getTTL = () => {
@@ -158,6 +169,71 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
     }
     
     return results;
+};
+
+// --- ROBÔ DE PROVENTOS INTELIGENTE ---
+export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Promise<FutureDividendPrediction[]> => {
+    if (!portfolio || portfolio.length === 0) return [];
+
+    const tickers = portfolio.map(p => normalizeTicker(p.ticker));
+    const today = new Date().toISOString().split('T')[0];
+
+    try {
+        // Consulta o banco para qualquer anúncio futuro (Datacom OU Pagamento >= Hoje)
+        // Isso pega tanto o que vai cair quanto o que vai fechar data com.
+        const { data, error } = await supabase
+            .from('market_dividends')
+            .select('*')
+            .in('ticker', tickers)
+            .or(`payment_date.gte.${today},date_com.gte.${today}`)
+            .order('payment_date', { ascending: true });
+
+        if (error) throw error;
+        if (!data || data.length === 0) return [];
+
+        const predictions: FutureDividendPrediction[] = [];
+        const now = new Date();
+        now.setHours(0,0,0,0);
+
+        data.forEach((div: any) => {
+            const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizeTicker(div.ticker));
+            if (!asset || asset.quantity <= 0) return;
+
+            const rate = Number(div.rate);
+            const total = preciseMul(asset.quantity, rate);
+            
+            // Calcula dias para Data Com (se ainda for válida)
+            const dateCom = new Date(div.date_com + 'T00:00:00');
+            const diffTime = dateCom.getTime() - now.getTime();
+            const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+            // Filtra duplicatas lógicas (mesmo ticker, data e valor)
+            const exists = predictions.some(p => 
+                p.ticker === normalizeTicker(div.ticker) && 
+                p.paymentDate === div.payment_date &&
+                p.rate === rate
+            );
+
+            if (!exists) {
+                predictions.push({
+                    ticker: normalizeTicker(div.ticker),
+                    dateCom: div.date_com,
+                    paymentDate: div.payment_date,
+                    rate: rate,
+                    quantity: asset.quantity,
+                    projectedTotal: total,
+                    type: div.type,
+                    daysToDateCom
+                });
+            }
+        });
+
+        return predictions.sort((a,b) => (a.paymentDate || '9999').localeCompare(b.paymentDate || '9999'));
+
+    } catch (e) {
+        console.error("[Robot] Failed to fetch future announcements:", e);
+        return [];
+    }
 };
 
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
