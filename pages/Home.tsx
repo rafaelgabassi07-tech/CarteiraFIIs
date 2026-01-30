@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -103,86 +103,99 @@ const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScannin
 };
 
 const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
-    const isPayment = event.eventType === 'payment';
+    // Determina se é previsão (Radar) ou Confirmado (Database)
+    // Se não tiver a flag isPrediction, assumimos que é um dado confirmado do banco
     const isPrediction = event.isPrediction === true;
-    
-    const eventDate = new Date(event.date + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const isToday = eventDate.getTime() === today.getTime();
+    const isToday = new Date(event.date + 'T00:00:00').toDateString() === new Date().toDateString();
 
+    const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
+
+    // ESTILO UNIFICADO "RADAR"
+    // Ambos usam gradientes e badges, diferenciados pela paleta de cores.
+    // Roxo/Indigo = Previsão (Incerteza)
+    // Verde/Emerald = Confirmado (Certeza)
+    
     let cardClass = "";
     let iconContent = null;
+    let badgeContent = null;
     let amountClass = "";
-    
+    let labelClass = "";
+    let labelText = "";
+    let tickerBgClass = "";
+
     if (isPrediction) {
-        cardClass = "bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-white dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50 shadow-sm relative overflow-hidden";
+        // --- ESTILO PREVISÃO (Roxo) ---
+        cardClass = "bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-white dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50";
+        amountClass = "text-indigo-600 dark:text-indigo-300";
+        labelClass = "text-indigo-400 dark:text-indigo-500";
+        labelText = "Valor Estimado";
+        tickerBgClass = "bg-white dark:bg-zinc-900 border-indigo-100 dark:border-indigo-900/50 text-indigo-900 dark:text-indigo-200";
+        
         iconContent = (
             <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200 dark:border-indigo-800">
                 <Radar className="w-5 h-5" />
             </div>
         );
-        amountClass = "text-indigo-600 dark:text-indigo-300";
-    } else if (isPayment) {
-        cardClass = "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm";
-        iconContent = (
-            <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30">
-                <Banknote className="w-5 h-5" />
+        badgeContent = (
+            <div className="absolute right-0 top-0 bg-indigo-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
+                <ScanEye className="w-2.5 h-2.5" /> RADAR
             </div>
         );
-        amountClass = "text-zinc-900 dark:text-white";
     } else {
-        cardClass = "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm opacity-90";
+        // --- ESTILO CONFIRMADO (Verde) - Agora com visual "Radar" ---
+        cardClass = "bg-gradient-to-br from-emerald-50/80 via-teal-50/50 to-white dark:from-emerald-900/20 dark:via-teal-900/10 dark:to-zinc-900 border-emerald-200/50 dark:border-emerald-800/50";
+        amountClass = "text-emerald-700 dark:text-emerald-400";
+        labelClass = "text-emerald-600/70 dark:text-emerald-500/70";
+        labelText = "Valor Líquido";
+        tickerBgClass = "bg-white dark:bg-zinc-900 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200";
+
         iconContent = (
-            <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30">
-                <CalendarClock className="w-5 h-5" />
+            <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200 dark:border-emerald-800">
+                <CheckCircle2 className="w-5 h-5" />
             </div>
         );
-        amountClass = "text-zinc-500 dark:text-zinc-400";
+        badgeContent = (
+            <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
+                <Check className="w-2.5 h-2.5" /> CONFIRMADO
+            </div>
+        );
     }
-
-    const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
     
     return (
-        <div className={`relative pl-12 py-2.5 group ${isPrediction ? 'anim-fade-in' : ''}`}>
-            {!isLast && <div className={`absolute left-[19px] top-8 bottom-[-10px] w-[2px] ${isPrediction ? 'bg-indigo-100 dark:bg-indigo-900/30' : 'bg-zinc-100 dark:bg-zinc-800'}`}></div>}
+        <div className={`relative pl-12 py-2.5 group anim-fade-in`}>
+            {/* Linha do tempo */}
+            {!isLast && <div className={`absolute left-[19px] top-8 bottom-[-10px] w-[2px] ${isPrediction ? 'bg-indigo-100 dark:bg-indigo-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}></div>}
             
             {iconContent}
             
-            <div className={`p-4 rounded-2xl border flex justify-between items-center relative ${cardClass}`}>
-                {isToday && !isPrediction && <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm">HOJE</div>}
-                {isPrediction && <div className="absolute right-0 top-0 bg-indigo-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1"><ScanEye className="w-2.5 h-2.5" /> RADAR</div>}
+            <div className={`p-4 rounded-2xl border flex justify-between items-center relative shadow-sm overflow-hidden ${cardClass}`}>
+                {/* Badge Flutuante (Padronizado) */}
+                {badgeContent}
                 
                 <div className="flex items-center gap-3.5">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xs font-black border transition-colors ${isPrediction ? 'bg-white dark:bg-zinc-900 border-indigo-100 dark:border-indigo-900/50 text-indigo-900 dark:text-indigo-200' : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 text-zinc-500'}`}>
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xs font-black border transition-colors ${tickerBgClass}`}>
                         {tickerDisplay}
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
                             <h4 className={`text-sm font-black tracking-tight ${isPrediction ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{event.ticker}</h4>
-                            <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isPrediction ? 'bg-white/50 text-indigo-600 dark:bg-black/20 dark:text-indigo-300' : isPayment ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'}`}>
-                                {isPrediction ? 'Previsão' : isPayment ? 'Pagamento' : 'Data Com'}
+                            <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isPrediction ? 'bg-white/50 text-indigo-600 dark:bg-black/20 dark:text-indigo-300' : 'bg-white/50 text-emerald-600 dark:bg-black/20 dark:text-emerald-400'}`}>
+                                {isPrediction ? 'Previsão' : 'Pagamento'}
                             </span>
                         </div>
-                        <p className={`text-[10px] font-medium mt-0.5 flex items-center gap-1 ${isPrediction ? 'text-indigo-600/70 dark:text-indigo-400/70' : 'text-zinc-400'}`}>
+                        <p className={`text-[10px] font-medium mt-0.5 flex items-center gap-1 ${labelClass}`}>
                             {event.type} • {formatDateShort(event.date)}
                         </p>
                     </div>
                 </div>
                 
                 <div className="text-right">
-                    {isPayment || isPrediction ? (
-                        <>
-                            <p className={`text-sm font-black ${amountClass}`}>
-                                {event.totalReceived ? event.totalReceived.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : event.projectedTotal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </p>
-                            <p className={`text-[9px] font-medium ${isPrediction ? 'text-indigo-400 dark:text-indigo-500' : 'text-zinc-400'}`}>
-                                {isPrediction ? 'Valor Estimado' : 'Valor Líquido'}
-                            </p>
-                        </>
-                    ) : (
-                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-lg">Corte</p>
-                    )}
+                    <p className={`text-sm font-black ${amountClass}`}>
+                        {event.totalReceived ? event.totalReceived.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : event.projectedTotal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </p>
+                    <p className={`text-[9px] font-medium ${labelClass}`}>
+                        {labelText}
+                    </p>
                 </div>
             </div>
         </div>
@@ -231,18 +244,31 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   const allEvents: any[] = [];
                   let projectedSum = 0;
 
+                  // 1. Processa CONFIRMADOS (Do Banco de Dados)
                   dividendReceipts.forEach(r => {
                       if (!r) return;
                       if (r.paymentDate >= todayStr) { 
-                          allEvents.push({ ...r, eventType: 'payment', date: r.paymentDate }); 
+                          allEvents.push({ 
+                              ...r, 
+                              eventType: 'payment', 
+                              date: r.paymentDate,
+                              isPrediction: false // IMPORTANTE: Marca explicitamente como NÃO previsão
+                          }); 
                           projectedSum += r.totalReceived;
                       }
                       if (r.dateCom >= todayStr) {
-                          allEvents.push({ ...r, eventType: 'datacom', date: r.dateCom });
+                          allEvents.push({ 
+                              ...r, 
+                              eventType: 'datacom', 
+                              date: r.dateCom,
+                              isPrediction: false 
+                          });
                       }
                   });
 
+                  // 2. Processa PREVISÕES (Do Scraper/IA)
                   predictions.forEach(pred => {
+                        // Deduplicação: Se já existe um evento confirmado (mesmo ticker, data e valor aprox), ignoramos a previsão
                         const isDuplicate = allEvents.some(e => 
                             e.ticker === pred.ticker && 
                             (e.date === pred.paymentDate || e.date === pred.dateCom) &&
@@ -254,7 +280,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 allEvents.push({ 
                                     ticker: pred.ticker, date: pred.paymentDate, eventType: 'payment',
                                     type: pred.type, totalReceived: pred.projectedTotal, rate: pred.rate,
-                                    isPrediction: true 
+                                    isPrediction: true // Marca como previsão
                                 });
                                 projectedSum += pred.projectedTotal;
                             }
@@ -267,7 +293,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         }
                   });
 
-                  // Delay mínimo visual para o Radar "scanear" (500ms)
+                  // Delay mínimo visual para o Radar "scanear" (600ms)
                   await new Promise(r => setTimeout(r, 600));
 
                   setAgendaTotalProjected(projectedSum);
