@@ -1,4 +1,4 @@
 
-// Este arquivo foi criado incorretamente. O código correto está em /pages/Transactions.tsx
-// Esta versão "vazia" previne conflitos de compilação.
+// Arquivo placeholder para evitar erros de build.
+// O código real está em /pages/Transactions.tsx
 export const Transactions = () => null;
