@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -196,9 +196,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showRaioXModal, setShowRaioXModal] = useState(false);
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   
   const [selectedProventosMonth, setSelectedProventosMonth] = useState<string | null>(null);
-  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  const [proventosYearFilter, setProventosYearFilter] = useState<string>('12M'); // 12M, 2024, 2023...
   
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
@@ -339,31 +340,105 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { typeData: { fiis: { percent: (fiisTotal/total)*100 }, stocks: { percent: (stocksTotal/total)*100 }, total }, classChartData, assetsChartData, sectorChartData, topConcentration };
   }, [portfolio]);
 
-  const { received, history, receiptsByMonth, divStats, dividendsChartData, provisionedTotal } = useMemo(() => {
-      let receivedTotal = 0; let provTotal = 0;
-      const map: Record<string, number> = {}; const receiptsMap: Record<string, DividendReceipt[]> = {};
+  const { received, provisionedTotal, fullHistoryData, availableYears, displayedChartData, displayedReceipts, stats } = useMemo(() => {
+      let receivedTotal = 0;
+      let provisionedSum = 0;
+      const receiptsMap: Record<string, DividendReceipt[]> = {};
+      const monthlySum: Record<string, number> = {};
+      
       const todayStr = new Date().toISOString().split('T')[0];
-      const oneYearAgoStr = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
-      let total12m = 0; let maxMonthly = 0;
 
       (dividendReceipts || []).forEach(r => {
-          if (r.paymentDate <= todayStr) {
+          if (r.paymentDate && r.paymentDate <= todayStr) {
               receivedTotal += r.totalReceived;
-              const key = r.paymentDate.substring(0, 7);
-              map[key] = (map[key] || 0) + r.totalReceived;
+              const key = r.paymentDate.substring(0, 7); // YYYY-MM
+              
+              monthlySum[key] = (monthlySum[key] || 0) + r.totalReceived;
               if (!receiptsMap[key]) receiptsMap[key] = [];
               receiptsMap[key].push(r);
-              if (r.paymentDate >= oneYearAgoStr) total12m += r.totalReceived;
-          } else {
-              provTotal += r.totalReceived;
+          } else if (r.paymentDate && r.paymentDate > todayStr) {
+              provisionedSum += r.totalReceived;
           }
       });
-      Object.keys(map).forEach(k => { if (map[k] > maxMonthly) maxMonthly = map[k]; });
-      const sortedKeys = Object.keys(map).sort();
-      const dividendsChartData = sortedKeys.slice(-12).map(date => { const d = new Date(date + '-02'); return { fullDate: date, name: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.',''), value: map[date], year: d.getFullYear() }; });
-      const monthlyAvg = dividendsChartData.length > 0 ? (dividendsChartData.reduce((acc,c) => acc+c.value, 0)/dividendsChartData.length) : 0;
-      return { received: receivedTotal, history: sortedKeys.map(k => [k, map[k]] as [string, number]).reverse(), receiptsByMonth: receiptsMap, divStats: { total12m, maxMonthly, monthlyAvg }, dividendsChartData, provisionedTotal: provTotal };
-  }, [dividendReceipts]);
+
+      // Dados brutos de histórico ordenados
+      const sortedKeys = Object.keys(monthlySum).sort();
+      const fullHistory = sortedKeys.map(date => {
+          const d = new Date(date + '-02'); 
+          return {
+              fullDate: date,
+              name: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+              value: monthlySum[date],
+              year: d.getFullYear(),
+              monthIndex: d.getMonth()
+          };
+      });
+
+      // Anos disponíveis para filtro
+      const years = Array.from(new Set(fullHistory.map(h => h.year))).sort((a,b) => b - a);
+
+      // Filtragem por período (12M ou Ano Específico)
+      let chartData: typeof fullHistory = [];
+      
+      if (proventosYearFilter === '12M') {
+          chartData = fullHistory.slice(-12);
+      } else {
+          const targetYear = parseInt(proventosYearFilter);
+          // Preenche meses vazios se for um ano específico para o gráfico ficar bonito (Jan-Dez)
+          if (!isNaN(targetYear)) {
+              for (let m = 0; m < 12; m++) {
+                  const key = `${targetYear}-${String(m+1).padStart(2, '0')}`;
+                  const existing = fullHistory.find(h => h.fullDate === key);
+                  if (existing) {
+                      chartData.push(existing);
+                  } else {
+                      // Mês vazio (opcional: exibir barra zerada ou pular)
+                      const d = new Date(targetYear, m, 2);
+                      chartData.push({
+                          fullDate: key,
+                          name: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+                          value: 0,
+                          year: targetYear,
+                          monthIndex: m
+                      });
+                  }
+              }
+          }
+      }
+
+      // Estatísticas do período visualizado
+      const periodTotal = chartData.reduce((acc, curr) => acc + curr.value, 0);
+      const activeMonths = chartData.filter(d => d.value > 0).length;
+      const periodAvg = activeMonths > 0 ? periodTotal / activeMonths : 0;
+      const periodMax = Math.max(...chartData.map(d => d.value), 0);
+
+      // Lista detalhada (Se tiver mês selecionado, filtra por ele. Senão, mostra tudo do período/ano)
+      let listReceipts: DividendReceipt[] = [];
+      if (selectedProventosMonth) {
+          listReceipts = receiptsMap[selectedProventosMonth] || [];
+      } else {
+          // Pega todos os recibos dos meses que estão no chartData
+          const visibleMonths = new Set(chartData.map(c => c.fullDate));
+          Object.keys(receiptsMap).forEach(key => {
+              if (visibleMonths.has(key)) {
+                  listReceipts.push(...receiptsMap[key]);
+              }
+          });
+      }
+      
+      // Ordena recibos por data decrescente
+      listReceipts.sort((a,b) => (b.paymentDate || '').localeCompare(a.paymentDate || ''));
+
+      return { 
+          received: receivedTotal, 
+          provisionedTotal: provisionedSum,
+          fullHistoryData: fullHistory, // Usado para inflação
+          availableYears,
+          displayedChartData: chartData,
+          displayedReceipts: listReceipts,
+          stats: { periodTotal, periodAvg, periodMax }
+      };
+  }, [dividendReceipts, proventosYearFilter, selectedProventosMonth]);
 
   // RESTORED: Inflation Analysis Logic
   const inflationAnalysis = useMemo(() => {
@@ -371,15 +446,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const annualInflationRate = safeInflation; 
       
       const monthlyInflationRateDecimal = Math.pow(1 + (annualInflationRate / 100), 1/12) - 1;
-      const monthlyInflationRatePercent = monthlyInflationRateDecimal * 100;
       
       const currentMonthlyInflationCost = invested * monthlyInflationRateDecimal;
 
-      const nominalYield = invested > 0 ? (divStats.total12m / invested) * 100 : 0;
-      const realYieldSpread = nominalYield - annualInflationRate;
-      const coverageRatio = currentMonthlyInflationCost > 0 ? (divStats.monthlyAvg / currentMonthlyInflationCost) * 100 : 0;
+      const total12m = fullHistoryData.slice(-12).reduce((acc, c) => acc + c.value, 0);
+      const monthlyAvg12m = total12m / 12;
 
-      const chartData = dividendsChartData.map(d => {
+      const nominalYield = invested > 0 ? (total12m / invested) * 100 : 0;
+      const realYieldSpread = nominalYield - annualInflationRate;
+      const coverageRatio = currentMonthlyInflationCost > 0 ? (monthlyAvg12m / currentMonthlyInflationCost) * 100 : 0;
+
+      const chartData = fullHistoryData.slice(-12).map(d => {
           return {
               ...d,
               inflationCost: invested * monthlyInflationRateDecimal, // Aproximação baseada no patrimônio atual
@@ -405,20 +482,29 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           realYieldSpread,
           nominalYield,
           annualInflationRate,
-          monthlyInflationRatePercent, 
+          monthlyInflationRatePercent: monthlyInflationRateDecimal * 100, 
           monthlyInflationCost: currentMonthlyInflationCost,
           coverageRatio,
           chartData,
           protectedPercent
       };
-  }, [invested, inflationRate, divStats, dividendsChartData, portfolio]);
+  }, [invested, inflationRate, fullHistoryData, portfolio]);
 
   // Styles e Handlers
   const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 transition-all press-effect relative overflow-hidden group shadow-2xl shadow-black/5 dark:shadow-black/20";
   const hoverBorderClass = "hover:border-zinc-300 dark:hover:border-zinc-700";
   const modalHeaderIconClass = "w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm";
   const toggleMonthExpand = useCallback((month: string) => setExpandedMonth(prev => prev === month ? null : month), []);
-  const handleBarClick = useCallback((data: any) => { if (data && data.activePayload && data.activePayload.length > 0) { const item = data.activePayload[0].payload; if (item && item.fullDate) setSelectedProventosMonth(item.fullDate); } }, []);
+  
+  const handleBarClick = useCallback((data: any) => { 
+      if (data && data.activePayload && data.activePayload.length > 0) { 
+          const item = data.activePayload[0].payload; 
+          if (item && item.fullDate) {
+              // Se clicar no mesmo mês, limpa o filtro. Se for outro, seleciona.
+              setSelectedProventosMonth(prev => prev === item.fullDate ? null : item.fullDate); 
+          }
+      } 
+  }, []);
   
   const CustomBarTooltip = ({ active, payload, label }: any) => { if (active && payload && payload.length) { const data = payload[0]; return (<div className="bg-white dark:bg-zinc-800 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 text-center"><p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{label} {data.payload.year}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(data.value, privacyMode)}</p></div>); } return null; };
   
@@ -481,7 +567,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         <button onClick={() => setShowProventosModal(true)} className={`p-5 text-left flex flex-col justify-between h-44 ${cardBaseClass} ${hoverBorderClass}`}>
             <div className="relative z-10 h-full flex flex-col justify-between">
                 <div><div className="flex justify-between items-start mb-3"><div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-200 dark:border-emerald-900/30"><CircleDollarSign className="w-5 h-5" /></div></div><span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Renda Passiva</span><p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">{formatBRL(received, privacyMode)}</p></div>
-                <div className="py-1.5 px-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700 w-fit"><p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Média {formatBRL(divStats.monthlyAvg, true).split('R$')[1]}</p></div>
+                <div className="py-1.5 px-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700 w-fit"><p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Média {formatBRL(stats.periodAvg, true).split('R$')[1]}</p></div>
             </div>
         </button>
 
@@ -678,11 +764,134 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
+      {/* MODAL DE PROVENTOS REFINADO (FUNÇÕES RESTAURADAS) */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); setExpandedMonth(null); }}>
          <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
-             <div className="flex items-center gap-4 mb-8 px-2 anim-slide-up"><div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-zinc-200 dark:border-zinc-700`}><Wallet className="w-6 h-6" /></div><div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Proventos</h2></div></div>
-             <div className="mb-8 h-48 w-full bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm anim-slide-up"><ResponsiveContainer width="100%" height="100%"><BarChart data={dividendsChartData} onClick={handleBarClick}><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} /><RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip />} /><Bar dataKey="value" radius={[4, 4, 4, 4]}>{dividendsChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} className="transition-colors duration-300 hover:opacity-80 dark:fill-zinc-700 dark:hover:fill-emerald-600" />)}</Bar></BarChart></ResponsiveContainer></div>
-             <div className="space-y-3">{selectedProventosMonth ? (receiptsByMonth[selectedProventosMonth] || []).map((r, idx) => <div key={idx} className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex justify-between"><span className="font-bold">{r.ticker}</span><span>{formatBRL(r.totalReceived, privacyMode)}</span></div>) : history.map(([month, val], i) => <div key={i} className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex justify-between"><span className="text-zinc-500 font-bold">{month}</span><span className="font-black text-emerald-600">{formatBRL(val, privacyMode)}</span></div>)}</div>
+             <div className="flex items-center gap-4 mb-6 px-2 anim-slide-up pt-2">
+                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-zinc-200 dark:border-zinc-700`}>
+                     <Wallet className="w-6 h-6" />
+                 </div>
+                 <div>
+                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Proventos</h2>
+                     <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Histórico de Pagamentos</p>
+                 </div>
+             </div>
+
+             {/* Cards de Resumo Dinâmicos */}
+             <div className="grid grid-cols-2 gap-3 mb-6 anim-slide-up">
+                 <div className="col-span-2 bg-emerald-500 p-5 rounded-[2rem] text-white shadow-lg shadow-emerald-500/20 relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none"></div>
+                     <div className="relative z-10 flex justify-between items-end">
+                         <div>
+                             <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Total no Período</p>
+                             <h3 className="text-3xl font-black tracking-tight">{formatBRL(stats.periodTotal, privacyMode)}</h3>
+                         </div>
+                         <div className="text-right">
+                             <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Média Mensal</p>
+                             <p className="text-lg font-black">{formatBRL(stats.periodAvg, privacyMode)}</p>
+                         </div>
+                     </div>
+                 </div>
+                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-center">
+                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Trophy className="w-3 h-3 text-amber-500" /> Recorde</p>
+                     <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(stats.periodMax, privacyMode)}</p>
+                 </div>
+                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-center">
+                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><CalendarClock className="w-3 h-3 text-indigo-500" /> Previsão</p>
+                     <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(provisionedTotal, privacyMode)}</p>
+                 </div>
+             </div>
+
+             {/* Filtro de Ano (Chips Scrollable) */}
+             <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6 px-1 anim-slide-up">
+                 <button 
+                     onClick={() => { setProventosYearFilter('12M'); setSelectedProventosMonth(null); }}
+                     className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${proventosYearFilter === '12M' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700 hover:border-zinc-300'}`}
+                 >
+                     Últimos 12 Meses
+                 </button>
+                 {availableYears.map(year => (
+                     <button 
+                         key={year}
+                         onClick={() => { setProventosYearFilter(String(year)); setSelectedProventosMonth(null); }}
+                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${proventosYearFilter === String(year) ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700 hover:border-zinc-300'}`}
+                     >
+                         {year}
+                     </button>
+                 ))}
+             </div>
+
+             <div className="mb-8 h-56 w-full bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-sm anim-slide-up relative">
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2 absolute top-4 left-5">Evolução</h3>
+                 <ResponsiveContainer width="100%" height="100%">
+                     <BarChart data={displayedChartData} onClick={handleBarClick} margin={{ top: 25, right: 0, left: -20, bottom: 0 }}>
+                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
+                         <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip />} />
+                         <Bar dataKey="value" radius={[4, 4, 4, 4]}>
+                             {displayedChartData.map((entry, index) => (
+                                 <Cell 
+                                     key={`cell-${index}`} 
+                                     fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} 
+                                     className="transition-all duration-300 hover:opacity-80 dark:fill-zinc-700 dark:hover:fill-emerald-600 cursor-pointer" 
+                                 />
+                             ))}
+                         </Bar>
+                     </BarChart>
+                 </ResponsiveContainer>
+                 {selectedProventosMonth && (
+                     <button 
+                        onClick={() => setSelectedProventosMonth(null)} 
+                        className="absolute top-3 right-3 p-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                     >
+                         <X className="w-3 h-3" />
+                     </button>
+                 )}
+             </div>
+
+             <div className="space-y-4 pb-10 anim-slide-up">
+                 <div className="flex items-center justify-between px-2">
+                     <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                         {selectedProventosMonth 
+                             ? `Detalhes de ${new Date(selectedProventosMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}` 
+                             : 'Todos os Lançamentos'}
+                     </h3>
+                     <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-400">{displayedReceipts.length}</span>
+                 </div>
+
+                 {displayedReceipts.length > 0 ? (
+                     <div className="space-y-2">
+                         {displayedReceipts.map((r, idx) => {
+                             const isFII = r.assetType === AssetType.FII;
+                             return (
+                                 <div key={idx} className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+                                     <div className="flex items-center gap-3">
+                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border shadow-sm ${isFII ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/20 dark:border-sky-900/30'}`}>
+                                             {r.ticker.substring(0, 2)}
+                                         </div>
+                                         <div>
+                                             <div className="flex items-center gap-2">
+                                                 <span className="font-bold text-sm text-zinc-900 dark:text-white">{r.ticker}</span>
+                                                 <span className="text-[8px] font-black uppercase px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded">{r.type}</span>
+                                             </div>
+                                             <p className="text-[10px] font-medium text-zinc-400">
+                                                 Pago em {new Date(r.paymentDate).toLocaleDateString('pt-BR')}
+                                             </p>
+                                         </div>
+                                     </div>
+                                     <div className="text-right">
+                                         <p className="font-black text-emerald-600 dark:text-emerald-400 text-sm">{formatBRL(r.totalReceived, privacyMode)}</p>
+                                         <p className="text-[9px] font-bold text-zinc-400">Qtd: {r.quantityOwned}</p>
+                                     </div>
+                                 </div>
+                             );
+                         })}
+                     </div>
+                 ) : (
+                     <div className="text-center py-10 opacity-50">
+                         <p className="text-xs font-bold text-zinc-500">Nenhum provento neste período.</p>
+                     </div>
+                 )}
+             </div>
          </div>
       </SwipeableModal>
 
