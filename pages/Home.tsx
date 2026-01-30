@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2 } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -43,6 +43,65 @@ const formatDateShort = (dateStr: string) => {
     return `${day}/${month}`;
 };
 
+// Componente Visual do Radar (Animação)
+const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScanning: boolean, totalProjected: number, privacyMode: boolean }) => {
+    return (
+        <div className="relative w-full h-64 flex items-center justify-center overflow-hidden mb-4">
+            <style>{`
+                @keyframes radar-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(2); opacity: 0; } }
+            `}</style>
+            
+            {/* Background Grid Circles */}
+            <div className="absolute w-[280px] h-[280px] border border-indigo-100/50 dark:border-indigo-900/20 rounded-full"></div>
+            <div className="absolute w-[200px] h-[200px] border border-indigo-200/50 dark:border-indigo-900/30 rounded-full"></div>
+            <div className="absolute w-[120px] h-[120px] border border-indigo-300/50 dark:border-indigo-900/40 rounded-full"></div>
+            
+            {/* Crosshairs */}
+            <div className="absolute w-full h-[1px] bg-indigo-100/50 dark:bg-indigo-900/20"></div>
+            <div className="absolute h-full w-[1px] bg-indigo-100/50 dark:bg-indigo-900/20"></div>
+
+            {/* Sweep Animation */}
+            {isScanning && (
+                <div 
+                    className="absolute w-[280px] h-[280px] rounded-full"
+                    style={{
+                        background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(99, 102, 241, 0.2) 360deg)',
+                        animation: 'radar-spin 2s linear infinite',
+                        borderRadius: '50%'
+                    }}
+                ></div>
+            )}
+
+            {/* Center Core */}
+            <div className={`relative z-10 w-32 h-32 rounded-full bg-white dark:bg-zinc-900 border-4 border-indigo-50 dark:border-zinc-800 flex flex-col items-center justify-center shadow-xl shadow-indigo-500/10 transition-all duration-500 ${isScanning ? 'scale-95' : 'scale-100'}`}>
+                {isScanning ? (
+                    <>
+                        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-1" />
+                        <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">Scanning</span>
+                    </>
+                ) : (
+                    <>
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-1">
+                            <Target className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Projetado</span>
+                        <span className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(totalProjected, privacyMode)}</span>
+                    </>
+                )}
+            </div>
+
+            {/* Ping Animations (Decorativo) */}
+            {!isScanning && totalProjected > 0 && (
+                <>
+                    <div className="absolute top-1/4 left-1/3 w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_#34d399] animate-ping" style={{ animationDuration: '3s' }}></div>
+                    <div className="absolute bottom-1/3 right-1/4 w-2 h-2 bg-indigo-400 rounded-full shadow-[0_0_8px_#818cf8] animate-ping" style={{ animationDuration: '4s', animationDelay: '1s' }}></div>
+                </>
+            )}
+        </div>
+    );
+};
+
 const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
     const isPayment = event.eventType === 'payment';
     const isPrediction = event.isPrediction === true;
@@ -52,13 +111,11 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
     today.setHours(0,0,0,0);
     const isToday = eventDate.getTime() === today.getTime();
 
-    // DESIGN SYSTEM PARA CARDS
     let cardClass = "";
     let iconContent = null;
     let amountClass = "";
     
     if (isPrediction) {
-        // CARD RADAR (Roxo/Rosa) - Futurista
         cardClass = "bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-white dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50 shadow-sm relative overflow-hidden";
         iconContent = (
             <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200 dark:border-indigo-800">
@@ -67,7 +124,6 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
         );
         amountClass = "text-indigo-600 dark:text-indigo-300";
     } else if (isPayment) {
-        // CARD PAGAMENTO (Verde) - Sólido e Confiável
         cardClass = "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm";
         iconContent = (
             <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30">
@@ -76,7 +132,6 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
         );
         amountClass = "text-zinc-900 dark:text-white";
     } else {
-        // CARD DATA COM (Amarelo) - Informativo
         cardClass = "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm opacity-90";
         iconContent = (
             <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30">
@@ -90,13 +145,11 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
     
     return (
         <div className={`relative pl-12 py-2.5 group ${isPrediction ? 'anim-fade-in' : ''}`}>
-            {/* Linha do tempo */}
             {!isLast && <div className={`absolute left-[19px] top-8 bottom-[-10px] w-[2px] ${isPrediction ? 'bg-indigo-100 dark:bg-indigo-900/30' : 'bg-zinc-100 dark:bg-zinc-800'}`}></div>}
             
             {iconContent}
             
             <div className={`p-4 rounded-2xl border flex justify-between items-center relative ${cardClass}`}>
-                {/* Badge Flutuante */}
                 {isToday && !isPrediction && <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm">HOJE</div>}
                 {isPrediction && <div className="absolute right-0 top-0 bg-indigo-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1"><ScanEye className="w-2.5 h-2.5" /> RADAR</div>}
                 
@@ -150,7 +203,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   
-  // --- ROBOT LOGIC ---
+  // --- ROBOT / RADAR LOGIC ---
   const [robotState, setRobotState] = useState<'idle' | 'scanning' | 'done'>('idle');
   const [agendaItems, setAgendaItems] = useState<Record<string, any[]>>({}); 
   const [agendaCount, setAgendaCount] = useState(0);
@@ -213,6 +266,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             }
                         }
                   });
+
+                  // Delay mínimo visual para o Radar "scanear" (500ms)
+                  await new Promise(r => setTimeout(r, 600));
 
                   setAgendaTotalProjected(projectedSum);
 
@@ -394,17 +450,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
         <button onClick={() => setShowAgendaModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>
             <div className="flex items-center gap-4 relative z-10">
-                <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 shadow-sm"><CalendarDays className="w-6 h-6" strokeWidth={1.5} /></div>
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30 shadow-sm"><Radar className="w-6 h-6" strokeWidth={1.5} /></div>
                 <div>
-                    <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Agenda IA</h3>
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Radar de Proventos</h3>
                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wide mt-0.5">
                         {agendaCount > 0 ? `${agendaCount} Eventos Confirmados` : 'Toque para escanear'}
                     </p>
                 </div>
             </div>
             <div className="flex items-center gap-3 relative z-10">
-                <div className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 p-2 rounded-xl border border-indigo-200 dark:border-indigo-800 animate-pulse">
-                    <ScanEye className="w-4 h-4" />
+                <div className="bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/20 group-hover:text-indigo-500 transition-colors">
+                    <Signal className="w-4 h-4" />
                 </div>
             </div>
         </button>
@@ -436,37 +492,32 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* --- MODAL AGENDA ROBÔ --- */}
+      {/* --- MODAL RADAR DE PROVENTOS --- */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full relative overflow-hidden">
             <div className="relative z-20 flex items-center gap-4 mb-4 px-2 anim-slide-up pt-4">
-                <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-200 dark:border-zinc-700`}>
-                    <CalendarDays className="w-6 h-6" />
+                <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 border-zinc-200 dark:border-zinc-700`}>
+                    <Radar className="w-6 h-6" />
                 </div>
                 <div>
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2>
+                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Radar</h2>
                     <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Monitoramento em Tempo Real</p>
                 </div>
             </div>
             
-            {agendaTotalProjected > 0 && (
-                <div className="mx-2 mb-6 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 anim-scale-in flex justify-between items-center">
-                    <div>
-                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Total Projetado</p>
-                        <p className="text-lg font-black text-indigo-700 dark:text-indigo-300">{formatBRL(agendaTotalProjected, privacyMode)}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                        <Radar className="w-5 h-5 text-indigo-500" />
-                    </div>
-                </div>
-            )}
+            {/* Radar Animation Area */}
+            <div className="anim-scale-in">
+                <RadarAnimation 
+                    isScanning={robotState === 'scanning'} 
+                    totalProjected={agendaTotalProjected} 
+                    privacyMode={privacyMode || false}
+                />
+            </div>
 
             <div className="relative z-10 pt-2 pb-32 min-h-[50vh]">
                 {robotState === 'scanning' ? (
-                    <div className="flex flex-col items-center justify-center pt-20 anim-fade-in">
-                        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-4" />
-                        <p className="text-xs font-black uppercase tracking-widest text-indigo-500 animate-pulse mb-2">Sincronizando...</p>
-                        <p className="text-[10px] text-zinc-400 max-w-[200px] text-center">Buscando dados no banco e projetando eventos.</p>
+                    <div className="flex flex-col items-center justify-center pt-10 anim-fade-in opacity-50">
+                        <p className="text-[10px] text-zinc-400 max-w-[200px] text-center font-medium">Buscando dados no banco e projetando eventos futuros...</p>
                     </div>
                 ) : (
                     Object.keys(agendaItems).length > 0 ? (
@@ -485,10 +536,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             ); 
                         })
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                            <Radar className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
-                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nada no radar</p>
-                            <button onClick={handleRobotInteract} className="mt-4 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Forçar Re-scan</button>
+                        <div className="flex flex-col items-center justify-center py-10 opacity-50">
+                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Nada no radar</p>
+                            <button onClick={handleRobotInteract} className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Forçar Re-scan</button>
                         </div>
                     )
                 )}
