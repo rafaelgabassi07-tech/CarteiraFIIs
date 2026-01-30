@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -43,147 +43,6 @@ const formatDateShort = (dateStr: string) => {
     return `${day}/${month}`;
 };
 
-// --- WALKING BOT CHARACTER (Personagem Completo) ---
-const WalkingBot = ({ isThinking, onInteract }: { isThinking: boolean, onInteract: () => void }) => {
-    const [pos, setPos] = useState({ x: 50, y: 20 }); // % position
-    const [direction, setDirection] = useState<'left' | 'right'>('right');
-    const [isWalking, setIsWalking] = useState(false);
-    const moveTimerRef = useRef<any>(null);
-
-    // Estilos de animação injetados localmente
-    const robotStyles = `
-        @keyframes robotWalkBody { 
-            0%, 100% { transform: translateY(0); } 
-            50% { transform: translateY(-3px); } 
-        }
-        @keyframes limbSwingLeft { 
-            0% { transform: rotate(25deg); } 
-            100% { transform: rotate(-25deg); } 
-        }
-        @keyframes limbSwingRight { 
-            0% { transform: rotate(-25deg); } 
-            100% { transform: rotate(25deg); } 
-        }
-        @keyframes scanBeam {
-            0% { transform: scaleX(0); opacity: 0; }
-            50% { transform: scaleX(1); opacity: 0.5; }
-            100% { transform: scaleX(0); opacity: 0; }
-        }
-        .bot-walking .bot-body { animation: robotWalkBody 0.3s ease-in-out infinite; }
-        .bot-walking .bot-arm-l, .bot-walking .bot-leg-r { animation: limbSwingRight 0.6s ease-in-out infinite alternate; }
-        .bot-walking .bot-arm-r, .bot-walking .bot-leg-l { animation: limbSwingLeft 0.6s ease-in-out infinite alternate; }
-        .bot-thinking .bot-head-light { animation: pulseRed 0.5s infinite; }
-        .bot-scanning-beam { animation: scanBeam 2s ease-in-out infinite; }
-        @keyframes pulseRed { 0%, 100% { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; } 50% { background-color: #fee2e2; box-shadow: 0 0 4px #ef4444; } }
-    `;
-
-    const moveRandomly = () => {
-        // Define novo destino dentro da área superior
-        const newX = 15 + Math.random() * 70; 
-        const newY = 5 + Math.random() * 20;  
-
-        setDirection(newX > pos.x ? 'right' : 'left');
-        setIsWalking(true); 
-        setPos({ x: newX, y: newY });
-
-        // Para de andar quando "chegar"
-        setTimeout(() => {
-            setIsWalking(false);
-        }, 2000); 
-    };
-
-    useEffect(() => {
-        if (!isThinking) {
-            moveRandomly();
-            const interval = setInterval(moveRandomly, 5000 + Math.random() * 3000);
-            moveTimerRef.current = interval;
-            return () => clearInterval(interval);
-        } else {
-            setIsWalking(false); // Para se estiver pensando
-        }
-    }, [isThinking]);
-
-    return (
-        <>
-            <style>{robotStyles}</style>
-            <div 
-                className={`absolute z-30 transition-all duration-[2000ms] ease-in-out pointer-events-none ${isWalking ? 'bot-walking' : ''} ${isThinking ? 'bot-thinking' : ''}`}
-                style={{ 
-                    top: `${pos.y}%`, 
-                    left: `${pos.x}%`,
-                    transform: 'translate(-50%, -50%)'
-                }}
-            >
-                <div 
-                    className="relative pointer-events-auto cursor-pointer group scale-150 active:scale-125 transition-transform" 
-                    onClick={(e) => { e.stopPropagation(); onInteract(); }}
-                >
-                    {/* Character Container */}
-                    <div className={`relative transition-transform duration-300 ${direction === 'left' ? '-scale-x-100' : 'scale-x-100'}`}>
-                        
-                        {/* Antena */}
-                        <div className="absolute -top-[20px] left-1/2 -translate-x-1/2 w-0.5 h-3 bg-zinc-400 dark:bg-zinc-500 origin-bottom animate-[limbSwingLeft_3s_infinite]"></div>
-                        <div className={`absolute -top-[22px] left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bot-head-light ${isThinking ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]' : 'bg-emerald-400 shadow-[0_0_5px_#34d399]'}`}></div>
-
-                        {/* Braço Esquerdo (Trás) */}
-                        <div className="bot-arm-l absolute top-3 left-0.5 w-2 h-6 bg-zinc-400 dark:bg-zinc-600 rounded-full origin-top -rotate-12 border border-zinc-500 dark:border-zinc-700">
-                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-zinc-300 dark:bg-zinc-500 rounded-full"></div>
-                        </div>
-
-                        {/* Pernas */}
-                        <div className="absolute top-[28px] left-[7px] w-2.5 h-5 bg-zinc-700 dark:bg-zinc-800 rounded-b-md origin-top bot-leg-l border-l border-r border-zinc-800 dark:border-zinc-900">
-                             <div className="absolute bottom-0 w-3.5 h-1.5 bg-black dark:bg-zinc-950 -left-0.5 rounded-sm"></div>
-                        </div>
-                        <div className="absolute top-[28px] right-[7px] w-2.5 h-5 bg-zinc-700 dark:bg-zinc-800 rounded-b-md origin-top bot-leg-r border-l border-r border-zinc-800 dark:border-zinc-900">
-                             <div className="absolute bottom-0 w-3.5 h-1.5 bg-black dark:bg-zinc-950 -left-0.5 rounded-sm"></div>
-                        </div>
-
-                        {/* Corpo */}
-                        <div className="bot-body relative z-10 w-9 h-10 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-xl border border-white/20 shadow-lg flex items-center justify-center">
-                            {/* Painel do peito */}
-                            <div className="w-5 h-4 bg-black/40 rounded border border-white/10 flex items-center justify-center overflow-hidden">
-                                {isThinking ? (
-                                    <div className="w-full h-0.5 bg-rose-500 animate-[scanBeam_0.5s_infinite]"></div>
-                                ) : (
-                                    <div className="flex gap-0.5">
-                                        <div className="w-1 h-1 bg-emerald-400 rounded-full animate-pulse"></div>
-                                        <div className="w-1 h-1 bg-emerald-400 rounded-full animate-pulse delay-75"></div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Cabeça */}
-                        <div className="bot-body absolute -top-[14px] left-1/2 -translate-x-1/2 w-10 h-8 bg-zinc-100 dark:bg-zinc-200 rounded-xl border-2 border-zinc-300 dark:border-zinc-400 z-20 flex items-center justify-center overflow-hidden shadow-sm">
-                            {/* Visor */}
-                            <div className="w-[80%] h-3 bg-zinc-800 absolute top-1.5 rounded-sm flex justify-center items-center gap-1 overflow-hidden">
-                                {isThinking ? (
-                                    <div className="flex gap-0.5"><div className="w-1 h-1 bg-rose-500 rounded-full animate-bounce"></div><div className="w-1 h-1 bg-rose-500 rounded-full animate-bounce delay-75"></div><div className="w-1 h-1 bg-rose-500 rounded-full animate-bounce delay-100"></div></div>
-                                ) : (
-                                    <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_4px_cyan]"></div><div className="w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_4px_cyan]"></div></div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Braço Direito (Frente) */}
-                        <div className="bot-arm-r absolute top-3 right-0.5 w-2 h-6 bg-zinc-400 dark:bg-zinc-600 rounded-full origin-top rotate-12 z-20 border border-zinc-500 dark:border-zinc-700">
-                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-zinc-300 dark:bg-zinc-500 rounded-full"></div>
-                        </div>
-
-                        {/* Sombra */}
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1.5 bg-black/20 rounded-full blur-[2px]"></div>
-                        
-                        {/* Efeito de Scanner ao Pensar */}
-                        {isThinking && (
-                            <div className="absolute top-[30px] left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-b from-rose-500/20 to-transparent -z-10 [clip-path:polygon(50%_0%,_0%_100%,_100%_100%)] bot-scanning-beam origin-top"></div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </>
-    );
-};
-
 const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
     const isPayment = event.eventType === 'payment';
     const isPrediction = event.isPrediction === true;
@@ -203,7 +62,7 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
         cardClass = "bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-white dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50 shadow-sm relative overflow-hidden";
         iconContent = (
             <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200 dark:border-indigo-800">
-                <Radar className="w-5 h-5 animate-pulse" />
+                <Radar className="w-5 h-5" />
             </div>
         );
         amountClass = "text-indigo-600 dark:text-indigo-300";
@@ -302,6 +161,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // A agenda agora depende 100% deste estado, populado apenas quando o modal abre
   const [agendaItems, setAgendaItems] = useState<Record<string, any[]>>({}); 
   const [agendaCount, setAgendaCount] = useState(0);
+  const [agendaTotalProjected, setAgendaTotalProjected] = useState(0);
 
   // Efeito de "Cálculo Leve" apenas para o Card da Dashboard
   useEffect(() => {
@@ -312,15 +172,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       setAgendaCount(count);
   }, [dividendReceipts]);
 
-  // EFEITO MESTRE DO ROBÔ (SCAN)
+  // EFEITO MESTRE DO ROBÔ (SCAN INSTANTÂNEO)
   useEffect(() => {
       if (showAgendaModal && robotState === 'idle') {
           const runScan = async () => {
               setRobotState('scanning');
-              setAgendaItems({}); // Limpa lista para dramatizar o "Scan"
+              setAgendaItems({});
+              setAgendaTotalProjected(0);
               
-              // 1. Simula tempo de "raciocínio" do robô
-              await new Promise(r => setTimeout(r, 2000));
+              // REMOVIDO DELAY ARTIFICIAL para resposta imediata
+              // await new Promise(r => setTimeout(r, 2000));
               
               try {
                   // 2. Busca Previsões (IA/DB)
@@ -328,14 +189,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   
                   // 3. Unifica com Dados Confirmados (DB)
                   const todayStr = new Date().toISOString().split('T')[0];
-                  const oneYearAgoStr = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
                   const allEvents: any[] = [];
+                  let projectedSum = 0;
 
                   // a) Adiciona Confirmados
                   dividendReceipts.forEach(r => {
                       if (!r) return;
                       if (r.paymentDate >= todayStr) { 
                           allEvents.push({ ...r, eventType: 'payment', date: r.paymentDate }); 
+                          projectedSum += r.totalReceived;
                       }
                       if (r.dateCom >= todayStr) {
                           allEvents.push({ ...r, eventType: 'datacom', date: r.dateCom });
@@ -357,6 +219,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     type: pred.type, totalReceived: pred.projectedTotal, rate: pred.rate,
                                     isPrediction: true 
                                 });
+                                projectedSum += pred.projectedTotal;
                             }
                             if (pred.dateCom && pred.dateCom >= todayStr) {
                                 allEvents.push({
@@ -366,6 +229,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             }
                         }
                   });
+
+                  setAgendaTotalProjected(projectedSum);
 
                   // 4. Agrupamento Final
                   const sorted = allEvents.sort((a, b) => a.date.localeCompare(b.date));
@@ -530,47 +395,51 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
             </div>
             
-            {/* ÁREA DE VOO DO ROBÔ (Bot Playground) */}
-            <div className="relative min-h-[60vh] w-full">
-                
-                {/* O Robô é a estrela aqui */}
-                <WalkingBot 
-                    isThinking={robotState === 'scanning'}
-                    onInteract={handleRobotInteract}
-                />
-
-                {/* Conteúdo gerado EXCLUSIVAMENTE pelo robô */}
-                <div className="relative z-10 pt-8 pb-32">
-                    {robotState === 'scanning' ? (
-                        <div className="flex flex-col items-center justify-center pt-20 anim-fade-in">
-                            <p className="text-xs font-black uppercase tracking-widest text-indigo-500 animate-pulse mb-2">Escaneando Mercado...</p>
-                            <p className="text-[10px] text-zinc-400 max-w-[200px] text-center">Buscando anúncios oficiais e projetando datas prováveis.</p>
-                        </div>
-                    ) : (
-                        Object.keys(agendaItems).length > 0 ? (
-                            Object.keys(agendaItems).map((groupKey) => { 
-                                const events = agendaItems[groupKey]; 
-                                return (
-                                    <div key={groupKey} className="mb-8 anim-slide-up">
-                                        <div className="sticky top-0 z-20 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-md py-3 mb-2 flex items-center gap-2 border-b border-zinc-200/50 dark:border-zinc-800/50">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-400"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">{groupKey}</h3>
-                                        </div>
-                                        <div className="relative space-y-1">
-                                            {events.map((e: any, i: number) => <TimelineEvent key={i} event={e} isLast={i === events.length - 1} />)}
-                                        </div>
-                                    </div>
-                                ); 
-                            })
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                                <Radar className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
-                                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nada no radar</p>
-                                <button onClick={handleRobotInteract} className="mt-4 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest">Forçar Re-scan</button>
-                            </div>
-                        )
-                    )}
+            {/* Resumo de Projeção (Novo) */}
+            {agendaTotalProjected > 0 && (
+                <div className="mx-2 mb-6 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 anim-scale-in flex justify-between items-center">
+                    <div>
+                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Total Projetado</p>
+                        <p className="text-lg font-black text-indigo-700 dark:text-indigo-300">{formatBRL(agendaTotalProjected, privacyMode)}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                        <Radar className="w-5 h-5 text-indigo-500" />
+                    </div>
                 </div>
+            )}
+
+            {/* Conteúdo gerado EXCLUSIVAMENTE pelo robô */}
+            <div className="relative z-10 pt-2 pb-32 min-h-[50vh]">
+                {robotState === 'scanning' ? (
+                    <div className="flex flex-col items-center justify-center pt-20 anim-fade-in">
+                        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-4" />
+                        <p className="text-xs font-black uppercase tracking-widest text-indigo-500 animate-pulse mb-2">Sincronizando...</p>
+                        <p className="text-[10px] text-zinc-400 max-w-[200px] text-center">Buscando dados no banco e projetando eventos.</p>
+                    </div>
+                ) : (
+                    Object.keys(agendaItems).length > 0 ? (
+                        Object.keys(agendaItems).map((groupKey) => { 
+                            const events = agendaItems[groupKey]; 
+                            return (
+                                <div key={groupKey} className="mb-8 anim-slide-up">
+                                    <div className="sticky top-0 z-20 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-md py-3 mb-2 flex items-center gap-2 border-b border-zinc-200/50 dark:border-zinc-800/50">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-400"></div>
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">{groupKey}</h3>
+                                    </div>
+                                    <div className="relative space-y-1">
+                                        {events.map((e: any, i: number) => <TimelineEvent key={i} event={e} isLast={i === events.length - 1} />)}
+                                    </div>
+                                </div>
+                            ); 
+                        })
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                            <Radar className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
+                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nada no radar</p>
+                            <button onClick={handleRobotInteract} className="mt-4 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Forçar Re-scan</button>
+                        </div>
+                    )
+                )}
             </div>
         </div>
       </SwipeableModal>
