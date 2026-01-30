@@ -267,10 +267,10 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         style={{
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
             transition: isDragging ? 'none' : 'transform 400ms cubic-bezier(0.32, 0.72, 0, 1)',
-            touchAction: 'none'
+            touchAction: 'none',
+            height: '92vh' // Altura fixa forçada para garantir que abra até o topo
         }}
-        // MODIFICADO: Altura fixa 90dvh (90% viewport dinâmico) para garantir consistência em mobile
-        className={`relative bg-surface-light dark:bg-zinc-950 rounded-t-[2.5rem] h-[90dvh] max-h-[90dvh] w-full overflow-hidden flex flex-col shadow-2xl ring-1 ring-white/10`}
+        className={`relative bg-surface-light dark:bg-zinc-950 rounded-t-[2.5rem] w-full overflow-hidden flex flex-col shadow-2xl ring-1 ring-white/10`}
       >
         {/* Drag Handle - Área Segura de Toque */}
         <div 
