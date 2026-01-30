@@ -7,6 +7,7 @@ import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
 import { fetchFutureAnnouncements, FutureDividendPrediction } from '../services/dataService';
+import { generateInflationAnalysis } from '../services/geminiService';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -23,6 +24,21 @@ interface HomeProps {
   transactions?: Transaction[];
   privacyMode?: boolean;
   onViewAsset?: (ticker: string) => void;
+}
+
+// Interface auxiliar para os dados do gráfico
+interface HistoryItem {
+    fullDate: string;
+    name: string;
+    value: number;
+    year: number;
+    monthIndex: number;
+}
+
+// Interface auxiliar para dados de inflação
+interface InflationDataPoint extends HistoryItem {
+    inflationCost: number;
+    netIncome: number;
 }
 
 const formatBRL = (val: any, privacy = false) => {
@@ -204,6 +220,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   
+  // --- ROBOT IA IPCA ---
+  const [aiAnalysis, setAiAnalysis] = useState('');
+  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+
   // --- ROBOT / RADAR LOGIC ---
   const [robotState, setRobotState] = useState<'idle' | 'scanning' | 'done'>('idle');
   const [agendaItems, setAgendaItems] = useState<Record<string, any[]>>({}); 
@@ -363,7 +383,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       // Dados brutos de histórico ordenados
       const sortedKeys = Object.keys(monthlySum).sort();
-      const fullHistory = sortedKeys.map(date => {
+      const fullHistory: HistoryItem[] = sortedKeys.map(date => {
           const d = new Date(date + '-02'); 
           return {
               fullDate: date,
@@ -378,7 +398,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const years = Array.from(new Set(fullHistory.map(h => h.year))).sort((a,b) => b - a);
 
       // Filtragem por período (12M ou Ano Específico)
-      let chartData: typeof fullHistory = [];
+      let chartData: HistoryItem[] = [];
       
       if (proventosYearFilter === '12M') {
           chartData = fullHistory.slice(-12);
@@ -407,7 +427,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
 
       // Estatísticas do período visualizado
-      const periodTotal = chartData.reduce((acc, curr) => acc + curr.value, 0);
+      const periodTotal = chartData.reduce((acc: number, curr: HistoryItem) => acc + curr.value, 0);
       const activeMonths = chartData.filter(d => d.value > 0).length;
       const periodAvg = activeMonths > 0 ? periodTotal / activeMonths : 0;
       const periodMax = Math.max(...chartData.map(d => d.value), 0);
@@ -433,7 +453,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           received: receivedTotal, 
           provisionedTotal: provisionedSum,
           fullHistoryData: fullHistory, // Usado para inflação
-          availableYears,
+          availableYears: years,
           displayedChartData: chartData,
           displayedReceipts: listReceipts,
           stats: { periodTotal, periodAvg, periodMax }
@@ -449,14 +469,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       
       const currentMonthlyInflationCost = invested * monthlyInflationRateDecimal;
 
-      const total12m = fullHistoryData.slice(-12).reduce((acc, c) => acc + c.value, 0);
+      const total12m = fullHistoryData.slice(-12).reduce((acc: number, c: HistoryItem) => acc + c.value, 0);
       const monthlyAvg12m = total12m / 12;
 
       const nominalYield = invested > 0 ? (total12m / invested) * 100 : 0;
       const realYieldSpread = nominalYield - annualInflationRate;
       const coverageRatio = currentMonthlyInflationCost > 0 ? (monthlyAvg12m / currentMonthlyInflationCost) * 100 : 0;
 
-      const chartData = fullHistoryData.slice(-12).map(d => {
+      const chartData: InflationDataPoint[] = fullHistoryData.slice(-12).map((d: HistoryItem) => {
           return {
               ...d,
               inflationCost: invested * monthlyInflationRateDecimal, // Aproximação baseada no patrimônio atual
@@ -489,6 +509,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           protectedPercent
       };
   }, [invested, inflationRate, fullHistoryData, portfolio]);
+
+  const handleRunAiAnalysis = async () => {
+        setIsAiAnalyzing(true);
+        // Delay simulado para "sensação" de busca no BC
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        try {
+            const analysis = await generateInflationAnalysis(
+                inflationAnalysis.annualInflationRate,
+                inflationAnalysis.nominalYield,
+                inflationAnalysis.realYieldSpread,
+                inflationAnalysis.coverageRatio
+            );
+            setAiAnalysis(analysis);
+        } catch (e) {
+            setAiAnalysis("Erro ao analisar dados.");
+        } finally {
+            setIsAiAnalyzing(false);
+        }
+  };
 
   // Styles e Handlers
   const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 transition-all press-effect relative overflow-hidden group shadow-2xl shadow-black/5 dark:shadow-black/20";
@@ -868,7 +908,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  >
                      Últimos 12 Meses
                  </button>
-                 {availableYears.map(year => (
+                 {availableYears.map((year: number) => (
                      <button 
                          key={year}
                          onClick={() => { setProventosYearFilter(String(year)); setSelectedProventosMonth(null); }}
@@ -886,7 +926,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
                          <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip />} />
                          <Bar dataKey="value" radius={[4, 4, 4, 4]}>
-                             {displayedChartData.map((entry, index) => (
+                             {displayedChartData.map((entry: HistoryItem, index: number) => (
                                  <Cell 
                                      key={`cell-${index}`} 
                                      fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} 
@@ -918,7 +958,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                  {displayedReceipts.length > 0 ? (
                      <div className="space-y-2">
-                         {displayedReceipts.map((r, idx) => {
+                         {displayedReceipts.map((r: DividendReceipt, idx: number) => {
                              const isFII = r.assetType === AssetType.FII;
                              return (
                                  <div key={idx} className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
@@ -999,6 +1039,50 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       </div>
                   </div>
 
+                  {/* ROBOT AI CARD */}
+                  <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-6 rounded-[2rem] shadow-xl relative overflow-hidden text-white mt-6">
+                        <div className="absolute top-0 right-0 p-4 opacity-20">
+                            <Bot className="w-24 h-24 rotate-12" />
+                        </div>
+                        
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shadow-inner">
+                                    {isAiAnalyzing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Bot className="w-6 h-6" />}
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-lg leading-none">IA Analyst</h3>
+                                    <p className="text-[10px] font-medium opacity-80 mt-1">Conectado ao Banco Central</p>
+                                </div>
+                            </div>
+
+                            {aiAnalysis ? (
+                                <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10 anim-fade-in">
+                                    <p className="text-xs font-medium leading-relaxed">"{aiAnalysis}"</p>
+                                    <button 
+                                        onClick={() => setAiAnalysis('')} 
+                                        className="mt-3 text-[10px] font-bold uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity"
+                                    >
+                                        Nova Análise
+                                    </button>
+                                </div>
+                            ) : (
+                                <div>
+                                    <p className="text-xs font-medium opacity-90 mb-4 max-w-[80%]">
+                                        Posso analisar se seus rendimentos estão superando a inflação real agora mesmo.
+                                    </p>
+                                    <button 
+                                        onClick={handleRunAiAnalysis} 
+                                        disabled={isAiAnalyzing}
+                                        className="px-4 py-2 bg-white text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-50 transition-colors flex items-center gap-2"
+                                    >
+                                        {isAiAnalyzing ? 'Processando...' : <><Sparkles className="w-3 h-3" /> Analisar Carteira</>}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                  </div>
+
                   {/* Card: Patrimônio Protegido */}
                   <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 shadow-sm flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -1028,7 +1112,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               <Area type="monotone" dataKey="inflationCost" fill="#f43f5e" stroke="#f43f5e" strokeWidth={2} strokeDasharray="4 4" fillOpacity={0.05} />
                               <Line type="monotone" dataKey="inflationCost" stroke="#f43f5e" strokeWidth={2} dot={false} strokeDasharray="4 4" />
                               <Bar dataKey="value" radius={[4, 4, 4, 4]} barSize={12}>
-                                  {inflationAnalysis.chartData.map((entry, index) => (
+                                  {inflationAnalysis.chartData.map((entry: InflationDataPoint, index: number) => (
                                       <Cell key={`cell-${index}`} fill={entry.value >= entry.inflationCost ? '#10b981' : '#fbbf24'} />
                                   ))}
                               </Bar>
