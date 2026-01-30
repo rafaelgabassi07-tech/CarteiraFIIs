@@ -202,8 +202,15 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   }, [isOpen]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    startY.current = e.touches[0].clientY;
-    setIsDragging(true);
+    // Evita conflito com scroll interno
+    const target = e.target as HTMLElement;
+    const isHeader = target.closest('.modal-drag-handle');
+    
+    // Só inicia o drag se tocar na área do topo ou se estiver no topo do scroll
+    if (isHeader || modalRef.current?.scrollTop === 0) {
+        startY.current = e.touches[0].clientY;
+        setIsDragging(true);
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -211,16 +218,23 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     const touchY = e.touches[0].clientY;
     const diff = touchY - startY.current;
     
+    // Só permite arrastar para baixo
     if (diff > 0) {
-      const resistance = 1 + (diff / window.innerHeight);
+      // Resistência logarítmica para sensação de peso
+      const resistance = 1 + (diff / window.innerHeight) * 0.5;
       setDragOffset(diff / resistance);
+      
+      // Impede scroll da página enquanto arrasta
       if (e.cancelable) e.preventDefault(); 
     }
   };
 
   const handleTouchEnd = () => {
     setIsDragging(false);
-    if (dragOffset > 100) { onClose(); }
+    // Threshold de fechamento (120px)
+    if (dragOffset > 120) { 
+        onClose(); 
+    }
     setDragOffset(0);
   };
 
@@ -230,27 +244,28 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     <div className={`fixed inset-0 z-[200] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
       <div 
           onClick={onClose} 
-          className={`absolute inset-0 bg-black/60 transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-all duration-500 ease-out-soft ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       ></div>
       
       <div
         ref={modalRef}
         style={{
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
-            transition: isDragging ? 'none' : 'transform 600ms cubic-bezier(0.34, 1.56, 0.64, 1)' 
+            transition: isDragging ? 'none' : 'transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1)' 
         }}
         className={`relative bg-surface-light dark:bg-zinc-950 rounded-t-[2.5rem] h-[92vh] w-full overflow-hidden flex flex-col shadow-2xl ring-1 ring-white/10 will-change-transform`}
       >
+        {/* Drag Handle - Área de Toque Otimizada */}
         <div 
+            className="modal-drag-handle flex-none p-6 flex justify-center bg-transparent cursor-grab active:cursor-grabbing touch-none z-50 w-full absolute top-0 left-0"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            className="flex-none p-5 flex justify-center bg-transparent cursor-grab active:cursor-grabbing touch-none z-20"
         >
             <div className="w-16 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full transition-colors hover:bg-zinc-400 dark:hover:bg-zinc-600"></div>
         </div>
         
-        <div className={`flex-1 overflow-y-auto overscroll-contain pb-safe transition-opacity duration-500 delay-100 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+        <div className={`flex-1 overflow-y-auto overscroll-contain pb-safe pt-12 transition-opacity duration-300 delay-100 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
           {children}
         </div>
       </div>
@@ -258,7 +273,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   );
 };
 
-// ... Resto dos componentes do Layout (ConfirmationModal, UpdateReportModal, etc.) mantidos iguais ...
 interface ConfirmationModalProps { isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; }
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 250);
@@ -282,7 +296,6 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
 };
 
 export const UpdateReportModal: React.FC<{ isOpen: boolean; onClose: () => void; results: UpdateReportData }> = ({ isOpen, onClose, results }) => {
-    // Separa os resultados em categorias
     const updatedAssets = results.results.filter(r => r.status === 'success');
     const failedAssets = results.results.filter(r => r.status === 'error');
     const newDividends = results.results.flatMap(r => 
@@ -291,7 +304,7 @@ export const UpdateReportModal: React.FC<{ isOpen: boolean; onClose: () => void;
 
     return (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
+        <div className="px-6 pb-20 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex justify-between items-center mb-6 px-1">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30">
@@ -405,7 +418,7 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({ isOpen, 
 
 export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes = [], isUpdatePending, onUpdate, isUpdating, progress }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-      <div className="p-8 pb-24">
+      <div className="px-8 pb-24 pt-4">
         <div className="text-center mb-10">
             <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30 anim-scale-in">
               <Gift className="w-10 h-10" strokeWidth={1.5} />
@@ -445,7 +458,7 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes 
 
 export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notifications, onClear }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-6 pb-20">
+        <div className="px-6 pb-20 pt-2">
             <div className="flex justify-between items-center mb-8 px-2">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/20 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-900/30">

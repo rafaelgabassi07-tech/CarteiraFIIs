@@ -11,7 +11,6 @@ export const analyzePortfolio = (
 ): PortfolioInsight[] => {
     const insights: PortfolioInsight[] = [];
     
-    // CORREÇÃO: Usa data local (YYYY-MM-DD) para evitar que o ID mude à meia-noite UTC (21h BRT)
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
@@ -28,11 +27,9 @@ export const analyzePortfolio = (
         score: number, 
         ticker?: string
     ) => {
-        // Evita múltiplos stories sobre o mesmo ativo no mesmo dia, salvo se for muito crítico
         if (ticker && usedTickers.has(ticker) && score < 90) return;
         if (ticker) usedTickers.add(ticker);
 
-        // Adiciona um fator aleatório pequeno ao score para variar a ordem quando os scores forem iguais
         const randomFactor = Math.random() * 2;
 
         insights.push({
@@ -60,7 +57,6 @@ export const analyzePortfolio = (
         
         if (p.segment) sectors.add(p.segment);
 
-        // Acumula para variação ponderada
         if (p.currentPrice && p.currentPrice > 0) {
             const previousPrice = p.currentPrice / (1 + (change/100));
             const gainLoss = (p.currentPrice - previousPrice) * p.quantity;
@@ -123,8 +119,8 @@ export const analyzePortfolio = (
 
     // --- 3. RENDA & DIVIDENDOS ---
     
-    // Escudo contra Inflação (Ativo cujo DY > IPCA)
-    const inflationShield = activeAssets.find(a => (a.dy_12m || 0) > (ipca + 2));
+    // Escudo contra Inflação
+    const inflationShield = activeAssets.find(a => (a.dy_12m || 0) > (ipca + 3));
     if (inflationShield) {
         createStory(
             'inflation-shield',
@@ -136,7 +132,7 @@ export const analyzePortfolio = (
         );
     }
 
-    // Vaca Leiteira (Maior pagador em volume financeiro total)
+    // Vaca Leiteira
     const cashCow = activeAssets.sort((a,b) => (b.totalDividends || 0) - (a.totalDividends || 0))[0];
     if (cashCow && (cashCow.totalDividends || 0) > 100) {
         createStory(
@@ -160,7 +156,7 @@ export const analyzePortfolio = (
             'opportunity-pvp',
             'opportunity',
             'Desconto Patrimonial 🏷️',
-            `${cheapFii.ticker} está descontado, negociado a ${(cheapFii.p_vp || 0).toFixed(2)}x do seu valor patrimonial.`,
+            `${cheapFii.ticker} está negociado com desconto de ${(100 - (cheapFii.p_vp || 0)*100).toFixed(0)}% sobre o valor patrimonial.`,
             85,
             cheapFii.ticker
         );
@@ -175,9 +171,27 @@ export const analyzePortfolio = (
             'expensive-pvp',
             'warning',
             'Ágio Elevado ⚠️',
-            `${expensiveFii.ticker} está caro, custando ${(expensiveFii.p_vp || 0).toFixed(2)}x o seu valor patrimonial. Cuidado com novas compras.`,
+            `${expensiveFii.ticker} está caro, custando ${(expensiveFii.p_vp || 0).toFixed(2)}x o seu valor patrimonial. Cuidado com novos aportes.`,
             83,
             expensiveFii.ticker
+        );
+    }
+
+    // Preço Justo de Graham (Ações)
+    const grahamStock = activeAssets.find(a => {
+        if (a.assetType !== AssetType.STOCK || !a.lpa || !a.vpa || a.lpa < 0 || a.vpa < 0) return false;
+        const intrinsicValue = Math.sqrt(22.5 * a.lpa * a.vpa);
+        return (a.currentPrice || 0) < intrinsicValue * 0.7; // Margem de segurança de 30%
+    });
+
+    if (grahamStock) {
+         createStory(
+            'graham-opportunity',
+            'opportunity',
+            'Oportunidade Graham 🧠',
+            `${grahamStock.ticker} está abaixo do valor intrínseco de Graham (VPA x LPA). Potencial oportunidade de valor.`,
+            84,
+            grahamStock.ticker
         );
     }
 
@@ -194,6 +208,27 @@ export const analyzePortfolio = (
             82,
             qualityStock.ticker
         );
+    }
+
+    // Reinvestimento Inteligente
+    if (activeAssets.length > 3) {
+        // Encontra ativo com bom DY e preço razoável para sugerir aporte
+        const reinvestTarget = activeAssets.find(a => 
+            (a.dy_12m || 0) > 8 && 
+            ((a.assetType === AssetType.FII && (a.p_vp || 0) < 1.05) || 
+             (a.assetType === AssetType.STOCK && (a.p_l || 0) > 0 && (a.p_l || 0) < 15))
+        );
+        
+        if (reinvestTarget) {
+             createStory(
+                'reinvest-suggestion',
+                'news',
+                'Onde Reinvestir? 💡',
+                `${reinvestTarget.ticker} combina bom Yield (${(reinvestTarget.dy_12m || 0).toFixed(1)}%) com preço atrativo. Considere reinvestir seus proventos aqui.`,
+                78,
+                reinvestTarget.ticker
+            );
+        }
     }
 
     // --- 5. ESTRUTURA DA CARTEIRA ---
