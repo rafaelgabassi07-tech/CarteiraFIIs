@@ -1,8 +1,8 @@
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -41,6 +41,124 @@ const formatDateShort = (dateStr: string) => {
     if (!dateStr || typeof dateStr !== 'string' || dateStr.length < 10) return '-';
     const [year, month, day] = dateStr.split('-');
     return `${day}/${month}`;
+};
+
+// --- WALKING BOT COMPONENT ---
+const WalkingBot = ({ predictions, isThinking }: { predictions: FutureDividendPrediction[], isThinking: boolean }) => {
+    const [pos, setPos] = useState({ x: 50, y: 20 }); // % position
+    const [direction, setDirection] = useState<'left' | 'right'>('right');
+    const [message, setMessage] = useState<string | null>(null);
+    const [interactionIndex, setInteractionIndex] = useState(0);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const moveTimerRef = useRef<any>(null);
+
+    // Gera mensagens baseadas nos dados
+    const getMessage = (idx: number) => {
+        if (isThinking) return "Processando dados do mercado...";
+        if (predictions.length === 0) {
+            const msgs = [
+                "Tudo limpo! Nenhum evento futuro encontrado.",
+                "Estou de olho em novos anúncios 24h por dia.",
+                "Dica: Reinvestir dividendos acelera os juros compostos!",
+                "Minha bateria é movida a proventos ⚡"
+            ];
+            return msgs[idx % msgs.length];
+        }
+
+        const intro = `Encontrei ${predictions.length} eventos previstos!`;
+        const items = predictions.map(p => 
+            `${p.ticker}: ${p.paymentDate ? 'Paga dia ' + formatDateShort(p.paymentDate) : 'Data Com dia ' + formatDateShort(p.dateCom)}. Valor: ${p.rate.toFixed(2)}`
+        );
+        
+        const allMsgs = [intro, ...items, "Toque em mim para ver mais!"];
+        return allMsgs[idx % allMsgs.length];
+    };
+
+    const moveRandomly = () => {
+        if (message) return; // Não move se estiver falando
+
+        const newX = 10 + Math.random() * 80; // 10% a 90%
+        const newY = 5 + Math.random() * 40;  // 5% a 45% (Fica na metade superior)
+
+        setDirection(newX > pos.x ? 'right' : 'left');
+        setPos({ x: newX, y: newY });
+    };
+
+    useEffect(() => {
+        // Movimento inicial e loop
+        moveRandomly();
+        const interval = setInterval(moveRandomly, 4000 + Math.random() * 2000);
+        moveTimerRef.current = interval;
+        return () => clearInterval(interval);
+    }, [message]); // Reinicia loop quando para de falar
+
+    const handleInteract = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        
+        // Se já está falando, avança para próxima mensagem
+        const nextIdx = message ? interactionIndex + 1 : 0;
+        setInteractionIndex(nextIdx);
+        setMessage(getMessage(nextIdx));
+
+        // Auto-fecha o balão após 5s
+        if (moveTimerRef.current) clearInterval(moveTimerRef.current);
+        const timeout = setTimeout(() => {
+            setMessage(null);
+            moveRandomly();
+        }, 5000);
+        moveTimerRef.current = setInterval(moveRandomly, 5000); // Restart movement loop logic
+    };
+
+    return (
+        <div 
+            className="absolute z-30 transition-all duration-[2000ms] ease-in-out-expo pointer-events-none"
+            style={{ 
+                top: `${pos.y}%`, 
+                left: `${pos.x}%`,
+                transform: 'translate(-50%, -50%)'
+            }}
+        >
+            <div className="relative pointer-events-auto group">
+                {/* Speech Bubble */}
+                {message && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-white dark:bg-zinc-800 p-3 rounded-2xl rounded-bl-none shadow-xl border border-indigo-100 dark:border-indigo-900/50 anim-scale-in origin-bottom-left z-40">
+                        <p className="text-xs font-medium text-zinc-700 dark:text-zinc-200 leading-relaxed text-center">
+                            {message}
+                        </p>
+                    </div>
+                )}
+
+                {/* The Bot Character */}
+                <button 
+                    onClick={handleInteract}
+                    className={`
+                        relative w-14 h-14 rounded-full flex items-center justify-center 
+                        bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 
+                        transition-transform duration-500 press-effect
+                        ${isThinking ? 'animate-pulse' : 'animate-[float_3s_ease-in-out_infinite]'}
+                    `}
+                >
+                    {/* Bot Face */}
+                    <div className={`transition-transform duration-500 ${direction === 'left' ? '-scale-x-100' : 'scale-x-100'}`}>
+                        <Bot className="w-8 h-8 text-white drop-shadow-md" strokeWidth={1.5} />
+                    </div>
+                    
+                    {/* Status Indicator */}
+                    {predictions.length > 0 && !isThinking && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white dark:border-zinc-900 animate-bounce flex items-center justify-center">
+                            <span className="text-[8px] font-bold text-emerald-900">{predictions.length}</span>
+                        </div>
+                    )}
+
+                    {/* Propulsion Particles (CSS Only) */}
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-3 bg-indigo-400/50 blur-md rounded-full animate-pulse"></div>
+                </button>
+                
+                {/* Shadow on "floor" */}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 w-8 h-2 bg-black/20 dark:bg-black/50 blur-md rounded-[100%] transition-all duration-[2000ms] opacity-50"></div>
+            </div>
+        </div>
+    );
 };
 
 const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
@@ -531,72 +649,54 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </div>
 
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
-        <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
-            <div className="flex items-center gap-4 mb-8 px-2 anim-slide-up"><div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-200 dark:border-zinc-700`}><CalendarDays className="w-6 h-6" /></div><div><h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2><p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Cronograma de Eventos</p></div></div>
+        <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full relative overflow-hidden">
             
-            {/* ROBÔ DE INTELIGÊNCIA - MOVIDO PARA AGENDA */}
-            <div className="mb-8 anim-slide-up">
-                 <div className="bg-gradient-to-br from-indigo-900 to-purple-900 p-5 rounded-3xl border border-indigo-500/30 shadow-xl relative overflow-hidden group">
-                     {/* Efeitos de Fundo */}
-                     <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                     <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-                     
-                     {robotState === 'thinking' ? (
-                         <div className="flex flex-col items-center justify-center py-6 text-center">
-                             <Bot className="w-10 h-10 text-indigo-300 animate-bounce mb-3" />
-                             <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest animate-pulse">Analisando Banco de Dados...</p>
-                         </div>
-                     ) : (
-                         <div>
-                             <div className="flex justify-between items-start mb-4 relative z-10">
-                                 <div className="flex items-center gap-3">
-                                     <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-inner">
-                                         <Sparkles className="w-5 h-5 text-yellow-300" strokeWidth={2} />
-                                     </div>
-                                     <div>
-                                         <h3 className="text-sm font-black text-white tracking-wide">Radar de Proventos</h3>
-                                         <p className="text-[10px] text-indigo-200 font-medium">Previsões baseadas em anúncios recentes</p>
-                                     </div>
-                                 </div>
-                             </div>
-
-                             {futureSimulations.length > 0 ? (
-                                 <div className="space-y-3 relative z-10">
-                                     {futureSimulations.slice(0, 3).map((sim, idx) => (
-                                         <div key={`${sim.ticker}-${idx}`} className="bg-black/20 p-3 rounded-xl border border-white/10 flex justify-between items-center backdrop-blur-md anim-stagger-item" style={{ animationDelay: `${idx * 100}ms` }}>
-                                             <div>
-                                                 <div className="flex items-center gap-2 mb-1">
-                                                     <span className="font-black text-white text-xs">{sim.ticker}</span>
-                                                     {sim.daysToDateCom > 0 && sim.daysToDateCom <= 5 && (
-                                                         <span className="text-[8px] font-bold bg-rose-500 text-white px-1.5 py-0.5 rounded uppercase animate-pulse">Com em {sim.daysToDateCom}d</span>
-                                                     )}
-                                                 </div>
-                                                 <p className="text-[9px] text-indigo-200 font-medium">
-                                                     {sim.paymentDate ? `Pagamento: ${formatDateShort(sim.paymentDate)}` : `Data Com: ${formatDateShort(sim.dateCom)}`}
-                                                 </p>
-                                             </div>
-                                             <div className="text-right">
-                                                 <span className="block font-black text-emerald-400 text-sm">{formatBRL(sim.projectedTotal, privacyMode)}</span>
-                                                 <span className="text-[9px] text-white/50">{sim.quantity} cotas x {sim.rate.toFixed(2)}</span>
-                                             </div>
-                                         </div>
-                                     ))}
-                                     {futureSimulations.length > 3 && (
-                                         <p className="text-[9px] text-center text-indigo-300 font-bold mt-2">e mais {futureSimulations.length - 3} eventos encontrados...</p>
-                                     )}
-                                 </div>
-                             ) : (
-                                 <div className="bg-black/20 p-4 rounded-xl border border-white/10 text-center">
-                                     <p className="text-xs text-indigo-200 font-medium">Nenhum anúncio futuro encontrado para sua carteira no momento.</p>
-                                 </div>
-                             )}
-                         </div>
-                     )}
-                 </div>
+            {/* Header Fixo */}
+            <div className="relative z-20 flex items-center gap-4 mb-4 px-2 anim-slide-up pt-4">
+                <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-200 dark:border-zinc-700`}>
+                    <CalendarDays className="w-6 h-6" />
+                </div>
+                <div>
+                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2>
+                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Cronograma de Eventos</p>
+                </div>
             </div>
+            
+            {/* ÁREA DE VOO DO ROBÔ (Bot Playground) */}
+            {/* Aumentamos o container relativo para o bot ter espaço de voo sobre a lista */}
+            <div className="relative min-h-[60vh] w-full">
+                
+                {/* WALKING BOT CHARACTER */}
+                <WalkingBot 
+                    predictions={futureSimulations} 
+                    isThinking={robotState === 'thinking'}
+                />
 
-            {Object.keys(groupedEvents).map((groupKey) => { const events = groupedEvents[groupKey]; if (events.length === 0) return null; return (<div key={groupKey} className="mb-10 anim-slide-up"><div className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-950 py-2 mb-2"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 pb-2">{groupKey}</h3></div><div className="relative">{events.map((e: any, i: number) => <TimelineEvent key={i} event={e} isLast={i === events.length - 1} />)}</div></div>); })}
-            {upcomingEvents.length === 0 && <div className="flex flex-col items-center justify-center py-20 opacity-50"><Calendar className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} /><p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Agenda Vazia</p></div>}
+                {/* Lista de Eventos (Conteúdo) */}
+                <div className="relative z-10 pt-4">
+                    {Object.keys(groupedEvents).map((groupKey) => { 
+                        const events = groupedEvents[groupKey]; 
+                        if (events.length === 0) return null; 
+                        return (
+                            <div key={groupKey} className="mb-10 anim-slide-up">
+                                <div className="sticky top-0 z-20 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-sm py-2 mb-2">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 pb-2">{groupKey}</h3>
+                                </div>
+                                <div className="relative">
+                                    {events.map((e: any, i: number) => <TimelineEvent key={i} event={e} isLast={i === events.length - 1} />)}
+                                </div>
+                            </div>
+                        ); 
+                    })}
+                    
+                    {upcomingEvents.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                            <Calendar className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
+                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Agenda Vazia</p>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
       </SwipeableModal>
 
