@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
@@ -210,7 +209,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     // Gera lista de anos disponíveis baseada no histórico
     const availableYears = useMemo(() => {
         const years = new Set(transactions.map(t => t.date.substring(0, 4)));
-        return Array.from(years).sort((a, b) => String(b).localeCompare(String(a)));
+        return Array.from(years).sort((a,b) => String(b).localeCompare(String(a)));
     }, [transactions]);
 
     const filteredTransactions = useMemo(() => {
