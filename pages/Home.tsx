@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -529,16 +529,74 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return null;
   };
 
+  // Cálculo de ROI Total (Capital + Proventos)
+  const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
+  const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
+
   return (
     <div className="space-y-4 pb-8">
+      {/* 1. HERO CARD PATRIMÔNIO (RENOVADO) */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
-        <div className="w-full bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-6 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 relative overflow-hidden group">
-            <div className="flex flex-col items-center justify-center text-center relative z-10">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-2 flex items-center gap-2"><Wallet className="w-3 h-3" /> Patrimônio</p>
-                <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter tabular-nums leading-none">{formatBRL(balance, privacyMode)}</h2>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    <span>+{formatBRL(totalAppreciation + salesGain, privacyMode)}</span>
+        <div className="w-full bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-6 relative overflow-hidden group shadow-2xl shadow-zinc-200/50 dark:shadow-black/50">
+            {/* Background Effects */}
+            <div className="absolute top-[-50%] right-[-10%] w-64 h-64 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute bottom-[-20%] left-[-20%] w-48 h-48 bg-indigo-500/5 dark:bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div className="relative z-10 flex flex-col h-full">
+                {/* Cabeçalho */}
+                <div className="flex justify-between items-start mb-6">
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-1 flex items-center gap-2">
+                            <Wallet className="w-3 h-3" /> Patrimônio Total
+                        </p>
+                        <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter tabular-nums leading-none">
+                            {formatBRL(balance, privacyMode)}
+                        </h2>
+                    </div>
+                    
+                    {/* Badge de Rentabilidade Total */}
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border backdrop-blur-sm ${totalReturn >= 0 ? 'bg-emerald-50/80 border-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-900/30 dark:text-emerald-400' : 'bg-rose-50/80 border-rose-100 text-rose-700 dark:bg-rose-900/20 dark:border-rose-900/30 dark:text-rose-400'}`}>
+                        {totalReturn >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        <div className="flex flex-col items-end leading-none">
+                            <span className="text-[10px] font-black">{totalReturnPercent.toFixed(2)}%</span>
+                            <span className="text-[7px] font-bold opacity-70 uppercase">Retorno Real</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-200 dark:via-zinc-800 to-transparent mb-5 opacity-50"></div>
+
+                {/* Grid de 3 Pilares */}
+                <div className="grid grid-cols-3 gap-2">
+                    {/* Custo */}
+                    <div className="flex flex-col gap-1 p-2 rounded-xl transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                            <Coins className="w-3 h-3" /> Custo
+                        </span>
+                        <span className="text-xs font-black text-zinc-900 dark:text-white truncate">
+                            {formatBRL(invested, privacyMode)}
+                        </span>
+                    </div>
+
+                    {/* Capital (Valorização) */}
+                    <div className="flex flex-col gap-1 p-2 rounded-xl transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-l border-zinc-100 dark:border-zinc-800 pl-4">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" /> Resultado
+                        </span>
+                        <span className={`text-xs font-black truncate ${totalAppreciation + salesGain >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                            {totalAppreciation + salesGain > 0 ? '+' : ''}{formatBRL(totalAppreciation + salesGain, privacyMode)}
+                        </span>
+                    </div>
+
+                    {/* Proventos */}
+                    <div className="flex flex-col gap-1 p-2 rounded-xl transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-l border-zinc-100 dark:border-zinc-800 pl-4">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                            <Banknote className="w-3 h-3" /> Proventos
+                        </span>
+                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 truncate">
+                            +{formatBRL(totalDividendsReceived, privacyMode)}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
