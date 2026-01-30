@@ -1,6 +1,5 @@
-
 import React, { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 import { supabase } from '../services/supabase';
@@ -21,7 +20,7 @@ const formatMonthHeader = (monthKey: string) => {
 };
 
 const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Transaction[], privacyMode: boolean }) => {
-    const { totalInvested, totalSold, netFlow } = useMemo(() => {
+    const { totalInvested, totalSold, netFlow, count } = useMemo(() => {
         let invested = 0;
         let sold = 0;
         transactions.forEach(t => {
@@ -29,7 +28,7 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
             if (t.type === 'BUY') invested += val;
             else sold += val;
         });
-        return { totalInvested: invested, totalSold: sold, netFlow: invested - sold };
+        return { totalInvested: invested, totalSold: sold, netFlow: invested - sold, count: transactions.length };
     }, [transactions]);
 
     return (
@@ -43,7 +42,7 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
                 <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalSold, privacyMode)}</p>
             </div>
             <div className="min-w-[120px] flex-1 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-sm snap-start">
-                <p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Fluxo Líquido</p>
+                <p className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Resultado Filtro</p>
                 <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(netFlow, privacyMode)}</p>
             </div>
         </div>
@@ -58,7 +57,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   
   if (item.type === 'header') {
       return (
-          <div className="sticky top-[130px] z-10 py-2 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-md -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-2">
+          <div className="sticky top-[170px] z-10 py-2 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-md -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-2">
               <h3 className="text-xs font-black text-zinc-900 dark:text-white flex justify-between items-center">
                   {formatMonthHeader(item.monthKey)}
                   <span className={`text-[9px] px-2 py-0.5 rounded-full ${item.monthlyNet >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'}`}>
@@ -126,13 +125,16 @@ interface TransactionsProps {
     privacyMode?: boolean;
 }
 
-type FilterOption = 'ALL' | 'BUY' | 'SELL' | 'FII' | 'STOCK';
-
 const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onUpdateTransaction, onRequestDeleteConfirmation, privacyMode = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [activeFilter, setActiveFilter] = useState<FilterOption>('ALL');
     const [isSaving, setIsSaving] = useState(false);
+    
+    // --- ESTADOS DE FILTRO ---
+    const [searchTerm, setSearchTerm] = useState('');
+    const [typeFilter, setTypeFilter] = useState<'ALL' | 'BUY' | 'SELL'>('ALL');
+    const [assetFilter, setAssetFilter] = useState<'ALL' | 'FII' | 'STOCK'>('ALL');
+    const [yearFilter, setYearFilter] = useState<string>('ALL');
     
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -148,16 +150,22 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     
     const estimatedTotal = (parseFloat(quantity) || 0) * (parseFloat(price) || 0);
 
+    // Gera lista de anos disponíveis baseada no histórico
+    const availableYears = useMemo(() => {
+        const years = new Set(transactions.map(t => t.date.substring(0, 4)));
+        return Array.from(years).sort((a: string, b: string) => b.localeCompare(a));
+    }, [transactions]);
+
     const filteredTransactions = useMemo(() => {
-        if (activeFilter === 'ALL') return transactions;
         return transactions.filter(t => {
-            if (activeFilter === 'BUY') return t.type === 'BUY';
-            if (activeFilter === 'SELL') return t.type === 'SELL';
-            if (activeFilter === 'FII') return t.assetType === AssetType.FII;
-            if (activeFilter === 'STOCK') return t.assetType === AssetType.STOCK;
-            return true;
+            const matchesSearch = searchTerm === '' || t.ticker.includes(searchTerm.toUpperCase());
+            const matchesType = typeFilter === 'ALL' || t.type === typeFilter;
+            const matchesAsset = assetFilter === 'ALL' || t.assetType === assetFilter;
+            const matchesYear = yearFilter === 'ALL' || t.date.startsWith(yearFilter);
+            
+            return matchesSearch && matchesType && matchesAsset && matchesYear;
         });
-    }, [transactions, activeFilter]);
+    }, [transactions, searchTerm, typeFilter, assetFilter, yearFilter]);
 
     const flatTransactions = useMemo(() => {
         const sorted = [...filteredTransactions].sort((a: any,b: any) => b.date.localeCompare(a.date));
@@ -173,7 +181,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         });
 
         const list: any[] = [];
-        Object.keys(groups).sort((a,b) => b.localeCompare(a)).forEach(k => {
+        Object.keys(groups).sort((a: string, b: string) => b.localeCompare(a)).forEach(k => {
             list.push({ type: 'header', monthKey: k, monthlyNet: groups[k].totalNet });
             groups[k].items.forEach((t: any) => list.push({ type: 'item', data: t }));
         });
@@ -211,21 +219,24 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         } catch (err) { alert('Erro ao excluir.'); } finally { setShowBulkDeleteConfirm(false); }
     };
 
-    const filters: { id: FilterOption; label: string }[] = [
-        { id: 'ALL', label: 'Tudo' },
-        { id: 'BUY', label: 'Compras' },
-        { id: 'SELL', label: 'Vendas' },
-        { id: 'FII', label: 'FIIs' },
-        { id: 'STOCK', label: 'Ações' },
-    ];
+    const clearFilters = () => {
+        setSearchTerm('');
+        setTypeFilter('ALL');
+        setAssetFilter('ALL');
+        setYearFilter('ALL');
+    };
+
+    const hasActiveFilters = searchTerm || typeFilter !== 'ALL' || assetFilter !== 'ALL' || yearFilter !== 'ALL';
 
     return (
         <div className="anim-fade-in min-h-screen pb-32">
-            {/* Header com Filtros Chips */}
-            <div className="sticky top-20 z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
+            {/* Header com Filtros Avançados */}
+            <div className="sticky top-20 z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-2 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
+                
+                {/* Linha 1: Título e Ações Principais */}
                 <div className="flex items-center justify-between mb-3">
                     <h2 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">
-                        {isSelectionMode ? `${selectedIds.size} selecionados` : 'Histórico de Operações'}
+                        {isSelectionMode ? `${selectedIds.size} selecionados` : 'Histórico'}
                     </h2>
                     
                     <div className="flex items-center gap-2">
@@ -236,6 +247,11 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             </>
                         ) : (
                             <>
+                                {hasActiveFilters && (
+                                    <button onClick={clearFilters} className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-2 py-1 rounded-lg flex items-center gap-1 mr-1">
+                                        <X className="w-3 h-3" /> Limpar
+                                    </button>
+                                )}
                                 <button onClick={() => setIsSelectionMode(true)} className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"><CheckSquare className="w-5 h-5" /></button>
                                 <button onClick={handleOpenAdd} className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 w-8 h-8 rounded-lg flex items-center justify-center shadow-md press-effect"><Plus className="w-5 h-5" /></button>
                             </>
@@ -244,21 +260,50 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 </div>
 
                 {!isSelectionMode && (
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                        {filters.map(f => (
-                            <button
-                                key={f.id}
-                                onClick={() => setActiveFilter(f.id)}
-                                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${activeFilter === f.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-zinc-900 dark:border-white shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800'}`}
-                            >
-                                {f.label}
+                    <div className="space-y-3">
+                        {/* Linha 2: Busca */}
+                        <div className="relative group">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
+                            <input 
+                                type="text" 
+                                placeholder="Buscar ativo (ex: XPLG)..." 
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value.toUpperCase())}
+                                className="w-full bg-zinc-100 dark:bg-zinc-800 pl-10 pr-4 py-2.5 rounded-xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all border border-transparent focus:bg-white dark:focus:bg-zinc-900"
+                            />
+                        </div>
+
+                        {/* Linha 3: Filtros Combináveis */}
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                            {/* Ano (Dropdown Nativo Estilizado) */}
+                            <div className="relative shrink-0">
+                                <select 
+                                    value={yearFilter} 
+                                    onChange={(e) => setYearFilter(e.target.value)}
+                                    className={`appearance-none pl-3 pr-8 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${yearFilter !== 'ALL' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-zinc-900 dark:border-white' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800'}`}
+                                >
+                                    <option value="ALL">Ano: Todos</option>
+                                    {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
+                                <ChevronDown className={`absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none ${yearFilter !== 'ALL' ? 'text-white dark:text-zinc-900' : 'text-zinc-400'}`} />
+                            </div>
+
+                            {/* Tipo */}
+                            <button onClick={() => setTypeFilter(prev => prev === 'ALL' ? 'BUY' : prev === 'BUY' ? 'SELL' : 'ALL')} className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${typeFilter !== 'ALL' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-zinc-900 dark:border-white' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800'}`}>
+                                {typeFilter === 'ALL' ? 'Tipo: Todos' : typeFilter === 'BUY' ? 'Apenas Compras' : 'Apenas Vendas'}
                             </button>
-                        ))}
+
+                            {/* Ativo */}
+                            <button onClick={() => setAssetFilter(prev => prev === 'ALL' ? 'FII' : prev === 'FII' ? 'STOCK' : 'ALL')} className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${assetFilter !== 'ALL' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-zinc-900 dark:border-white' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800'}`}>
+                                {assetFilter === 'ALL' ? 'Classe: Todas' : assetFilter === 'FII' ? 'Só FIIs' : 'Só Ações'}
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
 
             <div className="pt-2">
+                {/* Resumo dinâmico baseado nos filtros */}
                 <TransactionsSummary transactions={filteredTransactions} privacyMode={privacyMode} />
                 
                 {flatTransactions.length > 0 ? (
@@ -275,11 +320,12 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                     <div className="py-20 flex flex-col items-center justify-center opacity-50">
                         <ArrowRightLeft className="w-12 h-12 text-zinc-300 mb-3" strokeWidth={1.5} />
                         <p className="text-xs font-bold text-zinc-500">Nenhuma ordem encontrada</p>
+                        {hasActiveFilters && <button onClick={clearFilters} className="mt-2 text-[10px] font-bold text-indigo-500">Limpar filtros</button>}
                     </div>
                 )}
             </div>
 
-            {/* Modal de Edição (Simplificado para manter o contexto) */}
+            {/* Modal de Edição */}
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <div className="p-6 pb-20">
                     <div className="flex justify-between items-center mb-6">
