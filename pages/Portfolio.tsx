@@ -114,10 +114,9 @@ const AssetDetailSkeleton = () => {
 
 const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: { asset: AssetPosition, dividends: DividendReceipt[], privacyMode: boolean, onClose: () => void, onRefresh?: (ticker: string) => Promise<void> }) => {
     const [tab, setTab] = useState<'POSICAO' | 'FUNDAMENTOS' | 'PROVENTOS'>('POSICAO');
-    const [isUpdating, setIsUpdating] = useState(false); // Inicia como falso para mostrar dados em cache imediatamente
+    const [isUpdating, setIsUpdating] = useState(false); 
     const [displayAsset, setDisplayAsset] = useState<AssetPosition>(asset);
     
-    // Sincroniza props
     useEffect(() => {
         if (asset) setDisplayAsset(asset);
     }, [asset]);
@@ -126,8 +125,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     useEffect(() => {
         let mounted = true;
         if (onRefresh && asset?.ticker) {
-            setIsUpdating(true); // Apenas ativa o indicador visual, não bloqueia a UI
-            // Delay artificial removido para UX instantânea
+            setIsUpdating(true); 
             onRefresh(asset.ticker)
                 .catch(e => console.error("Asset refresh failed:", e))
                 .finally(() => {
@@ -135,16 +133,15 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                 });
         }
         return () => { mounted = false; };
-    }, []); // Executa apenas na montagem
+    }, []); 
 
-    // Só exibe Skeleton se NÃO houver nenhum dado para mostrar (ex: erro de carregamento inicial raro)
     if (!displayAsset) {
         return <AssetDetailSkeleton />;
     }
 
     const isFII = displayAsset.assetType === AssetType.FII;
 
-    // Cálculos Gerais Seguros
+    // Cálculos Gerais
     const currentTotal = (displayAsset.currentPrice || 0) * displayAsset.quantity;
     const costTotal = displayAsset.averagePrice * displayAsset.quantity;
     const gainValue = currentTotal - costTotal;
@@ -152,10 +149,10 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
     const finalReturn = gainValue + totalDividends;
     const finalReturnPercent = costTotal > 0 ? (finalReturn / costTotal) * 100 : 0;
     
-    // Yield on Cost (YoC) - Cálculo Robusto
+    // Yield on Cost (YoC)
     const yieldOnCost = useMemo(() => {
         if (displayAsset.averagePrice <= 0) return 0;
-        if (displayAsset.dy_12m !== undefined && displayAsset.dy_12m !== null && displayAsset.currentPrice) {
+        if (displayAsset.dy_12m && displayAsset.dy_12m > 0 && displayAsset.currentPrice) {
             return (displayAsset.currentPrice / displayAsset.averagePrice) * displayAsset.dy_12m;
         }
         if (displayAsset.totalDividends && costTotal > 0) {
@@ -164,7 +161,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         return 0;
     }, [displayAsset, costTotal]);
 
-    // --- CÁLCULOS DE PROVENTOS SEGUROS ---
+    // --- CÁLCULOS DE PROVENTOS ---
     const assetDividends = useMemo(() => {
         if (!dividends || !Array.isArray(dividends)) return [];
         const root = displayAsset.ticker ? displayAsset.ticker.substring(0, 4) : '';
@@ -195,7 +192,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
         return { chartData: data, total12m, monthlyAvg: total12m / 12 };
     }, [assetDividends]);
 
-    // Cálculos para Barra Stacked (Apenas para visualização proporcional)
+    // Cálculos para Barra Stacked
     const barTotal = Math.max(costTotal, costTotal + gainValue + totalDividends, currentTotal + totalDividends);
     const barCostPct = barTotal > 0 ? (costTotal / barTotal) * 100 : 0;
     const barGainPct = barTotal > 0 && gainValue > 0 ? (gainValue / barTotal) * 100 : 0;
@@ -203,7 +200,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
 
     return (
         <div className="bg-white dark:bg-zinc-950 min-h-full flex flex-col relative">
-            {/* Header */}
             <div className="sticky top-0 z-30 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-100 dark:border-zinc-800 pt-safe px-6 pb-4">
                 <div className="flex items-center justify-between mb-5 pt-4">
                     <div className="flex items-center gap-4 w-full">
@@ -237,8 +233,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
             <div className="flex-1 overflow-y-auto p-6 pb-24">
                 {tab === 'POSICAO' && (
                     <div className="space-y-6 anim-fade-in">
-                        
-                        {/* 1. Card Patrimônio Premium */}
                         <div className="relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 text-center group">
                              <div className="absolute inset-0 bg-gradient-to-br from-white via-zinc-50 to-white dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 opacity-50"></div>
                              <div className="relative z-10">
@@ -246,7 +240,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                 <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter tabular-nums mb-4 leading-none">
                                     {formatBRL(currentTotal, privacyMode)}
                                 </h2>
-                                {/* Daily Variation Badge */}
                                 <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${displayAsset.dailyChange && displayAsset.dailyChange >= 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30' : 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/30'}`}>
                                     {displayAsset.dailyChange && displayAsset.dailyChange >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                                     <span>{displayAsset.dailyChange ? Math.abs(displayAsset.dailyChange).toFixed(2) : '0.00'}% (24h)</span>
@@ -254,27 +247,21 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                              </div>
                         </div>
 
-                        {/* 2. Breakdown Financeiro Completo */}
                         <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-[2rem] p-6 border border-zinc-200 dark:border-zinc-800">
                             <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 mb-6 flex items-center gap-2">
                                 <PieChart className="w-4 h-4" /> Composição do Retorno
                             </h3>
-
-                            {/* Stacked Bar Visual */}
                             <div className="flex h-4 w-full rounded-full overflow-hidden mb-6 shadow-inner bg-zinc-200 dark:bg-zinc-800">
-                                {/* Cost Segment */}
                                 <div 
                                     className="h-full bg-zinc-400 dark:bg-zinc-600 transition-all duration-1000 border-r border-white/20" 
                                     style={{ width: `${barCostPct}%` }} 
                                 />
-                                {/* Capital Gain Segment (Only if positive for stacking logic) */}
                                 {barGainPct > 0 && (
                                     <div 
                                         className="h-full bg-emerald-500 transition-all duration-1000 border-r border-white/20" 
                                         style={{ width: `${barGainPct}%` }} 
                                     />
                                 )}
-                                {/* Dividends Segment */}
                                 {barDivsPct > 0 && (
                                     <div 
                                         className="h-full bg-indigo-500 transition-all duration-1000" 
@@ -283,7 +270,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                 )}
                             </div>
 
-                            {/* Tabela de Detalhes */}
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center text-sm">
                                     <div className="flex items-center gap-2">
@@ -292,7 +278,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                     </div>
                                     <span className="font-bold text-zinc-900 dark:text-white">{formatBRL(costTotal, privacyMode)}</span>
                                 </div>
-                                
                                 <div className="flex justify-between items-center text-sm">
                                     <div className="flex items-center gap-2">
                                         <span className={`w-2 h-2 rounded-full ${gainValue >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
@@ -302,7 +287,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                         {gainValue > 0 ? '+' : ''}{formatBRL(gainValue, privacyMode)}
                                     </span>
                                 </div>
-                                
                                 <div className="flex justify-between items-center text-sm">
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
@@ -310,9 +294,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                     </div>
                                     <span className="font-bold text-indigo-600 dark:text-indigo-400">+{formatBRL(totalDividends, privacyMode)}</span>
                                 </div>
-                                
                                 <div className="my-4 border-t border-dashed border-zinc-300 dark:border-zinc-700"></div>
-                                
                                 <div className="flex justify-between items-center">
                                     <span className="text-xs font-black uppercase tracking-wider text-zinc-400">Retorno Final</span>
                                     <div className="text-right">
@@ -327,7 +309,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                             </div>
                         </div>
 
-                        {/* 3. Grid de Estatísticas Refinado */}
                         <div className="grid grid-cols-3 gap-3">
                             <StatCard 
                                 label="Preço Médio" 
@@ -352,8 +333,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
 
                 {tab === 'FUNDAMENTOS' && (
                     <div className="space-y-4 anim-fade-in">
-                        
-                        {/* CARD DE DESTAQUES PRINCIPAIS */}
                         <div className="grid grid-cols-2 gap-3 mb-2">
                             <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
                                 <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{isFII ? "P/VP" : "P/L"}</p>
@@ -364,12 +343,11 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                             <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
                                 <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">Dividend Yield</p>
                                 <p className="text-2xl font-black tracking-tight text-emerald-500">
-                                    {displayAsset.dy_12m !== undefined && displayAsset.dy_12m !== null ? `${displayAsset.dy_12m.toFixed(2)}%` : '-'}
+                                    {displayAsset.dy_12m !== undefined && displayAsset.dy_12m > 0 ? `${displayAsset.dy_12m.toFixed(2)}%` : '-'}
                                 </p>
                             </div>
                         </div>
 
-                        {/* --- BLOCOS FIIs --- */}
                         {isFII && (
                             <>
                                 <SectionHeader title="Valuation & Cotas" icon={Scale} />
@@ -393,15 +371,12 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                                     )}
                                     <InfoRow label="Liquidez Diária" value={formatNumber(displayAsset.liquidity)} />
                                     <InfoRow label="Número de Cotistas" value={formatNumber(displayAsset.properties_count)} />
-                                    
-                                    {/* Exibição direta para campos de texto (sem formatNumber) */}
                                     <InfoRow label="Tipo de Gestão" value={displayAsset.manager_type || '-'} />
                                     <InfoRow label="Taxa de Admin." value={displayAsset.management_fee || '-'} />
                                 </div>
                             </>
                         )}
 
-                        {/* --- BLOCOS AÇÕES --- */}
                         {!isFII && (
                             <>
                                 <SectionHeader title="Valuation" icon={Scale} />
@@ -439,7 +414,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
 
                 {tab === 'PROVENTOS' && (
                     <div className="space-y-8 anim-fade-in">
-                        {/* Cartão de Destaque */}
                         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-800 p-6 rounded-3xl text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-8 -mt-8"></div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -463,7 +437,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                             </div>
                         </div>
 
-                        {/* Gráfico 12 Meses */}
                         <div className="h-48 w-full">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 px-2">Histórico 12 Meses</h3>
                             <ResponsiveContainer width="100%" height="100%">
@@ -491,7 +464,6 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                             </ResponsiveContainer>
                         </div>
 
-                        {/* Últimos Pagamentos (Lista) */}
                         <div className="space-y-3">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-2">Últimos Pagamentos</h3>
                             {assetDividends.length > 0 ? assetDividends.slice().reverse().slice(0, 5).map((d, i) => (
@@ -527,10 +499,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Efeito para abrir modal automaticamente via Deep Link interno (Stories)
     useEffect(() => {
         if (targetAsset) {
-            // Verifica se o ativo existe no portfolio antes de abrir
             const exists = portfolio.some(p => p.ticker === targetAsset);
             if (exists) {
                 setSelectedTicker(targetAsset);
@@ -658,7 +628,7 @@ const AssetCard: React.FC<{ asset: AssetPosition, privacyMode?: boolean, onClick
             <div className="text-right">
                 <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalValue, privacyMode)}</p>
                 <p className="text-[10px] font-medium text-zinc-400 mt-0.5">{formatBRL(asset.currentPrice || 0, privacyMode)}</p>
-                {asset.dy_12m !== undefined && (
+                {asset.dy_12m !== undefined && asset.dy_12m > 0 && (
                     <p className="text-[9px] font-bold text-emerald-500 mt-1">DY {asset.dy_12m.toFixed(1)}%</p>
                 )}
             </div>

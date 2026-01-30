@@ -30,7 +30,7 @@ const parseNumberSafe = (val: any): number | undefined => {
     let str = String(val).replace(/[^\d.,-]/g, '').trim();
     if (!str || str === '-') return undefined;
 
-    // Lógica robusta de parsing (copiada do scraper para consistência)
+    // Lógica robusta de parsing
     const hasComma = str.includes(',');
     const hasDot = str.includes('.');
 
@@ -49,7 +49,6 @@ const parseNumberSafe = (val: any): number | undefined => {
 };
 
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
-    // Helper para buscar valor em múltiplas chaves possíveis
     const getVal = (...keys: string[]): any => {
         for (const k of keys) {
             if (m[k] !== undefined && m[k] !== null && m[k] !== '' && m[k] !== 'N/A') return m[k];
@@ -76,16 +75,13 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
         
-        // Ações (Stocks) - Mapeamento com Aliases
+        // Ações (Stocks)
         net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),
         gross_margin: parseNumberSafe(getVal('margem_bruta', 'margembruta')),
-        
         cagr_revenue: parseNumberSafe(getVal('cagr_receita_5a', 'cagr_receitas', 'cagr_receita')),
         cagr_profits: parseNumberSafe(getVal('cagr_lucros_5a', 'cagr_lucros', 'cagr_lucro')),
-        
         net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'div_liq_ebitda', 'dividaliquida_ebitda')),
         ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
-        
         lpa: parseNumberSafe(getVal('lpa')),
         vpa: parseNumberSafe(getVal('vp_cota', 'vpa', 'valor_patrimonial_acao', 'valorpatrimonialcota')),
         
@@ -183,7 +179,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       const missingOrStale = uniqueTickers.filter(t => {
           const m = metadataMap[t];
-          return !m || (m.updated_at && isStale(m.updated_at));
+          // REGRA DE CORREÇÃO: Se DY for 0 ou nulo, considera o dado corrompido/antigo e força atualização
+          // Isso corrige casos onde um crawl anterior falhou (ex: página em branco) e salvou 0 no banco.
+          const hasSuspiciousData = m && (m.dy_12m === 0 || m.dy_12m === null || m.dy_12m === undefined || m.dy_12m === '0');
+          
+          return !m || (m.updated_at && isStale(m.updated_at)) || hasSuspiciousData;
       });
 
       const toUpdate = forceRefresh ? uniqueTickers : missingOrStale;
@@ -207,8 +207,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   }
               });
           } else {
+              // Trigger background update for missing items (incluindo os com DY 0.0)
               triggerScraperUpdate(toUpdate, true).then(results => {
-                  console.log(`[DataService] Background update finished for ${results.length} assets`);
+                  console.log(`[DataService] Auto-correction triggered for ${results.length} assets`);
               });
           }
       }
