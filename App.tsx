@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '8.8.5'; 
+const APP_VERSION = '8.8.6'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -32,11 +32,12 @@ const STORAGE_KEYS = {
   METADATA: 'investfiis_metadata_v2' 
 };
 
-// Memoização dos componentes principais para performance
+// Memoização dos componentes principais para performance e evitar re-renders desnecessários (piscadas)
 const MemoizedHome = React.memo(Home);
 const MemoizedPortfolio = React.memo(Portfolio);
 const MemoizedTransactions = React.memo(Transactions);
 const MemoizedNews = React.memo(News);
+const MemoizedSettings = React.memo(Settings); // Crucial para evitar piscada no scroll
 
 // Helper para merge inteligente de dividendos sem duplicatas
 const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[]) => {
@@ -570,6 +571,7 @@ const App: React.FC = () => {
   const isHeaderVisible = scrollDirection === 'up' || isTop;
 
   // --- LOGO DA MARCA ---
+  // Importante: Passado para o Header apenas nas abas principais
   const AppLogo = <img src="./logo.svg" className="w-7 h-7 object-contain drop-shadow-sm" alt="InvestFIIs" />;
 
   // --- RENDERIZAÇÃO ---
@@ -615,13 +617,13 @@ const App: React.FC = () => {
                 }
                 hideBorder={currentTab === 'transactions'}
                 isVisible={isHeaderVisible}
-                headerIcon={!showSettings ? AppLogo : undefined}
+                headerIcon={!showSettings ? AppLogo : undefined} // Logo visível apenas nas abas principais
             />
             
             <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-4">
               {showSettings ? (
                 <div className="anim-page-enter pt-4">
-                  <Settings 
+                  <MemoizedSettings 
                       onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} 
                       dividends={dividends} onImportDividends={setDividends} onResetApp={handleSoftReset} 
                       theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} 
@@ -642,7 +644,7 @@ const App: React.FC = () => {
                           totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
                           inflationRate={marketIndicators.ipca} 
                           privacyMode={privacyMode} 
-                          onViewAsset={handleViewAsset} // Passa handler de navegação
+                          onViewAsset={handleViewAsset} 
                       />
                   )}
                   {currentTab === 'portfolio' && (
@@ -652,8 +654,8 @@ const App: React.FC = () => {
                           privacyMode={privacyMode} 
                           onAssetRefresh={refreshSingleAsset} 
                           headerVisible={isHeaderVisible} 
-                          targetAsset={targetAssetTicker} // Passa o ticker alvo
-                          onClearTarget={() => setTargetAssetTicker(null)} // Limpa após uso
+                          targetAsset={targetAssetTicker} 
+                          onClearTarget={() => setTargetAssetTicker(null)} 
                       />
                   )}
                   {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}

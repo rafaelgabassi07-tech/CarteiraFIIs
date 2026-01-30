@@ -343,7 +343,7 @@ const AssetDetailView = ({ asset, dividends, privacyMode, onClose, onRefresh }: 
                             <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-center">
                                 <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">Dividend Yield</p>
                                 <p className="text-2xl font-black tracking-tight text-emerald-500">
-                                    {displayAsset.dy_12m !== undefined && displayAsset.dy_12m > 0 ? `${displayAsset.dy_12m.toFixed(2)}%` : '-'}
+                                    {displayAsset.dy_12m !== undefined ? `${displayAsset.dy_12m.toFixed(2)}%` : '-'}
                                 </p>
                             </div>
                         </div>
@@ -605,6 +605,9 @@ const AssetCard: React.FC<{ asset: AssetPosition, privacyMode?: boolean, onClick
     const isPositive = (asset.dailyChange || 0) >= 0;
     const totalValue = (asset.currentPrice || 0) * asset.quantity;
     
+    // Verificação relaxada para DY, garantindo que apareça se não for undefined
+    const dyDisplay = asset.dy_12m !== undefined && asset.dy_12m !== null;
+
     return (
         <button onClick={onClick} className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between group active:scale-[0.98] transition-all duration-200 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm anim-fade-in-up">
             <div className="flex items-center gap-4">
@@ -628,8 +631,8 @@ const AssetCard: React.FC<{ asset: AssetPosition, privacyMode?: boolean, onClick
             <div className="text-right">
                 <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(totalValue, privacyMode)}</p>
                 <p className="text-[10px] font-medium text-zinc-400 mt-0.5">{formatBRL(asset.currentPrice || 0, privacyMode)}</p>
-                {asset.dy_12m !== undefined && asset.dy_12m > 0 && (
-                    <p className="text-[9px] font-bold text-emerald-500 mt-1">DY {asset.dy_12m.toFixed(1)}%</p>
+                {dyDisplay && (
+                    <p className="text-[9px] font-bold text-emerald-500 mt-1">DY {asset.dy_12m?.toFixed(1)}%</p>
                 )}
             </div>
         </button>
