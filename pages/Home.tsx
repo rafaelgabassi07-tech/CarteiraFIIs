@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -43,148 +43,117 @@ const formatDateShort = (dateStr: string) => {
     return `${day}/${month}`;
 };
 
-// --- WALKING BOT CHARACTER ---
-const WalkingBot = ({ predictions, isThinking }: { predictions: FutureDividendPrediction[], isThinking: boolean }) => {
+// --- WALKING BOT CHARACTER (Personagem Completo) ---
+const WalkingBot = ({ isThinking, onInteract }: { isThinking: boolean, onInteract: () => void }) => {
     const [pos, setPos] = useState({ x: 50, y: 20 }); // % position
     const [direction, setDirection] = useState<'left' | 'right'>('right');
     const [isWalking, setIsWalking] = useState(false);
-    const [message, setMessage] = useState<string | null>(null);
-    const [interactionIndex, setInteractionIndex] = useState(0);
     const moveTimerRef = useRef<any>(null);
 
-    // Estilos de animação injetados localmente para o personagem
+    // Estilos de animação injetados localmente para o personagem articulado
     const robotStyles = `
-        @keyframes robotWalk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-        @keyframes limbSwing { 0% { transform: rotate(15deg); } 100% { transform: rotate(-15deg); } }
-        .robot-body-anim { animation: robotWalk 0.4s ease-in-out infinite; }
-        .limb-l-anim { transform-origin: top center; animation: limbSwing 0.4s ease-in-out infinite alternate; }
-        .limb-r-anim { transform-origin: top center; animation: limbSwing 0.4s ease-in-out infinite alternate-reverse; }
+        @keyframes robotWalkBody { 
+            0%, 100% { transform: translateY(0); } 
+            50% { transform: translateY(-2px); } 
+        }
+        @keyframes limbSwingLeft { 
+            0% { transform: rotate(20deg); } 
+            100% { transform: rotate(-20deg); } 
+        }
+        @keyframes limbSwingRight { 
+            0% { transform: rotate(-20deg); } 
+            100% { transform: rotate(20deg); } 
+        }
+        .bot-walking .bot-body { animation: robotWalkBody 0.3s ease-in-out infinite; }
+        .bot-walking .bot-arm-l, .bot-walking .bot-leg-r { animation: limbSwingRight 0.6s ease-in-out infinite alternate; }
+        .bot-walking .bot-arm-r, .bot-walking .bot-leg-l { animation: limbSwingLeft 0.6s ease-in-out infinite alternate; }
+        .bot-thinking .bot-head-light { animation: pulseRed 1s infinite; }
+        @keyframes pulseRed { 0%, 100% { background-color: #ef4444; box-shadow: 0 0 5px #ef4444; } 50% { background-color: #fee2e2; box-shadow: 0 0 2px #ef4444; } }
+        @keyframes pulseGreen { 0%, 100% { background-color: #10b981; box-shadow: 0 0 8px #10b981; } 50% { background-color: #d1fae5; box-shadow: 0 0 3px #10b981; } }
     `;
 
-    const getMessage = (idx: number) => {
-        if (isThinking) return "Analisando mercado...";
-        if (predictions.length === 0) {
-            const msgs = [
-                "Nada no radar por enquanto, chefe!",
-                "Estou patrulhando em busca de dividendos.",
-                "Dica: FIIs de papel costumam anunciar no 5º dia útil.",
-                "Minha antena não captou nada novo hoje."
-            ];
-            return msgs[idx % msgs.length];
-        }
-        const intro = `Radar Ativo! Encontrei ${predictions.length} eventos.`;
-        const items = predictions.map(p => 
-            `${p.ticker}: ${p.paymentDate ? 'Pagamento' : 'Data Com'} em ${formatDateShort(p.paymentDate || p.dateCom)}`
-        );
-        const allMsgs = [intro, ...items, "Toque em mim para fechar."];
-        return allMsgs[idx % allMsgs.length];
-    };
-
     const moveRandomly = () => {
-        if (message) return;
-
-        // Define novo destino
+        // Define novo destino dentro da área superior da lista
         const newX = 10 + Math.random() * 80; 
-        const newY = 5 + Math.random() * 30;  
+        const newY = 5 + Math.random() * 25;  
 
         setDirection(newX > pos.x ? 'right' : 'left');
-        setIsWalking(true); // Começa a andar
+        setIsWalking(true); 
         setPos({ x: newX, y: newY });
 
-        // Para de andar quando "chegar" (simulado pelo tempo de transição)
+        // Para de andar quando "chegar" (tempo estimado da transição CSS)
         setTimeout(() => {
-            if (!message) setIsWalking(false);
+            setIsWalking(false);
         }, 2000); 
     };
 
     useEffect(() => {
         moveRandomly();
-        const interval = setInterval(moveRandomly, 5000 + Math.random() * 3000);
+        const interval = setInterval(moveRandomly, 6000 + Math.random() * 4000);
         moveTimerRef.current = interval;
         return () => clearInterval(interval);
-    }, [message]);
-
-    const handleInteract = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        const nextIdx = message ? interactionIndex + 1 : 0;
-        
-        // Se ciclou todas, fecha
-        const totalMsgs = predictions.length > 0 ? predictions.length + 2 : 4;
-        
-        if (message && nextIdx >= totalMsgs) {
-            setMessage(null);
-            setIsWalking(true);
-            moveRandomly();
-        } else {
-            setInteractionIndex(nextIdx);
-            setMessage(getMessage(nextIdx));
-            setIsWalking(false); // Para para falar
-            if (moveTimerRef.current) clearInterval(moveTimerRef.current);
-        }
-    };
+    }, []);
 
     return (
         <>
             <style>{robotStyles}</style>
             <div 
-                className="absolute z-30 transition-all duration-[2000ms] ease-in-out pointer-events-none"
+                className={`absolute z-30 transition-all duration-[2000ms] ease-in-out pointer-events-none ${isWalking ? 'bot-walking' : ''} ${isThinking ? 'bot-thinking' : ''}`}
                 style={{ 
                     top: `${pos.y}%`, 
                     left: `${pos.x}%`,
                     transform: 'translate(-50%, -50%)'
                 }}
             >
-                <div className="relative pointer-events-auto group cursor-pointer" onClick={handleInteract}>
-                    {/* Balão de Fala */}
-                    {message && (
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 bg-white dark:bg-zinc-800 p-3 rounded-2xl rounded-bl-none shadow-xl border border-indigo-100 dark:border-indigo-900/50 anim-scale-in origin-bottom-left z-40">
-                            <p className="text-xs font-bold text-zinc-700 dark:text-zinc-200 leading-tight text-center">
-                                {message}
-                            </p>
-                        </div>
-                    )}
-
-                    {/* O ROBÔ (Character) */}
-                    <div className={`relative transition-transform duration-300 ${direction === 'left' ? '-scale-x-100' : 'scale-x-100'} ${isWalking ? 'robot-body-anim' : ''}`}>
+                <div 
+                    className="relative pointer-events-auto cursor-pointer group scale-125" 
+                    onClick={(e) => { e.stopPropagation(); onInteract(); }}
+                >
+                    {/* Character Container */}
+                    <div className={`relative transition-transform duration-300 ${direction === 'left' ? '-scale-x-100' : 'scale-x-100'}`}>
                         
                         {/* Antena */}
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-zinc-400 dark:bg-zinc-500"></div>
-                        <div className={`absolute -top-4 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full ${predictions.length > 0 ? 'bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse' : 'bg-red-500 shadow-[0_0_5px_#ef4444]'}`}></div>
+                        <div className="absolute -top-[18px] left-1/2 -translate-x-1/2 w-0.5 h-3 bg-zinc-400 dark:bg-zinc-500 origin-bottom animate-[limbSwingLeft_2s_infinite]"></div>
+                        <div className={`absolute -top-[19px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bot-head-light ${isThinking ? 'bg-amber-400 shadow-[0_0_5px_#f59e0b]' : 'bg-emerald-500 shadow-[0_0_5px_#10b981] animate-[pulseGreen_2s_infinite]'}`}></div>
 
-                        {/* Cabeça */}
-                        <div className="w-10 h-9 bg-zinc-100 dark:bg-zinc-800 rounded-xl border-2 border-zinc-300 dark:border-zinc-600 relative z-20 flex items-center justify-center overflow-hidden">
-                            <div className="flex gap-1.5 mt-1">
-                                <div className={`w-1.5 h-1.5 bg-zinc-800 dark:bg-zinc-200 rounded-full ${isThinking ? 'animate-bounce' : ''}`}></div>
-                                <div className={`w-1.5 h-1.5 bg-zinc-800 dark:bg-zinc-200 rounded-full ${isThinking ? 'animate-bounce delay-75' : ''}`}></div>
-                            </div>
-                            {/* Rosto / Visor */}
-                            <div className="absolute top-0 left-0 right-0 h-3 bg-indigo-500/10 dark:bg-indigo-400/20"></div>
-                        </div>
-
-                        {/* Corpo */}
-                        <div className="w-8 h-10 bg-indigo-600 dark:bg-indigo-700 rounded-lg mx-auto -mt-1 relative z-10 flex flex-col items-center pt-2 border border-indigo-700 dark:border-indigo-800 shadow-sm">
-                            {/* Emblema no peito */}
-                            <div className="w-4 h-4 bg-white/20 rounded-full flex items-center justify-center">
-                                <Zap className="w-2.5 h-2.5 text-yellow-300 fill-yellow-300" />
-                            </div>
-                        </div>
-
-                        {/* Braços (Atrás do corpo para layer correto) */}
-                        <div className="absolute top-9 -left-2 w-2.5 h-8 bg-zinc-400 dark:bg-zinc-500 rounded-full border border-zinc-500 dark:border-zinc-600 z-0 origin-top flex flex-col justify-end items-center pb-1 shadow-sm" style={{ animationName: isWalking ? 'limbSwing' : 'none' }}>
-                            <div className="w-3 h-3 bg-zinc-300 dark:bg-zinc-400 rounded-full"></div> {/* Mão E */}
-                        </div>
-                        <div className="absolute top-9 -right-2 w-2.5 h-8 bg-zinc-400 dark:bg-zinc-500 rounded-full border border-zinc-500 dark:border-zinc-600 z-0 origin-top flex flex-col justify-end items-center pb-1 shadow-sm" style={{ animationName: isWalking ? 'limbSwing' : 'none', animationDirection: 'alternate-reverse' }}>
-                            <div className="w-3 h-3 bg-zinc-300 dark:bg-zinc-400 rounded-full"></div> {/* Mão D */}
+                        {/* Braço Esquerdo (Trás) */}
+                        <div className="bot-arm-l absolute top-3 left-0 w-2 h-6 bg-zinc-400 dark:bg-zinc-600 rounded-full origin-top -rotate-12">
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-zinc-300 dark:bg-zinc-500 rounded-full"></div>
                         </div>
 
                         {/* Pernas */}
-                        <div className="flex justify-center gap-1 -mt-1 relative z-0">
-                            <div className="w-2.5 h-7 bg-zinc-800 dark:bg-zinc-900 rounded-b-md border border-zinc-700 origin-top" style={{ animation: isWalking ? 'limbSwing 0.4s ease-in-out infinite alternate-reverse' : 'none' }}></div>
-                            <div className="w-2.5 h-7 bg-zinc-800 dark:bg-zinc-900 rounded-b-md border border-zinc-700 origin-top" style={{ animation: isWalking ? 'limbSwing 0.4s ease-in-out infinite alternate' : 'none' }}></div>
+                        <div className="absolute top-[26px] left-[6px] w-2 h-5 bg-zinc-700 dark:bg-zinc-800 rounded-b-md origin-top bot-leg-l">
+                             <div className="absolute bottom-0 w-3 h-1.5 bg-black dark:bg-zinc-900 -left-0.5 rounded-sm"></div>
+                        </div>
+                        <div className="absolute top-[26px] right-[6px] w-2 h-5 bg-zinc-700 dark:bg-zinc-800 rounded-b-md origin-top bot-leg-r">
+                             <div className="absolute bottom-0 w-3 h-1.5 bg-black dark:bg-zinc-900 -left-0.5 rounded-sm"></div>
+                        </div>
+
+                        {/* Corpo */}
+                        <div className="bot-body relative z-10 w-8 h-9 bg-gradient-to-b from-indigo-500 to-indigo-700 dark:from-indigo-600 dark:to-indigo-800 rounded-xl border border-indigo-400/50 shadow-sm flex items-center justify-center">
+                            <div className="w-5 h-4 bg-black/20 rounded border border-white/10 flex items-center justify-center">
+                                <Activity className={`w-3 h-3 text-emerald-400 ${isThinking ? 'animate-spin' : ''}`} />
+                            </div>
+                        </div>
+
+                        {/* Cabeça */}
+                        <div className="bot-body absolute -top-[13px] left-1/2 -translate-x-1/2 w-9 h-7 bg-zinc-100 dark:bg-zinc-200 rounded-lg border-2 border-zinc-300 dark:border-zinc-400 z-20 flex items-center justify-center overflow-hidden shadow-sm">
+                            <div className="w-full h-3 bg-black/80 absolute top-1 flex justify-center items-center gap-1">
+                                {isThinking ? (
+                                    <div className="flex gap-0.5"><div className="w-1 h-1 bg-rose-500 rounded-full animate-bounce"></div><div className="w-1 h-1 bg-rose-500 rounded-full animate-bounce delay-75"></div></div>
+                                ) : (
+                                    <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_2px_cyan]"></div><div className="w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_2px_cyan]"></div></div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Braço Direito (Frente) */}
+                        <div className="bot-arm-r absolute top-3 right-0 w-2 h-6 bg-zinc-400 dark:bg-zinc-600 rounded-full origin-top rotate-12 z-20">
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-zinc-300 dark:bg-zinc-500 rounded-full"></div>
                         </div>
 
                         {/* Sombra */}
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-1.5 bg-black/20 rounded-full blur-[2px]"></div>
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1.5 bg-black/20 rounded-full blur-[2px]"></div>
                     </div>
                 </div>
             </div>
@@ -194,26 +163,78 @@ const WalkingBot = ({ predictions, isThinking }: { predictions: FutureDividendPr
 
 const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
     const isPayment = event.eventType === 'payment';
+    const isPrediction = event.isPrediction === true; // Flag para dados do robô
+    
     const eventDate = new Date(event.date + 'T00:00:00');
     const today = new Date();
     today.setHours(0,0,0,0);
     const isToday = eventDate.getTime() === today.getTime();
 
-    let iconBg = 'bg-zinc-100 dark:bg-zinc-800'; let iconColor = 'text-zinc-400'; let Icon = Calendar; let borderColor = 'border-zinc-200 dark:border-zinc-800';
-    if (isPayment) { iconBg = 'bg-emerald-100 dark:bg-emerald-900/20'; iconColor = 'text-emerald-600 dark:text-emerald-400'; Icon = Banknote; borderColor = 'border-emerald-200 dark:border-emerald-900/30'; } 
-    else { iconBg = 'bg-amber-100 dark:bg-amber-900/20'; iconColor = 'text-amber-600 dark:text-amber-400'; Icon = CalendarClock; borderColor = 'border-amber-200 dark:border-amber-900/30'; }
+    // Estilo especial para previsões do Robô
+    let iconBg, iconColor, Icon, borderColor;
+    
+    if (isPrediction) {
+        iconBg = 'bg-purple-100 dark:bg-purple-900/20'; 
+        iconColor = 'text-purple-600 dark:text-purple-400'; 
+        Icon = Radio; 
+        borderColor = 'border-purple-200 dark:border-purple-900/30';
+    } else if (isPayment) { 
+        iconBg = 'bg-emerald-100 dark:bg-emerald-900/20'; 
+        iconColor = 'text-emerald-600 dark:text-emerald-400'; 
+        Icon = Banknote; 
+        borderColor = 'border-emerald-200 dark:border-emerald-900/30'; 
+    } else { 
+        iconBg = 'bg-amber-100 dark:bg-amber-900/20'; 
+        iconColor = 'text-amber-600 dark:text-amber-400'; 
+        Icon = CalendarClock; 
+        borderColor = 'border-amber-200 dark:border-amber-900/30'; 
+    }
+
     const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
+    
     return (
-        <div className="relative pl-12 py-2">
+        <div className={`relative pl-12 py-2 ${isPrediction ? 'anim-fade-in' : ''}`}>
             {!isLast && <div className="absolute left-[19px] top-8 bottom-[-8px] w-[2px] bg-zinc-100 dark:bg-zinc-800"></div>}
-            <div className={`absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-950 z-10 ${iconBg} ${iconColor} shadow-sm`}><Icon className="w-5 h-5" /></div>
+            
+            <div className={`absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-950 z-10 ${iconBg} ${iconColor} shadow-sm`}>
+                <Icon className="w-5 h-5" />
+            </div>
+            
             <div className={`bg-white dark:bg-zinc-900 p-4 rounded-2xl border ${borderColor} shadow-sm flex justify-between items-center relative overflow-hidden group`}>
-                {isToday && <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg">HOJE</div>}
+                {isToday && !isPrediction && <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg">HOJE</div>}
+                {isPrediction && <div className="absolute right-0 top-0 bg-purple-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg flex items-center gap-1"><ScanEye className="w-3 h-3" /> RADAR</div>}
+                
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-xs font-black text-zinc-500 border border-zinc-100 dark:border-zinc-700">{tickerDisplay}</div>
-                    <div><div className="flex items-center gap-2"><h4 className="text-sm font-black text-zinc-900 dark:text-white">{event.ticker}</h4><span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isPayment ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'}`}>{isPayment ? 'Pagamento' : 'Data Com'}</span></div><p className="text-[10px] text-zinc-400 font-medium mt-0.5">{event.type} • {formatDateShort(event.date)}</p></div>
+                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-xs font-black text-zinc-500 border border-zinc-100 dark:border-zinc-700">
+                        {tickerDisplay}
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-black text-zinc-900 dark:text-white">{event.ticker}</h4>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isPrediction ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : isPayment ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                                {isPrediction ? 'Detectado' : isPayment ? 'Pagamento' : 'Data Com'}
+                            </span>
+                        </div>
+                        <p className="text-[10px] text-zinc-400 font-medium mt-0.5">
+                            {event.type} • {formatDateShort(event.date)}
+                        </p>
+                    </div>
                 </div>
-                <div className="text-right">{isPayment ? (<><p className="text-sm font-black text-zinc-900 dark:text-white">{event.totalReceived.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p><p className="text-[9px] text-zinc-400">Total Previsto</p></>) : (<p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Corte</p>)}</div>
+                
+                <div className="text-right">
+                    {isPayment || isPrediction ? (
+                        <>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white">
+                                {event.totalReceived ? event.totalReceived.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : event.projectedTotal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                            <p className="text-[9px] text-zinc-400">
+                                {isPrediction ? 'Estimado' : 'Total Previsto'}
+                            </p>
+                        </>
+                    ) : (
+                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Corte</p>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -320,7 +341,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       try { return new Set(JSON.parse(localStorage.getItem('investfiis_read_stories') || '[]')); } catch { return new Set(); }
   });
 
-  // --- ROBOT STATE ---
+  // --- ROBOT STATE & DATA ---
   const [robotState, setRobotState] = useState<'idle' | 'thinking' | 'done'>('idle');
   const [futureSimulations, setFutureSimulations] = useState<FutureDividendPrediction[]>([]);
 
@@ -344,14 +365,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       loadData();
   }, [portfolio, inflationRate]);
 
-  // Efeito do Robô - Só dispara quando modal abre e está 'idle'
-  // MODIFICADO: Agora dispara no showAgendaModal
+  // Lógica do Robô: Atualiza automaticamente ao abrir a Agenda
   useEffect(() => {
       if (showAgendaModal && robotState === 'idle') {
           const runRobot = async () => {
               setRobotState('thinking');
-              // Delay simulado para "sensação" de inteligência
-              await new Promise(r => setTimeout(r, 1500));
+              // Simula tempo de processamento para animação
+              await new Promise(r => setTimeout(r, 2500));
+              
               try {
                   const predictions = await fetchFutureAnnouncements(portfolio);
                   setFutureSimulations(predictions);
@@ -364,6 +385,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           runRobot();
       }
   }, [showAgendaModal, robotState, portfolio]);
+
+  // Função para forçar re-scan quando clica no robô
+  const handleRobotInteract = useCallback(() => {
+      if (robotState !== 'thinking') {
+          setRobotState('thinking');
+          setFutureSimulations([]); // Limpa para efeito visual de "novo scan"
+          setTimeout(async () => {
+              try {
+                  const predictions = await fetchFutureAnnouncements(portfolio);
+                  setFutureSimulations(predictions);
+              } catch(e) { console.error(e); } finally { setRobotState('done'); }
+          }, 2000);
+      }
+  }, [portfolio, robotState]);
 
   const markAsRead = useCallback((id: string) => {
       setReadStories(prev => {
@@ -437,6 +472,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     let total12m = 0; let maxMonthly = 0;
     const oneYearAgoStr = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
 
+    // 1. Processa Recibos Confirmados (DB)
     safeReceipts.forEach(r => {
         if (!r) return;
         // Check using >= local date
@@ -451,6 +487,42 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             if (r.paymentDate >= oneYearAgoStr) total12m += r.totalReceived;
         }
     });
+
+    // 2. Integra Previsões do Robô (Deduplicação Inteligente)
+    // Se já existe um evento oficial para o mesmo ticker/data/valor, não adiciona a previsão.
+    if (futureSimulations.length > 0) {
+        futureSimulations.forEach(pred => {
+            const isDuplicate = allEvents.some(e => 
+                e.ticker === pred.ticker && 
+                (e.date === pred.paymentDate || e.date === pred.dateCom) &&
+                Math.abs(e.rate - pred.rate) < 0.001
+            );
+
+            if (!isDuplicate) {
+                // Adiciona como evento previsto
+                if (pred.paymentDate && pred.paymentDate >= todayStr) {
+                    allEvents.push({ 
+                        ticker: pred.ticker,
+                        date: pred.paymentDate,
+                        eventType: 'payment',
+                        type: pred.type,
+                        totalReceived: pred.projectedTotal,
+                        rate: pred.rate,
+                        isPrediction: true // Flag para UI
+                    });
+                }
+                if (pred.dateCom && pred.dateCom >= todayStr) {
+                    allEvents.push({
+                        ticker: pred.ticker,
+                        date: pred.dateCom,
+                        eventType: 'datacom',
+                        type: pred.type,
+                        isPrediction: true
+                    });
+                }
+            }
+        });
+    }
     
     const sortedEvents = allEvents.sort((a, b) => a.date.localeCompare(b.date));
     const grouped: Record<string, any[]> = { 'Hoje': [], 'Amanhã': [], 'Esta Semana': [], 'Este Mês': [], 'Futuro': [] };
@@ -490,7 +562,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     const monthlyAvg = dividendsChartData.length > 0 ? (sumLast12m / dividendsChartData.length) : 0;
 
     return { upcomingEvents: sortedEvents, received: receivedTotal, groupedEvents: grouped, provisionedTotal: provTotal, history: sortedHistory.reverse(), dividendsChartData, receiptsByMonth: receiptsMap, divStats: { total12m, maxMonthly, monthlyAvg } };
-  }, [dividendReceipts, totalDividendsReceived]);
+  }, [dividendReceipts, totalDividendsReceived, futureSimulations]);
 
   // (inflationAnalysis logic remains unchanged...)
   const inflationAnalysis = useMemo(() => {
@@ -697,13 +769,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             {/* Aumentamos o container relativo para o bot ter espaço de voo sobre a lista */}
             <div className="relative min-h-[60vh] w-full">
                 
-                {/* WALKING BOT CHARACTER */}
+                {/* WALKING BOT CHARACTER (Personagem) */}
                 <WalkingBot 
-                    predictions={futureSimulations} 
                     isThinking={robotState === 'thinking'}
+                    onInteract={handleRobotInteract}
                 />
 
-                {/* Lista de Eventos (Conteúdo) */}
+                {/* Lista de Eventos (Conteúdo unificado) */}
                 <div className="relative z-10 pt-4">
                     {Object.keys(groupedEvents).map((groupKey) => { 
                         const events = groupedEvents[groupKey]; 
