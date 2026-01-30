@@ -569,6 +569,9 @@ const App: React.FC = () => {
   // Determine header visibility logic
   const isHeaderVisible = scrollDirection === 'up' || isTop;
 
+  // --- LOGO DA MARCA ---
+  const AppLogo = <img src="./logo.svg" className="w-7 h-7 object-contain drop-shadow-sm" alt="InvestFIIs" />;
+
   // --- RENDERIZAÇÃO ---
 
   if (!isReady) return <SplashScreen finishLoading={false} realProgress={loadingProgress} />;
@@ -612,6 +615,7 @@ const App: React.FC = () => {
                 }
                 hideBorder={currentTab === 'transactions'}
                 isVisible={isHeaderVisible}
+                headerIcon={!showSettings ? AppLogo : undefined}
             />
             
             <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-4">

@@ -69,10 +69,11 @@ interface HeaderProps {
   cloudStatus?: 'disconnected' | 'connected' | 'hidden' | 'syncing';
   hideBorder?: boolean;
   isVisible?: boolean; // Novo prop para controle de animação
+  headerIcon?: React.ReactNode; // Novo prop para o logo
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  title, subtitle, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, cloudStatus = 'hidden', hideBorder = false, onRefresh, isVisible = true
+  title, subtitle, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, cloudStatus = 'hidden', hideBorder = false, onRefresh, isVisible = true, headerIcon
 }) => {
   return (
     <header 
@@ -90,9 +91,16 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           ) : (
             <div className="flex flex-col anim-fade-in min-w-0">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     {isRefreshing && <Loader2 className="w-4 h-4 animate-spin text-accent shrink-0" />}
-                    <h1 className="text-2xl font-black tracking-tighter flex items-center gap-2 truncate bg-gradient-to-br from-zinc-700 via-zinc-900 to-zinc-700 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-400 text-transparent bg-clip-text">
+                    
+                    {headerIcon && (
+                        <div className="shrink-0 anim-scale-in flex items-center justify-center mr-1">
+                            {headerIcon}
+                        </div>
+                    )}
+
+                    <h1 className="text-2xl font-black tracking-tighter truncate bg-gradient-to-br from-zinc-700 via-zinc-900 to-zinc-700 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-400 text-transparent bg-clip-text">
                       {title}
                     </h1>
                     <HeaderCloudStatus status={cloudStatus} />
