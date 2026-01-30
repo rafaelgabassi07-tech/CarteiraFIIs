@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, Wallet, TrendingDown, Minus, Zap, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, Wallet, TrendingDown, Minus, Zap, ShieldAlert, Check } from 'lucide-react';
 import { NewsItem, Transaction, NewsSentiment, NewsImpact } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -51,12 +51,12 @@ const analyzeNewsContent = (title: string, summary: string): { sentiment: NewsSe
     const text = (title + ' ' + summary).toLowerCase();
     
     // Palavras-chave de Sentimento
-    const positiveWords = ['lucro', 'dispara', 'sobe', 'alta', 'positivo', 'recorde', 'supera', 'cresce', 'anuncia dividendos', 'bonificação', 'recompra', 'otimista', 'avança', 'pagará', 'jcp', 'proventos'];
-    const negativeWords = ['prejuízo', 'cai', 'queda', 'baixa', 'negativo', 'pessimista', 'recua', 'desaba', 'perda', 'abaixo', 'piora', 'desvaloriza'];
+    const positiveWords = ['lucro', 'dispara', 'sobe', 'alta', 'positivo', 'recorde', 'supera', 'cresce', 'anuncia dividendos', 'bonificação', 'recompra', 'otimista', 'avança', 'pagará', 'jcp', 'proventos', 'dividendos', 'valorização', 'expansion'];
+    const negativeWords = ['prejuízo', 'cai', 'queda', 'baixa', 'negativo', 'pessimista', 'recua', 'desaba', 'perda', 'abaixo', 'piora', 'desvaloriza', 'rombo', 'crise'];
     
     // Palavras-chave de Risco/Impacto
-    const riskWords = ['falência', 'recuperação judicial', 'fraude', 'investigação', 'calote', 'dívida', 'crise', 'alerta', 'risco', 'incerteza', 'suspensão', 'irregularidade', 'rombo'];
-    const highImpactWords = ['dispara', 'desaba', 'recorde', 'urgente', 'atenção', 'impacto', 'surpreende', 'fusão', 'aquisição', 'oferta pública'];
+    const riskWords = ['falência', 'recuperação judicial', 'fraude', 'investigação', 'calote', 'dívida', 'crise', 'alerta', 'risco', 'incerteza', 'suspensão', 'irregularidade', 'rombo', 'polêmica', 'inadimplência'];
+    const highImpactWords = ['dispara', 'desaba', 'recorde', 'urgente', 'atenção', 'impacto', 'surpreende', 'fusão', 'aquisição', 'oferta pública', 'selic', 'copom', 'ipca', 'pib', 'fed', 'juros'];
 
     let score = 0;
     positiveWords.forEach(w => { if (text.includes(w)) score++; });
@@ -77,6 +77,8 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     const [news, setNews] = useState<NewsItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    
+    const [copyFeedback, setCopyFeedback] = useState<string | null>(null); // Feedback toast local
     
     // Filtros e Abas
     const [searchTerm, setSearchTerm] = useState('');
@@ -130,6 +132,15 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         }
     }, []);
 
+    // Auto-refresh a cada 5 minutos
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const query = activeTab === 'Carteira' && portfolioTickers.length > 0 ? portfolioTickers.slice(0, 15).join(' OR ') : searchTerm;
+            fetchNews(query);
+        }, 300000); 
+        return () => clearInterval(interval);
+    }, [activeTab, portfolioTickers, searchTerm, fetchNews]);
+
     // Efeito para carregar notícias quando a aba muda
     useEffect(() => {
         if (activeTab === 'Carteira') {
@@ -172,28 +183,33 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
             }
         } else {
             navigator.clipboard.writeText(`${item.title}\n${item.url}`);
+            setCopyFeedback(item.id);
+            setTimeout(() => setCopyFeedback(null), 2000);
         }
     };
 
     const filteredNews = useMemo(() => {
-        // Se a busca estiver ativa (retornou resultados via API), mostramos tudo
-        // Se não, aplicamos o filtro da aba ATUAL (Client-side filtering para abas padrão)
-        
         const isPortfolioMode = activeTab === 'Carteira' && portfolioTickers.length > 0;
-        const isSearchMode = searchTerm.length > 0 && !loading; // Se buscou, mostra tudo que veio
+        const isSearchMode = searchTerm.length > 0 && !loading;
 
         return news.filter(item => {
-            if (isSearchMode) return true; // Na busca, mostra tudo que a API retornou
-            if (isPortfolioMode) return true; // Na carteira, mostra tudo que a API retornou (já filtrado lá)
-            
-            // Logica padrão para abas FIIs/Ações (Feed Geral)
+            if (isSearchMode) return true; 
+            if (isPortfolioMode) return true; 
             const matchesCategory = item.category === activeTab;
             return matchesCategory;
         });
     }, [news, activeTab, portfolioTickers, searchTerm, loading]);
 
     return (
-        <div className="pb-32 min-h-screen">
+        <div className="pb-32 min-h-screen relative">
+            
+            {/* Feedback Toast Local */}
+            {copyFeedback && (
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-black/80 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 anim-scale-in backdrop-blur-md">
+                    <Check className="w-3 h-3 text-emerald-400" /> Link copiado!
+                </div>
+            )}
+
             {/* Header Sticky Sólido */}
             <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-3 mb-4">
                 <div className="flex flex-col gap-3">
@@ -350,7 +366,7 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                                                 onClick={(e) => handleShare(item, e)}
                                                 className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors px-2 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
                                             >
-                                                <Share2 className="w-3 h-3" /> Compartilhar
+                                                {copyFeedback === item.id ? <Check className="w-3 h-3 text-emerald-500" /> : <Share2 className="w-3 h-3" />} {copyFeedback === item.id ? 'Copiado!' : 'Compartilhar'}
                                             </button>
                                         </div>
                                     </a>

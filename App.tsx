@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '8.8.7'; 
+const APP_VERSION = '8.8.9'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -63,6 +63,9 @@ const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[])
 const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
   const updateManager = useUpdateManager(APP_VERSION);
+  // Destructuring stable values to fix re-render dependency issue
+  const { setShowChangelog, checkForUpdates, isUpdateAvailable, currentVersionDate, startUpdateProcess, isUpdating, updateProgress, releaseNotes, showChangelog: isChangelogOpen } = updateManager;
+
   const { scrollDirection, isTop } = useScrollDirection();
   
   // Controle de Inicialização
@@ -475,6 +478,19 @@ const App: React.FC = () => {
       window.location.reload();
   }, []);
 
+  // Callbacks estabilizados para evitar re-render em MemoizedSettings
+  const handleForceUpdate = useCallback(() => {
+      window.location.reload();
+  }, []);
+
+  const handleRequestPushPermission = useCallback(() => {
+      setPushEnabled(prev => !prev);
+  }, []);
+
+  const handleShowChangelog = useCallback(() => {
+      setShowChangelog(true);
+  }, [setShowChangelog]);
+
   // --- REFRESH MANUAL COMPLETO (ACÃO DO USUÁRIO) ---
   const handleManualRefresh = async () => {
       if (transactions.length === 0) {
@@ -608,8 +624,8 @@ const App: React.FC = () => {
             <Header 
                 title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'transactions' ? 'Ordens' : 'Notícias'} 
                 showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
-                isRefreshing={isRefreshing || isScraping} updateAvailable={updateManager.isUpdateAvailable} 
-                onUpdateClick={() => updateManager.setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
+                isRefreshing={isRefreshing || isScraping} updateAvailable={isUpdateAvailable} 
+                onUpdateClick={() => setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
                 notificationCount={notifications.filter(n=>!n.read).length} appVersion={APP_VERSION} 
                 cloudStatus={cloudStatus} 
                 onRefresh={
@@ -629,10 +645,10 @@ const App: React.FC = () => {
                       dividends={dividends} onImportDividends={setDividends} onResetApp={handleSoftReset} 
                       theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} 
                       privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} 
-                      updateAvailable={updateManager.isUpdateAvailable} onCheckUpdates={updateManager.checkForUpdates} 
-                      onShowChangelog={() => updateManager.setShowChangelog(true)} pushEnabled={pushEnabled} 
-                      onRequestPushPermission={() => setPushEnabled(prev => !prev)} onSyncAll={handleSyncAll} 
-                      onForceUpdate={() => window.location.reload()} currentVersionDate={updateManager.currentVersionDate}
+                      updateAvailable={isUpdateAvailable} onCheckUpdates={checkForUpdates} 
+                      onShowChangelog={handleShowChangelog} pushEnabled={pushEnabled} 
+                      onRequestPushPermission={handleRequestPushPermission} onSyncAll={handleSyncAll} 
+                      onForceUpdate={handleForceUpdate} currentVersionDate={currentVersionDate}
                       services={services} onCheckConnection={checkServiceHealth} isCheckingConnection={isCheckingServices}
                   />
                 </div>
@@ -665,7 +681,7 @@ const App: React.FC = () => {
               )}
             </main>
             {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} isVisible={isHeaderVisible} />}
-            <ChangelogModal isOpen={updateManager.showChangelog} onClose={() => updateManager.setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={updateManager.releaseNotes} isUpdatePending={updateManager.isUpdateAvailable} onUpdate={updateManager.startUpdateProcess} isUpdating={updateManager.isUpdating} progress={updateManager.updateProgress} />
+            <ChangelogModal isOpen={isChangelogOpen} onClose={() => setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={releaseNotes} isUpdatePending={isUpdateAvailable} onUpdate={startUpdateProcess} isUpdating={isUpdating} progress={updateProgress} />
             <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={handleClearNotifications} />
             <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />
             <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />

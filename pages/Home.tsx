@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -383,6 +383,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           };
       });
 
+      // 8. Ativos que vencem a inflação (Novo KPI)
+      let protectedEquity = 0;
+      let totalAnalyzableEquity = 0;
+      
+      portfolio.forEach(p => {
+          const val = (p.currentPrice || 0) * p.quantity;
+          if (p.dy_12m !== undefined && p.dy_12m !== null) {
+              totalAnalyzableEquity += val;
+              if (p.dy_12m >= annualInflationRate) {
+                  protectedEquity += val;
+              }
+          }
+      });
+      const protectedPercent = totalAnalyzableEquity > 0 ? (protectedEquity / totalAnalyzableEquity) * 100 : 0;
+
       return {
           realYieldSpread,
           nominalYield,
@@ -390,9 +405,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           monthlyInflationRatePercent, 
           monthlyInflationCost: currentMonthlyInflationCost,
           coverageRatio,
-          chartData
+          chartData,
+          protectedPercent
       };
-  }, [invested, safeInflation, divStats, dividendsChartData, transactions]);
+  }, [invested, safeInflation, divStats, dividendsChartData, transactions, portfolio]);
 
   const toggleMonthExpand = useCallback((month: string) => setExpandedMonth(prev => prev === month ? null : month), []);
   const handleBarClick = useCallback((data: any) => { if (data && data.activePayload && data.activePayload.length > 0) { const item = data.activePayload[0].payload; if (item && item.fullDate) setSelectedProventosMonth(item.fullDate); } }, []);
@@ -515,7 +531,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      <p className="text-lg font-black text-zinc-900 dark:text-white">{sectorChartData.length}</p>
                  </div>
                  <div className={`bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm ${topConcentration > 50 ? 'border-amber-200 dark:border-amber-900/50' : ''}`}>
-                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Target className="w-3 h-3" /> Top 3 Conc.</p>
+                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Target className="w-3 h-3" /> Risco (Top 3)</p>
                      <p className={`text-lg font-black ${topConcentration > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{topConcentration.toFixed(1)}%</p>
                  </div>
              </div>
@@ -577,18 +593,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          
                          <div className="space-y-3">
                              {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((item, index) => (
-                                 <button key={index} onClick={() => setActiveIndexClass(index === activeIndexClass ? undefined : index)} className={`w-full p-4 rounded-2xl border flex items-center gap-4 group transition-all duration-300 ${index === activeIndexClass ? 'bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 shadow-md transform scale-[1.02]' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}>
-                                     <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm" style={{ backgroundColor: item.color }}>
+                                 <button key={index} onClick={() => setActiveIndexClass(index === activeIndexClass ? undefined : index)} className={`w-full p-4 rounded-2xl border flex items-center gap-4 group transition-all duration-300 relative overflow-hidden ${index === activeIndexClass ? 'bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 shadow-md transform scale-[1.02]' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}>
+                                     {/* Progress Bar Background */}
+                                     <div className="absolute bottom-0 left-0 h-1 bg-zinc-100 dark:bg-zinc-950 w-full">
+                                         <div className="h-full transition-all duration-1000 ease-out" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div>
+                                     </div>
+                                     
+                                     <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm shrink-0" style={{ backgroundColor: item.color }}>
                                          {Math.round(item.percent)}%
                                      </div>
-                                     <div className="flex-1 text-left">
-                                         <div className="flex justify-between items-center mb-2">
-                                             <span className="text-sm font-bold text-zinc-900 dark:text-white truncate max-w-[150px]">{item.name}</span>
+                                     <div className="flex-1 text-left min-w-0">
+                                         <div className="flex justify-between items-center mb-1">
+                                             <span className="text-sm font-bold text-zinc-900 dark:text-white truncate">{item.name}</span>
                                              <span className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</span>
                                          </div>
-                                         <div className="w-full bg-zinc-100 dark:bg-zinc-950 rounded-full h-2 overflow-hidden">
-                                             <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div>
-                                         </div>
+                                         <p className="text-[10px] text-zinc-400 font-medium">Peso na carteira</p>
                                      </div>
                                  </button>
                              ))}
@@ -599,9 +618,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         {assetsChartData.length > 0 ? (
                             <div className="grid grid-cols-1 gap-3">
                                 {assetsChartData.map((asset, index) => (
-                                    <div key={index} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center gap-4 anim-stagger-item" style={{ animationDelay: `${index * 30}ms` }}>
+                                    <div key={index} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center gap-4 anim-stagger-item relative overflow-hidden" style={{ animationDelay: `${index * 30}ms` }}>
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0 border border-zinc-100 dark:border-zinc-800" style={{ color: asset.color, backgroundColor: `${asset.color}15` }}>{asset.name.substring(0,2)}</div>
-                                        <div className="flex-1 text-left">
+                                        <div className="flex-1 text-left relative z-10">
                                             <div className="flex justify-between items-center mb-1.5">
                                                 <span className="text-xs font-bold text-zinc-900 dark:text-white">{asset.name}</span>
                                                 <div className="flex flex-col items-end">
@@ -681,11 +700,27 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       </div>
                   </div>
 
+                  {/* Novo Card: Patrimônio Protegido */}
+                  <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 shadow-sm flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                              <Landmark className="w-5 h-5" />
+                          </div>
+                          <div>
+                              <h4 className="text-sm font-black text-indigo-900 dark:text-indigo-100">Patrimônio Protegido</h4>
+                              <p className="text-[10px] text-indigo-700 dark:text-indigo-300 opacity-80">DY acima da inflação</p>
+                          </div>
+                      </div>
+                      <div className="text-right">
+                          <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{inflationAnalysis.protectedPercent.toFixed(0)}%</span>
+                      </div>
+                  </div>
+
                   {/* Gráfico: Batalha Mensal */}
                   <div className="h-64 w-full bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 px-2 flex justify-between">
                           <span>Renda vs Custo Inflação</span>
-                          <span className="text-[9px] normal-case opacity-60">Linha Vermelha = Custo sobre Patrimônio Histórico</span>
+                          <span className="text-[9px] normal-case opacity-60">Linha Vermelha = Custo s/ Histórico</span>
                       </h3>
                       <ResponsiveContainer width="100%" height="85%">
                           <ComposedChart data={inflationAnalysis.chartData}>

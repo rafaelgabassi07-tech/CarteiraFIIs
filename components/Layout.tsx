@@ -236,8 +236,8 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     // Se arrastar para baixo (positivo)
     if (diff > 0) {
         if (e.cancelable) e.preventDefault(); // Impede refresh/scroll da página
-        // Resistência física
-        const resistance = 1 + (diff / window.innerHeight);
+        // Resistência física logarítmica
+        const resistance = 1 + (Math.pow(diff, 0.8) / window.innerHeight);
         setDragOffset(diff / resistance);
     }
   };
@@ -245,7 +245,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   const handleTouchEnd = () => {
     setIsDragging(false);
     
-    if (dragOffset > 150) { // Threshold de fechamento
+    if (dragOffset > 120) { // Threshold de fechamento mais responsivo
         onClose();
     } else {
         setDragOffset(0); // Reseta se não fechou
@@ -259,33 +259,32 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       <div 
           onClick={onClose} 
           className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500"
-          style={{ opacity: isVisible ? 1 - (dragOffset / window.innerHeight) : 0 }} // Fade out background on drag
+          style={{ opacity: isVisible ? Math.max(0, 1 - (dragOffset / (window.innerHeight * 0.7))) : 0 }} 
       ></div>
       
       <div
         ref={modalRef}
         style={{
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
-            transition: isDragging ? 'none' : 'transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-            touchAction: 'none' // Importante para o navegador não interferir no drag
+            transition: isDragging ? 'none' : 'transform 400ms cubic-bezier(0.32, 0.72, 0, 1)',
+            touchAction: 'none'
         }}
         className={`relative bg-surface-light dark:bg-zinc-950 rounded-t-[2.5rem] h-[92vh] w-full overflow-hidden flex flex-col shadow-2xl ring-1 ring-white/10`}
       >
         {/* Drag Handle - Área Segura de Toque */}
         <div 
-            className="flex-none pt-4 pb-2 flex justify-center w-full cursor-grab active:cursor-grabbing bg-surface-light dark:bg-zinc-950 z-20"
+            className="flex-none pt-5 pb-3 flex justify-center w-full cursor-grab active:cursor-grabbing bg-surface-light dark:bg-zinc-950 z-20 touch-none"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
         >
-            <div className="w-14 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full transition-colors"></div>
+            <div className="w-16 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full transition-colors hover:bg-zinc-400 dark:hover:bg-zinc-600"></div>
         </div>
         
         {/* Conteúdo com Scroll Próprio */}
         <div 
             ref={contentRef}
             className="flex-1 overflow-y-auto overscroll-contain pb-safe pt-2 px-1"
-            // Se estiver arrastando, desabilita scroll interno temporariamente
             style={{ overflowY: isDragging ? 'hidden' : 'auto' }}
         >
           {children}

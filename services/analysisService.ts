@@ -132,21 +132,39 @@ export const analyzePortfolio = (
         );
     }
 
-    // Vaca Leiteira
-    const cashCow = activeAssets.sort((a,b) => (b.totalDividends || 0) - (a.totalDividends || 0))[0];
-    if (cashCow && (cashCow.totalDividends || 0) > 100) {
+    // --- 4. VALUATION & OPORTUNIDADES & RISCOS ---
+    
+    // Alerta de Vacância
+    const highVacancyFii = activeAssets.find(a => a.assetType === AssetType.FII && (a.vacancy || 0) > 15);
+    if (highVacancyFii) {
         createStory(
-            'cash-cow',
-            'success',
-            'Máquina de Renda 🐮',
-            `${cashCow.ticker} é seu maior pagador histórico, totalizando R$ ${(cashCow.totalDividends || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})} em proventos.`,
-            87,
-            cashCow.ticker
+            'high-vacancy',
+            'warning',
+            'Vacância Elevada 🏚️',
+            `${highVacancyFii.ticker} está com vacância física de ${(highVacancyFii.vacancy || 0).toFixed(1)}%. Isso pode impactar rendimentos futuros.`,
+            88,
+            highVacancyFii.ticker
         );
     }
 
-    // --- 4. VALUATION & OPORTUNIDADES ---
-    
+    // Alerta de Liquidez
+    const lowLiquidityAsset = activeAssets.find(a => {
+        if (!a.liquidity) return false;
+        // Tenta parsear liquidez se for string
+        const liq = typeof a.liquidity === 'string' ? parseFloat(a.liquidity.replace(/\./g, '')) : a.liquidity;
+        return liq < 50000;
+    });
+    if (lowLiquidityAsset) {
+        createStory(
+            'low-liquidity',
+            'warning',
+            'Baixa Liquidez 💧',
+            `${lowLiquidityAsset.ticker} tem liquidez diária reduzida. Pode ser difícil sair da posição rapidamente.`,
+            86,
+            lowLiquidityAsset.ticker
+        );
+    }
+
     // FII Barato
     const cheapFii = activeAssets.find(a => 
         a.assetType === AssetType.FII && (a.p_vp || 0) > 0.4 && (a.p_vp || 0) < 0.90
@@ -195,24 +213,8 @@ export const analyzePortfolio = (
         );
     }
 
-    // Ação Eficiente (Margem Alta)
-    const qualityStock = activeAssets.find(a => 
-        a.assetType === AssetType.STOCK && (a.net_margin || 0) > 20
-    );
-    if (qualityStock) {
-        createStory(
-            'quality-stock',
-            'opportunity',
-            'Alta Eficiência 💎',
-            `${qualityStock.ticker} opera com uma excelente Margem Líquida de ${(qualityStock.net_margin || 0).toFixed(1)}%.`,
-            82,
-            qualityStock.ticker
-        );
-    }
-
-    // Reinvestimento Inteligente
+    // Reinvestimento Inteligente (DY Alto + Preço Justo)
     if (activeAssets.length > 3) {
-        // Encontra ativo com bom DY e preço razoável para sugerir aporte
         const reinvestTarget = activeAssets.find(a => 
             (a.dy_12m || 0) > 8 && 
             ((a.assetType === AssetType.FII && (a.p_vp || 0) < 1.05) || 
@@ -224,7 +226,7 @@ export const analyzePortfolio = (
                 'reinvest-suggestion',
                 'news',
                 'Onde Reinvestir? 💡',
-                `${reinvestTarget.ticker} combina bom Yield (${(reinvestTarget.dy_12m || 0).toFixed(1)}%) com preço atrativo. Considere reinvestir seus proventos aqui.`,
+                `${reinvestTarget.ticker} combina bom Yield (${(reinvestTarget.dy_12m || 0).toFixed(1)}%) com preço atrativo. Considere aumentar posição.`,
                 78,
                 reinvestTarget.ticker
             );

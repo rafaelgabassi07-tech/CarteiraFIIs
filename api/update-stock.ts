@@ -214,25 +214,28 @@ async function scrapeInvestidor10(ticker: string) {
 
                 // --- SCRAPER DE DIVIDENDOS APERFEIÇOADO ---
                 const dividends: any[] = [];
-                let tableDivs = $('#table-dividends-history');
-                if (tableDivs.length === 0) {
-                     $('h2, h3, h4').each((_, el) => {
-                         const t = normalize($(el).text());
-                         // Procura cabeçalhos de proventos
-                         if (t.includes('dividendos') || t.includes('proventos') || t.includes('rendimentos')) {
-                             const nextTable = $(el).nextAll('table').first();
-                             if (nextTable.length) tableDivs = nextTable;
-                             else {
-                                 const parentNextTable = $(el).parent().next().find('table').first();
-                                 if (parentNextTable.length) tableDivs = parentNextTable;
-                             }
-                         }
-                     });
-                }
+                let tableDivs: cheerio.Cheerio<any> | null = null;
 
-                if (tableDivs.length > 0) {
+                // Busca genérica por qualquer tabela que pareça de dividendos
+                $('table').each((_, table) => {
+                    const headerText = $(table).find('thead').text().toLowerCase() || $(table).find('tr').first().text().toLowerCase();
+                    // Pontuação para identificar a tabela correta
+                    let score = 0;
+                    if (headerText.includes('tipo')) score++;
+                    if (headerText.includes('data com') || headerText.includes('datacom')) score++;
+                    if (headerText.includes('pagamento')) score++;
+                    if (headerText.includes('valor')) score++;
+                    
+                    if (score >= 3) {
+                        tableDivs = $(table);
+                        return false; // Break loop
+                    }
+                });
+
+                if (tableDivs) {
                     const headers: string[] = [];
                     tableDivs.find('thead th').each((_, th) => headers.push(normalize($(th).text())));
+                    // Fallback para tabelas sem thead
                     if (headers.length === 0) tableDivs.find('tbody tr').first().find('td').each((_, td) => headers.push(normalize($(td).text())));
 
                     let iType = -1, iCom = -1, iPay = -1, iVal = -1;
@@ -244,12 +247,15 @@ async function scrapeInvestidor10(ticker: string) {
                     });
 
                     if (iVal === -1) {
+                        // Tentativa cega baseada em layout comum
                         if (headers.length >= 4) { iType=0; iCom=1; iPay=2; iVal=3; }
                         else { iCom=0; iPay=1; iVal=2; }
                     }
 
                     tableDivs.find('tbody tr').each((i, tr) => {
+                        // Pula linha de cabeçalho se estiver dentro de tbody
                         if (i === 0 && tableDivs.find('thead').length === 0 && $(tr).find('td').first().text().match(/[a-z]/i)) return;
+                        
                         const cols = $(tr).find('td');
                         if (cols.length < 3) return;
 
