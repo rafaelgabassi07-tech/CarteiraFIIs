@@ -224,19 +224,24 @@ async function scrapeInvestidor10(ticker: string) {
                 }
 
                 // --- SCRAPER DE DIVIDENDOS APERFEIÇOADO (HEURÍSTICA DE CONTEÚDO) ---
-                // Não depende mais da posição exata das colunas, mas sim do conteúdo delas.
                 const dividends: any[] = [];
                 let tableDivs: cheerio.Cheerio<any> | null = null;
 
-                $('table').each((_, table) => {
-                    const txt = $(table).text().toLowerCase();
-                    // Procura tabelas que tenham palavras-chave de proventos
-                    if ((txt.includes('tipo') || txt.includes('data com')) && 
-                        (txt.includes('pagamento') || txt.includes('valor'))) {
-                        tableDivs = $(table);
-                        return false; 
-                    }
-                });
+                // 1. Tenta ID específico primeiro (Mais confiável)
+                const specificTable = $('#table-dividends-history');
+                if (specificTable.length > 0) {
+                    tableDivs = specificTable;
+                } else {
+                    // 2. Busca genérica (Fallback)
+                    $('table').each((_, table) => {
+                        const txt = $(table).text().toLowerCase();
+                        if ((txt.includes('tipo') || txt.includes('data com')) && 
+                            (txt.includes('pagamento') || txt.includes('valor'))) {
+                            tableDivs = $(table);
+                            return false; 
+                        }
+                    });
+                }
 
                 if (tableDivs) {
                     tableDivs.find('tbody tr').each((i, tr) => {
@@ -248,7 +253,7 @@ async function scrapeInvestidor10(ticker: string) {
                         let datePayStr = '';
                         let valStr = '';
 
-                        // Varre as colunas da linha tentando identificar o que é o que
+                        // Varre as colunas da linha
                         cols.each((_, td) => {
                             const text = $(td).text().trim();
                             const normText = normalize(text);
@@ -265,13 +270,15 @@ async function scrapeInvestidor10(ticker: string) {
                                 else if (!datePayStr) datePayStr = text; // Segunda é Pagamento
                             }
 
-                            // Identifica Valor (R$ ou formato decimal, SEM %)
-                            // Se tiver %, é Yield, ignoramos aqui.
-                            if ((text.includes('R$') || text.match(/\d+,\d+/)) && !text.includes('%')) {
-                                // Preferência para o último valor encontrado na linha se houver múltiplos (geralmente Valor Líquido é o último)
-                                // Mas cuidado: às vezes tem valor bruto e líquido.
-                                // Se já temos um valor, e esse novo parece válido, atualizamos (assumindo que colunas mais à direita são mais 'finais')
-                                valStr = text;
+                            // Identifica Valor (Prioriza formatos monetários R$ ou decimal com vírgula, SEM %)
+                            if (!text.includes('%')) {
+                                if (text.includes('R$') || (text.match(/\d+,\d+/) && !valStr)) {
+                                    // Se tem R$, é certeza. Se não tem R$ mas parece número e ainda não temos valor, pega.
+                                    valStr = text;
+                                } else if (text.match(/\d+,\d+/) && valStr && text.includes('R$')) {
+                                    // Se já tínhamos um valor "fraco" e agora achamos um com R$, substitui (R$ ganha)
+                                    valStr = text;
+                                }
                             }
                         });
 
@@ -363,7 +370,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (dividends.length > 0) {
-             // CLEANUP: Remove registros futuros existentes (evita duplicatas ou dados velhos errados)
+             // CLEANUP: Remove registros futuros existentes para este ticker (limpa dados velhos/errados)
              const today = new Date().toISOString().split('T')[0];
              const { error: delError } = await supabase.from('market_dividends')
                 .delete()

@@ -179,16 +179,21 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
     const today = new Date().toISOString().split('T')[0];
 
     try {
-        // Consulta o banco para qualquer anúncio futuro (Datacom OU Pagamento >= Hoje)
-        // Isso pega tanto o que vai cair quanto o que vai fechar data com.
+        // Consulta o Supabase para eventos futuros
+        // Critério: Pagamento >= Hoje OU Datacom >= Hoje OU Pagamento Pendente (null)
+        // Isso garante que peguemos anúncios recentes que ainda não têm data de pagamento definida
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
             .in('ticker', tickers)
-            .or(`payment_date.gte.${today},date_com.gte.${today}`)
+            .or(`payment_date.gte.${today},date_com.gte.${today},payment_date.is.null`)
             .order('payment_date', { ascending: true });
 
-        if (error) throw error;
+        if (error) {
+            console.error('[Robot] Error fetching data:', error);
+            return [];
+        }
+        
         if (!data || data.length === 0) return [];
 
         const predictions: FutureDividendPrediction[] = [];
@@ -200,14 +205,16 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
             if (!asset || asset.quantity <= 0) return;
 
             const rate = Number(div.rate);
+            if (rate <= 0) return; // Ignora valores inválidos
+
             const total = preciseMul(asset.quantity, rate);
             
-            // Calcula dias para Data Com (se ainda for válida)
-            const dateCom = new Date(div.date_com + 'T00:00:00');
+            // Calcula dias para Data Com
+            const dateCom = div.date_com ? new Date(div.date_com + 'T00:00:00') : now;
             const diffTime = dateCom.getTime() - now.getTime();
             const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
-            // Filtra duplicatas lógicas (mesmo ticker, data e valor)
+            // Filtra duplicatas lógicas na lista final
             const exists = predictions.some(p => 
                 p.ticker === normalizeTicker(div.ticker) && 
                 p.paymentDate === div.payment_date &&
@@ -218,7 +225,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 predictions.push({
                     ticker: normalizeTicker(div.ticker),
                     dateCom: div.date_com,
-                    paymentDate: div.payment_date,
+                    paymentDate: div.payment_date || 'A Definir', // Fallback visual
                     rate: rate,
                     quantity: asset.quantity,
                     projectedTotal: total,
@@ -228,10 +235,15 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
             }
         });
 
-        return predictions.sort((a,b) => (a.paymentDate || '9999').localeCompare(b.paymentDate || '9999'));
+        // Ordenação final: Datas definidas primeiro, depois "A Definir" (futuro distante)
+        return predictions.sort((a,b) => {
+            if (a.paymentDate === 'A Definir') return 1;
+            if (b.paymentDate === 'A Definir') return -1;
+            return a.paymentDate.localeCompare(b.paymentDate);
+        });
 
     } catch (e) {
-        console.error("[Robot] Failed to fetch future announcements:", e);
+        console.error("[Robot] Fatal error:", e);
         return [];
     }
 };
@@ -255,10 +267,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       const missingOrStale = uniqueTickers.filter(t => {
           const m = metadataMap[t];
-          // REGRA DE CORREÇÃO: Se DY for 0 ou nulo, considera o dado corrompido/antigo e força atualização
-          // Isso corrige casos onde um crawl anterior falhou (ex: página em branco) e salvou 0 no banco.
           const hasSuspiciousData = m && (m.dy_12m === 0 || m.dy_12m === null || m.dy_12m === undefined || m.dy_12m === '0');
-          
           return !m || (m.updated_at && isStale(m.updated_at)) || hasSuspiciousData;
       });
 
@@ -283,7 +292,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   }
               });
           } else {
-              // Trigger background update for missing items (incluindo os com DY 0.0)
+              // Trigger background update
               triggerScraperUpdate(toUpdate, true).then(results => {
                   console.log(`[DataService] Auto-correction triggered for ${results.length} assets`);
               });
@@ -301,7 +310,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
-      // Deduplica dividendos
       const uniqueDividends = Array.from(new Map(dividends.map(item => [
           `${item.ticker}-${item.dateCom}-${item.rate}`, item
       ])).values());
