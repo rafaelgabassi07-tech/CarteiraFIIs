@@ -20,8 +20,7 @@ export interface FutureDividendPrediction {
     quantity: number;
     type: string;
     daysToDateCom: number;
-    isAiPrediction?: boolean;
-    confidence?: 'ALTA' | 'MEDIA' | 'BAIXA';
+    status: 'CONFIRMED'; // Agora sempre confirmado
     reasoning?: string;
 }
 
@@ -175,16 +174,17 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
 };
 
 // --- ROBÔ DE PROVENTOS (SEM IA) ---
-export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI = false): Promise<FutureDividendPrediction[]> => {
+export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Promise<FutureDividendPrediction[]> => {
     if (!portfolio || portfolio.length === 0) return [];
 
     const tickers = portfolio.map(p => normalizeTicker(p.ticker));
     
-    // Busca dados desde o início do ano atual para garantir cobertura
+    // Busca dados desde o início do ano atual para garantir cobertura e contexto
     const startOfYear = `${new Date().getFullYear()}-01-01`;
 
     try {
         // 1. Dados Confirmados ("O Martelo do Supabase")
+        // Trazemos tudo para o cliente filtrar, é mais seguro contra fuso horário do DB
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
@@ -208,27 +208,30 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
 
         if (data && data.length > 0) {
             data.forEach((div: any) => {
-                // --- FILTRAGEM EM MEMÓRIA ---
+                const normalizedTicker = normalizeTicker(div.ticker);
+                const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
+                if (!asset || asset.quantity <= 0) return;
+
+                // --- LÓGICA DE AGENDA ---
+                // Verifica se é um evento relevante (Futuro ou Recente)
                 let isRelevant = false;
                 
-                if (!div.payment_date) {
-                    isRelevant = true; // Sem data = Futuro (A definir)
-                } else {
+                // Pagamento
+                if (div.payment_date) {
                     const payDate = parseDateToLocal(div.payment_date);
                     if (payDate && payDate.getTime() >= cutoffTime) isRelevant = true;
+                } else {
+                    // Sem data de pagamento = A Definir (Relevante)
+                    isRelevant = true;
                 }
 
+                // Data Com (Se não pagou ainda, data com futura também é relevante)
                 if (!isRelevant && div.date_com) {
                     const dCom = parseDateToLocal(div.date_com);
                     if (dCom && dCom.getTime() >= cutoffTime) isRelevant = true;
                 }
 
                 if (!isRelevant) return;
-
-                const normalizedTicker = normalizeTicker(div.ticker);
-                const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
-                
-                if (!asset || asset.quantity <= 0) return;
 
                 const rate = Number(div.rate);
                 if (rate <= 0) return;
@@ -249,14 +252,11 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                     projectedTotal: total,
                     type: div.type || 'DIV', 
                     daysToDateCom,
-                    isAiPrediction: false, 
-                    confidence: 'ALTA',
+                    status: 'CONFIRMED', 
                     reasoning: `Confirmado: ${div.type}`
                 });
             });
         }
-
-        // Sem fallback de IA. Apenas dados reais.
 
         return predictions.sort((a,b) => {
             const dateA = a.paymentDate !== 'A Definir' ? a.paymentDate : (a.dateCom !== 'Já ocorreu' ? a.dateCom : '9999-99-99');

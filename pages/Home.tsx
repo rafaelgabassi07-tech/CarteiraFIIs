@@ -127,7 +127,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   
   const [radarData, setRadarData] = useState<{
       events: RadarEvent[];
-      summary: { count: number; total: number; confirmed: number; estimated: number };
+      summary: { count: number; total: number; confirmed: number };
       grouped: Record<string, RadarEvent[]>;
       loading: boolean;
       scanStatus: string; 
@@ -142,7 +142,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               }
           }
       } catch {}
-      return { events: [], summary: { count: 0, total: 0, confirmed: 0, estimated: 0 }, grouped: {}, loading: true, scanStatus: '' };
+      return { events: [], summary: { count: 0, total: 0, confirmed: 0 }, grouped: {}, loading: true, scanStatus: '' };
   });
 
   const [triggerRadar, setTriggerRadar] = useState(false);
@@ -155,53 +155,27 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }
           
           try {
-              const predictions = await fetchFutureAnnouncements(portfolio, false);
+              // Busca dados "oficiais" do robô (que consulta o Supabase)
+              // O robô já filtra por data >= ontem, então traz eventos futuros/recentes.
+              const futureAnnouncements = await fetchFutureAnnouncements(portfolio);
               if (!isActive) return;
 
               const todayStr = new Date().toISOString().split('T')[0];
               const atomEvents: RadarEvent[] = [];
-              
-              const isDuplicate = (ticker: string, type: string, date: string, rate: number, evtType: string) => {
-                  return atomEvents.some(e => 
-                      e.ticker === ticker && 
-                      e.eventType === evtType &&
-                      e.date === date &&
-                      Math.abs(e.rate - rate) < 0.001
-                  );
+              const seenKeys = new Set<string>(); // Chave única para deduplicação rígida
+
+              // Função auxiliar para gerar chave única do evento
+              const getEventKey = (ticker: string, date: string, rate: number, evtType: string) => {
+                  return `${ticker}-${evtType}-${date}-${rate.toFixed(4)}`;
               };
 
-              dividendReceipts.forEach(r => {
-                  if (r.paymentDate && r.paymentDate >= todayStr) {
-                      atomEvents.push({
-                          id: `db-pay-${r.id}`,
-                          ticker: r.ticker,
-                          type: r.type,
-                          eventType: 'PAYMENT',
-                          status: 'CONFIRMED',
-                          date: r.paymentDate,
-                          amount: r.totalReceived,
-                          rate: r.rate
-                      });
-                  }
-                  if (r.dateCom && r.dateCom >= todayStr) {
-                      atomEvents.push({
-                          id: `db-com-${r.id}`,
-                          ticker: r.ticker,
-                          type: r.type,
-                          eventType: 'DATACOM',
-                          status: 'CONFIRMED',
-                          date: r.dateCom,
-                          amount: 0, 
-                          rate: r.rate
-                      });
-                  }
-              });
-
-              predictions.forEach(p => {
+              // 1. Processa dados retornados pelo Robô (Prioritários para Agenda)
+              futureAnnouncements.forEach(p => {
                   if (p.paymentDate && p.paymentDate >= todayStr) {
-                      if (!isDuplicate(p.ticker, p.type, p.paymentDate, p.rate, 'PAYMENT')) {
+                      const key = getEventKey(p.ticker, p.paymentDate, p.rate, 'PAYMENT');
+                      if (!seenKeys.has(key)) {
                           atomEvents.push({
-                              id: `pred-pay-${p.ticker}-${p.paymentDate}`,
+                              id: `robot-pay-${key}`,
                               ticker: p.ticker,
                               type: p.type,
                               eventType: 'PAYMENT',
@@ -210,12 +184,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               amount: p.projectedTotal,
                               rate: p.rate
                           });
-                  }}
+                          seenKeys.add(key);
+                      }
+                  }
 
                   if (p.dateCom && p.dateCom >= todayStr) {
-                      if (!isDuplicate(p.ticker, p.type, p.dateCom, p.rate, 'DATACOM')) {
+                      const key = getEventKey(p.ticker, p.dateCom, p.rate, 'DATACOM');
+                      if (!seenKeys.has(key)) {
                           atomEvents.push({
-                              id: `pred-com-${p.ticker}-${p.dateCom}`,
+                              id: `robot-com-${key}`,
                               ticker: p.ticker,
                               type: p.type,
                               eventType: 'DATACOM',
@@ -224,7 +201,46 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               amount: 0,
                               rate: p.rate
                           });
-                  }}
+                          seenKeys.add(key);
+                      }
+                  }
+              });
+
+              // 2. Processa dividendReceipts locais (Histórico/Cache Local)
+              // Serve como fallback caso o robô falhe ou o App.tsx tenha dados mais frescos de cache
+              dividendReceipts.forEach(r => {
+                  if (r.paymentDate && r.paymentDate >= todayStr) {
+                      const key = getEventKey(r.ticker, r.paymentDate, r.rate, 'PAYMENT');
+                      if (!seenKeys.has(key)) {
+                          atomEvents.push({
+                              id: `local-pay-${key}`,
+                              ticker: r.ticker,
+                              type: r.type,
+                              eventType: 'PAYMENT',
+                              status: 'CONFIRMED',
+                              date: r.paymentDate,
+                              amount: r.totalReceived,
+                              rate: r.rate
+                          });
+                          seenKeys.add(key);
+                      }
+                  }
+                  if (r.dateCom && r.dateCom >= todayStr) {
+                      const key = getEventKey(r.ticker, r.dateCom, r.rate, 'DATACOM');
+                      if (!seenKeys.has(key)) {
+                          atomEvents.push({
+                              id: `local-com-${key}`,
+                              ticker: r.ticker,
+                              type: r.type,
+                              eventType: 'DATACOM',
+                              status: 'CONFIRMED',
+                              date: r.dateCom,
+                              amount: 0, 
+                              rate: r.rate
+                          });
+                          seenKeys.add(key);
+                      }
+                  }
               });
 
               atomEvents.sort((a, b) => a.date.localeCompare(b.date));
@@ -252,8 +268,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   summary: { 
                       count: atomEvents.length, 
                       total: sumConfirmed,
-                      confirmed: sumConfirmed,
-                      estimated: 0 
+                      confirmed: sumConfirmed
                   },
                   grouped,
                   loading: false,
