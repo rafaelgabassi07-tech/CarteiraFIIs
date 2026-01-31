@@ -12,11 +12,16 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
   
   useEffect(() => {
     if (isOpen) {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      // Cancela qualquer fechamento pendente
+      if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+      }
+      
       setIsMounted(true);
       
-      // Garante que o browser renderize o componente montado antes de iniciar a transição
-      // O duplo requestAnimationFrame é um hack padrão para garantir o reflow
+      // HACK: Double requestAnimationFrame garante que o browser pintou o estado 'isMounted' (display: block)
+      // antes de aplicar a classe 'isVisible' (opacity/translate), forçando a transição CSS.
       requestAnimationFrame(() => {
           requestAnimationFrame(() => {
               setIsVisible(true);
@@ -24,9 +29,11 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
       });
     } else {
       setIsVisible(false);
+      // Agenda a desmontagem após a animação
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = window.setTimeout(() => {
           setIsMounted(false);
+          timeoutRef.current = null;
       }, duration);
     }
     
@@ -211,7 +218,7 @@ export interface InstallPromptModalProps {
 interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: React.ReactNode; }
 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
-  // 400ms match the CSS transition
+  // Use 400ms to match CSS transition
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
   const modalRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -312,7 +319,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   );
 };
 
-// ... Resto do arquivo mantido
+// ... (Restante do arquivo mantido sem alterações, apenas o SwipeableModal e useAnimatedVisibility foram focados)
 interface ConfirmationModalProps { isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; }
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 250);

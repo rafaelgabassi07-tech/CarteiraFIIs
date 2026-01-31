@@ -37,6 +37,13 @@ const isStale = (dateString?: string) => {
     return (now - lastUpdate) > getTTL();
 };
 
+// Gera data YYYY-MM-DD segura no fuso local para query no banco
+const getLocalISODate = (date: Date) => {
+    const offset = date.getTimezoneOffset() * 60000; // Offset em milissegundos
+    const localTime = new Date(date.getTime() - offset);
+    return localTime.toISOString().slice(0, 10);
+};
+
 const parseNumberSafe = (val: any): number | undefined => {
     if (typeof val === 'number') return val;
     if (val === undefined || val === null || val === '') return undefined;
@@ -180,32 +187,34 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
     if (!portfolio || portfolio.length === 0) return [];
 
     const tickers = portfolio.map(p => normalizeTicker(p.ticker));
-    const today = new Date().toISOString().split('T')[0];
+    
+    // Data de "corte" para busca: Ontem. 
+    // Isso evita que fusos horários diferentes ocultem eventos que são tecnicamente "hoje" mas o servidor já virou o dia.
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const searchDate = getLocalISODate(yesterdayDate);
 
     try {
         // 1. Dados Confirmados ("O Martelo do Supabase")
-        // Buscamos proventos com Data Com ou Data de Pagamento no futuro (ou hoje)
-        // Inclui também registros onde a data de pagamento ainda é NULA (anunciado mas sem data de crédito)
+        // Busca proventos a partir de ONTEM (margem de segurança) ou futuros, ou sem data de pagamento definida.
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
             .in('ticker', tickers)
-            .or(`payment_date.gte.${today},date_com.gte.${today},payment_date.is.null`)
+            .or(`payment_date.gte.${searchDate},date_com.gte.${searchDate},payment_date.is.null`)
             .order('payment_date', { ascending: true });
 
         if (error) {
             console.error('[Robot] Error fetching confirmed data:', error);
-            // Em caso de erro do DB, forçamos o modo AI se ativado
+        } else {
+            console.log(`[Robot] Found ${data?.length || 0} confirmed events for ${tickers.length} assets starting from ${searchDate}`);
         }
         
         const predictions: FutureDividendPrediction[] = [];
         const now = new Date();
         now.setHours(0,0,0,0);
 
-        // Mapa de Bloqueio: Registra Mês/Ano que JÁ tem provento confirmado.
-        // Formato da chave: TICKER-YYYY-MM
         const blockedPeriods = new Set<string>();
-        // Set para saber quais ativos JÁ tem informação confirmada futura
         const coveredTickers = new Set<string>();
 
         if (data && data.length > 0) {
@@ -221,9 +230,8 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                 const total = preciseMul(asset.quantity, rate);
                 
                 // --- CORREÇÃO DE TIMEZONE ---
-                // Usa parseDateToLocal para garantir que a data seja interpretada no fuso local correto
                 const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
-                const datePay = div.payment_date ? parseDateToLocal(div.payment_date) : null;
+                // Usa a string do DB para exibição, mas parseDateToLocal para lógica se necessário
                 
                 // Recalcula diffTime para 'Dias até Datacom' (apenas cosmético)
                 const refDate = dateCom || now;
@@ -245,14 +253,12 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                     reasoning: `Confirmado: ${div.type}`
                 });
                 
-                // Registra cobertura e bloqueio
                 coveredTickers.add(normalizedTicker);
                 
                 if (div.payment_date) {
                     const k = `${normalizedTicker}-${div.payment_date.substring(0, 7)}`; 
                     blockedPeriods.add(k);
                 } 
-                // Se só tem datacom, bloqueia o mês da datacom também para evitar duplicidade de "anúncio"
                 if (div.date_com) {
                     const k = `${normalizedTicker}-${div.date_com.substring(0, 7)}`; 
                     blockedPeriods.add(k);
@@ -261,14 +267,8 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
         }
 
         // 2. Previsão IA (Preenchimento de Lacunas)
-        // Se useAI for true, chamamos a IA para TODOS os tickers.
-        // A filtragem acontece DEPOIS, verificando se o mês previsto já está bloqueado pelo dado real.
         if (useAI) {
-            // Tickers prioritários: Aqueles que não tem NENHUM evento futuro confirmado
             const priorityTickers = tickers.filter(t => !coveredTickers.has(t));
-            
-            // Se a lista de prioritários for pequena, enviamos tudo para ter uma visão mais completa do futuro distante
-            // Se for grande, focamos neles para economizar tokens/tempo
             const tickersToPredict = priorityTickers.length > 5 ? priorityTickers : tickers;
 
             if (tickersToPredict.length > 0) {
@@ -282,14 +282,10 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                     const predDate = pred.predictedPaymentDate || pred.predictedDateCom;
                     if (!predDate) return;
                     
-                    // Verifica se já existe dado REAL para este mês
                     const predMonth = predDate.substring(0, 7); 
                     const key = `${normalizedTicker}-${predMonth}`;
                     
-                    if (blockedPeriods.has(key)) {
-                        // "Martelo do Supabase": Dado real vence especulação
-                        return;
-                    }
+                    if (blockedPeriods.has(key)) return;
 
                     const estimatedRate = asset.last_dividend || (asset.currentPrice ? (asset.currentPrice * (asset.dy_12m || 6) / 100 / 12) : 0);
                     
@@ -317,7 +313,6 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
             }
         }
 
-        // Ordenação final Cronológica com tratamento para datas 'A Definir'
         return predictions.sort((a,b) => {
             const dateA = a.paymentDate !== 'A Definir' ? a.paymentDate : (a.dateCom !== 'Já ocorreu' ? a.dateCom : '9999-99-99');
             const dateB = b.paymentDate !== 'A Definir' ? b.paymentDate : (b.dateCom !== 'Já ocorreu' ? b.dateCom : '9999-99-99');
