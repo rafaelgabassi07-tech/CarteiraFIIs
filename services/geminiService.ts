@@ -44,31 +44,19 @@ export const generateInflationAnalysis = async (
 };
 
 /**
- * Prevê o calendário de proventos (JCP, Dividendos, Rendimentos) com base em padrões históricos e fatos relevantes.
+ * Prevê o calendário de proventos com base em padrões históricos conhecidos pelo modelo.
  */
 export const predictDividendSchedule = async (tickers: string[]): Promise<any[]> => {
   try {
     const prompt = `
-      Atue como um analista sênior de Corporate Actions da B3.
-      Analise os seguintes ativos: ${tickers.join(', ')}.
-      Data de Referência (Hoje): ${new Date().toLocaleDateString('pt-BR')}.
-
-      TAREFA:
-      Identifique o PRÓXIMO evento de provento para cada ativo.
-      Você deve distinguir se o evento já foi "ANUNCIADO" (Fato Relevante publicado) ou se é "PROJETADO" (Baseado em histórico).
-
-      REGRAS RÍGIDAS:
-      1. TIPO: Diferencie "DIVIDENDO" (Isento), "JCP" (Tributado) e "RENDIMENTO" (FIIs).
-      2. DATACOM: Se for ANUNCIADO, forneça a data exata. Se PROJETADO, estime com base no ciclo anterior (Trimestral/Mensal).
-      3. CONFIBILIDADE: Se houver anúncio oficial recente, confiança é ALTA.
+      Analise os seguintes ativos listados na B3 (Brasil): ${tickers.join(', ')}.
+      Com base no histórico de pagamentos destes ativos, estime a PROVÁVEL próxima 'Data Com' (data de corte) e 'Data de Pagamento' para cada um, considerando a data atual: ${new Date().toLocaleDateString('pt-BR')}.
       
-      PADRÕES DE MERCADO:
-      - FIIs (Final 11): Pagam mensalmente. Datacom costuma ser último dia útil ou ~8º dia útil.
-      - Bancos (ITUB, BBDC): JCP Mensal recorrente.
-      - Vale/Petrobras: Trimestralidade forte.
-
-      SAÍDA (JSON):
-      Retorne um array. 'status' deve ser 'ANUNCIADO' ou 'PROJETADO'.
+      Regras:
+      1. Se o ativo paga mensalmente (ex: maioria dos FIIs), projete para o mês atual ou próximo.
+      2. Se paga trimestralmente (ex: VALE3, PETR4), projete o próximo ciclo.
+      3. Defina um nível de confiança (ALTA, MEDIA, BAIXA).
+      4. Retorne APENAS JSON.
     `;
 
     const response = await ai.models.generateContent({
@@ -84,12 +72,10 @@ export const predictDividendSchedule = async (tickers: string[]): Promise<any[]>
               ticker: { type: Type.STRING },
               predictedDateCom: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
               predictedPaymentDate: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
-              predictionType: { type: Type.STRING, enum: ["DIV", "JCP", "REND"], description: "Tipo exato do provento" },
-              status: { type: Type.STRING, enum: ["ANUNCIADO", "PROJETADO"], description: "Se é oficial ou estimativa" },
               confidence: { type: Type.STRING, enum: ["ALTA", "MEDIA", "BAIXA"] },
-              reasoning: { type: Type.STRING, description: "Ex: 'Fato Relevante de 12/05' ou 'Padrão mensal'" }
+              reasoning: { type: Type.STRING, description: "Breve motivo da previsão (ex: 'Padrão mensal dia 10')" }
             },
-            required: ["ticker", "predictedDateCom", "predictedPaymentDate", "confidence", "predictionType", "status"]
+            required: ["ticker", "predictedDateCom", "predictedPaymentDate", "confidence"]
           }
         }
       }
