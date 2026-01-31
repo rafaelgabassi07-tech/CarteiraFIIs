@@ -247,8 +247,6 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
 
         // 2. Previsão IA (Se solicitado e faltar dados)
         if (useAI) {
-            // Filtra tickers que NÃO têm eventos futuros confirmados próximos
-            // ou simplesmente envia todos para a IA analisar lacunas
             const aiPredictions = await predictDividendSchedule(tickers);
             
             aiPredictions.forEach((pred: any) => {
@@ -264,6 +262,11 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                     const estimatedRate = asset.last_dividend || (asset.currentPrice ? (asset.currentPrice * (asset.dy_12m || 6) / 100 / 12) : 0);
                     
                     if (estimatedRate > 0) {
+                        // Determina tipo da previsão baseado no retorno da IA
+                        const finalType = pred.predictionType 
+                            ? `${pred.predictionType} (Est.)`
+                            : 'DIV (Est.)';
+
                         predictions.push({
                             ticker: normalizeTicker(pred.ticker),
                             dateCom: pred.predictedDateCom,
@@ -271,8 +274,8 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                             rate: estimatedRate,
                             quantity: asset.quantity,
                             projectedTotal: preciseMul(asset.quantity, estimatedRate),
-                            type: 'DIV (Est.)',
-                            daysToDateCom: 0, // Calculado na exibição se necessário
+                            type: finalType,
+                            daysToDateCom: 0, 
                             isAiPrediction: true,
                             confidence: pred.confidence,
                             reasoning: pred.reasoning

@@ -44,19 +44,30 @@ export const generateInflationAnalysis = async (
 };
 
 /**
- * Prevê o calendário de proventos com base em padrões históricos conhecidos pelo modelo.
+ * Prevê o calendário de proventos (JCP, Dividendos, Rendimentos) com base em padrões históricos.
  */
 export const predictDividendSchedule = async (tickers: string[]): Promise<any[]> => {
   try {
     const prompt = `
-      Analise os seguintes ativos listados na B3 (Brasil): ${tickers.join(', ')}.
-      Com base no histórico de pagamentos destes ativos, estime a PROVÁVEL próxima 'Data Com' (data de corte) e 'Data de Pagamento' para cada um, considerando a data atual: ${new Date().toLocaleDateString('pt-BR')}.
+      Atue como um analista de dados da B3 (Brasil).
+      Analise os seguintes ativos: ${tickers.join(', ')}.
+      Data de Referência (Hoje): ${new Date().toLocaleDateString('pt-BR')}.
+
+      TAREFA:
+      Identifique o PRÓXIMO evento de provento PROVÁVEL ou ANUNCIADO (mas ainda não pago) para cada ativo.
       
-      Regras:
-      1. Se o ativo paga mensalmente (ex: maioria dos FIIs), projete para o mês atual ou próximo.
-      2. Se paga trimestralmente (ex: VALE3, PETR4), projete o próximo ciclo.
-      3. Defina um nível de confiança (ALTA, MEDIA, BAIXA).
-      4. Retorne APENAS JSON.
+      REGRAS CRÍTICAS PARA AÇÕES (Stocks):
+      1. Diferencie explicitamente entre "DIVIDENDO" (Isento) e "JCP" (Juros sobre Capital Próprio).
+      2. Empresas como Bancos (ITUB, BBDC, BBAS, SANB) costumam pagar JCP mensal ou trimestral.
+      3. Empresas como PETR4, VALE3 pagam Dividendos trimestrais robustos.
+      4. Consulte sua base de conhecimento sobre "Avisos aos Acionistas" recentes ou padrões históricos do mesmo trimestre em anos anteriores.
+
+      REGRAS PARA FIIs:
+      1. A maioria paga "RENDIMENTO" mensalmente no meio do mês (dia 10-15).
+
+      SAÍDA (JSON):
+      Retorne um array onde 'predictionType' deve ser estritamente: 'DIV', 'JCP' ou 'REND'.
+      'confidence' deve ser 'ALTA' se for baseado em anúncio ou padrão muito forte, 'MEDIA' para padrão histórico.
     `;
 
     const response = await ai.models.generateContent({
@@ -72,10 +83,11 @@ export const predictDividendSchedule = async (tickers: string[]): Promise<any[]>
               ticker: { type: Type.STRING },
               predictedDateCom: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
               predictedPaymentDate: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
+              predictionType: { type: Type.STRING, enum: ["DIV", "JCP", "REND"], description: "Tipo exato do provento" },
               confidence: { type: Type.STRING, enum: ["ALTA", "MEDIA", "BAIXA"] },
-              reasoning: { type: Type.STRING, description: "Breve motivo da previsão (ex: 'Padrão mensal dia 10')" }
+              reasoning: { type: Type.STRING, description: "Ex: 'JCP Trimestral recorrente' ou 'Anúncio de dividendos'" }
             },
-            required: ["ticker", "predictedDateCom", "predictedPaymentDate", "confidence"]
+            required: ["ticker", "predictedDateCom", "predictedPaymentDate", "confidence", "predictionType"]
           }
         }
       }
