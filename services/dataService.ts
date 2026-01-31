@@ -2,7 +2,7 @@
 import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, ScrapeResult, AssetPosition } from "../types";
 import { supabase } from "./supabase";
 import { getQuotes } from "./brapiService";
-import { normalizeTicker, preciseMul } from "./portfolioRules";
+import { normalizeTicker, preciseMul, parseDateToLocal } from "./portfolioRules";
 import { predictDividendSchedule } from "./geminiService";
 
 export interface UnifiedMarketData {
@@ -184,8 +184,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
 
     try {
         // 1. Dados Confirmados ("O Martelo do Supabase")
-        // Buscamos proventos com Data Com ou Data de Pagamento no futuro (ou hoje)
-        // A lógica OR garante que pegamos eventos anunciados (tem datacom) mesmo sem pagamento definido ainda
+        // Correção na query para usar OR de forma correta e pegar eventos futuros (Datacom ou Pagamento)
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
@@ -202,8 +201,6 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
         const now = new Date();
         now.setHours(0,0,0,0);
 
-        // Mapa de Bloqueio: Registra Mês/Ano que JÁ tem provento confirmado.
-        // Isso impede que a IA alucine um pagamento estimado para um mês que já tem o valor real.
         const blockedPeriods = new Set<string>();
 
         if (data && data.length > 0) {
@@ -217,9 +214,13 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                 if (rate <= 0) return;
 
                 const total = preciseMul(asset.quantity, rate);
-                const dateCom = div.date_com ? new Date(div.date_com + 'T00:00:00') : null;
                 
-                // Se não tem datacom, assume hoje para cálculo de dias (apenas visual)
+                // --- CORREÇÃO DE TIMEZONE ---
+                // Usa parseDateToLocal para garantir que a data seja interpretada no fuso local correto (evita D-1)
+                const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
+                const paymentDateObj = div.payment_date ? parseDateToLocal(div.payment_date) : null;
+                
+                // Recalcula diffTime para 'Dias até Datacom'
                 const refDate = dateCom || now;
                 const diffTime = refDate.getTime() - now.getTime();
                 const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
@@ -232,15 +233,14 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                     rate: rate,
                     quantity: asset.quantity,
                     projectedTotal: total,
-                    type: div.type || 'DIV', // Mantém o tipo original (JCP, DIV, REND)
+                    type: div.type || 'DIV', 
                     daysToDateCom,
-                    isAiPrediction: false, // Isso é dado real do DB
+                    isAiPrediction: false, 
                     confidence: 'ALTA',
                     reasoning: `Confirmado: ${div.type}`
                 });
                 
-                // BLOQUEIA este mês para este ticker na IA
-                // Se temos um pagamento ou datacom em 2024-05, bloqueamos previsões para 2024-05
+                // Bloqueia Mês/Ano para a IA
                 if (div.payment_date) {
                     const k = `${normalizedTicker}-${div.payment_date.substring(0, 7)}`; 
                     blockedPeriods.add(k);
@@ -261,17 +261,13 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                 const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
                 if (!asset) return;
 
-                // Verifica se o período previsto está bloqueado pelo "Martelo"
                 const predDate = pred.predictedPaymentDate || pred.predictedDateCom;
                 if (!predDate) return;
                 
-                const predMonth = predDate.substring(0, 7); // YYYY-MM
+                const predMonth = predDate.substring(0, 7); 
                 const key = `${normalizedTicker}-${predMonth}`;
                 
-                if (blockedPeriods.has(key)) {
-                    // Já temos dados reais para este mês, ignoramos a IA
-                    return;
-                }
+                if (blockedPeriods.has(key)) return;
 
                 const estimatedRate = asset.last_dividend || (asset.currentPrice ? (asset.currentPrice * (asset.dy_12m || 6) / 100 / 12) : 0);
                 
@@ -298,7 +294,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
             });
         }
 
-        // Ordenação final Cronológica
+        // Ordenação final Cronológica com correção para datas 'A Definir'
         return predictions.sort((a,b) => {
             const dateA = a.paymentDate !== 'A Definir' ? a.paymentDate : (a.dateCom !== 'Já ocorreu' ? a.dateCom : '9999-99-99');
             const dateB = b.paymentDate !== 'A Definir' ? b.paymentDate : (b.dateCom !== 'Já ocorreu' ? b.dateCom : '9999-99-99');

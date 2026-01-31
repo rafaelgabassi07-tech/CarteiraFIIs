@@ -25,25 +25,39 @@ export const normalizeTicker = (rawTicker: string): string => {
     return clean;
 };
 
+// --- CORREÇÃO DE DATAS ---
+// O problema "1 dia de atraso" acontece quando new Date('2024-05-15') cria meia-noite UTC.
+// No Brasil (UTC-3), isso vira 21:00 do dia anterior.
+// Esta função cria a data usando os componentes locais (Ano, Mês, Dia) explicitamente.
+export const parseDateToLocal = (dateStr: string): Date | null => {
+    if (!dateStr || dateStr.length < 10) return null;
+    
+    try {
+        const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+        // Cria data ao meio-dia local para evitar qualquer problema de virada de dia
+        return new Date(year, month - 1, day, 12, 0, 0); 
+    } catch {
+        return null;
+    }
+};
+
 // Helper de data seguro para comparações cronológicas precisas
 export const safeDate = (dateStr: string) => {
-    if (!dateStr || dateStr.length < 10) return null;
-    // Garante formato YYYY-MM-DD
-    const isoDate = dateStr.split('T')[0];
-    const d = new Date(isoDate);
-    // Ajusta para meio-dia UTC para evitar problemas de timezone virando o dia
-    d.setUTCHours(12, 0, 0, 0);
-    return isNaN(d.getTime()) ? null : d.getTime();
+    const d = parseDateToLocal(dateStr);
+    return d ? d.getTime() : null;
 };
 
 // Verifica se duas datas (YYYY-MM-DD) são o mesmo dia localmente
 export const isSameDayLocal = (dateString: string) => {
     if (!dateString) return false;
     const today = new Date();
-    const [year, month, day] = dateString.split('-').map(Number);
-    return today.getDate() === day && 
-           (today.getMonth() + 1) === month && 
-           today.getFullYear() === year;
+    const d = parseDateToLocal(dateString);
+    
+    return d ? (
+        today.getDate() === d.getDate() && 
+        today.getMonth() === d.getMonth() && 
+        today.getFullYear() === d.getFullYear()
+    ) : false;
 };
 
 // --- MAPPERS ---
