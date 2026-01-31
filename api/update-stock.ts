@@ -45,9 +45,11 @@ function parseValue(valueStr: any): number | null {
     if (typeof valueStr === 'number') return valueStr;
     
     let str = String(valueStr).trim();
-    if (!str || str === '-' || str === '--' || str === 'N/A' || str === '%') return null;
+    // Se a string contém % no final, retorna null para não confundir Yield com Valor
+    if (str.endsWith('%')) return null;
+    if (!str || str === '-' || str === '--' || str === 'N/A') return null;
 
-    str = str.replace(/^R\$\s?/, '').replace(/%$/, '').trim();
+    str = str.replace(/^R\$\s?/, '').trim();
 
     let multiplier = 1;
     const lastChar = str.slice(-1).toUpperCase();
@@ -120,7 +122,7 @@ function mapLabelToKey(label: string): string | null {
     if (norm.includes('vacancia') && !norm.includes('financeira')) return 'vacancia'; 
     if (norm.includes('tipo de gestao') || norm === 'gestao') return 'tipo_gestao';
     if (norm.includes('taxa de administracao') || norm.includes('taxa de admin')) return 'taxa_adm';
-    if (norm.includes('segmento')) return 'segmento';
+    if (norm.includes('segmento') || norm === 'setor' || norm.includes('setor de atuacao')) return 'segmento';
 
     return null;
 }
@@ -196,6 +198,16 @@ async function scrapeInvestidor10(ticker: string) {
                 });
             });
 
+            // Extração via Breadcrumbs (Fallback Forte para Setor)
+            if (!dados.segmento) {
+                $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
+                    const txt = $(el).text().trim();
+                    if (txt && !['Início', 'Home', 'Ações', 'FIIs', 'BDRs', 'Fiagros'].includes(txt) && txt.toUpperCase() !== ticker) {
+                        dados.segmento = txt;
+                    }
+                });
+            }
+
             if (dados.cotacao_atual !== null || dados.dy !== null || dados.pvp !== null || dados.pl !== null) {
                 if (dados.dy === null) {
                      $('span, div, p').each((_, el) => {
@@ -240,10 +252,18 @@ async function scrapeInvestidor10(ticker: string) {
 
                     let iType = -1, iCom = -1, iPay = -1, iVal = -1;
                     headers.forEach((h, i) => {
-                        if (h.includes('tipo')) iType = i;
-                        if (h.includes('com') || h.includes('base')) iCom = i;
-                        if (h.includes('pagamento')) iPay = i;
-                        if (h.includes('valor') || h.includes('liquido')) iVal = i;
+                        const hLower = h.toLowerCase();
+                        if (hLower.includes('tipo')) iType = i;
+                        if (hLower.includes('com') || hLower.includes('base')) iCom = i;
+                        if (hLower.includes('pagamento')) iPay = i;
+                        
+                        // Lógica Aprimorada para Valor
+                        // Evita colunas como "Yield", "DY", "%"
+                        if (!hLower.includes('yield') && !hLower.includes('dy') && !hLower.includes('%')) {
+                            // Prioriza Valor Líquido para JCP
+                            if (hLower.includes('liquido')) iVal = i;
+                            else if (hLower.includes('valor') && iVal === -1) iVal = i;
+                        }
                     });
 
                     if (iVal === -1) {
@@ -259,15 +279,18 @@ async function scrapeInvestidor10(ticker: string) {
                         const cols = $(tr).find('td');
                         if (cols.length < 3) return;
 
-                        const typeRaw = iType !== -1 ? $(cols[iType]).text() : 'DIV';
-                        const dateComStr = iCom !== -1 ? $(cols[iCom]).text() : '';
-                        const datePayStr = iPay !== -1 ? $(cols[iPay]).text() : '';
-                        const valStr = iVal !== -1 ? $(cols[iVal]).text() : '';
+                        const typeRaw = iType !== -1 ? $(cols[iType]).text().trim() : 'DIV';
+                        const dateComStr = iCom !== -1 ? $(cols[iCom]).text().trim() : '';
+                        const datePayStr = iPay !== -1 ? $(cols[iPay]).text().trim() : '';
+                        const valStr = iVal !== -1 ? $(cols[iVal]).text().trim() : '';
+
+                        // Validação extra: Se o valor tiver %, ignora (é Yield)
+                        if (valStr.includes('%')) return;
 
                         let typeDiv = 'DIV';
                         const tNorm = normalize(typeRaw);
                         
-                        // Detecção Aprimorada de Tipos
+                        // Detecção Estrita de Tipos
                         if (tNorm.includes('jcp') || tNorm.includes('juros') || tNorm.includes('capital proprio')) typeDiv = 'JCP';
                         else if (tNorm.includes('rend') || tNorm.includes('rendimento')) typeDiv = 'REND';
                         else if (tNorm.includes('amort') || tNorm.includes('amortizacao')) typeDiv = 'AMORT';
