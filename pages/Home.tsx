@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight, Megaphone } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight, Megaphone, Clock } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -32,6 +32,18 @@ interface HistoryItem {
     value: number;
     year: number;
     monthIndex: number;
+}
+
+// Interface Unificada de Evento do Radar
+interface RadarEvent {
+    id: string;
+    ticker: string;
+    type: string;
+    eventType: 'PAYMENT' | 'DATACOM';
+    status: 'CONFIRMED' | 'PREDICTED';
+    date: string;
+    amount: number;
+    rate: number;
 }
 
 const formatBRL = (val: any, privacy = false) => {
@@ -111,30 +123,14 @@ const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScannin
     );
 };
 
-const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
-    // CLASSIFICAÇÃO RIGOROSA DE EVENTOS
-    const isDatacom = event.eventType === 'datacom';
-    
-    // "Prediction" aqui significa que veio do Scraper/Robô e não está no DB local ainda.
-    // "Payment Confirmed" significa que já está no DB ou é um pagamento do robô com valor definido.
-    // Para simplificar visualmente:
-    // 1. Pagamento DB (Verde) -> Dinheiro Garantido na Carteira
-    // 2. Anúncio Robô (Azul/Roxo) -> Anúncio Novo / Radar
-    // 3. Data Com (Laranja) -> Aviso de Corte
-    
-    let status: 'db_confirmed' | 'announced' | 'datacom' = 'announced';
-
-    if (isDatacom) {
-        status = 'datacom';
-    } else if (event.isPrediction === false) {
-        status = 'db_confirmed'; // Veio do banco de dados (DividendReceipt)
-    } else {
-        status = 'announced'; // Veio do fetchFutureAnnouncements
-    }
+const TimelineEvent: React.FC<{ event: RadarEvent, isLast: boolean }> = ({ event, isLast }) => {
+    // Lógica Visual baseada no TIPO e STATUS
+    const isDatacom = event.eventType === 'DATACOM';
+    const isConfirmed = event.status === 'CONFIRMED';
+    const isPayment = event.eventType === 'PAYMENT';
 
     const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
 
-    // Variáveis de Estilo baseadas no Status
     let cardClass = "";
     let iconContent = null;
     let badgeContent = null;
@@ -144,12 +140,31 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
     let tickerBgClass = "";
     let timelineLineClass = "";
 
-    switch (status) {
-        case 'db_confirmed': // VERDE - TUDO CERTO
+    if (isDatacom) {
+        // DATA COM (Laranja/Amber)
+        cardClass = "bg-gradient-to-br from-amber-50/90 to-white dark:from-amber-900/20 dark:to-zinc-900 border-amber-200/50 dark:border-amber-800/50";
+        amountClass = "text-amber-700 dark:text-amber-400";
+        labelClass = "text-amber-600/70 dark:text-amber-500/70";
+        labelText = "Data Limite";
+        tickerBgClass = "bg-white dark:bg-zinc-900 border-amber-100 dark:border-amber-900/50 text-amber-900 dark:text-amber-200";
+        timelineLineClass = "bg-amber-200 dark:bg-amber-900/50";
+        iconContent = (
+            <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 shadow-sm border border-amber-200 dark:border-amber-800">
+                <CalendarClock className="w-5 h-5" />
+            </div>
+        );
+        badgeContent = (
+            <div className="absolute right-0 top-0 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
+                <Calendar className="w-2.5 h-2.5" /> DATA COM
+            </div>
+        );
+    } else if (isPayment) {
+        if (isConfirmed) {
+            // PAGAMENTO CONFIRMADO (Verde/Emerald)
             cardClass = "bg-gradient-to-br from-emerald-50/90 to-white dark:from-emerald-900/20 dark:to-zinc-900 border-emerald-200/50 dark:border-emerald-800/50";
             amountClass = "text-emerald-700 dark:text-emerald-400";
             labelClass = "text-emerald-600/70 dark:text-emerald-500/70";
-            labelText = "Líquido Recebido";
+            labelText = "Valor Líquido";
             tickerBgClass = "bg-white dark:bg-zinc-900 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200";
             timelineLineClass = "bg-emerald-200 dark:bg-emerald-900/50";
             iconContent = (
@@ -162,15 +177,14 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
                     <Check className="w-2.5 h-2.5" /> CONFIRMADO
                 </div>
             );
-            break;
-
-        case 'announced': // AZUL/ROXO - NOVO ANÚNCIO DO ROBÔ
-            cardClass = "bg-gradient-to-br from-indigo-50/90 to-white dark:from-indigo-900/20 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50";
+        } else {
+            // PAGAMENTO PREVISTO/ANUNCIADO (Azul/Indigo - Tracejado)
+            cardClass = "bg-gradient-to-br from-indigo-50/90 to-white dark:from-indigo-900/20 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50 border-dashed";
             amountClass = "text-indigo-600 dark:text-indigo-300";
             labelClass = "text-indigo-500/70 dark:text-indigo-400/70";
             labelText = "Valor Anunciado";
             tickerBgClass = "bg-white dark:bg-zinc-900 border-indigo-100 dark:border-indigo-900/50 text-indigo-900 dark:text-indigo-200";
-            timelineLineClass = "bg-indigo-200 dark:bg-indigo-900/50";
+            timelineLineClass = "bg-indigo-200 dark:bg-indigo-900/50 border-l border-dashed border-indigo-300";
             iconContent = (
                 <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200 dark:border-indigo-800">
                     <Megaphone className="w-5 h-5" />
@@ -178,29 +192,10 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
             );
             badgeContent = (
                 <div className="absolute right-0 top-0 bg-indigo-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
-                    <Radar className="w-2.5 h-2.5" /> ANUNCIADO
+                    <Radar className="w-2.5 h-2.5" /> PREVISÃO
                 </div>
             );
-            break;
-
-        case 'datacom': // LARANJA - ALERTA
-            cardClass = "bg-gradient-to-br from-amber-50/90 to-white dark:from-amber-900/20 dark:to-zinc-900 border-amber-200/50 dark:border-amber-800/50";
-            amountClass = "text-amber-700 dark:text-amber-400";
-            labelClass = "text-amber-600/70 dark:text-amber-500/70";
-            labelText = "Data Limite";
-            tickerBgClass = "bg-white dark:bg-zinc-900 border-amber-100 dark:border-amber-900/50 text-amber-900 dark:text-amber-200";
-            timelineLineClass = "bg-amber-200 dark:bg-amber-900/50";
-            iconContent = (
-                <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 shadow-sm border border-amber-200 dark:border-amber-800">
-                    <CalendarClock className="w-5 h-5" />
-                </div>
-            );
-            badgeContent = (
-                <div className="absolute right-0 top-0 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
-                    <Calendar className="w-2.5 h-2.5" /> DATA COM
-                </div>
-            );
-            break;
+        }
     }
     
     return (
@@ -233,7 +228,7 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
                 </div>
                 
                 <div className="text-right">
-                    {status === 'datacom' ? (
+                    {isDatacom ? (
                         <>
                             <p className={`text-xs font-black ${amountClass}`}>
                                 Corte
@@ -245,7 +240,7 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
                     ) : (
                         <>
                             <p className={`text-sm font-black ${amountClass}`}>
-                                {event.totalReceived ? event.totalReceived.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : event.projectedTotal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                {event.amount ? event.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
                             </p>
                             <p className={`text-[9px] font-medium ${labelClass}`}>
                                 {labelText}
@@ -272,208 +267,159 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   
-  // --- ROBOT / RADAR LOGIC ---
-  const [robotState, setRobotState] = useState<'idle' | 'scanning' | 'done'>('idle');
-  const [agendaItems, setAgendaItems] = useState<Record<string, any[]>>({}); 
-  const [agendaTotalProjected, setAgendaTotalProjected] = useState(0);
-  
-  // Estado Unificado para o Card de Radar (Soma confirmados + previsões)
-  const [radarSummary, setRadarSummary] = useState({ count: 0, total: 0, loading: true });
-  
+  // --- STATE UNIFICADO DO RADAR ---
+  // Fonte única de verdade para Card e Modal
+  const [radarData, setRadarData] = useState<{
+      events: RadarEvent[];
+      summary: { count: number; total: number };
+      grouped: Record<string, RadarEvent[]>;
+      loading: boolean;
+  }>({ events: [], summary: { count: 0, total: 0 }, grouped: {}, loading: true });
+
   // Estado compartilhado para sincronizar o card de Previsão do Modal de Proventos
   const [unifiedProvisionedTotal, setUnifiedProvisionedTotal] = useState(0);
 
-  // Efeito Mestre: Calcula o Radar em background para o Card da Dashboard
-  // IMPORTANTE: Este efeito usa a MESMA lógica de apuração do modal para garantir sincronia
+  // EFEITO MESTRE: Calcula Radar (Unificado)
   useEffect(() => {
       let isActive = true;
-      const calcSummary = async () => {
-          // Se não tem dados, zera e sai
-          if (dividendReceipts.length === 0 && portfolio.length === 0) {
-             setRadarSummary({ count: 0, total: 0, loading: false });
-             return;
-          }
-
+      const loadRadar = async () => {
           try {
-              // Busca novas previsões/anúncios do Robô
+              // 1. Busca Previsões do Scraper (Futuro)
               const predictions = await fetchFutureAnnouncements(portfolio);
               if (!isActive) return;
 
-              const now = new Date();
-              const todayStr = now.toISOString().split('T')[0];
+              const todayStr = new Date().toISOString().split('T')[0];
+              const atomEvents: RadarEvent[] = [];
               
-              let totalSum = 0;
-              let eventCount = 0;
-              
-              // Conjunto de chaves para evitar duplicatas (Ticker + Data + Valor)
-              // Usamos para garantir que o que está no DB não seja somado de novo se vier do scraper
-              const processedEvents = new Set<string>();
+              // Helper para verificar duplicatas (Chave única composta)
+              const isDuplicate = (ticker: string, type: string, date: string, rate: number, evtType: string) => {
+                  return atomEvents.some(e => 
+                      e.ticker === ticker && 
+                      e.eventType === evtType &&
+                      e.date === date &&
+                      Math.abs(e.rate - rate) < 0.001
+                  );
+              };
 
-              // 1. Processa Confirmados (DB - DividendReceipts)
+              // A. Processa Recibos do Banco (CONFIRMED)
               dividendReceipts.forEach(r => {
-                  const uniqueKey = `${r.ticker}-${r.paymentDate || r.dateCom}-${r.rate.toFixed(4)}`;
-                  
-                  if (r.paymentDate >= todayStr) {
-                      eventCount++;
-                      totalSum += r.totalReceived;
-                      processedEvents.add(uniqueKey);
-                  } else if (r.dateCom >= todayStr) {
-                      eventCount++;
-                      // Data com não soma valor monetário no total projetado, só conta como evento
-                      processedEvents.add(uniqueKey);
+                  // Evento de Pagamento
+                  if (r.paymentDate && r.paymentDate >= todayStr) {
+                      atomEvents.push({
+                          id: `db-pay-${r.id}`,
+                          ticker: r.ticker,
+                          type: r.type,
+                          eventType: 'PAYMENT',
+                          status: 'CONFIRMED',
+                          date: r.paymentDate,
+                          amount: r.totalReceived,
+                          rate: r.rate
+                      });
+                  }
+                  // Evento de Datacom
+                  if (r.dateCom && r.dateCom >= todayStr) {
+                      atomEvents.push({
+                          id: `db-com-${r.id}`,
+                          ticker: r.ticker,
+                          type: r.type,
+                          eventType: 'DATACOM',
+                          status: 'CONFIRMED',
+                          date: r.dateCom,
+                          amount: 0, // Datacom não tem fluxo financeiro direto na data
+                          rate: r.rate
+                      });
                   }
               });
 
-              // 2. Processa Previsões (Scraper)
+              // B. Processa Previsões do Scraper (PREDICTED)
               predictions.forEach(p => {
-                  // Chave de unicidade (compatível com a lógica acima)
-                  const uniqueKey = `${p.ticker}-${p.paymentDate || p.dateCom}-${p.rate.toFixed(4)}`;
+                  // Só adiciona se não existir equivalente confirmado no DB
+                  
+                  // Pagamento Previsto
+                  if (p.paymentDate && p.paymentDate >= todayStr) {
+                      if (!isDuplicate(p.ticker, p.type, p.paymentDate, p.rate, 'PAYMENT')) {
+                          atomEvents.push({
+                              id: `pred-pay-${p.ticker}-${p.paymentDate}`,
+                              ticker: p.ticker,
+                              type: p.type,
+                              eventType: 'PAYMENT',
+                              status: 'PREDICTED',
+                              date: p.paymentDate,
+                              amount: p.projectedTotal,
+                              rate: p.rate
+                          });
+                      }
+                  }
 
-                  if (!processedEvents.has(uniqueKey)) {
-                      if (p.paymentDate && p.paymentDate >= todayStr) {
-                          eventCount++;
-                          totalSum += p.projectedTotal;
-                          processedEvents.add(uniqueKey);
-                      } else if (p.dateCom && p.dateCom >= todayStr) {
-                          eventCount++;
-                          processedEvents.add(uniqueKey);
+                  // Datacom Prevista
+                  if (p.dateCom && p.dateCom >= todayStr) {
+                      if (!isDuplicate(p.ticker, p.type, p.dateCom, p.rate, 'DATACOM')) {
+                          atomEvents.push({
+                              id: `pred-com-${p.ticker}-${p.dateCom}`,
+                              ticker: p.ticker,
+                              type: p.type,
+                              eventType: 'DATACOM',
+                              status: 'PREDICTED',
+                              date: p.dateCom,
+                              amount: 0,
+                              rate: p.rate
+                          });
                       }
                   }
               });
 
-              setRadarSummary({ count: eventCount, total: totalSum, loading: false });
-              setUnifiedProvisionedTotal(totalSum); // Sincroniza total para outros modais
+              // Ordenação Cronológica
+              atomEvents.sort((a, b) => a.date.localeCompare(b.date));
+
+              // Cálculo de Totais (Apenas Pagamentos)
+              const sum = atomEvents
+                  .filter(e => e.eventType === 'PAYMENT')
+                  .reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+              // Agrupamento para o Modal
+              const grouped: Record<string, RadarEvent[]> = { 'Hoje': [], 'Amanhã': [], 'Esta Semana': [], 'Este Mês': [], 'Futuro': [] };
+              const todayDate = new Date(); todayDate.setHours(0,0,0,0);
+              const tomorrowDate = new Date(todayDate); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+              const nextWeekDate = new Date(todayDate); nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+              const endOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
+
+              atomEvents.forEach((ev) => {
+                  const evDate = new Date(ev.date + 'T00:00:00');
+                  if (evDate.getTime() === todayDate.getTime()) grouped['Hoje'].push(ev);
+                  else if (evDate.getTime() === tomorrowDate.getTime()) grouped['Amanhã'].push(ev);
+                  else if (evDate <= nextWeekDate) grouped['Esta Semana'].push(ev);
+                  else if (evDate <= endOfMonth) grouped['Este Mês'].push(ev);
+                  else grouped['Futuro'].push(ev);
+              });
+
+              Object.keys(grouped).forEach(k => {
+                  if (grouped[k].length === 0) delete grouped[k];
+              });
+
+              setRadarData({
+                  events: atomEvents,
+                  summary: { count: atomEvents.length, total: sum },
+                  grouped,
+                  loading: false
+              });
+              
+              setUnifiedProvisionedTotal(sum); // Sincronia global
 
           } catch (e) {
-              if (isActive) setRadarSummary(prev => ({ ...prev, loading: false }));
+              console.error(e);
+              if (isActive) setRadarData(prev => ({ ...prev, loading: false }));
           }
       };
-      
-      calcSummary();
+
+      loadRadar();
       return () => { isActive = false; };
   }, [portfolio, dividendReceipts]);
 
-  // EFEITO DO MODAL RADAR (SCAN DETALHADO)
-  useEffect(() => {
-      if ((showAgendaModal || showProventosModal) && robotState === 'idle') {
-          const runScan = async () => {
-              setRobotState('scanning');
-              setAgendaItems({});
-              setAgendaTotalProjected(0);
-              
-              try {
-                  const predictions = await fetchFutureAnnouncements(portfolio);
-                  const todayStr = new Date().toISOString().split('T')[0];
-                  const allEvents: any[] = [];
-                  const processedKeys = new Set<string>();
-                  let projectedSum = 0;
-
-                  // 1. Processa CONFIRMADOS (Do Banco de Dados/Prop)
-                  dividendReceipts.forEach(r => {
-                      if (!r) return;
-                      const uniqueKey = `${r.ticker}-${r.paymentDate || r.dateCom}-${r.rate.toFixed(4)}`;
-                      
-                      let added = false;
-                      if (r.paymentDate >= todayStr) { 
-                          allEvents.push({ 
-                              ...r, 
-                              eventType: 'payment', 
-                              date: r.paymentDate,
-                              isPrediction: false // Confirmado via DB
-                          }); 
-                          projectedSum += r.totalReceived;
-                          added = true;
-                      }
-                      if (r.dateCom >= todayStr) {
-                          allEvents.push({ 
-                              ...r, 
-                              eventType: 'datacom', 
-                              date: r.dateCom,
-                              isPrediction: false // Confirmado via DB
-                          });
-                          added = true;
-                      }
-                      
-                      if (added) processedKeys.add(uniqueKey);
-                  });
-
-                  // 2. Processa PREVISÕES/ANÚNCIOS NOVOS (Do Scraper/IA)
-                  predictions.forEach(pred => {
-                        const uniqueKey = `${pred.ticker}-${pred.paymentDate || pred.dateCom}-${pred.rate.toFixed(4)}`;
-                        
-                        // Só adiciona se não for duplicata do DB
-                        if (!processedKeys.has(uniqueKey)) {
-                            // Se tem data e valor > 0, é um ANÚNCIO (Scraped), não apenas uma "previsão estatística"
-                            // No contexto deste app, Predictions = Novos Anúncios do Scraper
-                            
-                            if (pred.paymentDate && pred.paymentDate >= todayStr) {
-                                allEvents.push({ 
-                                    ticker: pred.ticker, 
-                                    date: pred.paymentDate, 
-                                    eventType: 'payment',
-                                    type: pred.type, 
-                                    totalReceived: pred.projectedTotal, 
-                                    rate: pred.rate,
-                                    isPrediction: true // Veio do Scraper
-                                });
-                                projectedSum += pred.projectedTotal;
-                            }
-                            
-                            if (pred.dateCom && pred.dateCom >= todayStr) {
-                                allEvents.push({
-                                    ticker: pred.ticker, 
-                                    date: pred.dateCom, 
-                                    eventType: 'datacom',
-                                    type: pred.type, 
-                                    isPrediction: true 
-                                });
-                            }
-                        }
-                  });
-
-                  await new Promise(r => setTimeout(r, 600));
-
-                  setAgendaTotalProjected(projectedSum);
-                  setUnifiedProvisionedTotal(projectedSum); 
-
-                  const sorted = allEvents.sort((a, b) => a.date.localeCompare(b.date));
-                  const grouped: Record<string, any[]> = { 'Hoje': [], 'Amanhã': [], 'Esta Semana': [], 'Este Mês': [], 'Futuro': [] };
-                  
-                  const todayDate = new Date(); todayDate.setHours(0,0,0,0);
-                  const tomorrowDate = new Date(todayDate); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-                  const nextWeekDate = new Date(todayDate); nextWeekDate.setDate(nextWeekDate.getDate() + 7);
-                  const endOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
-
-                  sorted.forEach((ev: any) => {
-                      const evDate = new Date(ev.date + 'T00:00:00');
-                      if (evDate.getTime() === todayDate.getTime()) grouped['Hoje'].push(ev);
-                      else if (evDate.getTime() === tomorrowDate.getTime()) grouped['Amanhã'].push(ev);
-                      else if (evDate <= nextWeekDate) grouped['Esta Semana'].push(ev);
-                      else if (evDate <= endOfMonth) grouped['Este Mês'].push(ev);
-                      else grouped['Futuro'].push(ev);
-                  });
-
-                  Object.keys(grouped).forEach(k => {
-                      if (grouped[k].length === 0) delete grouped[k];
-                  });
-
-                  setAgendaItems(grouped);
-
-              } catch(e) {
-                  console.error(e);
-              } finally {
-                  setRobotState('done');
-              }
-          };
-          runScan();
-      }
-  }, [showAgendaModal, showProventosModal, robotState, portfolio, dividendReceipts]);
-
+  // Handler para re-trigger manual (usado no botão do modal se vazio)
   const handleRobotInteract = useCallback(() => {
-      if (robotState === 'done') {
-          setRobotState('idle'); 
-      }
-  }, [robotState]);
+      // Como o efeito depende de portfolio/dividends, aqui poderíamos forçar um refresh de dados externos
+      // Mas por enquanto, apenas loga ou reseta loading visual se necessário
+  }, []);
 
   const { typeData, classChartData, assetsChartData, sectorChartData, topConcentration } = useMemo(() => {
       let fiisTotal = 0; let stocksTotal = 0;
@@ -690,18 +636,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 <div>
                     <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Radar de Proventos</h3>
                     <div className="flex items-center gap-2 mt-0.5">
-                        {radarSummary.loading ? (
+                        {radarData.loading ? (
                             <span className="text-[10px] font-bold text-zinc-400 animate-pulse">Sincronizando...</span>
                         ) : (
                             <>
                                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
-                                    {radarSummary.count > 0 ? `${radarSummary.count} Eventos` : 'Sem eventos próximos'}
+                                    {radarData.summary.count > 0 ? `${radarData.summary.count} Eventos` : 'Sem eventos próximos'}
                                 </span>
-                                {radarSummary.total > 0 && (
+                                {radarData.summary.total > 0 && (
                                     <>
                                         <div className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
                                         <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                                            {formatBRL(radarSummary.total, privacyMode)}
+                                            {formatBRL(radarData.summary.total, privacyMode)}
                                         </span>
                                     </>
                                 )}
@@ -769,21 +715,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             {/* Radar Animation Area Compacta */}
             <div className="anim-scale-in">
                 <RadarAnimation 
-                    isScanning={robotState === 'scanning'} 
-                    totalProjected={agendaTotalProjected} 
+                    isScanning={radarData.loading} 
+                    totalProjected={radarData.summary.total} 
                     privacyMode={privacyMode || false}
                 />
             </div>
 
             <div className="relative z-10 pt-2 pb-32 min-h-[50vh]">
-                {robotState === 'scanning' ? (
+                {radarData.loading ? (
                     <div className="flex flex-col items-center justify-center pt-6 anim-fade-in opacity-50">
                         <p className="text-[10px] text-zinc-400 max-w-[200px] text-center font-medium">Buscando dados no banco e projetando eventos futuros...</p>
                     </div>
                 ) : (
-                    Object.keys(agendaItems).length > 0 ? (
-                        Object.keys(agendaItems).map((groupKey) => { 
-                            const events = agendaItems[groupKey]; 
+                    Object.keys(radarData.grouped).length > 0 ? (
+                        Object.keys(radarData.grouped).map((groupKey) => { 
+                            const events = radarData.grouped[groupKey]; 
                             return (
                                 <div key={groupKey} className="mb-6 anim-slide-up">
                                     <div className="sticky top-0 z-20 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-md py-2 mb-2 flex items-center gap-2 border-b border-zinc-200/50 dark:border-zinc-800/50">
@@ -791,7 +737,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">{groupKey}</h3>
                                     </div>
                                     <div className="relative space-y-1">
-                                        {events.map((e: any, i: number) => <TimelineEvent key={i} event={e} isLast={i === events.length - 1} />)}
+                                        {events.map((e, i) => <TimelineEvent key={e.id} event={e} isLast={i === events.length - 1} />)}
                                     </div>
                                 </div>
                             ); 
