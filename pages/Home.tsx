@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight, Megaphone, Clock } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight, Megaphone, Clock, Building2, Briefcase } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -438,7 +438,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { typeData: { fiis: { percent: (fiisTotal/total)*100 }, stocks: { percent: (stocksTotal/total)*100 }, total }, classChartData, assetsChartData, sectorChartData, topConcentration };
   }, [portfolio]);
 
-  const { received, fullHistoryData, availableYears, displayedChartData, displayedReceipts, stats } = useMemo(() => {
+  const { received, fullHistoryData, availableYears, displayedChartData, displayedReceipts, stats, splitData, last6MonthsData } = useMemo(() => {
       let receivedTotal = 0;
       const receiptsMap: Record<string, DividendReceipt[]> = {};
       const monthlySum: Record<string, number> = {};
@@ -468,6 +468,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               monthIndex: d.getMonth()
           };
       });
+
+      // Últimos 6 meses para o Mini Gráfico do Card
+      const last6Months = fullHistory.slice(-6);
+      // Preencher com meses vazios se tiver menos de 6
+      const last6MonthsData = [...last6Months];
+      while(last6MonthsData.length < 6) {
+          last6MonthsData.unshift({ fullDate: '', name: '', value: 0, year: 0, monthIndex: 0 });
+      }
+      // Calcular percentual relativo ao máximo para desenhar as barrinhas CSS
+      const maxIn6 = Math.max(...last6MonthsData.map(d => d.value), 1);
+      const normalized6 = last6MonthsData.map(d => ({ ...d, height: (d.value / maxIn6) * 100 }));
 
       // Anos disponíveis para filtro
       const years = Array.from(new Set(fullHistory.map(h => h.year))).sort((a,b) => b - a);
@@ -524,13 +535,24 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       // Ordena recibos por data decrescente
       listReceipts.sort((a,b) => (b.paymentDate || '').localeCompare(a.paymentDate || ''));
 
+      // Calcula Split FII vs Ações para o período
+      let splitFII = 0;
+      let splitStock = 0;
+      listReceipts.forEach(r => {
+          if (r.assetType === AssetType.FII) splitFII += r.totalReceived;
+          else splitStock += r.totalReceived;
+      });
+      const splitTotal = splitFII + splitStock || 1;
+
       return { 
           received: receivedTotal, 
-          fullHistoryData: fullHistory, // Usado para inflação
+          fullHistoryData: fullHistory, 
           availableYears: years,
           displayedChartData: chartData,
           displayedReceipts: listReceipts,
-          stats: { periodTotal, periodAvg, periodMax }
+          stats: { periodTotal, periodAvg, periodMax },
+          splitData: { fii: splitFII, stock: splitStock, fiiPct: (splitFII/splitTotal)*100, stockPct: (splitStock/splitTotal)*100 },
+          last6MonthsData: normalized6
       };
   }, [dividendReceipts, proventosYearFilter, selectedProventosMonth]);
 
@@ -666,24 +688,30 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       
       <div className="anim-stagger-item" style={{ animationDelay: '200ms' }}>
         <button onClick={() => setShowProventosModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>
-            <div className="flex items-center gap-4 relative z-10">
-                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-200 dark:border-emerald-900/30 shadow-sm"><CircleDollarSign className="w-6 h-6" strokeWidth={1.5} /></div>
-                <div>
-                    <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Renda Passiva</h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
-                            Recebido: {formatBRL(received, privacyMode)}
-                        </span>
-                        <div className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
-                        <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
-                            Média {formatBRL(stats.periodAvg, true).split('R$')[1]}
-                        </span>
+            <div className="flex items-center gap-4 relative z-10 w-full justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-200 dark:border-emerald-900/30 shadow-sm">
+                        <CircleDollarSign className="w-6 h-6" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Renda Passiva</h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                                Total: {formatBRL(received, privacyMode)}
+                            </span>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div className="flex items-center gap-3 relative z-10">
-                <div className="bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/20 group-hover:text-emerald-500 transition-colors">
-                    <Wallet className="w-4 h-4" />
+                
+                {/* Mini Gráfico de Barras - Visualização Rápida */}
+                <div className="flex items-end gap-1 h-8 opacity-70">
+                    {last6MonthsData.map((d, i) => (
+                        <div 
+                            key={i} 
+                            className="w-1.5 rounded-t-sm bg-emerald-300 dark:bg-emerald-800"
+                            style={{ height: `${Math.max(d.height, 10)}%` }}
+                        ></div>
+                    ))}
                 </div>
             </div>
         </button>
@@ -902,14 +930,36 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          </div>
                      </div>
                  </div>
+                 
+                 {/* Mini Cards de Detalhe */}
                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-center">
                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Trophy className="w-3 h-3 text-amber-500" /> Recorde</p>
                      <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(stats.periodMax, privacyMode)}</p>
                  </div>
                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-center">
                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><CalendarClock className="w-3 h-3 text-indigo-500" /> Previsão</p>
-                     {/* CORREÇÃO: Usa o total calculado pelo Robô/Radar para garantir consistência */}
                      <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(unifiedProvisionedTotal, privacyMode)}</p>
+                 </div>
+             </div>
+
+             {/* Breakdown de Origem (FII vs Ações) */}
+             <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-4 mb-6 anim-slide-up">
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">Origem dos Proventos</h3>
+                 <div className="flex h-3 w-full rounded-full overflow-hidden bg-white dark:bg-zinc-800 mb-3 shadow-inner">
+                     <div style={{ width: `${splitData.fiiPct}%` }} className="h-full bg-indigo-500 transition-all duration-1000 ease-out"></div>
+                     <div style={{ width: `${splitData.stockPct}%` }} className="h-full bg-sky-500 transition-all duration-1000 ease-out"></div>
+                 </div>
+                 <div className="flex justify-between items-center text-xs">
+                     <div className="flex items-center gap-2">
+                         <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                         <span className="font-bold text-zinc-700 dark:text-zinc-300">FIIs</span>
+                         <span className="font-medium text-zinc-400">{Math.round(splitData.fiiPct)}%</span>
+                     </div>
+                     <div className="flex items-center gap-2">
+                         <span className="font-medium text-zinc-400">{Math.round(splitData.stockPct)}%</span>
+                         <span className="font-bold text-zinc-700 dark:text-zinc-300">Ações</span>
+                         <div className="w-2 h-2 rounded-full bg-sky-500"></div>
+                     </div>
                  </div>
              </div>
 
@@ -976,8 +1026,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                              return (
                                  <div key={idx} className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
                                      <div className="flex items-center gap-3">
-                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border shadow-sm ${isFII ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/20 dark:border-sky-900/30'}`}>
-                                             {r.ticker.substring(0, 2)}
+                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-zinc-600 dark:text-zinc-400 border shadow-sm ${isFII ? 'bg-indigo-50 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'bg-sky-50 border-sky-100 dark:bg-sky-900/20 dark:border-sky-900/30 text-sky-600 dark:text-sky-400'}`}>
+                                             {isFII ? <Building2 className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
                                          </div>
                                          <div>
                                              <div className="flex items-center gap-2">
