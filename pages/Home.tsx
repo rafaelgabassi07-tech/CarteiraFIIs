@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight, Megaphone, Clock, Building2, Briefcase } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight, Megaphone, Clock, Building2, Briefcase, Cloud, RefreshCw } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -268,7 +268,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   
   // --- STATE UNIFICADO DO RADAR ---
-  // Fonte única de verdade para Card e Modal
   const [radarData, setRadarData] = useState<{
       events: RadarEvent[];
       summary: { count: number; total: number };
@@ -276,15 +275,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       loading: boolean;
   }>({ events: [], summary: { count: 0, total: 0 }, grouped: {}, loading: true });
 
-  // Estado compartilhado para sincronizar o card de Previsão do Modal de Proventos
   const [unifiedProvisionedTotal, setUnifiedProvisionedTotal] = useState(0);
+  const [triggerRadar, setTriggerRadar] = useState(0); // Trigger manual
 
   // EFEITO MESTRE: Calcula Radar (Unificado)
   useEffect(() => {
       let isActive = true;
       const loadRadar = async () => {
+          if (triggerRadar > 0) setRadarData(prev => ({ ...prev, loading: true }));
+          
           try {
-              // 1. Busca Previsões do Scraper (Futuro)
+              // 1. Busca Previsões do Scraper (Futuro) - Fonte: Supabase Cloud
               const predictions = await fetchFutureAnnouncements(portfolio);
               if (!isActive) return;
 
@@ -301,7 +302,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   );
               };
 
-              // A. Processa Recibos do Banco (CONFIRMED)
+              // A. Processa Recibos do Banco (CONFIRMED) - Dados da carteira local/cache
               dividendReceipts.forEach(r => {
                   // Evento de Pagamento
                   if (r.paymentDate && r.paymentDate >= todayStr) {
@@ -331,10 +332,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   }
               });
 
-              // B. Processa Previsões do Scraper (PREDICTED)
+              // B. Processa Previsões do Scraper (PREDICTED) - Dados da Nuvem
               predictions.forEach(p => {
-                  // Só adiciona se não existir equivalente confirmado no DB
-                  
                   // Pagamento Previsto
                   if (p.paymentDate && p.paymentDate >= todayStr) {
                       if (!isDuplicate(p.ticker, p.type, p.paymentDate, p.rate, 'PAYMENT')) {
@@ -413,12 +412,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       loadRadar();
       return () => { isActive = false; };
-  }, [portfolio, dividendReceipts]);
+  }, [portfolio, dividendReceipts, triggerRadar]);
 
-  // Handler para re-trigger manual (usado no botão do modal se vazio)
+  // Handler para re-trigger manual
   const handleRobotInteract = useCallback(() => {
-      // Como o efeito depende de portfolio/dividends, aqui poderíamos forçar um refresh de dados externos
-      // Mas por enquanto, apenas loga ou reseta loading visual se necessário
+      setTriggerRadar(prev => prev + 1);
   }, []);
 
   const { typeData, classChartData, assetsChartData, sectorChartData, topConcentration } = useMemo(() => {
@@ -730,14 +728,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       {/* --- MODAL RADAR DE PROVENTOS (AGENDA) - APRIMORADO --- */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full relative overflow-hidden">
-            <div className="relative z-20 flex items-center gap-4 mb-4 px-2 anim-slide-up pt-4">
-                <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 border-zinc-200 dark:border-zinc-700`}>
-                    <Radar className="w-6 h-6" />
+            <div className="relative z-20 flex items-center justify-between mb-4 px-2 anim-slide-up pt-4">
+                <div className="flex items-center gap-4">
+                    <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 border-zinc-200 dark:border-zinc-700`}>
+                        <Radar className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Radar</h2>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Sincronizado com Nuvem</p>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Radar</h2>
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Monitoramento em Tempo Real</p>
-                </div>
+                {/* Botão de Refresh Manual */}
+                <button onClick={handleRobotInteract} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors press-effect border border-zinc-200 dark:border-zinc-700">
+                    <RefreshCw className={`w-4 h-4 ${radarData.loading ? 'animate-spin' : ''}`} />
+                </button>
             </div>
             
             {/* Radar Animation Area Compacta */}
