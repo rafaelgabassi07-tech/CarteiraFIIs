@@ -112,10 +112,26 @@ const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScannin
 };
 
 const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
-    // Se tem Data de Pagamento futura e Rate > 0, é Confirmado, não Previsão estatística
-    const isPrediction = event.isPrediction === true && (!event.rate || event.rate <= 0);
+    // Lógica de Classificação Refinada
+    const hasConcreteRate = event.rate && event.rate > 0;
+    const isDatacom = event.eventType === 'datacom';
+    
+    // Estados:
+    // 1. CONFIRMADO (Dinheiro na conta futuro ou hoje)
+    // 2. DATA COM (Aviso de corte)
+    // 3. PREVISÃO (Sem valor definido ainda)
+    
+    let status: 'payment_confirmed' | 'datacom' | 'prediction' = 'prediction';
+    
+    if (isDatacom) {
+        status = 'datacom';
+    } else if (hasConcreteRate) {
+        status = 'payment_confirmed';
+    }
+
     const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
 
+    // Variáveis de Estilo baseadas no Status
     let cardClass = "";
     let iconContent = null;
     let badgeContent = null;
@@ -123,50 +139,77 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
     let labelClass = "";
     let labelText = "";
     let tickerBgClass = "";
+    let timelineLineClass = "";
 
-    if (isPrediction) {
-        cardClass = "bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-white dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50";
-        amountClass = "text-indigo-600 dark:text-indigo-300";
-        labelClass = "text-indigo-400 dark:text-indigo-500";
-        labelText = "Estimativa";
-        tickerBgClass = "bg-white dark:bg-zinc-900 border-indigo-100 dark:border-indigo-900/50 text-indigo-900 dark:text-indigo-200";
-        
-        iconContent = (
-            <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200 dark:border-indigo-800">
-                <Radar className="w-5 h-5" />
-            </div>
-        );
-        badgeContent = (
-            <div className="absolute right-0 top-0 bg-indigo-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
-                <ScanEye className="w-2.5 h-2.5" /> RADAR
-            </div>
-        );
-    } else {
-        cardClass = "bg-gradient-to-br from-emerald-50/80 via-teal-50/50 to-white dark:from-emerald-900/20 dark:via-teal-900/10 dark:to-zinc-900 border-emerald-200/50 dark:border-emerald-800/50";
-        amountClass = "text-emerald-700 dark:text-emerald-400";
-        labelClass = "text-emerald-600/70 dark:text-emerald-500/70";
-        labelText = "Confirmado";
-        tickerBgClass = "bg-white dark:bg-zinc-900 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200";
+    switch (status) {
+        case 'payment_confirmed':
+            cardClass = "bg-gradient-to-br from-emerald-50/90 to-white dark:from-emerald-900/20 dark:to-zinc-900 border-emerald-200/50 dark:border-emerald-800/50";
+            amountClass = "text-emerald-700 dark:text-emerald-400";
+            labelClass = "text-emerald-600/70 dark:text-emerald-500/70";
+            labelText = "Valor Líquido";
+            tickerBgClass = "bg-white dark:bg-zinc-900 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200";
+            timelineLineClass = "bg-emerald-200 dark:bg-emerald-900/50";
+            iconContent = (
+                <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200 dark:border-emerald-800">
+                    <CircleDollarSign className="w-5 h-5" />
+                </div>
+            );
+            badgeContent = (
+                <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
+                    <Check className="w-2.5 h-2.5" /> CONFIRMADO
+                </div>
+            );
+            break;
 
-        iconContent = (
-            <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200 dark:border-emerald-800">
-                <CheckCircle2 className="w-5 h-5" />
-            </div>
-        );
-        badgeContent = (
-            <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
-                <Check className="w-2.5 h-2.5" /> CONFIRMADO
-            </div>
-        );
+        case 'datacom':
+            cardClass = "bg-gradient-to-br from-amber-50/90 to-white dark:from-amber-900/20 dark:to-zinc-900 border-amber-200/50 dark:border-amber-800/50";
+            amountClass = "text-amber-700 dark:text-amber-400";
+            labelClass = "text-amber-600/70 dark:text-amber-500/70";
+            labelText = "Data Limite";
+            tickerBgClass = "bg-white dark:bg-zinc-900 border-amber-100 dark:border-amber-900/50 text-amber-900 dark:text-amber-200";
+            timelineLineClass = "bg-amber-200 dark:bg-amber-900/50";
+            iconContent = (
+                <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 shadow-sm border border-amber-200 dark:border-amber-800">
+                    <CalendarClock className="w-5 h-5" />
+                </div>
+            );
+            badgeContent = (
+                <div className="absolute right-0 top-0 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
+                    <Calendar className="w-2.5 h-2.5" /> DATA COM
+                </div>
+            );
+            break;
+
+        case 'prediction':
+            cardClass = "bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-white dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50 border-dashed";
+            amountClass = "text-indigo-600 dark:text-indigo-300 opacity-70";
+            labelClass = "text-indigo-400 dark:text-indigo-500";
+            labelText = "Estimativa";
+            tickerBgClass = "bg-white dark:bg-zinc-900 border-indigo-100 dark:border-indigo-900/50 text-indigo-900 dark:text-indigo-200";
+            timelineLineClass = "bg-indigo-100 dark:bg-indigo-900/30 border-l border-dashed border-indigo-300"; // Linha pontilhada visual hack
+            iconContent = (
+                <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200 dark:border-indigo-800">
+                    <Radar className="w-5 h-5" />
+                </div>
+            );
+            badgeContent = (
+                <div className="absolute right-0 top-0 bg-indigo-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
+                    <ScanEye className="w-2.5 h-2.5" /> PREVISÃO
+                </div>
+            );
+            break;
     }
     
     return (
         <div className={`relative pl-12 py-2.5 group anim-fade-in`}>
-            {!isLast && <div className={`absolute left-[19px] top-8 bottom-[-10px] w-[2px] ${isPrediction ? 'bg-indigo-100 dark:bg-indigo-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}></div>}
+            {/* Linha do Tempo */}
+            {!isLast && (
+                <div className={`absolute left-[19px] top-8 bottom-[-10px] w-[2px] ${timelineLineClass}`}></div>
+            )}
             
             {iconContent}
             
-            <div className={`p-4 rounded-2xl border flex justify-between items-center relative shadow-sm overflow-hidden ${cardClass}`}>
+            <div className={`p-4 rounded-2xl border flex justify-between items-center relative shadow-sm overflow-hidden transition-all ${cardClass}`}>
                 {badgeContent}
                 
                 <div className="flex items-center gap-3.5">
@@ -175,24 +218,38 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h4 className={`text-sm font-black tracking-tight ${isPrediction ? 'text-indigo-900 dark:text-indigo-100' : 'text-zinc-900 dark:text-white'}`}>{event.ticker}</h4>
-                            <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isPrediction ? 'bg-white/50 text-indigo-600 dark:bg-black/20 dark:text-indigo-300' : 'bg-white/50 text-emerald-600 dark:bg-black/20 dark:text-emerald-400'}`}>
-                                {event.eventType === 'datacom' ? 'Data Com' : 'Pagamento'}
+                            <h4 className="text-sm font-black tracking-tight text-zinc-900 dark:text-white">{event.ticker}</h4>
+                            <span className="text-[9px] font-bold uppercase text-zinc-400 bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded">
+                                {event.type}
                             </span>
                         </div>
                         <p className={`text-[10px] font-medium mt-0.5 flex items-center gap-1 ${labelClass}`}>
-                            {event.type} • {formatDateShort(event.date)}
+                            {formatDateShort(event.date)}
                         </p>
                     </div>
                 </div>
                 
                 <div className="text-right">
-                    <p className={`text-sm font-black ${amountClass}`}>
-                        {event.totalReceived ? event.totalReceived.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : event.projectedTotal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </p>
-                    <p className={`text-[9px] font-medium ${labelClass}`}>
-                        {labelText}
-                    </p>
+                    {status === 'datacom' ? (
+                        <>
+                            <p className={`text-xs font-black ${amountClass}`}>
+                                Corte
+                            </p>
+                            <p className={`text-[9px] font-medium ${labelClass}`}>
+                                Hoje
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <p className={`text-sm font-black ${amountClass}`}>
+                                {status === 'prediction' && '~ '}
+                                {event.totalReceived ? event.totalReceived.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : event.projectedTotal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                            <p className={`text-[9px] font-medium ${labelClass}`}>
+                                {labelText}
+                            </p>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
@@ -260,7 +317,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                   ...r, 
                                   eventType: 'payment', 
                                   date: r.paymentDate,
-                                  isPrediction: false
+                                  isPrediction: false // Confirmado via DB
                               }); 
                               projectedSum += r.totalReceived;
                           }
@@ -269,7 +326,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                   ...r, 
                                   eventType: 'datacom', 
                                   date: r.dateCom,
-                                  isPrediction: false 
+                                  isPrediction: false // Confirmado via DB
                               });
                           }
                       }
@@ -277,23 +334,30 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                   // 2. Processa PREVISÕES/ANÚNCIOS NOVOS (Do Scraper/IA)
                   predictions.forEach(pred => {
-                        // Se tem data e valor > 0, é CONFIRMADO (fato), não "prediction"
-                        // IsPrediction aqui é usado apenas para styling visual (azul vs verde)
-                        // Vamos considerar azul se for Estimado (sem valor fixo) e verde se tiver valor.
-                        // Mas o Robot retorna projectedTotal > 0 se tiver rate.
-                        
+                        // Se tem data e valor > 0, é CONFIRMADO (fato), não "prediction" fuzzy
+                        // Prediction = true apenas se não tivermos certeza do valor ou data
+                        const isEstimate = pred.projectedTotal <= 0 || !pred.rate;
+
                         if (pred.paymentDate && pred.paymentDate >= todayStr) {
                             allEvents.push({ 
-                                ticker: pred.ticker, date: pred.paymentDate, eventType: 'payment',
-                                type: pred.type, totalReceived: pred.projectedTotal, rate: pred.rate,
-                                isPrediction: pred.projectedTotal <= 0 // Só marca como prediction se não tiver valor
+                                ticker: pred.ticker, 
+                                date: pred.paymentDate, 
+                                eventType: 'payment',
+                                type: pred.type, 
+                                totalReceived: pred.projectedTotal, 
+                                rate: pred.rate,
+                                isPrediction: isEstimate
                             });
-                            projectedSum += pred.projectedTotal;
+                            if (!isEstimate) projectedSum += pred.projectedTotal;
                         }
+                        
                         if (pred.dateCom && pred.dateCom >= todayStr) {
                             allEvents.push({
-                                ticker: pred.ticker, date: pred.dateCom, eventType: 'datacom',
-                                type: pred.type, isPrediction: true // Data Com geralmente é info, não $$
+                                ticker: pred.ticker, 
+                                date: pred.dateCom, 
+                                eventType: 'datacom',
+                                type: pred.type, 
+                                isPrediction: false // Data com futura é "confirmada" como evento de calendário
                             });
                         }
                   });
