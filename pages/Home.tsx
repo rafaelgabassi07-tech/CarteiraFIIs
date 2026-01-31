@@ -267,22 +267,39 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   
-  // --- STATE UNIFICADO DO RADAR ---
+  // --- STATE UNIFICADO DO RADAR (C/ PERSISTÊNCIA LOCAL) ---
   const [radarData, setRadarData] = useState<{
       events: RadarEvent[];
       summary: { count: number; total: number };
       grouped: Record<string, RadarEvent[]>;
       loading: boolean;
-  }>({ events: [], summary: { count: 0, total: 0 }, grouped: {}, loading: true });
+  }>(() => {
+      // Init from localStorage
+      try {
+          const saved = localStorage.getItem('investfiis_radar_cache_v2');
+          if (saved) {
+              const parsed = JSON.parse(saved);
+              // Verifica se não é muito velho (ex: 4h)
+              const age = Date.now() - (parsed.timestamp || 0);
+              if (age < 4 * 3600 * 1000) {
+                  return { ...parsed.data, loading: false };
+              }
+          }
+      } catch {}
+      return { events: [], summary: { count: 0, total: 0 }, grouped: {}, loading: true };
+  });
 
-  const [unifiedProvisionedTotal, setUnifiedProvisionedTotal] = useState(0);
+  const [unifiedProvisionedTotal, setUnifiedProvisionedTotal] = useState(radarData.summary.total);
   const [triggerRadar, setTriggerRadar] = useState(0); // Trigger manual
 
   // EFEITO MESTRE: Calcula Radar (Unificado)
   useEffect(() => {
       let isActive = true;
       const loadRadar = async () => {
-          if (triggerRadar > 0) setRadarData(prev => ({ ...prev, loading: true }));
+          // Só mostra loading se for trigger manual OU se não tiver dados iniciais
+          if (triggerRadar > 0 || radarData.events.length === 0) {
+              setRadarData(prev => ({ ...prev, loading: true }));
+          }
           
           try {
               // 1. Busca Previsões do Scraper (Futuro) - Fonte: Supabase Cloud
@@ -395,14 +412,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   if (grouped[k].length === 0) delete grouped[k];
               });
 
-              setRadarData({
+              const newData = {
                   events: atomEvents,
                   summary: { count: atomEvents.length, total: sum },
                   grouped,
                   loading: false
-              });
+              };
+
+              setRadarData(newData);
+              setUnifiedProvisionedTotal(sum); 
               
-              setUnifiedProvisionedTotal(sum); // Sincronia global
+              // Persist to localStorage
+              localStorage.setItem('investfiis_radar_cache_v2', JSON.stringify({
+                  timestamp: Date.now(),
+                  data: newData
+              }));
 
           } catch (e) {
               console.error(e);
@@ -410,6 +434,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }
       };
 
+      // Sempre carrega ao montar se o trigger mudar ou se os dados mudarem
       loadRadar();
       return () => { isActive = false; };
   }, [portfolio, dividendReceipts, triggerRadar]);

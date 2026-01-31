@@ -384,6 +384,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (dividends.length > 0) {
+             // CLEANUP: Remove registros futuros existentes para este ticker para evitar duplicatas erradas (ex: correção de valor 1.78 -> 0.25)
+             // Mantém histórico antigo, limpa apenas o que ainda vai acontecer ou acabou de ser anunciado
+             const today = new Date().toISOString().split('T')[0];
+             const { error: delError } = await supabase.from('market_dividends')
+                .delete()
+                .eq('ticker', ticker.toUpperCase())
+                .gte('payment_date', today);
+             
+             if (delError) console.warn('Clean up error (ignorable):', delError);
+
              const uniqueDivs = Array.from(new Map(dividends.map(item => [
                 `${item.type}-${item.date_com}-${item.rate}`, item
             ])).values());
