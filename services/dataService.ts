@@ -3,7 +3,6 @@ import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, Scrape
 import { supabase } from "./supabase";
 import { getQuotes } from "./brapiService";
 import { normalizeTicker, preciseMul, parseDateToLocal } from "./portfolioRules";
-import { predictDividendSchedule } from "./geminiService";
 
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
@@ -175,15 +174,13 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
     return results;
 };
 
-// --- ROBÔ DE PROVENTOS INTELIGENTE ---
+// --- ROBÔ DE PROVENTOS (SEM IA) ---
 export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI = false): Promise<FutureDividendPrediction[]> => {
     if (!portfolio || portfolio.length === 0) return [];
 
     const tickers = portfolio.map(p => normalizeTicker(p.ticker));
     
-    // ESTRATÉGIA: Buscar TODOS os dividendos do ano atual e futuro.
-    // Isso evita problemas com datas "limítrofes" (ontem/hoje) em queries do banco.
-    // A filtragem fina é feita em memória no cliente.
+    // Busca dados desde o início do ano atual para garantir cobertura
     const startOfYear = `${new Date().getFullYear()}-01-01`;
 
     try {
@@ -197,13 +194,11 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
 
         if (error) {
             console.error('[Robot] Error fetching confirmed data:', error);
-        } else {
-            console.log(`[Robot] Found ${data?.length || 0} recent/future events for ${tickers.length} assets.`);
         }
         
         const predictions: FutureDividendPrediction[] = [];
         
-        // Data de corte para exibição: Ontem (para garantir que eventos de hoje apareçam mesmo com fuso)
+        // Data de corte: Ontem (para não perder eventos de fuso horário de "hoje")
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - 1);
         const cutoffTime = cutoffDate.getTime();
@@ -211,13 +206,9 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
         const now = new Date();
         now.setHours(0,0,0,0);
 
-        const blockedPeriods = new Set<string>();
-        const coveredTickers = new Set<string>();
-
         if (data && data.length > 0) {
             data.forEach((div: any) => {
-                // --- FILTRAGEM EM MEMÓRIA (Mais segura) ---
-                // Se tem data de pagamento definida, verifica se é futura ou recente
+                // --- FILTRAGEM EM MEMÓRIA ---
                 let isRelevant = false;
                 
                 if (!div.payment_date) {
@@ -227,13 +218,12 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                     if (payDate && payDate.getTime() >= cutoffTime) isRelevant = true;
                 }
 
-                // Se não passou pelo filtro de pagamento, tenta data com
                 if (!isRelevant && div.date_com) {
                     const dCom = parseDateToLocal(div.date_com);
                     if (dCom && dCom.getTime() >= cutoffTime) isRelevant = true;
                 }
 
-                if (!isRelevant) return; // Ignora eventos antigos
+                if (!isRelevant) return;
 
                 const normalizedTicker = normalizeTicker(div.ticker);
                 const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
@@ -263,67 +253,10 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                     confidence: 'ALTA',
                     reasoning: `Confirmado: ${div.type}`
                 });
-                
-                coveredTickers.add(normalizedTicker);
-                
-                if (div.payment_date) {
-                    const k = `${normalizedTicker}-${div.payment_date.substring(0, 7)}`; 
-                    blockedPeriods.add(k);
-                } 
-                if (div.date_com) {
-                    const k = `${normalizedTicker}-${div.date_com.substring(0, 7)}`; 
-                    blockedPeriods.add(k);
-                }
             });
         }
 
-        // 2. Previsão IA (Preenchimento de Lacunas)
-        if (useAI) {
-            // Prioriza ativos sem nenhuma informação recente/futura
-            const priorityTickers = tickers.filter(t => !coveredTickers.has(t));
-            const tickersToPredict = priorityTickers.length > 5 ? priorityTickers : tickers;
-
-            if (tickersToPredict.length > 0) {
-                const aiPredictions = await predictDividendSchedule(tickersToPredict);
-                
-                aiPredictions.forEach((pred: any) => {
-                    const normalizedTicker = normalizeTicker(pred.ticker);
-                    const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
-                    if (!asset) return;
-
-                    const predDate = pred.predictedPaymentDate || pred.predictedDateCom;
-                    if (!predDate) return;
-                    
-                    const predMonth = predDate.substring(0, 7); 
-                    const key = `${normalizedTicker}-${predMonth}`;
-                    
-                    if (blockedPeriods.has(key)) return;
-
-                    const estimatedRate = asset.last_dividend || (asset.currentPrice ? (asset.currentPrice * (asset.dy_12m || 6) / 100 / 12) : 0);
-                    
-                    if (estimatedRate > 0) {
-                        const isOfficial = pred.status === 'ANUNCIADO';
-                        const finalType = pred.predictionType 
-                            ? `${pred.predictionType} (${isOfficial ? 'Anúncio' : 'Est.'})`
-                            : 'DIV (Est.)';
-
-                        predictions.push({
-                            ticker: normalizedTicker,
-                            dateCom: pred.predictedDateCom,
-                            paymentDate: pred.predictedPaymentDate,
-                            rate: estimatedRate,
-                            quantity: asset.quantity,
-                            projectedTotal: preciseMul(asset.quantity, estimatedRate),
-                            type: finalType,
-                            daysToDateCom: 0, 
-                            isAiPrediction: true,
-                            confidence: isOfficial ? 'ALTA' : pred.confidence, 
-                            reasoning: pred.reasoning
-                        });
-                    }
-                });
-            }
-        }
+        // Sem fallback de IA. Apenas dados reais.
 
         return predictions.sort((a,b) => {
             const dateA = a.paymentDate !== 'A Definir' ? a.paymentDate : (a.dateCom !== 'Já ocorreu' ? a.dateCom : '9999-99-99');
@@ -381,7 +314,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   }
               });
           } else {
-              // Trigger background update
               triggerScraperUpdate(toUpdate, true).then(results => {
                   console.log(`[DataService] Auto-correction triggered for ${results.length} assets`);
               });

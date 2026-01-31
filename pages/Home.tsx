@@ -25,7 +25,6 @@ interface HomeProps {
   onViewAsset?: (ticker: string) => void;
 }
 
-// Interface auxiliar para os dados do gráfico
 interface HistoryItem {
     fullDate: string;
     name: string;
@@ -34,19 +33,15 @@ interface HistoryItem {
     monthIndex: number;
 }
 
-// Interface Unificada de Evento do Radar
 interface RadarEvent {
     id: string;
     ticker: string;
     type: string;
     eventType: 'PAYMENT' | 'DATACOM';
-    status: 'CONFIRMED' | 'PREDICTED';
+    status: 'CONFIRMED';
     date: string;
     amount: number;
     rate: number;
-    isAiPrediction?: boolean;
-    confidence?: 'ALTA' | 'MEDIA' | 'BAIXA';
-    reasoning?: string;
 }
 
 const formatBRL = (val: any, privacy = false) => {
@@ -67,35 +62,29 @@ const formatDateShort = (dateStr: string) => {
     return `${day}/${month}`;
 };
 
-// Componente de Item da Agenda (Minimalista)
 const AgendaItem: React.FC<{ event: RadarEvent, isLast: boolean, privacyMode: boolean }> = ({ event, isLast, privacyMode }) => {
     const isDatacom = event.eventType === 'DATACOM';
-    const isConfirmed = event.status === 'CONFIRMED';
-    
-    // Cores baseadas no status e tipo
-    const statusColor = isConfirmed ? 'bg-emerald-500' : 'bg-indigo-400';
+    const statusColor = 'bg-emerald-500';
     const typeLabel = event.type || (isDatacom ? 'DATACOM' : 'PROVENTO');
 
     return (
         <div className="flex gap-4 relative group">
-            {/* Linha do Tempo */}
             <div className="flex flex-col items-center min-w-[40px]">
                 <span className="text-[10px] font-bold text-zinc-400 uppercase">{new Date(event.date).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</span>
                 <span className="text-lg font-black text-zinc-900 dark:text-white leading-none">{event.date.split('-')[2]}</span>
                 {!isLast && <div className="w-px h-full bg-zinc-200 dark:bg-zinc-800 my-2"></div>}
             </div>
 
-            {/* Conteúdo */}
             <div className="flex-1 pb-6">
-                <div className={`p-4 rounded-2xl border transition-all ${isConfirmed ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800' : 'bg-zinc-50/50 dark:bg-zinc-900/30 border-zinc-100 dark:border-zinc-800 border-dashed'}`}>
+                <div className="p-4 rounded-2xl border transition-all bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800">
                     <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${statusColor}`}></div>
                             <span className="text-sm font-black text-zinc-900 dark:text-white">{event.ticker}</span>
                             <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 uppercase">{typeLabel}</span>
                         </div>
-                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isConfirmed ? 'text-emerald-500' : 'text-indigo-400'}`}>
-                            {isConfirmed ? 'Confirmado' : 'Estimado'}
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500">
+                            Confirmado
                         </span>
                     </div>
 
@@ -105,13 +94,13 @@ const AgendaItem: React.FC<{ event: RadarEvent, isLast: boolean, privacyMode: bo
                                 <p className="text-xs font-medium text-zinc-500">Data de Corte (Data Com)</p>
                             ) : (
                                 <p className="text-[10px] text-zinc-400">
-                                    {event.isAiPrediction ? 'Estimativa baseada em histórico' : `Pagamento em ${formatDateShort(event.date)}`}
+                                    Pagamento em {formatDateShort(event.date)}
                                 </p>
                             )}
                         </div>
                         {!isDatacom && (
                             <div className="text-right">
-                                <span className={`text-sm font-black ${isConfirmed ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500'}`}>
+                                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
                                     {formatBRL(event.amount, privacyMode)}
                                 </span>
                             </div>
@@ -125,19 +114,17 @@ const AgendaItem: React.FC<{ event: RadarEvent, isLast: boolean, privacyMode: bo
 
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e'];
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, isAiLoading = false, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false, onViewAsset }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false, onViewAsset }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
-  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   
   const [selectedProventosMonth, setSelectedProventosMonth] = useState<string | null>(null);
-  const [proventosYearFilter, setProventosYearFilter] = useState<string>('12M'); // 12M, 2024, 2023...
+  const [proventosYearFilter, setProventosYearFilter] = useState<string>('12M'); 
   
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
   
-  // --- STATE UNIFICADO DO RADAR (C/ PERSISTÊNCIA LOCAL) ---
   const [radarData, setRadarData] = useState<{
       events: RadarEvent[];
       summary: { count: number; total: number; confirmed: number; estimated: number };
@@ -158,20 +145,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { events: [], summary: { count: 0, total: 0, confirmed: 0, estimated: 0 }, grouped: {}, loading: true, scanStatus: '' };
   });
 
-  const [triggerRadar, setTriggerRadar] = useState({ active: false, useAI: false });
+  const [triggerRadar, setTriggerRadar] = useState(false);
 
-  // EFEITO MESTRE: Calcula Radar (Unificado)
   useEffect(() => {
       let isActive = true;
       const loadRadar = async () => {
-          const useAI = triggerRadar.useAI;
-          
-          if (triggerRadar.active || radarData.events.length === 0) {
-              setRadarData(prev => ({ ...prev, loading: true, scanStatus: useAI ? 'Atualizando...' : 'Buscando dados...' }));
+          if (triggerRadar || radarData.events.length === 0) {
+              setRadarData(prev => ({ ...prev, loading: true, scanStatus: 'Buscando dados...' }));
           }
           
           try {
-              const predictions = await fetchFutureAnnouncements(portfolio, useAI);
+              const predictions = await fetchFutureAnnouncements(portfolio, false);
               if (!isActive) return;
 
               const todayStr = new Date().toISOString().split('T')[0];
@@ -186,9 +170,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   );
               };
 
-              // A. Processa Recibos Históricos e Futuros do Cache Local (DividendReceipts)
               dividendReceipts.forEach(r => {
-                  // Evento de Pagamento Futuro ou Hoje
                   if (r.paymentDate && r.paymentDate >= todayStr) {
                       atomEvents.push({
                           id: `db-pay-${r.id}`,
@@ -198,11 +180,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           status: 'CONFIRMED',
                           date: r.paymentDate,
                           amount: r.totalReceived,
-                          rate: r.rate,
-                          isAiPrediction: false
+                          rate: r.rate
                       });
                   }
-                  // Evento de Datacom Futuro ou Hoje
                   if (r.dateCom && r.dateCom >= todayStr) {
                       atomEvents.push({
                           id: `db-com-${r.id}`,
@@ -212,13 +192,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           status: 'CONFIRMED',
                           date: r.dateCom,
                           amount: 0, 
-                          rate: r.rate,
-                          isAiPrediction: false
+                          rate: r.rate
                       });
                   }
               });
 
-              // B. Processa Previsões (Robô Assertivo - já mescla Supabase e IA)
               predictions.forEach(p => {
                   if (p.paymentDate && p.paymentDate >= todayStr) {
                       if (!isDuplicate(p.ticker, p.type, p.paymentDate, p.rate, 'PAYMENT')) {
@@ -227,16 +205,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               ticker: p.ticker,
                               type: p.type,
                               eventType: 'PAYMENT',
-                              status: p.isAiPrediction ? 'PREDICTED' : 'CONFIRMED',
+                              status: 'CONFIRMED',
                               date: p.paymentDate,
                               amount: p.projectedTotal,
-                              rate: p.rate,
-                              isAiPrediction: p.isAiPrediction,
-                              confidence: p.confidence,
-                              reasoning: p.reasoning
+                              rate: p.rate
                           });
-                      }
-                  }
+                  }}
 
                   if (p.dateCom && p.dateCom >= todayStr) {
                       if (!isDuplicate(p.ticker, p.type, p.dateCom, p.rate, 'DATACOM')) {
@@ -245,38 +219,28 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               ticker: p.ticker,
                               type: p.type,
                               eventType: 'DATACOM',
-                              status: p.isAiPrediction ? 'PREDICTED' : 'CONFIRMED',
+                              status: 'CONFIRMED',
                               date: p.dateCom,
                               amount: 0,
-                              rate: p.rate,
-                              isAiPrediction: p.isAiPrediction,
-                              confidence: p.confidence
+                              rate: p.rate
                           });
-                      }
-                  }
+                  }}
               });
 
-              // Ordenação Cronológica
               atomEvents.sort((a, b) => a.date.localeCompare(b.date));
 
-              // Cálculo de Totais
               let sumConfirmed = 0;
-              let sumEstimated = 0;
-
               atomEvents.forEach(e => {
-                  if (e.eventType === 'PAYMENT') {
-                      if (e.status === 'CONFIRMED') sumConfirmed += (e.amount || 0);
-                      else sumEstimated += (e.amount || 0);
+                  if (e.eventType === 'PAYMENT' && e.status === 'CONFIRMED') {
+                      sumConfirmed += (e.amount || 0);
                   }
               });
 
-              // Agrupamento para o Modal (Por Mês Extenso)
               const grouped: Record<string, RadarEvent[]> = {};
               
               atomEvents.forEach((ev) => {
                   const date = new Date(ev.date + 'T00:00:00');
                   const key = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-                  // Capitalize
                   const keyCap = key.charAt(0).toUpperCase() + key.slice(1);
                   
                   if (!grouped[keyCap]) grouped[keyCap] = [];
@@ -287,9 +251,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   events: atomEvents,
                   summary: { 
                       count: atomEvents.length, 
-                      total: sumConfirmed + sumEstimated,
+                      total: sumConfirmed,
                       confirmed: sumConfirmed,
-                      estimated: sumEstimated
+                      estimated: 0 
                   },
                   grouped,
                   loading: false,
@@ -309,7 +273,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }
       };
 
-      if (radarData.events.length === 0 || triggerRadar.active) {
+      if (radarData.events.length === 0 || triggerRadar) {
           loadRadar();
       }
       
@@ -317,7 +281,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [portfolio, dividendReceipts, triggerRadar]);
 
   const handleRefreshAgenda = useCallback(() => {
-      setTriggerRadar({ active: true, useAI: true });
+      setTriggerRadar(true);
+      setTimeout(() => setTriggerRadar(false), 500); // Reset trigger
   }, []);
 
   const { typeData, classChartData, assetsChartData, sectorChartData, topConcentration } = useMemo(() => {
@@ -347,7 +312,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       (dividendReceipts || []).forEach(r => {
           if (r.paymentDate && r.paymentDate <= todayStr) {
               receivedTotal += r.totalReceived;
-              const key = r.paymentDate.substring(0, 7); // YYYY-MM
+              const key = r.paymentDate.substring(0, 7); 
               
               monthlySum[key] = (monthlySum[key] || 0) + r.totalReceived;
               if (!receiptsMap[key]) receiptsMap[key] = [];
@@ -355,7 +320,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }
       });
 
-      // Dados brutos de histórico ordenados
       const sortedKeys = Object.keys(monthlySum).sort();
       const fullHistory: HistoryItem[] = sortedKeys.map(date => {
           const d = new Date(date + '-02'); 
@@ -368,28 +332,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           };
       });
 
-      // Últimos 6 meses para o Mini Gráfico do Card
       const last6Months = fullHistory.slice(-6);
-      // Preencher com meses vazios se tiver menos de 6
       const last6MonthsData = [...last6Months];
       while(last6MonthsData.length < 6) {
           last6MonthsData.unshift({ fullDate: '', name: '', value: 0, year: 0, monthIndex: 0 });
       }
-      // Calcular percentual relativo ao máximo para desenhar as barrinhas CSS
       const maxIn6 = Math.max(...last6MonthsData.map(d => d.value), 1);
       const normalized6 = last6MonthsData.map(d => ({ ...d, height: (d.value / maxIn6) * 100 }));
 
-      // Anos disponíveis para filtro
       const years = Array.from(new Set(fullHistory.map(h => h.year))).sort((a,b) => b - a);
 
-      // Filtragem por período (12M ou Ano Específico)
       let chartData: HistoryItem[] = [];
-      
       if (proventosYearFilter === '12M') {
           chartData = fullHistory.slice(-12);
       } else {
           const targetYear = parseInt(proventosYearFilter);
-          // Preenche meses vazios se for um ano específico para o gráfico ficar bonito (Jan-Dez)
           if (!isNaN(targetYear)) {
               for (let m = 0; m < 12; m++) {
                   const key = `${targetYear}-${String(m+1).padStart(2, '0')}`;
@@ -397,7 +354,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   if (existing) {
                       chartData.push(existing);
                   } else {
-                      // Mês vazio (opcional: exibir barra zerada ou pular)
                       const d = new Date(targetYear, m, 2);
                       chartData.push({
                           fullDate: key,
@@ -411,18 +367,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }
       }
 
-      // Estatísticas do período visualizado
       const periodTotal = chartData.reduce((acc: number, curr: HistoryItem) => acc + curr.value, 0);
       const activeMonths = chartData.filter(d => d.value > 0).length;
       const periodAvg = activeMonths > 0 ? periodTotal / activeMonths : 0;
       const periodMax = Math.max(...chartData.map(d => d.value), 0);
 
-      // Lista detalhada (Se tiver mês selecionado, filtra por ele. Senão, mostra tudo do período/ano)
       let listReceipts: DividendReceipt[] = [];
       if (selectedProventosMonth) {
           listReceipts = receiptsMap[selectedProventosMonth] || [];
       } else {
-          // Pega todos os recibos dos meses que estão no chartData
           const visibleMonths = new Set(chartData.map(c => c.fullDate));
           Object.keys(receiptsMap).forEach(key => {
               if (visibleMonths.has(key)) {
@@ -430,11 +383,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               }
           });
       }
-      
-      // Ordena recibos por data decrescente
       listReceipts.sort((a,b) => (b.paymentDate || '').localeCompare(a.paymentDate || ''));
 
-      // Calcula Split FII vs Ações para o período
       let splitFII = 0;
       let splitStock = 0;
       listReceipts.forEach(r => {
@@ -455,7 +405,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       };
   }, [dividendReceipts, proventosYearFilter, selectedProventosMonth]);
 
-  // Styles e Handlers
   const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 transition-all press-effect relative overflow-hidden group shadow-2xl shadow-black/5 dark:shadow-black/20";
   const hoverBorderClass = "hover:border-zinc-300 dark:hover:border-zinc-700";
   const modalHeaderIconClass = "w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm";
@@ -473,21 +422,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   
   const CustomPieTooltip = ({ active, payload }: any) => { if (active && payload && payload.length) { const data = payload[0]; return (<div className="bg-white dark:bg-zinc-800 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700"><p className="text-xs font-bold text-zinc-900 dark:text-white mb-1">{data.name}</p><p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{formatBRL(data.value, privacyMode)} ({data.payload.percent.toFixed(1)}%)</p></div>); } return null; };
 
-  // Cálculo de ROI Total (Capital + Proventos)
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
 
   return (
     <div className="space-y-4 pb-8">
-      {/* 1. HERO CARD PATRIMÔNIO (RENOVADO) */}
       <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
         <div className="w-full bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-6 relative overflow-hidden group shadow-2xl shadow-zinc-200/50 dark:shadow-black/50">
-            {/* Background Effects */}
             <div className="absolute top-[-50%] right-[-10%] w-64 h-64 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
             <div className="absolute bottom-[-20%] left-[-20%] w-48 h-48 bg-indigo-500/5 dark:bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
             <div className="relative z-10 flex flex-col h-full">
-                {/* Cabeçalho */}
                 <div className="flex justify-between items-start mb-6">
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-1 flex items-center gap-2">
@@ -498,7 +443,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </h2>
                     </div>
                     
-                    {/* Badge de Rentabilidade Total */}
                     <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border backdrop-blur-sm ${totalReturn >= 0 ? 'bg-emerald-50/80 border-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-900/30 dark:text-emerald-400' : 'bg-rose-50/80 border-rose-100 text-rose-700 dark:bg-rose-900/20 dark:border-rose-900/30 dark:text-rose-400'}`}>
                         {totalReturn >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                         <div className="flex flex-col items-end leading-none">
@@ -510,9 +454,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                 <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-200 dark:via-zinc-800 to-transparent mb-5 opacity-50"></div>
 
-                {/* Grid de 3 Pilares */}
                 <div className="grid grid-cols-3 gap-2">
-                    {/* Custo */}
                     <div className="flex flex-col gap-1 p-2 rounded-xl transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
                             <Coins className="w-3 h-3" /> Custo
@@ -522,7 +464,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </span>
                     </div>
 
-                    {/* Capital (Valorização) */}
                     <div className="flex flex-col gap-1 p-2 rounded-xl transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-l border-zinc-100 dark:border-zinc-800 pl-4">
                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
                             <TrendingUp className="w-3 h-3" /> Resultado
@@ -532,7 +473,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </span>
                     </div>
 
-                    {/* Proventos */}
                     <div className="flex flex-col gap-1 p-2 rounded-xl transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-l border-zinc-100 dark:border-zinc-800 pl-4">
                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
                             <Banknote className="w-3 h-3" /> Proventos
@@ -600,7 +540,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
                 
-                {/* Mini Gráfico de Barras - Visualização Rápida */}
                 <div className="flex items-end gap-1 h-8 opacity-70">
                     {last6MonthsData.map((d, i) => (
                         <div 
@@ -624,31 +563,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* --- AGENDA SIMPLIFICADA E LIMPA --- */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
             <div className="flex justify-between items-center mb-6 pt-4">
                 <div>
                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2>
-                    <p className="text-xs text-zinc-500 font-medium">Próximos eventos e previsões</p>
+                    <p className="text-xs text-zinc-500 font-medium">Próximos eventos confirmados</p>
                 </div>
                 <button onClick={handleRefreshAgenda} disabled={radarData.loading} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors press-effect border border-zinc-200 dark:border-zinc-700">
                     <RefreshCw className={`w-4 h-4 ${radarData.loading ? 'animate-spin' : ''}`} />
                 </button>
             </div>
 
-            {/* Painel de Resumo Estático */}
             <div className="grid grid-cols-2 gap-3 mb-8 anim-scale-in">
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 col-span-2">
                     <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">Confirmado</p>
                     <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">
                         {formatBRL(radarData.summary.confirmed, privacyMode)}
-                    </p>
-                </div>
-                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 border-dashed">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1">Previsto</p>
-                    <p className="text-xl font-black text-indigo-700 dark:text-indigo-300">
-                        {formatBRL(radarData.summary.estimated, privacyMode)}
                     </p>
                 </div>
             </div>
@@ -685,9 +616,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <div className="flex flex-col items-center justify-center py-10 opacity-50">
                             <Calendar className="w-12 h-12 text-zinc-300 mb-3" strokeWidth={1} />
                             <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Agenda vazia</p>
-                            <button onClick={handleRefreshAgenda} className="text-indigo-500 font-bold text-xs hover:underline">
-                                Verificar previsões
-                            </button>
                         </div>
                     )
                 )}
@@ -695,7 +623,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
-      {/* RESTAURADO & REFINADO: Modal de Alocação Rico */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              <div className="flex items-center gap-4 mb-6 px-2 anim-slide-up pt-2">
@@ -706,7 +633,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
-             {/* Métricas Modernizadas */}
              <div className="flex gap-3 mb-6 anim-slide-up">
                  <div className="flex-1 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-3">
                      <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center"><Layers className="w-5 h-5" /></div>
@@ -724,7 +650,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
-             {/* Seletor de Abas Refinado */}
              <div className="bg-zinc-200/50 dark:bg-zinc-900 p-1 rounded-2xl flex gap-1 mb-6 anim-slide-up shrink-0">
                  {['CLASS', 'SECTOR', 'ASSET'].map(t => (
                      <button key={t} onClick={() => setAllocationTab(t as any)} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
@@ -736,7 +661,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              <div className="anim-slide-up px-1 pb-10">
                  {(allocationTab === 'CLASS' || allocationTab === 'SECTOR') ? (
                      <div className="space-y-6">
-                         {/* Gráfico Refinado (Donut) */}
                          <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm relative overflow-visible border border-zinc-200 dark:border-zinc-800 h-72">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -760,14 +684,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     <RechartsTooltip content={<CustomPieTooltip />} />
                                 </PieChart>
                             </ResponsiveContainer>
-                            {/* Centro do Donut */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none anim-fade-in select-none">
                                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{activeIndexClass !== undefined ? (allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].name : 'Total'}</span>
                                 <span className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">{activeIndexClass !== undefined ? formatPercent((allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].percent, privacyMode) : formatBRL(typeData.total, privacyMode)}</span>
                             </div>
                          </div>
 
-                         {/* Lista Estilizada */}
                          <div className="space-y-3">
                              {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((item, index) => (
                                  <div key={index} className="group relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 flex items-center justify-between overflow-hidden shadow-sm">
@@ -790,7 +712,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <div className="space-y-2">
                         {assetsChartData.map((asset, index) => (
                             <div key={index} className="bg-white dark:bg-zinc-900 p-3.5 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 relative overflow-hidden shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
-                                {/* Barra de progresso de fundo */}
                                 <div className="absolute bottom-0 left-0 h-0.5 bg-zinc-100 dark:bg-zinc-950 w-full">
                                     <div className="h-full rounded-r-full opacity-80" style={{ width: `${asset.percent}%`, backgroundColor: asset.color }}></div>
                                 </div>
@@ -816,18 +737,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* --- MODAL DE PROVENTOS MINIMALISTA (CLEAN) --- */}
-      <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); setExpandedMonth(null); }}>
+      <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); }}>
          <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
              
-             {/* Header Minimalista */}
              <div className="flex flex-col pt-6 pb-2 px-2 anim-slide-up">
                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-2">Total em Proventos</p>
                  <div className="flex items-baseline justify-between">
                      <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
                          {selectedProventosMonth ? formatBRL(displayedChartData.find(d => d.fullDate === selectedProventosMonth)?.value || 0, privacyMode) : formatBRL(stats.periodTotal, privacyMode)}
                      </h2>
-                     {/* Seletor de Ano Inline */}
                      <div className="flex gap-1 overflow-x-auto no-scrollbar">
                          {availableYears.map((year: number) => (
                              <button 
@@ -853,7 +771,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
-             {/* Gráfico Limpo */}
              <div className="h-48 w-full mt-6 mb-8 anim-slide-up" style={{ animationDelay: '100ms' }}>
                  <ResponsiveContainer width="100%" height="100%">
                      <BarChart data={displayedChartData} onClick={handleBarClick} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
@@ -877,7 +794,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  )}
              </div>
 
-             {/* Lista Limpa (Flat Design) */}
              <div className="space-y-4 pb-10 anim-slide-up" style={{ animationDelay: '200ms' }}>
                  <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-2 mb-2">
                      {selectedProventosMonth 
@@ -888,7 +804,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  {displayedReceipts.length > 0 ? (
                      <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-2 shadow-sm border border-zinc-100 dark:border-zinc-800">
                          {displayedReceipts.map((r: DividendReceipt, idx: number) => {
-                             const isFII = r.assetType === AssetType.FII;
                              return (
                                  <div key={idx} className="flex items-center justify-between p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
                                      <div className="flex items-center gap-3">

@@ -41,7 +41,6 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       // Injeção segura de variáveis de ambiente
-      'process.env.API_KEY': JSON.stringify(env.API_KEY || process.env.API_KEY || ''),
       'process.env.BRAPI_TOKEN': JSON.stringify(env.BRAPI_TOKEN || env.VITE_BRAPI_TOKEN || process.env.BRAPI_TOKEN || ''),
       'process.env.SUPABASE_URL': JSON.stringify(env.SUPABASE_URL || env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || ''),
       'process.env.SUPABASE_KEY': JSON.stringify(env.SUPABASE_KEY || env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || '')
