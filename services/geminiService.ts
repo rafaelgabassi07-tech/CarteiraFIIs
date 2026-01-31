@@ -44,30 +44,31 @@ export const generateInflationAnalysis = async (
 };
 
 /**
- * Prevê o calendário de proventos (JCP, Dividendos, Rendimentos) com base em padrões históricos.
+ * Prevê o calendário de proventos (JCP, Dividendos, Rendimentos) com base em padrões históricos e fatos relevantes.
  */
 export const predictDividendSchedule = async (tickers: string[]): Promise<any[]> => {
   try {
     const prompt = `
-      Atue como um analista de dados da B3 (Brasil).
+      Atue como um analista sênior de Corporate Actions da B3.
       Analise os seguintes ativos: ${tickers.join(', ')}.
       Data de Referência (Hoje): ${new Date().toLocaleDateString('pt-BR')}.
 
       TAREFA:
-      Identifique o PRÓXIMO evento de provento PROVÁVEL ou ANUNCIADO (mas ainda não pago) para cada ativo.
-      
-      REGRAS CRÍTICAS PARA AÇÕES (Stocks):
-      1. Diferencie explicitamente entre "DIVIDENDO" (Isento) e "JCP" (Juros sobre Capital Próprio).
-      2. Empresas como Bancos (ITUB, BBDC, BBAS, SANB) costumam pagar JCP mensal ou trimestral.
-      3. Empresas como PETR4, VALE3 pagam Dividendos trimestrais robustos.
-      4. Consulte sua base de conhecimento sobre "Avisos aos Acionistas" recentes ou padrões históricos do mesmo trimestre em anos anteriores.
+      Identifique o PRÓXIMO evento de provento para cada ativo.
+      Você deve distinguir se o evento já foi "ANUNCIADO" (Fato Relevante publicado) ou se é "PROJETADO" (Baseado em histórico).
 
-      REGRAS PARA FIIs:
-      1. A maioria paga "RENDIMENTO" mensalmente no meio do mês (dia 10-15).
+      REGRAS RÍGIDAS:
+      1. TIPO: Diferencie "DIVIDENDO" (Isento), "JCP" (Tributado) e "RENDIMENTO" (FIIs).
+      2. DATACOM: Se for ANUNCIADO, forneça a data exata. Se PROJETADO, estime com base no ciclo anterior (Trimestral/Mensal).
+      3. CONFIBILIDADE: Se houver anúncio oficial recente, confiança é ALTA.
+      
+      PADRÕES DE MERCADO:
+      - FIIs (Final 11): Pagam mensalmente. Datacom costuma ser último dia útil ou ~8º dia útil.
+      - Bancos (ITUB, BBDC): JCP Mensal recorrente.
+      - Vale/Petrobras: Trimestralidade forte.
 
       SAÍDA (JSON):
-      Retorne um array onde 'predictionType' deve ser estritamente: 'DIV', 'JCP' ou 'REND'.
-      'confidence' deve ser 'ALTA' se for baseado em anúncio ou padrão muito forte, 'MEDIA' para padrão histórico.
+      Retorne um array. 'status' deve ser 'ANUNCIADO' ou 'PROJETADO'.
     `;
 
     const response = await ai.models.generateContent({
@@ -84,10 +85,11 @@ export const predictDividendSchedule = async (tickers: string[]): Promise<any[]>
               predictedDateCom: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
               predictedPaymentDate: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
               predictionType: { type: Type.STRING, enum: ["DIV", "JCP", "REND"], description: "Tipo exato do provento" },
+              status: { type: Type.STRING, enum: ["ANUNCIADO", "PROJETADO"], description: "Se é oficial ou estimativa" },
               confidence: { type: Type.STRING, enum: ["ALTA", "MEDIA", "BAIXA"] },
-              reasoning: { type: Type.STRING, description: "Ex: 'JCP Trimestral recorrente' ou 'Anúncio de dividendos'" }
+              reasoning: { type: Type.STRING, description: "Ex: 'Fato Relevante de 12/05' ou 'Padrão mensal'" }
             },
-            required: ["ticker", "predictedDateCom", "predictedPaymentDate", "confidence", "predictionType"]
+            required: ["ticker", "predictedDateCom", "predictedPaymentDate", "confidence", "predictionType", "status"]
           }
         }
       }
