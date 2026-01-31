@@ -120,7 +120,7 @@ function mapLabelToKey(label: string): string | null {
     if (norm.includes('vacancia') && !norm.includes('financeira')) return 'vacancia'; 
     if (norm.includes('tipo de gestao') || norm === 'gestao') return 'tipo_gestao';
     if (norm.includes('taxa de administracao') || norm.includes('taxa de admin')) return 'taxa_adm';
-    if (norm.includes('segmento')) return 'segmento';
+    if (norm.includes('segmento') || norm === 'setor' || norm.includes('setor de atuacao')) return 'segmento';
 
     return null;
 }
@@ -195,6 +195,16 @@ async function scrapeInvestidor10(ticker: string) {
                     }
                 });
             });
+
+            // Extração via Breadcrumbs (Fallback Forte para Setor)
+            if (!dados.segmento) {
+                $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
+                    const txt = $(el).text().trim();
+                    if (txt && !['Início', 'Home', 'Ações', 'FIIs', 'BDRs', 'Fiagros'].includes(txt) && txt.toUpperCase() !== ticker) {
+                        dados.segmento = txt;
+                    }
+                });
+            }
 
             if (dados.cotacao_atual !== null || dados.dy !== null || dados.pvp !== null || dados.pl !== null) {
                 if (dados.dy === null) {
