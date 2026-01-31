@@ -4,22 +4,35 @@ import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi } from 'lucide-react';
 import { UpdateReportData } from '../types';
 
-// Utility for smooth visibility transitions
+// Utility for smooth visibility transitions (Fixed for rapid toggling)
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
   
   useEffect(() => {
     if (isOpen) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       setIsMounted(true);
-      // Pequeno delay para permitir que o navegador renderize o DOM antes de adicionar a classe de animação
-      const timer = setTimeout(() => setIsVisible(true), 10);
-      return () => clearTimeout(timer);
+      
+      // Garante que o browser renderize o componente montado antes de iniciar a transição
+      // O duplo requestAnimationFrame é um hack padrão para garantir o reflow
+      requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+              setIsVisible(true);
+          });
+      });
     } else {
       setIsVisible(false);
-      const timer = setTimeout(() => setIsMounted(false), duration);
-      return () => clearTimeout(timer);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = window.setTimeout(() => {
+          setIsMounted(false);
+      }, duration);
     }
+    
+    return () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, [isOpen, duration]);
 
   return { isMounted, isVisible };
@@ -198,7 +211,7 @@ export interface InstallPromptModalProps {
 interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: React.ReactNode; }
 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
-  // Aumentei a duração para garantir que a animação termine suavemente
+  // 400ms match the CSS transition
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
   const modalRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -208,8 +221,9 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   const currentY = useRef<number>(0);
 
   useEffect(() => { 
-      // Adiciona padding para evitar layout shift se houver scrollbar
+      // Reset drag state on open
       if (isOpen) {
+          setDragOffset(0);
           document.body.style.overflow = 'hidden';
       } else {
           document.body.style.overflow = '';
@@ -253,7 +267,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 
   if (!isMounted) return null;
 
-  // Z-Index aumentado para 9999 para garantir que fique acima de headers/footers
   return createPortal(
     <div className={`fixed inset-0 z-[9999] flex flex-col justify-end items-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
       <div 
@@ -299,7 +312,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   );
 };
 
-// ... Resto do arquivo (ConfirmationModal, UpdateReportModal, InstallPromptModal, ChangelogModal, NotificationsModal) mantido igual ...
+// ... Resto do arquivo mantido
 interface ConfirmationModalProps { isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; }
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 250);

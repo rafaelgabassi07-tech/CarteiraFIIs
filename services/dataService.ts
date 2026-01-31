@@ -184,7 +184,8 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
 
     try {
         // 1. Dados Confirmados ("O Martelo do Supabase")
-        // Correção na query para usar OR de forma correta e pegar eventos futuros (Datacom ou Pagamento)
+        // Buscamos proventos com Data Com ou Data de Pagamento no futuro (ou hoje)
+        // Inclui também registros onde a data de pagamento ainda é NULA (anunciado mas sem data de crédito)
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
@@ -194,14 +195,18 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
 
         if (error) {
             console.error('[Robot] Error fetching confirmed data:', error);
-            return [];
+            // Em caso de erro do DB, forçamos o modo AI se ativado
         }
         
         const predictions: FutureDividendPrediction[] = [];
         const now = new Date();
         now.setHours(0,0,0,0);
 
+        // Mapa de Bloqueio: Registra Mês/Ano que JÁ tem provento confirmado.
+        // Formato da chave: TICKER-YYYY-MM
         const blockedPeriods = new Set<string>();
+        // Set para saber quais ativos JÁ tem informação confirmada futura
+        const coveredTickers = new Set<string>();
 
         if (data && data.length > 0) {
             data.forEach((div: any) => {
@@ -216,11 +221,11 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                 const total = preciseMul(asset.quantity, rate);
                 
                 // --- CORREÇÃO DE TIMEZONE ---
-                // Usa parseDateToLocal para garantir que a data seja interpretada no fuso local correto (evita D-1)
+                // Usa parseDateToLocal para garantir que a data seja interpretada no fuso local correto
                 const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
-                const paymentDateObj = div.payment_date ? parseDateToLocal(div.payment_date) : null;
+                const datePay = div.payment_date ? parseDateToLocal(div.payment_date) : null;
                 
-                // Recalcula diffTime para 'Dias até Datacom'
+                // Recalcula diffTime para 'Dias até Datacom' (apenas cosmético)
                 const refDate = dateCom || now;
                 const diffTime = refDate.getTime() - now.getTime();
                 const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
@@ -240,11 +245,14 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
                     reasoning: `Confirmado: ${div.type}`
                 });
                 
-                // Bloqueia Mês/Ano para a IA
+                // Registra cobertura e bloqueio
+                coveredTickers.add(normalizedTicker);
+                
                 if (div.payment_date) {
                     const k = `${normalizedTicker}-${div.payment_date.substring(0, 7)}`; 
                     blockedPeriods.add(k);
                 } 
+                // Se só tem datacom, bloqueia o mês da datacom também para evitar duplicidade de "anúncio"
                 if (div.date_com) {
                     const k = `${normalizedTicker}-${div.date_com.substring(0, 7)}`; 
                     blockedPeriods.add(k);
@@ -252,49 +260,64 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
             });
         }
 
-        // 2. Previsão IA (Apenas Lacunas)
+        // 2. Previsão IA (Preenchimento de Lacunas)
+        // Se useAI for true, chamamos a IA para TODOS os tickers.
+        // A filtragem acontece DEPOIS, verificando se o mês previsto já está bloqueado pelo dado real.
         if (useAI) {
-            const aiPredictions = await predictDividendSchedule(tickers);
+            // Tickers prioritários: Aqueles que não tem NENHUM evento futuro confirmado
+            const priorityTickers = tickers.filter(t => !coveredTickers.has(t));
             
-            aiPredictions.forEach((pred: any) => {
-                const normalizedTicker = normalizeTicker(pred.ticker);
-                const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
-                if (!asset) return;
+            // Se a lista de prioritários for pequena, enviamos tudo para ter uma visão mais completa do futuro distante
+            // Se for grande, focamos neles para economizar tokens/tempo
+            const tickersToPredict = priorityTickers.length > 5 ? priorityTickers : tickers;
 
-                const predDate = pred.predictedPaymentDate || pred.predictedDateCom;
-                if (!predDate) return;
+            if (tickersToPredict.length > 0) {
+                const aiPredictions = await predictDividendSchedule(tickersToPredict);
                 
-                const predMonth = predDate.substring(0, 7); 
-                const key = `${normalizedTicker}-${predMonth}`;
-                
-                if (blockedPeriods.has(key)) return;
+                aiPredictions.forEach((pred: any) => {
+                    const normalizedTicker = normalizeTicker(pred.ticker);
+                    const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
+                    if (!asset) return;
 
-                const estimatedRate = asset.last_dividend || (asset.currentPrice ? (asset.currentPrice * (asset.dy_12m || 6) / 100 / 12) : 0);
-                
-                if (estimatedRate > 0) {
-                    const isOfficial = pred.status === 'ANUNCIADO';
-                    const finalType = pred.predictionType 
-                        ? `${pred.predictionType} (${isOfficial ? 'Anúncio' : 'Est.'})`
-                        : 'DIV (Est.)';
+                    const predDate = pred.predictedPaymentDate || pred.predictedDateCom;
+                    if (!predDate) return;
+                    
+                    // Verifica se já existe dado REAL para este mês
+                    const predMonth = predDate.substring(0, 7); 
+                    const key = `${normalizedTicker}-${predMonth}`;
+                    
+                    if (blockedPeriods.has(key)) {
+                        // "Martelo do Supabase": Dado real vence especulação
+                        return;
+                    }
 
-                    predictions.push({
-                        ticker: normalizedTicker,
-                        dateCom: pred.predictedDateCom,
-                        paymentDate: pred.predictedPaymentDate,
-                        rate: estimatedRate,
-                        quantity: asset.quantity,
-                        projectedTotal: preciseMul(asset.quantity, estimatedRate),
-                        type: finalType,
-                        daysToDateCom: 0, 
-                        isAiPrediction: true,
-                        confidence: isOfficial ? 'ALTA' : pred.confidence, 
-                        reasoning: pred.reasoning
-                    });
-                }
-            });
+                    const estimatedRate = asset.last_dividend || (asset.currentPrice ? (asset.currentPrice * (asset.dy_12m || 6) / 100 / 12) : 0);
+                    
+                    if (estimatedRate > 0) {
+                        const isOfficial = pred.status === 'ANUNCIADO';
+                        const finalType = pred.predictionType 
+                            ? `${pred.predictionType} (${isOfficial ? 'Anúncio' : 'Est.'})`
+                            : 'DIV (Est.)';
+
+                        predictions.push({
+                            ticker: normalizedTicker,
+                            dateCom: pred.predictedDateCom,
+                            paymentDate: pred.predictedPaymentDate,
+                            rate: estimatedRate,
+                            quantity: asset.quantity,
+                            projectedTotal: preciseMul(asset.quantity, estimatedRate),
+                            type: finalType,
+                            daysToDateCom: 0, 
+                            isAiPrediction: true,
+                            confidence: isOfficial ? 'ALTA' : pred.confidence, 
+                            reasoning: pred.reasoning
+                        });
+                    }
+                });
+            }
         }
 
-        // Ordenação final Cronológica com correção para datas 'A Definir'
+        // Ordenação final Cronológica com tratamento para datas 'A Definir'
         return predictions.sort((a,b) => {
             const dateA = a.paymentDate !== 'A Definir' ? a.paymentDate : (a.dateCom !== 'Já ocorreu' ? a.dateCom : '9999-99-99');
             const dateB = b.paymentDate !== 'A Definir' ? b.paymentDate : (b.dateCom !== 'Já ocorreu' ? b.dateCom : '9999-99-99');
