@@ -67,209 +67,56 @@ const formatDateShort = (dateStr: string) => {
     return `${day}/${month}`;
 };
 
-// Componente Visual do Radar (Animação Otimizada e Compacta)
-const RadarAnimation = ({ isScanning, totalProjected, privacyMode, scanStatus }: { isScanning: boolean, totalProjected: number, privacyMode: boolean, scanStatus?: string }) => {
-    return (
-        <div className="relative w-full h-40 flex items-center justify-center overflow-hidden mb-2">
-            <style>{`
-                @keyframes radar-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(2); opacity: 0; } }
-            `}</style>
-            
-            {/* Background Grid Circles (Reduzidos) */}
-            <div className={`absolute w-[200px] h-[200px] border rounded-full transition-colors ${isScanning ? 'border-purple-200 dark:border-purple-900/40' : 'border-indigo-100/50 dark:border-indigo-900/20'}`}></div>
-            <div className={`absolute w-[140px] h-[140px] border rounded-full transition-colors ${isScanning ? 'border-purple-300 dark:border-purple-900/50' : 'border-indigo-200/50 dark:border-indigo-900/30'}`}></div>
-            <div className={`absolute w-[80px] h-[80px] border rounded-full transition-colors ${isScanning ? 'border-purple-400 dark:border-purple-900/60' : 'border-indigo-300/50 dark:border-indigo-900/40'}`}></div>
-            
-            {/* Crosshairs */}
-            <div className="absolute w-full h-[1px] bg-indigo-100/50 dark:bg-indigo-900/20"></div>
-            <div className="absolute h-full w-[1px] bg-indigo-100/50 dark:bg-indigo-900/20"></div>
-
-            {/* Sweep Animation */}
-            {isScanning && (
-                <div 
-                    className="absolute w-[200px] h-[200px] rounded-full"
-                    style={{
-                        background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(168, 85, 247, 0.3) 360deg)',
-                        animation: 'radar-spin 1.2s linear infinite',
-                        borderRadius: '50%'
-                    }}
-                ></div>
-            )}
-
-            {/* Center Core (Compacto) */}
-            <div className={`relative z-10 w-24 h-24 rounded-full bg-white dark:bg-zinc-900 border-4 flex flex-col items-center justify-center shadow-xl transition-all duration-500 ${isScanning ? 'border-purple-100 dark:border-purple-900/50 scale-105 shadow-purple-500/20' : 'border-indigo-50 dark:border-zinc-800 shadow-indigo-500/10 scale-100'}`}>
-                {isScanning ? (
-                    <>
-                        <BrainCircuit className="w-6 h-6 text-purple-500 animate-pulse mb-1" />
-                        <span className="text-[8px] font-black text-purple-400 uppercase tracking-widest animate-pulse max-w-[80px] text-center leading-tight">{scanStatus || 'ANALISANDO'}</span>
-                    </>
-                ) : (
-                    <>
-                        <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-1">
-                            <Target className="w-3 h-3" />
-                        </div>
-                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider">A Receber</span>
-                        <span className="text-xs font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(totalProjected, privacyMode)}</span>
-                    </>
-                )}
-            </div>
-
-            {/* Ping Animations (Decorativo) */}
-            {!isScanning && totalProjected > 0 && (
-                <>
-                    <div className="absolute top-[20%] left-[30%] w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#34d399] animate-ping" style={{ animationDuration: '3s' }}></div>
-                    <div className="absolute bottom-[25%] right-[25%] w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_#818cf8] animate-ping" style={{ animationDuration: '4s', animationDelay: '1s' }}></div>
-                </>
-            )}
-        </div>
-    );
-};
-
-const TimelineEvent: React.FC<{ event: RadarEvent, isLast: boolean }> = ({ event, isLast }) => {
-    // Lógica Visual baseada no TIPO e STATUS
+// Componente de Item da Agenda (Minimalista)
+const AgendaItem: React.FC<{ event: RadarEvent, isLast: boolean, privacyMode: boolean }> = ({ event, isLast, privacyMode }) => {
     const isDatacom = event.eventType === 'DATACOM';
     const isConfirmed = event.status === 'CONFIRMED';
-    const isAi = event.isAiPrediction;
     
-    const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
+    // Cores baseadas no status
+    const statusColor = isConfirmed ? 'bg-emerald-500' : 'bg-indigo-400';
+    const amountColor = isConfirmed ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400';
 
-    let cardClass = "";
-    let iconContent = null;
-    let badgeContent = null;
-    let amountClass = "";
-    let labelClass = "";
-    let labelText = "";
-    let tickerBgClass = "";
-    let timelineLineClass = "";
-
-    if (isAi) {
-        // PREVISÃO IA (Roxo/Gradiente)
-        cardClass = "bg-white dark:bg-zinc-900 border-purple-200/60 dark:border-purple-900/40 border-dashed";
-        amountClass = "text-purple-600 dark:text-purple-400";
-        labelClass = "text-purple-500/70 dark:text-purple-400/70";
-        labelText = "Estimativa IA";
-        tickerBgClass = "bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/30 text-purple-700 dark:text-purple-300";
-        timelineLineClass = "bg-purple-200 dark:bg-purple-900/50 border-l border-dashed border-purple-300";
-        iconContent = (
-            <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 shadow-sm border border-purple-200 dark:border-purple-800">
-                <Sparkles className="w-5 h-5" />
-            </div>
-        );
-        badgeContent = (
-            <div className="absolute right-0 top-0 bg-purple-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
-                <Bot className="w-2.5 h-2.5" /> PROBABILIDADE: {event.confidence || 'MEDIA'}
-            </div>
-        );
-    } else if (isDatacom) {
-        // DATA COM (Laranja/Amber)
-        cardClass = "bg-gradient-to-br from-amber-50/90 to-white dark:from-amber-900/20 dark:to-zinc-900 border-amber-200/50 dark:border-amber-800/50";
-        amountClass = "text-amber-700 dark:text-amber-400";
-        labelClass = "text-amber-600/70 dark:text-amber-500/70";
-        labelText = "Data Limite";
-        tickerBgClass = "bg-white dark:bg-zinc-900 border-amber-100 dark:border-amber-900/50 text-amber-900 dark:text-amber-200";
-        timelineLineClass = "bg-amber-200 dark:bg-amber-900/50";
-        iconContent = (
-            <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 shadow-sm border border-amber-200 dark:border-amber-800">
-                <CalendarClock className="w-5 h-5" />
-            </div>
-        );
-        badgeContent = (
-            <div className="absolute right-0 top-0 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
-                <Calendar className="w-2.5 h-2.5" /> DATA COM
-            </div>
-        );
-    } else {
-        // PAGAMENTO CONFIRMADO (Verde/Emerald) ou ANUNCIADO (Indigo)
-        if (isConfirmed) {
-            cardClass = "bg-gradient-to-br from-emerald-50/90 to-white dark:from-emerald-900/20 dark:to-zinc-900 border-emerald-200/50 dark:border-emerald-800/50";
-            amountClass = "text-emerald-700 dark:text-emerald-400";
-            labelClass = "text-emerald-600/70 dark:text-emerald-500/70";
-            labelText = "Valor Líquido";
-            tickerBgClass = "bg-white dark:bg-zinc-900 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200";
-            timelineLineClass = "bg-emerald-200 dark:bg-emerald-900/50";
-            iconContent = (
-                <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200 dark:border-emerald-800">
-                    <CheckCircle2 className="w-5 h-5" />
-                </div>
-            );
-            badgeContent = (
-                <div className="absolute right-0 top-0 bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
-                    <Check className="w-2.5 h-2.5" /> CONFIRMADO
-                </div>
-            );
-        } else {
-            cardClass = "bg-gradient-to-br from-indigo-50/90 to-white dark:from-indigo-900/20 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50 border-dashed";
-            amountClass = "text-indigo-600 dark:text-indigo-300";
-            labelClass = "text-indigo-500/70 dark:text-indigo-400/70";
-            labelText = "Valor Anunciado";
-            tickerBgClass = "bg-white dark:bg-zinc-900 border-indigo-100 dark:border-indigo-900/50 text-indigo-900 dark:text-indigo-200";
-            timelineLineClass = "bg-indigo-200 dark:bg-indigo-900/50 border-l border-dashed border-indigo-300";
-            iconContent = (
-                <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200 dark:border-indigo-800">
-                    <Megaphone className="w-5 h-5" />
-                </div>
-            );
-            badgeContent = (
-                <div className="absolute right-0 top-0 bg-indigo-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
-                    <Radar className="w-2.5 h-2.5" /> PREVISÃO
-                </div>
-            );
-        }
-    }
-    
     return (
-        <div className={`relative pl-12 py-2.5 group anim-fade-in`}>
+        <div className="flex gap-4 relative group">
             {/* Linha do Tempo */}
-            {!isLast && (
-                <div className={`absolute left-[19px] top-8 bottom-[-10px] w-[2px] ${timelineLineClass}`}></div>
-            )}
-            
-            {iconContent}
-            
-            <div className={`p-4 rounded-2xl border flex justify-between items-center relative shadow-sm overflow-hidden transition-all ${cardClass}`}>
-                {badgeContent}
-                
-                <div className="flex items-center gap-3.5">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xs font-black border transition-colors ${tickerBgClass}`}>
-                        {tickerDisplay}
-                    </div>
-                    <div>
+            <div className="flex flex-col items-center min-w-[40px]">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase">{new Date(event.date).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</span>
+                <span className="text-lg font-black text-zinc-900 dark:text-white leading-none">{event.date.split('-')[2]}</span>
+                {!isLast && <div className="w-px h-full bg-zinc-200 dark:bg-zinc-800 my-2"></div>}
+            </div>
+
+            {/* Conteúdo */}
+            <div className="flex-1 pb-6">
+                <div className={`p-4 rounded-2xl border transition-all ${isConfirmed ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800' : 'bg-zinc-50/50 dark:bg-zinc-900/30 border-zinc-100 dark:border-zinc-800 border-dashed'}`}>
+                    <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-black tracking-tight text-zinc-900 dark:text-white">{event.ticker}</h4>
-                            <span className="text-[9px] font-bold uppercase text-zinc-400 bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded">
-                                {event.type}
-                            </span>
+                            <div className={`w-2 h-2 rounded-full ${statusColor}`}></div>
+                            <span className="text-sm font-black text-zinc-900 dark:text-white">{event.ticker}</span>
+                            <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 uppercase">{event.type}</span>
                         </div>
-                        <p className={`text-[10px] font-medium mt-0.5 flex items-center gap-1 ${labelClass}`}>
-                            {formatDateShort(event.date)}
-                            {event.reasoning && (
-                                <span className="opacity-70 truncate max-w-[100px]">• {event.reasoning}</span>
-                            )}
-                        </p>
+                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isConfirmed ? 'text-emerald-500' : 'text-indigo-400'}`}>
+                            {isConfirmed ? 'Confirmado' : 'Previsto'}
+                        </span>
                     </div>
-                </div>
-                
-                <div className="text-right">
-                    {isDatacom ? (
-                        <>
-                            <p className={`text-xs font-black ${amountClass}`}>
-                                Corte
-                            </p>
-                            <p className={`text-[9px] font-medium ${labelClass}`}>
-                                Hoje
-                            </p>
-                        </>
-                    ) : (
-                        <>
-                            <p className={`text-sm font-black ${amountClass}`}>
-                                {event.amount ? event.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
-                            </p>
-                            <p className={`text-[9px] font-medium ${labelClass}`}>
-                                {labelText}
-                            </p>
-                        </>
-                    )}
+
+                    <div className="flex justify-between items-end">
+                        <div>
+                            {isDatacom ? (
+                                <p className="text-xs font-medium text-zinc-500">Data de Corte (Data Com)</p>
+                            ) : (
+                                <p className="text-[10px] text-zinc-400">
+                                    {event.isAiPrediction ? 'Estimativa baseada em histórico' : 'Pagamento agendado'}
+                                </p>
+                            )}
+                        </div>
+                        {!isDatacom && (
+                            <div className="text-right">
+                                <span className={`text-sm font-black ${amountColor}`}>
+                                    {formatBRL(event.amount, privacyMode)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
@@ -293,14 +140,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // --- STATE UNIFICADO DO RADAR (C/ PERSISTÊNCIA LOCAL) ---
   const [radarData, setRadarData] = useState<{
       events: RadarEvent[];
-      summary: { count: number; total: number };
+      summary: { count: number; total: number; confirmed: number; estimated: number };
       grouped: Record<string, RadarEvent[]>;
       loading: boolean;
-      scanStatus: string; // Mensagem de status para UI (ex: "Analisando Padrões")
+      scanStatus: string; 
   }>(() => {
-      // Init from localStorage
       try {
-          const saved = localStorage.getItem('investfiis_radar_cache_v3'); // Bump version due to new structure
+          const saved = localStorage.getItem('investfiis_radar_cache_v4'); 
           if (saved) {
               const parsed = JSON.parse(saved);
               const age = Date.now() - (parsed.timestamp || 0);
@@ -309,10 +155,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               }
           }
       } catch {}
-      return { events: [], summary: { count: 0, total: 0 }, grouped: {}, loading: true, scanStatus: '' };
+      return { events: [], summary: { count: 0, total: 0, confirmed: 0, estimated: 0 }, grouped: {}, loading: true, scanStatus: '' };
   });
 
-  const [unifiedProvisionedTotal, setUnifiedProvisionedTotal] = useState(radarData.summary.total);
   const [triggerRadar, setTriggerRadar] = useState({ active: false, useAI: false });
 
   // EFEITO MESTRE: Calcula Radar (Unificado)
@@ -322,7 +167,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           const useAI = triggerRadar.useAI;
           
           if (triggerRadar.active || radarData.events.length === 0) {
-              setRadarData(prev => ({ ...prev, loading: true, scanStatus: useAI ? 'ANALISANDO IA...' : 'BUSCANDO DADOS...' }));
+              setRadarData(prev => ({ ...prev, loading: true, scanStatus: useAI ? 'Atualizando...' : 'Buscando dados...' }));
           }
           
           try {
@@ -333,7 +178,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               const todayStr = new Date().toISOString().split('T')[0];
               const atomEvents: RadarEvent[] = [];
               
-              // Helper para verificar duplicatas (Chave única composta)
               const isDuplicate = (ticker: string, type: string, date: string, rate: number, evtType: string) => {
                   return atomEvents.some(e => 
                       e.ticker === ticker && 
@@ -418,44 +262,46 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               // Ordenação Cronológica
               atomEvents.sort((a, b) => a.date.localeCompare(b.date));
 
-              // Cálculo de Totais (Apenas Pagamentos)
-              const sum = atomEvents
-                  .filter(e => e.eventType === 'PAYMENT')
-                  .reduce((acc, curr) => acc + (curr.amount || 0), 0);
+              // Cálculo de Totais
+              let sumConfirmed = 0;
+              let sumEstimated = 0;
 
-              // Agrupamento para o Modal
-              const grouped: Record<string, RadarEvent[]> = { 'Hoje': [], 'Amanhã': [], 'Esta Semana': [], 'Este Mês': [], 'Futuro': [] };
-              const todayDate = new Date(); todayDate.setHours(0,0,0,0);
-              const tomorrowDate = new Date(todayDate); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-              const nextWeekDate = new Date(todayDate); nextWeekDate.setDate(nextWeekDate.getDate() + 7);
-              const endOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
-
-              atomEvents.forEach((ev) => {
-                  const evDate = new Date(ev.date + 'T00:00:00');
-                  if (evDate.getTime() === todayDate.getTime()) grouped['Hoje'].push(ev);
-                  else if (evDate.getTime() === tomorrowDate.getTime()) grouped['Amanhã'].push(ev);
-                  else if (evDate <= nextWeekDate) grouped['Esta Semana'].push(ev);
-                  else if (evDate <= endOfMonth) grouped['Este Mês'].push(ev);
-                  else grouped['Futuro'].push(ev);
+              atomEvents.forEach(e => {
+                  if (e.eventType === 'PAYMENT') {
+                      if (e.status === 'CONFIRMED') sumConfirmed += (e.amount || 0);
+                      else sumEstimated += (e.amount || 0);
+                  }
               });
 
-              Object.keys(grouped).forEach(k => {
-                  if (grouped[k].length === 0) delete grouped[k];
+              // Agrupamento para o Modal (Por Mês Extenso)
+              const grouped: Record<string, RadarEvent[]> = {};
+              
+              atomEvents.forEach((ev) => {
+                  const date = new Date(ev.date + 'T00:00:00');
+                  const key = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                  // Capitalize
+                  const keyCap = key.charAt(0).toUpperCase() + key.slice(1);
+                  
+                  if (!grouped[keyCap]) grouped[keyCap] = [];
+                  grouped[keyCap].push(ev);
               });
 
               const newData = {
                   events: atomEvents,
-                  summary: { count: atomEvents.length, total: sum },
+                  summary: { 
+                      count: atomEvents.length, 
+                      total: sumConfirmed + sumEstimated,
+                      confirmed: sumConfirmed,
+                      estimated: sumEstimated
+                  },
                   grouped,
                   loading: false,
                   scanStatus: ''
               };
 
               setRadarData(newData);
-              setUnifiedProvisionedTotal(sum); 
               
-              // Persist to localStorage
-              localStorage.setItem('investfiis_radar_cache_v3', JSON.stringify({
+              localStorage.setItem('investfiis_radar_cache_v4', JSON.stringify({
                   timestamp: Date.now(),
                   data: newData
               }));
@@ -466,7 +312,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }
       };
 
-      // Carrega automaticamente (modo padrão sem AI) ou quando triggado manualmente
       if (radarData.events.length === 0 || triggerRadar.active) {
           loadRadar();
       }
@@ -474,13 +319,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return () => { isActive = false; };
   }, [portfolio, dividendReceipts, triggerRadar]);
 
-  // Handler para re-trigger com IA
-  const handleSmartScan = useCallback(() => {
+  const handleRefreshAgenda = useCallback(() => {
       setTriggerRadar({ active: true, useAI: true });
-  }, []);
-
-  const handleSimpleRefresh = useCallback(() => {
-      setTriggerRadar({ active: true, useAI: false });
   }, []);
 
   const { typeData, classChartData, assetsChartData, sectorChartData, topConcentration } = useMemo(() => {
@@ -713,10 +553,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         <button onClick={() => setShowAgendaModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>
             <div className="flex items-center gap-4 relative z-10">
                 <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30 shadow-sm">
-                    <Radar className="w-6 h-6" strokeWidth={1.5} />
+                    <CalendarClock className="w-6 h-6" strokeWidth={1.5} />
                 </div>
                 <div>
-                    <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Radar de Proventos</h3>
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Agenda de Proventos</h3>
                     <div className="flex items-center gap-2 mt-0.5">
                         {radarData.loading ? (
                             <span className="text-[10px] font-bold text-zinc-400 animate-pulse">{radarData.scanStatus || 'Atualizando...'}</span>
@@ -740,7 +580,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
             <div className="flex items-center gap-3 relative z-10">
                 <div className="bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/20 group-hover:text-indigo-500 transition-colors">
-                    <Signal className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4" />
                 </div>
             </div>
         </button>
@@ -787,76 +627,69 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </button>
       </div>
 
-      {/* --- MODAL RADAR DE PROVENTOS (AGENDA) - APRIMORADO --- */}
+      {/* --- AGENDA SIMPLIFICADA E LIMPA --- */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
-        <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full relative overflow-hidden">
-            <div className="relative z-20 flex items-center justify-between mb-4 px-2 anim-slide-up pt-4">
-                <div className="flex items-center gap-4">
-                    <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 border-zinc-200 dark:border-zinc-700`}>
-                        <Radar className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Radar</h2>
-                        <div className="flex items-center gap-1.5">
-                            <div className={`w-1.5 h-1.5 rounded-full ${radarData.loading ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`}></div>
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
-                                {radarData.loading ? 'Sincronizando...' : 'Online'}
-                            </p>
-                        </div>
-                    </div>
+        <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
+            <div className="flex justify-between items-center mb-6 pt-4">
+                <div>
+                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2>
+                    <p className="text-xs text-zinc-500 font-medium">Próximos eventos e previsões</p>
                 </div>
-                <div className="flex gap-2">
-                    <button 
-                        onClick={handleSmartScan} 
-                        disabled={radarData.loading}
-                        className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-sm ${radarData.loading ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-purple-500/20 active:scale-95'}`}
-                    >
-                        {radarData.loading && triggerRadar.useAI ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
-                        Smart Scan
-                    </button>
-                    <button onClick={handleSimpleRefresh} disabled={radarData.loading} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors press-effect border border-zinc-200 dark:border-zinc-700">
-                        <RefreshCw className={`w-4 h-4 ${radarData.loading && !triggerRadar.useAI ? 'animate-spin' : ''}`} />
-                    </button>
-                </div>
-            </div>
-            
-            {/* Radar Animation Area Compacta */}
-            <div className="anim-scale-in">
-                <RadarAnimation 
-                    isScanning={radarData.loading} 
-                    totalProjected={radarData.summary.total} 
-                    privacyMode={privacyMode || false}
-                    scanStatus={radarData.scanStatus}
-                />
+                <button onClick={handleRefreshAgenda} disabled={radarData.loading} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors press-effect border border-zinc-200 dark:border-zinc-700">
+                    <RefreshCw className={`w-4 h-4 ${radarData.loading ? 'animate-spin' : ''}`} />
+                </button>
             </div>
 
-            <div className="relative z-10 pt-2 pb-32 min-h-[50vh]">
+            {/* Painel de Resumo Estático */}
+            <div className="grid grid-cols-2 gap-3 mb-8 anim-scale-in">
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">Confirmado</p>
+                    <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">
+                        {formatBRL(radarData.summary.confirmed, privacyMode)}
+                    </p>
+                </div>
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 border-dashed">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1">Previsto</p>
+                    <p className="text-xl font-black text-indigo-700 dark:text-indigo-300">
+                        {formatBRL(radarData.summary.estimated, privacyMode)}
+                    </p>
+                </div>
+            </div>
+
+            <div className="space-y-8 pb-24">
                 {radarData.loading && radarData.events.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center pt-6 anim-fade-in opacity-50">
-                        <p className="text-[10px] text-zinc-400 max-w-[200px] text-center font-medium">Buscando dados no banco e projetando eventos futuros...</p>
+                    <div className="flex flex-col items-center justify-center py-12 opacity-50">
+                        <Loader2 className="w-8 h-8 animate-spin text-zinc-400 mb-3" />
+                        <p className="text-xs text-zinc-500 font-bold">Atualizando agenda...</p>
                     </div>
                 ) : (
                     Object.keys(radarData.grouped).length > 0 ? (
-                        Object.keys(radarData.grouped).map((groupKey) => { 
+                        Object.keys(radarData.grouped).map((groupKey, groupIndex) => { 
                             const events = radarData.grouped[groupKey]; 
                             return (
-                                <div key={groupKey} className="mb-6 anim-slide-up">
-                                    <div className="sticky top-0 z-20 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-md py-2 mb-2 flex items-center gap-2 border-b border-zinc-200/50 dark:border-zinc-800/50">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-400"></div>
-                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">{groupKey}</h3>
-                                    </div>
-                                    <div className="relative space-y-1">
-                                        {events.map((e, i) => <TimelineEvent key={e.id} event={e} isLast={i === events.length - 1} />)}
+                                <div key={groupKey} className="anim-slide-up" style={{ animationDelay: `${groupIndex * 100}ms` }}>
+                                    <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-4 sticky top-0 bg-zinc-50 dark:bg-zinc-950 py-2 z-10">
+                                        {groupKey}
+                                    </h3>
+                                    <div className="space-y-0">
+                                        {events.map((e, i) => (
+                                            <AgendaItem 
+                                                key={e.id} 
+                                                event={e} 
+                                                isLast={i === events.length - 1} 
+                                                privacyMode={privacyMode || false} 
+                                            />
+                                        ))}
                                     </div>
                                 </div>
                             ); 
                         })
                     ) : (
                         <div className="flex flex-col items-center justify-center py-10 opacity-50">
-                            <Target className="w-12 h-12 text-zinc-300 mb-3" strokeWidth={1} />
-                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Nada no radar</p>
-                            <button onClick={handleSmartScan} className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
-                                Usar Smart Scan
+                            <Calendar className="w-12 h-12 text-zinc-300 mb-3" strokeWidth={1} />
+                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Agenda vazia</p>
+                            <button onClick={handleRefreshAgenda} className="text-indigo-500 font-bold text-xs hover:underline">
+                                Verificar previsões
                             </button>
                         </div>
                     )
@@ -1022,7 +855,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-center">
                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><CalendarClock className="w-3 h-3 text-indigo-500" /> Previsão</p>
-                     <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(unifiedProvisionedTotal, privacyMode)}</p>
+                     <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(radarData.summary.total, privacyMode)}</p>
                  </div>
              </div>
 
