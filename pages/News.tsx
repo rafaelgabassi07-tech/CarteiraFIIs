@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, Wallet, TrendingDown, Minus, Zap, ShieldAlert, Check } from 'lucide-react';
 import { NewsItem, Transaction, NewsSentiment, NewsImpact } from '../types';
@@ -113,7 +114,7 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                         url: item.link,
                         imageUrl: item.imageUrl,
                         // Formata data relativa (ex: "há 2 horas")
-                        date: item.publicationDate ? formatDistanceToNow(new Date(item.publicationDate), { addSuffix: true, locale: ptBR } as any) : 'Recentemente',
+                        date: item.publicationDate ? formatDistanceToNow(new Date(item.publicationDate), { addSuffix: true, locale: ptBR }) : 'Recentemente',
                         category: (item.category as any) || 'Geral',
                         sentiment,
                         impact
