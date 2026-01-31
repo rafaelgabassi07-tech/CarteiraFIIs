@@ -20,7 +20,6 @@ export interface FutureDividendPrediction {
     quantity: number;
     type: string;
     daysToDateCom: number;
-    status: 'CONFIRMED' | 'PREDICTED'; // Novo campo para UI
 }
 
 const getTTL = () => {
@@ -180,10 +179,9 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
     const today = new Date().toISOString().split('T')[0];
 
     try {
-        // Busca inteligente:
-        // 1. Pagamentos Futuros (payment_date >= hoje)
-        // 2. Datacoms Futuras (date_com >= hoje)
-        // 3. Pagamentos Pendentes (payment_date IS NULL)
+        // Consulta o Supabase para eventos futuros
+        // Critério: Pagamento >= Hoje OU Datacom >= Hoje OU Pagamento Pendente (null)
+        // Isso garante que peguemos anúncios recentes que ainda não têm data de pagamento definida
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
@@ -207,7 +205,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
             if (!asset || asset.quantity <= 0) return;
 
             const rate = Number(div.rate);
-            if (rate <= 0.00001) return; // Ignora zeros ou valores muito pequenos (erro de scraper)
+            if (rate <= 0) return; // Ignora valores inválidos
 
             const total = preciseMul(asset.quantity, rate);
             
@@ -219,25 +217,20 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
             // Filtra duplicatas lógicas na lista final
             const exists = predictions.some(p => 
                 p.ticker === normalizeTicker(div.ticker) && 
-                p.paymentDate === (div.payment_date || 'A Definir') &&
-                Math.abs(p.rate - rate) < 0.001
+                p.paymentDate === div.payment_date &&
+                p.rate === rate
             );
 
             if (!exists) {
-                // Se a Datacom já passou, consideramos CONFIRMADO (pois o direito já foi adquirido)
-                // Se a Datacom é futura, é PREDICTED (pois o usuário pode vender antes)
-                const isConfirmed = daysToDateCom < 0; 
-
                 predictions.push({
                     ticker: normalizeTicker(div.ticker),
                     dateCom: div.date_com,
-                    paymentDate: div.payment_date || 'A Definir', 
+                    paymentDate: div.payment_date || 'A Definir', // Fallback visual
                     rate: rate,
                     quantity: asset.quantity,
                     projectedTotal: total,
                     type: div.type,
-                    daysToDateCom,
-                    status: isConfirmed ? 'CONFIRMED' : 'PREDICTED'
+                    daysToDateCom
                 });
             }
         });

@@ -14,7 +14,7 @@ const httpsAgent = new https.Agent({
     keepAlive: true,
     maxSockets: 100,
     maxFreeSockets: 10,
-    timeout: 15000, 
+    timeout: 10000, 
     rejectUnauthorized: false
 });
 
@@ -28,12 +28,11 @@ const client = axios.create({
         'Pragma': 'no-cache',
         'Upgrade-Insecure-Requests': '1'
     },
-    timeout: 10000, 
+    timeout: 8000, 
     maxRedirects: 5
 });
 
-// --- INTELIGÊNCIA DE PARSING ---
-
+// --- HELPERS TÉCNICOS ---
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
 function normalize(str: string) {
@@ -41,70 +40,61 @@ function normalize(str: string) {
     return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
-// Analisa se uma string parece dinheiro (R$ ou formato decimal puro) E NÃO é porcentagem
-function parseMoneySmart(valueStr: any): number | null {
-    if (!valueStr) return null;
+function parseValue(valueStr: any): number | null {
+    if (valueStr === undefined || valueStr === null) return null;
+    if (typeof valueStr === 'number') return valueStr;
+    
     let str = String(valueStr).trim();
-    
-    // Regra 1: Se tem %, é Yield/Taxa, não valor monetário. Abortar.
+    // Proteção Crítica: Ignora valores percentuais (Yield)
     if (str.includes('%')) return null;
+    if (!str || str === '-' || str === '--' || str === 'N/A') return null;
+
+    str = str.replace(/^R\$\s?/, '').trim();
+
+    let multiplier = 1;
+    const lastChar = str.slice(-1).toUpperCase();
+    if (['B', 'M', 'K'].includes(lastChar)) {
+        if (lastChar === 'B') multiplier = 1e9;
+        else if (lastChar === 'M') multiplier = 1e6;
+        else if (lastChar === 'K') multiplier = 1e3;
+        str = str.slice(0, -1).trim();
+    }
+
+    str = str.replace(/\s/g, '').replace(/\u00A0/g, '');
+
+    const lastCommaIndex = str.lastIndexOf(',');
+    const lastDotIndex = str.lastIndexOf('.');
     
-    // Regra 2: Deve conter números
-    if (!/\d/.test(str)) return null;
+    let clean = "";
+    if (lastCommaIndex > lastDotIndex) {
+        clean = str.replace(/\./g, '').replace(',', '.');
+    } else if (lastDotIndex > lastCommaIndex) {
+        clean = str.replace(/,/g, '');
+    } else {
+        if (lastCommaIndex !== -1) clean = str.replace(',', '.');
+        else clean = str;
+    }
 
-    // Limpeza
-    str = str.replace(/^R\$\s?/, '').replace(/\s/g, '').replace(/\u00A0/g, '');
+    clean = clean.replace(/[^0-9.-]/g, '');
+    if (!clean) return null;
+    
+    const result = parseFloat(clean);
+    return isNaN(result) ? null : result * multiplier;
+}
 
-    // Detecção de formato BR (1.000,00) vs US (1,000.00)
-    // Assumimos BR se houver vírgula no final ou se não houver ponto
-    if (str.includes(',') && !str.includes('.')) {
-        str = str.replace(',', '.');
-    } else if (str.includes('.') && str.includes(',')) {
-        // Se o último separador for vírgula, é decimal (BR)
-        if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
-            str = str.replace(/\./g, '').replace(',', '.');
-        } else {
-            str = str.replace(/,/g, '');
+function parseDate(dateStr: string) {
+    if (!dateStr || dateStr === '-' || dateStr.length < 8) return null;
+    try {
+        const parts = dateStr.trim().split('/');
+        if (parts.length === 3) {
+            let year = parts[2];
+            if (year.length === 2) year = '20' + year;
+            return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
-    } else if (str.includes(',')) {
-        str = str.replace(',', '.');
-    }
-
-    const val = parseFloat(str);
-    // Filtro de sanidade: Dividendos > 1000 ou < 0.0001 são suspeitos (provavelmente erro de parse)
-    if (isNaN(val) || val <= 0.00001 || val > 5000) return null;
-
-    return val;
+        return null;
+    } catch { return null; }
 }
 
-// Analisa se uma string é uma data válida
-function parseDateSmart(dateStr: string): string | null {
-    if (!dateStr || dateStr.length < 8) return null;
-    const clean = dateStr.trim();
-    
-    // Formato DD/MM/AAAA
-    const matchBR = clean.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-    if (matchBR) {
-        return `${matchBR[3]}-${matchBR[2]}-${matchBR[1]}`;
-    }
-    // Formato AAAA-MM-DD
-    const matchISO = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (matchISO) {
-        return clean.substring(0, 10);
-    }
-    return null;
-}
-
-// Identifica o tipo de provento baseado em palavras-chave
-function identifyTypeSmart(text: string): string {
-    const norm = normalize(text);
-    if (norm.includes('jcp') || norm.includes('juros') || norm.includes('capital')) return 'JCP';
-    if (norm.includes('rend') || norm.includes('rendimento')) return 'REND';
-    if (norm.includes('amort') || norm.includes('amortizacao')) return 'AMORT';
-    return 'DIV'; // Padrão
-}
-
-// Mapeamento de metadados fundamentais
 function mapLabelToKey(label: string): string | null {
     const norm = normalize(label);
     if (!norm) return null;
@@ -141,14 +131,12 @@ async function scrapeInvestidor10(ticker: string) {
     const tickerLower = ticker.toLowerCase();
     const isLikelyFii = ticker.endsWith('11') || ticker.endsWith('11B');
     
-    // Tenta URLs comuns em ordem de probabilidade
-    const urls = isLikelyFii 
-        ? [`https://investidor10.com.br/fiis/${tickerLower}/`, `https://investidor10.com.br/fiagros/${tickerLower}/`]
-        : [`https://investidor10.com.br/acoes/${tickerLower}/`, `https://investidor10.com.br/bdrs/${tickerLower}/`];
+    const urlFii = `https://investidor10.com.br/fiis/${tickerLower}/`;
+    const urlFiagro = `https://investidor10.com.br/fiagros/${tickerLower}/`;
+    const urlAcao = `https://investidor10.com.br/acoes/${tickerLower}/`;
+    const urlBdr = `https://investidor10.com.br/bdrs/${tickerLower}/`;
 
-    // Adiciona fallback reverso
-    if (isLikelyFii) urls.push(`https://investidor10.com.br/acoes/${tickerLower}/`);
-    else urls.push(`https://investidor10.com.br/fiis/${tickerLower}/`);
+    const urls = isLikelyFii ? [urlFii, urlFiagro, urlAcao, urlBdr] : [urlAcao, urlFii, urlFiagro, urlBdr];
 
     let finalData: any = null;
     let finalDividends: any[] = [];
@@ -156,14 +144,18 @@ async function scrapeInvestidor10(ticker: string) {
     for (const url of urls) {
         try {
             const res = await client.get(url);
-            if (res.data.length < 3000) continue; // Conteúdo muito curto = erro ou soft 404
+            if (res.data.length < 5000) continue;
 
             const $ = cheerio.load(res.data);
             
-            // Metadados básicos
+            let type = 'ACAO';
+            if (url.includes('/fiis/')) type = 'FII';
+            else if (url.includes('/fiagros/')) type = 'FII';
+            else if (url.includes('/bdrs/')) type = 'BDR';
+
             const dados: any = {
                 ticker: ticker.toUpperCase(),
-                type: url.includes('/fiis/') || url.includes('/fiagros/') ? 'FII' : 'ACAO',
+                type: type,
                 updated_at: new Date().toISOString(),
                 dy: null, pvp: null, pl: null, 
                 liquidez: null, val_mercado: null,
@@ -177,35 +169,35 @@ async function scrapeInvestidor10(ticker: string) {
                 taxa_adm: null, tipo_gestao: null
             };
 
-            // 1. Extração de Cards (Indicadores)
-            $('div._card, .indicator-box').each((_, el) => {
-                const label = $(el).find('div._card-header, .name, .title').first().text().trim();
-                const value = $(el).find('div._card-body, .value, .data').first().text().trim();
-                if (label && value) {
-                    const key = mapLabelToKey(label);
-                    if (key) {
-                        if (['segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
-                            dados[key] = value;
-                        } else {
-                            const p = parseMoneySmart(value); // Reusa logica smart para numeros
-                            if (p !== null) dados[key] = p;
+            const selectors = ['div._card', '#table-indicators .cell', '#table-general-data .cell', '.indicator-box', '.data-entry', '.cell'];
+            
+            selectors.forEach(selector => {
+                $(selector).each((_, el) => {
+                    let label = $(el).find('div._card-header, .name, .title, span:first-child').first().text().trim();
+                    let value = $(el).find('div._card-body, .value, .data, span:last-child').last().text().trim();
+
+                    if (!label && !value) {
+                        const spans = $(el).find('span');
+                        if (spans.length >= 2) {
+                            label = $(spans[0]).text().trim();
+                            value = $(spans[1]).text().trim();
                         }
                     }
-                }
+
+                    if (label && value) {
+                        const key = mapLabelToKey(label);
+                        if (key && dados[key] === null) {
+                            if (['segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
+                                dados[key] = value;
+                            } else {
+                                const parsed = parseValue(value);
+                                if (parsed !== null) dados[key] = parsed;
+                            }
+                        }
+                    }
+                });
             });
 
-            // 2. Extração de Tabelas de Dados Gerais
-            $('#table-indicators .cell, #table-general-data .cell').each((_, el) => {
-                const label = $(el).find('span:first-child').text().trim();
-                const value = $(el).find('span:last-child').text().trim();
-                const key = mapLabelToKey(label);
-                if (key && dados[key] === null) {
-                    const p = parseMoneySmart(value);
-                    if (p !== null) dados[key] = p;
-                }
-            });
-
-            // Extração de Segmento (Breadcrumbs)
             if (!dados.segmento) {
                 $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
                     const txt = $(el).text().trim();
@@ -215,94 +207,111 @@ async function scrapeInvestidor10(ticker: string) {
                 });
             }
 
-            // --- INTELIGÊNCIA DE DIVIDENDOS ---
-            // Procura TODAS as tabelas, não apenas por ID.
-            // Analisa cada linha para ver se contém o padrão: [DATA] + [VALOR MONETÁRIO]
-            const dividendsFound: any[] = [];
-            
-            $('table').each((_, table) => {
-                $(table).find('tr').each((__, tr) => {
-                    const tds = $(tr).find('td');
-                    if (tds.length < 2) return; // Linha muito curta
+            if (dados.cotacao_atual !== null || dados.dy !== null || dados.pvp !== null || dados.pl !== null) {
+                if (dados.dy === null) {
+                     $('span, div, p').each((_, el) => {
+                         const txt = $(el).text().trim().toLowerCase();
+                         if (txt === 'dividend yield' || txt === 'dy') {
+                             const val = $(el).next().text().trim() || $(el).parent().find('.value').text().trim();
+                             const p = parseValue(val);
+                             if (p !== null) dados.dy = p;
+                         }
+                     });
+                }
 
-                    let rowDateCom: string | null = null;
-                    let rowDatePay: string | null = null;
-                    let rowValue: number | null = null;
-                    let rowType: string = 'DIV';
-                    let foundPercentage = false;
+                if (dados.vpa === null && dados.pvp > 0 && dados.cotacao_atual > 0) {
+                     dados.vpa = dados.cotacao_atual / dados.pvp;
+                }
 
-                    // Escaneia células da linha
-                    tds.each((___, td) => {
-                        const txt = $(td).text().trim();
-                        
-                        // 1. É Data?
-                        const d = parseDateSmart(txt);
-                        if (d) {
-                            if (!rowDateCom) rowDateCom = d; // Primeira data é Datacom
-                            else rowDatePay = d; // Segunda data é Pagamento
-                            return;
-                        }
+                // --- SCRAPER DE DIVIDENDOS APERFEIÇOADO (HEURÍSTICA DE CONTEÚDO) ---
+                const dividends: any[] = [];
+                let tableDivs: cheerio.Cheerio<any> | null = null;
 
-                        // 2. É Tipo?
-                        if (txt.length < 20 && (normalize(txt).includes('jcp') || normalize(txt).includes('dividendo') || normalize(txt).includes('rendimento'))) {
-                            rowType = identifyTypeSmart(txt);
-                            return;
-                        }
-
-                        // 3. É Porcentagem? (Yield - IGNORAR PARA VALOR)
-                        if (txt.includes('%')) {
-                            foundPercentage = true;
-                            return; 
-                        }
-
-                        // 4. É Valor Monetário? (Prioridade para valores com R$ ou decimais claros)
-                        const v = parseMoneySmart(txt);
-                        if (v !== null) {
-                            // Se já temos um valor, ficamos com o maior (assumindo que o menor pode ser imposto ou erro)
-                            // OU ficamos com o último encontrado (geralmente Líquido na direita)
-                            rowValue = v;
+                // 1. Tenta ID específico primeiro (Mais confiável)
+                const specificTable = $('#table-dividends-history');
+                if (specificTable.length > 0) {
+                    tableDivs = specificTable;
+                } else {
+                    // 2. Busca genérica (Fallback)
+                    $('table').each((_, table) => {
+                        const txt = $(table).text().toLowerCase();
+                        if ((txt.includes('tipo') || txt.includes('data com')) && 
+                            (txt.includes('pagamento') || txt.includes('valor'))) {
+                            tableDivs = $(table);
+                            return false; 
                         }
                     });
+                }
 
-                    // Validação Heurística:
-                    // Precisa ter pelo menos DataCom e Valor.
-                    if (rowDateCom && rowValue !== null) {
-                        dividendsFound.push({
-                            ticker: ticker.toUpperCase(),
-                            type: rowType,
-                            date_com: rowDateCom,
-                            payment_date: rowDatePay || null, // Pode ser null (A definir)
-                            rate: rowValue
+                if (tableDivs) {
+                    tableDivs.find('tbody tr').each((i, tr) => {
+                        const cols = $(tr).find('td');
+                        if (cols.length < 3) return;
+
+                        let typeDiv = 'DIV';
+                        let dateComStr = '';
+                        let datePayStr = '';
+                        let valStr = '';
+
+                        // Varre as colunas da linha
+                        cols.each((_, td) => {
+                            const text = $(td).text().trim();
+                            const normText = normalize(text);
+
+                            // Identifica Tipo
+                            if (normText.includes('jcp') || normText.includes('juros')) typeDiv = 'JCP';
+                            else if (normText.includes('rendimento')) typeDiv = 'REND';
+                            else if (normText.includes('dividendo')) typeDiv = 'DIV';
+                            else if (normText.includes('amortiza')) typeDiv = 'AMORT';
+
+                            // Identifica Datas (DD/MM/AAAA)
+                            if (text.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                                if (!dateComStr) dateComStr = text; // Primeira data geralmente é Datacom
+                                else if (!datePayStr) datePayStr = text; // Segunda é Pagamento
+                            }
+
+                            // Identifica Valor (Prioriza formatos monetários R$ ou decimal com vírgula, SEM %)
+                            if (!text.includes('%')) {
+                                if (text.includes('R$') || (text.match(/\d+,\d+/) && !valStr)) {
+                                    // Se tem R$, é certeza. Se não tem R$ mas parece número e ainda não temos valor, pega.
+                                    valStr = text;
+                                } else if (text.match(/\d+,\d+/) && valStr && text.includes('R$')) {
+                                    // Se já tínhamos um valor "fraco" e agora achamos um com R$, substitui (R$ ganha)
+                                    valStr = text;
+                                }
+                            }
                         });
-                    }
+
+                        const rate = parseValue(valStr);
+                        const dateCom = parseDate(dateComStr);
+                        const paymentDate = parseDate(datePayStr);
+
+                        if (dateCom && rate !== null && rate > 0) {
+                            dividends.push({ ticker: ticker.toUpperCase(), type: typeDiv, date_com: dateCom, payment_date: paymentDate || null, rate });
+                        }
+                    });
+                }
+
+                if ((dados.dy === null || dados.dy === 0) && dados.ultimo_rendimento && dados.cotacao_atual) {
+                    dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100 * 12; 
+                }
+
+                Object.keys(dados).forEach(k => {
+                    if (dados[k] === null || dados[k] === undefined || dados[k] === '') delete dados[k];
                 });
-            });
 
-            if (dividendsFound.length > 0) {
-                finalDividends = dividendsFound;
+                finalData = {
+                    ...dados,
+                    dy_12m: dados.dy,
+                    current_price: dados.cotacao_atual,
+                };
+                finalDividends = dividends;
+                
+                break; 
             }
-
-            // Fallback de DY calculado se faltar
-            if (!dados.dy && dados.ultimo_rendimento && dados.cotacao_atual) {
-                dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100 * 12;
-            }
-
-            // Cleanup
-            Object.keys(dados).forEach(k => {
-                if (dados[k] === null || dados[k] === undefined || dados[k] === '') delete dados[k];
-            });
-
-            finalData = {
-                ...dados,
-                dy_12m: dados.dy,
-                current_price: dados.cotacao_atual,
-            };
-            
-            // Se encontrou dados válidos, para o loop de URLs
-            if (finalData.current_price || finalDividends.length > 0) break;
 
         } catch (e) {
-            continue; // Tenta próxima URL
+            continue;
         }
     }
 
@@ -322,7 +331,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
-        // Cache Check (Supabase)
         if (!force) {
             const { data: existing } = await supabase
                 .from('ativos_metadata')
@@ -332,8 +340,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                // Cache de 3h para dados gerais, mas se não tiver DY, tenta atualizar em 1h
-                const cacheTime = existing.dy_12m ? 10800000 : 3600000; 
+                const cacheTime = existing.dy_12m === 0 ? 3600000 : 10800000;
                 
                 if (age < cacheTime) {
                      const { data: divs } = await supabase
@@ -345,50 +352,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         }
 
-        // Live Scrape
         const result = await scrapeInvestidor10(ticker);
         
         if (!result) {
-            return res.status(404).json({ success: false, error: 'Falha ao obter dados (Fonte indisponível).' });
+            return res.status(404).json({ success: false, error: 'Falha ao obter dados.' });
         }
 
         const { metadata, dividends } = result;
 
-        // Persistência Metadata
         if (metadata) {
             const dbPayload = { ...metadata };
-            // Remove campos calculados não presentes no DB se necessário, ou mapeia
-            delete dbPayload.dy; 
-            delete dbPayload.cotacao_atual; 
+            delete dbPayload.dy;
+            delete dbPayload.cotacao_atual;
             
             const { error } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
-            if (error) console.warn('Metadata save warning:', error.message);
+            if (error) console.error('Error saving metadata:', error);
         }
 
-        // Persistência Dividendos (Lógica Inteligente de Merge)
         if (dividends.length > 0) {
+             // CLEANUP: Remove registros futuros existentes para este ticker (limpa dados velhos/errados)
              const today = new Date().toISOString().split('T')[0];
-             
-             // Remove proventos FUTUROS existentes para evitar duplicatas de projeção antiga
-             // Mantém histórico passado
-             await supabase.from('market_dividends')
+             const { error: delError } = await supabase.from('market_dividends')
                 .delete()
                 .eq('ticker', ticker.toUpperCase())
                 .gte('payment_date', today);
+             
+             if (delError) console.warn('Clean up error (ignorable):', delError);
 
-             // Deduplica payload
              const uniqueDivs = Array.from(new Map(dividends.map(item => [
-                `${item.type}-${item.date_com}-${item.rate.toFixed(4)}`, item
+                `${item.type}-${item.date_com}-${item.rate}`, item
             ])).values());
             
             const { error } = await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
-            if (error) console.warn('Dividends save warning:', error.message);
+            if (error) console.error('Error saving dividends:', error);
         }
 
         return res.status(200).json({ success: true, data: metadata, dividends });
 
     } catch (e: any) {
-        console.error('Update Stock Fatal:', e);
         return res.status(500).json({ success: false, error: e.message });
     }
 }
