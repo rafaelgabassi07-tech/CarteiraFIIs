@@ -72,9 +72,9 @@ const AgendaItem: React.FC<{ event: RadarEvent, isLast: boolean, privacyMode: bo
     const isDatacom = event.eventType === 'DATACOM';
     const isConfirmed = event.status === 'CONFIRMED';
     
-    // Cores baseadas no status
+    // Cores baseadas no status e tipo
     const statusColor = isConfirmed ? 'bg-emerald-500' : 'bg-indigo-400';
-    const amountColor = isConfirmed ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400';
+    const typeLabel = event.type || (isDatacom ? 'DATACOM' : 'PROVENTO');
 
     return (
         <div className="flex gap-4 relative group">
@@ -92,10 +92,10 @@ const AgendaItem: React.FC<{ event: RadarEvent, isLast: boolean, privacyMode: bo
                         <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${statusColor}`}></div>
                             <span className="text-sm font-black text-zinc-900 dark:text-white">{event.ticker}</span>
-                            <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 uppercase">{event.type}</span>
+                            <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 uppercase">{typeLabel}</span>
                         </div>
                         <span className={`text-[9px] font-bold uppercase tracking-wider ${isConfirmed ? 'text-emerald-500' : 'text-indigo-400'}`}>
-                            {isConfirmed ? 'Confirmado' : 'Previsto'}
+                            {isConfirmed ? 'Confirmado' : 'Estimado'}
                         </span>
                     </div>
 
@@ -105,13 +105,13 @@ const AgendaItem: React.FC<{ event: RadarEvent, isLast: boolean, privacyMode: bo
                                 <p className="text-xs font-medium text-zinc-500">Data de Corte (Data Com)</p>
                             ) : (
                                 <p className="text-[10px] text-zinc-400">
-                                    {event.isAiPrediction ? 'Estimativa baseada em histórico' : 'Pagamento agendado'}
+                                    {event.isAiPrediction ? 'Estimativa baseada em histórico' : `Pagamento em ${formatDateShort(event.date)}`}
                                 </p>
                             )}
                         </div>
                         {!isDatacom && (
                             <div className="text-right">
-                                <span className={`text-sm font-black ${amountColor}`}>
+                                <span className={`text-sm font-black ${isConfirmed ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500'}`}>
                                     {formatBRL(event.amount, privacyMode)}
                                 </span>
                             </div>
@@ -171,7 +171,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }
           
           try {
-              // 1. Busca Previsões (Supabase + IA se solicitado)
               const predictions = await fetchFutureAnnouncements(portfolio, useAI);
               if (!isActive) return;
 
@@ -187,9 +186,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   );
               };
 
-              // A. Processa Recibos do Banco (CONFIRMED) - Dados da carteira local/cache
+              // A. Processa Recibos Históricos e Futuros do Cache Local (DividendReceipts)
               dividendReceipts.forEach(r => {
-                  // Evento de Pagamento
+                  // Evento de Pagamento Futuro ou Hoje
                   if (r.paymentDate && r.paymentDate >= todayStr) {
                       atomEvents.push({
                           id: `db-pay-${r.id}`,
@@ -203,7 +202,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           isAiPrediction: false
                       });
                   }
-                  // Evento de Datacom
+                  // Evento de Datacom Futuro ou Hoje
                   if (r.dateCom && r.dateCom >= todayStr) {
                       atomEvents.push({
                           id: `db-com-${r.id}`,
@@ -219,9 +218,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   }
               });
 
-              // B. Processa Previsões (PREDICTED) - Dados da Nuvem + IA
+              // B. Processa Previsões (Robô Assertivo - já mescla Supabase e IA)
               predictions.forEach(p => {
-                  // Pagamento Previsto
                   if (p.paymentDate && p.paymentDate >= todayStr) {
                       if (!isDuplicate(p.ticker, p.type, p.paymentDate, p.rate, 'PAYMENT')) {
                           atomEvents.push({
@@ -229,7 +227,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               ticker: p.ticker,
                               type: p.type,
                               eventType: 'PAYMENT',
-                              status: 'PREDICTED',
+                              status: p.isAiPrediction ? 'PREDICTED' : 'CONFIRMED',
                               date: p.paymentDate,
                               amount: p.projectedTotal,
                               rate: p.rate,
@@ -240,7 +238,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       }
                   }
 
-                  // Datacom Prevista
                   if (p.dateCom && p.dateCom >= todayStr) {
                       if (!isDuplicate(p.ticker, p.type, p.dateCom, p.rate, 'DATACOM')) {
                           atomEvents.push({
@@ -248,7 +245,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               ticker: p.ticker,
                               type: p.type,
                               eventType: 'DATACOM',
-                              status: 'PREDICTED',
+                              status: p.isAiPrediction ? 'PREDICTED' : 'CONFIRMED',
                               date: p.dateCom,
                               amount: 0,
                               rate: p.rate,
@@ -819,90 +816,47 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* MODAL DE PROVENTOS REFINADO (FUNÇÕES RESTAURADAS) */}
+      {/* --- MODAL DE PROVENTOS MINIMALISTA (CLEAN) --- */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); setExpandedMonth(null); }}>
          <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
-             <div className="flex items-center gap-4 mb-6 px-2 anim-slide-up pt-2">
-                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 border-zinc-200 dark:border-zinc-700`}>
-                     <Wallet className="w-6 h-6" />
-                 </div>
-                 <div>
-                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Proventos</h2>
-                     <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Histórico de Pagamentos</p>
-                 </div>
-             </div>
-
-             {/* Cards de Resumo Dinâmicos */}
-             <div className="grid grid-cols-2 gap-3 mb-6 anim-slide-up">
-                 <div className="col-span-2 bg-emerald-500 p-5 rounded-[2rem] text-white shadow-lg shadow-emerald-500/20 relative overflow-hidden">
-                     <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none"></div>
-                     <div className="relative z-10 flex justify-between items-end">
-                         <div>
-                             <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Total no Período</p>
-                             <h3 className="text-3xl font-black tracking-tight">{formatBRL(stats.periodTotal, privacyMode)}</h3>
-                         </div>
-                         <div className="text-right">
-                             <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Média Mensal</p>
-                             <p className="text-lg font-black">{formatBRL(stats.periodAvg, privacyMode)}</p>
-                         </div>
+             
+             {/* Header Minimalista */}
+             <div className="flex flex-col pt-6 pb-2 px-2 anim-slide-up">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-2">Total em Proventos</p>
+                 <div className="flex items-baseline justify-between">
+                     <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                         {selectedProventosMonth ? formatBRL(displayedChartData.find(d => d.fullDate === selectedProventosMonth)?.value || 0, privacyMode) : formatBRL(stats.periodTotal, privacyMode)}
+                     </h2>
+                     {/* Seletor de Ano Inline */}
+                     <div className="flex gap-1 overflow-x-auto no-scrollbar">
+                         {availableYears.map((year: number) => (
+                             <button 
+                                 key={year}
+                                 onClick={() => { setProventosYearFilter(String(year)); setSelectedProventosMonth(null); }}
+                                 className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-colors ${proventosYearFilter === String(year) ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                             >
+                                 {year}
+                             </button>
+                         ))}
+                         <button 
+                             onClick={() => { setProventosYearFilter('12M'); setSelectedProventosMonth(null); }}
+                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-colors ${proventosYearFilter === '12M' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                         >
+                             12M
+                         </button>
                      </div>
                  </div>
-                 
-                 {/* Mini Cards de Detalhe */}
-                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-center">
-                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Trophy className="w-3 h-3 text-amber-500" /> Recorde</p>
-                     <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(stats.periodMax, privacyMode)}</p>
-                 </div>
-                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-center">
-                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1"><CalendarClock className="w-3 h-3 text-indigo-500" /> Previsão</p>
-                     <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(radarData.summary.total, privacyMode)}</p>
+                 <div className="flex gap-4 mt-2 text-[10px] font-medium text-zinc-500">
+                     <span>FIIs: {Math.round(splitData.fiiPct)}%</span>
+                     <span>Ações: {Math.round(splitData.stockPct)}%</span>
+                     <span>Média: {formatBRL(stats.periodAvg, privacyMode)}</span>
                  </div>
              </div>
 
-             {/* Breakdown de Origem (FII vs Ações) */}
-             <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-4 mb-6 anim-slide-up">
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">Origem dos Proventos</h3>
-                 <div className="flex h-3 w-full rounded-full overflow-hidden bg-white dark:bg-zinc-800 mb-3 shadow-inner">
-                     <div style={{ width: `${splitData.fiiPct}%` }} className="h-full bg-indigo-500 transition-all duration-1000 ease-out"></div>
-                     <div style={{ width: `${splitData.stockPct}%` }} className="h-full bg-sky-500 transition-all duration-1000 ease-out"></div>
-                 </div>
-                 <div className="flex justify-between items-center text-xs">
-                     <div className="flex items-center gap-2">
-                         <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                         <span className="font-bold text-zinc-700 dark:text-zinc-300">FIIs</span>
-                         <span className="font-medium text-zinc-400">{Math.round(splitData.fiiPct)}%</span>
-                     </div>
-                     <div className="flex items-center gap-2">
-                         <span className="font-medium text-zinc-400">{Math.round(splitData.stockPct)}%</span>
-                         <span className="font-bold text-zinc-700 dark:text-zinc-300">Ações</span>
-                         <div className="w-2 h-2 rounded-full bg-sky-500"></div>
-                     </div>
-                 </div>
-             </div>
-
-             {/* Filtro de Ano (Chips Scrollable) */}
-             <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6 px-1 anim-slide-up">
-                 <button 
-                     onClick={() => { setProventosYearFilter('12M'); setSelectedProventosMonth(null); }}
-                     className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${proventosYearFilter === '12M' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700 hover:border-zinc-300'}`}
-                 >
-                     Últimos 12 Meses
-                 </button>
-                 {availableYears.map((year: number) => (
-                     <button 
-                         key={year}
-                         onClick={() => { setProventosYearFilter(String(year)); setSelectedProventosMonth(null); }}
-                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${proventosYearFilter === String(year) ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700 hover:border-zinc-300'}`}
-                     >
-                         {year}
-                     </button>
-                 ))}
-             </div>
-
-             <div className="mb-8 h-56 w-full bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-sm anim-slide-up relative">
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2 absolute top-4 left-5">Evolução</h3>
+             {/* Gráfico Limpo */}
+             <div className="h-48 w-full mt-6 mb-8 anim-slide-up" style={{ animationDelay: '100ms' }}>
                  <ResponsiveContainer width="100%" height="100%">
-                     <BarChart data={displayedChartData} onClick={handleBarClick} margin={{ top: 25, right: 0, left: -20, bottom: 0 }}>
+                     <BarChart data={displayedChartData} onClick={handleBarClick} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
                          <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip />} />
                          <Bar dataKey="value" radius={[4, 4, 4, 4]}>
@@ -910,55 +864,48 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                  <Cell 
                                      key={`cell-${index}`} 
                                      fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} 
-                                     className="transition-all duration-300 hover:opacity-80 dark:fill-zinc-700 dark:hover:fill-emerald-600 cursor-pointer" 
+                                     className="transition-all duration-300 hover:opacity-80 dark:fill-zinc-800 dark:hover:fill-emerald-600 cursor-pointer" 
                                  />
                              ))}
                          </Bar>
                      </BarChart>
                  </ResponsiveContainer>
                  {selectedProventosMonth && (
-                     <button 
-                        onClick={() => setSelectedProventosMonth(null)} 
-                        className="absolute top-3 right-3 p-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                     >
-                         <X className="w-3 h-3" />
+                     <button onClick={() => setSelectedProventosMonth(null)} className="absolute top-0 right-0 p-2 text-zinc-400 hover:text-zinc-900 transition-colors">
+                         <X className="w-4 h-4" />
                      </button>
                  )}
              </div>
 
-             <div className="space-y-4 pb-10 anim-slide-up">
-                 <div className="flex items-center justify-between px-2">
-                     <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                         {selectedProventosMonth 
-                             ? `Detalhes de ${new Date(selectedProventosMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}` 
-                             : 'Todos os Lançamentos'}
-                     </h3>
-                     <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-400">{displayedReceipts.length}</span>
-                 </div>
+             {/* Lista Limpa (Flat Design) */}
+             <div className="space-y-4 pb-10 anim-slide-up" style={{ animationDelay: '200ms' }}>
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-2 mb-2">
+                     {selectedProventosMonth 
+                         ? `Extrato de ${new Date(selectedProventosMonth + '-02').toLocaleDateString('pt-BR', { month: 'long' })}` 
+                         : 'Todos os Lançamentos'}
+                 </h3>
 
                  {displayedReceipts.length > 0 ? (
-                     <div className="space-y-2">
+                     <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-2 shadow-sm border border-zinc-100 dark:border-zinc-800">
                          {displayedReceipts.map((r: DividendReceipt, idx: number) => {
                              const isFII = r.assetType === AssetType.FII;
                              return (
-                                 <div key={idx} className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+                                 <div key={idx} className="flex items-center justify-between p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
                                      <div className="flex items-center gap-3">
-                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-zinc-600 dark:text-zinc-400 border shadow-sm ${isFII ? 'bg-indigo-50 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'bg-sky-50 border-sky-100 dark:bg-sky-900/20 dark:border-sky-900/30 text-sky-600 dark:text-sky-400'}`}>
-                                             {isFII ? <Building2 className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
+                                         <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500 dark:text-zinc-400">
+                                             {r.ticker.substring(0, 2)}
                                          </div>
                                          <div>
                                              <div className="flex items-center gap-2">
                                                  <span className="font-bold text-sm text-zinc-900 dark:text-white">{r.ticker}</span>
-                                                 <span className="text-[8px] font-black uppercase px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded">{r.type}</span>
                                              </div>
                                              <p className="text-[10px] font-medium text-zinc-400">
-                                                 Pago em {new Date(r.paymentDate).toLocaleDateString('pt-BR')}
+                                                 {new Date(r.paymentDate).toLocaleDateString('pt-BR')} • {r.type}
                                              </p>
                                          </div>
                                      </div>
                                      <div className="text-right">
-                                         <p className="font-black text-emerald-600 dark:text-emerald-400 text-sm">{formatBRL(r.totalReceived, privacyMode)}</p>
-                                         <p className="text-[9px] font-bold text-zinc-400">Qtd: {r.quantityOwned}</p>
+                                         <p className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{formatBRL(r.totalReceived, privacyMode)}</p>
                                      </div>
                                  </div>
                              );
