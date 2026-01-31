@@ -9,28 +9,34 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const timeoutRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
   
   useEffect(() => {
     if (isOpen) {
-      // Cancela qualquer fechamento pendente
+      // 1. Limpa qualquer processo de fechamento pendente
       if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
           timeoutRef.current = null;
       }
+      if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+      }
       
+      // 2. Garante montagem imediata
       setIsMounted(true);
       
-      // HACK: Double requestAnimationFrame garante que o browser pintou o estado 'isMounted' (display: block)
-      // antes de aplicar a classe 'isVisible' (opacity/translate), forçando a transição CSS.
-      requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
+      // 3. Double RAF para garantir que o browser pintou o "display: block" antes de adicionar opacidade
+      rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = requestAnimationFrame(() => {
               setIsVisible(true);
           });
       });
     } else {
       setIsVisible(false);
-      // Agenda a desmontagem após a animação
+      
+      // Agenda desmontagem segura
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      
       timeoutRef.current = window.setTimeout(() => {
           setIsMounted(false);
           timeoutRef.current = null;
@@ -39,6 +45,7 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
     
     return () => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [isOpen, duration]);
 
@@ -319,7 +326,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   );
 };
 
-// ... (Restante do arquivo mantido sem alterações, apenas o SwipeableModal e useAnimatedVisibility foram focados)
+// ... Resto do arquivo mantido ...
 interface ConfirmationModalProps { isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; }
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 250);

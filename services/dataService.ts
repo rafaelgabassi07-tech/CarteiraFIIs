@@ -37,13 +37,6 @@ const isStale = (dateString?: string) => {
     return (now - lastUpdate) > getTTL();
 };
 
-// Gera data YYYY-MM-DD segura no fuso local para query no banco
-const getLocalISODate = (date: Date) => {
-    const offset = date.getTimezoneOffset() * 60000; // Offset em milissegundos
-    const localTime = new Date(date.getTime() - offset);
-    return localTime.toISOString().slice(0, 10);
-};
-
 const parseNumberSafe = (val: any): number | undefined => {
     if (typeof val === 'number') return val;
     if (val === undefined || val === null || val === '') return undefined;
@@ -188,29 +181,33 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
 
     const tickers = portfolio.map(p => normalizeTicker(p.ticker));
     
-    // Data de "corte" para busca: Ontem. 
-    // Isso evita que fusos horários diferentes ocultem eventos que são tecnicamente "hoje" mas o servidor já virou o dia.
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const searchDate = getLocalISODate(yesterdayDate);
+    // ESTRATÉGIA: Buscar TODOS os dividendos do ano atual e futuro.
+    // Isso evita problemas com datas "limítrofes" (ontem/hoje) em queries do banco.
+    // A filtragem fina é feita em memória no cliente.
+    const startOfYear = `${new Date().getFullYear()}-01-01`;
 
     try {
         // 1. Dados Confirmados ("O Martelo do Supabase")
-        // Busca proventos a partir de ONTEM (margem de segurança) ou futuros, ou sem data de pagamento definida.
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
             .in('ticker', tickers)
-            .or(`payment_date.gte.${searchDate},date_com.gte.${searchDate},payment_date.is.null`)
+            .or(`payment_date.gte.${startOfYear},date_com.gte.${startOfYear},payment_date.is.null`)
             .order('payment_date', { ascending: true });
 
         if (error) {
             console.error('[Robot] Error fetching confirmed data:', error);
         } else {
-            console.log(`[Robot] Found ${data?.length || 0} confirmed events for ${tickers.length} assets starting from ${searchDate}`);
+            console.log(`[Robot] Found ${data?.length || 0} recent/future events for ${tickers.length} assets.`);
         }
         
         const predictions: FutureDividendPrediction[] = [];
+        
+        // Data de corte para exibição: Ontem (para garantir que eventos de hoje apareçam mesmo com fuso)
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 1);
+        const cutoffTime = cutoffDate.getTime();
+
         const now = new Date();
         now.setHours(0,0,0,0);
 
@@ -219,6 +216,25 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
 
         if (data && data.length > 0) {
             data.forEach((div: any) => {
+                // --- FILTRAGEM EM MEMÓRIA (Mais segura) ---
+                // Se tem data de pagamento definida, verifica se é futura ou recente
+                let isRelevant = false;
+                
+                if (!div.payment_date) {
+                    isRelevant = true; // Sem data = Futuro (A definir)
+                } else {
+                    const payDate = parseDateToLocal(div.payment_date);
+                    if (payDate && payDate.getTime() >= cutoffTime) isRelevant = true;
+                }
+
+                // Se não passou pelo filtro de pagamento, tenta data com
+                if (!isRelevant && div.date_com) {
+                    const dCom = parseDateToLocal(div.date_com);
+                    if (dCom && dCom.getTime() >= cutoffTime) isRelevant = true;
+                }
+
+                if (!isRelevant) return; // Ignora eventos antigos
+
                 const normalizedTicker = normalizeTicker(div.ticker);
                 const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
                 
@@ -229,16 +245,11 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
 
                 const total = preciseMul(asset.quantity, rate);
                 
-                // --- CORREÇÃO DE TIMEZONE ---
                 const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
-                // Usa a string do DB para exibição, mas parseDateToLocal para lógica se necessário
-                
-                // Recalcula diffTime para 'Dias até Datacom' (apenas cosmético)
                 const refDate = dateCom || now;
                 const diffTime = refDate.getTime() - now.getTime();
                 const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
-                // Adiciona à lista de confirmados
                 predictions.push({
                     ticker: normalizedTicker,
                     dateCom: div.date_com || 'Já ocorreu',
@@ -268,6 +279,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI
 
         // 2. Previsão IA (Preenchimento de Lacunas)
         if (useAI) {
+            // Prioriza ativos sem nenhuma informação recente/futura
             const priorityTickers = tickers.filter(t => !coveredTickers.has(t));
             const tickersToPredict = priorityTickers.length > 5 ? priorityTickers : tickers;
 
