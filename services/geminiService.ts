@@ -1,5 +1,5 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -40,5 +40,53 @@ export const generateInflationAnalysis = async (
   } catch (error) {
     console.error("AI Analysis Error:", error);
     return "Minha conexão com o Banco Central instável. Tente novamente em instantes.";
+  }
+};
+
+/**
+ * Prevê o calendário de proventos com base em padrões históricos conhecidos pelo modelo.
+ */
+export const predictDividendSchedule = async (tickers: string[]): Promise<any[]> => {
+  try {
+    const prompt = `
+      Analise os seguintes ativos listados na B3 (Brasil): ${tickers.join(', ')}.
+      Com base no histórico de pagamentos destes ativos, estime a PROVÁVEL próxima 'Data Com' (data de corte) e 'Data de Pagamento' para cada um, considerando a data atual: ${new Date().toLocaleDateString('pt-BR')}.
+      
+      Regras:
+      1. Se o ativo paga mensalmente (ex: maioria dos FIIs), projete para o mês atual ou próximo.
+      2. Se paga trimestralmente (ex: VALE3, PETR4), projete o próximo ciclo.
+      3. Defina um nível de confiança (ALTA, MEDIA, BAIXA).
+      4. Retorne APENAS JSON.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              ticker: { type: Type.STRING },
+              predictedDateCom: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
+              predictedPaymentDate: { type: Type.STRING, description: "Formato YYYY-MM-DD" },
+              confidence: { type: Type.STRING, enum: ["ALTA", "MEDIA", "BAIXA"] },
+              reasoning: { type: Type.STRING, description: "Breve motivo da previsão (ex: 'Padrão mensal dia 10')" }
+            },
+            required: ["ticker", "predictedDateCom", "predictedPaymentDate", "confidence"]
+          }
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) return [];
+    
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("AI Prediction Error:", error);
+    return [];
   }
 };

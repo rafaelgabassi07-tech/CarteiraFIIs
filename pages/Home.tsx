@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight, Megaphone, Clock, Building2, Briefcase, Cloud, RefreshCw } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight, Megaphone, Clock, Building2, Briefcase, Cloud, RefreshCw, BrainCircuit, Wand2 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -44,6 +44,9 @@ interface RadarEvent {
     date: string;
     amount: number;
     rate: number;
+    isAiPrediction?: boolean;
+    confidence?: 'ALTA' | 'MEDIA' | 'BAIXA';
+    reasoning?: string;
 }
 
 const formatBRL = (val: any, privacy = false) => {
@@ -65,7 +68,7 @@ const formatDateShort = (dateStr: string) => {
 };
 
 // Componente Visual do Radar (Animação Otimizada e Compacta)
-const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScanning: boolean, totalProjected: number, privacyMode: boolean }) => {
+const RadarAnimation = ({ isScanning, totalProjected, privacyMode, scanStatus }: { isScanning: boolean, totalProjected: number, privacyMode: boolean, scanStatus?: string }) => {
     return (
         <div className="relative w-full h-40 flex items-center justify-center overflow-hidden mb-2">
             <style>{`
@@ -74,9 +77,9 @@ const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScannin
             `}</style>
             
             {/* Background Grid Circles (Reduzidos) */}
-            <div className="absolute w-[200px] h-[200px] border border-indigo-100/50 dark:border-indigo-900/20 rounded-full"></div>
-            <div className="absolute w-[140px] h-[140px] border border-indigo-200/50 dark:border-indigo-900/30 rounded-full"></div>
-            <div className="absolute w-[80px] h-[80px] border border-indigo-300/50 dark:border-indigo-900/40 rounded-full"></div>
+            <div className={`absolute w-[200px] h-[200px] border rounded-full transition-colors ${isScanning ? 'border-purple-200 dark:border-purple-900/40' : 'border-indigo-100/50 dark:border-indigo-900/20'}`}></div>
+            <div className={`absolute w-[140px] h-[140px] border rounded-full transition-colors ${isScanning ? 'border-purple-300 dark:border-purple-900/50' : 'border-indigo-200/50 dark:border-indigo-900/30'}`}></div>
+            <div className={`absolute w-[80px] h-[80px] border rounded-full transition-colors ${isScanning ? 'border-purple-400 dark:border-purple-900/60' : 'border-indigo-300/50 dark:border-indigo-900/40'}`}></div>
             
             {/* Crosshairs */}
             <div className="absolute w-full h-[1px] bg-indigo-100/50 dark:bg-indigo-900/20"></div>
@@ -87,19 +90,19 @@ const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScannin
                 <div 
                     className="absolute w-[200px] h-[200px] rounded-full"
                     style={{
-                        background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(99, 102, 241, 0.2) 360deg)',
-                        animation: 'radar-spin 1.5s linear infinite',
+                        background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(168, 85, 247, 0.3) 360deg)',
+                        animation: 'radar-spin 1.2s linear infinite',
                         borderRadius: '50%'
                     }}
                 ></div>
             )}
 
             {/* Center Core (Compacto) */}
-            <div className={`relative z-10 w-24 h-24 rounded-full bg-white dark:bg-zinc-900 border-4 border-indigo-50 dark:border-zinc-800 flex flex-col items-center justify-center shadow-xl shadow-indigo-500/10 transition-all duration-500 ${isScanning ? 'scale-95' : 'scale-100'}`}>
+            <div className={`relative z-10 w-24 h-24 rounded-full bg-white dark:bg-zinc-900 border-4 flex flex-col items-center justify-center shadow-xl transition-all duration-500 ${isScanning ? 'border-purple-100 dark:border-purple-900/50 scale-105 shadow-purple-500/20' : 'border-indigo-50 dark:border-zinc-800 shadow-indigo-500/10 scale-100'}`}>
                 {isScanning ? (
                     <>
-                        <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mb-1" />
-                        <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">Scanning</span>
+                        <BrainCircuit className="w-6 h-6 text-purple-500 animate-pulse mb-1" />
+                        <span className="text-[8px] font-black text-purple-400 uppercase tracking-widest animate-pulse max-w-[80px] text-center leading-tight">{scanStatus || 'ANALISANDO'}</span>
                     </>
                 ) : (
                     <>
@@ -127,8 +130,8 @@ const TimelineEvent: React.FC<{ event: RadarEvent, isLast: boolean }> = ({ event
     // Lógica Visual baseada no TIPO e STATUS
     const isDatacom = event.eventType === 'DATACOM';
     const isConfirmed = event.status === 'CONFIRMED';
-    const isPayment = event.eventType === 'PAYMENT';
-
+    const isAi = event.isAiPrediction;
+    
     const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
 
     let cardClass = "";
@@ -140,7 +143,25 @@ const TimelineEvent: React.FC<{ event: RadarEvent, isLast: boolean }> = ({ event
     let tickerBgClass = "";
     let timelineLineClass = "";
 
-    if (isDatacom) {
+    if (isAi) {
+        // PREVISÃO IA (Roxo/Gradiente)
+        cardClass = "bg-white dark:bg-zinc-900 border-purple-200/60 dark:border-purple-900/40 border-dashed";
+        amountClass = "text-purple-600 dark:text-purple-400";
+        labelClass = "text-purple-500/70 dark:text-purple-400/70";
+        labelText = "Estimativa IA";
+        tickerBgClass = "bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/30 text-purple-700 dark:text-purple-300";
+        timelineLineClass = "bg-purple-200 dark:bg-purple-900/50 border-l border-dashed border-purple-300";
+        iconContent = (
+            <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 shadow-sm border border-purple-200 dark:border-purple-800">
+                <Sparkles className="w-5 h-5" />
+            </div>
+        );
+        badgeContent = (
+            <div className="absolute right-0 top-0 bg-purple-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
+                <Bot className="w-2.5 h-2.5" /> PROBABILIDADE: {event.confidence || 'MEDIA'}
+            </div>
+        );
+    } else if (isDatacom) {
         // DATA COM (Laranja/Amber)
         cardClass = "bg-gradient-to-br from-amber-50/90 to-white dark:from-amber-900/20 dark:to-zinc-900 border-amber-200/50 dark:border-amber-800/50";
         amountClass = "text-amber-700 dark:text-amber-400";
@@ -158,9 +179,9 @@ const TimelineEvent: React.FC<{ event: RadarEvent, isLast: boolean }> = ({ event
                 <Calendar className="w-2.5 h-2.5" /> DATA COM
             </div>
         );
-    } else if (isPayment) {
+    } else {
+        // PAGAMENTO CONFIRMADO (Verde/Emerald) ou ANUNCIADO (Indigo)
         if (isConfirmed) {
-            // PAGAMENTO CONFIRMADO (Verde/Emerald)
             cardClass = "bg-gradient-to-br from-emerald-50/90 to-white dark:from-emerald-900/20 dark:to-zinc-900 border-emerald-200/50 dark:border-emerald-800/50";
             amountClass = "text-emerald-700 dark:text-emerald-400";
             labelClass = "text-emerald-600/70 dark:text-emerald-500/70";
@@ -178,7 +199,6 @@ const TimelineEvent: React.FC<{ event: RadarEvent, isLast: boolean }> = ({ event
                 </div>
             );
         } else {
-            // PAGAMENTO PREVISTO/ANUNCIADO (Azul/Indigo - Tracejado)
             cardClass = "bg-gradient-to-br from-indigo-50/90 to-white dark:from-indigo-900/20 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50 border-dashed";
             amountClass = "text-indigo-600 dark:text-indigo-300";
             labelClass = "text-indigo-500/70 dark:text-indigo-400/70";
@@ -223,6 +243,9 @@ const TimelineEvent: React.FC<{ event: RadarEvent, isLast: boolean }> = ({ event
                         </div>
                         <p className={`text-[10px] font-medium mt-0.5 flex items-center gap-1 ${labelClass}`}>
                             {formatDateShort(event.date)}
+                            {event.reasoning && (
+                                <span className="opacity-70 truncate max-w-[100px]">• {event.reasoning}</span>
+                            )}
                         </p>
                     </div>
                 </div>
@@ -273,37 +296,38 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       summary: { count: number; total: number };
       grouped: Record<string, RadarEvent[]>;
       loading: boolean;
+      scanStatus: string; // Mensagem de status para UI (ex: "Analisando Padrões")
   }>(() => {
       // Init from localStorage
       try {
-          const saved = localStorage.getItem('investfiis_radar_cache_v2');
+          const saved = localStorage.getItem('investfiis_radar_cache_v3'); // Bump version due to new structure
           if (saved) {
               const parsed = JSON.parse(saved);
-              // Verifica se não é muito velho (ex: 4h)
               const age = Date.now() - (parsed.timestamp || 0);
               if (age < 4 * 3600 * 1000) {
-                  return { ...parsed.data, loading: false };
+                  return { ...parsed.data, loading: false, scanStatus: '' };
               }
           }
       } catch {}
-      return { events: [], summary: { count: 0, total: 0 }, grouped: {}, loading: true };
+      return { events: [], summary: { count: 0, total: 0 }, grouped: {}, loading: true, scanStatus: '' };
   });
 
   const [unifiedProvisionedTotal, setUnifiedProvisionedTotal] = useState(radarData.summary.total);
-  const [triggerRadar, setTriggerRadar] = useState(0); // Trigger manual
+  const [triggerRadar, setTriggerRadar] = useState({ active: false, useAI: false });
 
   // EFEITO MESTRE: Calcula Radar (Unificado)
   useEffect(() => {
       let isActive = true;
       const loadRadar = async () => {
-          // Só mostra loading se for trigger manual OU se não tiver dados iniciais
-          if (triggerRadar > 0 || radarData.events.length === 0) {
-              setRadarData(prev => ({ ...prev, loading: true }));
+          const useAI = triggerRadar.useAI;
+          
+          if (triggerRadar.active || radarData.events.length === 0) {
+              setRadarData(prev => ({ ...prev, loading: true, scanStatus: useAI ? 'ANALISANDO IA...' : 'BUSCANDO DADOS...' }));
           }
           
           try {
-              // 1. Busca Previsões do Scraper (Futuro) - Fonte: Supabase Cloud
-              const predictions = await fetchFutureAnnouncements(portfolio);
+              // 1. Busca Previsões (Supabase + IA se solicitado)
+              const predictions = await fetchFutureAnnouncements(portfolio, useAI);
               if (!isActive) return;
 
               const todayStr = new Date().toISOString().split('T')[0];
@@ -331,7 +355,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           status: 'CONFIRMED',
                           date: r.paymentDate,
                           amount: r.totalReceived,
-                          rate: r.rate
+                          rate: r.rate,
+                          isAiPrediction: false
                       });
                   }
                   // Evento de Datacom
@@ -343,13 +368,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           eventType: 'DATACOM',
                           status: 'CONFIRMED',
                           date: r.dateCom,
-                          amount: 0, // Datacom não tem fluxo financeiro direto na data
-                          rate: r.rate
+                          amount: 0, 
+                          rate: r.rate,
+                          isAiPrediction: false
                       });
                   }
               });
 
-              // B. Processa Previsões do Scraper (PREDICTED) - Dados da Nuvem
+              // B. Processa Previsões (PREDICTED) - Dados da Nuvem + IA
               predictions.forEach(p => {
                   // Pagamento Previsto
                   if (p.paymentDate && p.paymentDate >= todayStr) {
@@ -362,7 +388,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               status: 'PREDICTED',
                               date: p.paymentDate,
                               amount: p.projectedTotal,
-                              rate: p.rate
+                              rate: p.rate,
+                              isAiPrediction: p.isAiPrediction,
+                              confidence: p.confidence,
+                              reasoning: p.reasoning
                           });
                       }
                   }
@@ -378,7 +407,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                               status: 'PREDICTED',
                               date: p.dateCom,
                               amount: 0,
-                              rate: p.rate
+                              rate: p.rate,
+                              isAiPrediction: p.isAiPrediction,
+                              confidence: p.confidence
                           });
                       }
                   }
@@ -416,32 +447,40 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   events: atomEvents,
                   summary: { count: atomEvents.length, total: sum },
                   grouped,
-                  loading: false
+                  loading: false,
+                  scanStatus: ''
               };
 
               setRadarData(newData);
               setUnifiedProvisionedTotal(sum); 
               
               // Persist to localStorage
-              localStorage.setItem('investfiis_radar_cache_v2', JSON.stringify({
+              localStorage.setItem('investfiis_radar_cache_v3', JSON.stringify({
                   timestamp: Date.now(),
                   data: newData
               }));
 
           } catch (e) {
               console.error(e);
-              if (isActive) setRadarData(prev => ({ ...prev, loading: false }));
+              if (isActive) setRadarData(prev => ({ ...prev, loading: false, scanStatus: 'Erro na busca' }));
           }
       };
 
-      // Sempre carrega ao montar se o trigger mudar ou se os dados mudarem
-      loadRadar();
+      // Carrega automaticamente (modo padrão sem AI) ou quando triggado manualmente
+      if (radarData.events.length === 0 || triggerRadar.active) {
+          loadRadar();
+      }
+      
       return () => { isActive = false; };
   }, [portfolio, dividendReceipts, triggerRadar]);
 
-  // Handler para re-trigger manual
-  const handleRobotInteract = useCallback(() => {
-      setTriggerRadar(prev => prev + 1);
+  // Handler para re-trigger com IA
+  const handleSmartScan = useCallback(() => {
+      setTriggerRadar({ active: true, useAI: true });
+  }, []);
+
+  const handleSimpleRefresh = useCallback(() => {
+      setTriggerRadar({ active: true, useAI: false });
   }, []);
 
   const { typeData, classChartData, assetsChartData, sectorChartData, topConcentration } = useMemo(() => {
@@ -583,13 +622,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 transition-all press-effect relative overflow-hidden group shadow-2xl shadow-black/5 dark:shadow-black/20";
   const hoverBorderClass = "hover:border-zinc-300 dark:hover:border-zinc-700";
   const modalHeaderIconClass = "w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm";
-  const toggleMonthExpand = useCallback((month: string) => setExpandedMonth(prev => prev === month ? null : month), []);
   
   const handleBarClick = useCallback((data: any) => { 
       if (data && data.activePayload && data.activePayload.length > 0) { 
           const item = data.activePayload[0].payload; 
           if (item && item.fullDate) {
-              // Se clicar no mesmo mês, limpa o filtro. Se for outro, seleciona.
               setSelectedProventosMonth(prev => prev === item.fullDate ? null : item.fullDate); 
           }
       } 
@@ -682,7 +719,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Radar de Proventos</h3>
                     <div className="flex items-center gap-2 mt-0.5">
                         {radarData.loading ? (
-                            <span className="text-[10px] font-bold text-zinc-400 animate-pulse">Sincronizando...</span>
+                            <span className="text-[10px] font-bold text-zinc-400 animate-pulse">{radarData.scanStatus || 'Atualizando...'}</span>
                         ) : (
                             <>
                                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
@@ -761,15 +798,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <div>
                         <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Radar</h2>
                         <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Sincronizado com Nuvem</p>
+                            <div className={`w-1.5 h-1.5 rounded-full ${radarData.loading ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`}></div>
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                                {radarData.loading ? 'Sincronizando...' : 'Online'}
+                            </p>
                         </div>
                     </div>
                 </div>
-                {/* Botão de Refresh Manual */}
-                <button onClick={handleRobotInteract} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors press-effect border border-zinc-200 dark:border-zinc-700">
-                    <RefreshCw className={`w-4 h-4 ${radarData.loading ? 'animate-spin' : ''}`} />
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={handleSmartScan} 
+                        disabled={radarData.loading}
+                        className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-sm ${radarData.loading ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-purple-500/20 active:scale-95'}`}
+                    >
+                        {radarData.loading && triggerRadar.useAI ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                        Smart Scan
+                    </button>
+                    <button onClick={handleSimpleRefresh} disabled={radarData.loading} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors press-effect border border-zinc-200 dark:border-zinc-700">
+                        <RefreshCw className={`w-4 h-4 ${radarData.loading && !triggerRadar.useAI ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
             </div>
             
             {/* Radar Animation Area Compacta */}
@@ -778,11 +826,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     isScanning={radarData.loading} 
                     totalProjected={radarData.summary.total} 
                     privacyMode={privacyMode || false}
+                    scanStatus={radarData.scanStatus}
                 />
             </div>
 
             <div className="relative z-10 pt-2 pb-32 min-h-[50vh]">
-                {radarData.loading ? (
+                {radarData.loading && radarData.events.length === 0 ? (
                     <div className="flex flex-col items-center justify-center pt-6 anim-fade-in opacity-50">
                         <p className="text-[10px] text-zinc-400 max-w-[200px] text-center font-medium">Buscando dados no banco e projetando eventos futuros...</p>
                     </div>
@@ -804,8 +853,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         })
                     ) : (
                         <div className="flex flex-col items-center justify-center py-10 opacity-50">
+                            <Target className="w-12 h-12 text-zinc-300 mb-3" strokeWidth={1} />
                             <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Nada no radar</p>
-                            <button onClick={handleRobotInteract} className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">Forçar Re-scan</button>
+                            <button onClick={handleSmartScan} className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
+                                Usar Smart Scan
+                            </button>
                         </div>
                     )
                 )}

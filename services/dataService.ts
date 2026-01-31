@@ -3,6 +3,7 @@ import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, Scrape
 import { supabase } from "./supabase";
 import { getQuotes } from "./brapiService";
 import { normalizeTicker, preciseMul } from "./portfolioRules";
+import { predictDividendSchedule } from "./geminiService";
 
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
@@ -20,6 +21,9 @@ export interface FutureDividendPrediction {
     quantity: number;
     type: string;
     daysToDateCom: number;
+    isAiPrediction?: boolean;
+    confidence?: 'ALTA' | 'MEDIA' | 'BAIXA';
+    reasoning?: string;
 }
 
 const getTTL = () => {
@@ -172,16 +176,14 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
 };
 
 // --- ROBÔ DE PROVENTOS INTELIGENTE ---
-export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Promise<FutureDividendPrediction[]> => {
+export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], useAI = false): Promise<FutureDividendPrediction[]> => {
     if (!portfolio || portfolio.length === 0) return [];
 
     const tickers = portfolio.map(p => normalizeTicker(p.ticker));
     const today = new Date().toISOString().split('T')[0];
 
     try {
-        // Consulta o Supabase para eventos futuros
-        // Critério: Pagamento >= Hoje OU Datacom >= Hoje OU Pagamento Pendente (null)
-        // Isso garante que peguemos anúncios recentes que ainda não têm data de pagamento definida
+        // 1. Dados Confirmados (Banco de Dados / Scraper)
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
@@ -194,48 +196,93 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
             return [];
         }
         
-        if (!data || data.length === 0) return [];
-
         const predictions: FutureDividendPrediction[] = [];
         const now = new Date();
         now.setHours(0,0,0,0);
 
-        data.forEach((div: any) => {
-            const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizeTicker(div.ticker));
-            if (!asset || asset.quantity <= 0) return;
+        // Mapa para rastrear o que já temos confirmado (Evitar duplicidade com IA)
+        const confirmedEvents = new Set<string>();
 
-            const rate = Number(div.rate);
-            if (rate <= 0) return; // Ignora valores inválidos
+        if (data && data.length > 0) {
+            data.forEach((div: any) => {
+                const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizeTicker(div.ticker));
+                if (!asset || asset.quantity <= 0) return;
 
-            const total = preciseMul(asset.quantity, rate);
+                const rate = Number(div.rate);
+                if (rate <= 0) return;
+
+                const total = preciseMul(asset.quantity, rate);
+                
+                const dateCom = div.date_com ? new Date(div.date_com + 'T00:00:00') : now;
+                const diffTime = dateCom.getTime() - now.getTime();
+                const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+                const exists = predictions.some(p => 
+                    p.ticker === normalizeTicker(div.ticker) && 
+                    p.paymentDate === div.payment_date &&
+                    p.rate === rate
+                );
+
+                if (!exists) {
+                    predictions.push({
+                        ticker: normalizeTicker(div.ticker),
+                        dateCom: div.date_com,
+                        paymentDate: div.payment_date || 'A Definir',
+                        rate: rate,
+                        quantity: asset.quantity,
+                        projectedTotal: total,
+                        type: div.type,
+                        daysToDateCom,
+                        isAiPrediction: false
+                    });
+                    
+                    // Registra que este ticker já tem evento para este mês/ciclo aproximado
+                    if (div.payment_date) {
+                        const k = `${normalizeTicker(div.ticker)}-${div.payment_date.substring(0, 7)}`;
+                        confirmedEvents.add(k);
+                    }
+                }
+            });
+        }
+
+        // 2. Previsão IA (Se solicitado e faltar dados)
+        if (useAI) {
+            // Filtra tickers que NÃO têm eventos futuros confirmados próximos
+            // ou simplesmente envia todos para a IA analisar lacunas
+            const aiPredictions = await predictDividendSchedule(tickers);
             
-            // Calcula dias para Data Com
-            const dateCom = div.date_com ? new Date(div.date_com + 'T00:00:00') : now;
-            const diffTime = dateCom.getTime() - now.getTime();
-            const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            aiPredictions.forEach((pred: any) => {
+                const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizeTicker(pred.ticker));
+                if (!asset) return;
 
-            // Filtra duplicatas lógicas na lista final
-            const exists = predictions.some(p => 
-                p.ticker === normalizeTicker(div.ticker) && 
-                p.paymentDate === div.payment_date &&
-                p.rate === rate
-            );
+                // Verifica se já existe evento confirmado para este mês previsto
+                const predMonth = pred.predictedPaymentDate.substring(0, 7);
+                const key = `${normalizeTicker(pred.ticker)}-${predMonth}`;
+                
+                if (!confirmedEvents.has(key)) {
+                    // Estima valor baseado no último dividendo conhecido ou DY médio
+                    const estimatedRate = asset.last_dividend || (asset.currentPrice ? (asset.currentPrice * (asset.dy_12m || 6) / 100 / 12) : 0);
+                    
+                    if (estimatedRate > 0) {
+                        predictions.push({
+                            ticker: normalizeTicker(pred.ticker),
+                            dateCom: pred.predictedDateCom,
+                            paymentDate: pred.predictedPaymentDate,
+                            rate: estimatedRate,
+                            quantity: asset.quantity,
+                            projectedTotal: preciseMul(asset.quantity, estimatedRate),
+                            type: 'DIV (Est.)',
+                            daysToDateCom: 0, // Calculado na exibição se necessário
+                            isAiPrediction: true,
+                            confidence: pred.confidence,
+                            reasoning: pred.reasoning
+                        });
+                    }
+                }
+            });
+        }
 
-            if (!exists) {
-                predictions.push({
-                    ticker: normalizeTicker(div.ticker),
-                    dateCom: div.date_com,
-                    paymentDate: div.payment_date || 'A Definir', // Fallback visual
-                    rate: rate,
-                    quantity: asset.quantity,
-                    projectedTotal: total,
-                    type: div.type,
-                    daysToDateCom
-                });
-            }
-        });
-
-        // Ordenação final: Datas definidas primeiro, depois "A Definir" (futuro distante)
+        // Ordenação final
         return predictions.sort((a,b) => {
             if (a.paymentDate === 'A Definir') return 1;
             if (b.paymentDate === 'A Definir') return -1;
