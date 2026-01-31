@@ -45,8 +45,8 @@ function parseValue(valueStr: any): number | null {
     if (typeof valueStr === 'number') return valueStr;
     
     let str = String(valueStr).trim();
-    // Se a string contém % no final, retorna null para não confundir Yield com Valor
-    if (str.endsWith('%')) return null;
+    // Proteção Crítica: Ignora valores percentuais (Yield)
+    if (str.includes('%')) return null;
     if (!str || str === '-' || str === '--' || str === 'N/A') return null;
 
     str = str.replace(/^R\$\s?/, '').trim();
@@ -198,7 +198,6 @@ async function scrapeInvestidor10(ticker: string) {
                 });
             });
 
-            // Extração via Breadcrumbs (Fallback Forte para Setor)
             if (!dados.segmento) {
                 $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
                     const txt = $(el).text().trim();
@@ -224,77 +223,57 @@ async function scrapeInvestidor10(ticker: string) {
                      dados.vpa = dados.cotacao_atual / dados.pvp;
                 }
 
-                // --- SCRAPER DE DIVIDENDOS APERFEIÇOADO ---
+                // --- SCRAPER DE DIVIDENDOS APERFEIÇOADO (HEURÍSTICA DE CONTEÚDO) ---
+                // Não depende mais da posição exata das colunas, mas sim do conteúdo delas.
                 const dividends: any[] = [];
                 let tableDivs: cheerio.Cheerio<any> | null = null;
 
-                // Busca genérica por qualquer tabela que pareça de dividendos
                 $('table').each((_, table) => {
-                    const headerText = $(table).find('thead').text().toLowerCase() || $(table).find('tr').first().text().toLowerCase();
-                    // Pontuação para identificar a tabela correta
-                    let score = 0;
-                    if (headerText.includes('tipo')) score++;
-                    if (headerText.includes('data com') || headerText.includes('datacom')) score++;
-                    if (headerText.includes('pagamento')) score++;
-                    if (headerText.includes('valor')) score++;
-                    
-                    if (score >= 3) {
+                    const txt = $(table).text().toLowerCase();
+                    // Procura tabelas que tenham palavras-chave de proventos
+                    if ((txt.includes('tipo') || txt.includes('data com')) && 
+                        (txt.includes('pagamento') || txt.includes('valor'))) {
                         tableDivs = $(table);
-                        return false; // Break loop
+                        return false; 
                     }
                 });
 
                 if (tableDivs) {
-                    const headers: string[] = [];
-                    tableDivs.find('thead th').each((_, th) => headers.push(normalize($(th).text())));
-                    // Fallback para tabelas sem thead
-                    if (headers.length === 0) tableDivs.find('tbody tr').first().find('td').each((_, td) => headers.push(normalize($(td).text())));
-
-                    let iType = -1, iCom = -1, iPay = -1, iVal = -1;
-                    headers.forEach((h, i) => {
-                        const hLower = h.toLowerCase();
-                        if (hLower.includes('tipo')) iType = i;
-                        if (hLower.includes('com') || hLower.includes('base')) iCom = i;
-                        if (hLower.includes('pagamento')) iPay = i;
-                        
-                        // Lógica Aprimorada para Valor
-                        // Evita colunas como "Yield", "DY", "%"
-                        if (!hLower.includes('yield') && !hLower.includes('dy') && !hLower.includes('%')) {
-                            // Prioriza Valor Líquido para JCP
-                            if (hLower.includes('liquido')) iVal = i;
-                            else if (hLower.includes('valor') && iVal === -1) iVal = i;
-                        }
-                    });
-
-                    if (iVal === -1) {
-                        // Tentativa cega baseada em layout comum
-                        if (headers.length >= 4) { iType=0; iCom=1; iPay=2; iVal=3; }
-                        else { iCom=0; iPay=1; iVal=2; }
-                    }
-
                     tableDivs.find('tbody tr').each((i, tr) => {
-                        // Pula linha de cabeçalho se estiver dentro de tbody
-                        if (i === 0 && tableDivs.find('thead').length === 0 && $(tr).find('td').first().text().match(/[a-z]/i)) return;
-                        
                         const cols = $(tr).find('td');
                         if (cols.length < 3) return;
 
-                        const typeRaw = iType !== -1 ? $(cols[iType]).text().trim() : 'DIV';
-                        const dateComStr = iCom !== -1 ? $(cols[iCom]).text().trim() : '';
-                        const datePayStr = iPay !== -1 ? $(cols[iPay]).text().trim() : '';
-                        const valStr = iVal !== -1 ? $(cols[iVal]).text().trim() : '';
-
-                        // Validação extra: Se o valor tiver %, ignora (é Yield)
-                        if (valStr.includes('%')) return;
-
                         let typeDiv = 'DIV';
-                        const tNorm = normalize(typeRaw);
-                        
-                        // Detecção Estrita de Tipos
-                        if (tNorm.includes('jcp') || tNorm.includes('juros') || tNorm.includes('capital proprio')) typeDiv = 'JCP';
-                        else if (tNorm.includes('rend') || tNorm.includes('rendimento')) typeDiv = 'REND';
-                        else if (tNorm.includes('amort') || tNorm.includes('amortizacao')) typeDiv = 'AMORT';
-                        else if (tNorm.includes('div') || tNorm.includes('dividendo')) typeDiv = 'DIV';
+                        let dateComStr = '';
+                        let datePayStr = '';
+                        let valStr = '';
+
+                        // Varre as colunas da linha tentando identificar o que é o que
+                        cols.each((_, td) => {
+                            const text = $(td).text().trim();
+                            const normText = normalize(text);
+
+                            // Identifica Tipo
+                            if (normText.includes('jcp') || normText.includes('juros')) typeDiv = 'JCP';
+                            else if (normText.includes('rendimento')) typeDiv = 'REND';
+                            else if (normText.includes('dividendo')) typeDiv = 'DIV';
+                            else if (normText.includes('amortiza')) typeDiv = 'AMORT';
+
+                            // Identifica Datas (DD/MM/AAAA)
+                            if (text.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                                if (!dateComStr) dateComStr = text; // Primeira data geralmente é Datacom
+                                else if (!datePayStr) datePayStr = text; // Segunda é Pagamento
+                            }
+
+                            // Identifica Valor (R$ ou formato decimal, SEM %)
+                            // Se tiver %, é Yield, ignoramos aqui.
+                            if ((text.includes('R$') || text.match(/\d+,\d+/)) && !text.includes('%')) {
+                                // Preferência para o último valor encontrado na linha se houver múltiplos (geralmente Valor Líquido é o último)
+                                // Mas cuidado: às vezes tem valor bruto e líquido.
+                                // Se já temos um valor, e esse novo parece válido, atualizamos (assumindo que colunas mais à direita são mais 'finais')
+                                valStr = text;
+                            }
+                        });
 
                         const rate = parseValue(valStr);
                         const dateCom = parseDate(dateComStr);
@@ -384,8 +363,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (dividends.length > 0) {
-             // CLEANUP: Remove registros futuros existentes para este ticker para evitar duplicatas erradas (ex: correção de valor 1.78 -> 0.25)
-             // Mantém histórico antigo, limpa apenas o que ainda vai acontecer ou acabou de ser anunciado
+             // CLEANUP: Remove registros futuros existentes (evita duplicatas ou dados velhos errados)
              const today = new Date().toISOString().split('T')[0];
              const { error: delError } = await supabase.from('market_dividends')
                 .delete()
