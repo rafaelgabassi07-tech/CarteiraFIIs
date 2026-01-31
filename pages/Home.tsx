@@ -273,21 +273,75 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // --- ROBOT / RADAR LOGIC ---
   const [robotState, setRobotState] = useState<'idle' | 'scanning' | 'done'>('idle');
   const [agendaItems, setAgendaItems] = useState<Record<string, any[]>>({}); 
-  const [agendaCount, setAgendaCount] = useState(0);
   const [agendaTotalProjected, setAgendaTotalProjected] = useState(0);
+  
+  // Estado Unificado para o Card de Radar (Soma confirmados + previsões)
+  const [radarSummary, setRadarSummary] = useState({ count: 0, total: 0, loading: true });
   
   // Estado compartilhado para sincronizar o card de Previsão do Modal de Proventos
   const [unifiedProvisionedTotal, setUnifiedProvisionedTotal] = useState(0);
 
-  // Efeito de "Cálculo Leve" apenas para o Card da Dashboard
+  // Efeito Mestre: Calcula o Radar em background para o Card da Dashboard
   useEffect(() => {
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-      const count = dividendReceipts.filter(r => r.paymentDate >= todayStr || r.dateCom >= todayStr).length;
-      setAgendaCount(count);
-  }, [dividendReceipts]);
+      let isActive = true;
+      const calcSummary = async () => {
+          // Se não tem dados, zera e sai
+          if (dividendReceipts.length === 0 && portfolio.length === 0) {
+             setRadarSummary({ count: 0, total: 0, loading: false });
+             return;
+          }
 
-  // EFEITO MESTRE DO ROBÔ (SCAN INSTANTÂNEO & SYNC)
+          try {
+              const predictions = await fetchFutureAnnouncements(portfolio);
+              if (!isActive) return;
+
+              const now = new Date();
+              const todayStr = now.toISOString().split('T')[0];
+              let total = 0;
+              let count = 0;
+              
+              // 1. Confirmed Receipts (DB) - Pagamentos ou Data Com futuros/hoje
+              dividendReceipts.forEach(r => {
+                  if (r.paymentDate >= todayStr) {
+                      count++;
+                      total += r.totalReceived;
+                  } else if (r.dateCom >= todayStr) {
+                      count++;
+                  }
+              });
+
+              // 2. Predictions (Scraper/DB Future)
+              predictions.forEach(p => {
+                  // Filtra duplicatas com os confirmados (mesmo ticker e data e valor)
+                  const isDuplicate = dividendReceipts.some(r => 
+                      r.ticker === p.ticker && 
+                      (r.paymentDate === p.paymentDate || r.dateCom === p.dateCom) &&
+                      Math.abs((r.rate || 0) - p.rate) < 0.001
+                  );
+
+                  if (!isDuplicate) {
+                      if (p.paymentDate >= todayStr) {
+                          count++;
+                          total += p.projectedTotal;
+                      } else if (p.dateCom >= todayStr) {
+                          count++;
+                      }
+                  }
+              });
+
+              setRadarSummary({ count, total, loading: false });
+              setUnifiedProvisionedTotal(total); // Sincroniza total para outros modais
+
+          } catch (e) {
+              if (isActive) setRadarSummary(prev => ({ ...prev, loading: false }));
+          }
+      };
+      
+      calcSummary();
+      return () => { isActive = false; };
+  }, [portfolio, dividendReceipts]);
+
+  // EFEITO DO MODAL RADAR (SCAN DETALHADO)
   useEffect(() => {
       if ((showAgendaModal || showProventosModal) && robotState === 'idle') {
           const runScan = async () => {
@@ -335,7 +389,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   // 2. Processa PREVISÕES/ANÚNCIOS NOVOS (Do Scraper/IA)
                   predictions.forEach(pred => {
                         // Se tem data e valor > 0, é CONFIRMADO (fato), não "prediction" fuzzy
-                        // Prediction = true apenas se não tivermos certeza do valor ou data
                         const isEstimate = pred.projectedTotal <= 0 || !pred.rate;
 
                         if (pred.paymentDate && pred.paymentDate >= todayStr) {
@@ -357,7 +410,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 date: pred.dateCom, 
                                 eventType: 'datacom',
                                 type: pred.type, 
-                                isPrediction: false // Data com futura é "confirmada" como evento de calendário
+                                isPrediction: false 
                             });
                         }
                   });
@@ -365,7 +418,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   await new Promise(r => setTimeout(r, 600));
 
                   setAgendaTotalProjected(projectedSum);
-                  setUnifiedProvisionedTotal(projectedSum); // Atualiza o total unificado para o Modal Proventos
+                  setUnifiedProvisionedTotal(projectedSum); 
 
                   const sorted = allEvents.sort((a, b) => a.date.localeCompare(b.date));
                   const grouped: Record<string, any[]> = { 'Hoje': [], 'Amanhã': [], 'Esta Semana': [], 'Este Mês': [], 'Futuro': [] };
@@ -615,12 +668,30 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
         <button onClick={() => setShowAgendaModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>
             <div className="flex items-center gap-4 relative z-10">
-                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30 shadow-sm"><Radar className="w-6 h-6" strokeWidth={1.5} /></div>
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30 shadow-sm">
+                    <Radar className="w-6 h-6" strokeWidth={1.5} />
+                </div>
                 <div>
                     <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Radar de Proventos</h3>
-                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wide mt-0.5">
-                        {agendaCount > 0 ? `${agendaCount} Eventos Confirmados` : 'Toque para escanear'}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        {radarSummary.loading ? (
+                            <span className="text-[10px] font-bold text-zinc-400 animate-pulse">Sincronizando...</span>
+                        ) : (
+                            <>
+                                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                                    {radarSummary.count > 0 ? `${radarSummary.count} Eventos` : 'Sem eventos próximos'}
+                                </span>
+                                {radarSummary.total > 0 && (
+                                    <>
+                                        <div className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
+                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                            {formatBRL(radarSummary.total, privacyMode)}
+                                        </span>
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
             <div className="flex items-center gap-3 relative z-10">
