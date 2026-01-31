@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
-import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight } from 'lucide-react';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight, Megaphone } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
 import { analyzePortfolio } from '../services/analysisService';
@@ -94,7 +94,7 @@ const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScannin
                         <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-1">
                             <Target className="w-3 h-3" />
                         </div>
-                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider">Confirmado</span>
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider">A Receber</span>
                         <span className="text-xs font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(totalProjected, privacyMode)}</span>
                     </>
                 )}
@@ -112,21 +112,24 @@ const RadarAnimation = ({ isScanning, totalProjected, privacyMode }: { isScannin
 };
 
 const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLast }) => {
-    // Lógica de Classificação Refinada
-    const hasConcreteRate = event.rate && event.rate > 0;
+    // CLASSIFICAÇÃO RIGOROSA DE EVENTOS
     const isDatacom = event.eventType === 'datacom';
     
-    // Estados:
-    // 1. CONFIRMADO (Dinheiro na conta futuro ou hoje)
-    // 2. DATA COM (Aviso de corte)
-    // 3. PREVISÃO (Sem valor definido ainda)
+    // "Prediction" aqui significa que veio do Scraper/Robô e não está no DB local ainda.
+    // "Payment Confirmed" significa que já está no DB ou é um pagamento do robô com valor definido.
+    // Para simplificar visualmente:
+    // 1. Pagamento DB (Verde) -> Dinheiro Garantido na Carteira
+    // 2. Anúncio Robô (Azul/Roxo) -> Anúncio Novo / Radar
+    // 3. Data Com (Laranja) -> Aviso de Corte
     
-    let status: 'payment_confirmed' | 'datacom' | 'prediction' = 'prediction';
-    
+    let status: 'db_confirmed' | 'announced' | 'datacom' = 'announced';
+
     if (isDatacom) {
         status = 'datacom';
-    } else if (hasConcreteRate) {
-        status = 'payment_confirmed';
+    } else if (event.isPrediction === false) {
+        status = 'db_confirmed'; // Veio do banco de dados (DividendReceipt)
+    } else {
+        status = 'announced'; // Veio do fetchFutureAnnouncements
     }
 
     const tickerDisplay = event.ticker && typeof event.ticker === 'string' ? event.ticker.substring(0,2) : '??';
@@ -142,16 +145,16 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
     let timelineLineClass = "";
 
     switch (status) {
-        case 'payment_confirmed':
+        case 'db_confirmed': // VERDE - TUDO CERTO
             cardClass = "bg-gradient-to-br from-emerald-50/90 to-white dark:from-emerald-900/20 dark:to-zinc-900 border-emerald-200/50 dark:border-emerald-800/50";
             amountClass = "text-emerald-700 dark:text-emerald-400";
             labelClass = "text-emerald-600/70 dark:text-emerald-500/70";
-            labelText = "Valor Líquido";
+            labelText = "Líquido Recebido";
             tickerBgClass = "bg-white dark:bg-zinc-900 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200";
             timelineLineClass = "bg-emerald-200 dark:bg-emerald-900/50";
             iconContent = (
                 <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200 dark:border-emerald-800">
-                    <CircleDollarSign className="w-5 h-5" />
+                    <CheckCircle2 className="w-5 h-5" />
                 </div>
             );
             badgeContent = (
@@ -161,7 +164,26 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
             );
             break;
 
-        case 'datacom':
+        case 'announced': // AZUL/ROXO - NOVO ANÚNCIO DO ROBÔ
+            cardClass = "bg-gradient-to-br from-indigo-50/90 to-white dark:from-indigo-900/20 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50";
+            amountClass = "text-indigo-600 dark:text-indigo-300";
+            labelClass = "text-indigo-500/70 dark:text-indigo-400/70";
+            labelText = "Valor Anunciado";
+            tickerBgClass = "bg-white dark:bg-zinc-900 border-indigo-100 dark:border-indigo-900/50 text-indigo-900 dark:text-indigo-200";
+            timelineLineClass = "bg-indigo-200 dark:bg-indigo-900/50";
+            iconContent = (
+                <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200 dark:border-indigo-800">
+                    <Megaphone className="w-5 h-5" />
+                </div>
+            );
+            badgeContent = (
+                <div className="absolute right-0 top-0 bg-indigo-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
+                    <Radar className="w-2.5 h-2.5" /> ANUNCIADO
+                </div>
+            );
+            break;
+
+        case 'datacom': // LARANJA - ALERTA
             cardClass = "bg-gradient-to-br from-amber-50/90 to-white dark:from-amber-900/20 dark:to-zinc-900 border-amber-200/50 dark:border-amber-800/50";
             amountClass = "text-amber-700 dark:text-amber-400";
             labelClass = "text-amber-600/70 dark:text-amber-500/70";
@@ -176,25 +198,6 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
             badgeContent = (
                 <div className="absolute right-0 top-0 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
                     <Calendar className="w-2.5 h-2.5" /> DATA COM
-                </div>
-            );
-            break;
-
-        case 'prediction':
-            cardClass = "bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-white dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-zinc-900 border-indigo-200/50 dark:border-indigo-800/50 border-dashed";
-            amountClass = "text-indigo-600 dark:text-indigo-300 opacity-70";
-            labelClass = "text-indigo-400 dark:text-indigo-500";
-            labelText = "Estimativa";
-            tickerBgClass = "bg-white dark:bg-zinc-900 border-indigo-100 dark:border-indigo-900/50 text-indigo-900 dark:text-indigo-200";
-            timelineLineClass = "bg-indigo-100 dark:bg-indigo-900/30 border-l border-dashed border-indigo-300"; // Linha pontilhada visual hack
-            iconContent = (
-                <div className="absolute left-0 top-3 w-10 h-10 rounded-full flex items-center justify-center z-10 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200 dark:border-indigo-800">
-                    <Radar className="w-5 h-5" />
-                </div>
-            );
-            badgeContent = (
-                <div className="absolute right-0 top-0 bg-indigo-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
-                    <ScanEye className="w-2.5 h-2.5" /> PREVISÃO
                 </div>
             );
             break;
@@ -242,7 +245,6 @@ const TimelineEvent: React.FC<{ event: any, isLast: boolean }> = ({ event, isLas
                     ) : (
                         <>
                             <p className={`text-sm font-black ${amountClass}`}>
-                                {status === 'prediction' && '~ '}
                                 {event.totalReceived ? event.totalReceived.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : event.projectedTotal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </p>
                             <p className={`text-[9px] font-medium ${labelClass}`}>
@@ -282,6 +284,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [unifiedProvisionedTotal, setUnifiedProvisionedTotal] = useState(0);
 
   // Efeito Mestre: Calcula o Radar em background para o Card da Dashboard
+  // IMPORTANTE: Este efeito usa a MESMA lógica de apuração do modal para garantir sincronia
   useEffect(() => {
       let isActive = true;
       const calcSummary = async () => {
@@ -292,45 +295,54 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }
 
           try {
+              // Busca novas previsões/anúncios do Robô
               const predictions = await fetchFutureAnnouncements(portfolio);
               if (!isActive) return;
 
               const now = new Date();
               const todayStr = now.toISOString().split('T')[0];
-              let total = 0;
-              let count = 0;
               
-              // 1. Confirmed Receipts (DB) - Pagamentos ou Data Com futuros/hoje
+              let totalSum = 0;
+              let eventCount = 0;
+              
+              // Conjunto de chaves para evitar duplicatas (Ticker + Data + Valor)
+              // Usamos para garantir que o que está no DB não seja somado de novo se vier do scraper
+              const processedEvents = new Set<string>();
+
+              // 1. Processa Confirmados (DB - DividendReceipts)
               dividendReceipts.forEach(r => {
+                  const uniqueKey = `${r.ticker}-${r.paymentDate || r.dateCom}-${r.rate.toFixed(4)}`;
+                  
                   if (r.paymentDate >= todayStr) {
-                      count++;
-                      total += r.totalReceived;
+                      eventCount++;
+                      totalSum += r.totalReceived;
+                      processedEvents.add(uniqueKey);
                   } else if (r.dateCom >= todayStr) {
-                      count++;
+                      eventCount++;
+                      // Data com não soma valor monetário no total projetado, só conta como evento
+                      processedEvents.add(uniqueKey);
                   }
               });
 
-              // 2. Predictions (Scraper/DB Future)
+              // 2. Processa Previsões (Scraper)
               predictions.forEach(p => {
-                  // Filtra duplicatas com os confirmados (mesmo ticker e data e valor)
-                  const isDuplicate = dividendReceipts.some(r => 
-                      r.ticker === p.ticker && 
-                      (r.paymentDate === p.paymentDate || r.dateCom === p.dateCom) &&
-                      Math.abs((r.rate || 0) - p.rate) < 0.001
-                  );
+                  // Chave de unicidade (compatível com a lógica acima)
+                  const uniqueKey = `${p.ticker}-${p.paymentDate || p.dateCom}-${p.rate.toFixed(4)}`;
 
-                  if (!isDuplicate) {
-                      if (p.paymentDate >= todayStr) {
-                          count++;
-                          total += p.projectedTotal;
-                      } else if (p.dateCom >= todayStr) {
-                          count++;
+                  if (!processedEvents.has(uniqueKey)) {
+                      if (p.paymentDate && p.paymentDate >= todayStr) {
+                          eventCount++;
+                          totalSum += p.projectedTotal;
+                          processedEvents.add(uniqueKey);
+                      } else if (p.dateCom && p.dateCom >= todayStr) {
+                          eventCount++;
+                          processedEvents.add(uniqueKey);
                       }
                   }
               });
 
-              setRadarSummary({ count, total, loading: false });
-              setUnifiedProvisionedTotal(total); // Sincroniza total para outros modais
+              setRadarSummary({ count: eventCount, total: totalSum, loading: false });
+              setUnifiedProvisionedTotal(totalSum); // Sincroniza total para outros modais
 
           } catch (e) {
               if (isActive) setRadarSummary(prev => ({ ...prev, loading: false }));
@@ -353,65 +365,69 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   const predictions = await fetchFutureAnnouncements(portfolio);
                   const todayStr = new Date().toISOString().split('T')[0];
                   const allEvents: any[] = [];
+                  const processedKeys = new Set<string>();
                   let projectedSum = 0;
 
                   // 1. Processa CONFIRMADOS (Do Banco de Dados/Prop)
                   dividendReceipts.forEach(r => {
                       if (!r) return;
-                      // Evita duplicatas com o que veio do fetchFutureAnnouncements
-                      const existsInPred = predictions.some(p => 
-                          p.ticker === r.ticker && 
-                          (p.paymentDate === r.paymentDate || p.dateCom === r.dateCom) &&
-                          Math.abs(p.rate - r.rate) < 0.001
-                      );
-
-                      if (!existsInPred) {
-                          if (r.paymentDate >= todayStr) { 
-                              allEvents.push({ 
-                                  ...r, 
-                                  eventType: 'payment', 
-                                  date: r.paymentDate,
-                                  isPrediction: false // Confirmado via DB
-                              }); 
-                              projectedSum += r.totalReceived;
-                          }
-                          if (r.dateCom >= todayStr) {
-                              allEvents.push({ 
-                                  ...r, 
-                                  eventType: 'datacom', 
-                                  date: r.dateCom,
-                                  isPrediction: false // Confirmado via DB
-                              });
-                          }
+                      const uniqueKey = `${r.ticker}-${r.paymentDate || r.dateCom}-${r.rate.toFixed(4)}`;
+                      
+                      let added = false;
+                      if (r.paymentDate >= todayStr) { 
+                          allEvents.push({ 
+                              ...r, 
+                              eventType: 'payment', 
+                              date: r.paymentDate,
+                              isPrediction: false // Confirmado via DB
+                          }); 
+                          projectedSum += r.totalReceived;
+                          added = true;
                       }
+                      if (r.dateCom >= todayStr) {
+                          allEvents.push({ 
+                              ...r, 
+                              eventType: 'datacom', 
+                              date: r.dateCom,
+                              isPrediction: false // Confirmado via DB
+                          });
+                          added = true;
+                      }
+                      
+                      if (added) processedKeys.add(uniqueKey);
                   });
 
                   // 2. Processa PREVISÕES/ANÚNCIOS NOVOS (Do Scraper/IA)
                   predictions.forEach(pred => {
-                        // Se tem data e valor > 0, é CONFIRMADO (fato), não "prediction" fuzzy
-                        const isEstimate = pred.projectedTotal <= 0 || !pred.rate;
-
-                        if (pred.paymentDate && pred.paymentDate >= todayStr) {
-                            allEvents.push({ 
-                                ticker: pred.ticker, 
-                                date: pred.paymentDate, 
-                                eventType: 'payment',
-                                type: pred.type, 
-                                totalReceived: pred.projectedTotal, 
-                                rate: pred.rate,
-                                isPrediction: isEstimate
-                            });
-                            if (!isEstimate) projectedSum += pred.projectedTotal;
-                        }
+                        const uniqueKey = `${pred.ticker}-${pred.paymentDate || pred.dateCom}-${pred.rate.toFixed(4)}`;
                         
-                        if (pred.dateCom && pred.dateCom >= todayStr) {
-                            allEvents.push({
-                                ticker: pred.ticker, 
-                                date: pred.dateCom, 
-                                eventType: 'datacom',
-                                type: pred.type, 
-                                isPrediction: false 
-                            });
+                        // Só adiciona se não for duplicata do DB
+                        if (!processedKeys.has(uniqueKey)) {
+                            // Se tem data e valor > 0, é um ANÚNCIO (Scraped), não apenas uma "previsão estatística"
+                            // No contexto deste app, Predictions = Novos Anúncios do Scraper
+                            
+                            if (pred.paymentDate && pred.paymentDate >= todayStr) {
+                                allEvents.push({ 
+                                    ticker: pred.ticker, 
+                                    date: pred.paymentDate, 
+                                    eventType: 'payment',
+                                    type: pred.type, 
+                                    totalReceived: pred.projectedTotal, 
+                                    rate: pred.rate,
+                                    isPrediction: true // Veio do Scraper
+                                });
+                                projectedSum += pred.projectedTotal;
+                            }
+                            
+                            if (pred.dateCom && pred.dateCom >= todayStr) {
+                                allEvents.push({
+                                    ticker: pred.ticker, 
+                                    date: pred.dateCom, 
+                                    eventType: 'datacom',
+                                    type: pred.type, 
+                                    isPrediction: true 
+                                });
+                            }
                         }
                   });
 
