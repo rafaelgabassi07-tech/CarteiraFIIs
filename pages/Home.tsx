@@ -50,16 +50,16 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
     if (active && payload && payload.length) { 
         const data = payload[0]; 
         return (
-            <div className="bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/10 text-center min-w-[80px]">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{label} {data.payload.year}</p>
-                <p className="text-xs font-black text-white">{formatBRL(data.value, privacyMode)}</p>
+            <div className="bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md p-2 rounded-xl shadow-xl border border-white/10 text-center min-w-[60px]">
+                <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">{label} {data.payload.year}</p>
+                <p className="text-[10px] font-black text-white">{formatBRL(data.value, privacyMode)}</p>
             </div>
         ); 
     } 
     return null; 
 };
 
-// Item da Agenda
+// Item da Agenda - Compacto
 const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ event, privacyMode }) => {
     const isDatacom = event.eventType === 'DATACOM';
     const dateObj = new Date(event.date + 'T12:00:00');
@@ -67,27 +67,25 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
     const weekDay = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
 
     return (
-        <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 mb-2 shadow-sm">
-            <div className="flex items-center gap-4">
-                <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-2xl ${isDatacom ? 'bg-zinc-100 dark:bg-zinc-800' : 'bg-emerald-50 dark:bg-emerald-900/20'}`}>
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase">{weekDay}</span>
-                    <span className={`text-lg font-black leading-none ${isDatacom ? 'text-zinc-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400'}`}>{day}</span>
+        <div className="flex items-center justify-between p-2.5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 mb-1.5 shadow-sm">
+            <div className="flex items-center gap-3">
+                <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl ${isDatacom ? 'bg-zinc-100 dark:bg-zinc-800' : 'bg-emerald-50 dark:bg-emerald-900/20'}`}>
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase leading-none">{weekDay}</span>
+                    <span className={`text-sm font-black leading-tight ${isDatacom ? 'text-zinc-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400'}`}>{day}</span>
                 </div>
                 <div>
-                    <h4 className="font-bold text-zinc-900 dark:text-white text-base">{event.ticker}</h4>
-                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
+                    <h4 className="font-bold text-zinc-900 dark:text-white text-sm">{event.ticker}</h4>
+                    <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">
                         {isDatacom ? 'Data Com' : `Pagamento ${event.type}`}
                     </p>
                 </div>
             </div>
             {!isDatacom && (
                 <div className="text-right">
-                    <span className="block text-emerald-600 dark:text-emerald-400 font-black text-sm">
+                    <span className="block text-emerald-600 dark:text-emerald-400 font-black text-xs">
                         {formatBRL(event.amount, privacyMode)}
                     </span>
-                    <span className="text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full">
-                        Confirmado
-                    </span>
+                    {/* Badge removida para economizar espaço vertical, a cor do ícone já indica */}
                 </div>
             )}
         </div>
@@ -375,23 +373,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 3. Modal da Agenda */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
-        <div className="px-6 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
-            <div className="pt-4 mb-6">
-                <div className="flex items-center justify-between mb-4">
+        <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
+            <div className="pt-2 mb-4">
+                <div className="flex items-center justify-between mb-3 px-1">
                     <div>
-                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">Agenda</h2>
-                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Próximos Eventos</p>
+                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2>
+                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Próximos Eventos</p>
                     </div>
-                    {radarData.loading && <div className="text-xs font-bold text-zinc-400 animate-pulse uppercase tracking-widest">Atualizando...</div>}
+                    {radarData.loading && <div className="text-[9px] font-bold text-zinc-400 animate-pulse uppercase tracking-widest">Atualizando...</div>}
                 </div>
 
-                {/* Filtros de Aba */}
+                {/* Filtros de Aba Compactos */}
                 <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl">
                     {[{id:'ALL', label:'Todos'}, {id:'PAYMENT', label:'Pagamentos'}, {id:'DATACOM', label:'Data Com'}].map((tab) => (
                         <button 
                             key={tab.id}
                             onClick={() => setAgendaFilter(tab.id as any)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agendaFilter === tab.id ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${agendaFilter === tab.id ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             {tab.label}
                         </button>
@@ -399,24 +397,24 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
             </div>
 
-            {/* Totalizador Filtrado */}
+            {/* Totalizador Filtrado Compacto */}
             {filteredAgenda.totalConfirmed > 0 && agendaFilter !== 'DATACOM' && (
-                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-[2rem] p-6 text-white mb-8 shadow-xl shadow-emerald-500/20">
-                    <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Total Confirmado</p>
-                    <p className="text-4xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, privacyMode)}</p>
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-4 text-white mb-6 shadow-lg shadow-emerald-500/20 flex justify-between items-center">
+                    <p className="text-[10px] font-bold opacity-90 uppercase tracking-widest">Confirmado</p>
+                    <p className="text-2xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, privacyMode)}</p>
                 </div>
             )}
 
-            <div className="space-y-6">
+            <div className="space-y-4">
                 {Object.keys(filteredAgenda.grouped).length === 0 && !radarData.loading ? (
                     <div className="text-center py-20 opacity-40">
-                        <CalendarClock className="w-16 h-16 mx-auto mb-4 text-zinc-300" />
-                        <p className="text-sm font-bold text-zinc-500">Nenhum evento encontrado</p>
+                        <CalendarClock className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
+                        <p className="text-xs font-bold text-zinc-500">Nenhum evento encontrado</p>
                     </div>
                 ) : (
                     Object.keys(filteredAgenda.grouped).map(monthKey => (
                         <div key={monthKey}>
-                            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3 ml-2 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">{monthKey}</h3>
+                            <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">{monthKey}</h3>
                             {filteredAgenda.grouped[monthKey].map(event => (
                                 <AgendaItem key={event.id} event={event} privacyMode={privacyMode} />
                             ))}
@@ -429,30 +427,30 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 4. Modal de Proventos */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
-         <div className="px-6 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
+         <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
              
-             {/* Header com Totais */}
-             <div className="flex flex-col pt-6 pb-4">
-                 <div className="flex justify-between items-end mb-4">
+             {/* Header com Totais Compacto */}
+             <div className="flex flex-col pt-2 pb-2">
+                 <div className="flex justify-between items-end mb-3 px-1">
                      <div>
-                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Total Recebido</p>
-                        <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Total Recebido</p>
+                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">
                             {formatBRL(proventosTotal, privacyMode)}
                         </h2>
                      </div>
                      <div className="text-right">
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
-                        <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                        <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Média Mensal</p>
+                        <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
                             {formatBRL(proventosAverage, privacyMode)}
                         </p>
                      </div>
                  </div>
 
-                 {/* Filtros */}
-                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                     <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl shrink-0">
+                 {/* Filtros Compactos */}
+                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                     <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-0.5 rounded-lg shrink-0">
                         {['ALL', 'FII', 'STOCK'].map(t => (
-                            <button key={t} onClick={() => setProventosType(t as any)} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${proventosType === t ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>
+                            <button key={t} onClick={() => setProventosType(t as any)} className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${proventosType === t ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>
                                 {t === 'ALL' ? 'Todos' : t === 'FII' ? 'FIIs' : 'Ações'}
                             </button>
                         ))}
@@ -462,24 +460,24 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <select 
                             value={proventosYear} 
                             onChange={(e) => setProventosYear(e.target.value)}
-                            className="appearance-none bg-zinc-200/50 dark:bg-zinc-800 text-zinc-900 dark:text-white pl-4 pr-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none border-none"
+                            className="appearance-none bg-zinc-200/50 dark:bg-zinc-800 text-zinc-900 dark:text-white pl-3 pr-6 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest outline-none border-none h-full"
                         >
-                            <option value="ALL">Todo Período</option>
+                            <option value="ALL">Total</option>
                             {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
-                        <Calendar className="w-3 h-3 absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                        <Calendar className="w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
                      </div>
                  </div>
              </div>
 
-             {/* Gráfico (Mostra histórico recente independente do ano selecionado na lista, mas respeita tipo) */}
+             {/* Gráfico Compacto (Altura reduzida) */}
              {chartData.length > 0 && (
-                 <div className="h-40 w-full mt-2 mb-6 bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                 <div className="h-32 w-full mt-2 mb-4 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                      <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
+                         <BarChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} dy={5} interval={0} />
                              <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip privacyMode={privacyMode} />} />
-                             <Bar dataKey="value" radius={[4, 4, 4, 4]}>
+                             <Bar dataKey="value" radius={[3, 3, 3, 3]}>
                                  {chartData.map((entry, index) => (
                                      <Cell key={`cell-${index}`} fill={'#10b981'} />
                                  ))}
@@ -489,8 +487,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              )}
              
-             {/* Lista Agrupada */}
-             <div className="space-y-6">
+             {/* Lista Agrupada Compacta */}
+             <div className="space-y-4">
                  {Object.keys(groupedProventos).length === 0 ? (
                      <div className="text-center py-10 opacity-40">
                          <p className="text-xs font-bold text-zinc-500">Sem proventos neste período</p>
@@ -498,26 +496,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  ) : (
                      Object.keys(groupedProventos).map(monthKey => (
                          <div key={monthKey}>
-                             <div className="flex justify-between items-center mb-3 ml-2 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">
-                                 <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">{monthKey}</h3>
-                                 <span className="text-[10px] font-black text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
+                             <div className="flex justify-between items-center mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">
+                                 <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{monthKey}</h3>
+                                 <span className="text-[9px] font-black text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
                                      {formatBRL(groupedProventos[monthKey].total, privacyMode)}
                                  </span>
                              </div>
                              
-                             <div className="space-y-2">
+                             <div className="space-y-1.5">
                                  {groupedProventos[monthKey].items.map((r, idx) => (
-                                     <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                         <div className="flex items-center gap-4">
-                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-black ${r.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
+                                     <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                         <div className="flex items-center gap-3">
+                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[9px] font-black ${r.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
                                                  {r.ticker.substring(0, 2)}
                                              </div>
                                              <div>
-                                                 <span className="block font-bold text-zinc-900 dark:text-white text-sm">{r.ticker}</span>
-                                                 <span className="text-[10px] text-zinc-400 font-bold uppercase">{r.type} • {new Date(r.paymentDate).getDate()}</span>
+                                                 <span className="block font-bold text-zinc-900 dark:text-white text-xs">{r.ticker}</span>
+                                                 <span className="text-[8px] text-zinc-400 font-bold uppercase">{r.type} • {new Date(r.paymentDate).getDate()}</span>
                                              </div>
                                          </div>
-                                         <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                         <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
                                              {formatBRL(r.totalReceived, privacyMode)}
                                          </span>
                                      </div>
@@ -532,27 +530,27 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       {/* 5. Modal de Alocação */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         <div className="px-6 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
-             <div className="flex items-center gap-4 mb-6 px-1 pt-4">
-                 <div className="w-12 h-12 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                     <PieIcon className="w-6 h-6" />
+         <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
+             <div className="flex items-center gap-3 mb-4 px-1 pt-2">
+                 <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                     <PieIcon className="w-5 h-5" />
                  </div>
                  <div>
-                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2>
-                     <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Raio-X de Diversificação</p>
+                     <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2>
+                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Raio-X de Diversificação</p>
                  </div>
              </div>
 
-             <div className="bg-zinc-200/50 dark:bg-zinc-900 p-1 rounded-2xl flex gap-1 mb-6">
+             <div className="bg-zinc-200/50 dark:bg-zinc-900 p-1 rounded-xl flex gap-1 mb-4">
                  {['CLASS', 'SECTOR'].map(t => (
-                     <button key={t} onClick={() => setAllocationTab(t as any)} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+                     <button key={t} onClick={() => { setAllocationTab(t as any); setActiveIndexClass(undefined); }} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
                         {t === 'CLASS' ? 'Por Classe' : 'Por Setor'}
                      </button>
                  ))}
              </div>
 
-             <div className="space-y-6">
-                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm relative overflow-visible border border-zinc-200 dark:border-zinc-800 h-64">
+             <div className="space-y-4">
+                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] shadow-sm relative overflow-visible border border-zinc-200 dark:border-zinc-800 h-64">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie 
@@ -563,17 +561,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 cornerRadius={6} 
                                 dataKey="value" 
                                 stroke="none" 
-                                onMouseEnter={(_, index) => setActiveIndexClass(index)} 
-                                onMouseLeave={() => setActiveIndexClass(undefined)}
+                                onClick={(_, index) => setActiveIndexClass(prev => prev === index ? undefined : index)}
                             >
                                 {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} stroke={activeIndexClass === index ? 'rgba(255,255,255,0.2)' : 'none'} strokeWidth={2} />
+                                    <Cell 
+                                        key={`cell-${index}`} 
+                                        fill={entry.color} 
+                                        stroke={activeIndexClass === index ? 'rgba(255,255,255,0.5)' : 'none'} 
+                                        strokeWidth={activeIndexClass === index ? 3 : 0} 
+                                        className="transition-all duration-300 cursor-pointer"
+                                        style={{ filter: activeIndexClass !== undefined && activeIndexClass !== index ? 'opacity(0.3)' : 'opacity(1)' }}
+                                    />
                                 ))}
                             </Pie>
                         </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 max-w-[120px] text-center truncate px-2">
                             {activeIndexClass !== undefined ? (allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].name : 'Total'}
                         </span>
                         <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tighter">
@@ -584,16 +588,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                  </div>
 
-                 <div className="space-y-3">
+                 <div className="space-y-2">
                      {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((item, index) => (
-                         <div key={index} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                         <div 
+                            key={index} 
+                            className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 ${activeIndexClass === index ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 scale-[1.02] shadow-md' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm opacity-90'}`}
+                            onClick={() => setActiveIndexClass(prev => prev === index ? undefined : index)}
+                         >
                              <div className="flex items-center gap-3">
-                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                                 <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200">{item.name}</span>
+                                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></div>
+                                 <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">{item.name}</span>
                              </div>
                              <div className="text-right">
-                                 <span className="block text-sm font-black text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</span>
-                                 <span className="text-[10px] font-bold text-zinc-400">{item.percent.toFixed(1)}%</span>
+                                 <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</span>
+                                 <span className="text-[9px] font-bold text-zinc-400">{item.percent.toFixed(1)}%</span>
                              </div>
                          </div>
                      ))}
