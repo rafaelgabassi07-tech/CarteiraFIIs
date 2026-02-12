@@ -71,14 +71,14 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
     return null; 
 };
 
-// Isolated Chart Component to fix type errors with explicit prop typing
+// Isolated Chart Component with TS Fix for XAxis
 const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMode: boolean }) => (
     <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
             <XAxis 
                 dataKey="name" 
-                axisLine={false} 
-                tickLine={false} 
+                axisLine={false as any} 
+                tickLine={false as any} 
                 tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} 
                 dy={5} 
                 interval={0} 

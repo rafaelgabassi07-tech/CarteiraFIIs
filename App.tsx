@@ -348,7 +348,19 @@ const App: React.FC = () => {
                     transactions={transactions} 
                     onAddTransaction={async (t) => { 
                         if (!session?.user?.id) { showToast('error', 'Usuário não autenticado'); return; }
-                        const { error } = await supabase.from('transactions').insert({...t, user_id: session.user.id}); 
+                        
+                        // Mapper de AssetType (CamelCase) para asset_type (SnakeCase DB)
+                        const payload = {
+                            ticker: t.ticker,
+                            type: t.type,
+                            quantity: t.quantity,
+                            price: t.price,
+                            date: t.date,
+                            asset_type: t.assetType,
+                            user_id: session.user.id
+                        };
+
+                        const { error } = await supabase.from('transactions').insert(payload); 
                         if(!error) { 
                             await fetchTransactionsFromCloud(session); 
                             showToast('success', 'Ordem adicionada!'); 
@@ -358,7 +370,13 @@ const App: React.FC = () => {
                         }
                     }} 
                     onUpdateTransaction={async (id, t) => { 
-                        const { error } = await supabase.from('transactions').update(t).eq('id', id); 
+                        const payload: any = { ...t };
+                        if (t.assetType) {
+                            payload.asset_type = t.assetType;
+                            delete payload.assetType;
+                        }
+                        
+                        const { error } = await supabase.from('transactions').update(payload).eq('id', id); 
                         if(!error) { 
                             await fetchTransactionsFromCloud(session); 
                             showToast('success', 'Ordem atualizada!'); 

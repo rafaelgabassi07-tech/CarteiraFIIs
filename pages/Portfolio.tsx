@@ -44,7 +44,13 @@ const DetailRow = ({ label, value }: { label: string, value: string | number }) 
     </div>
 );
 
-const AssetListItem = ({ asset, onClick, privacyMode }: { asset: AssetPosition, onClick: () => void, privacyMode: boolean }) => (
+interface AssetListItemProps {
+    asset: AssetPosition;
+    onClick: () => void;
+    privacyMode: boolean;
+}
+
+const AssetListItem: React.FC<AssetListItemProps> = ({ asset, onClick, privacyMode }) => (
     <button onClick={onClick} className="w-full flex items-center justify-between py-4 border-b border-zinc-100 dark:border-zinc-800 last:border-0 group active:bg-zinc-50 dark:active:bg-zinc-900/50 transition-colors px-2">
         <div className="flex items-center gap-4">
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xs font-black transition-colors shadow-sm ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400'}`}>
