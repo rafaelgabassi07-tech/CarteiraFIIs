@@ -75,11 +75,9 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
 const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMode: boolean }) => (
     <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-            {/* @ts-ignore */}
             <XAxis 
                 dataKey="name" 
-                axisLine={false} 
-                tickLine={false} 
+                {...({ axisLine: false, tickLine: false } as any)}
                 tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} 
                 dy={5} 
                 interval={0} 
