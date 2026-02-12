@@ -636,6 +636,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  <div className="h-32 w-full mt-2 mb-4 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                      <ResponsiveContainer width="100%" height="100%">
                          <BarChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+                             {/* FIX: Ensure axisLine and tickLine are explicitly boolean false to avoid union type issues */}
                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} dy={5} interval={0} />
                              <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip privacyMode={privacyMode} />} />
                              <Bar dataKey="value" radius={[3, 3, 3, 3]}>

@@ -28,7 +28,8 @@ const formatPercent = (val: any) => {
 // Helper para verificar se existe valor numérico válido (incluindo 0)
 const hasValue = (val: any) => val !== undefined && val !== null && !isNaN(val);
 
-const renderFundamentalItem = (label: string, value: any, icon: React.ElementType, format: 'percent' | 'currency' | 'number' | 'text' = 'number', privacyMode = false, highlightCondition?: 'good' | 'bad' | 'neutral') => {
+// FIX: Renamed 'icon' to 'Icon' to satisfy JSX/TypeScript requirements for components
+const renderFundamentalItem = (label: string, value: any, Icon: React.ElementType, format: 'percent' | 'currency' | 'number' | 'text' = 'number', privacyMode = false, highlightCondition?: 'good' | 'bad' | 'neutral') => {
     if (!hasValue(value) && format !== 'text') return null;
     if (format === 'text' && !value) return null;
 
@@ -46,7 +47,7 @@ const renderFundamentalItem = (label: string, value: any, icon: React.ElementTyp
         <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-24 relative overflow-hidden group">
             <div className="flex items-center gap-2 mb-1 relative z-10">
                 <div className="w-5 h-5 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200 transition-colors">
-                    <icon className="w-3 h-3" /> // This creates an invalid JSX tag if 'icon' is lowercase. It should be capitalized. Fixing below.
+                    <Icon className="w-3 h-3" />
                 </div>
                 <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide truncate">{label}</p>
             </div>
