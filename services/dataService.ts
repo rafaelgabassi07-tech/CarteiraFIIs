@@ -174,24 +174,22 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
     if (!portfolio || portfolio.length === 0) return [];
 
     const tickers = portfolio.map(p => normalizeTicker(p.ticker));
-    const startOfYear = `${new Date().getFullYear()}-01-01`;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const todayStr = today.toISOString().split('T')[0];
 
     try {
+        // Query melhorada: Busca tudo que tem Data Com OU Pagamento >= Hoje, ou Pagamento nulo
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
             .in('ticker', tickers)
-            .or(`payment_date.gte.${startOfYear},date_com.gte.${startOfYear},payment_date.is.null`)
+            .or(`payment_date.gte.${todayStr},date_com.gte.${todayStr},payment_date.is.null`)
             .order('payment_date', { ascending: true });
 
         if (error) { console.error('[Robot] Error fetching confirmed data:', error); }
         
         const predictions: FutureDividendPrediction[] = [];
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - 1);
-        const cutoffTime = cutoffDate.getTime();
-        const now = new Date();
-        now.setHours(0,0,0,0);
 
         if (data && data.length > 0) {
             data.forEach((div: any) => {
@@ -199,32 +197,32 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
                 if (!asset || asset.quantity <= 0) return;
 
+                const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
+                const payDate = div.payment_date ? parseDateToLocal(div.payment_date) : null;
+
+                // Regras de relevância para o Robô:
+                // 1. Se pagamento é futuro
+                // 2. Se pagamento é indefinido e data com já passou (está em aprovação)
+                // 3. Se data com é futura
                 let isRelevant = false;
-                if (div.payment_date) {
-                    const payDate = parseDateToLocal(div.payment_date);
-                    if (payDate && payDate.getTime() >= cutoffTime) isRelevant = true;
-                } else {
-                    isRelevant = true;
-                }
-                if (!isRelevant && div.date_com) {
-                    const dCom = parseDateToLocal(div.date_com);
-                    if (dCom && dCom.getTime() >= cutoffTime) isRelevant = true;
-                }
+                if (payDate && payDate >= today) isRelevant = true;
+                if (!div.payment_date) isRelevant = true; 
+                if (dateCom && dateCom >= today) isRelevant = true;
+
                 if (!isRelevant) return;
 
                 const rate = Number(div.rate);
                 if (rate <= 0) return;
 
                 const total = preciseMul(asset.quantity, rate);
-                const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
-                const refDate = dateCom || now;
-                const diffTime = refDate.getTime() - now.getTime();
+                const refDate = dateCom || today;
+                const diffTime = refDate.getTime() - today.getTime();
                 const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
                 predictions.push({
                     ticker: normalizedTicker,
                     dateCom: div.date_com || 'Já ocorreu',
-                    paymentDate: div.payment_date || 'A Definir',
+                    paymentDate: div.payment_date || 'A Definir', // Garante string 'A Definir' se nulo
                     rate: rate,
                     quantity: asset.quantity,
                     projectedTotal: total,
@@ -235,10 +233,16 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 });
             });
         }
+        
         return predictions.sort((a,b) => {
-            const dateA = a.paymentDate !== 'A Definir' ? a.paymentDate : (a.dateCom !== 'Já ocorreu' ? a.dateCom : '9999-99-99');
-            const dateB = b.paymentDate !== 'A Definir' ? b.paymentDate : (b.dateCom !== 'Já ocorreu' ? b.dateCom : '9999-99-99');
-            return dateA.localeCompare(dateB);
+            // Lógica de ordenação robusta:
+            // Prioriza data de pagamento se existir, senão data com.
+            const getSortDate = (p: FutureDividendPrediction) => {
+                if (p.paymentDate !== 'A Definir') return p.paymentDate;
+                if (p.dateCom !== 'Já ocorreu') return p.dateCom;
+                return '9999-99-99';
+            };
+            return getSortDate(a).localeCompare(getSortDate(b));
         });
     } catch (e) {
         console.error("[Robot] Fatal error:", e);

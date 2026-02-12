@@ -124,20 +124,16 @@ async function scrapeInvestidor10(ticker: string) {
             else finalData.type = 'ACAO';
 
             // --- ESTRATÉGIA 1: CARDS DE DESTAQUE (Topo da página) ---
-            // Procura containers que tenham LABEL e VALOR próximos
             $('div, span, p').each((_, el) => {
                 const text = $(el).text().trim();
                 const key = getKeyFromLabel(text);
                 
                 if (key && !finalData[key]) {
-                    // Tenta achar o valor nos irmãos ou filhos próximos
-                    // Estrutura comum: <div><span>Label</span><span>Value</span></div>
                     let val = $(el).next().text().trim() || 
                               $(el).find('span').last().text().trim() ||
                               $(el).parent().find('.value').text().trim() ||
-                              $(el).parent().next().text().trim(); // Às vezes label e value estão em divs irmãs
+                              $(el).parent().next().text().trim();
 
-                    // Se o valor estiver vazio, tenta subir um nível e buscar a classe value
                     if (!val) {
                         val = $(el).closest('div').find('._card-body, .value').text().trim();
                     }
@@ -152,7 +148,7 @@ async function scrapeInvestidor10(ticker: string) {
                 }
             });
 
-            // --- ESTRATÉGIA 2: TABELAS INDICADORES (Cell Logic) ---
+            // --- ESTRATÉGIA 2: TABELAS INDICADORES ---
             $('.cell').each((_, cell) => {
                 const label = $(cell).find('.name, .title').text().trim();
                 const value = $(cell).find('.value, .data').text().trim();
@@ -181,44 +177,66 @@ async function scrapeInvestidor10(ticker: string) {
                 finalData.ticker = ticker.toUpperCase();
                 finalData.updated_at = new Date().toISOString();
                 
-                // Normaliza chaves para o padrão do DB
                 finalData.current_price = finalData.cotacao_atual;
                 finalData.dy_12m = finalData.dy;
                 
-                // Fallback DY calculado se falhar o scrape
                 if (!finalData.dy_12m && finalData.ultimo_rendimento && finalData.current_price) {
                     finalData.dy_12m = (finalData.ultimo_rendimento / finalData.current_price) * 100 * 12;
                 }
 
-                // --- DIVIDENDOS (Extração Simples) ---
+                // --- DIVIDENDOS INTELIGENTES (Tabela Específica) ---
                 const dividends: any[] = [];
-                $('table tbody tr').each((_, tr) => {
-                    const txt = $(tr).text().toLowerCase();
-                    if (txt.includes('rendimento') || txt.includes('dividendo') || txt.includes('jcp')) {
-                        const tds = $(tr).find('td');
-                        if (tds.length >= 3) {
-                            // Tenta extrair datas e valores independente da ordem da coluna
-                            const rowText = $(tr).text();
-                            const dates = rowText.match(/\d{2}\/\d{2}\/\d{4}/g);
-                            const money = rowText.match(/R\$\s?[\d.,]+/g);
-                            
-                            if (dates && dates.length >= 1 && money && money.length >= 1) {
-                                const rate = parseValue(money[0]);
-                                const dateCom = dates[0].split('/').reverse().join('-');
-                                const payDate = dates[1] ? dates[1].split('/').reverse().join('-') : dateCom;
-                                const type = txt.includes('jcp') ? 'JCP' : 'DIV';
+                
+                // Encontra tabelas que tenham "Com" ou "Pagamento" no cabeçalho
+                $('table').each((_, table) => {
+                    const headers = $(table).find('thead th').map((i, th) => $(th).text().trim().toLowerCase()).get();
+                    
+                    // Identifica colunas chaves
+                    const idxDataCom = headers.findIndex(h => h.includes('com') || h.includes('base'));
+                    const idxPagamento = headers.findIndex(h => h.includes('pagamento'));
+                    const idxValor = headers.findIndex(h => h.includes('valor'));
+                    const idxTipo = headers.findIndex(h => h.includes('tipo'));
 
-                                if (rate && rate > 0) {
-                                    dividends.push({
-                                        ticker: ticker.toUpperCase(),
-                                        type,
-                                        date_com: dateCom,
-                                        payment_date: payDate,
-                                        rate
-                                    });
-                                }
+                    // Se achou colunas relevantes (FIIs ou Ações podem variar)
+                    if (idxDataCom !== -1 && idxValor !== -1) {
+                        $(table).find('tbody tr').each((_, tr) => {
+                            const tds = $(tr).find('td');
+                            
+                            const extractDate = (idx: number) => {
+                                if (idx === -1) return null;
+                                const raw = $(tds[idx]).text().trim();
+                                if (raw === '-' || raw.toLowerCase() === 'aguardando') return null;
+                                // Converte DD/MM/YYYY para YYYY-MM-DD
+                                const match = raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                                return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
+                            };
+
+                            const dateCom = extractDate(idxDataCom);
+                            let payDate = extractDate(idxPagamento);
+                            
+                            const valStr = $(tds[idxValor]).text().trim();
+                            const rate = parseValue(valStr);
+                            
+                            let type = 'DIV';
+                            if (idxTipo !== -1) {
+                                const rawType = $(tds[idxTipo]).text().trim().toLowerCase();
+                                if (rawType.includes('jcp') || rawType.includes('juros')) type = 'JCP';
+                                else if (rawType.includes('rendimento')) type = 'REND';
                             }
-                        }
+
+                            if (dateCom && rate && rate > 0) {
+                                // Se não tem data de pagamento, marca como nula (será 'A Definir')
+                                if (!payDate) payDate = null;
+
+                                dividends.push({
+                                    ticker: ticker.toUpperCase(),
+                                    type,
+                                    date_com: dateCom,
+                                    payment_date: payDate,
+                                    rate
+                                });
+                            }
+                        });
                     }
                 });
 
@@ -240,7 +258,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
-        // Cache Check (Banco de Dados)
         if (!force) {
             const { data: existing } = await supabase
                 .from('ativos_metadata')
@@ -250,7 +267,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                // 3 horas de cache
                 if (age < 10800000) {
                     const { data: divs } = await supabase.from('market_dividends').select('*').eq('ticker', ticker);
                     return res.status(200).json({ success: true, data: existing, dividends: divs || [] });
@@ -264,7 +280,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(404).json({ success: false, error: 'Dados não encontrados na fonte.' });
         }
 
-        // Salva no Supabase
         const { error: metaError } = await supabase.from('ativos_metadata').upsert(result.metadata, { onConflict: 'ticker' });
         
         if (result.dividends.length > 0) {

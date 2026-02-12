@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar, Wand2, Target, Sparkles, CheckCircle2, ChevronRight, Calculator, PiggyBank, Coins, Banknote } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar, Wand2, Target, Sparkles, CheckCircle2, ChevronRight, Calculator, PiggyBank, Coins, Banknote, AlertCircle } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis } from 'recharts';
 import { fetchFutureAnnouncements } from '../services/dataService';
@@ -114,18 +114,24 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
         // Fallback
     }
 
+    // Identificador visual se for data estimada (1969/1970 ou muito distante) ou "A Definir"
+    const isPendingDate = event.date.startsWith('19') || event.date === '9999-99-99';
+
     return (
-        <div className="flex items-center justify-between p-2.5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 mb-1.5 shadow-sm">
+        <div className={`flex items-center justify-between p-3 rounded-2xl border mb-1.5 shadow-sm transition-all ${isDatacom ? 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
             <div className="flex items-center gap-3">
-                <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl ${isDatacom ? 'bg-zinc-100 dark:bg-zinc-800' : 'bg-emerald-50 dark:bg-emerald-900/20'}`}>
-                    <span className="text-[8px] font-bold text-zinc-400 uppercase leading-none">{weekDay}</span>
-                    <span className={`text-sm font-black leading-tight ${isDatacom ? 'text-zinc-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400'}`}>{day}</span>
+                <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl ${isDatacom ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'}`}>
+                    <span className="text-[8px] font-bold uppercase leading-none opacity-80">{isPendingDate ? '??' : weekDay}</span>
+                    <span className="text-sm font-black leading-tight">{isPendingDate ? '--' : day}</span>
                 </div>
                 <div>
                     <h4 className="font-bold text-zinc-900 dark:text-white text-sm">{event.ticker}</h4>
-                    <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">
-                        {isDatacom ? 'Data Com' : `Pagamento ${event.type}`}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                        <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isDatacom ? 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400' : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'}`}>
+                            {isDatacom ? 'Data Com' : event.type}
+                        </span>
+                        {isPendingDate && <span className="text-[8px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1 rounded">A Definir</span>}
+                    </div>
                 </div>
             </div>
             {!isDatacom && (
@@ -133,6 +139,7 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
                     <span className="block text-emerald-600 dark:text-emerald-400 font-black text-xs">
                         {formatBRL(event.amount, privacyMode)}
                     </span>
+                    <span className="text-[9px] text-zinc-400">Total Previsto</span>
                 </div>
             )}
         </div>
@@ -198,14 +205,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const magicData = useMemo(() => {
       const data: MagicData[] = [];
       portfolio.forEach(p => {
-          // Lógica REVERTIDA: Usa estritamente DY 12M para todos (FII e Ações)
           if (p.currentPrice && p.currentPrice > 0 && p.dy_12m && p.dy_12m > 0) {
               const annualYieldVal = p.currentPrice * (p.dy_12m / 100);
               const monthlyYieldEst = annualYieldVal / 12;
               
               if (monthlyYieldEst > 0) {
                   const magicNumber = Math.ceil(p.currentPrice / monthlyYieldEst);
-                  // Sanity check para evitar números irreais
                   if (magicNumber < 200000) {
                       const missing = Math.max(0, magicNumber - p.quantity);
                       data.push({
@@ -247,24 +252,36 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
               const addEvent = (ticker: string, date: string, amount: number, rate: number, type: string, evtType: 'PAYMENT' | 'DATACOM') => {
                   const key = `${ticker}-${evtType}-${date}-${rate.toFixed(4)}`;
-                  if (!seenKeys.has(key) && date >= todayStr) {
-                      atomEvents.push({ id: key, ticker, type, eventType: evtType, date, amount, rate: rate }); 
-                      seenKeys.add(key);
+                  if (!seenKeys.has(key)) {
+                      // Se for Data Com, sempre adiciona se for futura
+                      // Se for Pagamento, só adiciona se for futuro OU se a data for inválida (A Definir)
+                      const isFuture = date >= todayStr || date.startsWith('9999');
+                      if (isFuture) {
+                          atomEvents.push({ id: key, ticker, type, eventType: evtType, date, amount, rate: rate }); 
+                          seenKeys.add(key);
+                      }
                   }
               };
 
               const isValidDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
 
+              // 1. Processa proventos já confirmados mas no futuro
               dividendReceipts.forEach(r => {
-                  if (r.paymentDate && isValidDate(r.paymentDate)) addEvent(r.ticker, r.paymentDate, r.totalReceived, r.rate, r.type, 'PAYMENT');
-                  if (r.dateCom && isValidDate(r.dateCom)) addEvent(r.ticker, r.dateCom, 0, r.rate, r.type, 'DATACOM');
+                  if (r.paymentDate && isValidDate(r.paymentDate) && r.paymentDate >= todayStr) {
+                      addEvent(r.ticker, r.paymentDate, r.totalReceived, r.rate, r.type, 'PAYMENT');
+                  }
+                  if (r.dateCom && isValidDate(r.dateCom) && r.dateCom >= todayStr) {
+                      addEvent(r.ticker, r.dateCom, 0, r.rate, r.type, 'DATACOM');
+                  }
               });
 
+              // 2. Processa predições do robô (inclui datas indefinidas e futuras)
               predictions.forEach(p => {
-                  if (p.paymentDate && isValidDate(p.paymentDate)) {
-                      addEvent(p.ticker, p.paymentDate, p.projectedTotal, p.rate, p.type, 'PAYMENT');
-                  }
-                  if (p.dateCom && isValidDate(p.dateCom)) {
+                  // Mapeia data indefinida para um formato sortable no final
+                  const payDate = (p.paymentDate && p.paymentDate !== 'A Definir') ? p.paymentDate : '9999-99-99';
+                  addEvent(p.ticker, payDate, p.projectedTotal, p.rate, p.type, 'PAYMENT');
+                  
+                  if (p.dateCom && p.dateCom !== 'Já ocorreu') {
                       addEvent(p.ticker, p.dateCom, 0, p.rate, p.type, 'DATACOM');
                   }
               });
@@ -286,17 +303,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           events = events.filter(e => e.eventType === agendaFilter);
       }
       
-      const totalConfirmed = events.reduce((acc, e) => e.eventType === 'PAYMENT' ? acc + e.amount : acc, 0);
+      const totalConfirmed = events.reduce((acc, e) => e.eventType === 'PAYMENT' && e.date !== '9999-99-99' ? acc + e.amount : acc, 0);
       
       const grouped: Record<string, RadarEvent[]> = {};
       events.forEach(ev => {
           try {
-              if (!/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) return;
-              const d = new Date(ev.date + 'T12:00:00');
-              if (isNaN(d.getTime())) return;
+              let keyCap = 'A Definir';
               
-              const monthKey = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-              const keyCap = monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
+              if (ev.date !== '9999-99-99' && /^\d{4}-\d{2}-\d{2}$/.test(ev.date)) {
+                  const d = new Date(ev.date + 'T12:00:00');
+                  if (!isNaN(d.getTime())) {
+                      const monthKey = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                      keyCap = monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
+                  }
+              }
+              
               if (!grouped[keyCap]) grouped[keyCap] = [];
               grouped[keyCap].push(ev);
           } catch {
@@ -331,8 +352,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [portfolio]);
 
   const { chartData, groupedProventos, proventosTotal, proventosAverage, availableYears } = useMemo(() => {
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // Filtro Rígido: Apenas pagamentos até HOJE
       const filteredReceipts = dividendReceipts.filter(r => {
           if (!r.paymentDate || !/^\d{4}-\d{2}-\d{2}$/.test(r.paymentDate)) return false;
+          if (r.paymentDate > todayStr) return false; // Ignora futuros
           
           let isTypeMatch = true;
           if (proventosType === 'FII') {
@@ -376,14 +401,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }
       });
 
-      const todayStr = new Date().toISOString().split('T')[0];
       const monthlySum: Record<string, number> = {};
       
       filteredReceipts.forEach(r => {
-          if (r.paymentDate && r.paymentDate <= todayStr) {
-              const key = r.paymentDate.substring(0, 7); 
-              monthlySum[key] = (monthlySum[key] || 0) + r.totalReceived;
-          }
+          const key = r.paymentDate.substring(0, 7); 
+          monthlySum[key] = (monthlySum[key] || 0) + r.totalReceived;
       });
 
       const fullHistory: HistoryItem[] = Object.keys(monthlySum).sort().map(date => {
@@ -427,7 +449,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-6 pb-8">
-      {/* ... (JSX content remains mostly same but using clean components) ... */}
+      {/* ... (Hero section remains unchanged) ... */}
       <div className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-100 dark:border-zinc-800 anim-scale-in group">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100"></div>
 
@@ -482,9 +504,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               <div className="relative z-10 text-left">
                   <div className="flex items-baseline gap-1 mb-1">
                       <span className="text-3xl font-black tracking-tighter">{radarData.events.length}</span>
-                      <span className="text-xs font-bold opacity-60 uppercase">Eventos</span>
+                      <span className="text-xs font-bold opacity-60 uppercase">Agenda</span>
                   </div>
-                  <p className="text-[10px] font-medium opacity-80 leading-tight">Próximos pagamentos e datas com previstos.</p>
+                  <p className="text-[10px] font-medium opacity-80 leading-tight">Datacoms e pagamentos futuros.</p>
               </div>
           </button>
 
@@ -494,7 +516,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <div className="flex items-center gap-3 relative z-10">
                       <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0"><CircleDollarSign className="w-5 h-5" /></div>
                       <div className="text-left">
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Proventos</span>
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Recebidos</span>
                           <span className="text-sm font-black text-zinc-900 dark:text-white truncate block">{formatBRL(totalDividendsReceived, privacyMode)}</span>
                       </div>
                   </div>
@@ -537,9 +559,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           </button>
       </div>
 
-      {/* Modals Logic (Keep as is but ensure SwipeableModal imports are clean) */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
-        {/* ... Agenda Content ... */}
         <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
             <div className="px-6 pt-4 pb-2 shrink-0">
                 <div className="flex items-center justify-between mb-3">
@@ -562,16 +582,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
                 {filteredAgenda.totalConfirmed > 0 && agendaFilter !== 'DATACOM' && (
                     <div className="mt-4 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-4 text-white shadow-lg shadow-emerald-500/20 flex justify-between items-center">
-                        <p className="text-[10px] font-bold opacity-90 uppercase tracking-widest">Confirmado</p>
+                        <div>
+                            <p className="text-[10px] font-bold opacity-90 uppercase tracking-widest">Confirmado</p>
+                            <p className="text-[9px] font-medium opacity-70">A receber no futuro</p>
+                        </div>
                         <p className="text-2xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, privacyMode)}</p>
                     </div>
                 )}
             </div>
+            
             <div className="flex-1 overflow-y-auto px-6 pb-20 space-y-4 pt-2">
                 {Object.keys(filteredAgenda.grouped).length === 0 && !radarData.loading ? (
                     <div className="text-center py-20 opacity-40">
                         <CalendarClock className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
-                        <p className="text-xs font-bold text-zinc-500">Nenhum evento encontrado</p>
+                        <p className="text-xs font-bold text-zinc-500">Nenhum evento futuro encontrado</p>
                     </div>
                 ) : (
                     Object.keys(filteredAgenda.grouped).map(monthKey => (
@@ -592,7 +616,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
              <div className="px-6 pt-4 pb-2 shrink-0">
                  <div className="flex justify-between items-end mb-3">
                      <div>
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Total Recebido</p>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Já Recebido</p>
+                        </div>
                         <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">
                             {formatBRL(proventosTotal, privacyMode)}
                         </h2>
@@ -636,7 +663,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  <div className="space-y-4">
                      {Object.keys(groupedProventos).length === 0 ? (
                          <div className="text-center py-10 opacity-40">
-                             <p className="text-xs font-bold text-zinc-500">Sem proventos neste período</p>
+                             <p className="text-xs font-bold text-zinc-500">Sem proventos confirmados</p>
                          </div>
                      ) : (
                          Object.keys(groupedProventos).map(monthKey => (
@@ -647,6 +674,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                          {formatBRL(groupedProventos[monthKey].total, privacyMode)}
                                      </span>
                                  </div>
+                                 
                                  <div className="space-y-1.5">
                                      {groupedProventos[monthKey].items.map((r, idx) => (
                                          <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
@@ -674,7 +702,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         {/* ... Allocation Content ... */}
+         {/* ... (Allocation Content remains the same) ... */}
          <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
              <div className="px-6 pt-4 pb-2 shrink-0">
                  <div className="flex items-center gap-3 mb-4">
@@ -755,6 +783,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showMagicModal} onClose={() => setShowMagicModal(false)}>
+         {/* ... (Magic Content remains the same) ... */}
          <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
              <div className="px-6 pt-4 pb-2 shrink-0">
                  <div className="flex items-center gap-3 mb-4">
@@ -836,6 +865,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showGoalModal} onClose={() => setShowGoalModal(false)}>
+         {/* ... (Goal Content remains the same) ... */}
          <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
              <div className="px-6 pt-4 pb-2 shrink-0">
                  <div className="flex items-center gap-3 mb-6">
