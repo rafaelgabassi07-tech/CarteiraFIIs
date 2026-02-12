@@ -3,8 +3,11 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
 import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar, Wand2, Target, Sparkles, CheckCircle2, ChevronRight, Calculator, PiggyBank, Coins, Banknote } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis as RechartsXAxis } from 'recharts';
 import { fetchFutureAnnouncements } from '../services/dataService';
+
+// Nuclear fix for Recharts TypeScript errors: cast the component itself to any
+const XAxis = RechartsXAxis as any;
 
 interface HomeProps {
   portfolio: AssetPosition[];
@@ -72,31 +75,26 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
 };
 
 // Isolated Chart Component with Robust TS Fix
-const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMode: boolean }) => {
-    // Force ANY type to bypass strict Recharts prop validation issues
-    const axisOptions: any = {
-        dataKey: "name",
-        axisLine: false,
-        tickLine: false,
-        tick: { fontSize: 8, fill: '#a1a1aa', fontWeight: 700 },
-        dy: 5,
-        interval: 0
-    };
-
-    return (
-        <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-                <XAxis {...axisOptions} />
-                <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip privacyMode={privacyMode} />} />
-                <Bar dataKey="value" radius={[3, 3, 3, 3]}>
-                    {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={'#10b981'} />
-                    ))}
-                </Bar>
-            </BarChart>
-        </ResponsiveContainer>
-    );
-};
+const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMode: boolean }) => (
+    <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+            <XAxis 
+                dataKey="name" 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} 
+                dy={5} 
+                interval={0} 
+            />
+            <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip privacyMode={privacyMode} />} />
+            <Bar dataKey="value" radius={[3, 3, 3, 3]}>
+                {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={'#10b981'} />
+                ))}
+            </Bar>
+        </BarChart>
+    </ResponsiveContainer>
+);
 
 const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ event, privacyMode }) => {
     const isDatacom = event.eventType === 'DATACOM';
