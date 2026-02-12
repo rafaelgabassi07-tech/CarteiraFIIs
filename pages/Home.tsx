@@ -77,8 +77,8 @@ const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMod
         <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
             <XAxis 
                 dataKey="name" 
-                axisLine={false as any} 
-                tickLine={false as any} 
+                axisLine={{ stroke: 'none' } as any} 
+                tickLine={{ stroke: 'none' } as any} 
                 tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} 
                 dy={5} 
                 interval={0} 
@@ -612,7 +612,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
              {chartData.length > 0 && (
                  <div className="h-32 w-full mt-2 mb-4 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                     <ProventosChart data={chartData} privacyMode={privacyMode} />
+                     <ProventosChart data={chartData} privacyMode={!!privacyMode} />
                  </div>
              )}
              
