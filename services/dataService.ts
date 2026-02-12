@@ -20,7 +20,7 @@ export interface FutureDividendPrediction {
     quantity: number;
     type: string;
     daysToDateCom: number;
-    status: 'CONFIRMED'; // Agora sempre confirmado
+    status: 'CONFIRMED'; 
     reasoning?: string;
 }
 
@@ -39,18 +39,16 @@ const parseNumberSafe = (val: any): number | undefined => {
     if (typeof val === 'number') return val;
     if (val === undefined || val === null || val === '') return undefined;
     
-    // Remove R$, %, espaços
     let str = String(val).replace(/[^\d.,-]/g, '').trim();
     if (!str || str === '-') return undefined;
 
-    // Lógica robusta de parsing
     const hasComma = str.includes(',');
     const hasDot = str.includes('.');
 
     if (hasComma && hasDot) {
-        if (str.lastIndexOf(',') > str.lastIndexOf('.')) { // 1.000,50
+        if (str.lastIndexOf(',') > str.lastIndexOf('.')) { 
              str = str.replace(/\./g, '').replace(',', '.');
-        } else { // 1,000.50
+        } else { 
              str = str.replace(/,/g, '');
         }
     } else if (hasComma) {
@@ -61,10 +59,11 @@ const parseNumberSafe = (val: any): number | undefined => {
     return isNaN(num) ? undefined : num;
 };
 
+// MAPEADOR CORRIGIDO PARA O NOVO SCRAPER
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
     const getVal = (...keys: string[]): any => {
         for (const k of keys) {
-            if (m[k] !== undefined && m[k] !== null && m[k] !== '' && m[k] !== 'N/A') return m[k];
+            if (m[k] !== undefined && m[k] !== null && m[k] !== '') return m[k];
         }
         return undefined;
     };
@@ -83,8 +82,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         // FII Específicos
         assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
         manager_type: getVal('tipo_gestao', 'gestao', 'manager_type') || undefined,
-        management_fee: getVal('taxa_adm', 'taxa_administracao', 'management_fee') || undefined,
-        vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
+        vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica', 'vacanciafisica')),
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
         
@@ -92,10 +90,8 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),
         gross_margin: parseNumberSafe(getVal('margem_bruta', 'margembruta')),
         cagr_revenue: parseNumberSafe(getVal('cagr_receita_5a', 'cagr_receitas', 'cagr_receita')),
-        cagr_profits: parseNumberSafe(getVal('cagr_lucros_5a', 'cagr_lucros', 'cagr_lucro')),
         net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'div_liq_ebitda', 'dividaliquida_ebitda')),
         ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
-        lpa: parseNumberSafe(getVal('lpa')),
         vpa: parseNumberSafe(getVal('vp_cota', 'vpa', 'valor_patrimonial_acao', 'valorpatrimonialcota')),
         
         updated_at: m.updated_at,
@@ -133,7 +129,7 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
     const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker)));
     const results: ScrapeResult[] = [];
     
-    // Batch processing
+    // Batch processing (3 tickers por vez)
     const BATCH_SIZE = 3;
     for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
         const batch = uniqueTickers.slice(i, i + BATCH_SIZE);
@@ -166,20 +162,18 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
         }));
 
         if (i + BATCH_SIZE < uniqueTickers.length) {
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 1500)); // Delay para não sobrecarregar API
         }
     }
     
     return results;
 };
 
-// --- ROBÔ DE PROVENTOS (SEM IA) ---
+// ... Resto do arquivo (fetchFutureAnnouncements, fetchUnifiedMarketData) permanece igual ...
 export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Promise<FutureDividendPrediction[]> => {
     if (!portfolio || portfolio.length === 0) return [];
 
     const tickers = portfolio.map(p => normalizeTicker(p.ticker));
-    
-    // Busca dados desde o início do ano atual para garantir cobertura e contexto
     const startOfYear = `${new Date().getFullYear()}-01-01`;
 
     try {
@@ -190,16 +184,12 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
             .or(`payment_date.gte.${startOfYear},date_com.gte.${startOfYear},payment_date.is.null`)
             .order('payment_date', { ascending: true });
 
-        if (error) {
-            console.error('[Robot] Error fetching confirmed data:', error);
-        }
+        if (error) { console.error('[Robot] Error fetching confirmed data:', error); }
         
         const predictions: FutureDividendPrediction[] = [];
-        
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - 1);
         const cutoffTime = cutoffDate.getTime();
-
         const now = new Date();
         now.setHours(0,0,0,0);
 
@@ -210,26 +200,22 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 if (!asset || asset.quantity <= 0) return;
 
                 let isRelevant = false;
-                
                 if (div.payment_date) {
                     const payDate = parseDateToLocal(div.payment_date);
                     if (payDate && payDate.getTime() >= cutoffTime) isRelevant = true;
                 } else {
                     isRelevant = true;
                 }
-
                 if (!isRelevant && div.date_com) {
                     const dCom = parseDateToLocal(div.date_com);
                     if (dCom && dCom.getTime() >= cutoffTime) isRelevant = true;
                 }
-
                 if (!isRelevant) return;
 
                 const rate = Number(div.rate);
                 if (rate <= 0) return;
 
                 const total = preciseMul(asset.quantity, rate);
-                
                 const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
                 const refDate = dateCom || now;
                 const diffTime = refDate.getTime() - now.getTime();
@@ -249,13 +235,11 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 });
             });
         }
-
         return predictions.sort((a,b) => {
             const dateA = a.paymentDate !== 'A Definir' ? a.paymentDate : (a.dateCom !== 'Já ocorreu' ? a.dateCom : '9999-99-99');
             const dateB = b.paymentDate !== 'A Definir' ? b.paymentDate : (b.dateCom !== 'Já ocorreu' ? b.dateCom : '9999-99-99');
             return dateA.localeCompare(dateB);
         });
-
     } catch (e) {
         console.error("[Robot] Fatal error:", e);
         return [];
@@ -268,7 +252,6 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker)));
 
   try {
-      // 1. Fetch DB Data (Priority)
       let [divResponse, metaResponse] = await Promise.all([
           supabase.from('market_dividends').select('*').in('ticker', uniqueTickers),
           supabase.from('ativos_metadata').select('*').in('ticker', uniqueTickers)
@@ -280,25 +263,18 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       const metadataMap: Record<string, any> = {};
       metaData.forEach((m: any) => { metadataMap[normalizeTicker(m.ticker)] = m; });
 
-      // 2. Identify Stale Assets
       const missingOrStale = uniqueTickers.filter(t => {
           const m = metadataMap[t];
-          // Check for missing data OR stale timestamp (> 4 hours) OR critical zeros (DY=0 is suspicious)
           const isExpired = m && m.updated_at && isStale(m.updated_at);
           const hasSuspiciousData = m && (m.dy_12m === 0 || m.dy_12m === null || m.dy_12m === undefined || m.dy_12m === '0');
-          
           return !m || isExpired || hasSuspiciousData;
       });
 
       const toUpdate = forceRefresh ? uniqueTickers : missingOrStale;
 
-      // 3. Trigger Background Updates (Only if needed)
       if (toUpdate.length > 0) {
           console.log(`[DataService] Updating ${toUpdate.length} assets in background...`);
-          
           const results = await triggerScraperUpdate(toUpdate, true);
-          
-          // Apply new data to current session immediately
           results.forEach(r => {
               if (r.status === 'success' && r.rawFundamentals) {
                   metadataMap[normalizeTicker(r.ticker)] = r.rawFundamentals;
@@ -310,14 +286,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                           payment_date: d.payment_date,
                           rate: d.rate
                       }));
-                      // Merge avoids duplicates in memory
                       dividendsData = [...dividendsData, ...newDivs];
                   }
               }
           });
       }
 
-      // 4. Format Output
       const dividends: DividendReceipt[] = dividendsData.map((d: any) => ({
             id: d.id || `${d.ticker}-${d.date_com}-${d.rate}`,
             ticker: normalizeTicker(d.ticker),
