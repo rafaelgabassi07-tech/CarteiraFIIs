@@ -6,6 +6,7 @@ import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis } from 'recharts';
 import { fetchFutureAnnouncements } from '../services/dataService';
 
+// ... (Interfaces remain unchanged)
 interface HomeProps {
   portfolio: AssetPosition[];
   dividendReceipts: DividendReceipt[];
@@ -38,7 +39,6 @@ interface HistoryItem {
     monthIndex: number;
 }
 
-// Interface para o cálculo do Mágico
 interface MagicData {
     ticker: string;
     currentPrice: number;
@@ -79,10 +79,8 @@ const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMod
             <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
                 <XAxis 
                     dataKey="name" 
-                    // @ts-ignore
-                    axisLine={false}
-                    // @ts-ignore
-                    tickLine={false}
+                    axisLine={false} 
+                    tickLine={false} 
                     tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} 
                     dy={5} 
                     interval={0} 
@@ -140,6 +138,8 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
         </div>
     );
 };
+
+// ... (Rest of HomeComponent implementation remains the same, only exported at end)
 
 const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, invested, balance, totalAppreciation, transactions, privacyMode = false, onViewAsset }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
@@ -427,7 +427,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-6 pb-8">
-      {/* ... Hero Section e Botões permanecem inalterados ... */}
+      {/* ... (JSX content remains mostly same but using clean components) ... */}
       <div className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-100 dark:border-zinc-800 anim-scale-in group">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100"></div>
 
@@ -537,7 +537,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           </button>
       </div>
 
+      {/* Modals Logic (Keep as is but ensure SwipeableModal imports are clean) */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
+        {/* ... Agenda Content ... */}
         <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
             <div className="px-6 pt-4 pb-2 shrink-0">
                 <div className="flex items-center justify-between mb-3">
@@ -565,7 +567,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 )}
             </div>
-            
             <div className="flex-1 overflow-y-auto px-6 pb-20 space-y-4 pt-2">
                 {Object.keys(filteredAgenda.grouped).length === 0 && !radarData.loading ? (
                     <div className="text-center py-20 opacity-40">
@@ -646,7 +647,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                          {formatBRL(groupedProventos[monthKey].total, privacyMode)}
                                      </span>
                                  </div>
-                                 
                                  <div className="space-y-1.5">
                                      {groupedProventos[monthKey].items.map((r, idx) => (
                                          <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
@@ -674,6 +674,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
+         {/* ... Allocation Content ... */}
          <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
              <div className="px-6 pt-4 pb-2 shrink-0">
                  <div className="flex items-center gap-3 mb-4">
@@ -685,7 +686,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Raio-X de Diversificação</p>
                      </div>
                  </div>
-
                  <div className="bg-zinc-200/50 dark:bg-zinc-900 p-1 rounded-xl flex gap-1 mb-2">
                      {['CLASS', 'SECTOR'].map(t => (
                          <button key={t} onClick={() => { setAllocationTab(t as any); setActiveIndexClass(undefined); }} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
@@ -694,7 +694,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      ))}
                  </div>
              </div>
-
              <div className="flex-1 overflow-y-auto px-6 pb-20 space-y-4">
                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] shadow-sm relative overflow-visible border border-zinc-200 dark:border-zinc-800 h-64 shrink-0">
                     <ResponsiveContainer width="100%" height="100%">
@@ -733,7 +732,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </span>
                     </div>
                  </div>
-
                  <div className="space-y-2">
                      {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((item, index) => (
                          <div 
@@ -768,7 +766,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Dividendos infinitos</p>
                      </div>
                  </div>
-
                  {totalCostToReachAll > 0 && (
                      <div className="bg-purple-600 dark:bg-purple-900/40 text-white p-5 rounded-[2rem] shadow-lg shadow-purple-600/20 mb-4 relative overflow-hidden">
                          <div className="relative z-10">
@@ -783,7 +780,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </div>
                  )}
              </div>
-
              <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2 space-y-3">
                  {magicData.length === 0 && (
                      <div className="flex flex-col items-center justify-center py-16 opacity-50 text-center">
@@ -794,7 +790,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          </p>
                      </div>
                  )}
-
                  {magicData.map((asset) => {
                      const isReached = asset.progress >= 100;
                      return (
@@ -802,7 +797,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                              {!isReached && (
                                  <div className="absolute bottom-0 left-0 h-1 bg-purple-500 transition-all duration-1000" style={{ width: `${asset.progress}%` }}></div>
                              )}
-                             
                              <div className="flex justify-between items-start mb-3">
                                  <div className="flex items-center gap-3">
                                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-black ${isReached ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400'}`}>
@@ -818,7 +812,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                      <span className="text-[9px] font-bold text-zinc-400">para o objetivo</span>
                                  </div>
                              </div>
-
                              <div className="grid grid-cols-3 gap-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-2.5">
                                  <div className="text-center">
                                      <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">DY (12m)</p>
@@ -854,7 +847,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Defina suas metas</p>
                      </div>
                  </div>
-
                  <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl mb-6">
                      <button 
                         onClick={() => setGoalTab('INCOME')}
@@ -870,7 +862,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </button>
                  </div>
              </div>
-
              <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2">
                  <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-zinc-800 text-center mb-6 relative overflow-hidden anim-scale-in">
                      <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800">
@@ -879,14 +870,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             style={{ width: `${goalTab === 'INCOME' ? incomeProgress : patrimonyProgress}%` }}
                          ></div>
                      </div>
-                     
                      <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-2 mb-1">
                          {goalTab === 'INCOME' ? 'Média Mensal Atual' : 'Patrimônio Atual'}
                      </p>
                      <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">
                          {formatBRL(goalTab === 'INCOME' ? proventosAverage : balance, privacyMode)}
                      </h3>
-                     
                      <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex items-center justify-between">
                          <span className="text-[10px] font-bold text-zinc-500 uppercase">Progresso</span>
                          <span className={`text-sm font-black ${goalTab === 'INCOME' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}`}>
@@ -894,7 +883,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          </span>
                      </div>
                  </div>
-
                  <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm anim-slide-up">
                      <div className="flex items-center gap-3 mb-3">
                          <Calculator className="w-4 h-4 text-zinc-400" />

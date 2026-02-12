@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '9.2.2'; // Bump Version
+const APP_VERSION = '9.2.2';
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -29,15 +29,9 @@ const STORAGE_KEYS = {
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
   NOTIF_HISTORY: 'investfiis_notification_history_v3',
-  METADATA: 'investfiis_metadata_v2', // Chave crítica para cache de fundamentos
+  METADATA: 'investfiis_metadata_v2',
   LAST_AUTO_SYNC: 'investfiis_last_auto_sync'
 };
-
-const MemoizedHome = React.memo(Home);
-const MemoizedPortfolio = React.memo(Portfolio);
-const MemoizedTransactions = React.memo(Transactions);
-const MemoizedNews = React.memo(News);
-const MemoizedSettings = React.memo(Settings);
 
 // Helper para merge inteligente de dividendos
 const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[]) => {
@@ -64,6 +58,7 @@ const App: React.FC = () => {
   const [targetAssetTicker, setTargetAssetTicker] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
+  const [updateResults, setUpdateResults] = useState<UpdateReportData | null>(null);
 
   // Prefs
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
@@ -75,7 +70,7 @@ const App: React.FC = () => {
   const toastTimeoutRef = useRef<number | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
   
-  // Dados - Inicialização Lazy com LocalStorage para performance imediata
+  // Dados
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.QUOTES); return s ? JSON.parse(s) : {}; } catch { return {}; } });
@@ -88,7 +83,6 @@ const App: React.FC = () => {
   });
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.62, startDate: '' }; } catch { return { ipca: 4.62, startDate: '' }; } });
   
-  // Cacheamento de Metadados (Fundamentos: DY, PVP, Vacância, etc.)
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => { 
       try { 
           const s = localStorage.getItem(STORAGE_KEYS.METADATA); 
@@ -96,7 +90,6 @@ const App: React.FC = () => {
       } catch { return {}; } 
   });
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCheckingServices, setIsCheckingServices] = useState(false);
   
   const servicesRef = useRef<ServiceMetric[]>([
@@ -106,7 +99,7 @@ const App: React.FC = () => {
   ]);
   const [services, setServices] = useState<ServiceMetric[]>(servicesRef.current);
 
-  // Effects de Persistência - Salva automaticamente sempre que o estado muda
+  // Effects de Persistência
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(dividends)); }, [dividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
@@ -192,11 +185,12 @@ const App: React.FC = () => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) return;
     
-    if (force && !initialLoad) setIsRefreshing(true); 
+    if (force && !initialLoad) { 
+        // Lógica de loading manual se necessário
+    }
     if (initialLoad) setLoadingProgress(50);
     
     try {
-      // 1. Cotações (Brapi) - Atualização Rápida
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
@@ -206,7 +200,6 @@ const App: React.FC = () => {
       
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
       
-      // 2. Fundamentos e Dividendos (Supabase + Scraper)
       let data = await fetchUnifiedMarketData(tickers, startDate, force);
 
       if (data.dividends.length > 0) {
@@ -226,7 +219,7 @@ const App: React.FC = () => {
       localStorage.setItem(STORAGE_KEYS.LAST_AUTO_SYNC, Date.now().toString());
       if (initialLoad) setLoadingProgress(100); 
 
-    } catch (e) { console.error(e); } finally { setIsRefreshing(false); }
+    } catch (e) { console.error(e); } 
   }, [dividends, assetsMetadata]);
 
   const refreshSingleAsset = useCallback(async (ticker: string) => {
@@ -307,8 +300,6 @@ const App: React.FC = () => {
   }, [transactions, quotes, dividends, assetsMetadata]);
 
   const isHeaderVisible = showSettings || scrollDirection === 'up' || isTop;
-
-  // Lógica de visibilidade dos botões do header
   const showHeaderActions = currentTab === 'home';
 
   if (!isReady) return <SplashScreen finishLoading={false} realProgress={loadingProgress} />;
@@ -341,91 +332,108 @@ const App: React.FC = () => {
         <main className="max-w-xl mx-auto pt-20 pb-32 min-h-screen px-6">
           {showSettings ? (
             <div className="pt-2">
-              <MemoizedSettings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} dividends={dividends} onImportDividends={setDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} updateAvailable={isUpdateAvailable} onCheckUpdates={checkForUpdates} onShowChangelog={() => setShowChangelog(true)} pushEnabled={pushEnabled} onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={() => fetchTransactionsFromCloud(session, true)} onForceUpdate={() => window.location.reload()} currentVersionDate={currentVersionDate} services={services} onCheckConnection={checkConnection} isCheckingConnection={isCheckingServices} />
+              <Settings 
+                onLogout={handleLogout} 
+                user={session.user} 
+                transactions={transactions} 
+                onImportTransactions={setTransactions} 
+                dividends={dividends} 
+                onImportDividends={setDividends} 
+                onResetApp={() => { localStorage.clear(); window.location.reload(); }} 
+                theme={theme} 
+                onSetTheme={setTheme} 
+                accentColor={accentColor} 
+                onSetAccentColor={setAccentColor} 
+                privacyMode={privacyMode} 
+                onSetPrivacyMode={setPrivacyMode} 
+                appVersion={APP_VERSION} 
+                updateAvailable={isUpdateAvailable} 
+                onCheckUpdates={checkForUpdates} 
+                onShowChangelog={() => setShowChangelog(true)} 
+                pushEnabled={pushEnabled} 
+                onRequestPushPermission={() => setPushEnabled(!pushEnabled)} 
+                onSyncAll={() => fetchTransactionsFromCloud(session, true)} 
+                onForceUpdate={() => window.location.reload()} 
+                currentVersionDate={currentVersionDate} 
+                services={services} 
+                onCheckConnection={checkConnection} 
+                isCheckingConnection={isCheckingServices} 
+              />
             </div>
           ) : (
             <div key={currentTab} className="anim-page-enter">
-              {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} onViewAsset={(t) => { setTargetAssetTicker(t); setCurrentTab('portfolio'); }} />}
-              {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} dividends={dividends} privacyMode={privacyMode} onAssetRefresh={refreshSingleAsset} headerVisible={isHeaderVisible} targetAsset={targetAssetTicker} onClearTarget={() => setTargetAssetTicker(null)} />}
+              {currentTab === 'home' && (
+                <Home 
+                    {...memoizedPortfolioData} 
+                    transactions={transactions} 
+                    totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
+                    inflationRate={marketIndicators.ipca} 
+                    privacyMode={privacyMode} 
+                    onViewAsset={(t) => { setTargetAssetTicker(t); setCurrentTab('portfolio'); }} 
+                />
+              )}
               
-              {currentTab === 'transactions' && 
-                <MemoizedTransactions 
+              {currentTab === 'portfolio' && (
+                <Portfolio 
+                    portfolio={memoizedPortfolioData.portfolio} 
+                    dividends={dividends} 
+                    privacyMode={privacyMode} 
+                    onAssetRefresh={refreshSingleAsset} 
+                    headerVisible={isHeaderVisible} 
+                    targetAsset={targetAssetTicker} 
+                    onClearTarget={() => setTargetAssetTicker(null)} 
+                />
+              )}
+              
+              {currentTab === 'transactions' && (
+                <Transactions 
                     transactions={transactions} 
                     onAddTransaction={async (t) => { 
                         if (!session?.user?.id) { showToast('error', 'Usuário não autenticado'); return; }
-                        
-                        // Correção Crítica: Forçar mapeamento correto do asset_type e gerar ID
                         const payload = {
-                            id: crypto.randomUUID(), // Força ID único caso DB não gere automaticamente
+                            id: crypto.randomUUID(), 
                             ticker: t.ticker,
                             type: t.type,
                             quantity: t.quantity,
                             price: t.price,
                             date: t.date,
-                            asset_type: t.assetType, // Garante que enum AssetType chegue correto
+                            asset_type: t.assetType, 
                             user_id: session.user.id
                         };
-
                         try {
                             const { error } = await supabase.from('transactions').insert(payload); 
-                            
-                            if (error) {
-                                console.error('Supabase Insert Error:', error);
-                                showToast('error', `Erro ao salvar: ${error.message}`);
-                            } else {
-                                // Atualização Otimista e Fetch
-                                showToast('success', 'Ordem salva com sucesso!'); 
-                                await fetchTransactionsFromCloud(session); 
-                            }
-                        } catch (e: any) {
-                            console.error('App Error:', e);
-                            showToast('error', 'Erro inesperado ao salvar.');
-                        }
+                            if (error) { console.error(error); showToast('error', `Erro: ${error.message}`); } 
+                            else { showToast('success', 'Ordem salva!'); await fetchTransactionsFromCloud(session); }
+                        } catch (e: any) { console.error(e); showToast('error', 'Erro ao salvar.'); }
                     }} 
                     onUpdateTransaction={async (id, t) => { 
                         const payload: any = { ...t };
-                        if (t.assetType) {
-                            payload.asset_type = t.assetType;
-                            delete payload.assetType;
-                        }
-                        
+                        if (t.assetType) { payload.asset_type = t.assetType; delete payload.assetType; }
                         const { error } = await supabase.from('transactions').update(payload).eq('id', id); 
-                        if(!error) { 
-                            await fetchTransactionsFromCloud(session); 
-                            showToast('success', 'Ordem atualizada!'); 
-                        } else {
-                            showToast('error', 'Erro ao atualizar.');
-                        }
+                        if(!error) { await fetchTransactionsFromCloud(session); showToast('success', 'Atualizado!'); } 
+                        else { showToast('error', 'Erro ao atualizar.'); }
                     }} 
                     onBulkDelete={async (ids) => {
                         const { error } = await supabase.from('transactions').delete().in('id', ids);
-                        if(!error) {
-                            await fetchTransactionsFromCloud(session);
-                            showToast('success', `${ids.length} itens removidos.`);
-                        } else {
-                            showToast('error', 'Erro ao excluir.');
-                        }
+                        if(!error) { await fetchTransactionsFromCloud(session); showToast('success', 'Removido!'); } 
+                        else { showToast('error', 'Erro ao excluir.'); }
                     }}
                     onRequestDeleteConfirmation={(id) => setConfirmModal({ 
                         isOpen: true, 
                         title: 'Excluir?', 
-                        message: 'Esta ação não pode ser desfeita.', 
+                        message: 'Ação irreversível.', 
                         onConfirm: async () => { 
                             const { error } = await supabase.from('transactions').delete().eq('id', id); 
-                            if (!error) {
-                                await fetchTransactionsFromCloud(session); 
-                                showToast('success', 'Item removido.');
-                            } else {
-                                showToast('error', 'Erro ao remover.');
-                            }
+                            if (!error) { await fetchTransactionsFromCloud(session); showToast('success', 'Removido.'); } 
+                            else { showToast('error', 'Erro.'); }
                             setConfirmModal(null); 
                         } 
                     })} 
                     privacyMode={privacyMode} 
                 />
-              }
+              )}
               
-              {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
+              {currentTab === 'news' && <News transactions={transactions} />}
             </div>
           )}
         </main>
@@ -436,6 +444,7 @@ const App: React.FC = () => {
         <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={() => setNotifications(prev => prev.map(n => ({...n, read: true})))} />
         <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title} message={confirmModal?.message} onConfirm={confirmModal?.onConfirm} onCancel={() => setConfirmModal(null)} />
         <InstallPromptModal isOpen={showInstallModal} onInstall={() => installPrompt?.prompt()} onDismiss={() => setShowInstallModal(false)} />
+        <UpdateReportModal isOpen={showUpdateReport} onClose={() => setShowUpdateReport(false)} results={updateResults || { results: [] }} />
       </>
     </div>
   );
