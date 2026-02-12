@@ -77,8 +77,8 @@ const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMod
         <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
             <XAxis 
                 dataKey="name" 
-                axisLine={{ stroke: 'transparent' }} 
-                tickLine={{ stroke: 'transparent' }} 
+                axisLine={false as any} 
+                tickLine={false as any} 
                 tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} 
                 dy={5} 
                 interval={0} 
