@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar, Wand2, Target, Sparkles, CheckCircle2, ChevronRight, Calculator } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis } from 'recharts';
 import { fetchFutureAnnouncements } from '../services/dataService';
@@ -36,6 +36,16 @@ interface HistoryItem {
     value: number;
     year: number;
     monthIndex: number;
+}
+
+// Interface para o cálculo do Mágico
+interface MagicData {
+    ticker: string;
+    currentPrice: number;
+    magicNumber: number;
+    owned: number;
+    progress: number;
+    monthlyYieldEst: number;
 }
 
 const formatBRL = (val: any, privacy = false) => {
@@ -85,7 +95,6 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
                     <span className="block text-emerald-600 dark:text-emerald-400 font-black text-xs">
                         {formatBRL(event.amount, privacyMode)}
                     </span>
-                    {/* Badge removida para economizar espaço vertical, a cor do ícone já indica */}
                 </div>
             )}
         </div>
@@ -97,6 +106,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   
+  // Novos Estados
+  const [showMagicModal, setShowMagicModal] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
+      try {
+          const saved = localStorage.getItem('investfiis_monthly_goal');
+          return saved ? parseFloat(saved) : 1000;
+      } catch { return 1000; }
+  });
+  
   // Filtros de Proventos
   const [proventosYear, setProventosYear] = useState<string>('ALL');
   const [proventosType, setProventosType] = useState<'ALL' | 'FII' | 'STOCK'>('ALL');
@@ -106,6 +125,43 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
+
+  // Salvar Meta
+  const handleSaveGoal = (val: string) => {
+      const num = parseFloat(val);
+      if (!isNaN(num)) {
+          setMonthlyGoal(num);
+          localStorage.setItem('investfiis_monthly_goal', String(num));
+      }
+  };
+
+  // --- DADOS DO NÚMERO MÁGICO ---
+  const magicData = useMemo(() => {
+      const data: MagicData[] = [];
+      portfolio.forEach(p => {
+          if (p.dy_12m && p.dy_12m > 0 && p.currentPrice && p.currentPrice > 0) {
+              // Estima dividendo mensal médio baseado no DY anual
+              const annualYieldVal = p.currentPrice * (p.dy_12m / 100);
+              const monthlyYieldEst = annualYieldVal / 12;
+              
+              if (monthlyYieldEst > 0) {
+                  const magicNumber = Math.ceil(p.currentPrice / monthlyYieldEst);
+                  data.push({
+                      ticker: p.ticker,
+                      currentPrice: p.currentPrice,
+                      magicNumber,
+                      owned: p.quantity,
+                      progress: Math.min((p.quantity / magicNumber) * 100, 100),
+                      monthlyYieldEst
+                  });
+              }
+          }
+      });
+      // Ordena: Primeiro os atingidos (100%), depois os mais próximos
+      return data.sort((a,b) => b.progress - a.progress);
+  }, [portfolio]);
+
+  const magicReachedCount = magicData.filter(m => m.progress >= 100).length;
 
   // --- DADOS DO RADAR (AGENDA) ---
   const [radarData, setRadarData] = useState<{
@@ -132,7 +188,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   }
               };
 
-              // Mescla recibos confirmados e previsões
               dividendReceipts.forEach(r => {
                   if (r.paymentDate) addEvent(r.ticker, r.paymentDate, r.totalReceived, r.rate, r.type, 'PAYMENT');
                   if (r.dateCom) addEvent(r.ticker, r.dateCom, 0, r.rate, r.type, 'DATACOM');
@@ -144,7 +199,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               });
 
               atomEvents.sort((a, b) => a.date.localeCompare(b.date));
-              
               setRadarData({ events: atomEvents, loading: false });
           } catch (e) {
               console.error(e);
@@ -203,31 +257,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // --- DADOS DE PROVENTOS (FILTRADOS) ---
   const { chartData, groupedProventos, proventosTotal, proventosAverage, availableYears } = useMemo(() => {
       const filteredReceipts = dividendReceipts.filter(r => {
-          const matchesType = proventosType === 'ALL' || 
+          return proventosType === 'ALL' || 
               (proventosType === 'FII' && r.assetType === AssetType.FII) ||
               (proventosType === 'STOCK' && r.assetType === AssetType.STOCK);
-          return matchesType;
       });
 
-      // Anos disponíveis para filtro
       const yearsSet = new Set(filteredReceipts.map(r => r.paymentDate.substring(0, 4)));
       const years = Array.from(yearsSet).sort().reverse();
 
-      // Filtragem por Ano para a LISTA e TOTAL, mas o gráfico mostra histórico
       const displayReceipts = filteredReceipts.filter(r => {
           return proventosYear === 'ALL' || r.paymentDate.startsWith(proventosYear);
       });
 
       const total = displayReceipts.reduce((acc, r) => acc + r.totalReceived, 0);
       
-      // Cálculo de Média Mensal (baseado no intervalo de meses com recebimento)
       let average = 0;
       if (displayReceipts.length > 0) {
           const months = new Set(displayReceipts.map(r => r.paymentDate.substring(0, 7))).size;
           average = total / (months || 1);
       }
 
-      // Agrupamento por Mês para Lista
       const grouped: Record<string, { items: DividendReceipt[], total: number }> = {};
       displayReceipts.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).forEach(r => {
           const d = new Date(r.paymentDate + 'T12:00:00');
@@ -238,7 +287,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           grouped[keyCap].total += r.totalReceived;
       });
 
-      // Dados para o Gráfico (Sempre últimos 12 meses do filtro de tipo, independente do ano selecionado na lista para contexto)
       const todayStr = new Date().toISOString().split('T')[0];
       const monthlySum: Record<string, number> = {};
       filteredReceipts.forEach(r => {
@@ -260,7 +308,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       });
 
       return { 
-          chartData: fullHistory.slice(-12), // Últimos 12 meses
+          chartData: fullHistory.slice(-12),
           groupedProventos: grouped,
           proventosTotal: total,
           proventosAverage: average,
@@ -270,12 +318,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
+  const goalProgress = Math.min((proventosAverage / monthlyGoal) * 100, 100);
 
   return (
     <div className="space-y-6 pb-8">
       {/* 1. Card Principal (Patrimônio Detalhado) */}
       <div className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-100 dark:border-zinc-800 anim-scale-in group">
-          {/* Background decoration */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100"></div>
 
           <div className="relative z-10 flex flex-col items-center text-center mb-6">
@@ -287,9 +335,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               </h2>
           </div>
 
-          {/* Grid de Informações Detalhadas */}
           <div className="grid grid-cols-2 gap-3 relative z-10">
-              {/* Card Custo */}
               <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800">
                   <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">
                       <Layers className="w-2.5 h-2.5" /> Investido
@@ -297,7 +343,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(invested, privacyMode)}</p>
               </div>
               
-              {/* Card Rentabilidade */}
               <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800">
                   <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">
                       <TrendingUp className="w-2.5 h-2.5" /> Retorno Total
@@ -307,7 +352,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   </div>
               </div>
 
-              {/* Card Inferior (Combinação de Ganhos) */}
               <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex justify-between items-center px-5 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800">
                    <div className="text-left">
                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Valorização</p>
@@ -326,7 +370,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           </div>
       </div>
 
-      {/* 2. Grid de Ações Rápidas */}
+      {/* 2. Grid de Ações Rápidas (Agora com Nº Mágico e Objetivo) */}
       <div className="grid grid-cols-2 gap-4 anim-slide-up">
           
           {/* Agenda Card - Vertical */}
@@ -369,6 +413,34 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   </div>
               </button>
           </div>
+
+          {/* NOVOS CARDS: Nº Mágico & Objetivo */}
+          
+          {/* Nº Mágico */}
+          <button onClick={() => setShowMagicModal(true)} className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative overflow-hidden group h-32 flex flex-col justify-between">
+              <div className="absolute top-2 right-2 opacity-5 dark:opacity-10 text-purple-500"><Wand2 className="w-16 h-16" /></div>
+              <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0"><Sparkles className="w-5 h-5" /></div>
+              <div className="text-left relative z-10">
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Nº Mágico</span>
+                  <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-black text-zinc-900 dark:text-white">{magicReachedCount}</span>
+                      <span className="text-[9px] font-bold text-zinc-500">atingidos</span>
+                  </div>
+              </div>
+          </button>
+
+          {/* Objetivo */}
+          <button onClick={() => setShowGoalModal(true)} className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative overflow-hidden group h-32 flex flex-col justify-between">
+              <div className="absolute top-2 right-2 opacity-5 dark:opacity-10 text-amber-500"><Target className="w-16 h-16" /></div>
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0"><Target className="w-5 h-5" /></div>
+              <div className="text-left relative z-10 w-full">
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Meta Mensal</span>
+                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden mb-1">
+                      <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${goalProgress}%` }}></div>
+                  </div>
+                  <span className="text-[10px] font-black text-zinc-900 dark:text-white float-right">{goalProgress.toFixed(0)}%</span>
+              </div>
+          </button>
       </div>
 
       {/* 3. Modal da Agenda */}
@@ -606,6 +678,113 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          </div>
                      ))}
                  </div>
+             </div>
+         </div>
+      </SwipeableModal>
+
+      {/* 6. Modal do Nº Mágico */}
+      <SwipeableModal isOpen={showMagicModal} onClose={() => setShowMagicModal(false)}>
+         <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
+             <div className="flex items-center gap-3 mb-4 px-1 pt-2">
+                 <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                     <Wand2 className="w-5 h-5" />
+                 </div>
+                 <div>
+                     <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Número Mágico</h2>
+                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Bola de Neve</p>
+                 </div>
+             </div>
+
+             <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30 mb-6">
+                 <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-relaxed font-medium">
+                     O <span className="font-bold text-purple-600 dark:text-purple-400">Número Mágico</span> é a quantidade de cotas necessárias para que os dividendos mensais comprem 1 nova cota automaticamente.
+                 </p>
+             </div>
+
+             <div className="space-y-3">
+                 {magicData.map((asset) => {
+                     const isReached = asset.progress >= 100;
+                     return (
+                         <div key={asset.ticker} className={`p-4 rounded-2xl border shadow-sm transition-all relative overflow-hidden ${isReached ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-transparent text-white' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
+                             {isReached && <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>}
+                             
+                             <div className="flex justify-between items-start mb-2 relative z-10">
+                                 <div className="flex items-center gap-2">
+                                     <span className={`text-sm font-black ${isReached ? 'text-white' : 'text-zinc-900 dark:text-white'}`}>{asset.ticker}</span>
+                                     {isReached && <CheckCircle2 className="w-4 h-4 text-white/80" />}
+                                 </div>
+                                 <span className={`text-[10px] font-bold uppercase ${isReached ? 'text-white/80' : 'text-zinc-400'}`}>
+                                     Faltam {Math.max(0, asset.magicNumber - asset.owned)} cotas
+                                 </span>
+                             </div>
+
+                             <div className="w-full bg-black/10 dark:bg-white/10 h-2 rounded-full overflow-hidden mb-2 relative z-10">
+                                 <div 
+                                     className={`h-full rounded-full transition-all duration-500 ${isReached ? 'bg-white' : 'bg-purple-500'}`} 
+                                     style={{ width: `${Math.min(asset.progress, 100)}%` }}
+                                 ></div>
+                             </div>
+
+                             <div className="flex justify-between items-center text-[10px] font-medium relative z-10">
+                                 <span className={isReached ? 'text-white/80' : 'text-zinc-500'}>
+                                     Atual: {asset.owned} cotas
+                                 </span>
+                                 <span className={isReached ? 'text-white' : 'text-zinc-900 dark:text-white font-bold'}>
+                                     Meta: {asset.magicNumber}
+                                 </span>
+                             </div>
+                         </div>
+                     );
+                 })}
+             </div>
+         </div>
+      </SwipeableModal>
+
+      {/* 7. Modal de Objetivo */}
+      <SwipeableModal isOpen={showGoalModal} onClose={() => setShowGoalModal(false)}>
+         <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
+             <div className="flex items-center gap-3 mb-6 px-1 pt-2">
+                 <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                     <Target className="w-5 h-5" />
+                 </div>
+                 <div>
+                     <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Objetivo de Renda</h2>
+                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Liberdade Financeira</p>
+                 </div>
+             </div>
+
+             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-zinc-800 text-center mb-6 relative overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800">
+                     <div className="h-full bg-gradient-to-r from-amber-400 to-orange-600 transition-all duration-1000 ease-out" style={{ width: `${goalProgress}%` }}></div>
+                 </div>
+                 
+                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-2 mb-1">Média Mensal Atual</p>
+                 <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">{formatBRL(proventosAverage, privacyMode)}</h3>
+                 
+                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex items-center justify-between">
+                     <span className="text-[10px] font-bold text-zinc-500 uppercase">Progresso</span>
+                     <span className="text-sm font-black text-amber-600 dark:text-amber-400">{goalProgress.toFixed(1)}%</span>
+                 </div>
+             </div>
+
+             <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                 <div className="flex items-center gap-3 mb-3">
+                     <Calculator className="w-4 h-4 text-zinc-400" />
+                     <label className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Definir Meta Mensal</label>
+                 </div>
+                 <div className="flex items-center gap-2 border-b-2 border-zinc-100 dark:border-zinc-800 pb-2 focus-within:border-amber-500 transition-colors">
+                     <span className="text-lg font-bold text-zinc-400">R$</span>
+                     <input 
+                        type="number" 
+                        value={monthlyGoal} 
+                        onChange={(e) => handleSaveGoal(e.target.value)}
+                        className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300"
+                        placeholder="0,00"
+                     />
+                 </div>
+                 <p className="text-[10px] text-zinc-400 mt-3 leading-relaxed">
+                     Defina quanto você deseja receber mensalmente em dividendos. O progresso será calculado com base na média dos últimos 12 meses.
+                 </p>
              </div>
          </div>
       </SwipeableModal>
