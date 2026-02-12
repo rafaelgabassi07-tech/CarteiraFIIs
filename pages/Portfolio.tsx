@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, TrendingUp, ChevronRight, Wallet, Info, DollarSign, Activity, Percent, BarChart3, Building2, Coins, Scale, AlertCircle } from 'lucide-react';
@@ -110,7 +111,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
 
     return (
         <div className="min-h-screen pb-32">
-            <div className={`sticky top-24 z-20 bg-[#F2F2F2] dark:bg-black py-2 transition-all duration-300 ${headerVisible ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0 pointer-events-none'}`}>
+            <div className={`sticky top-20 z-20 bg-[#F2F2F2] dark:bg-black py-2 transition-all duration-300 ${headerVisible ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0 pointer-events-none'}`}>
                 <div className="relative group bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                     <input 

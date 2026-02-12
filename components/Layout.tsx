@@ -54,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header 
-      className={`fixed top-0 left-0 right-0 z-40 px-6 pt-safe h-24 flex flex-col justify-center transition-transform duration-500 ease-in-out-expo bg-[#F2F2F2]/90 dark:bg-black/90 backdrop-blur-md`}
+      className={`fixed top-0 left-0 right-0 z-40 px-6 pt-safe h-20 flex flex-col justify-center transition-transform duration-500 ease-in-out-expo bg-[#F2F2F2]/90 dark:bg-black/90 backdrop-blur-md`}
       style={{ transform: isVisible ? 'translateY(0)' : 'translateY(-100%)' }}
     >
       <div className="flex items-center justify-between w-full">
@@ -64,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
         ) : (
             <div className="flex flex-col">
-                <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
+                <h1 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
                     {title}
                     <HeaderCloudStatus status={cloudStatus} />
                 </h1>
@@ -181,7 +181,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       ></div>
       
       <div
-        className="bg-[#F2F2F2] dark:bg-[#000000] rounded-t-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[94vh] relative"
+        className="bg-[#F2F2F2] dark:bg-[#000000] rounded-t-[2.5rem] shadow-2xl overflow-hidden flex flex-col h-[85vh] relative"
         style={{
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
             transition: isDragging.current ? 'none' : 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)',

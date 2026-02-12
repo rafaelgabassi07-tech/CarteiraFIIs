@@ -333,7 +333,7 @@ const App: React.FC = () => {
             isVisible={isHeaderVisible}
         />
         
-        <main className="max-w-xl mx-auto pt-28 pb-32 min-h-screen px-6">
+        <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-6">
           {showSettings ? (
             <div className="pt-2">
               <MemoizedSettings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} dividends={dividends} onImportDividends={setDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} updateAvailable={isUpdateAvailable} onCheckUpdates={checkForUpdates} onShowChangelog={() => setShowChangelog(true)} pushEnabled={pushEnabled} onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={() => fetchTransactionsFromCloud(session, true)} onForceUpdate={() => window.location.reload()} currentVersionDate={currentVersionDate} services={services} onCheckConnection={checkConnection} isCheckingConnection={isCheckingServices} />
