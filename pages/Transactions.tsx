@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Pencil } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Pencil, Coins } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 
@@ -312,7 +312,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
-    // Nova função de Delete em Massa que usa o callback do pai (App.tsx)
     const handleBulkDelete = async () => {
         if (selectedIds.size === 0) return;
         try {
