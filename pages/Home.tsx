@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
 import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar, Wand2, Target, Sparkles, CheckCircle2, ChevronRight, Calculator, PiggyBank, Coins, Banknote, AlertCircle } from 'lucide-react';
@@ -73,8 +72,8 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
     return null; 
 };
 
-// Isolated Chart Component with Robust Fixes - Removed React.FC to fix TS issues
-const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMode: boolean }) => {
+// Isolated Chart Component with Robust Fixes
+const ProventosChart: React.FC<{ data: HistoryItem[], privacyMode: boolean }> = ({ data, privacyMode }) => {
     return (
         <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
@@ -100,8 +99,8 @@ const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMod
     );
 };
 
-// Removed React.FC to fix TS issues
-const AgendaItem = ({ event, privacyMode }: { event: RadarEvent, privacyMode: boolean }) => {
+// AgendaItem typed as React.FC to accept 'key' prop correctly in lists
+const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ event, privacyMode }) => {
     const isDatacom = event.eventType === 'DATACOM';
     
     let day = '--';
