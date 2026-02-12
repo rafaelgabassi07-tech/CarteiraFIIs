@@ -315,9 +315,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           // Filtra datas inválidas (ex: 'A Definir' ou null)
           if (!r.paymentDate || !/^\d{4}-\d{2}-\d{2}$/.test(r.paymentDate)) return false;
           
-          return proventosType === 'ALL' || 
-              (proventosType === 'FII' && r.assetType === AssetType.FII) ||
-              (proventosType === 'STOCK' && r.assetType === AssetType.STOCK);
+          // Lógica de Filtro de Ativo Robusta
+          let isTypeMatch = true;
+          if (proventosType === 'FII') {
+              isTypeMatch = r.assetType === AssetType.FII || (r.ticker && (r.ticker.endsWith('11') || r.ticker.endsWith('11B')));
+          } else if (proventosType === 'STOCK') {
+              isTypeMatch = r.assetType === AssetType.STOCK || (r.ticker && !r.ticker.endsWith('11') && !r.ticker.endsWith('11B'));
+          }
+
+          return isTypeMatch;
       });
 
       const yearsSet = new Set(filteredReceipts.map(r => r.paymentDate.substring(0, 4)));
@@ -354,6 +360,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       const todayStr = new Date().toISOString().split('T')[0];
       const monthlySum: Record<string, number> = {};
+      
+      // Usa filteredReceipts (apenas com filtro de tipo) para o gráfico histórico
       filteredReceipts.forEach(r => {
           if (r.paymentDate && r.paymentDate <= todayStr) {
               const key = r.paymentDate.substring(0, 7); 

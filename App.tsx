@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '9.1.0'; // Polimento e Fixes
+const APP_VERSION = '9.2.0'; // Updated Version
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -341,7 +341,36 @@ const App: React.FC = () => {
             <div key={currentTab} className="anim-page-enter">
               {currentTab === 'home' && <MemoizedHome {...memoizedPortfolioData} transactions={transactions} totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} inflationRate={marketIndicators.ipca} privacyMode={privacyMode} onViewAsset={(t) => { setTargetAssetTicker(t); setCurrentTab('portfolio'); }} />}
               {currentTab === 'portfolio' && <MemoizedPortfolio portfolio={memoizedPortfolioData.portfolio} dividends={dividends} privacyMode={privacyMode} onAssetRefresh={refreshSingleAsset} headerVisible={isHeaderVisible} targetAsset={targetAssetTicker} onClearTarget={() => setTargetAssetTicker(null)} />}
-              {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={async (t) => { const { error } = await supabase.from('transactions').insert({...t, user_id: session.user.id}); if(!error) fetchTransactionsFromCloud(session); }} onUpdateTransaction={async (id, t) => { const { error } = await supabase.from('transactions').update(t).eq('id', id); if(!error) fetchTransactionsFromCloud(session); }} onRequestDeleteConfirmation={(id) => setConfirmModal({ isOpen: true, title: 'Excluir?', message: 'Confirmar exclusão?', onConfirm: async () => { await supabase.from('transactions').delete().eq('id', id); fetchTransactionsFromCloud(session); setConfirmModal(null); } })} privacyMode={privacyMode} />}
+              
+              {currentTab === 'transactions' && 
+                <MemoizedTransactions 
+                    transactions={transactions} 
+                    onAddTransaction={async (t) => { 
+                        const { error } = await supabase.from('transactions').insert({...t, user_id: session.user.id}); 
+                        if(!error) fetchTransactionsFromCloud(session); 
+                    }} 
+                    onUpdateTransaction={async (id, t) => { 
+                        const { error } = await supabase.from('transactions').update(t).eq('id', id); 
+                        if(!error) fetchTransactionsFromCloud(session); 
+                    }} 
+                    onBulkDelete={async (ids) => {
+                        const { error } = await supabase.from('transactions').delete().in('id', ids);
+                        if(!error) fetchTransactionsFromCloud(session);
+                    }}
+                    onRequestDeleteConfirmation={(id) => setConfirmModal({ 
+                        isOpen: true, 
+                        title: 'Excluir?', 
+                        message: 'Esta ação não pode ser desfeita.', 
+                        onConfirm: async () => { 
+                            await supabase.from('transactions').delete().eq('id', id); 
+                            fetchTransactionsFromCloud(session); 
+                            setConfirmModal(null); 
+                        } 
+                    })} 
+                    privacyMode={privacyMode} 
+                />
+              }
+              
               {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
             </div>
           )}

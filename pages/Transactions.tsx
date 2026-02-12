@@ -1,10 +1,9 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Pencil } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
-import { supabase } from '../services/supabase';
 
 const formatBRL = (val: number, privacy = false) => {
   if (privacy) return '••••••';
@@ -82,7 +81,7 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
     );
 };
 
-// Componente Customizado para Filtro de Ano (Chip Style) - Usando Portal para evitar clipping overflow
+// Componente Customizado para Filtro de Ano
 const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], selectedYear: string, onChange: (y: string) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -91,11 +90,7 @@ const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], se
     const handleToggle = () => {
         if (!isOpen && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
-            // Calcula posição para o portal
-            setCoords({ 
-                top: rect.bottom + 6, 
-                left: rect.left 
-            });
+            setCoords({ top: rect.bottom + 6, left: rect.left });
         }
         setIsOpen(!isOpen);
     };
@@ -114,7 +109,6 @@ const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], se
 
             {isOpen && createPortal(
                 <>
-                    {/* Backdrop transparente para fechar ao clicar fora */}
                     <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)}></div>
                     <div 
                         className="fixed w-32 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xl z-[9999] overflow-hidden anim-scale-in p-1"
@@ -227,11 +221,12 @@ interface TransactionsProps {
     transactions: Transaction[];
     onAddTransaction: (t: Omit<Transaction, 'id'>) => Promise<void>;
     onUpdateTransaction: (id: string, t: Partial<Transaction>) => Promise<void>;
+    onBulkDelete: (ids: string[]) => Promise<void>;
     onRequestDeleteConfirmation: (id: string) => void;
     privacyMode?: boolean;
 }
 
-const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onUpdateTransaction, onRequestDeleteConfirmation, privacyMode = false }) => {
+const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onUpdateTransaction, onBulkDelete, onRequestDeleteConfirmation, privacyMode = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -254,9 +249,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [price, setPrice] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     
-    const estimatedTotal = (parseFloat(quantity) || 0) * (parseFloat(price) || 0);
+    const estimatedTotal = (parseFloat(quantity.replace(',','.')) || 0) * (parseFloat(price.replace(',','.')) || 0);
 
-    // Gera lista de anos disponíveis baseada no histórico
     const availableYears = useMemo(() => {
         const years = new Set(transactions.map(t => t.date.substring(0, 4)));
         return Array.from(years).sort((a,b) => String(b).localeCompare(String(a)));
@@ -318,29 +312,27 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
+    // Nova função de Delete em Massa que usa o callback do pai (App.tsx)
     const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return;
         try {
-            const { error } = await supabase.from('transactions').delete().in('id', Array.from(selectedIds));
-            if (error) throw error;
-            window.location.reload(); 
+            await onBulkDelete(Array.from(selectedIds));
+            setSelectedIds(new Set());
+            setIsSelectionMode(false);
         } catch (err) { alert('Erro ao excluir.'); } finally { setShowBulkDeleteConfirm(false); }
     };
 
     const clearFilters = () => {
-        setSearchTerm('');
-        setTypeFilter('ALL');
-        setAssetFilter('ALL');
-        setYearFilter('ALL');
+        setSearchTerm(''); setTypeFilter('ALL'); setAssetFilter('ALL'); setYearFilter('ALL');
     };
 
     const hasActiveFilters = searchTerm || typeFilter !== 'ALL' || assetFilter !== 'ALL' || yearFilter !== 'ALL';
 
     return (
         <div className="anim-fade-in min-h-screen pb-32">
-            {/* Header Sticky com Filtros Refinados */}
+            {/* Header Sticky com Filtros */}
             <div className="sticky top-20 z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
                 
-                {/* Linha 1: Título e Ações Principais */}
                 <div className="flex items-center justify-between mb-3">
                     <h2 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
                         {isSelectionMode ? (
@@ -372,7 +364,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
                 {!isSelectionMode && (
                     <div className="space-y-3">
-                        {/* Busca Discreta */}
                         <div className="relative group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
                             <input 
@@ -384,21 +375,10 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             />
                         </div>
 
-                        {/* Filtros em Chips (Scroll Horizontal) */}
                         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                             <YearFilterChip years={availableYears} selectedYear={yearFilter} onChange={setYearFilter} />
-
-                            <FilterChip 
-                                label={typeFilter === 'ALL' ? 'Tipo' : typeFilter === 'BUY' ? 'Compras' : 'Vendas'} 
-                                active={typeFilter !== 'ALL'}
-                                onClick={() => setTypeFilter(prev => prev === 'ALL' ? 'BUY' : prev === 'BUY' ? 'SELL' : 'ALL')}
-                            />
-
-                            <FilterChip 
-                                label={assetFilter === 'ALL' ? 'Classe' : assetFilter === 'FII' ? 'FIIs' : 'Ações'} 
-                                active={assetFilter !== 'ALL'}
-                                onClick={() => setAssetFilter(prev => prev === 'ALL' ? 'FII' : prev === 'FII' ? 'STOCK' : 'ALL')}
-                            />
+                            <FilterChip label={typeFilter === 'ALL' ? 'Tipo' : typeFilter === 'BUY' ? 'Compras' : 'Vendas'} active={typeFilter !== 'ALL'} onClick={() => setTypeFilter(prev => prev === 'ALL' ? 'BUY' : prev === 'BUY' ? 'SELL' : 'ALL')} />
+                            <FilterChip label={assetFilter === 'ALL' ? 'Classe' : assetFilter === 'FII' ? 'FIIs' : 'Ações'} active={assetFilter !== 'ALL'} onClick={() => setAssetFilter(prev => prev === 'ALL' ? 'FII' : prev === 'FII' ? 'STOCK' : 'ALL')} />
                         </div>
                     </div>
                 )}
@@ -426,58 +406,108 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
-            {/* Modal de Edição */}
+            {/* Modal de Edição MELHORADO */}
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                <div className="p-6 pb-20">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-black text-zinc-900 dark:text-white">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
-                        {editingId && <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2 text-rose-500 bg-rose-50 rounded-lg"><Trash2 className="w-5 h-5" /></button>}
-                    </div>
+                <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black relative">
                     
-                    <div className="space-y-4">
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
-                            {['BUY', 'SELL'].map(t => (
-                                <button key={t} onClick={() => setType(t as any)} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${type === t ? (t === 'BUY' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-rose-500 text-white shadow-lg') : 'text-zinc-400'}`}>
-                                    {t === 'BUY' ? 'Compra' : 'Venda'}
+                    {/* Header Colorido Dinâmico */}
+                    <div className={`pt-6 pb-8 px-6 rounded-b-[2rem] transition-colors duration-300 ${type === 'BUY' ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-rose-500/20'} shadow-lg mb-4`}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-black">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
+                            {editingId && (
+                                <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2 bg-white/20 rounded-xl hover:bg-white/30 transition-colors">
+                                    <Trash2 className="w-5 h-5 text-white" />
                                 </button>
-                            ))}
+                            )}
                         </div>
+                        <div className="flex bg-black/10 p-1 rounded-xl backdrop-blur-sm">
+                            <button onClick={() => setType('BUY')} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${type === 'BUY' ? 'bg-white text-emerald-600 shadow-md' : 'text-white/70 hover:text-white'}`}>Compra</button>
+                            <button onClick={() => setType('SELL')} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${type === 'SELL' ? 'bg-white text-rose-600 shadow-md' : 'text-white/70 hover:text-white'}`}>Venda</button>
+                        </div>
+                    </div>
 
-                        <div>
-                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Ativo</label>
-                            <div className="flex gap-2 mt-1">
-                                <input type="text" value={ticker} onChange={e => { setTicker(e.target.value.toUpperCase()); if (!editingId && e.target.value.endsWith('11')) setAssetType(AssetType.FII); }} placeholder="ABCD11" className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-lg font-black uppercase outline-none focus:border-zinc-400 dark:focus:border-zinc-600" />
-                                <button onClick={() => setAssetType(assetType === AssetType.FII ? AssetType.STOCK : AssetType.FII)} className="px-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-bold border border-zinc-200 dark:border-zinc-700 min-w-[60px]">
-                                    {assetType === AssetType.FII ? 'FII' : 'AÇÃO'}
-                                </button>
+                    <div className="px-6 space-y-5 pb-20">
+                        {/* Input Ticker */}
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+                            <div className="flex-1">
+                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Código do Ativo</label>
+                                <input 
+                                    type="text" 
+                                    value={ticker} 
+                                    onChange={e => { 
+                                        const val = e.target.value.toUpperCase();
+                                        setTicker(val); 
+                                        if (!editingId) {
+                                            if (val.endsWith('11') || val.endsWith('11B')) setAssetType(AssetType.FII);
+                                            else if (val.length >= 5) setAssetType(AssetType.STOCK);
+                                        }
+                                    }} 
+                                    placeholder="PETR4" 
+                                    className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300 uppercase"
+                                />
+                            </div>
+                            <div className="flex gap-1">
+                                <button onClick={() => setAssetType(AssetType.STOCK)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${assetType === AssetType.STOCK ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent' : 'bg-transparent text-zinc-400 border-zinc-200 dark:border-zinc-700'}`}>Ação</button>
+                                <button onClick={() => setAssetType(AssetType.FII)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${assetType === AssetType.FII ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent' : 'bg-transparent text-zinc-400 border-zinc-200 dark:border-zinc-700'}`}>FII</button>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Qtd</label>
-                                <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-lg font-bold outline-none" />
+                        {/* Grid Quantidade e Preço */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Quantidade</label>
+                                <input 
+                                    type="number" 
+                                    value={quantity} 
+                                    onChange={e => setQuantity(e.target.value)} 
+                                    placeholder="0" 
+                                    className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300" 
+                                />
                             </div>
-                            <div>
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Preço</label>
-                                <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-lg font-bold outline-none" />
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Preço Unitário</label>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-zinc-400 font-medium text-sm">R$</span>
+                                    <input 
+                                        type="number" 
+                                        value={price} 
+                                        onChange={e => setPrice(e.target.value)} 
+                                        placeholder="0.00" 
+                                        className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300" 
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        <div>
-                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Data</label>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full mt-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm font-bold outline-none" />
+                        {/* Data */}
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-3">
+                            <Calendar className="w-5 h-5 text-zinc-400" />
+                            <div className="flex-1">
+                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Data da Operação</label>
+                                <input 
+                                    type="date" 
+                                    value={date} 
+                                    onChange={e => setDate(e.target.value)} 
+                                    className="w-full bg-transparent text-sm font-bold text-zinc-900 dark:text-white outline-none pt-0.5" 
+                                />
+                            </div>
                         </div>
 
-                        <div className="pt-4">
-                            <div className="flex justify-between items-center mb-4 px-2">
-                                <span className="text-xs font-bold text-zinc-500">Total Estimado</span>
-                                <span className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(estimatedTotal)}</span>
-                            </div>
-                            <button onClick={handleSave} disabled={isSaving || !ticker || !quantity || !price} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50">
-                                {isSaving ? 'Salvando...' : 'Confirmar'}
-                            </button>
+                        {/* Total Estimado */}
+                        <div className="flex items-center justify-between px-2 pt-2">
+                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Total da Ordem</span>
+                            <span className={`text-2xl font-black ${type === 'BUY' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {formatBRL(estimatedTotal)}
+                            </span>
                         </div>
+
+                        <button 
+                            onClick={handleSave} 
+                            disabled={isSaving || !ticker || !quantity || !price} 
+                            className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors ${type === 'BUY' ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'}`}
+                        >
+                            {isSaving ? 'Salvando...' : editingId ? 'Atualizar Ordem' : 'Confirmar Ordem'}
+                        </button>
                     </div>
                 </div>
             </SwipeableModal>

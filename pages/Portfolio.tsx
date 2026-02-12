@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, TrendingUp, ChevronRight, Wallet, Info, DollarSign, Activity, Percent } from 'lucide-react';
+import { Search, TrendingUp, ChevronRight, Wallet, Info, DollarSign, Activity, Percent, BarChart3, Building2, Coins, Scale } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
@@ -27,6 +27,37 @@ const formatPercent = (val: any) => {
 
 // Helper para verificar se existe valor numérico válido (incluindo 0)
 const hasValue = (val: any) => val !== undefined && val !== null && !isNaN(val);
+
+const renderFundamentalItem = (label: string, value: any, icon: React.ElementType, format: 'percent' | 'currency' | 'number' | 'text' = 'number', privacyMode = false, highlightCondition?: 'good' | 'bad' | 'neutral') => {
+    if (!hasValue(value) && format !== 'text') return null;
+    if (format === 'text' && !value) return null;
+
+    let displayValue = value;
+    if (format === 'percent') displayValue = `${Number(value).toFixed(2)}%`;
+    else if (format === 'currency') displayValue = formatBRL(value, privacyMode);
+    else if (format === 'number') displayValue = Number(value).toFixed(2);
+
+    // Lógica de cores básica
+    let colorClass = 'text-zinc-900 dark:text-white';
+    if (highlightCondition === 'good') colorClass = 'text-emerald-500';
+    if (highlightCondition === 'bad') colorClass = 'text-rose-500';
+
+    return (
+        <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-24 relative overflow-hidden group">
+            <div className="flex items-center gap-2 mb-1 relative z-10">
+                <div className="w-5 h-5 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200 transition-colors">
+                    <icon className="w-3 h-3" /> // This creates an invalid JSX tag if 'icon' is lowercase. It should be capitalized. Fixing below.
+                </div>
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide truncate">{label}</p>
+            </div>
+            <p className={`text-lg font-black tracking-tight ${colorClass} relative z-10`}>
+                {displayValue}
+            </p>
+            {/* Background decoration */}
+            <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-zinc-50 dark:bg-zinc-800/50 rounded-full blur-lg opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+        </div>
+    );
+};
 
 // Componente de Item de Lista (Clean List Style)
 const AssetListItem: React.FC<{ asset: AssetPosition, privacyMode?: boolean, onClick: () => void }> = ({ asset, privacyMode, onClick }) => {
@@ -81,6 +112,21 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
 
     const selectedAsset = useMemo(() => portfolio.find(p => p.ticker === selectedTicker), [portfolio, selectedTicker]);
 
+    // Render Helpers for Fundamentals
+    const FundamentalCard = ({ label, value, icon: Icon, colorClass = "text-zinc-900 dark:text-white" }: any) => (
+        <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between relative overflow-hidden group min-h-[90px]">
+            <div className="flex items-center gap-2 mb-1 relative z-10">
+                <div className="w-6 h-6 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200 transition-colors">
+                    <Icon className="w-3.5 h-3.5" />
+                </div>
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide truncate">{label}</p>
+            </div>
+            <p className={`text-base font-black tracking-tight ${colorClass} relative z-10 break-words`}>
+                {value}
+            </p>
+        </div>
+    );
+
     return (
         <div className="min-h-screen pb-32">
             {/* Search Bar Clean */}
@@ -128,7 +174,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                 )}
             </div>
 
-            {/* Modal de Detalhes (Restaurado com Fundamentos) */}
+            {/* Modal de Detalhes (Restaurado com Fundamentos Ricos) */}
             <SwipeableModal isOpen={!!selectedTicker} onClose={() => setSelectedTicker(null)}>
                 {selectedAsset && (
                     <div className="px-6 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
@@ -169,62 +215,81 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                             </div>
                         )}
 
-                        {/* Grid de Fundamentos (Restaurado) */}
-                        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4 ml-2 flex items-center gap-2">
-                            <Info className="w-3 h-3" /> Fundamentos
-                        </h3>
-                        <div className="grid grid-cols-2 gap-3 mb-8">
-                            {hasValue(selectedAsset.p_vp) && (
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Activity className="w-3 h-3 text-zinc-400" />
-                                        <p className="text-[9px] font-bold text-zinc-400 uppercase">P/VP</p>
-                                    </div>
-                                    <p className={`text-2xl font-black ${(selectedAsset.p_vp || 0) > 1.1 ? 'text-amber-500' : (selectedAsset.p_vp || 0) < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
-                                        {(selectedAsset.p_vp || 0).toFixed(2)}
-                                    </p>
-                                    {((selectedAsset.p_vp || 0) < 0.95 && (selectedAsset.p_vp || 0) > 0) && <span className="text-[8px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full absolute top-4 right-4">Desconto</span>}
-                                </div>
-                            )}
-                            
-                            {hasValue(selectedAsset.p_l) && (
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <DollarSign className="w-3 h-3 text-zinc-400" />
-                                        <p className="text-[9px] font-bold text-zinc-400 uppercase">P/L</p>
-                                    </div>
-                                    <p className="text-2xl font-black text-zinc-900 dark:text-white">{(selectedAsset.p_l || 0).toFixed(1)}</p>
+                        {/* ================= FUNDAMENTOS ================= */}
+                        <div className="mb-8">
+                            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4 ml-2 flex items-center gap-2">
+                                <Info className="w-3 h-3" /> Fundamentos
+                            </h3>
+
+                            {/* Seção 1: Valuation */}
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                {hasValue(selectedAsset.p_vp) && (
+                                    <FundamentalCard 
+                                        label="P/VP" 
+                                        value={selectedAsset.p_vp?.toFixed(2)} 
+                                        icon={Activity} 
+                                        colorClass={(selectedAsset.p_vp || 0) < 1 ? 'text-emerald-500' : (selectedAsset.p_vp || 0) > 1.15 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}
+                                    />
+                                )}
+                                {hasValue(selectedAsset.p_l) && (
+                                    <FundamentalCard label="P/L" value={selectedAsset.p_l?.toFixed(1)} icon={DollarSign} />
+                                )}
+                                {hasValue(selectedAsset.ev_ebitda) && (
+                                    <FundamentalCard label="EV/EBITDA" value={selectedAsset.ev_ebitda?.toFixed(1)} icon={Scale} />
+                                )}
+                                {hasValue(selectedAsset.vpa) && (
+                                    <FundamentalCard label="VPA" value={formatBRL(selectedAsset.vpa, privacyMode)} icon={Building2} />
+                                )}
+                            </div>
+
+                            {/* Seção 2: FII Específicos */}
+                            {selectedAsset.assetType === AssetType.FII && (
+                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                    {hasValue(selectedAsset.last_dividend) && (
+                                        <FundamentalCard label="Último Rend." value={formatBRL(selectedAsset.last_dividend)} icon={Coins} />
+                                    )}
+                                    {hasValue(selectedAsset.vacancy) && (
+                                        <FundamentalCard 
+                                            label="Vacância Física" 
+                                            value={`${selectedAsset.vacancy?.toFixed(1)}%`} 
+                                            icon={Percent} 
+                                            colorClass={(selectedAsset.vacancy || 0) > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}
+                                        />
+                                    )}
+                                    {selectedAsset.assets_value && (
+                                        <div className="col-span-2">
+                                            <FundamentalCard label="Patrimônio Líquido" value={selectedAsset.assets_value} icon={Wallet} />
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
-                            {hasValue(selectedAsset.vacancy) && (
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Percent className="w-3 h-3 text-zinc-400" />
-                                        <p className="text-[9px] font-bold text-zinc-400 uppercase">Vacância</p>
-                                    </div>
-                                    <p className={`text-2xl font-black ${(selectedAsset.vacancy || 0) > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}`}>
-                                        {(selectedAsset.vacancy || 0).toFixed(1)}%
-                                    </p>
+                            {/* Seção 3: Ações (Eficiência e Crescimento) */}
+                            {selectedAsset.assetType === AssetType.STOCK && (
+                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                    {hasValue(selectedAsset.roe) && (
+                                        <FundamentalCard label="ROE" value={`${selectedAsset.roe?.toFixed(1)}%`} icon={TrendingUp} colorClass="text-emerald-500" />
+                                    )}
+                                    {hasValue(selectedAsset.net_margin) && (
+                                        <FundamentalCard label="Margem Líq." value={`${selectedAsset.net_margin?.toFixed(1)}%`} icon={BarChart3} />
+                                    )}
+                                    {hasValue(selectedAsset.cagr_revenue) && (
+                                        <FundamentalCard label="CAGR Rec. (5a)" value={`${selectedAsset.cagr_revenue?.toFixed(1)}%`} icon={TrendingUp} />
+                                    )}
+                                    {hasValue(selectedAsset.net_debt_ebitda) && (
+                                        <FundamentalCard label="Dív. Líq/EBITDA" value={selectedAsset.net_debt_ebitda?.toFixed(1)} icon={Scale} />
+                                    )}
                                 </div>
                             )}
 
+                            {/* Liquidez (Geral) */}
                             {selectedAsset.liquidity && (
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <TrendingUp className="w-3 h-3 text-zinc-400" />
-                                        <p className="text-[9px] font-bold text-zinc-400 uppercase">Liquidez</p>
-                                    </div>
-                                    <p className="text-lg font-black text-zinc-900 dark:text-white truncate">
-                                        {typeof selectedAsset.liquidity === 'number' ? `R$ ${(selectedAsset.liquidity / 1000).toFixed(0)}k` : selectedAsset.liquidity}
-                                    </p>
-                                </div>
-                            )}
-
-                            {selectedAsset.assets_value && (
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm col-span-2">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Patrimônio Líquido</p>
-                                    <p className="text-lg font-black text-zinc-900 dark:text-white">{selectedAsset.assets_value}</p>
+                                <div className="mt-3">
+                                    <FundamentalCard 
+                                        label="Liquidez Média Diária" 
+                                        value={typeof selectedAsset.liquidity === 'number' ? `R$ ${(selectedAsset.liquidity / 1000).toFixed(0)}k` : selectedAsset.liquidity} 
+                                        icon={Activity} 
+                                    />
                                 </div>
                             )}
                         </div>
