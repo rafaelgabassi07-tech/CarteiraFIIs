@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '9.2.0'; // Updated Version
+const APP_VERSION = '9.2.1'; // Bump Version
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -29,7 +29,7 @@ const STORAGE_KEYS = {
   INDICATORS: 'investfiis_v4_indicators',
   PUSH_ENABLED: 'investfiis_push_enabled',
   NOTIF_HISTORY: 'investfiis_notification_history_v3',
-  METADATA: 'investfiis_metadata_v2',
+  METADATA: 'investfiis_metadata_v2', // Chave crítica para cache de fundamentos
   LAST_AUTO_SYNC: 'investfiis_last_auto_sync'
 };
 
@@ -75,7 +75,7 @@ const App: React.FC = () => {
   const toastTimeoutRef = useRef<number | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
   
-  // Dados
+  // Dados - Inicialização Lazy com LocalStorage para performance imediata
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.QUOTES); return s ? JSON.parse(s) : {}; } catch { return {}; } });
@@ -83,12 +83,18 @@ const App: React.FC = () => {
       try { 
           const s = localStorage.getItem(STORAGE_KEYS.DIVS); 
           const parsed = s ? JSON.parse(s) : []; 
-          // Sanitização Pró-ativa: Filtra datas inválidas ou "A Definir" que podem quebrar o render
           return Array.isArray(parsed) ? parsed.filter(d => d.paymentDate && /^\d{4}-\d{2}-\d{2}$/.test(d.paymentDate)) : [];
       } catch { return []; } 
   });
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.62, startDate: '' }; } catch { return { ipca: 4.62, startDate: '' }; } });
-  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.METADATA); return s ? JSON.parse(s) : {}; } catch { return {}; } });
+  
+  // Cacheamento de Metadados (Fundamentos: DY, PVP, Vacância, etc.)
+  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => { 
+      try { 
+          const s = localStorage.getItem(STORAGE_KEYS.METADATA); 
+          return s ? JSON.parse(s) : {}; 
+      } catch { return {}; } 
+  });
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCheckingServices, setIsCheckingServices] = useState(false);
@@ -100,7 +106,7 @@ const App: React.FC = () => {
   ]);
   const [services, setServices] = useState<ServiceMetric[]>(servicesRef.current);
 
-  // Effects de Persistência
+  // Effects de Persistência - Salva automaticamente sempre que o estado muda
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(dividends)); }, [dividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
@@ -163,22 +169,19 @@ const App: React.FC = () => {
       const checkUrl = async (url: string) => {
           const start = Date.now();
           try {
-              await fetch(url, { method: 'HEAD', mode: 'no-cors' }); // no-cors para evitar bloqueio, apenas ping
+              await fetch(url, { method: 'HEAD', mode: 'no-cors' }); 
               return Date.now() - start;
           } catch {
               return null;
           }
       };
 
-      // 1. Supabase (DB)
       const dbPing = await checkUrl(SUPABASE_URL || '');
       newServices[0] = { ...newServices[0], status: dbPing ? 'operational' : 'error', latency: dbPing };
 
-      // 2. Brapi (Market)
       const marketPing = await checkUrl('https://brapi.dev');
       newServices[1] = { ...newServices[1], status: marketPing ? 'operational' : 'degraded', latency: marketPing };
 
-      // 3. CDN (Local)
       newServices[2] = { ...newServices[2], status: 'operational', latency: 10 };
 
       setServices(newServices);
@@ -193,6 +196,7 @@ const App: React.FC = () => {
     if (initialLoad) setLoadingProgress(50);
     
     try {
+      // 1. Cotações (Brapi) - Atualização Rápida
       const { quotes: newQuotesData } = await getQuotes(tickers);
       if (newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
@@ -201,6 +205,10 @@ const App: React.FC = () => {
       if (initialLoad) setLoadingProgress(70); 
       
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
+      
+      // 2. Fundamentos e Dividendos (Supabase + Scraper)
+      // Aqui removemos a trava de tempo. A função fetchUnifiedMarketData decide inteligentemente se precisa do scraper.
+      // O 'force' aqui é apenas um sinalizador manual do usuário, mas o fetchUnifiedMarketData tem sua própria lógica de 'staleness'.
       let data = await fetchUnifiedMarketData(tickers, startDate, force);
 
       if (data.dividends.length > 0) {
@@ -217,7 +225,7 @@ const App: React.FC = () => {
          setMarketIndicators({ ipca: data.indicators.ipca_cumulative || 4.62, startDate: data.indicators.start_date_used });
       }
       
-      if (force) localStorage.setItem(STORAGE_KEYS.LAST_AUTO_SYNC, Date.now().toString());
+      localStorage.setItem(STORAGE_KEYS.LAST_AUTO_SYNC, Date.now().toString());
       if (initialLoad) setLoadingProgress(100); 
 
     } catch (e) { console.error(e); } finally { setIsRefreshing(false); }
@@ -247,12 +255,11 @@ const App: React.FC = () => {
         setTimeout(() => setCloudStatus('hidden'), 3000);
         
         if (cloudTxs.length > 0) {
-            const lastSyncStr = localStorage.getItem(STORAGE_KEYS.LAST_AUTO_SYNC);
-            const lastSync = lastSyncStr ? parseInt(lastSyncStr) : 0;
-            const now = Date.now();
-            const shouldForce = (now - lastSync) > 1000 * 60 * 60 * 1; 
+            // REMOVIDA: A lógica que impedia o sync se fosse recente.
+            // Agora, ao carregar as transações, SEMPRE disparamos a verificação de integridade dos dados.
+            // O controle de "spam" é feito internamente pelo fetchUnifiedMarketData (verifica data de cada ativo).
             
-            await syncMarketData(shouldForce, cloudTxs, initialLoad);
+            await syncMarketData(false, cloudTxs, initialLoad);
         } else {
              if (initialLoad) setLoadingProgress(100);
         }

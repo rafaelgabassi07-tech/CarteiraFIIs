@@ -25,7 +25,7 @@ export interface FutureDividendPrediction {
 }
 
 const getTTL = () => {
-    return 4 * 60 * 60 * 1000; 
+    return 4 * 60 * 60 * 1000; // 4 Horas
 };
 
 const isStale = (dateString?: string) => {
@@ -183,8 +183,6 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
     const startOfYear = `${new Date().getFullYear()}-01-01`;
 
     try {
-        // 1. Dados Confirmados ("O Martelo do Supabase")
-        // Trazemos tudo para o cliente filtrar, é mais seguro contra fuso horário do DB
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
@@ -198,7 +196,6 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
         
         const predictions: FutureDividendPrediction[] = [];
         
-        // Data de corte: Ontem (para não perder eventos de fuso horário de "hoje")
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - 1);
         const cutoffTime = cutoffDate.getTime();
@@ -212,20 +209,15 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
                 if (!asset || asset.quantity <= 0) return;
 
-                // --- LÓGICA DE AGENDA ---
-                // Verifica se é um evento relevante (Futuro ou Recente)
                 let isRelevant = false;
                 
-                // Pagamento
                 if (div.payment_date) {
                     const payDate = parseDateToLocal(div.payment_date);
                     if (payDate && payDate.getTime() >= cutoffTime) isRelevant = true;
                 } else {
-                    // Sem data de pagamento = A Definir (Relevante)
                     isRelevant = true;
                 }
 
-                // Data Com (Se não pagou ainda, data com futura também é relevante)
                 if (!isRelevant && div.date_com) {
                     const dCom = parseDateToLocal(div.date_com);
                     if (dCom && dCom.getTime() >= cutoffTime) isRelevant = true;
@@ -276,6 +268,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker)));
 
   try {
+      // 1. Fetch DB Data (Priority)
       let [divResponse, metaResponse] = await Promise.all([
           supabase.from('market_dividends').select('*').in('ticker', uniqueTickers),
           supabase.from('ativos_metadata').select('*').in('ticker', uniqueTickers)
@@ -287,39 +280,44 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       const metadataMap: Record<string, any> = {};
       metaData.forEach((m: any) => { metadataMap[normalizeTicker(m.ticker)] = m; });
 
+      // 2. Identify Stale Assets
       const missingOrStale = uniqueTickers.filter(t => {
           const m = metadataMap[t];
+          // Check for missing data OR stale timestamp (> 4 hours) OR critical zeros (DY=0 is suspicious)
+          const isExpired = m && m.updated_at && isStale(m.updated_at);
           const hasSuspiciousData = m && (m.dy_12m === 0 || m.dy_12m === null || m.dy_12m === undefined || m.dy_12m === '0');
-          return !m || (m.updated_at && isStale(m.updated_at)) || hasSuspiciousData;
+          
+          return !m || isExpired || hasSuspiciousData;
       });
 
       const toUpdate = forceRefresh ? uniqueTickers : missingOrStale;
 
+      // 3. Trigger Background Updates (Only if needed)
       if (toUpdate.length > 0) {
-          if (forceRefresh) {
-              const results = await triggerScraperUpdate(toUpdate, true);
-              results.forEach(r => {
-                  if (r.status === 'success' && r.rawFundamentals) {
-                      metadataMap[normalizeTicker(r.ticker)] = r.rawFundamentals;
-                      if (r.dividendsFound && r.dividendsFound.length > 0) {
-                          const newDivs = r.dividendsFound.map((d: any) => ({
-                              ticker: r.ticker,
-                              type: d.type,
-                              date_com: d.date_com,
-                              payment_date: d.payment_date,
-                              rate: d.rate
-                          }));
-                          dividendsData = [...dividendsData, ...newDivs];
-                      }
+          console.log(`[DataService] Updating ${toUpdate.length} assets in background...`);
+          
+          const results = await triggerScraperUpdate(toUpdate, true);
+          
+          // Apply new data to current session immediately
+          results.forEach(r => {
+              if (r.status === 'success' && r.rawFundamentals) {
+                  metadataMap[normalizeTicker(r.ticker)] = r.rawFundamentals;
+                  if (r.dividendsFound && r.dividendsFound.length > 0) {
+                      const newDivs = r.dividendsFound.map((d: any) => ({
+                          ticker: r.ticker,
+                          type: d.type,
+                          date_com: d.date_com,
+                          payment_date: d.payment_date,
+                          rate: d.rate
+                      }));
+                      // Merge avoids duplicates in memory
+                      dividendsData = [...dividendsData, ...newDivs];
                   }
-              });
-          } else {
-              triggerScraperUpdate(toUpdate, true).then(results => {
-                  console.log(`[DataService] Auto-correction triggered for ${results.length} assets`);
-              });
-          }
+              }
+          });
       }
 
+      // 4. Format Output
       const dividends: DividendReceipt[] = dividendsData.map((d: any) => ({
             id: d.id || `${d.ticker}-${d.date_com}-${d.rate}`,
             ticker: normalizeTicker(d.ticker),
