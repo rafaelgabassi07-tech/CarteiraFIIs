@@ -33,9 +33,9 @@ const STORAGE_KEYS = {
   LAST_AUTO_SYNC: 'investfiis_last_auto_sync'
 };
 
-// Helper para merge inteligente de dividendos
 const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[]) => {
     const map = new Map<string, DividendReceipt>();
+    // Chave única composta: Ticker + Tipo + DataCom + Valor
     current.forEach(d => { const key = `${normalizeTicker(d.ticker)}-${d.type}-${d.dateCom}-${d.rate}`; map.set(key, d); });
     incoming.forEach(d => { const key = `${normalizeTicker(d.ticker)}-${d.type}-${d.dateCom}-${d.rate}`; map.set(key, d); });
     return Array.from(map.values());
@@ -60,7 +60,6 @@ const App: React.FC = () => {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [updateResults, setUpdateResults] = useState<UpdateReportData | null>(null);
 
-  // Prefs
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#10b981'); 
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
@@ -70,7 +69,6 @@ const App: React.FC = () => {
   const toastTimeoutRef = useRef<number | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
   
-  // Dados
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.QUOTES); return s ? JSON.parse(s) : {}; } catch { return {}; } });
@@ -91,7 +89,6 @@ const App: React.FC = () => {
   });
 
   const [isCheckingServices, setIsCheckingServices] = useState(false);
-  
   const servicesRef = useRef<ServiceMetric[]>([
     { id: 'db', label: 'Supabase Database', url: SUPABASE_URL, icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
     { id: 'market', label: 'Brapi Market Data', url: 'https://brapi.dev', icon: Activity, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
@@ -99,7 +96,6 @@ const App: React.FC = () => {
   ]);
   const [services, setServices] = useState<ServiceMetric[]>(servicesRef.current);
 
-  // Effects de Persistência
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(dividends)); }, [dividends]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); }, [quotes]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
@@ -185,9 +181,6 @@ const App: React.FC = () => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) return;
     
-    if (force && !initialLoad) { 
-        // Lógica de loading manual se necessário
-    }
     if (initialLoad) setLoadingProgress(50);
     
     try {
@@ -220,7 +213,7 @@ const App: React.FC = () => {
       if (initialLoad) setLoadingProgress(100); 
 
     } catch (e) { console.error(e); } 
-  }, [dividends, assetsMetadata]);
+  }, []);
 
   const refreshSingleAsset = useCallback(async (ticker: string) => {
       try {

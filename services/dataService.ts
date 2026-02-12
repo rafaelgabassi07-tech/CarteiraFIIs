@@ -59,7 +59,6 @@ const parseNumberSafe = (val: any): number | undefined => {
     return isNaN(num) ? undefined : num;
 };
 
-// MAPEADOR CORRIGIDO PARA O NOVO SCRAPER
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
     const getVal = (...keys: string[]): any => {
         for (const k of keys) {
@@ -129,7 +128,6 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
     const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker)));
     const results: ScrapeResult[] = [];
     
-    // Batch processing (3 tickers por vez)
     const BATCH_SIZE = 3;
     for (let i = 0; i < uniqueTickers.length; i += BATCH_SIZE) {
         const batch = uniqueTickers.slice(i, i + BATCH_SIZE);
@@ -162,14 +160,13 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
         }));
 
         if (i + BATCH_SIZE < uniqueTickers.length) {
-            await new Promise(r => setTimeout(r, 1500)); // Delay para não sobrecarregar API
+            await new Promise(r => setTimeout(r, 1500));
         }
     }
     
     return results;
 };
 
-// ... Resto do arquivo (fetchFutureAnnouncements, fetchUnifiedMarketData) permanece igual ...
 export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Promise<FutureDividendPrediction[]> => {
     if (!portfolio || portfolio.length === 0) return [];
 
@@ -179,13 +176,16 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
     const todayStr = today.toISOString().split('T')[0];
 
     try {
-        // Query melhorada: Busca tudo que tem Data Com OU Pagamento >= Hoje, ou Pagamento nulo
+        // Query Fundamental:
+        // 1. Pagamento futuro (>= hoje)
+        // 2. Data Com futura (>= hoje)
+        // 3. Pagamento nulo (NULL) - significa "A Definir" na base
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
             .in('ticker', tickers)
             .or(`payment_date.gte.${todayStr},date_com.gte.${todayStr},payment_date.is.null`)
-            .order('payment_date', { ascending: true });
+            .order('date_com', { ascending: false });
 
         if (error) { console.error('[Robot] Error fetching confirmed data:', error); }
         
@@ -200,14 +200,14 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
                 const payDate = div.payment_date ? parseDateToLocal(div.payment_date) : null;
 
-                // Regras de relevância para o Robô:
-                // 1. Se pagamento é futuro
-                // 2. Se pagamento é indefinido e data com já passou (está em aprovação)
-                // 3. Se data com é futura
+                // Lógica de Relevância
                 let isRelevant = false;
-                if (payDate && payDate >= today) isRelevant = true;
-                if (!div.payment_date) isRelevant = true; 
-                if (dateCom && dateCom >= today) isRelevant = true;
+                if (payDate && payDate >= today) isRelevant = true; // Pagamento futuro
+                if (!div.payment_date) isRelevant = true; // Pagamento a definir (null)
+                if (dateCom && dateCom >= today) isRelevant = true; // Data com futura
+
+                // Filtro extra: Se já pagou (pagamento < hoje e não é null), ignora
+                if (payDate && payDate < today) isRelevant = false;
 
                 if (!isRelevant) return;
 
@@ -222,7 +222,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 predictions.push({
                     ticker: normalizedTicker,
                     dateCom: div.date_com || 'Já ocorreu',
-                    paymentDate: div.payment_date || 'A Definir', // Garante string 'A Definir' se nulo
+                    paymentDate: div.payment_date || 'A Definir', 
                     rate: rate,
                     quantity: asset.quantity,
                     projectedTotal: total,
@@ -234,15 +234,11 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
             });
         }
         
+        // Ordenação inteligente: Primeiro os que têm data, depois os "A Definir"
         return predictions.sort((a,b) => {
-            // Lógica de ordenação robusta:
-            // Prioriza data de pagamento se existir, senão data com.
-            const getSortDate = (p: FutureDividendPrediction) => {
-                if (p.paymentDate !== 'A Definir') return p.paymentDate;
-                if (p.dateCom !== 'Já ocorreu') return p.dateCom;
-                return '9999-99-99';
-            };
-            return getSortDate(a).localeCompare(getSortDate(b));
+            const dateA = a.paymentDate === 'A Definir' ? '9999-99-99' : a.paymentDate;
+            const dateB = b.paymentDate === 'A Definir' ? '9999-99-99' : b.paymentDate;
+            return dateA.localeCompare(dateB);
         });
     } catch (e) {
         console.error("[Robot] Fatal error:", e);
@@ -270,8 +266,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       const missingOrStale = uniqueTickers.filter(t => {
           const m = metadataMap[t];
           const isExpired = m && m.updated_at && isStale(m.updated_at);
-          const hasSuspiciousData = m && (m.dy_12m === 0 || m.dy_12m === null || m.dy_12m === undefined || m.dy_12m === '0');
-          return !m || isExpired || hasSuspiciousData;
+          // Força refresh se não tiver DY ou Preço, indicando dado incompleto
+          const isIncomplete = m && (!m.dy_12m || !m.current_price);
+          return !m || isExpired || isIncomplete;
       });
 
       const toUpdate = forceRefresh ? uniqueTickers : missingOrStale;
@@ -301,14 +298,15 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             ticker: normalizeTicker(d.ticker),
             type: d.type,
             dateCom: d.date_com, 
-            paymentDate: d.payment_date,
+            paymentDate: d.payment_date, // Pode vir null do DB
             rate: Number(d.rate),
             quantityOwned: 0, 
             totalReceived: 0
       }));
 
+      // Deduplicação básica
       const uniqueDividends = Array.from(new Map(dividends.map(item => [
-          `${item.ticker}-${item.dateCom}-${item.rate}`, item
+          `${item.ticker}-${item.dateCom}-${item.rate}-${item.type}`, item
       ])).values());
 
       const metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};

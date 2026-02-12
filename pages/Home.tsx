@@ -115,12 +115,12 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
     }
 
     // Identificador visual se for data estimada (1969/1970 ou muito distante) ou "A Definir"
-    const isPendingDate = event.date.startsWith('19') || event.date === '9999-99-99';
+    const isPendingDate = event.date.startsWith('19') || event.date === '9999-99-99' || event.date === 'A Definir';
 
     return (
         <div className={`flex items-center justify-between p-3 rounded-2xl border mb-1.5 shadow-sm transition-all ${isDatacom ? 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
             <div className="flex items-center gap-3">
-                <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl ${isDatacom ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'}`}>
+                <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl ${isDatacom ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500' : isPendingDate ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'}`}>
                     <span className="text-[8px] font-bold uppercase leading-none opacity-80">{isPendingDate ? '??' : weekDay}</span>
                     <span className="text-sm font-black leading-tight">{isPendingDate ? '--' : day}</span>
                 </div>
@@ -130,7 +130,7 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
                         <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isDatacom ? 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400' : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'}`}>
                             {isDatacom ? 'Data Com' : event.type}
                         </span>
-                        {isPendingDate && <span className="text-[8px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1 rounded">A Definir</span>}
+                        {isPendingDate && !isDatacom && <span className="text-[8px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-1 rounded">A Definir</span>}
                     </div>
                 </div>
             </div>
@@ -255,7 +255,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   if (!seenKeys.has(key)) {
                       // Se for Data Com, sempre adiciona se for futura
                       // Se for Pagamento, só adiciona se for futuro OU se a data for inválida (A Definir)
-                      const isFuture = date >= todayStr || date.startsWith('9999');
+                      const isFuture = date >= todayStr || date.startsWith('9999') || date === 'A Definir';
                       if (isFuture) {
                           atomEvents.push({ id: key, ticker, type, eventType: evtType, date, amount, rate: rate }); 
                           seenKeys.add(key);
@@ -303,14 +303,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           events = events.filter(e => e.eventType === agendaFilter);
       }
       
-      const totalConfirmed = events.reduce((acc, e) => e.eventType === 'PAYMENT' && e.date !== '9999-99-99' ? acc + e.amount : acc, 0);
+      const totalConfirmed = events.reduce((acc, e) => e.eventType === 'PAYMENT' ? acc + e.amount : acc, 0);
       
       const grouped: Record<string, RadarEvent[]> = {};
       events.forEach(ev => {
           try {
               let keyCap = 'A Definir';
               
-              if (ev.date !== '9999-99-99' && /^\d{4}-\d{2}-\d{2}$/.test(ev.date)) {
+              if (ev.date !== '9999-99-99' && ev.date !== 'A Definir' && /^\d{4}-\d{2}-\d{2}$/.test(ev.date)) {
                   const d = new Date(ev.date + 'T12:00:00');
                   if (!isNaN(d.getTime())) {
                       const monthKey = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -354,7 +354,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const { chartData, groupedProventos, proventosTotal, proventosAverage, availableYears } = useMemo(() => {
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // Filtro Rígido: Apenas pagamentos até HOJE
+      // Filtro Rígido: Apenas pagamentos até HOJE e com data válida
       const filteredReceipts = dividendReceipts.filter(r => {
           if (!r.paymentDate || !/^\d{4}-\d{2}-\d{2}$/.test(r.paymentDate)) return false;
           if (r.paymentDate > todayStr) return false; // Ignora futuros

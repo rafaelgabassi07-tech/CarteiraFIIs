@@ -10,11 +10,12 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
-// Lista rotativa de User-Agents para evitar bloqueio
+// Lista rotativa expandida de User-Agents
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1'
 ];
 
 const httpsAgent = new https.Agent({ 
@@ -24,17 +25,15 @@ const httpsAgent = new https.Agent({
 
 const client = axios.create({
     httpsAgent,
-    timeout: 15000, 
+    timeout: 20000, 
     maxRedirects: 5
 });
 
-// Normaliza strings para facilitar a busca (remove acentos, lowercase)
 function normalize(str: string) {
     if (!str) return '';
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
-// Parser numérico agressivo
 function parseValue(valueStr: any): number | null {
     if (typeof valueStr === 'number') return valueStr;
     if (!valueStr) return null;
@@ -42,17 +41,13 @@ function parseValue(valueStr: any): number | null {
     let str = String(valueStr).trim();
     if (str === '-' || str === '--' || str.toLowerCase() === 'n/a') return null;
 
-    // Multiplicadores
     let multiplier = 1;
     if (str.toUpperCase().endsWith('K')) multiplier = 1e3;
     if (str.toUpperCase().endsWith('M')) multiplier = 1e6;
     if (str.toUpperCase().endsWith('B')) multiplier = 1e9;
 
-    // Limpeza
-    str = str.replace(/[R$%\sA-Za-z]/g, ''); // Remove R$, %, letras e espaços
+    str = str.replace(/[R$%\sA-Za-z]/g, ''); 
     
-    // Tratamento de pontuação BR (1.000,00) -> US (1000.00)
-    // Se tiver vírgula, assume que é decimal
     if (str.includes(',')) {
         str = str.replace(/\./g, '').replace(',', '.');
     }
@@ -61,25 +56,21 @@ function parseValue(valueStr: any): number | null {
     return isNaN(num) ? null : num * multiplier;
 }
 
-// Mapeamento de Labels visuais para chaves do Banco de Dados
 function getKeyFromLabel(label: string): string | null {
     const n = normalize(label);
     if (!n) return null;
 
-    // FIIs & Ações - Comuns
     if (n === 'p/vp' || n === 'vp') return 'pvp';
     if (n.includes('dividend yield') || n === 'dy') return 'dy';
     if (n.includes('cotacao') || n.includes('valor atual')) return 'cotacao_atual';
     if (n.includes('liquidez')) return 'liquidez';
     if (n === 'valor de mercado') return 'val_mercado';
     
-    // FIIs - Específicos
     if (n.includes('vacancia fisica') || n === 'vacancia') return 'vacancia';
     if (n.includes('ultimo rendimento')) return 'ultimo_rendimento';
     if (n.includes('patrimonio liquido')) return 'patrimonio_liquido';
     if (n.includes('numero de cotistas') || n.includes('qtd cotistas')) return 'num_cotistas';
     
-    // Ações - Específicos
     if (n === 'p/l' || n === 'pl') return 'pl';
     if (n === 'roe') return 'roe';
     if (n.includes('margem liquida')) return 'margem_liquida';
@@ -94,9 +85,8 @@ async function scrapeInvestidor10(ticker: string) {
     const isLikelyFii = ticker.endsWith('11') || ticker.endsWith('11B');
     const tickerLower = ticker.toLowerCase();
     
-    // Tenta URL de FII primeiro se parecer FII, senão Ação.
     const urls = isLikelyFii 
-        ? [`https://investidor10.com.br/fiis/${tickerLower}/`, `https://investidor10.com.br/fiagros/${tickerLower}/`, `https://investidor10.com.br/acoes/${tickerLower}/`]
+        ? [`https://investidor10.com.br/fiis/${tickerLower}/`, `https://investidor10.com.br/acoes/${tickerLower}/`, `https://investidor10.com.br/fiagros/${tickerLower}/`]
         : [`https://investidor10.com.br/acoes/${tickerLower}/`, `https://investidor10.com.br/fiis/${tickerLower}/`, `https://investidor10.com.br/bdrs/${tickerLower}/`];
 
     let finalData: any = {};
@@ -107,7 +97,8 @@ async function scrapeInvestidor10(ticker: string) {
             const res = await client.get(url, {
                 headers: {
                     'User-Agent': USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)],
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Referer': 'https://google.com'
                 }
             });
 
@@ -115,15 +106,13 @@ async function scrapeInvestidor10(ticker: string) {
             
             const $ = cheerio.load(res.data);
             
-            // Verifica se é página de erro
             if ($('title').text().includes('404') || $('body').text().includes('Página não encontrada')) continue;
 
-            // Define tipo baseado na URL que deu certo
             if (url.includes('/fiis/') || url.includes('/fiagros/')) finalData.type = 'FII';
             else if (url.includes('/bdrs/')) finalData.type = 'BDR';
             else finalData.type = 'ACAO';
 
-            // --- ESTRATÉGIA 1: CARDS DE DESTAQUE (Topo da página) ---
+            // --- COLETA DE FUNDAMENTOS ---
             $('div, span, p').each((_, el) => {
                 const text = $(el).text().trim();
                 const key = getKeyFromLabel(text);
@@ -148,11 +137,9 @@ async function scrapeInvestidor10(ticker: string) {
                 }
             });
 
-            // --- ESTRATÉGIA 2: TABELAS INDICADORES ---
             $('.cell').each((_, cell) => {
                 const label = $(cell).find('.name, .title').text().trim();
                 const value = $(cell).find('.value, .data').text().trim();
-                
                 const key = getKeyFromLabel(label);
                 if (key && value && !finalData[key]) {
                     const parsed = parseValue(value);
@@ -163,7 +150,6 @@ async function scrapeInvestidor10(ticker: string) {
                 }
             });
 
-            // --- SEGMENTO ---
             if (!finalData.segmento) {
                 $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
                     const txt = $(el).text().trim();
@@ -184,20 +170,26 @@ async function scrapeInvestidor10(ticker: string) {
                     finalData.dy_12m = (finalData.ultimo_rendimento / finalData.current_price) * 100 * 12;
                 }
 
-                // --- DIVIDENDOS INTELIGENTES (Tabela Específica) ---
+                // --- COLETA DE DIVIDENDOS (LÓGICA ROBUSTA) ---
                 const dividends: any[] = [];
                 
-                // Encontra tabelas que tenham "Com" ou "Pagamento" no cabeçalho
+                // Itera sobre TODAS as tabelas da página
                 $('table').each((_, table) => {
-                    const headers = $(table).find('thead th').map((i, th) => $(th).text().trim().toLowerCase()).get();
-                    
-                    // Identifica colunas chaves
-                    const idxDataCom = headers.findIndex(h => h.includes('com') || h.includes('base'));
-                    const idxPagamento = headers.findIndex(h => h.includes('pagamento'));
-                    const idxValor = headers.findIndex(h => h.includes('valor'));
-                    const idxTipo = headers.findIndex(h => h.includes('tipo'));
+                    // Mapeia índices das colunas baseado no texto do cabeçalho
+                    let idxDataCom = -1;
+                    let idxPagamento = -1;
+                    let idxValor = -1;
+                    let idxTipo = -1;
 
-                    // Se achou colunas relevantes (FIIs ou Ações podem variar)
+                    $(table).find('thead th').each((idx, th) => {
+                        const txt = $(th).text().toLowerCase().trim();
+                        if (txt.includes('com') || txt.includes('base')) idxDataCom = idx;
+                        if (txt.includes('pagamento')) idxPagamento = idx;
+                        if (txt.includes('valor')) idxValor = idx;
+                        if (txt.includes('tipo')) idxTipo = idx;
+                    });
+
+                    // Se encontrou as colunas essenciais (Com e Valor são obrigatórios)
                     if (idxDataCom !== -1 && idxValor !== -1) {
                         $(table).find('tbody tr').each((_, tr) => {
                             const tds = $(tr).find('td');
@@ -205,14 +197,13 @@ async function scrapeInvestidor10(ticker: string) {
                             const extractDate = (idx: number) => {
                                 if (idx === -1) return null;
                                 const raw = $(tds[idx]).text().trim();
-                                if (raw === '-' || raw.toLowerCase() === 'aguardando') return null;
-                                // Converte DD/MM/YYYY para YYYY-MM-DD
+                                if (!raw || raw === '-' || raw.toLowerCase().includes('aguard')) return null;
                                 const match = raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
                                 return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
                             };
 
                             const dateCom = extractDate(idxDataCom);
-                            let payDate = extractDate(idxPagamento);
+                            let payDate = extractDate(idxPagamento); // Pode ser null
                             
                             const valStr = $(tds[idxValor]).text().trim();
                             const rate = parseValue(valStr);
@@ -222,17 +213,16 @@ async function scrapeInvestidor10(ticker: string) {
                                 const rawType = $(tds[idxTipo]).text().trim().toLowerCase();
                                 if (rawType.includes('jcp') || rawType.includes('juros')) type = 'JCP';
                                 else if (rawType.includes('rendimento')) type = 'REND';
+                                else if (rawType.includes('dividendo')) type = 'DIV';
                             }
 
+                            // Validação: precisa de data com e valor positivo
                             if (dateCom && rate && rate > 0) {
-                                // Se não tem data de pagamento, marca como nula (será 'A Definir')
-                                if (!payDate) payDate = null;
-
                                 dividends.push({
                                     ticker: ticker.toUpperCase(),
                                     type,
                                     date_com: dateCom,
-                                    payment_date: payDate,
+                                    payment_date: payDate, // Mantém null se não tiver data, o frontend trata como "A Definir"
                                     rate
                                 });
                             }
@@ -243,7 +233,7 @@ async function scrapeInvestidor10(ticker: string) {
                 return { metadata: finalData, dividends };
             }
         } catch (e) {
-            console.error(`Erro scraping ${url}:`, e);
+            console.error(`Erro ao acessar ${url}:`, e.message);
         }
     }
     return null;
@@ -267,6 +257,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
+                // Cache de 3 horas
                 if (age < 10800000) {
                     const { data: divs } = await supabase.from('market_dividends').select('*').eq('ticker', ticker);
                     return res.status(200).json({ success: true, data: existing, dividends: divs || [] });
@@ -290,7 +281,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 payment_date: d.payment_date,
                 rate: d.rate
             }));
-            await supabase.from('market_dividends').upsert(cleanDivs, { onConflict: 'ticker,type,date_com,rate', ignoreDuplicates: true });
+            
+            // Upsert seguro para evitar duplicatas, mas atualizando datas de pagamento que mudaram de null para valor real
+            await supabase.from('market_dividends').upsert(cleanDivs, { onConflict: 'ticker,type,date_com,rate', ignoreDuplicates: false });
         }
 
         return res.status(200).json({ success: true, data: result.metadata, dividends: result.dividends });
