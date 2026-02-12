@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, ArrowRight, Wallet, PieChart as PieIcon, Layers, Target, LayoutGrid, ListFilter, X, ChevronRight } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, Maximize2, Minimize2, ChevronRight } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis } from 'recharts';
 import { fetchFutureAnnouncements } from '../services/dataService';
@@ -59,34 +59,31 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
     return null; 
 };
 
-// Item da Agenda
-const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ event, privacyMode }) => {
+// Item da Agenda (Inline e Modal)
+const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean, compact?: boolean }> = ({ event, privacyMode, compact }) => {
     const isDatacom = event.eventType === 'DATACOM';
     const dateObj = new Date(event.date + 'T12:00:00');
     const day = dateObj.getDate();
     const weekDay = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
 
     return (
-        <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 mb-2 shadow-sm">
-            <div className="flex items-center gap-4">
-                <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-2xl ${isDatacom ? 'bg-zinc-100 dark:bg-zinc-800' : 'bg-emerald-50 dark:bg-emerald-900/20'}`}>
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase">{weekDay}</span>
-                    <span className={`text-lg font-black leading-none ${isDatacom ? 'text-zinc-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400'}`}>{day}</span>
+        <div className={`flex items-center justify-between ${compact ? 'py-2 border-b border-white/10 last:border-0' : 'p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 mb-2 shadow-sm'}`}>
+            <div className="flex items-center gap-3">
+                <div className={`flex flex-col items-center justify-center ${compact ? 'w-8 h-8 rounded-lg bg-white/10 text-white' : `w-12 h-12 rounded-2xl ${isDatacom ? 'bg-zinc-100 dark:bg-zinc-800' : 'bg-emerald-50 dark:bg-emerald-900/20'}`}`}>
+                    {!compact && <span className="text-[9px] font-bold opacity-60 uppercase">{weekDay}</span>}
+                    <span className={`${compact ? 'text-xs' : 'text-lg'} font-black leading-none ${!compact && (isDatacom ? 'text-zinc-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400')}`}>{day}</span>
                 </div>
                 <div>
-                    <h4 className="font-bold text-zinc-900 dark:text-white text-base">{event.ticker}</h4>
-                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
+                    <h4 className={`font-bold ${compact ? 'text-white text-xs' : 'text-zinc-900 dark:text-white text-base'}`}>{event.ticker}</h4>
+                    <p className={`text-[9px] font-bold uppercase tracking-wider ${compact ? 'text-white/60' : 'text-zinc-500'}`}>
                         {isDatacom ? 'Data Com' : `Pagamento ${event.type}`}
                     </p>
                 </div>
             </div>
             {!isDatacom && (
                 <div className="text-right">
-                    <span className="block text-emerald-600 dark:text-emerald-400 font-black text-sm">
+                    <span className={`block font-black text-sm ${compact ? 'text-emerald-300' : 'text-emerald-600 dark:text-emerald-400'}`}>
                         {formatBRL(event.amount, privacyMode)}
-                    </span>
-                    <span className="text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full">
-                        Confirmado
                     </span>
                 </div>
             )}
@@ -98,6 +95,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
+  
+  // Estado para controlar qual card está expandido na Home
+  const [expandedCard, setExpandedCard] = useState<'agenda' | 'proventos' | 'alocacao' | null>(null);
+
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
 
@@ -106,7 +107,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       events: RadarEvent[];
       totalConfirmed: number;
       loading: boolean;
-      grouped: Record<string, RadarEvent[]>; // Agrupamento por Mês
+      grouped: Record<string, RadarEvent[]>;
   }>({ events: [], totalConfirmed: 0, loading: true, grouped: {} });
 
   useEffect(() => {
@@ -141,7 +142,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               atomEvents.sort((a, b) => a.date.localeCompare(b.date));
               const totalConfirmed = atomEvents.reduce((acc, e) => e.eventType === 'PAYMENT' ? acc + e.amount : acc, 0);
 
-              // Agrupamento por Mês para exibição na Agenda
               const grouped: Record<string, RadarEvent[]> = {};
               atomEvents.forEach(ev => {
                   const d = new Date(ev.date + 'T12:00:00');
@@ -208,16 +208,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           };
       });
 
-      // Últimos 12 meses
       return { chartData: fullHistory.slice(-12) };
   }, [dividendReceipts]);
 
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
 
+  // Handler para alternar expansão
+  const toggleExpand = (card: 'agenda' | 'proventos' | 'alocacao') => {
+      if (expandedCard === card) setExpandedCard(null);
+      else setExpandedCard(card);
+  };
+
   return (
     <div className="space-y-6 pb-8">
-      {/* 1. Card Principal (Patrimônio) */}
+      {/* 1. Card Principal (Patrimônio) - Mantido Estático */}
       <div className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 shadow-sm border border-zinc-100 dark:border-zinc-800/50 anim-scale-in">
           <div className="relative z-10 flex flex-col items-center text-center">
               <span className="text-xs font-bold text-zinc-400 uppercase tracking-[0.2em] mb-3">Patrimônio Total</span>
@@ -235,44 +240,166 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           </div>
       </div>
 
-      {/* 2. Grid de Ações Rápidas */}
+      {/* 2. Grid de Cards Redimensionáveis */}
       <div className="grid grid-cols-2 gap-4 anim-slide-up">
-          <button onClick={() => setShowAgendaModal(true)} className="bg-indigo-600 dark:bg-indigo-600 text-white p-6 rounded-[2rem] flex flex-col justify-between h-40 shadow-lg shadow-indigo-600/20 press-effect relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-110 transition-transform"><CalendarClock className="w-16 h-16" /></div>
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm"><CalendarClock className="w-5 h-5" /></div>
-              <div>
-                  <span className="text-xs font-medium opacity-80 uppercase tracking-wider block mb-1">Agenda</span>
-                  {radarData.loading ? (
-                      <span className="text-xs font-bold animate-pulse">Buscando...</span>
-                  ) : (
+          
+          {/* Card Agenda */}
+          <div className={`bg-indigo-600 dark:bg-indigo-600 text-white rounded-[2rem] shadow-lg shadow-indigo-600/20 relative overflow-hidden transition-all duration-500 ease-out-mola group flex flex-col ${expandedCard === 'agenda' ? 'col-span-2 row-span-2 h-auto min-h-[320px]' : 'col-span-1 h-40'}`}>
+              <button 
+                  onClick={(e) => { e.stopPropagation(); toggleExpand('agenda'); }} 
+                  className="absolute top-3 right-3 p-2 text-white/50 hover:text-white rounded-full hover:bg-white/10 transition-colors z-20"
+              >
+                  {expandedCard === 'agenda' ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </button>
+              
+              {/* Header / Content Compact */}
+              <div 
+                  className={`p-6 flex flex-col justify-between h-full cursor-pointer ${expandedCard === 'agenda' ? 'flex-none h-auto' : ''}`}
+                  onClick={() => !expandedCard && setShowAgendaModal(true)}
+              >
+                  <div className="flex justify-between items-start">
+                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm"><CalendarClock className="w-5 h-5" /></div>
+                  </div>
+                  <div>
+                      <span className="text-xs font-medium opacity-80 uppercase tracking-wider block mb-1">Agenda</span>
                       <div className="flex flex-col">
                           <span className="text-2xl font-black tracking-tight">{radarData.events.length}</span>
                           <span className="text-[10px] font-bold opacity-80">Eventos Futuros</span>
                       </div>
-                  )}
-              </div>
-          </button>
-
-          <div className="flex flex-col gap-4">
-              <button onClick={() => setShowProventosModal(true)} className="flex-1 bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0"><CircleDollarSign className="w-5 h-5" /></div>
-                  <div className="min-w-0">
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Proventos</span>
-                      <span className="text-sm font-black text-zinc-900 dark:text-white truncate block">{formatBRL(totalDividendsReceived, privacyMode)}</span>
                   </div>
+              </div>
+
+              {/* Content Expanded */}
+              {expandedCard === 'agenda' && (
+                  <div className="px-6 pb-6 pt-0 flex-1 overflow-y-auto anim-fade-in">
+                      <div className="border-t border-white/20 pt-4 mt-2">
+                          <h4 className="text-xs font-bold uppercase tracking-widest opacity-70 mb-3">Próximos 5 Eventos</h4>
+                          <div className="space-y-2">
+                              {radarData.events.slice(0, 5).map(evt => (
+                                  <AgendaItem key={evt.id} event={evt} privacyMode={privacyMode} compact />
+                              ))}
+                              {radarData.events.length === 0 && <p className="text-xs opacity-50">Nenhum evento previsto.</p>}
+                          </div>
+                          <button onClick={() => setShowAgendaModal(true)} className="w-full mt-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors">
+                              Ver Agenda Completa
+                          </button>
+                      </div>
+                  </div>
+              )}
+          </div>
+
+          {/* Card Proventos */}
+          <div className={`bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden transition-all duration-500 ease-out-mola flex flex-col ${expandedCard === 'proventos' ? 'col-span-2 row-span-2 h-[340px]' : 'col-span-1 h-40'}`}>
+              <button 
+                  onClick={(e) => { e.stopPropagation(); toggleExpand('proventos'); }} 
+                  className="absolute top-3 right-3 p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors z-20"
+              >
+                  {expandedCard === 'proventos' ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </button>
 
-              <button onClick={() => setShowAllocationModal(true)} className="flex-1 bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect flex items-center gap-3">
+              <div 
+                  className={`p-4 flex flex-col justify-between h-full cursor-pointer ${expandedCard === 'proventos' ? 'flex-none h-auto pb-0' : ''}`}
+                  onClick={() => !expandedCard && setShowProventosModal(true)}
+              >
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center"><CircleDollarSign className="w-5 h-5" /></div>
+                  <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Proventos</span>
+                      <span className={`font-black text-zinc-900 dark:text-white truncate block ${expandedCard === 'proventos' ? 'text-3xl' : 'text-sm'}`}>{formatBRL(totalDividendsReceived, privacyMode)}</span>
+                  </div>
+              </div>
+
+              {expandedCard === 'proventos' && (
+                  <div className="flex-1 px-4 pb-4 pt-2 anim-fade-in w-full h-full min-h-0">
+                      <div className="h-full w-full bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-2 relative">
+                         {chartData.length > 0 ? (
+                             <ResponsiveContainer width="100%" height="100%">
+                                 <BarChart data={chartData}>
+                                     <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip privacyMode={privacyMode} />} />
+                                     <Bar dataKey="value" radius={[4, 4, 4, 4]}>
+                                         {chartData.map((entry, index) => (
+                                             <Cell key={`cell-${index}`} fill={'#10b981'} />
+                                         ))}
+                                     </Bar>
+                                 </BarChart>
+                             </ResponsiveContainer>
+                         ) : (
+                             <div className="h-full flex items-center justify-center text-xs text-zinc-400">Sem dados</div>
+                         )}
+                      </div>
+                  </div>
+              )}
+          </div>
+
+          {/* Card Alocação - Agora ocupa 2 colunas por padrão ou expande */}
+          <div className={`bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden transition-all duration-500 ease-out-mola flex flex-col ${expandedCard === 'alocacao' ? 'col-span-2 row-span-2 h-[380px]' : 'col-span-2 h-24'}`}>
+              <button 
+                  onClick={(e) => { e.stopPropagation(); toggleExpand('alocacao'); }} 
+                  className="absolute top-3 right-3 p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors z-20"
+              >
+                  {expandedCard === 'alocacao' ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </button>
+
+              <div 
+                  className="p-4 flex items-center gap-4 cursor-pointer h-full"
+                  onClick={() => !expandedCard && setShowAllocationModal(true)}
+              >
                   <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0"><PieIcon className="w-5 h-5" /></div>
                   <div className="min-w-0">
                       <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Alocação</span>
-                      <span className="text-sm font-black text-zinc-900 dark:text-white truncate block">{classChartData.length} Classes</span>
+                      <span className="text-base font-black text-zinc-900 dark:text-white truncate block">
+                          {classChartData.length} Classes • {sectorChartData.length} Setores
+                      </span>
                   </div>
-              </button>
+                  {!expandedCard && <ChevronRight className="w-5 h-5 text-zinc-300 ml-auto mr-8" />}
+              </div>
+
+              {expandedCard === 'alocacao' && (
+                  <div className="flex-1 px-6 pb-6 pt-0 anim-fade-in flex flex-col min-h-0">
+                      <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl flex gap-1 mb-4 shrink-0">
+                         {['CLASS', 'SECTOR'].map(t => (
+                             <button key={t} onClick={() => setAllocationTab(t as any)} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationTab === t ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>
+                                {t === 'CLASS' ? 'Por Classe' : 'Por Setor'}
+                             </button>
+                         ))}
+                      </div>
+                      
+                      <div className="flex-1 relative min-h-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie 
+                                    data={allocationTab === 'CLASS' ? classChartData : sectorChartData} 
+                                    innerRadius={60} 
+                                    outerRadius={80} 
+                                    paddingAngle={4} 
+                                    cornerRadius={6} 
+                                    dataKey="value" 
+                                    stroke="none" 
+                                    onMouseEnter={(_, index) => setActiveIndexClass(index)} 
+                                    onMouseLeave={() => setActiveIndexClass(undefined)}
+                                >
+                                    {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} stroke={activeIndexClass === index ? 'rgba(255,255,255,0.2)' : 'none'} strokeWidth={2} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
+                                {activeIndexClass !== undefined ? (allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].name : 'Total'}
+                            </span>
+                            <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                                {activeIndexClass !== undefined 
+                                    ? `${(allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].percent.toFixed(1)}%` 
+                                    : formatBRL(typeData.total, privacyMode)}
+                            </span>
+                        </div>
+                      </div>
+                  </div>
+              )}
           </div>
       </div>
 
-      {/* 3. Modal da Agenda (Automática) */}
+      {/* 3. Modal da Agenda (Automática) - Mantido para acesso completo se desejar */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="px-6 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
             <div className="flex items-center justify-between mb-8 pt-4">
