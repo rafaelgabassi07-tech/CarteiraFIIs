@@ -242,7 +242,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const grouped: Record<string, RadarEvent[]> = {};
       events.forEach(ev => {
           try {
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) return;
               const d = new Date(ev.date + 'T12:00:00');
+              if (isNaN(d.getTime())) return;
+              
               const monthKey = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
               const keyCap = monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
               if (!grouped[keyCap]) grouped[keyCap] = [];
@@ -282,6 +285,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // --- DADOS DE PROVENTOS (FILTRADOS) ---
   const { chartData, groupedProventos, proventosTotal, proventosAverage, availableYears } = useMemo(() => {
       const filteredReceipts = dividendReceipts.filter(r => {
+          // Filtra datas inválidas (ex: 'A Definir' ou null)
+          if (!r.paymentDate || !/^\d{4}-\d{2}-\d{2}$/.test(r.paymentDate)) return false;
+          
           return proventosType === 'ALL' || 
               (proventosType === 'FII' && r.assetType === AssetType.FII) ||
               (proventosType === 'STOCK' && r.assetType === AssetType.STOCK);
@@ -303,13 +309,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
 
       const grouped: Record<string, { items: DividendReceipt[], total: number }> = {};
+      
       displayReceipts.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).forEach(r => {
-          const d = new Date(r.paymentDate + 'T12:00:00');
-          const key = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-          const keyCap = key.charAt(0).toUpperCase() + key.slice(1);
-          if (!grouped[keyCap]) grouped[keyCap] = { items: [], total: 0 };
-          grouped[keyCap].items.push(r);
-          grouped[keyCap].total += r.totalReceived;
+          try {
+              const d = new Date(r.paymentDate + 'T12:00:00');
+              if (isNaN(d.getTime())) return;
+
+              const key = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+              const keyCap = key.charAt(0).toUpperCase() + key.slice(1);
+              if (!grouped[keyCap]) grouped[keyCap] = { items: [], total: 0 };
+              grouped[keyCap].items.push(r);
+              grouped[keyCap].total += r.totalReceived;
+          } catch {
+              // Silently skip invalid dates
+          }
       });
 
       const todayStr = new Date().toISOString().split('T')[0];
@@ -322,13 +335,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       });
 
       const fullHistory: HistoryItem[] = Object.keys(monthlySum).sort().map(date => {
-          const d = new Date(date + '-02'); 
+          const [year, month] = date.split('-').map(Number);
+          const d = new Date(year, month - 1, 2, 12, 0, 0);
+          
+          let monthName = '---';
+          try {
+              if (!isNaN(d.getTime())) {
+                  monthName = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+              }
+          } catch {}
+
           return {
               fullDate: date,
-              name: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+              name: monthName,
               value: monthlySum[date],
-              year: d.getFullYear(),
-              monthIndex: d.getMonth()
+              year: year,
+              monthIndex: month - 1
           };
       });
 

@@ -34,8 +34,17 @@ export const parseDateToLocal = (dateStr: string): Date | null => {
     
     try {
         const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+        
+        // Verifica se os componentes são números válidos antes de criar a data
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
         // Cria data ao meio-dia local para evitar qualquer problema de virada de dia
-        return new Date(year, month - 1, day, 12, 0, 0); 
+        const d = new Date(year, month - 1, day, 12, 0, 0); 
+        
+        // Verifica se a data criada é válida
+        if (isNaN(d.getTime())) return null;
+        
+        return d;
     } catch {
         return null;
     }
@@ -121,7 +130,7 @@ export const processPortfolio = (
     const safeTxs = (transactions || []).map(t => ({
         ...t,
         ticker: normalizeTicker(t.ticker)
-    })).sort((a, b) => a.date.localeCompare(b.date)); // Ordenação Cronológica é VITAL para PM
+    })).sort((a, b) => (a.date || '').localeCompare(b.date || '')); // Ordenação Cronológica é VITAL para PM
 
     const safeDividends = dividends || [];
 
@@ -132,6 +141,9 @@ export const processPortfolio = (
 
     const receipts = safeDividends.map(d => {
         if (!d || !d.ticker) return null;
+        // Validação de segurança para datas de proventos
+        if (!d.dateCom || d.dateCom.length < 10) return null;
+
         const normalizedTicker = normalizeTicker(d.ticker);
         
         // Calcula quantidade EXATA na data COM
@@ -142,7 +154,7 @@ export const processPortfolio = (
         const totalVal = preciseMul(qty, d.rate);
 
         // Soma ao total global se já passou da data de pagamento
-        if (d.paymentDate <= todayStr) {
+        if (d.paymentDate && d.paymentDate.length >= 10 && d.paymentDate <= todayStr) {
             divPaidMap[normalizedTicker] = preciseAdd(divPaidMap[normalizedTicker] || 0, totalVal);
             totalDividendsReceived = preciseAdd(totalDividendsReceived, totalVal);
         }

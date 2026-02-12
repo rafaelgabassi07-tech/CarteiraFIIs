@@ -79,7 +79,14 @@ const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.QUOTES); return s ? JSON.parse(s) : {}; } catch { return {}; } });
-  const [dividends, setDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [dividends, setDividends] = useState<DividendReceipt[]>(() => { 
+      try { 
+          const s = localStorage.getItem(STORAGE_KEYS.DIVS); 
+          const parsed = s ? JSON.parse(s) : []; 
+          // Sanitização Pró-ativa: Filtra datas inválidas ou "A Definir" que podem quebrar o render
+          return Array.isArray(parsed) ? parsed.filter(d => d.paymentDate && /^\d{4}-\d{2}-\d{2}$/.test(d.paymentDate)) : [];
+      } catch { return []; } 
+  });
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); return s ? JSON.parse(s) : { ipca: 4.62, startDate: '' }; } catch { return { ipca: 4.62, startDate: '' }; } });
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.METADATA); return s ? JSON.parse(s) : {}; } catch { return {}; } });
 
