@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Pencil, Coins } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Pencil, Coins, Sparkles } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 
@@ -251,6 +251,21 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     
     const estimatedTotal = (parseFloat(quantity.replace(',','.')) || 0) * (parseFloat(price.replace(',','.')) || 0);
 
+    // Função "Inteligente" para auto-detectar FII vs Ação
+    const handleTickerChange = (val: string) => {
+        const clean = val.toUpperCase().trim();
+        setTicker(clean);
+        
+        // Lógica de Detecção
+        if (clean.length > 2) {
+            if (clean.endsWith('11') || clean.endsWith('11B') || clean.endsWith('33') || clean.endsWith('34')) {
+                setAssetType(AssetType.FII);
+            } else if (clean.length >= 4) {
+                setAssetType(AssetType.STOCK);
+            }
+        }
+    };
+
     const availableYears = useMemo(() => {
         const years = new Set(transactions.map(t => t.date.substring(0, 4)));
         return Array.from(years).sort((a,b) => String(b).localeCompare(String(a)));
@@ -290,7 +305,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     }, [filteredTransactions]);
 
     const handleOpenAdd = () => {
-        setEditingId(null); setTicker(''); setType('BUY'); setAssetType(AssetType.FII);
+        setEditingId(null); setTicker(''); setType('BUY'); setAssetType(AssetType.STOCK); // Default inicial
         setQuantity(''); setPrice(''); setDate(new Date().toISOString().split('T')[0]);
         setIsModalOpen(true);
     };
@@ -304,7 +319,25 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const handleSave = async () => {
         if (!ticker || !quantity || !price || !date || isSaving) return;
         setIsSaving(true);
-        const payload = { ticker: ticker.toUpperCase(), type, assetType, quantity: Number(quantity.replace(',', '.')), price: Number(price.replace(',', '.')), date };
+        // Robustez: aceita virgula ou ponto
+        const qtyNum = parseFloat(quantity.replace(',', '.'));
+        const priceNum = parseFloat(price.replace(',', '.'));
+
+        if (isNaN(qtyNum) || isNaN(priceNum) || qtyNum <= 0 || priceNum <= 0) {
+            setIsSaving(false);
+            alert("Valores inválidos");
+            return;
+        }
+
+        const payload = { 
+            ticker: ticker.toUpperCase().trim(), 
+            type, 
+            assetType, 
+            quantity: qtyNum, 
+            price: priceNum, 
+            date 
+        };
+
         try {
             if (editingId) await onUpdateTransaction(editingId, payload);
             else await onAddTransaction(payload);
@@ -405,97 +438,114 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
-            {/* Modal de Edição MELHORADO */}
+            {/* Modal de Edição INTELIGENTE */}
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black relative">
                     
                     {/* Header Colorido Dinâmico */}
-                    <div className={`pt-6 pb-8 px-6 rounded-b-[2rem] transition-colors duration-300 ${type === 'BUY' ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-rose-500/20'} shadow-lg mb-4`}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-black">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
+                    <div className={`pt-6 pb-8 px-6 rounded-b-[2.5rem] transition-all duration-500 ${type === 'BUY' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-rose-600 text-white shadow-lg shadow-rose-600/20'} mb-6`}>
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-black tracking-tight">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
+                                <p className="text-xs font-medium opacity-80 uppercase tracking-widest">{type === 'BUY' ? 'Entrada de Ativo' : 'Saída de Ativo'}</p>
+                            </div>
                             {editingId && (
-                                <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2 bg-white/20 rounded-xl hover:bg-white/30 transition-colors">
+                                <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-colors backdrop-blur-sm">
                                     <Trash2 className="w-5 h-5 text-white" />
                                 </button>
                             )}
                         </div>
-                        <div className="flex bg-black/10 p-1 rounded-xl backdrop-blur-sm">
-                            <button onClick={() => setType('BUY')} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${type === 'BUY' ? 'bg-white text-emerald-600 shadow-md' : 'text-white/70 hover:text-white'}`}>Compra</button>
-                            <button onClick={() => setType('SELL')} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${type === 'SELL' ? 'bg-white text-rose-600 shadow-md' : 'text-white/70 hover:text-white'}`}>Venda</button>
+                        
+                        <div className="flex bg-black/20 p-1.5 rounded-2xl backdrop-blur-md">
+                            <button onClick={() => setType('BUY')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${type === 'BUY' ? 'bg-white text-emerald-600 shadow-md transform scale-[1.02]' : 'text-white/60 hover:text-white'}`}>
+                                Compra
+                            </button>
+                            <button onClick={() => setType('SELL')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${type === 'SELL' ? 'bg-white text-rose-600 shadow-md transform scale-[1.02]' : 'text-white/60 hover:text-white'}`}>
+                                Venda
+                            </button>
                         </div>
                     </div>
 
-                    <div className="px-6 space-y-5 pb-20">
-                        {/* Input Ticker */}
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-                            <div className="flex-1">
-                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Código do Ativo</label>
-                                <input 
-                                    type="text" 
-                                    value={ticker} 
-                                    onChange={e => { 
-                                        const val = e.target.value.toUpperCase();
-                                        setTicker(val); 
-                                        if (!editingId) {
-                                            if (val.endsWith('11') || val.endsWith('11B')) setAssetType(AssetType.FII);
-                                            else if (val.length >= 5) setAssetType(AssetType.STOCK);
-                                        }
-                                    }} 
-                                    placeholder="PETR4" 
-                                    className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300 uppercase"
-                                />
+                    <div className="px-6 space-y-6 pb-20">
+                        {/* Input Ticker Inteligente */}
+                        <div className="bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group focus-within:border-zinc-300 dark:focus-within:border-zinc-600 transition-colors">
+                            <div className="flex justify-between items-start mb-2">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Código do Ativo</label>
+                                {/* Tag de Tipo Auto-Detectado */}
+                                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide transition-all ${assetType === AssetType.FII ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                    {assetType === AssetType.FII ? <Building2 className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                                    {assetType === AssetType.FII ? 'Fundo Imobiliário' : 'Ação'}
+                                </div>
                             </div>
-                            <div className="flex gap-1">
-                                <button onClick={() => setAssetType(AssetType.STOCK)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${assetType === AssetType.STOCK ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent' : 'bg-transparent text-zinc-400 border-zinc-200 dark:border-zinc-700'}`}>Ação</button>
-                                <button onClick={() => setAssetType(AssetType.FII)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${assetType === AssetType.FII ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent' : 'bg-transparent text-zinc-400 border-zinc-200 dark:border-zinc-700'}`}>FII</button>
-                            </div>
+                            
+                            <input 
+                                type="text" 
+                                value={ticker} 
+                                onChange={e => handleTickerChange(e.target.value)}
+                                placeholder="EX: HGLG11" 
+                                className="w-full bg-transparent text-4xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800 uppercase tracking-tight"
+                                autoFocus={!editingId}
+                            />
+                            
+                            {/* Efeito Visual de Detecção */}
+                            {ticker.length > 0 && (
+                                <div className="absolute right-4 bottom-4">
+                                    <Sparkles className={`w-6 h-6 transition-all duration-500 ${assetType === AssetType.FII ? 'text-indigo-400' : 'text-sky-400'} opacity-20`} />
+                                </div>
+                            )}
                         </div>
 
                         {/* Grid Quantidade e Preço */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Quantidade</label>
+                            <div className="bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-2">Quantidade</label>
                                 <input 
-                                    type="number" 
+                                    type="text" 
                                     value={quantity} 
-                                    onChange={e => setQuantity(e.target.value)} 
-                                    placeholder="0" 
-                                    className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300" 
+                                    onChange={e => setQuantity(e.target.value.replace(/[^0-9,.]/g, ''))} // Apenas números
+                                    placeholder="0"
+                                    inputMode="decimal" 
+                                    className="w-full bg-transparent text-2xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800" 
                                 />
                             </div>
-                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Preço Unitário</label>
+                            <div className="bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-2">Preço Unitário</label>
                                 <div className="flex items-center gap-1">
-                                    <span className="text-zinc-400 font-medium text-sm">R$</span>
+                                    <span className="text-zinc-400 font-bold text-lg">R$</span>
                                     <input 
-                                        type="number" 
+                                        type="text" 
                                         value={price} 
-                                        onChange={e => setPrice(e.target.value)} 
-                                        placeholder="0.00" 
-                                        className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300" 
+                                        onChange={e => setPrice(e.target.value.replace(/[^0-9,.]/g, ''))} 
+                                        placeholder="0,00"
+                                        inputMode="decimal"
+                                        className="w-full bg-transparent text-2xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800" 
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Data */}
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-3">
-                            <Calendar className="w-5 h-5 text-zinc-400" />
-                            <div className="flex-1">
-                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Data da Operação</label>
-                                <input 
-                                    type="date" 
-                                    value={date} 
-                                    onChange={e => setDate(e.target.value)} 
-                                    className="w-full bg-transparent text-sm font-bold text-zinc-900 dark:text-white outline-none pt-0.5" 
-                                />
+                        {/* Data e Total */}
+                        <div className="flex items-stretch gap-4">
+                            <div className="flex-1 bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
+                                    <Calendar className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Data</label>
+                                    <input 
+                                        type="date" 
+                                        value={date} 
+                                        onChange={e => setDate(e.target.value)} 
+                                        className="w-full bg-transparent text-sm font-bold text-zinc-900 dark:text-white outline-none pt-0.5" 
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        {/* Total Estimado */}
-                        <div className="flex items-center justify-between px-2 pt-2">
-                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Total da Ordem</span>
-                            <span className={`text-2xl font-black ${type === 'BUY' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {/* Resumo Final */}
+                        <div className="bg-zinc-100 dark:bg-zinc-900/50 p-4 rounded-[2rem] flex justify-between items-center">
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-2">Total Estimado</span>
+                            <span className={`text-2xl font-black tracking-tight px-2 ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                 {formatBRL(estimatedTotal)}
                             </span>
                         </div>
@@ -503,9 +553,9 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         <button 
                             onClick={handleSave} 
                             disabled={isSaving || !ticker || !quantity || !price} 
-                            className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors ${type === 'BUY' ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'}`}
+                            className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50 disabled:cursor-not-allowed text-white transition-all transform hover:scale-[1.01] active:scale-[0.99] ${type === 'BUY' ? 'bg-emerald-600 shadow-emerald-600/20' : 'bg-rose-600 shadow-rose-600/20'}`}
                         >
-                            {isSaving ? 'Salvando...' : editingId ? 'Atualizar Ordem' : 'Confirmar Ordem'}
+                            {isSaving ? 'Salvando...' : editingId ? 'Atualizar Ordem' : 'Confirmar Lançamento'}
                         </button>
                     </div>
                 </div>

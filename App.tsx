@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '9.2.1'; // Bump Version
+const APP_VERSION = '9.2.2'; // Bump Version
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -207,8 +207,6 @@ const App: React.FC = () => {
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
       
       // 2. Fundamentos e Dividendos (Supabase + Scraper)
-      // Aqui removemos a trava de tempo. A função fetchUnifiedMarketData decide inteligentemente se precisa do scraper.
-      // O 'force' aqui é apenas um sinalizador manual do usuário, mas o fetchUnifiedMarketData tem sua própria lógica de 'staleness'.
       let data = await fetchUnifiedMarketData(tickers, startDate, force);
 
       if (data.dividends.length > 0) {
@@ -255,10 +253,6 @@ const App: React.FC = () => {
         setTimeout(() => setCloudStatus('hidden'), 3000);
         
         if (cloudTxs.length > 0) {
-            // REMOVIDA: A lógica que impedia o sync se fosse recente.
-            // Agora, ao carregar as transações, SEMPRE disparamos a verificação de integridade dos dados.
-            // O controle de "spam" é feito internamente pelo fetchUnifiedMarketData (verifica data de cada ativo).
-            
             await syncMarketData(false, cloudTxs, initialLoad);
         } else {
              if (initialLoad) setLoadingProgress(100);
@@ -323,7 +317,7 @@ const App: React.FC = () => {
       
       {toast && ( 
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] w-auto max-w-sm px-4">
-            <div className="bg-black/80 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 anim-scale-in backdrop-blur-md shadow-xl">
+            <div className={`text-white px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 anim-scale-in backdrop-blur-md shadow-2xl ${toast.type === 'error' ? 'bg-rose-500' : 'bg-black/90 dark:bg-white/90 dark:text-black'}`}>
                {toast.text}
             </div>
         </div> 
@@ -353,24 +347,46 @@ const App: React.FC = () => {
                 <MemoizedTransactions 
                     transactions={transactions} 
                     onAddTransaction={async (t) => { 
+                        if (!session?.user?.id) { showToast('error', 'Usuário não autenticado'); return; }
                         const { error } = await supabase.from('transactions').insert({...t, user_id: session.user.id}); 
-                        if(!error) fetchTransactionsFromCloud(session); 
+                        if(!error) { 
+                            await fetchTransactionsFromCloud(session); 
+                            showToast('success', 'Ordem adicionada!'); 
+                        } else {
+                            showToast('error', 'Erro ao salvar. Tente novamente.');
+                            console.error(error);
+                        }
                     }} 
                     onUpdateTransaction={async (id, t) => { 
                         const { error } = await supabase.from('transactions').update(t).eq('id', id); 
-                        if(!error) fetchTransactionsFromCloud(session); 
+                        if(!error) { 
+                            await fetchTransactionsFromCloud(session); 
+                            showToast('success', 'Ordem atualizada!'); 
+                        } else {
+                            showToast('error', 'Erro ao atualizar.');
+                        }
                     }} 
                     onBulkDelete={async (ids) => {
                         const { error } = await supabase.from('transactions').delete().in('id', ids);
-                        if(!error) fetchTransactionsFromCloud(session);
+                        if(!error) {
+                            await fetchTransactionsFromCloud(session);
+                            showToast('success', `${ids.length} itens removidos.`);
+                        } else {
+                            showToast('error', 'Erro ao excluir.');
+                        }
                     }}
                     onRequestDeleteConfirmation={(id) => setConfirmModal({ 
                         isOpen: true, 
                         title: 'Excluir?', 
                         message: 'Esta ação não pode ser desfeita.', 
                         onConfirm: async () => { 
-                            await supabase.from('transactions').delete().eq('id', id); 
-                            fetchTransactionsFromCloud(session); 
+                            const { error } = await supabase.from('transactions').delete().eq('id', id); 
+                            if (!error) {
+                                await fetchTransactionsFromCloud(session); 
+                                showToast('success', 'Item removido.');
+                            } else {
+                                showToast('error', 'Erro ao remover.');
+                            }
                             setConfirmModal(null); 
                         } 
                     })} 
